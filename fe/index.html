@@ -236,12 +236,11 @@ tbody tr:hover{background:var(--surface2);}
       <div>
         <h2>People operations,<br>beautifully simplified.</h2>
         <p>Manage vacations, work-from-home, medical insurance claims and salary history — all in one elegant workspace.</p>
-        <div class="visual-stats">
-          <div><span>248</span><small>Employees</small></div>
-          <div><span>32</span><small>Pending Requests</small></div>
-          <div><span>99.9%</span><small>Uptime</small></div>
-        </div>
-      </div>
+                      <div><span><i class="fa-solid fa-shield-halved"></i></span><small>Secure Google Sign-In</small></div>
+              <div><span><i class="fa-solid fa-clock"></i></span><small>Real-time Approvals</small></div>
+              <div><span><i class="fa-solid fa-lock"></i></span><small>Role-based Access</small></div>
+            </div>
+</div>
     </div>
     <div class="login-form-wrap">
       <h1>Welcome back</h1>
@@ -319,8 +318,8 @@ tbody tr:hover{background:var(--surface2);}
         <div class="grid g4" style="margin-bottom:20px;">
           <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-users"></i></div></div><div class="stat-val" id="statEmployees">248</div><div class="stat-label">Total Employees</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> 4.2% vs last month</span></div>
           <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(245,158,11,.12);color:var(--warning);"><i class="fa-solid fa-hourglass-half"></i></div></div><div class="stat-val" id="statPending">14</div><div class="stat-label">Pending Requests</div><span class="stat-trend trend-down"><i class="fa-solid fa-arrow-down"></i> 2 fewer than yesterday</span></div>
-          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div></div><div class="stat-val">37</div><div class="stat-label">On Leave This Month</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> Summer season</span></div>
-          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-briefcase-medical"></i></div></div><div class="stat-val">9</div><div class="stat-label">Open Insurance Claims</div><span class="stat-trend trend-down"><i class="fa-solid fa-arrow-down"></i> EGP 182,400 total</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div></div><div class="stat-val" id="statOnLeave">37</div><div class="stat-label">On Leave This Month</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> Summer season</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-briefcase-medical"></i></div></div><div class="stat-val" id="statOpenClaims">9</div><div class="stat-label">Open Insurance Claims</div><span class="stat-trend trend-down" id="statClaimsTotal"><i class="fa-solid fa-arrow-down"></i> EGP 182,400 total</span></div>
         </div>
         <div class="grid g-2-1" style="margin-bottom:20px;">
           <div class="card">
@@ -399,9 +398,9 @@ tbody tr:hover{background:var(--surface2);}
       <!-- ADMIN VACATIONS -->
       <section class="page-section" id="a-vacations">
         <div class="grid g3" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Vacation Days Allotted (Year)</div><div class="stat-val">5,208</div></div>
-          <div class="card stat-card"><div class="stat-label">Days Used So Far</div><div class="stat-val">2,014</div></div>
-          <div class="card stat-card"><div class="stat-label">Employees Currently On Leave</div><div class="stat-val">6</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Vacation Days Allotted (Year)</div><div class="stat-val" id="statVacAllotted">5,208</div></div>
+          <div class="card stat-card"><div class="stat-label">Days Used So Far</div><div class="stat-val" id="statVacUsed">2,014</div></div>
+          <div class="card stat-card"><div class="stat-label">Employees Currently On Leave</div><div class="stat-val" id="statEmployeesOnLeave">6</div></div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Employee Vacation Balances</h3></div>
@@ -412,10 +411,10 @@ tbody tr:hover{background:var(--surface2);}
       <!-- ADMIN INSURANCE -->
       <section class="page-section" id="a-insurance">
         <div class="grid g4" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Claims (YTD)</div><div class="stat-val">142</div></div>
-          <div class="card stat-card"><div class="stat-label">Approved</div><div class="stat-val" style="color:var(--success)">118</div></div>
-          <div class="card stat-card"><div class="stat-label">Pending Review</div><div class="stat-val" style="color:var(--warning)">9</div></div>
-          <div class="card stat-card"><div class="stat-label">Total Reimbursed</div><div class="stat-val">EGP 1.24M</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Claims (YTD)</div><div class="stat-val" id="statClaimsYtd">142</div></div>
+          <div class="card stat-card"><div class="stat-label">Approved</div><div class="stat-val" id="statClaimsApproved" style="color:var(--success)">118</div></div>
+          <div class="card stat-card"><div class="stat-label">Pending Review</div><div class="stat-valid="statClaimsPending" " style="color:var(--warning)">9</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Reimbursed</div><div class="stat-val" id="statClaimsReimbursed">EGP 1.24M</div></div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Claims History</h3></div>
@@ -901,6 +900,10 @@ function renderVacationBalances(){
     return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${e.vacTotal}</td><td>${e.vacUsed}</td><td>${e.vacTotal-e.vacUsed}</td>
     <td style="min-width:140px;"><div class="progress-bar"><span style="width:${pct}%;"></span></div></td></tr>`;
   }).join('');
+    document.getElementById('statVacAllotted').textContent = employees.reduce((s,e)=>s+e.vacTotal,0).toLocaleString();
+  document.getElementById('statVacUsed').textContent = employees.reduce((s,e)=>s+e.vacUsed,0).toLocaleString();
+  document.getElementById('statEmployeesOnLeave').textContent = employees.filter(e=>e.status==='On Leave').length;
+  document.getElementById('statOnLeave').textContent = employees.filter(e=>e.status==='On Leave').length;
 }
 
 function renderInsuranceTable(){
@@ -911,6 +914,11 @@ function renderInsuranceTable(){
       ${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button>
       <button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}
     </td></tr>`).join('');
+    document.getElementById('statClaims').textContent = insuranceClaims.filter(c=>c.status==='Pending').length;
+  document.getElementById('statClaimsYtd').textContent = insuranceClaims.length;
+  document.getElementById('statClaimsApproved').textContent = insuranceClaims.filter(c=>c.status==='Approved').length;
+  document.getElementById('statClaimsPending').textContent = insuranceClaims.filter(c=>c.status==='Pending').length;
+  document.getElementById('statClaimsReimbursed').textContent = fmtMoney(insuranceClaims.filter(c=>c.status==='Approved').reduce((s,c)=>s+Number(c.amount),0));
 }
 async function actionClaim(claimId, status){
   try{
