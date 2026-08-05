@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HRFlow | HR Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="api.js"></script>
+<style>
+:root{
+  --accent:#6366f1; --accent2:#8b5cf6; --accent-soft:rgba(99,102,241,.12);
+  --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --info:#0ea5e9;
+  --bg:#f4f5fb; --surface:#ffffff; --surface2:#f8f9fd; --border:#e7e9f3;
+  --text:#171a2b; --text2:#6b7280; --text3:#9ca3af;
+  --radius:16px; --radius-sm:10px;
+  --shadow:0 1px 2px rgba(20,20,50,.04),0 8px 24px rgba(20,20,50,.05);
+  --shadow-lg:0 10px 40px rgba(20,20,50,.12);
+}
+[data-theme="dark"]{
+  --bg:#0f1117; --surface:#171a24; --surface2:#1d2130; --border:#2a2e3d;
+  --text:#f1f2f6; --text2:#9aa0b4; --text3:#6b7280;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  --shadow-lg:0 10px 40px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); transition:background .25s,color .25s;}
+a{text-decoration:none; color:inherit;}
+button{font-family:inherit; cursor:pointer;}
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px;}
+.hidden{display:none !important;}
+
+/* ---------- LOGIN ---------- */
+#login-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:
+  radial-gradient(circle at 15% 20%, rgba(99,102,241,.25), transparent 45%),
+  radial-gradient(circle at 85% 80%, rgba(139,92,246,.22), transparent 45%), var(--bg); padding:20px;}
+.login-card{width:100%; max-width:920px; background:var(--surface); border-radius:24px; box-shadow:var(--shadow-lg); display:grid; grid-template-columns:1.05fr 1fr; overflow:hidden; border:1px solid var(--border);}
+.login-visual{background:linear-gradient(145deg,var(--accent),var(--accent2)); padding:48px 40px; color:#fff; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden;}
+.login-visual::before{content:''; position:absolute; width:280px; height:280px; border-radius:50%; background:rgba(255,255,255,.08); top:-80px; right:-80px;}
+.login-visual::after{content:''; position:absolute; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,.08); bottom:-60px; left:-60px;}
+.brand{display:flex; align-items:center; gap:10px; font-weight:800; font-size:22px; position:relative; z-index:1;}
+.brand i{font-size:24px;}
+.login-visual h2{font-size:28px; margin-top:40px; line-height:1.35; font-weight:700; position:relative; z-index:1;}
+.login-visual p{margin-top:14px; opacity:.85; font-size:14.5px; line-height:1.6; position:relative; z-index:1;}
+.visual-stats{display:flex; gap:18px; margin-top:36px; position:relative; z-index:1;}
+.visual-stats div{background:rgba(255,255,255,.14); padding:14px 16px; border-radius:14px; flex:1; backdrop-filter:blur(6px);}
+.visual-stats span{display:block; font-size:20px; font-weight:800;}
+.visual-stats small{font-size:11.5px; opacity:.8;}
+.login-form-wrap{padding:48px 44px; display:flex; flex-direction:column; justify-content:center;}
+.login-form-wrap h1{font-size:26px; font-weight:800;}
+.login-form-wrap>p{color:var(--text2); font-size:14px; margin-top:6px; margin-bottom:28px;}
+.field{margin-bottom:18px;}
+.field label{display:block; font-size:13px; font-weight:600; margin-bottom:7px; color:var(--text2);}
+.input-wrap{position:relative;}
+.input-wrap i{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px;}
+.input-wrap input{width:100%; padding:13px 14px 13px 40px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:14px; outline:none; transition:.2s;}
+.input-wrap input:focus{border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft);}
+.login-row{display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:22px; color:var(--text2);}
+.login-row label{display:flex; align-items:center; gap:6px; cursor:pointer;}
+.btn-primary{width:100%; padding:14px; border:none; border-radius:12px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; font-weight:700; font-size:14.5px; box-shadow:0 8px 20px rgba(99,102,241,.35); transition:transform .15s,box-shadow .15s;}
+.btn-primary:hover{transform:translateY(-2px); box-shadow:0 12px 26px rgba(99,102,241,.45);}
+.demo-box{margin-top:24px; background:var(--surface2); border:1px dashed var(--border); border-radius:12px; padding:12px 14px; font-size:12.5px; color:var(--text2);}
+.demo-box b{color:var(--text);}
+.demo-chip{display:inline-flex; gap:6px; align-items:center; background:var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-weight:600; font-size:11.5px; margin:4px 4px 0 0; cursor:pointer; border:none;}
+.login-err{background:rgba(239,68,68,.1); color:var(--danger); border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; align-items:center; gap:8px;}
+.theme-fab{position:fixed; top:20px; right:20px; width:42px; height:42px; border-radius:50%; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); font-size:16px; z-index:50;}
+
+/* ---------- APP LAYOUT ---------- */
+.app{display:none; min-height:100vh;}
+.app.active{display:flex;}
+.sidebar{width:260px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; height:100vh; position:sticky; top:0; padding:22px 16px; transition:width .25s;}
+.sidebar .brand{padding:6px 10px 22px; font-size:19px;}
+.sidebar .brand i{background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:24px;}
+.sidebar .brand span.grad{background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.nav-section-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); font-weight:700; margin:18px 10px 8px;}
+.nav-item{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:11px; color:var(--text2); font-size:14px; font-weight:600; margin-bottom:2px; position:relative;}
+.nav-item i{width:18px; text-align:center; font-size:15px;}
+.nav-item:hover{background:var(--surface2); color:var(--text);}
+.nav-item.active{background:var(--accent-soft); color:var(--accent);}
+.nav-item .badge{margin-left:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px;}
+.sidebar-footer{margin-top:auto; padding-top:14px; border-top:1px solid var(--border);}
+.user-mini{display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; cursor:pointer;}
+.user-mini:hover{background:var(--surface2);}
+.avatar{width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
+.user-mini .name{font-size:13.5px; font-weight:700;}
+.user-mini .role{font-size:11.5px; color:var(--text2);}
+.logout-btn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--border); border-radius:10px; padding:9px; font-size:13px; font-weight:600; color:var(--text2); display:flex; align-items:center; justify-content:center; gap:8px;}
+.logout-btn:hover{background:rgba(239,68,68,.08); color:var(--danger); border-color:rgba(239,68,68,.3);}
+
+.main{flex:1; min-width:0; height:100vh; overflow-y:auto;}
+.topbar{position:sticky; top:0; z-index:20; background:var(--bg); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:18px 32px; border-bottom:1px solid var(--border); background:var(--surface);}
+.topbar h2{font-size:19px; font-weight:800;}
+.topbar .sub{font-size:12.5px; color:var(--text2); margin-top:2px;}
+.top-actions{display:flex; align-items:center; gap:12px;}
+.icon-btn{width:40px; height:40px; border-radius:11px; border:1px solid var(--border); background:var(--surface2); display:flex; align-items:center; justify-content:center; color:var(--text2); font-size:15px; position:relative;}
+.icon-btn:hover{color:var(--accent); border-color:var(--accent);}
+.icon-btn .dot{position:absolute; top:8px; right:8px; width:7px; height:7px; background:var(--danger); border-radius:50%; border:1.5px solid var(--surface);}
+.page{padding:28px 32px; max-width:1400px;}
+.page-section{display:none;}
+.page-section.active{display:block; animation:fadein .35s ease;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.grid{display:grid; gap:20px;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
+.g-2-1{grid-template-columns:2fr 1fr;}
+.g-1-2{grid-template-columns:1fr 2fr;}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} .g-2-1,.g-1-2{grid-template-columns:1fr;}}
+
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+.card-head h3{font-size:15.5px; font-weight:700;}
+.card-head .link{font-size:12.5px; font-weight:600; color:var(--accent);}
+
+.stat-card{padding:20px 22px;}
+.stat-top{display:flex; align-items:center; justify-content:space-between;}
+.stat-icon{width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:17px;}
+.stat-val{font-size:26px; font-weight:800; margin-top:14px;}
+.stat-label{font-size:12.5px; color:var(--text2); margin-top:4px;}
+.stat-trend{font-size:11.5px; font-weight:700; margin-top:10px; display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px;}
+.trend-up{color:var(--success); background:rgba(16,185,129,.1);}
+.trend-down{color:var(--danger); background:rgba(239,68,68,.1);}
+
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+thead th{text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text3); font-weight:700; padding:10px 12px; border-bottom:1px solid var(--border);}
+tbody td{padding:13px 12px; border-bottom:1px solid var(--border); color:var(--text);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+.tname{display:flex; align-items:center; gap:10px; font-weight:600;}
+.tname .avatar{width:30px; height:30px; font-size:11px;}
+
+.badge-pill{padding:4px 11px; border-radius:20px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px;}
+.pill-success{background:rgba(16,185,129,.12); color:var(--success);}
+.pill-warning{background:rgba(245,158,11,.12); color:var(--warning);}
+.pill-danger{background:rgba(239,68,68,.12); color:var(--danger);}
+.pill-info{background:rgba(14,165,233,.12); color:var(--info);}
+.pill-neutral{background:var(--surface2); color:var(--text2);}
+
+.btn{padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--surface2); color:var(--text); display:inline-flex; align-items:center; gap:7px; transition:.15s;}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn-fill{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; box-shadow:0 6px 16px rgba(99,102,241,.3);}
+.btn-fill:hover{color:#fff; transform:translateY(-1px);}
+.btn-sm{padding:6px 11px; font-size:12px;}
+.btn-danger-outline{border-color:rgba(239,68,68,.3); color:var(--danger); background:rgba(239,68,68,.06);}
+.btn-danger-outline:hover{background:var(--danger); color:#fff;}
+.btn-success-outline{border-color:rgba(16,185,129,.3); color:var(--success); background:rgba(16,185,129,.06);}
+.btn-success-outline:hover{background:var(--success); color:#fff;}
+.icon-action{width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); display:inline-flex; align-items:center; justify-content:center; font-size:12.5px; color:var(--text2);}
+.icon-action:hover{color:var(--accent); border-color:var(--accent);}
+
+.toolbar{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+.search-box{position:relative; flex:1; max-width:340px;}
+.search-box i{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:13px;}
+.search-box input{width:100%; padding:10px 12px 10px 36px; border-radius:10px; border:1px solid var(--border); background:var(--surface); font-size:13.5px; color:var(--text); outline:none;}
+.search-box input:focus{border-color:var(--accent);}
+.filter-tabs{display:flex; gap:6px; background:var(--surface2); padding:4px; border-radius:11px; width:fit-content;}
+.filter-tab{padding:8px 15px; border-radius:8px; font-size:13px; font-weight:600; color:var(--text2); border:none; background:transparent;}
+.filter-tab.active{background:var(--surface); color:var(--accent); box-shadow:var(--shadow);}
+
+.progress-bar{height:7px; border-radius:6px; background:var(--surface2); overflow:hidden;}
+.progress-bar span{display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),var(--accent2));}
+
+.timeline{list-style:none;}
+.timeline li{display:flex; gap:14px; padding:12px 0; border-bottom:1px solid var(--border);}
+.timeline li:last-child{border-bottom:none;}
+.timeline .ic{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
+.timeline .txt strong{font-size:13.5px;}
+.timeline .txt p{font-size:12px; color:var(--text2); margin-top:2px;}
+
+/* MODAL */
+.modal-overlay{position:fixed; inset:0; background:rgba(15,17,25,.55); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; backdrop-filter:blur(3px);}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--surface); border-radius:20px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); border:1px solid var(--border);}
+.modal.wide{max-width:680px;}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:16.5px; font-weight:700;}
+.modal-close{width:32px; height:32px; border-radius:8px; border:none; background:var(--surface2); color:var(--text2); font-size:14px;}
+.modal-body{padding:22px 24px;}
+.modal-foot{padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;}
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.form-grid .full{grid-column:1/-1;}
+.form-field label{display:block; font-size:12.5px; font-weight:700; color:var(--text2); margin-bottom:7px;}
+.form-field input,.form-field select,.form-field textarea{width:100%; padding:11px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:13.5px; outline:none; font-family:inherit;}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+.profile-head{display:flex; gap:16px; align-items:center; margin-bottom:22px;}
+.profile-head .avatar{width:64px; height:64px; font-size:22px;}
+.profile-head h4{font-size:17px; font-weight:800;}
+.profile-head p{color:var(--text2); font-size:13px; margin-top:2px;}
+.info-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px;}
+.info-item{background:var(--surface2); border-radius:12px; padding:12px 14px;}
+.info-item span{display:block; font-size:11px; color:var(--text3); text-transform:uppercase; font-weight:700; margin-bottom:4px;}
+.info-item b{font-size:14px;}
+.raise-preview{background:var(--accent-soft); border:1px dashed var(--accent); border-radius:12px; padding:14px 16px; margin-top:16px; display:none;}
+.raise-preview.show{display:block;}
+.raise-preview .row{display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;}
+.raise-preview .row b{color:var(--accent);}
+
+.toast-wrap{position:fixed; bottom:24px; right:24px; z-index:200; display:flex; flex-direction:column; gap:10px;}
+.toast{background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-lg); border-radius:12px; padding:13px 18px; display:flex; align-items:center; gap:10px; font-size:13.5px; font-weight:600; min-width:260px; animation:slidein .3s ease;}
+.toast i{color:var(--success); font-size:16px;}
+@keyframes slidein{from{transform:translateX(60px); opacity:0;} to{transform:translateX(0); opacity:1;}}
+
+.chart-wrap{position:relative; height:230px;}
+.chart-wrap.sm{height:170px;}
+
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+.hamburger{display:none; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); align-items:center; justify-content:center;}
+@media(max-width:900px){
+  .sidebar{position:fixed; left:-280px; z-index:60; box-shadow:var(--shadow-lg); transition:left .25s;}
+  .sidebar.open{left:0;}
+  .hamburger{display:flex;}
+  .topbar{padding:16px 18px;}
+  .page{padding:20px 16px;}
+}
+.empty-state{text-align:center; padding:40px 20px; color:var(--text2);}
+.empty-state i{font-size:34px; margin-bottom:10px; color:var(--text3);}
+</style>
+</head>
+<body>
+
+<button class="theme-fab" id="loginThemeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-visual">
+      <div class="brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
+      <div>
+        <h2>People operations,<br>beautifully simplified.</h2>
+        <p>Manage vacations, work-from-home, medical insurance claims and salary history — all in one elegant workspace.</p>
+        <div class="visual-stats">
+          <div><span>248</span><small>Employees</small></div>
+          <div><span>32</span><small>Pending Requests</small></div>
+          <div><span>99.9%</span><small>Uptime</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="login-form-wrap">
+      <h1>Welcome back</h1>
+      <p>Sign in to access your HR workspace.</p>
+      <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i> <span>Sign-in failed.</span></div>
+
+      <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:20px;"></div>
+
+      <div style="display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--text3); font-size:12px;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span>or sign in with email (test/demo)</span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label>Email address</label>
+          <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" id="loginEmail" placeholder="you@company.com" required></div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="input-wrap"><i class="fa-solid fa-lock"></i><input type="password" id="loginPassword" placeholder="demo1234" required></div>
+        </div>
+        <button class="btn-primary" type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In</button>
+      </form>
+      <div class="demo-box">
+        <b>Demo accounts</b> — click to autofill (password is <code>demo1234</code> for all):
+        <div>
+          <button class="demo-chip" onclick="fillLogin('admin@hrflow.com')"><i class="fa-solid fa-user-shield"></i> Admin</button>
+          <button class="demo-chip" onclick="fillLogin('ahmed.ezzat@hrflow.com')"><i class="fa-solid fa-user"></i> Employee</button>
+        </div>
+      </div>
+      <p style="text-align:center; color:var(--text3); font-size:12px; margin-top:16px;">
+        Not registered yet? Ask your HR admin to add you as an employee first.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN APP ============ -->
+<div class="app" id="admin-app">
+  <aside class="sidebar" id="adminSidebar">
+    <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
+    <div class="nav-section-label">Workspace</div>
+    <a class="nav-item active" data-page="a-dashboard"><i class="fa-solid fa-grip"></i> Dashboard</a>
+    <a class="nav-item" data-page="a-employees"><i class="fa-solid fa-users"></i> Employees</a>
+    <a class="nav-item" data-page="a-requests"><i class="fa-solid fa-inbox"></i> Pending Requests <span class="badge" id="reqBadge">0</span></a>
+    <a class="nav-item" data-page="a-salary"><i class="fa-solid fa-sack-dollar"></i> Salary & Raises</a>
+    <div class="nav-section-label">Modules</div>
+    <a class="nav-item" data-page="a-vacations"><i class="fa-solid fa-umbrella-beach"></i> Vacations</a>
+    <a class="nav-item" data-page="a-insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance</a>
+    <div class="sidebar-footer">
+      <div class="user-mini">
+        <div class="avatar">SM</div>
+        <div><div class="name">Sarah Miller</div><div class="role">HR Administrator</div></div>
+      </div>
+      <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar('adminSidebar')"><i class="fa-solid fa-bars"></i></button>
+        <div><h2 id="adminPageTitle">General Dashboard</h2><div class="sub" id="adminPageSub">Welcome back, here's what's happening today.</div></div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
+        <button class="icon-btn" id="adminThemeToggle"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </div>
+    <div class="page">
+      <!-- ADMIN DASHBOARD -->
+      <section class="page-section active" id="a-dashboard">
+        <div class="grid g4" style="margin-bottom:20px;">
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-users"></i></div></div><div class="stat-val" id="statEmployees">248</div><div class="stat-label">Total Employees</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> 4.2% vs last month</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(245,158,11,.12);color:var(--warning);"><i class="fa-solid fa-hourglass-half"></i></div></div><div class="stat-val" id="statPending">14</div><div class="stat-label">Pending Requests</div><span class="stat-trend trend-down"><i class="fa-solid fa-arrow-down"></i> 2 fewer than yesterday</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div></div><div class="stat-val">37</div><div class="stat-label">On Leave This Month</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> Summer season</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-briefcase-medical"></i></div></div><div class="stat-val">9</div><div class="stat-label">Open Insurance Claims</div><span class="stat-trend trend-down"><i class="fa-solid fa-arrow-down"></i> EGP 182,400 total</span></div>
+        </div>
+        <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-head"><h3>Requests Overview (Last 6 Months)</h3><a class="link">Export</a></div>
+            <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Request Types</h3></div>
+            <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
+          </div>
+        </div>
+        <div class="grid g-1-2">
+          <div class="card">
+            <div class="card-head"><h3>Upcoming Annual Raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a></div>
+            <ul class="timeline" id="upcomingRaisesList"></ul>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Pending Requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a></div>
+            <table><thead><tr><th>Employee</th><th>Type</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody id="dashPendingBody"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN EMPLOYEES -->
+      <section class="page-section" id="a-employees">
+        <div class="toolbar">
+          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch" placeholder="Search employees by name, role, department..."></div>
+          <button class="btn btn-fill" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add Employee</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Employee</th><th>Department</th><th>Role</th><th>Salary</th><th>Next Raise</th><th>Vacation Bal.</th><th>Status</th><th></th></tr></thead>
+            <tbody id="employeesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ADMIN PENDING REQUESTS -->
+      <section class="page-section" id="a-requests">
+        <div class="filter-tabs" style="margin-bottom:20px;">
+          <button class="filter-tab active" data-reqfilter="all">All</button>
+          <button class="filter-tab" data-reqfilter="Vacation">Vacation</button>
+          <button class="filter-tab" data-reqfilter="Work From Home">Work From Home</button>
+          <button class="filter-tab" data-reqfilter="Medical Insurance">Medical Insurance</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Employee</th><th>Type</th><th>Details</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="requestsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ADMIN SALARY & RAISES -->
+      <section class="page-section" id="a-salary">
+        <div class="grid g4" style="margin-bottom:20px;">
+          <div class="card stat-card"><div class="stat-label">Total Monthly Payroll</div><div class="stat-val" id="statPayroll">EGP 0</div></div>
+          <div class="card stat-card"><div class="stat-label">Avg. Raise (Last Cycle)</div><div class="stat-val" id="statAvgRaise">+0%</div></div>
+          <div class="card stat-card"><div class="stat-label">Raises Applied (YTD)</div><div class="stat-val" id="statRaisesYtd">0</div></div>
+          <div class="card stat-card"><div class="stat-label">Upcoming This Quarter</div><div class="stat-val" id="statUpcomingQ">0</div></div>
+        </div>
+        <div class="toolbar">
+          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch" placeholder="Search employees..."></div>
+          <button class="btn btn-fill" onclick="openRaiseModal()"><i class="fa-solid fa-arrow-trend-up"></i> Apply New Raise</button>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3>Employee Compensation</h3></div>
+          <table><thead><tr><th>Employee</th><th>Department</th><th>Current Salary</th><th>Next Raise Date</th><th>Last Raise Applied</th><th></th></tr></thead><tbody id="salaryTableBody"></tbody></table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Company-wide Raise History</h3></div>
+          <table><thead><tr><th>Employee</th><th>Effective Date</th><th>Previous Salary</th><th>New Salary</th><th>Increase</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- ADMIN VACATIONS -->
+      <section class="page-section" id="a-vacations">
+        <div class="grid g3" style="margin-bottom:20px;">
+          <div class="card stat-card"><div class="stat-label">Total Vacation Days Allotted (Year)</div><div class="stat-val">5,208</div></div>
+          <div class="card stat-card"><div class="stat-label">Days Used So Far</div><div class="stat-val">2,014</div></div>
+          <div class="card stat-card"><div class="stat-label">Employees Currently On Leave</div><div class="stat-val">6</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Employee Vacation Balances</h3></div>
+          <table><thead><tr><th>Employee</th><th>Department</th><th>Entitled</th><th>Used</th><th>Remaining</th><th>Progress</th></tr></thead><tbody id="vacationBalanceBody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- ADMIN INSURANCE -->
+      <section class="page-section" id="a-insurance">
+        <div class="grid g4" style="margin-bottom:20px;">
+          <div class="card stat-card"><div class="stat-label">Total Claims (YTD)</div><div class="stat-val">142</div></div>
+          <div class="card stat-card"><div class="stat-label">Approved</div><div class="stat-val" style="color:var(--success)">118</div></div>
+          <div class="card stat-card"><div class="stat-label">Pending Review</div><div class="stat-val" style="color:var(--warning)">9</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Reimbursed</div><div class="stat-val">EGP 1.24M</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Claims History</h3></div>
+          <table><thead><tr><th>Employee</th><th>Claim Type</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="insuranceTableBody"></tbody></table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ============ EMPLOYEE APP ============ -->
+<div class="app" id="employee-app">
+  <aside class="sidebar" id="empSidebar">
+    <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
+    <div class="nav-section-label">Workspace</div>
+    <a class="nav-item active" data-page="e-dashboard"><i class="fa-solid fa-grip"></i> Dashboard</a>
+    <a class="nav-item" data-page="e-salary"><i class="fa-solid fa-sack-dollar"></i> Salary & Raises</a>
+    <a class="nav-item" data-page="e-vacations"><i class="fa-solid fa-umbrella-beach"></i> Vacations</a>
+    <a class="nav-item" data-page="e-insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance</a>
+    <div class="sidebar-footer">
+      <div class="user-mini">
+        <div class="avatar">AE</div>
+        <div><div class="name">Ahmed Ezzat</div><div class="role">Product Engineer</div></div>
+      </div>
+      <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar('empSidebar')"><i class="fa-solid fa-bars"></i></button>
+        <div><h2 id="empPageTitle">My Dashboard</h2><div class="sub" id="empPageSub">Welcome back, Ahmed. Here's your snapshot.</div></div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
+        <button class="icon-btn" id="empThemeToggle"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </div>
+    <div class="page">
+      <!-- EMPLOYEE DASHBOARD -->
+      <section class="page-section active" id="e-dashboard">
+        <div class="grid g4" style="margin-bottom:20px;">
+          <div class="card stat-card"><div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-umbrella-beach"></i></div><div class="stat-val">14</div><div class="stat-label">Vacation Days Left</div></div>
+          <div class="card stat-card"><div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success);"><i class="fa-solid fa-sack-dollar"></i></div><div class="stat-val" id="empDashSalary">EGP 42,000</div><div class="stat-label">Current Monthly Salary</div></div>
+          <div class="card stat-card"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-house-laptop"></i></div><div class="stat-val">2</div><div class="stat-label">WFH Days This Month</div></div>
+          <div class="card stat-card"><div class="stat-icon" style="background:rgba(245,158,11,.12);color:var(--warning);"><i class="fa-solid fa-briefcase-medical"></i></div><div class="stat-val">1</div><div class="stat-label">Pending Insurance Claim</div></div>
+        </div>
+        <div class="grid g-2-1">
+          <div class="card">
+            <div class="card-head"><h3>My Requests Timeline</h3></div>
+            <ul class="timeline" id="empTimeline"></ul>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Next Salary Raise</h3></div>
+            <div style="text-align:center; padding:10px 0 6px;">
+              <div style="font-size:30px;font-weight:800;color:var(--accent);">Mar 2027</div>
+              <p style="color:var(--text2);font-size:13px;margin-top:6px;">Estimated +8% based on performance cycle</p>
+              <div class="progress-bar" style="margin-top:18px;"><span style="width:64%;"></span></div>
+              <p style="font-size:11.5px;color:var(--text3);margin-top:8px;">7 of 12 months completed</p>
+            </div>
+            <button class="btn btn-fill" style="width:100%;margin-top:10px;" onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> View Salary History</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMPLOYEE SALARY -->
+      <section class="page-section" id="e-salary">
+        <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-head"><h3>Salary Growth</h3></div>
+            <div class="chart-wrap"><canvas id="chartSalary"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Current Package</h3></div>
+            <div class="info-item" style="margin-bottom:12px;"><span>Base Salary</span><b id="empPkgBase">EGP 42,000 / mo</b></div>
+            <div class="info-item" style="margin-bottom:12px;"><span>Annual Bonus</span><b>EGP 63,000</b></div>
+            <div class="info-item"><span>Total Annual Compensation</span><b id="empPkgTotal">EGP 567,000</b></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Raise History</h3></div>
+          <table><thead><tr><th>Effective Date</th><th>Previous Salary</th><th>New Salary</th><th>Increase</th><th>Reason</th></tr></thead>
+          <tbody id="salaryHistoryBody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- EMPLOYEE VACATIONS -->
+      <section class="page-section" id="e-vacations">
+        <div class="grid g3" style="margin-bottom:20px;">
+          <div class="card stat-card"><div class="stat-label">Annual Entitlement</div><div class="stat-val">21 days</div></div>
+          <div class="card stat-card"><div class="stat-label">Used</div><div class="stat-val">7 days</div></div>
+          <div class="card stat-card"><div class="stat-label">Remaining</div><div class="stat-val" style="color:var(--success)">14 days</div></div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3>Request Time Off</h3></div>
+          <div class="form-grid">
+            <div class="form-field"><label>Leave Type</label><select id="vacType"><option>Annual Leave</option><option>Sick Leave</option><option>Work From Home</option><option>Unpaid Leave</option></select></div>
+            <div class="form-field"><label>Duration</label><select id="vacDuration"><option>Full Day(s)</option><option>Half Day</option></select></div>
+            <div class="form-field"><label>Start Date</label><input type="date" id="vacStart"></div>
+            <div class="form-field"><label>End Date</label><input type="date" id="vacEnd"></div>
+            <div class="form-field full"><label>Reason (optional)</label><textarea rows="2" placeholder="Add context for your manager..."></textarea></div>
+          </div>
+          <button class="btn btn-fill" style="margin-top:16px;" onclick="submitVacation()"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Vacation History</h3></div>
+          <table><thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Status</th></tr></thead><tbody id="empVacationBody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- EMPLOYEE INSURANCE -->
+      <section class="page-section" id="e-insurance">
+        <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-head"><h3>My Insurance Plan</h3><span class="badge-pill pill-success"><i class="fa-solid fa-check"></i> Active</span></div>
+            <div class="info-grid">
+              <div class="info-item"><span>Plan</span><b>Premium Family Care</b></div>
+              <div class="info-item"><span>Provider</span><b>Allianz Egypt</b></div>
+              <div class="info-item"><span>Annual Limit</span><b>EGP 250,000</b></div>
+              <div class="info-item"><span>Used This Year</span><b>EGP 38,500</b></div>
+            </div>
+            <div class="progress-bar" style="margin-top:16px;"><span style="width:15%;"></span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Submit a Claim</h3></div>
+            <div class="form-field" style="margin-bottom:12px;"><label>Claim Type</label><select id="claimType"><option>Outpatient</option><option>Inpatient</option><option>Dental</option><option>Optical</option><option>Pharmacy</option></select></div>
+            <div class="form-field" style="margin-bottom:12px;"><label>Amount (EGP)</label><input type="number" id="claimAmount" placeholder="e.g. 1500"></div>
+            <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i class="fa-solid fa-file-medical"></i> Submit Claim</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Claims History</h3></div>
+          <table><thead><tr><th>Claim Type</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody id="empInsuranceBody"></tbody></table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-overlay" id="employeeModal">
+  <div class="modal wide">
+    <div class="modal-head"><h3 id="empModalTitle">Add Employee</h3><button class="modal-close" onclick="closeModal('employeeModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field"><label>Full Name</label><input id="fEmpName" placeholder="e.g. Laila Hassan"></div>
+        <div class="form-field"><label>Email</label><input id="fEmpEmail" placeholder="laila@hrflow.com"></div>
+        <div class="form-field"><label>Department</label><select id="fEmpDept"><option>Engineering</option><option>Product</option><option>Design</option><option>Sales</option><option>Finance</option><option>Operations</option></select></div>
+        <div class="form-field"><label>Role / Title</label><input id="fEmpRole" placeholder="e.g. Senior Developer"></div>
+        <div class="form-field"><label>Monthly Salary (EGP)</label><input type="number" id="fEmpSalary" placeholder="35000"></div>
+        <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
+        <div class="form-field"><label>Status</label><select id="fEmpStatus"><option>Active</option><option>On Leave</option><option>Suspended</option></select></div>
+        <div class="form-field"><label>Vacation Balance (days)</label><input type="number" id="fEmpVac" value="21"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button class="btn btn-fill" onclick="saveEmployee()"><i class="fa-solid fa-check"></i> Save Employee</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="viewProfileModal">
+  <div class="modal wide">
+    <div class="modal-head"><h3>Employee Profile</h3><button class="modal-close" onclick="closeModal('viewProfileModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body" id="profileModalBody"></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('viewProfileModal')">Close</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Confirm Deletion</h3><button class="modal-close" onclick="closeModal('confirmModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body"><p style="color:var(--text2);font-size:14px;">Are you sure you want to remove <b id="delEmpName" style="color:var(--text);"></b> from the system? This action cannot be undone.</p></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('confirmModal')">Cancel</button><button class="btn btn-danger-outline" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Delete</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="raiseModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="raiseModalTitle">Apply New Raise</h3><button class="modal-close" onclick="closeModal('raiseModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Employee</label>
+        <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
+      </div>
+      <div class="form-grid">
+        <div class="form-field"><label>Raise Type</label>
+          <select id="rMode" onchange="onRaiseModeChange()">
+            <option value="pct">Percentage Increase (%)</option>
+            <option value="amount">Flat Increase (EGP)</option>
+            <option value="new">Set New Salary (EGP)</option>
+          </select>
+        </div>
+        <div class="form-field"><label id="rValueLabel">Percentage (%)</label><input type="number" id="rValue" placeholder="e.g. 8" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
+        <div class="form-field"><label>Reason</label>
+          <select id="rReason"><option>Annual performance raise</option><option>Promotion</option><option>Cost of living adjustment</option><option>Market adjustment</option><option>Retention raise</option></select>
+        </div>
+      </div>
+      <div class="raise-preview" id="raisePreview">
+        <div class="row"><span>Current Salary</span><b id="rvCurrent">—</b></div>
+        <div class="row"><span>New Salary</span><b id="rvNew">—</b></div>
+        <div class="row"><span>Increase</span><b id="rvIncrease">—</b></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button class="btn btn-fill" onclick="applyRaise()"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============ LIVE DATA (populated from backend via api.js) ============ */
+let employees = [];
+let requests = [];
+let insuranceClaims = [];
+let empVacationHistory = [];
+let empInsuranceHistory = [];
+let currentLoggedInEmployee = null; // full employee record for the logged-in employee, set after login
+let allSalaryHistory = []; // admin-only: full company-wide salary history, loaded from backend
+
+let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
+/* ============ AUTH - Sign in with Google OR email/password (test) ============ */
+function fillLogin(email){
+  document.getElementById('loginEmail').value = email;
+  document.getElementById('loginPassword').value = 'demo1234';
+}
+
+async function handleLoginSuccess(data){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('loginThemeToggle').style.display = 'none';
+  document.getElementById('loginErr').style.display = 'none';
+  try{
+    if(data.role === 'admin'){
+      currentPortal = 'admin';
+      document.getElementById('admin-app').classList.add('active');
+      await loadAdminData();
+    } else {
+      currentPortal = 'employee';
+      document.getElementById('employee-app').classList.add('active');
+      await loadEmployeeData();
+    }
+    initCharts();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+
+function handleLoginError(err){
+  const errBox = document.getElementById('loginErr');
+  errBox.style.display = 'flex';
+  errBox.querySelector('span').textContent = err.message || 'Sign-in failed. Please try again.';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
+});
+
+document.getElementById('loginForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('loginErr').style.display = 'none';
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';
+  try{
+    const data = await Api.loginWithPassword(email, password);
+    await handleLoginSuccess(data);
+  } catch(err){
+    handleLoginError(err);
+  } finally {
+    submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
+  }
+});
+
+function normalizeEmployee(e, salaryHistoryForEmp){
+  return {
+    ...e,
+    role: e.job_role,
+    join: e.join_date,
+    vacTotal: Number(e.vac_total),
+    vacUsed: Number(e.vac_used),
+    nextRaise: e.next_raise,
+    salary: Number(e.salary),
+    salaryHistory: (salaryHistoryForEmp || []).map(h=>({
+      date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary),
+      pct: h.pct_change, reason: h.reason,
+    })),
+  };
+}
+function normalizeRequest(r){ return { ...r, emp: r.employee_name }; }
+function normalizeClaim(c){ return { ...c, emp: c.employee_name, type: c.claim_type }; }
+
+async function loadAdminData(){
+  try{
+    const [rawEmployees, rawRequests, rawClaims, rawSalaryHistory] = await Promise.all([
+      Api.getEmployees(), Api.getRequests(), Api.getInsuranceClaims(), Api.getSalaryHistory()
+    ]);
+    allSalaryHistory = rawSalaryHistory;
+    employees = rawEmployees.map(e => normalizeEmployee(e, rawSalaryHistory.filter(h=>String(h.employee_id)===String(e.id))));
+    requests = rawRequests.map(normalizeRequest);
+    insuranceClaims = rawClaims.map(normalizeClaim);
+    renderAdminPortal();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+
+async function loadEmployeeData(){
+  try{
+    const myId = TokenStore.getEmployeeId();
+    const [rawEmployees, rawSalaryHistory, rawVacHistory, rawClaims] = await Promise.all([
+      Api.getEmployees(), Api.getSalaryHistory(myId), Api.getVacationHistory(), Api.getInsuranceClaims()
+    ]);
+    employees = rawEmployees.map(e => normalizeEmployee(e, rawSalaryHistory.filter(h=>String(h.employee_id)===String(e.id))));
+    currentLoggedInEmployee = employees.find(e => String(e.id) === String(myId)) || employees[0];
+    window.LOGGED_IN_EMPLOYEE_ID = currentLoggedInEmployee.id;
+    empVacationHistory = rawVacHistory.map(v => ({ type: v.type, dates: `${v.start_date} to ${v.end_date}`, days: v.days, status: v.status }));
+    empInsuranceHistory = rawClaims.map(c => ({ type: c.claim_type, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status }));
+    document.querySelector('#employee-app .user-mini .name').textContent = currentLoggedInEmployee.name;
+    document.querySelector('#employee-app .user-mini .role').textContent = currentLoggedInEmployee.role;
+    renderEmployeePortal();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+
+function logout(){
+  Api.logout();
+  employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
+  document.getElementById('admin-app').classList.remove('active');
+  document.getElementById('employee-app').classList.remove('active');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('loginThemeToggle').style.display = 'flex';
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('loginForm').reset();
+}
+
+function toggleSidebar(id){ document.getElementById(id).classList.toggle('open'); }
+
+/* ============ NAVIGATION ============ */
+document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{
+  el.addEventListener('click',()=>showSection(el.dataset.page,'admin'));
+});
+document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{
+  el.addEventListener('click',()=>showSection(el.dataset.page,'employee'));
+});
+document.querySelectorAll('[data-goto]').forEach(el=>{
+  el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin'));
+});
+
+const titles = {
+  'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
+  'a-employees':['Employees',"Manage employee profiles and information."],
+  'a-requests':['Pending Requests',"Review and action employee requests."],
+  'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
+  'a-vacations':['Vacations',"Track balances and leave across the company."],
+  'a-insurance':['Medical Insurance',"Manage claims and coverage history."],
+  'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
+  'e-salary':['Salary & Raises','Your compensation history and growth.'],
+  'e-vacations':['Vacations','Your balance, requests and history.'],
+  'e-insurance':['Medical Insurance','Your plan, claims and history.'],
+};
+
+function showSection(pageId, portal){
+  const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
+  document.querySelectorAll(appSel+' .page-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>n.classList.toggle('active', n.dataset.page===pageId));
+  const t = titles[pageId];
+  if(t){
+    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
+    document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1];
+  }
+  document.getElementById(portal==='admin'?'adminSidebar':'empSidebar').classList.remove('open');
+}
+
+/* ============ THEME ============ */
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('hrflow-theme', theme);
+  document.querySelectorAll('.theme-fab i, #adminThemeToggle i, #empThemeToggle i').forEach(i=>{
+    i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  });
+}
+const savedTheme = localStorage.getItem('hrflow-theme') || 'light';
+applyTheme(savedTheme);
+['loginThemeToggle','adminThemeToggle','empThemeToggle'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',()=>{
+    const cur = document.documentElement.getAttribute('data-theme');
+    applyTheme(cur==='dark'?'light':'dark');
+    setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
+  });
+});
+
+/* ============ TOAST ============ */
+function toast(msg, icon='fa-solid fa-circle-check'){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className='toast';
+  el.innerHTML = `<i class="${icon}"></i> ${msg}`;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+
+/* ============ RENDER: ADMIN ============ */
+function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
+function fmtMoney(n){ return 'EGP ' + Number(n).toLocaleString(); }
+function statusPill(status){
+  const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
+  return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
+}
+
+function renderAdminPortal(){
+  document.getElementById('statEmployees').textContent = 248;
+  const pendingCount = requests.filter(r=>r.status==='Pending').length;
+  document.getElementById('statPending').textContent = pendingCount;
+  document.getElementById('reqBadge').textContent = pendingCount;
+
+  const raisesList = document.getElementById('upcomingRaisesList');
+  raisesList.innerHTML = employees.slice().sort((a,b)=>new Date(a.nextRaise)-new Date(b.nextRaise)).slice(0,5).map(e=>`
+    <li><div class="ic" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-arrow-trend-up"></i></div>
+    <div class="txt"><strong>${e.name}</strong><p>${e.role} • Raise due ${e.nextRaise}</p></div></li>`).join('');
+
+  const dashBody = document.getElementById('dashPendingBody');
+  dashBody.innerHTML = requests.filter(r=>r.status==='Pending').slice(0,5).map(r=>`
+    <tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.date}</td><td>${statusPill(r.status)}</td>
+    <td><button class="icon-action" onclick="showSection('a-requests','admin')"><i class="fa-solid fa-arrow-right"></i></button></td></tr>`).join('');
+
+  renderEmployeesTable();
+  renderRequestsTable('all');
+  renderVacationBalances();
+  renderInsuranceTable();
+  renderSalaryPage();
+}
+
+function renderEmployeesTable(filter=''){
+  const body = document.getElementById('employeesTableBody');
+  const f = filter.toLowerCase();
+  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>`
+    <tr>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
+      <td>${e.dept}</td><td>${e.role}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td>
+      <td>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</td><td>${statusPill(e.status)}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button>
+        <button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+}
+document.getElementById('empSearch').addEventListener('input', e=>renderEmployeesTable(e.target.value));
+
+function renderRequestsTable(filter){
+  const body = document.getElementById('requestsTableBody');
+  const list = filter==='all' ? requests : requests.filter(r=>r.type===filter);
+  body.innerHTML = list.map(r=>`
+    <tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.details}</td><td>${r.date}</td><td>${statusPill(r.status)}</td>
+    <td style="display:flex;gap:6px;">
+      ${r.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionRequest(${r.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
+      <button class="btn btn-sm btn-danger-outline" onclick="actionRequest(${r.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>`
+      : `<span style="color:var(--text3);font-size:12.5px;">No actions</span>`}
+    </td></tr>`).join('') || `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No requests in this category.</p></div></td></tr>`;
+}
+document.querySelectorAll('[data-reqfilter]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('[data-reqfilter]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderRequestsTable(btn.dataset.reqfilter);
+  });
+});
+async function actionRequest(id, status){
+  try{
+    await Api.actionRequest(id, status);
+    toast(`Request marked as ${status}.`, status==='Approved'?'fa-solid fa-circle-check':'fa-solid fa-circle-xmark');
+    await loadAdminData();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+function renderVacationBalances(){
+  const body = document.getElementById('vacationBalanceBody');
+  body.innerHTML = employees.map(e=>{
+    const pct = Math.round((e.vacUsed/e.vacTotal)*100);
+    return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${e.vacTotal}</td><td>${e.vacUsed}</td><td>${e.vacTotal-e.vacUsed}</td>
+    <td style="min-width:140px;"><div class="progress-bar"><span style="width:${pct}%;"></span></div></td></tr>`;
+  }).join('');
+}
+
+function renderInsuranceTable(){
+  const body = document.getElementById('insuranceTableBody');
+  body.innerHTML = insuranceClaims.map(c=>`
+    <tr><td class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td><td>${c.claim_type}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td>
+    <td style="display:flex;gap:6px;">
+      ${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button>
+      <button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}
+    </td></tr>`).join('');
+}
+async function actionClaim(claimId, status){
+  try{
+    await Api.actionInsuranceClaim(claimId, status);
+    toast(`Claim ${status.toLowerCase()}.`);
+    await loadAdminData();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+/* ============ SALARY & RAISES (ADMIN) ============ */
+function renderSalaryPage(filter=''){
+  const f = filter.toLowerCase();
+  const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
+  document.getElementById('statPayroll').textContent = fmtMoney(totalPayroll);
+  const allRaises = employees.flatMap(e=>e.salaryHistory.map(h=>({...h, emp:e.name})));
+  const thisYearRaises = allRaises.filter(h=>h.date.startsWith('2026'));
+  document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
+  const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct),0)/thisYearRaises.length) : 0;
+  document.getElementById('statAvgRaise').textContent = (avgPct>=0?'+':'') + avgPct.toFixed(1) + '%';
+  const now = new Date('2026-08-02');
+  const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
+  const upcoming = employees.filter(e=>{ const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
+  document.getElementById('statUpcomingQ').textContent = upcoming.length;
+
+  const body = document.getElementById('salaryTableBody');
+  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>{
+    const last = e.salaryHistory.length ? e.salaryHistory[e.salaryHistory.length-1] : null;
+    return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td>
+    <td>${last ? `${last.date} (${last.pct})` : '<span style="color:var(--text3);">No history</span>'}</td>
+    <td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`;
+  }).join('');
+
+  const histBody = document.getElementById('companyRaiseHistoryBody');
+  const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  histBody.innerHTML = sortedHist.map(h=>`
+    <tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtMoney(h.prev)}</td><td>${fmtMoney(h.next)}</td>
+    <td><span class="badge-pill pill-success">${h.pct}</span></td><td>${h.reason}</td></tr>`).join('') ||
+    `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raises recorded yet.</p></div></td></tr>`;
+}
+document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
+
+function openRaiseModal(empId=null){
+  const sel = document.getElementById('rEmpSelect');
+  sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name} — ${e.job_role || e.role}</option>`).join('');
+  if(empId) sel.value = empId;
+  document.getElementById('rMode').value='pct';
+  document.getElementById('rValue').value='';
+  document.getElementById('rDate').value = '2026-08-02';
+  document.getElementById('rReason').value='Annual performance raise';
+  onRaiseModeChange();
+  document.getElementById('raisePreview').classList.remove('show');
+  document.getElementById('raiseModal').classList.add('active');
+}
+function onRaiseEmployeeChange(){ updateRaisePreview(); }
+function onRaiseModeChange(){
+  const mode = document.getElementById('rMode').value;
+  const label = document.getElementById('rValueLabel');
+  label.textContent = mode==='pct' ? 'Percentage (%)' : (mode==='amount' ? 'Increase Amount (EGP)' : 'New Salary (EGP)');
+  updateRaisePreview();
+}
+function computeNewSalary(current, mode, value){
+  if(mode==='pct') return Math.round(current * (1 + value/100));
+  if(mode==='amount') return Math.round(current + value);
+  return Math.round(value);
+}
+function updateRaisePreview(){
+  const empId = Number(document.getElementById('rEmpSelect').value);
+  const emp = employees.find(e=>e.id===empId);
+  const mode = document.getElementById('rMode').value;
+  const value = Number(document.getElementById('rValue').value);
+  const preview = document.getElementById('raisePreview');
+  if(!emp || !value){ preview.classList.remove('show'); return; }
+  const newSalary = computeNewSalary(emp.salary, mode, value);
+  const pct = ((newSalary-emp.salary)/emp.salary*100);
+  document.getElementById('rvCurrent').textContent = fmtMoney(emp.salary);
+  document.getElementById('rvNew').textContent = fmtMoney(newSalary);
+  document.getElementById('rvIncrease').textContent = (pct>=0?'+':'') + pct.toFixed(1) + '% (' + fmtMoney(newSalary-emp.salary) + ')';
+  preview.classList.add('show');
+}
+async function applyRaise(){
+  const empId = Number(document.getElementById('rEmpSelect').value);
+  const emp = employees.find(e=>e.id===empId);
+  const mode = document.getElementById('rMode').value;
+  const value = Number(document.getElementById('rValue').value);
+  const date = document.getElementById('rDate').value;
+  const reason = document.getElementById('rReason').value;
+  if(!emp || !value || !date){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
+
+  try{
+    const result = await Api.applyRaise({ employee_id: empId, mode, value, effective_date: date, reason });
+    closeModal('raiseModal');
+    const pctStr = (result.pct_change>=0?'+':'') + result.pct_change.toFixed(1) + '%';
+    toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtMoney(result.new_salary)}.`);
+    await loadAdminData();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+
+/* ============ EMPLOYEE MODAL ============ */
+function openEmployeeModal(id=null){
+  currentEditId = id;
+  document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
+  if(id){
+    const e = employees.find(x=>x.id===id);
+    fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role;
+    fEmpSalary.value=e.salary; fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
+  } else {
+    ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value='');
+    fEmpSalary.value=''; fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
+  }
+  document.getElementById('employeeModal').classList.add('active');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+async function saveEmployee(){
+  const name = document.getElementById('fEmpName').value.trim();
+  if(!name){ toast('Please enter employee name.','fa-solid fa-triangle-exclamation'); return; }
+  const vacTotal = Number(fEmpVac.value)||21;
+
+  try{
+    if(currentEditId){
+      const updates = {
+        name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value,
+        salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value,
+        vac_total: vacTotal,
+      };
+      await Api.updateEmployee(currentEditId, updates);
+      toast('Employee updated successfully.');
+    } else {
+      const payload = {
+        name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value,
+        salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value,
+        vac_total: vacTotal, next_raise: '2027-01-01',
+      };
+      await Api.createEmployee(payload);
+      toast('New employee added.');
+    }
+    closeModal('employeeModal');
+    await loadAdminData();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+function askDelete(id){
+  currentDeleteId = id;
+  document.getElementById('delEmpName').textContent = employees.find(e=>e.id===id).name;
+  document.getElementById('confirmModal').classList.add('active');
+}
+async function confirmDelete(){
+  try{
+    await Api.deleteEmployee(currentDeleteId);
+    closeModal('confirmModal');
+    toast('Employee removed.','fa-solid fa-trash');
+    await loadAdminData();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+function viewProfile(id){
+  const e = employees.find(x=>x.id===id);
+  document.getElementById('profileModalBody').innerHTML = `
+    <div class="profile-head"><div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div></div>
+    <div class="info-grid">
+      <div class="info-item"><span>Email</span><b>${e.email}</b></div>
+      <div class="info-item"><span>Status</span><b>${e.status}</b></div>
+      <div class="info-item"><span>Join Date</span><b>${e.join}</b></div>
+      <div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div>
+      <div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div>
+      <div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>
+    </div>`;
+  document.getElementById('viewProfileModal').classList.add('active');
+}
+
+/* ============ RENDER: EMPLOYEE PORTAL ============ */
+function renderEmployeePortal(){
+  const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
+  document.getElementById('empDashSalary').textContent = fmtMoney(emp.salary);
+  document.getElementById('empPkgBase').textContent = fmtMoney(emp.salary) + ' / mo';
+  document.getElementById('empPkgTotal').textContent = fmtMoney(emp.salary*12 + Math.round(emp.salary*1.5));
+
+  const timeline = document.getElementById('empTimeline');
+  timeline.innerHTML = [
+    {ic:'fa-solid fa-umbrella-beach',c:'accent',t:'Vacation request submitted',d:'Aug 10 - Aug 14 • Pending approval'},
+    {ic:'fa-solid fa-briefcase-medical',c:'warning',t:'Optical insurance claim',d:'EGP 1,850 • Pending review'},
+    {ic:'fa-solid fa-sack-dollar',c:'success',t:'Annual raise applied',d: emp.salaryHistory.length ? `${emp.salaryHistory[emp.salaryHistory.length-1].pct} • ${emp.salaryHistory[emp.salaryHistory.length-1].date}` : 'No raises yet'},
+    {ic:'fa-solid fa-house-laptop',c:'info',t:'Work from home approved',d:'May 20 - May 21, 2026'},
+  ].map(x=>`<li><div class="ic" style="background:var(--${x.c==='accent'?'accent-soft':'surface2'});color:var(--${x.c});">
+    <i class="${x.ic}"></i></div><div class="txt"><strong>${x.t}</strong><p>${x.d}</p></div></li>`).join('');
+
+  document.getElementById('salaryHistoryBody').innerHTML = emp.salaryHistory.slice().reverse().map(s=>`
+    <tr><td>${s.date}</td><td>${fmtMoney(s.prev)}</td><td>${fmtMoney(s.next)}</td><td><span class="badge-pill pill-success">${s.pct}</span></td><td>${s.reason}</td></tr>`).join('') ||
+    `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raise history yet.</p></div></td></tr>`;
+
+  document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v=>`
+    <tr><td>${v.type}</td><td>${v.dates}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('');
+
+  document.getElementById('empInsuranceBody').innerHTML = empInsuranceHistory.map(c=>`
+    <tr><td>${c.type}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('');
+}
+async function submitVacation(){
+  const type = document.getElementById('vacType').value;
+  const start = document.getElementById('vacStart').value, end = document.getElementById('vacEnd').value;
+  if(!start){ toast('Please select a start date.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    await Api.requestVacation({
+      employee_name: currentLoggedInEmployee.name,
+      leave_type: type,
+      start_date: start,
+      end_date: end || start,
+      days: 1,
+    });
+    toast('Request submitted for approval.');
+    await loadEmployeeData();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+async function submitClaim(){
+  const type = document.getElementById('claimType').value;
+  const amount = Number(document.getElementById('claimAmount').value);
+  if(!amount){ toast('Please enter a claim amount.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    await Api.submitInsuranceClaim({
+      employee_name: currentLoggedInEmployee.name,
+      claim_type: type,
+      provider: '—',
+      amount,
+    });
+    toast('Insurance claim submitted.');
+    document.getElementById('claimAmount').value='';
+    await loadEmployeeData();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+
+/* ============ CHARTS ============ */
+window._charts = {};
+function chartColors(){
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  return { grid: dark?'#2a2e3d':'#e7e9f3', text: dark?'#9aa0b4':'#6b7280' };
+}
+function initCharts(){
+  const c = chartColors();
+  Chart.defaults.font.family = "'Inter',sans-serif";
+  const ctx1 = document.getElementById('chartRequests');
+  window._charts.requests = new Chart(ctx1, {
+    type:'bar',
+    data:{ labels:['Feb','Mar','Apr','May','Jun','Jul'],
+      datasets:[
+        {label:'Vacation', data:[12,18,15,22,19,26], backgroundColor:'#6366f1', borderRadius:6},
+        {label:'WFH', data:[8,10,7,13,11,15], backgroundColor:'#0ea5e9', borderRadius:6},
+        {label:'Insurance', data:[5,7,9,6,8,9], backgroundColor:'#f59e0b', borderRadius:6},
+      ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}},
+      scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } }
+  });
+  const ctx2 = document.getElementById('chartDonut');
+  window._charts.donut = new Chart(ctx2, {
+    type:'doughnut',
+    data:{ labels:['Vacation','WFH','Insurance'], datasets:[{data:[45,28,27], backgroundColor:['#6366f1','#0ea5e9','#f59e0b'], borderWidth:0}]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}} }
+  });
+  const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
+  const ctx3 = document.getElementById('chartSalary');
+  window._charts.salary = new Chart(ctx3, {
+    type:'line',
+    data:{ labels: emp.salaryHistory.map(s=>s.date.slice(0,7)),
+      datasets:[{label:'Salary (EGP)', data: emp.salaryHistory.map(s=>s.next), borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,.12)', fill:true, tension:.4, pointBackgroundColor:'#6366f1', pointRadius:5}]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } }
+  });
+}
+function updateSalaryChart(){
+  const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
+  const ch = window._charts.salary;
+  ch.data.labels = emp.salaryHistory.map(s=>s.date.slice(0,7));
+  ch.data.datasets[0].data = emp.salaryHistory.map(s=>s.next);
+  ch.update();
+}
+function refreshCharts(){
+  const c = chartColors();
+  Object.values(window._charts).forEach(ch=>{
+    if(ch.options.scales){ if(ch.options.scales.x) ch.options.scales.x.ticks.color=c.text; if(ch.options.scales.y){ch.options.scales.y.ticks.color=c.text; ch.options.scales.y.grid.color=c.grid;} }
+    if(ch.options.plugins.legend.labels) ch.options.plugins.legend.labels.color = c.text;
+    ch.update();
+  });
+}
+</script>
+</body>
+</html>
