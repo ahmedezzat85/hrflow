@@ -15,10 +15,10 @@ from models import (
     GoogleLoginRequest, PasswordLoginRequest, LoginResponse, EmployeeCreate, EmployeeUpdate,
     RequestCreate, RequestAction, VacationRequestCreate,
     InsuranceCategoryCreate, InsuranceCategoryUpdate,
-    InsuranceClaimCreate, InsuranceClaimAction, RaiseApply,
+    InsuranceClaimCreate, InsuranceClaimAction, RaiseApply, EmployeeNoteCreate,
 )
 
-app = FastAPI(title="HRFlow API", version="2.2.0",
+app = FastAPI(title="HRFlow API", version="2.3.0",
               description="HR Management System backend - Google Sheets database, Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
@@ -29,6 +29,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _resolve_target_employee(client, current_user, employee_id, fallback_name):
+    """
+    Shared helper for admin-on-behalf-of-employee creation across
+    requests/vacations/claims. Returns (emp_id, employee_name, submitted_by_admin).
+    Non-admins may never pass employee_id; if they try, this raises 403.
+    Admin-provided employee_id is resolved against the real Employees sheet
+    so the employee's name is never trusted from client input.
+    """
+    if employee_id is not None:
+        if current_user["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Only HR admins can submit this on behalf of another employee")
+        employees = client.get_all_records("Employees")
+        target = next((e for e in employees if str(e["id"]) == str(employee_id)), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        return target["id"], target["name"], True
+    return current_user["employee_id"], fallback_name, False
 
 
 @app.post("/api/auth/google", response_model=LoginResponse, tags=["Auth"])
@@ -58,6 +77,18 @@ def get_employees(current_user: dict = Depends(get_current_user)):
         my_id = str(current_user["employee_id"])
         employees = [e for e in employees if str(e["id"]) == my_id]
     return employees
+
+
+@app.get("/api/employees/{emp_id}", tags=["Employees"])
+def get_employee(emp_id: int, current_user: dict = Depends(get_current_user)):
+    client = get_client()
+    if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
+        raise HTTPException(status_code=403, detail="You can only view your own profile")
+    employees = client.get_all_records("Employees")
+    emp = next((e for e in employees if str(e["id"]) == str(emp_id)), None)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return emp
 
 
 @app.post("/api/employees", status_code=201, tags=["Employees"])
@@ -95,6 +126,42 @@ def delete_employee(emp_id: int, current_user: dict = Depends(require_admin)):
     return {"message": "Employee deleted"}
 
 
+@app.get("/api/employees/{emp_id}/notes", tags=["Employees"])
+def get_employee_notes(emp_id: int, current_user: dict = Depends(require_admin)):
+    client = get_client()
+    notes = client.get_all_records("EmployeeNotes")
+    notes = [n for n in notes if str(n["employee_id"]) == str(emp_id)]
+    notes.sort(key=lambda n: str(n.get("date", "")), reverse=True)
+    return notes
+
+
+@app.post("/api/employees/{emp_id}/notes", status_code=201, tags=["Employees"])
+def create_employee_note(emp_id: int, payload: EmployeeNoteCreate, current_user: dict = Depends(require_admin)):
+    client = get_client()
+    employees = client.get_all_records("Employees")
+    if not any(str(e["id"]) == str(emp_id) for e in employees):
+        raise HTTPException(status_code=404, detail="Employee not found")
+    note_id = client.next_id("EmployeeNotes")
+    client.append_row("EmployeeNotes", {
+        "id": note_id,
+        "employee_id": emp_id,
+        "date": payload.date or datetime.utcnow().strftime("%Y-%m-%d"),
+        "category": payload.category,
+        "note": payload.note,
+        "created_by": current_user["email"],
+    })
+    return {"message": "Note added", "id": note_id}
+
+
+@app.delete("/api/employees/notes/{note_id}", tags=["Employees"])
+def delete_employee_note(note_id: int, current_user: dict = Depends(require_admin)):
+    client = get_client()
+    ok = client.delete_row_by_match("EmployeeNotes", "id", note_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return {"message": "Note deleted"}
+
+
 @app.get("/api/requests", tags=["Requests"])
 def get_requests(type: Optional[str] = Query(None), current_user: dict = Depends(get_current_user)):
     client = get_client()
@@ -109,12 +176,29 @@ def get_requests(type: Optional[str] = Query(None), current_user: dict = Depends
 
 @app.post("/api/requests", status_code=201, tags=["Requests"])
 def create_request(payload: RequestCreate, current_user: dict = Depends(get_current_user)):
+    """
+    Submits a general request (currently used for Work From Home).
+    HR Admins may submit on behalf of another employee via `employee_id`,
+    optionally backdating it via `record_date` and/or directly setting
+    `status` (e.g. to log an already-approved historical WFH day).
+    """
     client = get_client()
+    emp_id, employee_name, submitted_by_admin = _resolve_target_employee(
+        client, current_user, payload.employee_id, payload.employee_name
+    )
+
+    record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
+    status = payload.status if (submitted_by_admin and payload.status) else "Pending"
+    reviewed = status != "Pending"
+
     new_id = client.next_id("Requests")
     row = {
-        "id": new_id, "employee_id": current_user["employee_id"], "employee_name": payload.employee_name,
-        "type": payload.type, "details": payload.details, "date": datetime.utcnow().strftime("%Y-%m-%d"),
-        "status": "Pending", "reviewed_by": "", "reviewed_at": "",
+        "id": new_id, "employee_id": emp_id, "employee_name": employee_name,
+        "type": payload.type, "details": payload.details, "date": record_date,
+        "status": status,
+        "reviewed_by": current_user["email"] if reviewed else "",
+        "reviewed_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M") if reviewed else "",
+        "submitted_by": current_user["email"] if submitted_by_admin else "",
     }
     client.append_row("Requests", row)
     return {"message": "Request submitted", "id": new_id}
@@ -133,32 +217,50 @@ def action_request(req_id: int, payload: RequestAction, current_user: dict = Dep
 
 
 @app.get("/api/vacations/history", tags=["Vacations"])
-def get_vacation_history(current_user: dict = Depends(get_current_user)):
+def get_vacation_history(employee_id: Optional[int] = Query(None), current_user: dict = Depends(get_current_user)):
     client = get_client()
     history = client.get_all_records("VacationHistory")
     if current_user["role"] != "admin":
         my_id = str(current_user["employee_id"])
         history = [h for h in history if str(h["employee_id"]) == my_id]
+    elif employee_id is not None:
+        history = [h for h in history if str(h["employee_id"]) == str(employee_id)]
     return history
 
 
 @app.post("/api/vacations/request", status_code=201, tags=["Vacations"])
 def request_vacation(payload: VacationRequestCreate, current_user: dict = Depends(get_current_user)):
+    """
+    Submits a Vacation/leave request. HR Admins may submit on behalf of
+    another employee via `employee_id`, optionally backdating the
+    submission record via `record_date` and/or directly setting `status`
+    (e.g. to log a historical approved leave from a previous year).
+    """
     client = get_client()
-    emp_id = current_user["employee_id"]
+    emp_id, employee_name, submitted_by_admin = _resolve_target_employee(
+        client, current_user, payload.employee_id, payload.employee_name
+    )
+
     end_date = payload.end_date or payload.start_date
+    record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
+    status = payload.status if (submitted_by_admin and payload.status) else "Pending"
+    reviewed = status != "Pending"
 
     vac_id = client.next_id("VacationHistory")
     client.append_row("VacationHistory", {
         "id": vac_id, "employee_id": emp_id, "type": payload.leave_type,
-        "start_date": payload.start_date, "end_date": end_date, "days": payload.days, "status": "Pending",
+        "start_date": payload.start_date, "end_date": end_date, "days": payload.days, "status": status,
+        "submitted_by": current_user["email"] if submitted_by_admin else "",
     })
 
     req_id = client.next_id("Requests")
     client.append_row("Requests", {
-        "id": req_id, "employee_id": emp_id, "employee_name": payload.employee_name, "type": "Vacation",
+        "id": req_id, "employee_id": emp_id, "employee_name": employee_name, "type": "Vacation",
         "details": f"{payload.leave_type}: {payload.start_date} to {end_date}",
-        "date": datetime.utcnow().strftime("%Y-%m-%d"), "status": "Pending", "reviewed_by": "", "reviewed_at": "",
+        "date": record_date, "status": status,
+        "reviewed_by": current_user["email"] if reviewed else "",
+        "reviewed_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M") if reviewed else "",
+        "submitted_by": current_user["email"] if submitted_by_admin else "",
     })
     return {"message": "Vacation request submitted", "id": vac_id}
 
@@ -273,12 +375,10 @@ def get_insurance_claims(current_user: dict = Depends(get_current_user)):
 @app.post("/api/insurance/claims", status_code=201, tags=["Insurance"])
 def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = Depends(get_current_user)):
     """
-    Submits a medical insurance claim. Normally the logged-in employee
-    submits a claim for themselves. HR Admins may additionally submit a
-    claim on behalf of another employee by supplying `employee_id` - in
-    that case the employee's real name/id are looked up server-side
-    (never trusting a client-supplied name for another person), and the
-    claim + mirrored Request row are tagged with who actually submitted it.
+    Submits a medical insurance claim. HR Admins may submit on behalf of
+    another employee via `employee_id` (resolved server-side), optionally
+    backdating the claim via `record_date` and/or directly setting
+    `status` for historical record-keeping.
     """
     client = get_client()
     categories = client.get_all_records("InsuranceCategories")
@@ -288,26 +388,19 @@ def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = D
     if payload.document_url and len(payload.document_url) > 3_000_000:
         raise HTTPException(status_code=400, detail="Supporting document is too large")
 
-    submitted_by_admin = False
-    if payload.employee_id is not None:
-        if current_user["role"] != "admin":
-            raise HTTPException(status_code=403, detail="Only HR admins can submit a claim on behalf of another employee")
-        employees = client.get_all_records("Employees")
-        target = next((e for e in employees if str(e["id"]) == str(payload.employee_id)), None)
-        if not target:
-            raise HTTPException(status_code=404, detail="Employee not found")
-        emp_id = target["id"]
-        employee_name = target["name"]
-        submitted_by_admin = True
-    else:
-        emp_id = current_user["employee_id"]
-        employee_name = payload.employee_name
+    emp_id, employee_name, submitted_by_admin = _resolve_target_employee(
+        client, current_user, payload.employee_id, payload.employee_name
+    )
+
+    record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
+    status = payload.status if (submitted_by_admin and payload.status) else "Pending"
+    reviewed = status != "Pending"
 
     claim_id = client.next_id("InsuranceClaims")
     client.append_row("InsuranceClaims", {
         "id": claim_id, "employee_id": emp_id, "employee_name": employee_name,
         "category": payload.category, "provider": payload.provider, "amount": payload.amount,
-        "date": datetime.utcnow().strftime("%Y-%m-%d"), "status": "Pending",
+        "date": record_date, "status": status,
         "document_url": payload.document_url or "",
         "submitted_by": current_user["email"] if submitted_by_admin else "",
     })
@@ -317,7 +410,10 @@ def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = D
     client.append_row("Requests", {
         "id": req_id, "employee_id": emp_id, "employee_name": employee_name, "type": "Medical Insurance",
         "details": f"{payload.category} claim - EGP {payload.amount}{detail_suffix}",
-        "date": datetime.utcnow().strftime("%Y-%m-%d"), "status": "Pending", "reviewed_by": "", "reviewed_at": "",
+        "date": record_date, "status": status,
+        "reviewed_by": current_user["email"] if reviewed else "",
+        "reviewed_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M") if reviewed else "",
+        "submitted_by": current_user["email"] if submitted_by_admin else "",
     })
     return {"message": "Claim submitted", "id": claim_id}
 
@@ -345,6 +441,14 @@ def get_salary_history(employee_id: Optional[int] = Query(None), current_user: d
 
 @app.post("/api/salary/raise", status_code=201, tags=["Salary"])
 def apply_raise(payload: RaiseApply, current_user: dict = Depends(require_admin)):
+    """
+    Admin applies a raise to one employee: percentage, flat amount, or a
+    direct new salary. `effective_date` may be backdated to create a
+    historical salary record for a previous year; in that case the
+    employee's current salary/next_raise on the Employees sheet are left
+    untouched (only a SalaryHistory row is added), so a backdated entry
+    never clobbers a more recent real salary.
+    """
     client = get_client()
     employees = client.get_all_records("Employees")
     emp = next((e for e in employees if str(e["id"]) == str(payload.employee_id)), None)
@@ -373,8 +477,18 @@ def apply_raise(payload: RaiseApply, current_user: dict = Depends(require_admin)
         "reason": payload.reason, "applied_by": current_user["email"],
     })
 
-    next_raise_date = (datetime.strptime(effective_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
-    client.update_row_by_match("Employees", "id", emp["id"], {"salary": new_salary, "next_raise": next_raise_date})
+    is_backdated = False
+    try:
+        is_backdated = datetime.strptime(effective_date, "%Y-%m-%d") < (datetime.utcnow() - timedelta(days=1))
+    except ValueError:
+        pass
+
+    if not is_backdated:
+        next_raise_date = (datetime.strptime(effective_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
+        client.update_row_by_match("Employees", "id", emp["id"], {
+            "salary": new_salary,
+            "next_raise": next_raise_date,
+        })
 
     return {"message": "Raise applied", "previous_salary": current_salary, "new_salary": new_salary, "pct_change": pct_change}
 
