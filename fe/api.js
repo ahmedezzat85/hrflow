@@ -140,6 +140,16 @@ const Api = {
   actionRequest(reqId, status) { return apiRequest("POST", `/api/requests/${reqId}/action`, { status }); },
   getVacationHistory() { return apiRequest("GET", "/api/vacations/history"); },
   requestVacation(payload) { return apiRequest("POST", "/api/vacations/request", payload); },
+
+  getInsuranceCategories() { return apiRequest("GET", "/api/insurance/categories"); },
+  createInsuranceCategory(payload) { return apiRequest("POST", "/api/insurance/categories", payload); },
+  updateInsuranceCategory(catId, payload) { return apiRequest("PUT", `/api/insurance/categories/${catId}`, payload); },
+  deleteInsuranceCategory(catId) { return apiRequest("DELETE", `/api/insurance/categories/${catId}`); },
+  getInsuranceConsumption(employeeId = null) {
+    const q = employeeId ? `?employee_id=${employeeId}` : "";
+    return apiRequest("GET", `/api/insurance/consumption${q}`);
+  },
+
   getInsuranceClaims() { return apiRequest("GET", "/api/insurance/claims"); },
   submitInsuranceClaim(payload) { return apiRequest("POST", "/api/insurance/claims", payload); },
   actionInsuranceClaim(claimId, status) { return apiRequest("POST", `/api/insurance/claims/${claimId}/action`, { status }); },
