@@ -18,7 +18,7 @@ from models import (
     InsuranceClaimCreate, InsuranceClaimAction, RaiseApply,
 )
 
-app = FastAPI(title="HRFlow API", version="2.1.0",
+app = FastAPI(title="HRFlow API", version="2.2.0",
               description="HR Management System backend - Google Sheets database, Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
@@ -272,6 +272,14 @@ def get_insurance_claims(current_user: dict = Depends(get_current_user)):
 
 @app.post("/api/insurance/claims", status_code=201, tags=["Insurance"])
 def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = Depends(get_current_user)):
+    """
+    Submits a medical insurance claim. Normally the logged-in employee
+    submits a claim for themselves. HR Admins may additionally submit a
+    claim on behalf of another employee by supplying `employee_id` - in
+    that case the employee's real name/id are looked up server-side
+    (never trusting a client-supplied name for another person), and the
+    claim + mirrored Request row are tagged with who actually submitted it.
+    """
     client = get_client()
     categories = client.get_all_records("InsuranceCategories")
     if not any(c["name"] == payload.category for c in categories):
@@ -280,19 +288,35 @@ def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = D
     if payload.document_url and len(payload.document_url) > 3_000_000:
         raise HTTPException(status_code=400, detail="Supporting document is too large")
 
-    emp_id = current_user["employee_id"]
+    submitted_by_admin = False
+    if payload.employee_id is not None:
+        if current_user["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Only HR admins can submit a claim on behalf of another employee")
+        employees = client.get_all_records("Employees")
+        target = next((e for e in employees if str(e["id"]) == str(payload.employee_id)), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        emp_id = target["id"]
+        employee_name = target["name"]
+        submitted_by_admin = True
+    else:
+        emp_id = current_user["employee_id"]
+        employee_name = payload.employee_name
+
     claim_id = client.next_id("InsuranceClaims")
     client.append_row("InsuranceClaims", {
-        "id": claim_id, "employee_id": emp_id, "employee_name": payload.employee_name,
+        "id": claim_id, "employee_id": emp_id, "employee_name": employee_name,
         "category": payload.category, "provider": payload.provider, "amount": payload.amount,
         "date": datetime.utcnow().strftime("%Y-%m-%d"), "status": "Pending",
         "document_url": payload.document_url or "",
+        "submitted_by": current_user["email"] if submitted_by_admin else "",
     })
 
+    detail_suffix = " (submitted by HR admin)" if submitted_by_admin else ""
     req_id = client.next_id("Requests")
     client.append_row("Requests", {
-        "id": req_id, "employee_id": emp_id, "employee_name": payload.employee_name, "type": "Medical Insurance",
-        "details": f"{payload.category} claim - EGP {payload.amount}",
+        "id": req_id, "employee_id": emp_id, "employee_name": employee_name, "type": "Medical Insurance",
+        "details": f"{payload.category} claim - EGP {payload.amount}{detail_suffix}",
         "date": datetime.utcnow().strftime("%Y-%m-%d"), "status": "Pending", "reviewed_by": "", "reviewed_at": "",
     })
     return {"message": "Claim submitted", "id": claim_id}
