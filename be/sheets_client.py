@@ -16,14 +16,15 @@ SHEET_SCHEMAS = {
     "Employees": ["id","name","email","role","dept","job_role",
                    "salary","join_date","status","vac_total","vac_used","next_raise"],
     "Requests": ["id","employee_id","employee_name","type","details","date",
-                 "status","reviewed_by","reviewed_at"],
-    "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status"],
+                 "status","reviewed_by","reviewed_at","submitted_by"],
+    "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status","submitted_by"],
     "InsuranceClaims": ["id","employee_id","employee_name","category","provider",
                          "amount","date","status","document_url","submitted_by"],
     "InsuranceCategories": ["id","name","annual_limit"],
     "SalaryHistory": ["id","employee_id","date","previous_salary","new_salary",
                        "pct_change","reason","applied_by"],
     "Users": ["email","role","employee_id"],
+    "EmployeeNotes": ["id","employee_id","date","category","note","created_by"],
 }
 
 _lock = Lock()
