@@ -81,6 +81,10 @@ class InsuranceClaimCreate(BaseModel):
     provider: str = ""
     amount: float
     document_url: Optional[str] = ""
+    # Admin-only: when an HR Admin submits this claim on behalf of an
+    # employee, this is the target employee's id. Ignored (and the
+    # submitter's own employee_id is used instead) for non-admin callers.
+    employee_id: Optional[int] = None
 
 
 class InsuranceClaimAction(BaseModel):
