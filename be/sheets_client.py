@@ -19,7 +19,7 @@ SHEET_SCHEMAS = {
                  "status","reviewed_by","reviewed_at"],
     "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status"],
     "InsuranceClaims": ["id","employee_id","employee_name","category","provider",
-                         "amount","date","status","document_url"],
+                         "amount","date","status","document_url","submitted_by"],
     "InsuranceCategories": ["id","name","annual_limit"],
     "SalaryHistory": ["id","employee_id","date","previous_salary","new_salary",
                        "pct_change","reason","applied_by"],
