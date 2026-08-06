@@ -51,6 +51,9 @@ class RequestCreate(BaseModel):
     employee_name: str
     type: Literal["Vacation", "Work From Home", "Medical Insurance"]
     details: str = ""
+    employee_id: Optional[int] = None
+    record_date: Optional[str] = None
+    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
 
 
 class RequestAction(BaseModel):
@@ -63,6 +66,9 @@ class VacationRequestCreate(BaseModel):
     start_date: str
     end_date: Optional[str] = None
     days: int = 1
+    employee_id: Optional[int] = None
+    record_date: Optional[str] = None
+    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
 
 
 class InsuranceCategoryCreate(BaseModel):
@@ -81,10 +87,9 @@ class InsuranceClaimCreate(BaseModel):
     provider: str = ""
     amount: float
     document_url: Optional[str] = ""
-    # Admin-only: when an HR Admin submits this claim on behalf of an
-    # employee, this is the target employee's id. Ignored (and the
-    # submitter's own employee_id is used instead) for non-admin callers.
     employee_id: Optional[int] = None
+    record_date: Optional[str] = None
+    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
 
 
 class InsuranceClaimAction(BaseModel):
@@ -97,3 +102,9 @@ class RaiseApply(BaseModel):
     value: float
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
+
+
+class EmployeeNoteCreate(BaseModel):
+    date: Optional[str] = None
+    category: str = "General"
+    note: str
