@@ -45,8 +45,8 @@ button{font-family:inherit;cursor:pointer;}
 .input-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
 .btn-primary{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;font-size:14.5px;box-shadow:0 8px 20px rgba(99,102,241,.35);transition:transform .15s,box-shadow .15s;}
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(99,102,241,.45);}
-.demo-box{margin-top:24px;background:var(--surface2);border:1px dashed var(--border);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--text2);}
-.demo-box b{color:var(--text);}
+.login-footer-brand{margin-top:28px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:center;}
+.login-footer-brand img{height:22px;opacity:.85;}
 .demo-chip{display:inline-flex;gap:6px;align-items:center;background:var(--accent-soft);color:var(--accent);padding:4px 10px;border-radius:20px;font-weight:600;font-size:11.5px;margin:4px 4px 0 0;cursor:pointer;border:none;}
 .login-err{background:rgba(239,68,68,.1);color:var(--danger);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none;align-items:center;gap:8px;}
 .theme-fab{position:fixed;top:20px;right:20px;width:42px;height:42px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);font-size:16px;z-index:50;}
@@ -199,33 +199,13 @@ tbody tr:hover{background:var(--surface2);}
       <h1>Welcome back</h1>
       <p>Sign in to access your HR workspace.</p>
       <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i> <span>Sign-in failed.</span></div>
-      <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:20px;"></div>
-      <div style="display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--text3); font-size:12px;">
-        <div style="flex:1; height:1px; background:var(--border);"></div>
-        <span>or sign in with email (test/demo)</span>
-        <div style="flex:1; height:1px; background:var(--border);"></div>
-      </div>
-      <form id="loginForm">
-        <div class="field">
-          <label>Email address</label>
-          <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" id="loginEmail" placeholder="you@company.com" required></div>
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <div class="input-wrap"><i class="fa-solid fa-lock"></i><input type="password" id="loginPassword" placeholder="demo1234" required></div>
-        </div>
-        <button class="btn-primary" type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In</button>
-      </form>
-      <div class="demo-box">
-        <b>Demo accounts</b> — click to autofill (password is <code>demo1234</code> for all):
-        <div>
-          <button class="demo-chip" onclick="fillLogin('admin@hrflow.com')"><i class="fa-solid fa-user-shield"></i> Admin</button>
-          <button class="demo-chip" onclick="fillLogin('ahmed.ezzat@hrflow.com')"><i class="fa-solid fa-user"></i> Employee</button>
-        </div>
-      </div>
+      <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:28px;"></div>
       <p style="text-align:center; color:var(--text3); font-size:12px; margin-top:16px;">
         Not registered yet? Ask your HR admin to add you as an employee first.
       </p>
+      <div class="login-footer-brand">
+        <img src="voyance-health-logo.png" alt="Voyance Health">
+      </div>
     </div>
   </div>
 </div>
@@ -680,8 +660,6 @@ let insuranceConsumption = [];
 let currentEditCategoryId = null;
 let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
 
-function fillLogin(email){ document.getElementById('loginEmail').value = email; document.getElementById('loginPassword').value = 'demo1234'; }
-
 async function handleLoginSuccess(data){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('loginThemeToggle').style.display = 'none';
@@ -705,18 +683,6 @@ function handleLoginError(err){
   errBox.querySelector('span').textContent = err.message || 'Sign-in failed. Please try again.';
 }
 window.addEventListener('DOMContentLoaded', () => { initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError); });
-document.getElementById('loginForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
-  document.getElementById('loginErr').style.display = 'none';
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';
-  try{ const data = await Api.loginWithPassword(email, password); await handleLoginSuccess(data); }
-  catch(err){ handleLoginError(err); }
-  finally { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In'; }
-});
-
 function normalizeEmployee(e, salaryHistoryForEmp){
   return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
     nextRaise: e.next_raise, salary: Number(e.salary),
@@ -767,7 +733,6 @@ function logout(){
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loginThemeToggle').style.display = 'flex';
   document.getElementById('loginErr').style.display = 'none';
-  document.getElementById('loginForm').reset();
 }
 function toggleSidebar(id){ document.getElementById(id).classList.toggle('open'); }
 document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'admin')); });
