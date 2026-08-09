@@ -1,20 +1,18 @@
 """
 models.py
 Pydantic request/response models for the HRFlow API.
-FastAPI uses these for automatic validation, and auto-generates
-interactive docs (Swagger UI at /docs) from them.
 """
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Literal
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str  # the ID token JWT string from the Google Sign-In button
+    credential: str
 
 
 class PasswordLoginRequest(BaseModel):
     email: EmailStr
-    password: str  # dummy/test-only login - see auth.py TEST_PASSWORD
+    password: str
 
 
 class LoginResponse(BaseModel):
@@ -26,7 +24,7 @@ class LoginResponse(BaseModel):
 
 class EmployeeCreate(BaseModel):
     name: str
-    email: EmailStr  # must be the employee's Google Workspace email
+    email: EmailStr
     dept: str = ""
     job_role: str = ""
     salary: float = 0
@@ -53,6 +51,9 @@ class RequestCreate(BaseModel):
     employee_name: str
     type: Literal["Vacation", "Work From Home", "Medical Insurance"]
     details: str = ""
+    employee_id: Optional[int] = None
+    record_date: Optional[str] = None
+    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
 
 
 class RequestAction(BaseModel):
@@ -65,13 +66,30 @@ class VacationRequestCreate(BaseModel):
     start_date: str
     end_date: Optional[str] = None
     days: int = 1
+    employee_id: Optional[int] = None
+    record_date: Optional[str] = None
+    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
+
+
+class InsuranceCategoryCreate(BaseModel):
+    name: str
+    annual_limit: float
+
+
+class InsuranceCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    annual_limit: Optional[float] = None
 
 
 class InsuranceClaimCreate(BaseModel):
     employee_name: str
-    claim_type: Literal["Outpatient", "Inpatient", "Dental", "Optical", "Pharmacy"]
+    category: str
     provider: str = ""
     amount: float
+    document_url: Optional[str] = ""
+    employee_id: Optional[int] = None
+    record_date: Optional[str] = None
+    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
 
 
 class InsuranceClaimAction(BaseModel):
@@ -84,3 +102,9 @@ class RaiseApply(BaseModel):
     value: float
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
+
+
+class EmployeeNoteCreate(BaseModel):
+    date: Optional[str] = None
+    category: str = "General"
+    note: str

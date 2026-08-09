@@ -9,225 +9,178 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="config.js"></script>
 <script src="api.js"></script>
 <style>
-:root{
-  --accent:#6366f1; --accent2:#8b5cf6; --accent-soft:rgba(99,102,241,.12);
-  --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --info:#0ea5e9;
-  --bg:#f4f5fb; --surface:#ffffff; --surface2:#f8f9fd; --border:#e7e9f3;
-  --text:#171a2b; --text2:#6b7280; --text3:#9ca3af;
-  --radius:16px; --radius-sm:10px;
-  --shadow:0 1px 2px rgba(20,20,50,.04),0 8px 24px rgba(20,20,50,.05);
-  --shadow-lg:0 10px 40px rgba(20,20,50,.12);
-}
-[data-theme="dark"]{
-  --bg:#0f1117; --surface:#171a24; --surface2:#1d2130; --border:#2a2e3d;
-  --text:#f1f2f6; --text2:#9aa0b4; --text3:#6b7280;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
-  --shadow-lg:0 10px 40px rgba(0,0,0,.5);
-}
-*{box-sizing:border-box; margin:0; padding:0;}
-body{font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); transition:background .25s,color .25s;}
-a{text-decoration:none; color:inherit;}
-button{font-family:inherit; cursor:pointer;}
-::-webkit-scrollbar{width:8px; height:8px;}
-::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px;}
+:root{--accent:#6366f1;--accent2:#8b5cf6;--accent-soft:rgba(99,102,241,.12);--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#0ea5e9;--bg:#f4f5fb;--surface:#ffffff;--surface2:#f8f9fd;--border:#e7e9f3;--text:#171a2b;--text2:#6b7280;--text3:#9ca3af;--radius:16px;--radius-sm:10px;--shadow:0 1px 2px rgba(20,20,50,.04),0 8px 24px rgba(20,20,50,.05);--shadow-lg:0 10px 40px rgba(20,20,50,.12);}
+[data-theme="dark"]{--bg:#0f1117;--surface:#171a24;--surface2:#1d2130;--border:#2a2e3d;--text:#f1f2f6;--text2:#9aa0b4;--text3:#6b7280;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);--shadow-lg:0 10px 40px rgba(0,0,0,.5);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);transition:background .25s,color .25s;}
+a{text-decoration:none;color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
 .hidden{display:none !important;}
-
-/* ---------- LOGIN ---------- */
-#login-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:
-  radial-gradient(circle at 15% 20%, rgba(99,102,241,.25), transparent 45%),
-  radial-gradient(circle at 85% 80%, rgba(139,92,246,.22), transparent 45%), var(--bg); padding:20px;}
-.login-card{width:100%; max-width:920px; background:var(--surface); border-radius:24px; box-shadow:var(--shadow-lg); display:grid; grid-template-columns:1.05fr 1fr; overflow:hidden; border:1px solid var(--border);}
-.login-visual{background:linear-gradient(145deg,var(--accent),var(--accent2)); padding:48px 40px; color:#fff; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden;}
-.login-visual::before{content:''; position:absolute; width:280px; height:280px; border-radius:50%; background:rgba(255,255,255,.08); top:-80px; right:-80px;}
-.login-visual::after{content:''; position:absolute; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,.08); bottom:-60px; left:-60px;}
-.brand{display:flex; align-items:center; gap:10px; font-weight:800; font-size:22px; position:relative; z-index:1;}
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 15% 20%,rgba(99,102,241,.25),transparent 45%),radial-gradient(circle at 85% 80%,rgba(139,92,246,.22),transparent 45%),var(--bg);padding:20px;}
+.login-card{width:100%;max-width:920px;background:var(--surface);border-radius:24px;box-shadow:var(--shadow-lg);display:grid;grid-template-columns:1.05fr 1fr;overflow:hidden;border:1px solid var(--border);}
+.login-visual{background:linear-gradient(145deg,var(--accent),var(--accent2));padding:48px 40px;color:#fff;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;}
+.login-visual::before{content:'';position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.08);top:-80px;right:-80px;}
+.login-visual::after{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.08);bottom:-60px;left:-60px;}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;position:relative;z-index:1;}
 .brand i{font-size:24px;}
-.login-visual h2{font-size:28px; margin-top:40px; line-height:1.35; font-weight:700; position:relative; z-index:1;}
-.login-visual p{margin-top:14px; opacity:.85; font-size:14.5px; line-height:1.6; position:relative; z-index:1;}
-.visual-stats{display:flex; gap:18px; margin-top:36px; position:relative; z-index:1;}
-.visual-stats div{background:rgba(255,255,255,.14); padding:14px 16px; border-radius:14px; flex:1; backdrop-filter:blur(6px);}
-.visual-stats span{display:block; font-size:20px; font-weight:800;}
-.visual-stats small{font-size:11.5px; opacity:.8;}
-.login-form-wrap{padding:48px 44px; display:flex; flex-direction:column; justify-content:center;}
-.login-form-wrap h1{font-size:26px; font-weight:800;}
-.login-form-wrap>p{color:var(--text2); font-size:14px; margin-top:6px; margin-bottom:28px;}
+.login-visual h2{font-size:28px;margin-top:40px;line-height:1.35;font-weight:700;position:relative;z-index:1;}
+.login-visual p{margin-top:14px;opacity:.85;font-size:14.5px;line-height:1.6;position:relative;z-index:1;}
+.visual-stats{display:flex;gap:18px;margin-top:36px;position:relative;z-index:1;}
+.visual-stats div{background:rgba(255,255,255,.14);padding:14px 16px;border-radius:14px;flex:1;backdrop-filter:blur(6px);text-align:center;}
+.visual-stats span{display:block;font-size:20px;font-weight:800;}
+.visual-stats small{font-size:11.5px;opacity:.8;}
+.login-form-wrap{padding:48px 44px;display:flex;flex-direction:column;justify-content:center;}
+.login-form-wrap h1{font-size:26px;font-weight:800;}
+.login-form-wrap>p{color:var(--text2);font-size:14px;margin-top:6px;margin-bottom:28px;}
 .field{margin-bottom:18px;}
-.field label{display:block; font-size:13px; font-weight:600; margin-bottom:7px; color:var(--text2);}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:var(--text2);}
 .input-wrap{position:relative;}
-.input-wrap i{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px;}
-.input-wrap input{width:100%; padding:13px 14px 13px 40px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:14px; outline:none; transition:.2s;}
-.input-wrap input:focus{border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft);}
-.login-row{display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:22px; color:var(--text2);}
-.login-row label{display:flex; align-items:center; gap:6px; cursor:pointer;}
-.btn-primary{width:100%; padding:14px; border:none; border-radius:12px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; font-weight:700; font-size:14.5px; box-shadow:0 8px 20px rgba(99,102,241,.35); transition:transform .15s,box-shadow .15s;}
-.btn-primary:hover{transform:translateY(-2px); box-shadow:0 12px 26px rgba(99,102,241,.45);}
-.demo-box{margin-top:24px; background:var(--surface2); border:1px dashed var(--border); border-radius:12px; padding:12px 14px; font-size:12.5px; color:var(--text2);}
+.input-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;}
+.input-wrap input{width:100%;padding:13px 14px 13px 40px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none;transition:.2s;}
+.input-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
+.btn-primary{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;font-size:14.5px;box-shadow:0 8px 20px rgba(99,102,241,.35);transition:transform .15s,box-shadow .15s;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(99,102,241,.45);}
+.demo-box{margin-top:24px;background:var(--surface2);border:1px dashed var(--border);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--text2);}
 .demo-box b{color:var(--text);}
-.demo-chip{display:inline-flex; gap:6px; align-items:center; background:var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-weight:600; font-size:11.5px; margin:4px 4px 0 0; cursor:pointer; border:none;}
-.login-err{background:rgba(239,68,68,.1); color:var(--danger); border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; align-items:center; gap:8px;}
-.theme-fab{position:fixed; top:20px; right:20px; width:42px; height:42px; border-radius:50%; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); font-size:16px; z-index:50;}
-
-/* ---------- APP LAYOUT ---------- */
-.app{display:none; min-height:100vh;}
+.demo-chip{display:inline-flex;gap:6px;align-items:center;background:var(--accent-soft);color:var(--accent);padding:4px 10px;border-radius:20px;font-weight:600;font-size:11.5px;margin:4px 4px 0 0;cursor:pointer;border:none;}
+.login-err{background:rgba(239,68,68,.1);color:var(--danger);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none;align-items:center;gap:8px;}
+.theme-fab{position:fixed;top:20px;right:20px;width:42px;height:42px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);font-size:16px;z-index:50;}
+.app{display:none;min-height:100vh;}
 .app.active{display:flex;}
-.sidebar{width:260px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; height:100vh; position:sticky; top:0; padding:22px 16px; transition:width .25s;}
-.sidebar .brand{padding:6px 10px 22px; font-size:19px;}
-.sidebar .brand i{background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:24px;}
-.sidebar .brand span.grad{background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
-.nav-section-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); font-weight:700; margin:18px 10px 8px;}
-.nav-item{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:11px; color:var(--text2); font-size:14px; font-weight:600; margin-bottom:2px; position:relative;}
-.nav-item i{width:18px; text-align:center; font-size:15px;}
-.nav-item:hover{background:var(--surface2); color:var(--text);}
-.nav-item.active{background:var(--accent-soft); color:var(--accent);}
-.nav-item .badge{margin-left:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px;}
-.sidebar-footer{margin-top:auto; padding-top:14px; border-top:1px solid var(--border);}
-.user-mini{display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; cursor:pointer;}
+.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;padding:22px 16px;transition:width .25s;}
+.sidebar .brand{padding:6px 10px 22px;font-size:19px;}
+.sidebar .brand i{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:24px;}
+.sidebar .brand span.grad{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.nav-section-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700;margin:18px 10px 8px;}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;color:var(--text2);font-size:14px;font-weight:600;margin-bottom:2px;position:relative;}
+.nav-item i{width:18px;text-align:center;font-size:15px;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--accent-soft);color:var(--accent);}
+.nav-item .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:10px;}
+.sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);}
+.user-mini{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;}
 .user-mini:hover{background:var(--surface2);}
-.avatar{width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
-.user-mini .name{font-size:13.5px; font-weight:700;}
-.user-mini .role{font-size:11.5px; color:var(--text2);}
-.logout-btn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--border); border-radius:10px; padding:9px; font-size:13px; font-weight:600; color:var(--text2); display:flex; align-items:center; justify-content:center; gap:8px;}
-.logout-btn:hover{background:rgba(239,68,68,.08); color:var(--danger); border-color:rgba(239,68,68,.3);}
-
-.main{flex:1; min-width:0; height:100vh; overflow-y:auto;}
-.topbar{position:sticky; top:0; z-index:20; background:var(--bg); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:18px 32px; border-bottom:1px solid var(--border); background:var(--surface);}
-.topbar h2{font-size:19px; font-weight:800;}
-.topbar .sub{font-size:12.5px; color:var(--text2); margin-top:2px;}
-.top-actions{display:flex; align-items:center; gap:12px;}
-.icon-btn{width:40px; height:40px; border-radius:11px; border:1px solid var(--border); background:var(--surface2); display:flex; align-items:center; justify-content:center; color:var(--text2); font-size:15px; position:relative;}
-.icon-btn:hover{color:var(--accent); border-color:var(--accent);}
-.icon-btn .dot{position:absolute; top:8px; right:8px; width:7px; height:7px; background:var(--danger); border-radius:50%; border:1.5px solid var(--surface);}
-.page{padding:28px 32px; max-width:1400px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.user-mini .name{font-size:13.5px;font-weight:700;}
+.user-mini .role{font-size:11.5px;color:var(--text2);}
+.logout-btn{width:100%;margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:10px;padding:9px;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:8px;}
+.logout-btn:hover{background:rgba(239,68,68,.08);color:var(--danger);border-color:rgba(239,68,68,.3);}
+.main{flex:1;min-width:0;height:100vh;overflow-y:auto;}
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);}
+.topbar h2{font-size:19px;font-weight:800;}
+.topbar .sub{font-size:12.5px;color:var(--text2);margin-top:2px;}
+.top-actions{display:flex;align-items:center;gap:12px;}
+.icon-btn{width:40px;height:40px;border-radius:11px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:15px;position:relative;}
+.icon-btn:hover{color:var(--accent);border-color:var(--accent);}
+.icon-btn .dot{position:absolute;top:8px;right:8px;width:7px;height:7px;background:var(--danger);border-radius:50%;border:1.5px solid var(--surface);}
+.page{padding:28px 32px;max-width:1400px;}
 .page-section{display:none;}
-.page-section.active{display:block; animation:fadein .35s ease;}
-@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
-
-.grid{display:grid; gap:20px;}
+.page-section.active{display:block;animation:fadein .35s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.grid{display:grid;gap:20px;}
 .g4{grid-template-columns:repeat(4,1fr);}
 .g3{grid-template-columns:repeat(3,1fr);}
 .g2{grid-template-columns:repeat(2,1fr);}
 .g-2-1{grid-template-columns:2fr 1fr;}
 .g-1-2{grid-template-columns:1fr 2fr;}
-@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} .g-2-1,.g-1-2{grid-template-columns:1fr;}}
-
-.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px;}
-.card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
-.card-head h3{font-size:15.5px; font-weight:700;}
-.card-head .link{font-size:12.5px; font-weight:600; color:var(--accent);}
-
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr);}.g3{grid-template-columns:repeat(2,1fr);}.g-2-1,.g-1-2{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.card-head h3{font-size:15.5px;font-weight:700;}
+.card-head .link{font-size:12.5px;font-weight:600;color:var(--accent);cursor:pointer;}
 .stat-card{padding:20px 22px;}
-.stat-top{display:flex; align-items:center; justify-content:space-between;}
-.stat-icon{width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:17px;}
-.stat-val{font-size:26px; font-weight:800; margin-top:14px;}
-.stat-label{font-size:12.5px; color:var(--text2); margin-top:4px;}
-.stat-trend{font-size:11.5px; font-weight:700; margin-top:10px; display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px;}
-.trend-up{color:var(--success); background:rgba(16,185,129,.1);}
-.trend-down{color:var(--danger); background:rgba(239,68,68,.1);}
-
-table{width:100%; border-collapse:collapse; font-size:13.5px;}
-thead th{text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text3); font-weight:700; padding:10px 12px; border-bottom:1px solid var(--border);}
-tbody td{padding:13px 12px; border-bottom:1px solid var(--border); color:var(--text);}
+.stat-top{display:flex;align-items:center;justify-content:space-between;}
+.stat-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.stat-val{font-size:26px;font-weight:800;margin-top:14px;}
+.stat-label{font-size:12.5px;color:var(--text2);margin-top:4px;}
+.stat-trend{font-size:11.5px;font-weight:700;margin-top:10px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;}
+.trend-up{color:var(--success);background:rgba(16,185,129,.1);}
+.trend-down{color:var(--danger);background:rgba(239,68,68,.1);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);}
+tbody td{padding:13px 12px;border-bottom:1px solid var(--border);color:var(--text);}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:var(--surface2);}
-.tname{display:flex; align-items:center; gap:10px; font-weight:600;}
-.tname .avatar{width:30px; height:30px; font-size:11px;}
-
-.badge-pill{padding:4px 11px; border-radius:20px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px;}
-.pill-success{background:rgba(16,185,129,.12); color:var(--success);}
-.pill-warning{background:rgba(245,158,11,.12); color:var(--warning);}
-.pill-danger{background:rgba(239,68,68,.12); color:var(--danger);}
-.pill-info{background:rgba(14,165,233,.12); color:var(--info);}
-.pill-neutral{background:var(--surface2); color:var(--text2);}
-
-.btn{padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--surface2); color:var(--text); display:inline-flex; align-items:center; gap:7px; transition:.15s;}
-.btn:hover{border-color:var(--accent); color:var(--accent);}
-.btn-fill{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; box-shadow:0 6px 16px rgba(99,102,241,.3);}
-.btn-fill:hover{color:#fff; transform:translateY(-1px);}
-.btn-sm{padding:6px 11px; font-size:12px;}
-.btn-danger-outline{border-color:rgba(239,68,68,.3); color:var(--danger); background:rgba(239,68,68,.06);}
-.btn-danger-outline:hover{background:var(--danger); color:#fff;}
-.btn-success-outline{border-color:rgba(16,185,129,.3); color:var(--success); background:rgba(16,185,129,.06);}
-.btn-success-outline:hover{background:var(--success); color:#fff;}
-.icon-action{width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); display:inline-flex; align-items:center; justify-content:center; font-size:12.5px; color:var(--text2);}
-.icon-action:hover{color:var(--accent); border-color:var(--accent);}
-
-.toolbar{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
-.search-box{position:relative; flex:1; max-width:340px;}
-.search-box i{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:13px;}
-.search-box input{width:100%; padding:10px 12px 10px 36px; border-radius:10px; border:1px solid var(--border); background:var(--surface); font-size:13.5px; color:var(--text); outline:none;}
+.tname{display:flex;align-items:center;gap:10px;font-weight:600;}
+.tname .avatar{width:30px;height:30px;font-size:11px;}
+.badge-pill{padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;}
+.pill-success{background:rgba(16,185,129,.12);color:var(--success);}
+.pill-warning{background:rgba(245,158,11,.12);color:var(--warning);}
+.pill-danger{background:rgba(239,68,68,.12);color:var(--danger);}
+.pill-info{background:rgba(14,165,233,.12);color:var(--info);}
+.pill-neutral{background:var(--surface2);color:var(--text2);}
+.btn{padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:7px;transition:.15s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn-fill{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;box-shadow:0 6px 16px rgba(99,102,241,.3);}
+.btn-fill:hover{color:#fff;transform:translateY(-1px);}
+.btn-sm{padding:6px 11px;font-size:12px;}
+.btn-danger-outline{border-color:rgba(239,68,68,.3);color:var(--danger);background:rgba(239,68,68,.06);}
+.btn-danger-outline:hover{background:var(--danger);color:#fff;}
+.btn-success-outline{border-color:rgba(16,185,129,.3);color:var(--success);background:rgba(16,185,129,.06);}
+.btn-success-outline:hover{background:var(--success);color:#fff;}
+.icon-action{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;color:var(--text2);}
+.icon-action:hover{color:var(--accent);border-color:var(--accent);}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
+.search-box{position:relative;flex:1;max-width:340px;}
+.search-box i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;}
+.search-box input{width:100%;padding:10px 12px 10px 36px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:13.5px;color:var(--text);outline:none;}
 .search-box input:focus{border-color:var(--accent);}
-.filter-tabs{display:flex; gap:6px; background:var(--surface2); padding:4px; border-radius:11px; width:fit-content;}
-.filter-tab{padding:8px 15px; border-radius:8px; font-size:13px; font-weight:600; color:var(--text2); border:none; background:transparent;}
-.filter-tab.active{background:var(--surface); color:var(--accent); box-shadow:var(--shadow);}
-
-.progress-bar{height:7px; border-radius:6px; background:var(--surface2); overflow:hidden;}
-.progress-bar span{display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),var(--accent2));}
-
+.filter-tabs{display:flex;gap:6px;background:var(--surface2);padding:4px;border-radius:11px;width:fit-content;}
+.filter-tab{padding:8px 15px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text2);border:none;background:transparent;}
+.filter-tab.active{background:var(--surface);color:var(--accent);box-shadow:var(--shadow);}
+.progress-bar{height:7px;border-radius:6px;background:var(--surface2);overflow:hidden;}
+.progress-bar span{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));}
 .timeline{list-style:none;}
-.timeline li{display:flex; gap:14px; padding:12px 0; border-bottom:1px solid var(--border);}
+.timeline li{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
 .timeline li:last-child{border-bottom:none;}
-.timeline .ic{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
+.timeline .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
 .timeline .txt strong{font-size:13.5px;}
-.timeline .txt p{font-size:12px; color:var(--text2); margin-top:2px;}
-
-/* MODAL */
-.modal-overlay{position:fixed; inset:0; background:rgba(15,17,25,.55); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; backdrop-filter:blur(3px);}
+.timeline .txt p{font-size:12px;color:var(--text2);margin-top:2px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(15,17,25,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(3px);}
 .modal-overlay.active{display:flex;}
-.modal{background:var(--surface); border-radius:20px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); border:1px solid var(--border);}
+.modal{background:var(--surface);border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);border:1px solid var(--border);}
 .modal.wide{max-width:680px;}
-.modal-head{display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border);}
-.modal-head h3{font-size:16.5px; font-weight:700;}
-.modal-close{width:32px; height:32px; border-radius:8px; border:none; background:var(--surface2); color:var(--text2); font-size:14px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:16.5px;font-weight:700;}
+.modal-close{width:32px;height:32px;border-radius:8px;border:none;background:var(--surface2);color:var(--text2);font-size:14px;}
 .modal-body{padding:22px 24px;}
-.modal-foot{padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;}
-.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .form-grid .full{grid-column:1/-1;}
-.form-field label{display:block; font-size:12.5px; font-weight:700; color:var(--text2); margin-bottom:7px;}
-.form-field input,.form-field select,.form-field textarea{width:100%; padding:11px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:13.5px; outline:none; font-family:inherit;}
-.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
-.profile-head{display:flex; gap:16px; align-items:center; margin-bottom:22px;}
-.profile-head .avatar{width:64px; height:64px; font-size:22px;}
-.profile-head h4{font-size:17px; font-weight:800;}
-.profile-head p{color:var(--text2); font-size:13px; margin-top:2px;}
-.info-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px;}
-.info-item{background:var(--surface2); border-radius:12px; padding:12px 14px;}
-.info-item span{display:block; font-size:11px; color:var(--text3); text-transform:uppercase; font-weight:700; margin-bottom:4px;}
+.form-field label{display:block;font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:7px;}
+.form-field input,.form-field select,.form-field textarea{width:100%;padding:11px 13px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13.5px;outline:none;font-family:inherit;}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.profile-head{display:flex;gap:16px;align-items:center;margin-bottom:22px;}
+.profile-head .avatar{width:64px;height:64px;font-size:22px;}
+.profile-head h4{font-size:17px;font-weight:800;}
+.profile-head p{color:var(--text2);font-size:13px;margin-top:2px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;}
+.info-item{background:var(--surface2);border-radius:12px;padding:12px 14px;}
+.info-item span{display:block;font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:4px;}
 .info-item b{font-size:14px;}
-.raise-preview{background:var(--accent-soft); border:1px dashed var(--accent); border-radius:12px; padding:14px 16px; margin-top:16px; display:none;}
+.raise-preview{background:var(--accent-soft);border:1px dashed var(--accent);border-radius:12px;padding:14px 16px;margin-top:16px;display:none;}
 .raise-preview.show{display:block;}
-.raise-preview .row{display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;}
+.raise-preview .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
 .raise-preview .row b{color:var(--accent);}
-
-.toast-wrap{position:fixed; bottom:24px; right:24px; z-index:200; display:flex; flex-direction:column; gap:10px;}
-.toast{background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-lg); border-radius:12px; padding:13px 18px; display:flex; align-items:center; gap:10px; font-size:13.5px; font-weight:600; min-width:260px; animation:slidein .3s ease;}
-.toast i{color:var(--success); font-size:16px;}
-@keyframes slidein{from{transform:translateX(60px); opacity:0;} to{transform:translateX(0); opacity:1;}}
-
-.chart-wrap{position:relative; height:230px;}
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:10px;}
+.toast{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg);border-radius:12px;padding:13px 18px;display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;min-width:260px;animation:slidein .3s ease;}
+.toast i{color:var(--success);font-size:16px;}
+@keyframes slidein{from{transform:translateX(60px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.chart-wrap{position:relative;height:230px;}
 .chart-wrap.sm{height:170px;}
-
-.tab-content{display:none;}
-.tab-content.active{display:block;}
-
-.hamburger{display:none; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); align-items:center; justify-content:center;}
-@media(max-width:900px){
-  .sidebar{position:fixed; left:-280px; z-index:60; box-shadow:var(--shadow-lg); transition:left .25s;}
-  .sidebar.open{left:0;}
-  .hamburger{display:flex;}
-  .topbar{padding:16px 18px;}
-  .page{padding:20px 16px;}
-}
-.empty-state{text-align:center; padding:40px 20px; color:var(--text2);}
-.empty-state i{font-size:34px; margin-bottom:10px; color:var(--text3);}
+.hamburger{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);align-items:center;justify-content:center;}
+@media(max-width:900px){.sidebar{position:fixed;left:-280px;z-index:60;box-shadow:var(--shadow-lg);transition:left .25s;}.sidebar.open{left:0;}.hamburger{display:flex;}.topbar{padding:16px 18px;}.page{padding:20px 16px;}}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text2);}
+.empty-state i{font-size:34px;margin-bottom:10px;color:var(--text3);}
 </style>
 </head>
 <body>
-
 <button class="theme-fab" id="loginThemeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
-
-<!-- ============ LOGIN SCREEN ============ -->
 <div id="login-screen">
   <div class="login-card">
     <div class="login-visual">
@@ -236,9 +189,9 @@ tbody tr:hover{background:var(--surface2);}
         <h2>People operations,<br>beautifully simplified.</h2>
         <p>Manage vacations, work-from-home, medical insurance claims and salary history — all in one elegant workspace.</p>
         <div class="visual-stats">
-          <div><span>248</span><small>Employees</small></div>
-          <div><span>32</span><small>Pending Requests</small></div>
-          <div><span>99.9%</span><small>Uptime</small></div>
+          <div><span><i class="fa-solid fa-shield-halved"></i></span><small>Secure Google Sign-In</small></div>
+          <div><span><i class="fa-solid fa-clock"></i></span><small>Real-time Approvals</small></div>
+          <div><span><i class="fa-solid fa-lock"></i></span><small>Role-based Access</small></div>
         </div>
       </div>
     </div>
@@ -246,15 +199,12 @@ tbody tr:hover{background:var(--surface2);}
       <h1>Welcome back</h1>
       <p>Sign in to access your HR workspace.</p>
       <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i> <span>Sign-in failed.</span></div>
-
       <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:20px;"></div>
-
       <div style="display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--text3); font-size:12px;">
         <div style="flex:1; height:1px; background:var(--border);"></div>
         <span>or sign in with email (test/demo)</span>
         <div style="flex:1; height:1px; background:var(--border);"></div>
       </div>
-
       <form id="loginForm">
         <div class="field">
           <label>Email address</label>
@@ -280,7 +230,6 @@ tbody tr:hover{background:var(--surface2);}
   </div>
 </div>
 
-<!-- ============ ADMIN APP ============ -->
 <div class="app" id="admin-app">
   <aside class="sidebar" id="adminSidebar">
     <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
@@ -313,13 +262,12 @@ tbody tr:hover{background:var(--surface2);}
       </div>
     </div>
     <div class="page">
-      <!-- ADMIN DASHBOARD -->
       <section class="page-section active" id="a-dashboard">
         <div class="grid g4" style="margin-bottom:20px;">
           <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-users"></i></div></div><div class="stat-val" id="statEmployees">248</div><div class="stat-label">Total Employees</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> 4.2% vs last month</span></div>
           <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(245,158,11,.12);color:var(--warning);"><i class="fa-solid fa-hourglass-half"></i></div></div><div class="stat-val" id="statPending">14</div><div class="stat-label">Pending Requests</div><span class="stat-trend trend-down"><i class="fa-solid fa-arrow-down"></i> 2 fewer than yesterday</span></div>
-          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div></div><div class="stat-val">37</div><div class="stat-label">On Leave This Month</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> Summer season</span></div>
-          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-briefcase-medical"></i></div></div><div class="stat-val">9</div><div class="stat-label">Open Insurance Claims</div><span class="stat-trend trend-down"><i class="fa-solid fa-arrow-down"></i> EGP 182,400 total</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div></div><div class="stat-val" id="statOnLeave">37</div><div class="stat-label">On Leave This Month</div><span class="stat-trend trend-up"><i class="fa-solid fa-arrow-up"></i> Summer season</span></div>
+          <div class="card stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-briefcase-medical"></i></div></div><div class="stat-val" id="statOpenClaims">9</div><div class="stat-label">Open Insurance Claims</div><span class="stat-trend trend-down" id="statClaimsTotal"><i class="fa-solid fa-arrow-down"></i> EGP 182,400 total</span></div>
         </div>
         <div class="grid g-2-1" style="margin-bottom:20px;">
           <div class="card">
@@ -331,7 +279,7 @@ tbody tr:hover{background:var(--surface2);}
             <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
           </div>
         </div>
-        <div class="grid g-1-2">
+        <div class="grid g-1-2" style="margin-bottom:20px;">
           <div class="card">
             <div class="card-head"><h3>Upcoming Annual Raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a></div>
             <ul class="timeline" id="upcomingRaisesList"></ul>
@@ -341,9 +289,12 @@ tbody tr:hover{background:var(--surface2);}
             <table><thead><tr><th>Employee</th><th>Type</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody id="dashPendingBody"></tbody></table>
           </div>
         </div>
+        <div class="card">
+          <div class="card-head"><h3>Medical Insurance Highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Manage insurance</a></div>
+          <div class="grid g4" id="dashInsuranceCategoryChips"></div>
+        </div>
       </section>
 
-      <!-- ADMIN EMPLOYEES -->
       <section class="page-section" id="a-employees">
         <div class="toolbar">
           <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch" placeholder="Search employees by name, role, department..."></div>
@@ -357,7 +308,50 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </section>
 
-      <!-- ADMIN PENDING REQUESTS -->
+      <section class="page-section" id="a-employee-detail">
+        <button class="btn btn-sm" style="margin-bottom:18px;" onclick="showSection('a-employees','admin')"><i class="fa-solid fa-arrow-left"></i> Back to Employees</button>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="profile-head" id="detailProfileHead"></div>
+          <div class="info-grid" id="detailInfoGrid"></div>
+        </div>
+        <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-head"><h3>Medical Insurance Consumption</h3></div>
+            <div class="info-item" style="margin-bottom:14px;"><span>Total Consumption</span><b id="detailInsuranceTotal">—</b></div>
+            <div class="grid g2" id="detailInsuranceGrid"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Submit on Behalf</h3></div>
+            <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px;">Create records for this employee, optionally backdated for previous years.</p>
+            <button class="btn btn-fill" style="width:100%;margin-bottom:10px;" onclick="openBehalfVacationModal()"><i class="fa-solid fa-umbrella-beach"></i> Vacation / WFH Request</button>
+            <button class="btn btn-fill" style="width:100%;margin-bottom:10px;" onclick="openBehalfClaimModal()"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance Claim</button>
+            <button class="btn btn-fill" style="width:100%;" onclick="openRaiseModal(currentDetailEmployeeId)"><i class="fa-solid fa-arrow-trend-up"></i> Apply Salary Raise</button>
+          </div>
+        </div>
+        <div class="grid g2" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-head"><h3>Vacation History</h3></div>
+            <table><thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Status</th></tr></thead><tbody id="detailVacationBody"></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Insurance Claims</h3></div>
+            <table><thead><tr><th>Category</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody id="detailClaimsBody"></tbody></table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Notes & Performance Tracking</h3></div>
+          <div class="form-grid" style="margin-bottom:16px;">
+            <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
+            <div class="form-field"><label>Category</label>
+              <select id="fNoteCategory"><option>General</option><option>Performance</option><option>Incident</option><option>Achievement</option><option>Attendance</option><option>Warning</option></select>
+            </div>
+            <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText" placeholder="Describe the observation, incident, or performance note..."></textarea></div>
+          </div>
+          <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
+          <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
+        </div>
+      </section>
+
       <section class="page-section" id="a-requests">
         <div class="filter-tabs" style="margin-bottom:20px;">
           <button class="filter-tab active" data-reqfilter="all">All</button>
@@ -373,7 +367,6 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </section>
 
-      <!-- ADMIN SALARY & RAISES -->
       <section class="page-section" id="a-salary">
         <div class="grid g4" style="margin-bottom:20px;">
           <div class="card stat-card"><div class="stat-label">Total Monthly Payroll</div><div class="stat-val" id="statPayroll">EGP 0</div></div>
@@ -395,12 +388,11 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </section>
 
-      <!-- ADMIN VACATIONS -->
       <section class="page-section" id="a-vacations">
         <div class="grid g3" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Vacation Days Allotted (Year)</div><div class="stat-val">5,208</div></div>
-          <div class="card stat-card"><div class="stat-label">Days Used So Far</div><div class="stat-val">2,014</div></div>
-          <div class="card stat-card"><div class="stat-label">Employees Currently On Leave</div><div class="stat-val">6</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Vacation Days Allotted (Year)</div><div class="stat-val" id="statVacAllotted">5,208</div></div>
+          <div class="card stat-card"><div class="stat-label">Days Used So Far</div><div class="stat-val" id="statVacUsed">2,014</div></div>
+          <div class="card stat-card"><div class="stat-label">Employees Currently On Leave</div><div class="stat-val" id="statEmployeesOnLeave">6</div></div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Employee Vacation Balances</h3></div>
@@ -408,24 +400,30 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </section>
 
-      <!-- ADMIN INSURANCE -->
       <section class="page-section" id="a-insurance">
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3>Company-wide Consumption Highlights</h3></div>
+          <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
+        </div>
         <div class="grid g4" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Claims (YTD)</div><div class="stat-val">142</div></div>
-          <div class="card stat-card"><div class="stat-label">Approved</div><div class="stat-val" style="color:var(--success)">118</div></div>
-          <div class="card stat-card"><div class="stat-label">Pending Review</div><div class="stat-val" style="color:var(--warning)">9</div></div>
-          <div class="card stat-card"><div class="stat-label">Total Reimbursed</div><div class="stat-val">EGP 1.24M</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Claims (YTD)</div><div class="stat-val" id="statClaimsYtd">142</div></div>
+          <div class="card stat-card"><div class="stat-label">Approved</div><div class="stat-val" id="statClaimsApproved" style="color:var(--success)">118</div></div>
+          <div class="card stat-card"><div class="stat-label">Pending Review</div><div class="stat-val" id="statClaimsPending" style="color:var(--warning)">9</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Reimbursed</div><div class="stat-val" id="statClaimsReimbursed">EGP 1.24M</div></div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3>Insurance Categories & Limits</h3><button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i class="fa-solid fa-plus"></i> Add Category</button></div>
+          <table><thead><tr><th>Category</th><th>Annual Limit</th><th>Actions</th></tr></thead><tbody id="categoriesTableBody"></tbody></table>
         </div>
         <div class="card">
           <div class="card-head"><h3>Claims History</h3></div>
-          <table><thead><tr><th>Employee</th><th>Claim Type</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="insuranceTableBody"></tbody></table>
+          <table><thead><tr><th>Employee</th><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="insuranceTableBody"></tbody></table>
         </div>
       </section>
     </div>
   </main>
 </div>
 
-<!-- ============ EMPLOYEE APP ============ -->
 <div class="app" id="employee-app">
   <aside class="sidebar" id="empSidebar">
     <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
@@ -454,7 +452,6 @@ tbody tr:hover{background:var(--surface2);}
       </div>
     </div>
     <div class="page">
-      <!-- EMPLOYEE DASHBOARD -->
       <section class="page-section active" id="e-dashboard">
         <div class="grid g4" style="margin-bottom:20px;">
           <div class="card stat-card"><div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-umbrella-beach"></i></div><div class="stat-val">14</div><div class="stat-label">Vacation Days Left</div></div>
@@ -462,7 +459,7 @@ tbody tr:hover{background:var(--surface2);}
           <div class="card stat-card"><div class="stat-icon" style="background:rgba(14,165,233,.12);color:var(--info);"><i class="fa-solid fa-house-laptop"></i></div><div class="stat-val">2</div><div class="stat-label">WFH Days This Month</div></div>
           <div class="card stat-card"><div class="stat-icon" style="background:rgba(245,158,11,.12);color:var(--warning);"><i class="fa-solid fa-briefcase-medical"></i></div><div class="stat-val">1</div><div class="stat-label">Pending Insurance Claim</div></div>
         </div>
-        <div class="grid g-2-1">
+        <div class="grid g-2-1" style="margin-bottom:20px;">
           <div class="card">
             <div class="card-head"><h3>My Requests Timeline</h3></div>
             <ul class="timeline" id="empTimeline"></ul>
@@ -478,9 +475,12 @@ tbody tr:hover{background:var(--surface2);}
             <button class="btn btn-fill" style="width:100%;margin-top:10px;" onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> View Salary History</button>
           </div>
         </div>
+        <div class="card">
+          <div class="card-head"><h3>Medical Insurance Highlights</h3><a class="link" onclick="showSection('e-insurance','employee')">View details</a></div>
+          <div class="grid g3" id="empDashInsuranceCategoryChips"></div>
+        </div>
       </section>
 
-      <!-- EMPLOYEE SALARY -->
       <section class="page-section" id="e-salary">
         <div class="grid g-2-1" style="margin-bottom:20px;">
           <div class="card">
@@ -501,7 +501,6 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </section>
 
-      <!-- EMPLOYEE VACATIONS -->
       <section class="page-section" id="e-vacations">
         <div class="grid g3" style="margin-bottom:20px;">
           <div class="card stat-card"><div class="stat-label">Annual Entitlement</div><div class="stat-val">21 days</div></div>
@@ -525,36 +524,37 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </section>
 
-      <!-- EMPLOYEE INSURANCE -->
       <section class="page-section" id="e-insurance">
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3>My Insurance Consumption</h3></div>
+          <div class="info-item" style="margin-bottom:16px;"><span>Total Consumption</span><b id="empInsuranceTotalConsumed">—</b></div>
+          <div class="grid g3" id="empInsuranceCategoryGrid"></div>
+        </div>
         <div class="grid g-2-1" style="margin-bottom:20px;">
           <div class="card">
             <div class="card-head"><h3>My Insurance Plan</h3><span class="badge-pill pill-success"><i class="fa-solid fa-check"></i> Active</span></div>
             <div class="info-grid">
               <div class="info-item"><span>Plan</span><b>Premium Family Care</b></div>
               <div class="info-item"><span>Provider</span><b>Allianz Egypt</b></div>
-              <div class="info-item"><span>Annual Limit</span><b>EGP 250,000</b></div>
-              <div class="info-item"><span>Used This Year</span><b>EGP 38,500</b></div>
             </div>
-            <div class="progress-bar" style="margin-top:16px;"><span style="width:15%;"></span></div>
           </div>
           <div class="card">
             <div class="card-head"><h3>Submit a Claim</h3></div>
-            <div class="form-field" style="margin-bottom:12px;"><label>Claim Type</label><select id="claimType"><option>Outpatient</option><option>Inpatient</option><option>Dental</option><option>Optical</option><option>Pharmacy</option></select></div>
+            <div class="form-field" style="margin-bottom:12px;"><label>Category</label><select id="claimCategory"></select></div>
             <div class="form-field" style="margin-bottom:12px;"><label>Amount (EGP)</label><input type="number" id="claimAmount" placeholder="e.g. 1500"></div>
+            <div class="form-field" style="margin-bottom:12px;"><label>Supporting Document (optional)</label><input type="file" id="claimDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
             <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i class="fa-solid fa-file-medical"></i> Submit Claim</button>
           </div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Claims History</h3></div>
-          <table><thead><tr><th>Claim Type</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody id="empInsuranceBody"></tbody></table>
+          <table><thead><tr><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Document</th></tr></thead><tbody id="empInsuranceBody"></tbody></table>
         </div>
       </section>
     </div>
   </main>
 </div>
 
-<!-- ============ MODALS ============ -->
 <div class="modal-overlay" id="employeeModal">
   <div class="modal wide">
     <div class="modal-head"><h3 id="empModalTitle">Add Employee</h3><button class="modal-close" onclick="closeModal('employeeModal')"><i class="fa-solid fa-xmark"></i></button></div>
@@ -571,14 +571,6 @@ tbody tr:hover{background:var(--surface2);}
       </div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button class="btn btn-fill" onclick="saveEmployee()"><i class="fa-solid fa-check"></i> Save Employee</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="viewProfileModal">
-  <div class="modal wide">
-    <div class="modal-head"><h3>Employee Profile</h3><button class="modal-close" onclick="closeModal('viewProfileModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body" id="profileModalBody"></div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('viewProfileModal')">Close</button></div>
   </div>
 </div>
 
@@ -622,24 +614,73 @@ tbody tr:hover{background:var(--surface2);}
   </div>
 </div>
 
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="categoryModalTitle">Add Category</h3><button class="modal-close" onclick="closeModal('categoryModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:14px;"><label>Category Name</label><input id="fCatName" placeholder="e.g. Dental"></div>
+      <div class="form-field"><label>Annual Limit (EGP)</label><input type="number" id="fCatLimit" placeholder="10000"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('categoryModal')">Cancel</button><button class="btn btn-fill" onclick="saveCategory()"><i class="fa-solid fa-check"></i> Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="behalfVacationModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Submit Vacation / WFH on Behalf</h3><button class="modal-close" onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full"><label>Type</label>
+          <select id="bvType"><option>Annual Leave</option><option>Sick Leave</option><option>Work From Home</option><option>Unpaid Leave</option></select>
+        </div>
+        <div class="form-field"><label>Start Date</label><input type="date" id="bvStart"></div>
+        <div class="form-field"><label>End Date</label><input type="date" id="bvEnd"></div>
+        <div class="form-field"><label>Days</label><input type="number" id="bvDays" value="1" min="1"></div>
+        <div class="form-field"><label>Status</label>
+          <select id="bvStatus"><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option></select>
+        </div>
+        <div class="form-field full"><label>Record Date (optional, for backdating historical records)</label><input type="date" id="bvRecordDate"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfVacationModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfVacation()"><i class="fa-solid fa-check"></i> Submit</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="behalfClaimModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Submit Insurance Claim on Behalf</h3><button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full"><label>Category</label><select id="bcCategory"></select></div>
+        <div class="form-field"><label>Provider</label><input id="bcProvider" placeholder="e.g. Allianz Egypt"></div>
+        <div class="form-field"><label>Amount (EGP)</label><input type="number" id="bcAmount" placeholder="e.g. 1500"></div>
+        <div class="form-field"><label>Status</label>
+          <select id="bcStatus"><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option></select>
+        </div>
+        <div class="form-field"><label>Record Date (optional, for backdating historical records)</label><input type="date" id="bcRecordDate"></div>
+        <div class="form-field full"><label>Supporting Document (optional)</label><input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfClaimModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfClaim()"><i class="fa-solid fa-check"></i> Submit</button></div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
-/* ============ LIVE DATA (populated from backend via api.js) ============ */
 let employees = [];
 let requests = [];
 let insuranceClaims = [];
 let empVacationHistory = [];
 let empInsuranceHistory = [];
-let currentLoggedInEmployee = null; // full employee record for the logged-in employee, set after login
-let allSalaryHistory = []; // admin-only: full company-wide salary history, loaded from backend
-
+let currentLoggedInEmployee = null;
+let allSalaryHistory = [];
+let insuranceCategories = [];
+let insuranceConsumption = [];
+let currentEditCategoryId = null;
 let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
-/* ============ AUTH - Sign in with Google OR email/password (test) ============ */
-function fillLogin(email){
-  document.getElementById('loginEmail').value = email;
-  document.getElementById('loginPassword').value = 'demo1234';
-}
+
+function fillLogin(email){ document.getElementById('loginEmail').value = email; document.getElementById('loginPassword').value = 'demo1234'; }
 
 async function handleLoginSuccess(data){
   document.getElementById('login-screen').style.display = 'none';
@@ -656,94 +697,71 @@ async function handleLoginSuccess(data){
       await loadEmployeeData();
     }
     initCharts();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
 function handleLoginError(err){
   const errBox = document.getElementById('loginErr');
   errBox.style.display = 'flex';
   errBox.querySelector('span').textContent = err.message || 'Sign-in failed. Please try again.';
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-  initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
-});
-
+window.addEventListener('DOMContentLoaded', () => { initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError); });
 document.getElementById('loginForm').addEventListener('submit', async function(e){
   e.preventDefault();
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   document.getElementById('loginErr').style.display = 'none';
-
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';
-  try{
-    const data = await Api.loginWithPassword(email, password);
-    await handleLoginSuccess(data);
-  } catch(err){
-    handleLoginError(err);
-  } finally {
-    submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
-  }
+  try{ const data = await Api.loginWithPassword(email, password); await handleLoginSuccess(data); }
+  catch(err){ handleLoginError(err); }
+  finally { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In'; }
 });
 
 function normalizeEmployee(e, salaryHistoryForEmp){
-  return {
-    ...e,
-    role: e.job_role,
-    join: e.join_date,
-    vacTotal: Number(e.vac_total),
-    vacUsed: Number(e.vac_used),
-    nextRaise: e.next_raise,
-    salary: Number(e.salary),
-    salaryHistory: (salaryHistoryForEmp || []).map(h=>({
-      date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary),
-      pct: h.pct_change, reason: h.reason,
-    })),
-  };
+  return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
+    nextRaise: e.next_raise, salary: Number(e.salary),
+    salaryHistory: (salaryHistoryForEmp || []).map(h=>({ date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary), pct: h.pct_change, reason: h.reason })) };
 }
 function normalizeRequest(r){ return { ...r, emp: r.employee_name }; }
-function normalizeClaim(c){ return { ...c, emp: c.employee_name, type: c.claim_type }; }
+function normalizeClaim(c){ return { ...c, emp: c.employee_name }; }
 
 async function loadAdminData(){
   try{
-    const [rawEmployees, rawRequests, rawClaims, rawSalaryHistory] = await Promise.all([
-      Api.getEmployees(), Api.getRequests(), Api.getInsuranceClaims(), Api.getSalaryHistory()
+    const [rawEmployees, rawRequests, rawClaims, rawSalaryHistory, rawCategories, rawConsumption] = await Promise.all([
+      Api.getEmployees(), Api.getRequests(), Api.getInsuranceClaims(), Api.getSalaryHistory(), Api.getInsuranceCategories(), Api.getInsuranceConsumption()
     ]);
     allSalaryHistory = rawSalaryHistory;
     employees = rawEmployees.map(e => normalizeEmployee(e, rawSalaryHistory.filter(h=>String(h.employee_id)===String(e.id))));
     requests = rawRequests.map(normalizeRequest);
     insuranceClaims = rawClaims.map(normalizeClaim);
+    insuranceCategories = rawCategories;
+    insuranceConsumption = rawConsumption;
     renderAdminPortal();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
 async function loadEmployeeData(){
   try{
     const myId = TokenStore.getEmployeeId();
-    const [rawEmployees, rawSalaryHistory, rawVacHistory, rawClaims] = await Promise.all([
-      Api.getEmployees(), Api.getSalaryHistory(myId), Api.getVacationHistory(), Api.getInsuranceClaims()
+    const [rawEmployees, rawSalaryHistory, rawVacHistory, rawClaims, rawCategories, rawConsumption] = await Promise.all([
+      Api.getEmployees(), Api.getSalaryHistory(myId), Api.getVacationHistory(), Api.getInsuranceClaims(), Api.getInsuranceCategories(), Api.getInsuranceConsumption()
     ]);
     employees = rawEmployees.map(e => normalizeEmployee(e, rawSalaryHistory.filter(h=>String(h.employee_id)===String(e.id))));
     currentLoggedInEmployee = employees.find(e => String(e.id) === String(myId)) || employees[0];
     window.LOGGED_IN_EMPLOYEE_ID = currentLoggedInEmployee.id;
     empVacationHistory = rawVacHistory.map(v => ({ type: v.type, dates: `${v.start_date} to ${v.end_date}`, days: v.days, status: v.status }));
-    empInsuranceHistory = rawClaims.map(c => ({ type: c.claim_type, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status }));
+    empInsuranceHistory = rawClaims.map(c => ({ category: c.category, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status, document_url: c.document_url }));
+    insuranceCategories = rawCategories;
+    insuranceConsumption = rawConsumption;
     document.querySelector('#employee-app .user-mini .name').textContent = currentLoggedInEmployee.name;
     document.querySelector('#employee-app .user-mini .role').textContent = currentLoggedInEmployee.role;
+    populateClaimCategoryOptions();
     renderEmployeePortal();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
 function logout(){
   Api.logout();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
+  insuranceCategories = []; insuranceConsumption = [];
   document.getElementById('admin-app').classList.remove('active');
   document.getElementById('employee-app').classList.remove('active');
   document.getElementById('login-screen').style.display = 'flex';
@@ -751,53 +769,35 @@ function logout(){
   document.getElementById('loginErr').style.display = 'none';
   document.getElementById('loginForm').reset();
 }
-
 function toggleSidebar(id){ document.getElementById(id).classList.toggle('open'); }
-
-/* ============ NAVIGATION ============ */
-document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{
-  el.addEventListener('click',()=>showSection(el.dataset.page,'admin'));
-});
-document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{
-  el.addEventListener('click',()=>showSection(el.dataset.page,'employee'));
-});
-document.querySelectorAll('[data-goto]').forEach(el=>{
-  el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin'));
-});
-
+document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'admin')); });
+document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'employee')); });
+document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
 const titles = {
   'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
   'a-employees':['Employees',"Manage employee profiles and information."],
   'a-requests':['Pending Requests',"Review and action employee requests."],
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
-  'a-insurance':['Medical Insurance',"Manage claims and coverage history."],
+  'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-vacations':['Vacations','Your balance, requests and history.'],
-  'e-insurance':['Medical Insurance','Your plan, claims and history.'],
+  'e-insurance':['Medical Insurance','Your plan, category limits and claims history.'],
 };
-
 function showSection(pageId, portal){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
   document.querySelectorAll(appSel+' .page-section').forEach(s=>s.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
   document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>n.classList.toggle('active', n.dataset.page===pageId));
   const t = titles[pageId];
-  if(t){
-    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
-    document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1];
-  }
+  if(t){ document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0]; document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1]; }
   document.getElementById(portal==='admin'?'adminSidebar':'empSidebar').classList.remove('open');
 }
-
-/* ============ THEME ============ */
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('hrflow-theme', theme);
-  document.querySelectorAll('.theme-fab i, #adminThemeToggle i, #empThemeToggle i').forEach(i=>{
-    i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-  });
+  document.querySelectorAll('.theme-fab i, #adminThemeToggle i, #empThemeToggle i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
 }
 const savedTheme = localStorage.getItem('hrflow-theme') || 'light';
 applyTheme(savedTheme);
@@ -808,8 +808,6 @@ applyTheme(savedTheme);
     setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
   });
 });
-
-/* ============ TOAST ============ */
 function toast(msg, icon='fa-solid fa-circle-check'){
   const wrap = document.getElementById('toastWrap');
   const el = document.createElement('div');
@@ -818,108 +816,143 @@ function toast(msg, icon='fa-solid fa-circle-check'){
   wrap.appendChild(el);
   setTimeout(()=>el.remove(), 3200);
 }
-
-/* ============ RENDER: ADMIN ============ */
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
 function fmtMoney(n){ return 'EGP ' + Number(n).toLocaleString(); }
 function statusPill(status){
   const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
 }
-
+function insuranceStatusBadge(status){
+  if(status==='limit_reached') return '<span class="badge-pill pill-danger"><i class="fa-solid fa-triangle-exclamation"></i> Limit reached</span>';
+  if(status==='approaching') return '<span class="badge-pill pill-warning"><i class="fa-solid fa-clock"></i> Approaching limit</span>';
+  return '<span class="badge-pill pill-success"><i class="fa-solid fa-check"></i> OK</span>';
+}
+function insuranceProgressColor(status){
+  if(status==='limit_reached') return 'var(--danger)';
+  if(status==='approaching') return 'var(--warning)';
+  return 'var(--accent)';
+}
+function renderCategoryChip(cat){
+  return `<div class="card" style="padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+      <b style="font-size:13px;">${cat.category}</b>${insuranceStatusBadge(cat.status)}
+    </div>
+    <div style="font-size:12.5px;color:var(--text2);margin-bottom:8px;">${fmtMoney(cat.consumed)} of ${fmtMoney(cat.limit)}</div>
+    <div class="progress-bar"><span style="width:${Math.min(cat.pct_used,100)}%;background:${insuranceProgressColor(cat.status)};"></span></div>
+  </div>`;
+}
+function aggregateCompanyConsumption(){
+  const byCat = {};
+  insuranceConsumption.forEach(emp=>{
+    emp.categories.forEach(cat=>{
+      if(!byCat[cat.category]) byCat[cat.category] = {category:cat.category, consumed:0, limit:0};
+      byCat[cat.category].consumed += cat.consumed;
+      byCat[cat.category].limit += cat.limit;
+    });
+  });
+  return Object.values(byCat).map(c=>{
+    const pct = c.limit>0 ? Math.round((c.consumed/c.limit)*1000)/10 : 0;
+    const status = (c.limit>0 && c.consumed>=c.limit) ? 'limit_reached' : ((c.limit>0 && pct>=80) ? 'approaching' : 'ok');
+    return {...c, pct_used: pct, status};
+  });
+}
+function renderDashboardInsuranceHighlights(){
+  const container = document.getElementById('dashInsuranceCategoryChips');
+  if(!container) return;
+  const agg = aggregateCompanyConsumption();
+  container.innerHTML = agg.map(renderCategoryChip).join('') || '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>';
+}
+function renderAdminInsuranceHighlights(){
+  const container = document.getElementById('adminInsuranceCategoryHighlights');
+  if(!container) return;
+  const agg = aggregateCompanyConsumption();
+  container.innerHTML = agg.map(renderCategoryChip).join('') || '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>';
+}
+function renderCategoriesTable(){
+  const body = document.getElementById('categoriesTableBody');
+  if(!body) return;
+  body.innerHTML = insuranceCategories.map(c=>`<tr><td>${c.name}</td><td>${fmtMoney(c.annual_limit)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="openCategoryModal(${c.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="deleteCategory(${c.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-list"></i><p>No categories configured yet.</p></div></td></tr>`;
+}
+function openCategoryModal(id=null){
+  currentEditCategoryId = id;
+  document.getElementById('categoryModalTitle').textContent = id ? 'Edit Category' : 'Add Category';
+  if(id){ const c = insuranceCategories.find(x=>String(x.id)===String(id)); document.getElementById('fCatName').value = c.name; document.getElementById('fCatLimit').value = c.annual_limit; }
+  else { document.getElementById('fCatName').value = ''; document.getElementById('fCatLimit').value = ''; }
+  document.getElementById('categoryModal').classList.add('active');
+}
+async function saveCategory(){
+  const name = document.getElementById('fCatName').value.trim();
+  const limit = Number(document.getElementById('fCatLimit').value);
+  if(!name || !limit){ toast('Please fill in category name and annual limit.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    if(currentEditCategoryId){ await Api.updateInsuranceCategory(currentEditCategoryId, {name, annual_limit: limit}); toast('Category updated.'); }
+    else { await Api.createInsuranceCategory({name, annual_limit: limit}); toast('Category added.'); }
+    closeModal('categoryModal');
+    await loadAdminData();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+async function deleteCategory(id){
+  try{ await Api.deleteInsuranceCategory(id); toast('Category removed.', 'fa-solid fa-trash'); await loadAdminData(); }
+  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+function populateClaimCategoryOptions(){
+  const sel = document.getElementById('claimCategory');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = insuranceCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  if(current) sel.value = current;
+}
 function renderAdminPortal(){
   document.getElementById('statEmployees').textContent = 248;
   const pendingCount = requests.filter(r=>r.status==='Pending').length;
   document.getElementById('statPending').textContent = pendingCount;
   document.getElementById('reqBadge').textContent = pendingCount;
-
   const raisesList = document.getElementById('upcomingRaisesList');
-  raisesList.innerHTML = employees.slice().sort((a,b)=>new Date(a.nextRaise)-new Date(b.nextRaise)).slice(0,5).map(e=>`
-    <li><div class="ic" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-arrow-trend-up"></i></div>
-    <div class="txt"><strong>${e.name}</strong><p>${e.role} • Raise due ${e.nextRaise}</p></div></li>`).join('');
-
+  raisesList.innerHTML = employees.slice().sort((a,b)=>new Date(a.nextRaise)-new Date(b.nextRaise)).slice(0,5).map(e=>`<li><div class="ic" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-arrow-trend-up"></i></div><div class="txt"><strong>${e.name}</strong><p>${e.role} • Raise due ${e.nextRaise}</p></div></li>`).join('');
   const dashBody = document.getElementById('dashPendingBody');
-  dashBody.innerHTML = requests.filter(r=>r.status==='Pending').slice(0,5).map(r=>`
-    <tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.date}</td><td>${statusPill(r.status)}</td>
-    <td><button class="icon-action" onclick="showSection('a-requests','admin')"><i class="fa-solid fa-arrow-right"></i></button></td></tr>`).join('');
-
-  renderEmployeesTable();
-  renderRequestsTable('all');
-  renderVacationBalances();
-  renderInsuranceTable();
-  renderSalaryPage();
+  dashBody.innerHTML = requests.filter(r=>r.status==='Pending').slice(0,5).map(r=>`<tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.date}</td><td>${statusPill(r.status)}</td><td><button class="icon-action" onclick="showSection('a-requests','admin')"><i class="fa-solid fa-arrow-right"></i></button></td></tr>`).join('');
+  renderEmployeesTable(); renderRequestsTable('all'); renderVacationBalances(); renderInsuranceTable(); renderCategoriesTable(); renderAdminInsuranceHighlights(); renderDashboardInsuranceHighlights(); renderSalaryPage();
 }
-
 function renderEmployeesTable(filter=''){
   const body = document.getElementById('employeesTableBody');
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>`
-    <tr>
-      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
-      <td>${e.dept}</td><td>${e.role}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td>
-      <td>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</td><td>${statusPill(e.status)}</td>
-      <td style="display:flex;gap:6px;">
-        <button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button>
-        <button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
-        <button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button>
-      </td>
-    </tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>`<tr><td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.dept}</td><td>${e.role}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
 }
 document.getElementById('empSearch').addEventListener('input', e=>renderEmployeesTable(e.target.value));
-
 function renderRequestsTable(filter){
   const body = document.getElementById('requestsTableBody');
   const list = filter==='all' ? requests : requests.filter(r=>r.type===filter);
-  body.innerHTML = list.map(r=>`
-    <tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.details}</td><td>${r.date}</td><td>${statusPill(r.status)}</td>
-    <td style="display:flex;gap:6px;">
-      ${r.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionRequest(${r.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
-      <button class="btn btn-sm btn-danger-outline" onclick="actionRequest(${r.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>`
-      : `<span style="color:var(--text3);font-size:12.5px;">No actions</span>`}
-    </td></tr>`).join('') || `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No requests in this category.</p></div></td></tr>`;
+  body.innerHTML = list.map(r=>`<tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.details}</td><td>${r.date}</td><td>${statusPill(r.status)}</td><td style="display:flex;gap:6px;">${r.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionRequest(${r.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button><button class="btn btn-sm btn-danger-outline" onclick="actionRequest(${r.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : `<span style="color:var(--text3);font-size:12.5px;">No actions</span>`}</td></tr>`).join('') || `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No requests in this category.</p></div></td></tr>`;
 }
 document.querySelectorAll('[data-reqfilter]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('[data-reqfilter]').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    renderRequestsTable(btn.dataset.reqfilter);
-  });
+  btn.addEventListener('click', ()=>{ document.querySelectorAll('[data-reqfilter]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRequestsTable(btn.dataset.reqfilter); });
 });
 async function actionRequest(id, status){
-  try{
-    await Api.actionRequest(id, status);
-    toast(`Request marked as ${status}.`, status==='Approved'?'fa-solid fa-circle-check':'fa-solid fa-circle-xmark');
-    await loadAdminData();
-  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  try{ await Api.actionRequest(id, status); toast(`Request marked as ${status}.`, status==='Approved'?'fa-solid fa-circle-check':'fa-solid fa-circle-xmark'); await loadAdminData(); }
+  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
 function renderVacationBalances(){
   const body = document.getElementById('vacationBalanceBody');
-  body.innerHTML = employees.map(e=>{
-    const pct = Math.round((e.vacUsed/e.vacTotal)*100);
-    return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${e.vacTotal}</td><td>${e.vacUsed}</td><td>${e.vacTotal-e.vacUsed}</td>
-    <td style="min-width:140px;"><div class="progress-bar"><span style="width:${pct}%;"></span></div></td></tr>`;
-  }).join('');
+  body.innerHTML = employees.map(e=>{ const pct = Math.round((e.vacUsed/e.vacTotal)*100); return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${e.vacTotal}</td><td>${e.vacUsed}</td><td>${e.vacTotal-e.vacUsed}</td><td style="min-width:140px;"><div class="progress-bar"><span style="width:${pct}%;"></span></div></td></tr>`; }).join('');
+  document.getElementById('statVacAllotted').textContent = employees.reduce((s,e)=>s+e.vacTotal,0).toLocaleString();
+  document.getElementById('statVacUsed').textContent = employees.reduce((s,e)=>s+e.vacUsed,0).toLocaleString();
+  document.getElementById('statEmployeesOnLeave').textContent = employees.filter(e=>e.status==='On Leave').length;
+  document.getElementById('statOnLeave').textContent = employees.filter(e=>e.status==='On Leave').length;
 }
-
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
-  body.innerHTML = insuranceClaims.map(c=>`
-    <tr><td class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td><td>${c.claim_type}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td>
-    <td style="display:flex;gap:6px;">
-      ${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button>
-      <button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}
-    </td></tr>`).join('');
+  body.innerHTML = insuranceClaims.map(c=>`<tr><td class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td style="display:flex;gap:6px;">${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td></tr>`).join('');
+  document.getElementById('statClaimsYtd').textContent = insuranceClaims.length;
+  document.getElementById('statClaimsApproved').textContent = insuranceClaims.filter(c=>c.status==='Approved').length;
+  document.getElementById('statClaimsPending').textContent = insuranceClaims.filter(c=>c.status==='Pending').length;
+  document.getElementById('statClaimsReimbursed').textContent = fmtMoney(insuranceClaims.filter(c=>c.status==='Approved').reduce((s,c)=>s+Number(c.amount),0));
+  document.getElementById('statOpenClaims').textContent = insuranceClaims.filter(c=>c.status==='Pending').length;
+  document.getElementById('statClaimsTotal').innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${fmtMoney(insuranceClaims.filter(c=>c.status==='Approved').reduce((s,c)=>s+Number(c.amount),0))} total`;
 }
 async function actionClaim(claimId, status){
-  try{
-    await Api.actionInsuranceClaim(claimId, status);
-    toast(`Claim ${status.toLowerCase()}.`);
-    await loadAdminData();
-  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  try{ await Api.actionInsuranceClaim(claimId, status); toast(`Claim ${status.toLowerCase()}.`); await loadAdminData(); }
+  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
-/* ============ SALARY & RAISES (ADMIN) ============ */
 function renderSalaryPage(filter=''){
   const f = filter.toLowerCase();
   const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
@@ -933,32 +966,18 @@ function renderSalaryPage(filter=''){
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
   const upcoming = employees.filter(e=>{ const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
-
   const body = document.getElementById('salaryTableBody');
-  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>{
-    const last = e.salaryHistory.length ? e.salaryHistory[e.salaryHistory.length-1] : null;
-    return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td>
-    <td>${last ? `${last.date} (${last.pct})` : '<span style="color:var(--text3);">No history</span>'}</td>
-    <td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`;
-  }).join('');
-
+  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>{ const last = e.salaryHistory.length ? e.salaryHistory[e.salaryHistory.length-1] : null; return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${last ? `${last.date} (${last.pct})` : '<span style="color:var(--text3);">No history</span>'}</td><td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`; }).join('');
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
-  histBody.innerHTML = sortedHist.map(h=>`
-    <tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtMoney(h.prev)}</td><td>${fmtMoney(h.next)}</td>
-    <td><span class="badge-pill pill-success">${h.pct}</span></td><td>${h.reason}</td></tr>`).join('') ||
-    `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raises recorded yet.</p></div></td></tr>`;
+  histBody.innerHTML = sortedHist.map(h=>`<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtMoney(h.prev)}</td><td>${fmtMoney(h.next)}</td><td><span class="badge-pill pill-success">${h.pct}</span></td><td>${h.reason}</td></tr>`).join('') || `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raises recorded yet.</p></div></td></tr>`;
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
-
 function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
   sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
-  document.getElementById('rMode').value='pct';
-  document.getElementById('rValue').value='';
-  document.getElementById('rDate').value = '2026-08-02';
-  document.getElementById('rReason').value='Annual performance raise';
+  document.getElementById('rMode').value='pct'; document.getElementById('rValue').value=''; document.getElementById('rDate').value = '2026-08-02'; document.getElementById('rReason').value='Annual performance raise';
   onRaiseModeChange();
   document.getElementById('raisePreview').classList.remove('show');
   document.getElementById('raiseModal').classList.add('active');
@@ -997,30 +1016,19 @@ async function applyRaise(){
   const date = document.getElementById('rDate').value;
   const reason = document.getElementById('rReason').value;
   if(!emp || !value || !date){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
-
   try{
     const result = await Api.applyRaise({ employee_id: empId, mode, value, effective_date: date, reason });
     closeModal('raiseModal');
     const pctStr = (result.pct_change>=0?'+':'') + result.pct_change.toFixed(1) + '%';
     toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtMoney(result.new_salary)}.`);
     await loadAdminData();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
-/* ============ EMPLOYEE MODAL ============ */
 function openEmployeeModal(id=null){
   currentEditId = id;
   document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
-  if(id){
-    const e = employees.find(x=>x.id===id);
-    fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role;
-    fEmpSalary.value=e.salary; fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
-  } else {
-    ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value='');
-    fEmpSalary.value=''; fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
-  }
+  if(id){ const e = employees.find(x=>x.id===id); fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role; fEmpSalary.value=e.salary; fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed; }
+  else { ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value=''); fEmpSalary.value=''; fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering'; }
   document.getElementById('employeeModal').classList.add('active');
 }
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
@@ -1028,168 +1036,152 @@ async function saveEmployee(){
   const name = document.getElementById('fEmpName').value.trim();
   if(!name){ toast('Please enter employee name.','fa-solid fa-triangle-exclamation'); return; }
   const vacTotal = Number(fEmpVac.value)||21;
-
   try{
     if(currentEditId){
-      const updates = {
-        name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value,
-        salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value,
-        vac_total: vacTotal,
-      };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal };
       await Api.updateEmployee(currentEditId, updates);
       toast('Employee updated successfully.');
     } else {
-      const payload = {
-        name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value,
-        salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value,
-        vac_total: vacTotal, next_raise: '2027-01-01',
-      };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01' };
       await Api.createEmployee(payload);
       toast('New employee added.');
     }
     closeModal('employeeModal');
     await loadAdminData();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-function askDelete(id){
-  currentDeleteId = id;
-  document.getElementById('delEmpName').textContent = employees.find(e=>e.id===id).name;
-  document.getElementById('confirmModal').classList.add('active');
-}
+function askDelete(id){ currentDeleteId = id; document.getElementById('delEmpName').textContent = employees.find(e=>e.id===id).name; document.getElementById('confirmModal').classList.add('active'); }
 async function confirmDelete(){
-  try{
-    await Api.deleteEmployee(currentDeleteId);
-    closeModal('confirmModal');
-    toast('Employee removed.','fa-solid fa-trash');
-    await loadAdminData();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  try{ await Api.deleteEmployee(currentDeleteId); closeModal('confirmModal'); toast('Employee removed.','fa-solid fa-trash'); await loadAdminData(); }
+  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-function viewProfile(id){
+let currentDetailEmployeeId = null;
+
+async function viewProfile(id){
+  currentDetailEmployeeId = id;
+  showSection('a-employee-detail','admin');
   const e = employees.find(x=>x.id===id);
-  document.getElementById('profileModalBody').innerHTML = `
-    <div class="profile-head"><div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div></div>
-    <div class="info-grid">
-      <div class="info-item"><span>Email</span><b>${e.email}</b></div>
-      <div class="info-item"><span>Status</span><b>${e.status}</b></div>
-      <div class="info-item"><span>Join Date</span><b>${e.join}</b></div>
-      <div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div>
-      <div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div>
-      <div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>
-    </div>`;
-  document.getElementById('viewProfileModal').classList.add('active');
+  document.getElementById('detailProfileHead').innerHTML = `<div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div>`;
+  document.getElementById('detailInfoGrid').innerHTML = `<div class="info-item"><span>Email</span><b>${e.email}</b></div><div class="info-item"><span>Status</span><b>${e.status}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
+  const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(id));
+  document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
+  document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
+  try{
+    const [vacHistory, claims, notes] = await Promise.all([
+      Api.getVacationHistory(id),
+      Api.getInsuranceClaims(),
+      Api.getEmployeeNotes(id),
+    ]);
+    document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v=>`<tr><td>${v.type}</td><td>${v.start_date} to ${v.end_date}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><p>No vacation records yet.</p></div></td></tr>`;
+    const empClaims = claims.filter(c=>String(c.employee_id)===String(id));
+    document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c=>`<tr><td>${c.category}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
+    renderNotesList(notes);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
-/* ============ RENDER: EMPLOYEE PORTAL ============ */
+function renderNotesList(notes){
+  const list = document.getElementById('detailNotesList');
+  const catIcons = {General:'fa-solid fa-note-sticky',Performance:'fa-solid fa-chart-line',Incident:'fa-solid fa-triangle-exclamation',Achievement:'fa-solid fa-trophy',Attendance:'fa-solid fa-calendar-check',Warning:'fa-solid fa-flag'};
+  const catColors = {General:'accent',Performance:'success',Incident:'danger',Achievement:'success',Attendance:'info',Warning:'warning'};
+  list.innerHTML = notes.map(n=>{
+    const color = catColors[n.category] || 'accent';
+    return `<li><div class="ic" style="background:rgba(99,102,241,.12);color:var(--${color});"><i class="${catIcons[n.category]||'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+  }).join('') || '<li><div class="empty-state"><i class="fa-solid fa-note-sticky"></i><p>No notes recorded yet.</p></div></li>';
+}
+
+async function saveEmployeeNote(){
+  const date = document.getElementById('fNoteDate').value;
+  const category = document.getElementById('fNoteCategory').value;
+  const note = document.getElementById('fNoteText').value.trim();
+  if(!note){ toast('Please enter a note.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    await Api.createEmployeeNote(currentDetailEmployeeId, { date: date || null, category, note });
+    toast('Note added.');
+    document.getElementById('fNoteText').value = '';
+    const notes = await Api.getEmployeeNotes(currentDetailEmployeeId);
+    renderNotesList(notes);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+async function deleteEmployeeNote(noteId){
+  try{
+    await Api.deleteEmployeeNote(noteId);
+    toast('Note deleted.', 'fa-solid fa-trash');
+    const notes = await Api.getEmployeeNotes(currentDetailEmployeeId);
+    renderNotesList(notes);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+function renderEmployeeInsuranceHighlights(){
+  const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(window.LOGGED_IN_EMPLOYEE_ID));
+  const dashGrid = document.getElementById('empDashInsuranceCategoryChips');
+  const pageGrid = document.getElementById('empInsuranceCategoryGrid');
+  const totalEl = document.getElementById('empInsuranceTotalConsumed');
+  if(!consumption){ if(dashGrid) dashGrid.innerHTML = '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>'; if(pageGrid) pageGrid.innerHTML = '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>'; return; }
+  const chips = consumption.categories.map(renderCategoryChip).join('');
+  if(dashGrid) dashGrid.innerHTML = chips;
+  if(pageGrid) pageGrid.innerHTML = chips;
+  if(totalEl) totalEl.textContent = `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}`;
+}
 function renderEmployeePortal(){
   const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
   document.getElementById('empDashSalary').textContent = fmtMoney(emp.salary);
   document.getElementById('empPkgBase').textContent = fmtMoney(emp.salary) + ' / mo';
   document.getElementById('empPkgTotal').textContent = fmtMoney(emp.salary*12 + Math.round(emp.salary*1.5));
-
   const timeline = document.getElementById('empTimeline');
   timeline.innerHTML = [
     {ic:'fa-solid fa-umbrella-beach',c:'accent',t:'Vacation request submitted',d:'Aug 10 - Aug 14 • Pending approval'},
-    {ic:'fa-solid fa-briefcase-medical',c:'warning',t:'Optical insurance claim',d:'EGP 1,850 • Pending review'},
+    {ic:'fa-solid fa-briefcase-medical',c:'warning',t:'Medical insurance claim',d:'Pending review'},
     {ic:'fa-solid fa-sack-dollar',c:'success',t:'Annual raise applied',d: emp.salaryHistory.length ? `${emp.salaryHistory[emp.salaryHistory.length-1].pct} • ${emp.salaryHistory[emp.salaryHistory.length-1].date}` : 'No raises yet'},
     {ic:'fa-solid fa-house-laptop',c:'info',t:'Work from home approved',d:'May 20 - May 21, 2026'},
-  ].map(x=>`<li><div class="ic" style="background:var(--${x.c==='accent'?'accent-soft':'surface2'});color:var(--${x.c});">
-    <i class="${x.ic}"></i></div><div class="txt"><strong>${x.t}</strong><p>${x.d}</p></div></li>`).join('');
-
-  document.getElementById('salaryHistoryBody').innerHTML = emp.salaryHistory.slice().reverse().map(s=>`
-    <tr><td>${s.date}</td><td>${fmtMoney(s.prev)}</td><td>${fmtMoney(s.next)}</td><td><span class="badge-pill pill-success">${s.pct}</span></td><td>${s.reason}</td></tr>`).join('') ||
-    `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raise history yet.</p></div></td></tr>`;
-
-  document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v=>`
-    <tr><td>${v.type}</td><td>${v.dates}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('');
-
-  document.getElementById('empInsuranceBody').innerHTML = empInsuranceHistory.map(c=>`
-    <tr><td>${c.type}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('');
+  ].map(x=>`<li><div class="ic" style="background:var(--${x.c==='accent'?'accent-soft':'surface2'});color:var(--${x.c});"><i class="${x.ic}"></i></div><div class="txt"><strong>${x.t}</strong><p>${x.d}</p></div></li>`).join('');
+  document.getElementById('salaryHistoryBody').innerHTML = emp.salaryHistory.slice().reverse().map(s=>`<tr><td>${s.date}</td><td>${fmtMoney(s.prev)}</td><td>${fmtMoney(s.next)}</td><td><span class="badge-pill pill-success">${s.pct}</span></td><td>${s.reason}</td></tr>`).join('') || `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raise history yet.</p></div></td></tr>`;
+  document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v=>`<tr><td>${v.type}</td><td>${v.dates}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('');
+  document.getElementById('empInsuranceBody').innerHTML = empInsuranceHistory.map(c=>`<tr><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td>${c.document_url ? `<a href="${c.document_url}" target="_blank" class="icon-action" style="display:inline-flex;" title="View supporting document"><i class="fa-solid fa-paperclip"></i></a>` : '<span style="color:var(--text3);">—</span>'}</td></tr>`).join('');
+  renderEmployeeInsuranceHighlights();
 }
 async function submitVacation(){
   const type = document.getElementById('vacType').value;
   const start = document.getElementById('vacStart').value, end = document.getElementById('vacEnd').value;
   if(!start){ toast('Please select a start date.','fa-solid fa-triangle-exclamation'); return; }
-  try{
-    await Api.requestVacation({
-      employee_name: currentLoggedInEmployee.name,
-      leave_type: type,
-      start_date: start,
-      end_date: end || start,
-      days: 1,
-    });
-    toast('Request submitted for approval.');
-    await loadEmployeeData();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  try{ await Api.requestVacation({ employee_name: currentLoggedInEmployee.name, leave_type: type, start_date: start, end_date: end || start, days: 1 }); toast('Request submitted for approval.'); await loadEmployeeData(); }
+  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
+function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
 async function submitClaim(){
-  const type = document.getElementById('claimType').value;
+  const category = document.getElementById('claimCategory').value;
   const amount = Number(document.getElementById('claimAmount').value);
+  const fileInput = document.getElementById('claimDocument');
+  if(!category){ toast('Please select an insurance category.','fa-solid fa-triangle-exclamation'); return; }
   if(!amount){ toast('Please enter a claim amount.','fa-solid fa-triangle-exclamation'); return; }
+  let documentUrl = '';
+  const file = fileInput && fileInput.files[0];
+  if(file){
+    if(file.size > 2*1024*1024){ toast('Supporting document must be under 2MB.','fa-solid fa-triangle-exclamation'); return; }
+    try{ documentUrl = await readFileAsDataUrl(file); }
+    catch(e){ toast('Could not read the selected file.','fa-solid fa-triangle-exclamation'); return; }
+  }
   try{
-    await Api.submitInsuranceClaim({
-      employee_name: currentLoggedInEmployee.name,
-      claim_type: type,
-      provider: '—',
-      amount,
-    });
+    await Api.submitInsuranceClaim({ employee_name: currentLoggedInEmployee.name, category, provider: '—', amount, document_url: documentUrl });
     toast('Insurance claim submitted.');
     document.getElementById('claimAmount').value='';
+    if(fileInput) fileInput.value='';
     await loadEmployeeData();
-  } catch(err){
-    toast(err.message, 'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-
-/* ============ CHARTS ============ */
 window._charts = {};
-function chartColors(){
-  const dark = document.documentElement.getAttribute('data-theme')==='dark';
-  return { grid: dark?'#2a2e3d':'#e7e9f3', text: dark?'#9aa0b4':'#6b7280' };
-}
+function chartColors(){ const dark = document.documentElement.getAttribute('data-theme')==='dark'; return { grid: dark?'#2a2e3d':'#e7e9f3', text: dark?'#9aa0b4':'#6b7280' }; }
 function initCharts(){
   const c = chartColors();
   Chart.defaults.font.family = "'Inter',sans-serif";
   const ctx1 = document.getElementById('chartRequests');
-  window._charts.requests = new Chart(ctx1, {
-    type:'bar',
-    data:{ labels:['Feb','Mar','Apr','May','Jun','Jul'],
-      datasets:[
-        {label:'Vacation', data:[12,18,15,22,19,26], backgroundColor:'#6366f1', borderRadius:6},
-        {label:'WFH', data:[8,10,7,13,11,15], backgroundColor:'#0ea5e9', borderRadius:6},
-        {label:'Insurance', data:[5,7,9,6,8,9], backgroundColor:'#f59e0b', borderRadius:6},
-      ]},
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}},
-      scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } }
-  });
+  window._charts.requests = new Chart(ctx1, { type:'bar', data:{ labels:['Feb','Mar','Apr','May','Jun','Jul'], datasets:[ {label:'Vacation', data:[12,18,15,22,19,26], backgroundColor:'#6366f1', borderRadius:6}, {label:'WFH', data:[8,10,7,13,11,15], backgroundColor:'#0ea5e9', borderRadius:6}, {label:'Insurance', data:[5,7,9,6,8,9], backgroundColor:'#f59e0b', borderRadius:6}, ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}}, scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } } });
   const ctx2 = document.getElementById('chartDonut');
-  window._charts.donut = new Chart(ctx2, {
-    type:'doughnut',
-    data:{ labels:['Vacation','WFH','Insurance'], datasets:[{data:[45,28,27], backgroundColor:['#6366f1','#0ea5e9','#f59e0b'], borderWidth:0}]},
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}} }
-  });
+  window._charts.donut = new Chart(ctx2, { type:'doughnut', data:{ labels:['Vacation','WFH','Insurance'], datasets:[{data:[45,28,27], backgroundColor:['#6366f1','#0ea5e9','#f59e0b'], borderWidth:0}]}, options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}} } });
   const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
   const ctx3 = document.getElementById('chartSalary');
-  window._charts.salary = new Chart(ctx3, {
-    type:'line',
-    data:{ labels: emp.salaryHistory.map(s=>s.date.slice(0,7)),
-      datasets:[{label:'Salary (EGP)', data: emp.salaryHistory.map(s=>s.next), borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,.12)', fill:true, tension:.4, pointBackgroundColor:'#6366f1', pointRadius:5}]},
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } }
-  });
+  window._charts.salary = new Chart(ctx3, { type:'line', data:{ labels: emp.salaryHistory.map(s=>s.date.slice(0,7)), datasets:[{label:'Salary (EGP)', data: emp.salaryHistory.map(s=>s.next), borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,.12)', fill:true, tension:.4, pointBackgroundColor:'#6366f1', pointRadius:5}]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } } });
 }
-function updateSalaryChart(){
-  const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
-  const ch = window._charts.salary;
-  ch.data.labels = emp.salaryHistory.map(s=>s.date.slice(0,7));
-  ch.data.datasets[0].data = emp.salaryHistory.map(s=>s.next);
-  ch.update();
-}
+function updateSalaryChart(){ const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee; const ch = window._charts.salary; ch.data.labels = emp.salaryHistory.map(s=>s.date.slice(0,7)); ch.data.datasets[0].data = emp.salaryHistory.map(s=>s.next); ch.update(); }
 function refreshCharts(){
   const c = chartColors();
   Object.values(window._charts).forEach(ch=>{
@@ -1197,6 +1189,76 @@ function refreshCharts(){
     if(ch.options.plugins.legend.labels) ch.options.plugins.legend.labels.color = c.text;
     ch.update();
   });
+}
+
+function openBehalfVacationModal(){
+  document.getElementById('bvType').value = 'Annual Leave';
+  document.getElementById('bvStart').value = '';
+  document.getElementById('bvEnd').value = '';
+  document.getElementById('bvDays').value = 1;
+  document.getElementById('bvStatus').value = 'Approved';
+  document.getElementById('bvRecordDate').value = '';
+  document.getElementById('behalfVacationModal').classList.add('active');
+}
+async function submitBehalfVacation(){
+  const emp = employees.find(e=>e.id===currentDetailEmployeeId);
+  const leave_type = document.getElementById('bvType').value;
+  const start_date = document.getElementById('bvStart').value;
+  const end_date = document.getElementById('bvEnd').value || start_date;
+  const days = Number(document.getElementById('bvDays').value) || 1;
+  const status = document.getElementById('bvStatus').value;
+  const record_date = document.getElementById('bvRecordDate').value || null;
+  if(!start_date){ toast('Please select a start date.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    await Api.requestVacation({
+      employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, days,
+      status, record_date,
+    });
+    closeModal('behalfVacationModal');
+    toast(`Vacation/WFH record added for ${emp.name}.`);
+    await loadAdminData();
+    await viewProfile(currentDetailEmployeeId);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+function openBehalfClaimModal(){
+  const sel = document.getElementById('bcCategory');
+  sel.innerHTML = insuranceCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('bcProvider').value = '';
+  document.getElementById('bcAmount').value = '';
+  document.getElementById('bcStatus').value = 'Approved';
+  document.getElementById('bcRecordDate').value = '';
+  const fileInput = document.getElementById('bcDocument');
+  if(fileInput) fileInput.value = '';
+  document.getElementById('behalfClaimModal').classList.add('active');
+}
+async function submitBehalfClaim(){
+  const emp = employees.find(e=>e.id===currentDetailEmployeeId);
+  const category = document.getElementById('bcCategory').value;
+  const provider = document.getElementById('bcProvider').value;
+  const amount = Number(document.getElementById('bcAmount').value);
+  const status = document.getElementById('bcStatus').value;
+  const record_date = document.getElementById('bcRecordDate').value || null;
+  const fileInput = document.getElementById('bcDocument');
+  if(!category){ toast('Please select an insurance category.','fa-solid fa-triangle-exclamation'); return; }
+  if(!amount){ toast('Please enter a claim amount.','fa-solid fa-triangle-exclamation'); return; }
+  let documentUrl = '';
+  const file = fileInput && fileInput.files[0];
+  if(file){
+    if(file.size > 2*1024*1024){ toast('Supporting document must be under 2MB.','fa-solid fa-triangle-exclamation'); return; }
+    try{ documentUrl = await readFileAsDataUrl(file); }
+    catch(e){ toast('Could not read the selected file.','fa-solid fa-triangle-exclamation'); return; }
+  }
+  try{
+    await Api.submitInsuranceClaim({
+      employee_name: emp.name, employee_id: emp.id, category, provider, amount,
+      document_url: documentUrl, status, record_date,
+    });
+    closeModal('behalfClaimModal');
+    toast(`Insurance claim added for ${emp.name}.`);
+    await loadAdminData();
+    await viewProfile(currentDetailEmployeeId);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 </script>
 </body>
