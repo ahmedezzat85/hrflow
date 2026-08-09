@@ -103,3 +103,9 @@ class EmployeeNoteCreate(BaseModel):
     date: Optional[str] = None
     category: str = "General"
     note: str
+
+
+class EmployeeDocumentCreate(BaseModel):
+    name: str
+    file_type: Literal["pdf", "image"]
+    data_url: str
