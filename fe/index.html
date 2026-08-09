@@ -70,6 +70,8 @@ button{font-family:inherit;cursor:pointer;}
 .user-mini .role{font-size:11.5px;color:var(--text2);}
 .logout-btn{width:100%;margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:10px;padding:9px;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:8px;}
 .logout-btn:hover{background:rgba(239,68,68,.08);color:var(--danger);border-color:rgba(239,68,68,.3);}
+.sidebar-brand-footer{display:flex;justify-content:flex-start;margin-top:14px;padding-left:2px;}
+.sidebar-brand-footer img{height:18px;opacity:.7;}
 .main{flex:1;min-width:0;height:100vh;overflow-y:auto;}
 .topbar{position:sticky;top:0;z-index:20;background:var(--surface);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);}
 .topbar h2{font-size:19px;font-weight:800;}
@@ -223,10 +225,11 @@ tbody tr:hover{background:var(--surface2);}
     <a class="nav-item" data-page="a-insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance</a>
     <div class="sidebar-footer">
       <div class="user-mini">
-        <div class="avatar">SM</div>
-        <div><div class="name">Sarah Miller</div><div class="role">HR Administrator</div></div>
+        <div class="avatar" id="adminUserAvatar">--</div>
+        <div><div class="name" id="adminUserName">--</div><div class="role" id="adminUserRole">--</div></div>
       </div>
       <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+      <div class="sidebar-brand-footer"><img src="voyance-health-logo.png" alt="Voyance Health"></div>
     </div>
   </aside>
   <main class="main">
@@ -414,10 +417,11 @@ tbody tr:hover{background:var(--surface2);}
     <a class="nav-item" data-page="e-insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance</a>
     <div class="sidebar-footer">
       <div class="user-mini">
-        <div class="avatar">AE</div>
-        <div><div class="name">Ahmed Ezzat</div><div class="role">Product Engineer</div></div>
+        <div class="avatar" id="empUserAvatar">--</div>
+        <div><div class="name" id="empUserName">--</div><div class="role" id="empUserRole">--</div></div>
       </div>
       <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+      <div class="sidebar-brand-footer"><img src="voyance-health-logo.png" alt="Voyance Health"></div>
     </div>
   </aside>
   <main class="main">
@@ -660,6 +664,11 @@ let insuranceConsumption = [];
 let currentEditCategoryId = null;
 let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
 
+function getInitials(name){
+  if(!name) return '--';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '--';
+}
 async function handleLoginSuccess(data){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('loginThemeToggle').style.display = 'none';
@@ -702,6 +711,13 @@ async function loadAdminData(){
     insuranceClaims = rawClaims.map(normalizeClaim);
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
+    const myAdminId = TokenStore.getEmployeeId();
+    const adminUser = employees.find(e => String(e.id) === String(myAdminId)) || employees.find(e => e.role && e.role.toLowerCase().includes('admin')) || employees[0];
+    if(adminUser){
+      document.getElementById('adminUserAvatar').textContent = getInitials(adminUser.name);
+      document.getElementById('adminUserName').textContent = adminUser.name;
+      document.getElementById('adminUserRole').textContent = adminUser.role || 'HR Administrator';
+    }
     renderAdminPortal();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
@@ -718,8 +734,9 @@ async function loadEmployeeData(){
     empInsuranceHistory = rawClaims.map(c => ({ category: c.category, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status, document_url: c.document_url }));
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
-    document.querySelector('#employee-app .user-mini .name').textContent = currentLoggedInEmployee.name;
-    document.querySelector('#employee-app .user-mini .role').textContent = currentLoggedInEmployee.role;
+    document.getElementById('empUserAvatar').textContent = getInitials(currentLoggedInEmployee.name);
+    document.getElementById('empUserName').textContent = currentLoggedInEmployee.name;
+    document.getElementById('empUserRole').textContent = currentLoggedInEmployee.role;
     populateClaimCategoryOptions();
     renderEmployeePortal();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
