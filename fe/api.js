@@ -129,16 +129,25 @@ const Api = {
   },
   isLoggedIn() { return !!TokenStore.get(); },
   getEmployees() { return apiRequest("GET", "/api/employees"); },
+  getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
   createEmployee(payload) { return apiRequest("POST", "/api/employees", payload); },
   updateEmployee(empId, payload) { return apiRequest("PUT", `/api/employees/${empId}`, payload); },
   deleteEmployee(empId) { return apiRequest("DELETE", `/api/employees/${empId}`); },
+
+  getEmployeeNotes(empId) { return apiRequest("GET", `/api/employees/${empId}/notes`); },
+  createEmployeeNote(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/notes`, payload); },
+  deleteEmployeeNote(noteId) { return apiRequest("DELETE", `/api/employees/notes/${noteId}`); },
+
   getRequests(type = "all") {
     const q = type && type !== "all" ? `?type=${encodeURIComponent(type)}` : "";
     return apiRequest("GET", `/api/requests${q}`);
   },
   createRequest(payload) { return apiRequest("POST", "/api/requests", payload); },
   actionRequest(reqId, status) { return apiRequest("POST", `/api/requests/${reqId}/action`, { status }); },
-  getVacationHistory() { return apiRequest("GET", "/api/vacations/history"); },
+  getVacationHistory(employeeId = null) {
+    const q = employeeId ? `?employee_id=${employeeId}` : "";
+    return apiRequest("GET", `/api/vacations/history${q}`);
+  },
   requestVacation(payload) { return apiRequest("POST", "/api/vacations/request", payload); },
 
   getInsuranceCategories() { return apiRequest("GET", "/api/insurance/categories"); },
