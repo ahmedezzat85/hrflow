@@ -94,7 +94,7 @@ function initGoogleSignIn(containerId, onSuccess, onError) {
       console.error("Google Identity Services failed to load within 10s.");
       const container = document.getElementById(containerId);
       if (container) {
-        container.innerHTML = '<p style="color:#888; font-size:13px; text-align:center;">Google Sign-In unavailable - please use the email/password form below, or refresh the page.</p>';
+        container.innerHTML = '<p style="color:#888; font-size:13px; text-align:center;">Google Sign-In unavailable - please refresh the page and try again.</p>';
       }
       return;
     }
@@ -107,14 +107,6 @@ function initGoogleSignIn(containerId, onSuccess, onError) {
 const Api = {
   async loginWithGoogle(credential) {
     const data = await apiRequest("POST", "/api/auth/google", { credential }, false);
-    TokenStore.set(data.token);
-    TokenStore.setRole(data.role);
-    TokenStore.setEmployeeId(data.employee_id);
-    TokenStore.setName(data.name || "");
-    return data;
-  },
-  async loginWithPassword(email, password) {
-    const data = await apiRequest("POST", "/api/auth/login", { email, password }, false);
     TokenStore.set(data.token);
     TokenStore.setRole(data.role);
     TokenStore.setEmployeeId(data.employee_id);
@@ -137,6 +129,10 @@ const Api = {
   getEmployeeNotes(empId) { return apiRequest("GET", `/api/employees/${empId}/notes`); },
   createEmployeeNote(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/notes`, payload); },
   deleteEmployeeNote(noteId) { return apiRequest("DELETE", `/api/employees/notes/${noteId}`); },
+
+  getEmployeeDocuments(empId) { return apiRequest("GET", `/api/employees/${empId}/documents`); },
+  uploadEmployeeDocument(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/documents`, payload); },
+  deleteEmployeeDocument(docId) { return apiRequest("DELETE", `/api/employees/documents/${docId}`); },
 
   getRequests(type = "all") {
     const q = type && type !== "all" ? `?type=${encodeURIComponent(type)}` : "";
