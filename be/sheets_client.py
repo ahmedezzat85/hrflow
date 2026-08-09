@@ -25,6 +25,7 @@ SHEET_SCHEMAS = {
                        "pct_change","reason","applied_by"],
     "Users": ["email","role","employee_id"],
     "EmployeeNotes": ["id","employee_id","date","category","note","created_by"],
+    "EmployeeDocuments": ["id","employee_id","name","file_type","data_url","uploaded_by","uploaded_at"],
 }
 
 _lock = Lock()
