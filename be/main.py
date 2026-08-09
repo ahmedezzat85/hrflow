@@ -1,6 +1,7 @@
 """
 main.py
-HRFlow backend - FastAPI REST API backed entirely by a Google Sheet.
+HRFlow backend - FastAPI REST API backed entirely by a Google Sheet, with
+employee document files stored in Google Drive (per-employee sub-folders).
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import Config
 from sheets_client import get_client
+from drive_client import get_drive_client
 from auth import login_with_google, get_current_user, require_admin
 from models import (
     GoogleLoginRequest, LoginResponse, EmployeeCreate, EmployeeUpdate,
@@ -19,8 +21,8 @@ from models import (
     EmployeeDocumentCreate,
 )
 
-app = FastAPI(title="HRFlow API", version="2.3.0",
-              description="HR Management System backend - Google Sheets database, Sign in with Google authentication only.")
+app = FastAPI(title="HRFlow API", version="2.4.0",
+              description="HR Management System backend - Google Sheets database, Google Drive document storage, Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
 app.add_middleware(
@@ -176,7 +178,8 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
     client = get_client()
     _check_document_access(current_user, emp_id)
     employees = client.get_all_records("Employees")
-    if not any(str(e["id"]) == str(emp_id) for e in employees):
+    emp = next((e for e in employees if str(e["id"]) == str(emp_id)), None)
+    if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
     if payload.file_type not in ("pdf", "image"):
@@ -186,13 +189,21 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
     if len(payload.data_url) > 6_000_000:
         raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
 
+    drive = get_drive_client()
+    try:
+        uploaded = drive.upload_file(emp_id, emp["name"], payload.name, payload.data_url)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not upload document to Google Drive: {exc}")
+
     doc_id = client.next_id("EmployeeDocuments")
     client.append_row("EmployeeDocuments", {
         "id": doc_id,
         "employee_id": emp_id,
         "name": payload.name,
         "file_type": payload.file_type,
-        "data_url": payload.data_url,
+        "drive_file_id": uploaded["file_id"],
+        "view_url": uploaded["view_url"],
+        "download_url": uploaded["download_url"],
         "uploaded_by": current_user["email"],
         "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
     })
@@ -207,6 +218,8 @@ def delete_employee_document(doc_id: int, current_user: dict = Depends(get_curre
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     _check_document_access(current_user, doc["employee_id"])
+    drive = get_drive_client()
+    drive.delete_file(doc.get("drive_file_id"))
     client.delete_row_by_match("EmployeeDocuments", "id", doc_id)
     return {"message": "Document deleted"}
 
