@@ -10,9 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import Config
 from sheets_client import get_client
-from auth import login_with_google, login_with_password, get_current_user, require_admin
+from auth import login_with_google, get_current_user, require_admin
 from models import (
-    GoogleLoginRequest, PasswordLoginRequest, LoginResponse, EmployeeCreate, EmployeeUpdate,
+    GoogleLoginRequest, LoginResponse, EmployeeCreate, EmployeeUpdate,
     RequestCreate, RequestAction, VacationRequestCreate,
     InsuranceCategoryCreate, InsuranceCategoryUpdate,
     InsuranceClaimCreate, InsuranceClaimAction, RaiseApply, EmployeeNoteCreate,
@@ -58,14 +58,6 @@ def api_google_login(payload: GoogleLoginRequest):
             status_code=403,
             detail="This Google account is not registered in HRFlow. Ask your HR admin to add you as an employee first.",
         )
-    return result
-
-
-@app.post("/api/auth/login", response_model=LoginResponse, tags=["Auth"])
-def api_password_login(payload: PasswordLoginRequest):
-    result = login_with_password(payload.email, payload.password)
-    if not result:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
     return result
 
 
