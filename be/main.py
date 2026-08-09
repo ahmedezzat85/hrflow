@@ -16,6 +16,7 @@ from models import (
     RequestCreate, RequestAction, VacationRequestCreate,
     InsuranceCategoryCreate, InsuranceCategoryUpdate,
     InsuranceClaimCreate, InsuranceClaimAction, RaiseApply, EmployeeNoteCreate,
+    EmployeeDocumentCreate,
 )
 
 app = FastAPI(title="HRFlow API", version="2.3.0",
@@ -152,6 +153,62 @@ def delete_employee_note(note_id: int, current_user: dict = Depends(require_admi
     if not ok:
         raise HTTPException(status_code=404, detail="Note not found")
     return {"message": "Note deleted"}
+
+
+def _check_document_access(current_user, emp_id):
+    """Admins may access any employee's documents; employees only their own."""
+    if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
+        raise HTTPException(status_code=403, detail="You can only access your own documents")
+
+
+@app.get("/api/employees/{emp_id}/documents", tags=["Documents"])
+def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current_user)):
+    client = get_client()
+    _check_document_access(current_user, emp_id)
+    docs = client.get_all_records("EmployeeDocuments")
+    docs = [d for d in docs if str(d["employee_id"]) == str(emp_id)]
+    docs.sort(key=lambda d: str(d.get("uploaded_at", "")), reverse=True)
+    return docs
+
+
+@app.post("/api/employees/{emp_id}/documents", status_code=201, tags=["Documents"])
+def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, current_user: dict = Depends(get_current_user)):
+    client = get_client()
+    _check_document_access(current_user, emp_id)
+    employees = client.get_all_records("Employees")
+    if not any(str(e["id"]) == str(emp_id) for e in employees):
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    if payload.file_type not in ("pdf", "image"):
+        raise HTTPException(status_code=400, detail="Only PDF and image files are supported")
+    if not payload.data_url:
+        raise HTTPException(status_code=400, detail="No file content received")
+    if len(payload.data_url) > 6_000_000:
+        raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
+
+    doc_id = client.next_id("EmployeeDocuments")
+    client.append_row("EmployeeDocuments", {
+        "id": doc_id,
+        "employee_id": emp_id,
+        "name": payload.name,
+        "file_type": payload.file_type,
+        "data_url": payload.data_url,
+        "uploaded_by": current_user["email"],
+        "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+    })
+    return {"message": "Document uploaded", "id": doc_id}
+
+
+@app.delete("/api/employees/documents/{doc_id}", tags=["Documents"])
+def delete_employee_document(doc_id: int, current_user: dict = Depends(get_current_user)):
+    client = get_client()
+    docs = client.get_all_records("EmployeeDocuments")
+    doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _check_document_access(current_user, doc["employee_id"])
+    client.delete_row_by_match("EmployeeDocuments", "id", doc_id)
+    return {"message": "Document deleted"}
 
 
 @app.get("/api/requests", tags=["Requests"])
