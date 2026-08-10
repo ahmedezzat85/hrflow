@@ -180,6 +180,16 @@ tbody tr:hover{background:var(--surface2);}
 .empty-state{text-align:center;padding:40px 20px;color:var(--text2);}
 .empty-state i{font-size:34px;margin-bottom:10px;color:var(--text3);}
 
+/* Global app loader overlay for smoother initial load and auto session resume */
+.app-loader{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 20% 20%,rgba(99,102,241,.12),transparent 55%),radial-gradient(circle at 80% 80%,rgba(139,92,246,.16),transparent 55%),rgba(15,23,42,.88);backdrop-filter:blur(10px);}
+.app-loader-inner{background:rgba(15,23,42,.94);border-radius:20px;padding:28px 32px;box-shadow:var(--shadow-lg);text-align:center;min-width:260px;max-width:360px;border:1px solid rgba(148,163,184,.35);}
+.app-loader-inner h3{margin-top:18px;font-size:18px;font-weight:700;color:#e5e7eb;}
+.app-loader-inner p{margin-top:8px;font-size:13px;color:#9ca3af;}
+.app-loader-spinner{width:40px;height:40px;border-radius:999px;border:3px solid rgba(148,163,184,.35);border-top-color:var(--accent);margin:0 auto;animation:spinLoader .8s linear infinite;}
+.app-loader-spinner span{display:none;}
+@keyframes spinLoader{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+
 /* NEW: document upload drop zone + progress bar + file-type icons */
 .doc-drop-zone{border:2px dashed var(--border);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;background:var(--surface2);}
 .doc-drop-zone:hover, .doc-drop-zone.drag-over{border-color:var(--accent);background:var(--accent-soft);}
@@ -205,6 +215,14 @@ tbody tr:hover{background:var(--surface2);}
 </head>
 <body>
 <button class="theme-fab" id="loginThemeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+<div id="appLoader" class="app-loader" style="display:none;">
+  <div class="app-loader-inner">
+    <div class="app-loader-spinner"><span></span></div>
+    <h3>Loading HRFlow</h3>
+    <p>Fetching your latest data, this only takes a moment.</p>
+  </div>
+</div>
+
 <div id="login-screen">
   <div class="login-card">
     <div class="login-visual">
@@ -772,6 +790,72 @@ let currentEditCategoryId = null;
 let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
 let employeeDocuments = [];
 
+// Simple cookie helpers for persisting HRFlow session (JWT, role, id)
+function setCookie(name, value, days){
+  const d = new Date();
+  d.setTime(d.getTime() + (days*24*60*60*1000));
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/';
+}
+function getCookie(name){
+  const ca = document.cookie.split(';');
+  for(let c of ca){
+    c = c.trim();
+    if(c.startsWith(name + '=')) return decodeURIComponent(c.substring(name.length+1));
+  }
+  return null;
+}
+function clearCookie(name){ setCookie(name, '', -1); }
+
+function persistSessionToCookies(){
+  const token = TokenStore.get();
+  const role = TokenStore.getRole();
+  const empId = TokenStore.getEmployeeId();
+  const name = TokenStore.getName();
+  if(!token || !role || !empId) return;
+  setCookie('hrflow_token', token, 7);
+  setCookie('hrflow_role', role, 7);
+  setCookie('hrflow_employee_id', empId, 7);
+  setCookie('hrflow_name', name || '', 7);
+}
+
+function restoreSessionFromCookies(){
+  if(TokenStore.get()) return; // already have session in localStorage
+  const token = getCookie('hrflow_token');
+  const role = getCookie('hrflow_role');
+  const empId = getCookie('hrflow_employee_id');
+  const name = getCookie('hrflow_name');
+  if(token && role && empId){
+    TokenStore.set(token);
+    TokenStore.setRole(role);
+    TokenStore.setEmployeeId(empId);
+    TokenStore.setName(name || '');
+  }
+}
+
+function clearSessionCookies(){
+  ['hrflow_token','hrflow_role','hrflow_employee_id','hrflow_name'].forEach(clearCookie);
+}
+
+function showAppLoader(title, message){
+  const overlay = document.getElementById('appLoader');
+  if(!overlay) return;
+  const h = overlay.querySelector('h3');
+  const p = overlay.querySelector('p');
+  h.textContent = title || 'Loading HRFlow';
+  p.textContent = message || 'Fetching your latest data, this only takes a moment.';
+  overlay.style.display = 'flex';
+}
+function hideAppLoader(){
+  const overlay = document.getElementById('appLoader');
+  if(!overlay) return;
+  overlay.style.display = 'none';
+}
+
+function getInitials(name){
+  if(!name) return '--';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '--';
+}
 function getInitials(name){
   if(!name) return '--';
   const parts = name.trim().split(/\s+/);
@@ -781,6 +865,8 @@ async function handleLoginSuccess(data){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('loginThemeToggle').style.display = 'none';
   document.getElementById('loginErr').style.display = 'none';
+  persistSessionToCookies();
+  showAppLoader('Signing you in', 'Loading your HR workspace...');
   try{
     if(data.role === 'admin'){
       currentPortal = 'admin';
@@ -792,14 +878,61 @@ async function handleLoginSuccess(data){
       await loadEmployeeData();
     }
     initCharts();
-  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    hideAppLoader();
+  }
 }
 function handleLoginError(err){
   const errBox = document.getElementById('loginErr');
   errBox.style.display = 'flex';
   errBox.querySelector('span').textContent = err.message || 'Sign-in failed. Please try again.';
 }
-window.addEventListener('DOMContentLoaded', () => { initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError); });
+async function bootstrapAppFromSession(){
+  restoreSessionFromCookies();
+  if(!TokenStore.get()){
+    initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
+    return;
+  }
+  const role = TokenStore.getRole();
+  const empId = TokenStore.getEmployeeId();
+  if(!role || !empId){
+    TokenStore.clearAll();
+    clearSessionCookies();
+    initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
+    return;
+  }
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('loginThemeToggle').style.display = 'none';
+  document.getElementById('loginErr').style.display = 'none';
+  showAppLoader('Reconnecting to HRFlow', 'Loading your data...');
+  try{
+    if(role === 'admin'){
+      currentPortal = 'admin';
+      document.getElementById('admin-app').classList.add('active');
+      await loadAdminData();
+    } else {
+      currentPortal = 'employee';
+      document.getElementById('employee-app').classList.add('active');
+      await loadEmployeeData();
+    }
+    initCharts();
+  } catch(err){
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+    TokenStore.clearAll();
+    clearSessionCookies();
+    document.getElementById('admin-app').classList.remove('active');
+    document.getElementById('employee-app').classList.remove('active');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('loginThemeToggle').style.display = 'flex';
+    initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
+  } finally {
+    hideAppLoader();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => { bootstrapAppFromSession(); });
 function normalizeEmployee(e, salaryHistoryForEmp){
   return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
     nextRaise: e.next_raise, salary: Number(e.salary),
@@ -851,10 +984,12 @@ async function loadEmployeeData(){
 }
 function logout(){
   Api.logout();
+  clearSessionCookies();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
   insuranceCategories = []; insuranceConsumption = [];
   document.getElementById('admin-app').classList.remove('active');
   document.getElementById('employee-app').classList.remove('active');
+  hideAppLoader();
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loginThemeToggle').style.display = 'flex';
   document.getElementById('loginErr').style.display = 'none';
@@ -1237,7 +1372,7 @@ function renderEmployeeDocuments(docs){
     </td>
     <td>${d.uploaded_at || ''}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${(d.name||'').replace(/'/g,"\\'")}', '${d.file_type}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
