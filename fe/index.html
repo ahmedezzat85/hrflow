@@ -1372,7 +1372,7 @@ function renderEmployeeDocuments(docs){
     </td>
     <td>${d.uploaded_at || ''}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
