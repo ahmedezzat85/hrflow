@@ -3,13 +3,17 @@ main.py
 HRFlow backend - FastAPI REST API backed entirely by a Google Sheet, with
 employee document files stored in Google Drive (per-employee sub-folders).
 """
+import time
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from config import Config
+from logging_config import setup_logging, get_logger
 from sheets_client import get_client
 from drive_client import get_drive_client
 from auth import login_with_google, get_current_user, require_admin
@@ -20,6 +24,9 @@ from models import (
     InsuranceClaimCreate, InsuranceClaimAction, RaiseApply, EmployeeNoteCreate,
     EmployeeDocumentCreate,
 )
+
+setup_logging()
+logger = get_logger("main")
 
 app = FastAPI(title="HRFlow API", version="2.4.0",
               description="HR Management System backend - Google Sheets database, Google Drive document storage, Sign in with Google authentication only.")
@@ -33,6 +40,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+logger.info("HRFlow API starting up (version=2.4.0, allowed_origins=%s)", origins)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Logs every request with a correlation id, status code and duration.
+    On unhandled exceptions, logs the full traceback and returns a 500 so
+    the client never sees an opaque 502 without a trace in the logs."""
+    request_id = uuid.uuid4().hex[:8]
+    start = time.time()
+    logger.info("[%s] --> %s %s", request_id, request.method, request.url.path)
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = round((time.time() - start) * 1000, 1)
+        logger.exception("[%s] Unhandled exception while processing %s %s (after %sms)", request_id, request.method, request.url.path, duration_ms)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error. Check backend logs for request id " + request_id})
+    duration_ms = round((time.time() - start) * 1000, 1)
+    log_fn = logger.warning if response.status_code >= 400 else logger.info
+    log_fn("[%s] <-- %s %s %s (%sms)", request_id, request.method, request.url.path, response.status_code, duration_ms)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 
 def _resolve_target_employee(client, current_user, employee_id, fallback_name):
     """
@@ -44,10 +74,12 @@ def _resolve_target_employee(client, current_user, employee_id, fallback_name):
     """
     if employee_id is not None:
         if current_user["role"] != "admin":
+            logger.warning("User %s (role=%s) attempted to submit on behalf of employee_id=%s without admin rights", current_user.get("email"), current_user.get("role"), employee_id)
             raise HTTPException(status_code=403, detail="Only HR admins can submit this on behalf of another employee")
         employees = client.get_all_records("Employees")
         target = next((e for e in employees if str(e["id"]) == str(employee_id)), None)
         if not target:
+            logger.warning("Admin %s tried to act on behalf of unknown employee_id=%s", current_user.get("email"), employee_id)
             raise HTTPException(status_code=404, detail="Employee not found")
         return target["id"], target["name"], True
     return current_user["employee_id"], fallback_name, False
@@ -55,12 +87,15 @@ def _resolve_target_employee(client, current_user, employee_id, fallback_name):
 
 @app.post("/api/auth/google", response_model=LoginResponse, tags=["Auth"])
 def api_google_login(payload: GoogleLoginRequest):
+    logger.info("Google login attempt received")
     result = login_with_google(payload.credential)
     if not result:
+        logger.warning("Google login rejected: credential valid but no matching HRFlow user found")
         raise HTTPException(
             status_code=403,
             detail="This Google account is not registered in HRFlow. Ask your HR admin to add you as an employee first.",
         )
+    logger.info("Google login successful: role=%s, employee_id=%s", result.get("role"), result.get("employee_id"))
     return result
 
 
@@ -98,6 +133,7 @@ def create_employee(payload: EmployeeCreate, current_user: dict = Depends(requir
     }
     client.append_row("Employees", employee_row)
     client.append_row("Users", {"email": payload.email, "role": "employee", "employee_id": new_id})
+    logger.info("Admin %s created employee id=%s (%s)", current_user.get("email"), new_id, payload.email)
     return {"message": "Employee created. They can now sign in with their Google Workspace account.", "id": new_id}
 
 
@@ -160,6 +196,7 @@ def delete_employee_note(note_id: int, current_user: dict = Depends(require_admi
 def _check_document_access(current_user, emp_id):
     """Admins may access any employee's documents; employees only their own."""
     if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
+        logger.warning("User %s attempted to access documents for employee_id=%s without permission", current_user.get("email"), emp_id)
         raise HTTPException(status_code=403, detail="You can only access your own documents")
 
 
@@ -170,6 +207,7 @@ def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current
     docs = client.get_all_records("EmployeeDocuments")
     docs = [d for d in docs if str(d["employee_id"]) == str(emp_id)]
     docs.sort(key=lambda d: str(d.get("uploaded_at", "")), reverse=True)
+    logger.debug("Listed %d documents for employee_id=%s", len(docs), emp_id)
     return docs
 
 
@@ -180,33 +218,47 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
     employees = client.get_all_records("Employees")
     emp = next((e for e in employees if str(e["id"]) == str(emp_id)), None)
     if not emp:
+        logger.warning("Document upload rejected: employee_id=%s not found", emp_id)
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    logger.info("Document upload requested: employee_id=%s, name='%s', file_type=%s, by=%s",
+                emp_id, payload.name, payload.file_type, current_user.get("email"))
+
     if payload.file_type not in ("pdf", "image"):
+        logger.warning("Document upload rejected: unsupported file_type='%s' for employee_id=%s", payload.file_type, emp_id)
         raise HTTPException(status_code=400, detail="Only PDF and image files are supported")
     if not payload.data_url:
+        logger.warning("Document upload rejected: empty data_url for employee_id=%s", emp_id)
         raise HTTPException(status_code=400, detail="No file content received")
     if len(payload.data_url) > 6_000_000:
+        logger.warning("Document upload rejected: data_url too large (%d chars) for employee_id=%s", len(payload.data_url), emp_id)
         raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
 
     drive = get_drive_client()
     try:
         uploaded = drive.upload_file(emp_id, emp["name"], payload.name, payload.data_url)
     except Exception as exc:
+        logger.exception("Drive upload failed for employee_id=%s, name='%s'. Returning 502 to client.", emp_id, payload.name)
         raise HTTPException(status_code=502, detail=f"Could not upload document to Google Drive: {exc}")
 
     doc_id = client.next_id("EmployeeDocuments")
-    client.append_row("EmployeeDocuments", {
-        "id": doc_id,
-        "employee_id": emp_id,
-        "name": payload.name,
-        "file_type": payload.file_type,
-        "drive_file_id": uploaded["file_id"],
-        "view_url": uploaded["view_url"],
-        "download_url": uploaded["download_url"],
-        "uploaded_by": current_user["email"],
-        "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
-    })
+    try:
+        client.append_row("EmployeeDocuments", {
+            "id": doc_id,
+            "employee_id": emp_id,
+            "name": payload.name,
+            "file_type": payload.file_type,
+            "drive_file_id": uploaded["file_id"],
+            "view_url": uploaded["view_url"],
+            "download_url": uploaded["download_url"],
+            "uploaded_by": current_user["email"],
+            "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        })
+    except Exception:
+        logger.exception("Uploaded file to Drive (file_id=%s) but failed to record it in EmployeeDocuments sheet. Manual cleanup may be needed.", uploaded.get("file_id"))
+        raise
+
+    logger.info("Document upload complete: doc_id=%s, employee_id=%s, drive_file_id=%s", doc_id, emp_id, uploaded["file_id"])
     return {"message": "Document uploaded", "id": doc_id}
 
 
@@ -216,11 +268,16 @@ def delete_employee_document(doc_id: int, current_user: dict = Depends(get_curre
     docs = client.get_all_records("EmployeeDocuments")
     doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
     if not doc:
+        logger.warning("Document delete rejected: doc_id=%s not found", doc_id)
         raise HTTPException(status_code=404, detail="Document not found")
     _check_document_access(current_user, doc["employee_id"])
+    logger.info("Deleting document doc_id=%s (drive_file_id=%s) requested by %s", doc_id, doc.get("drive_file_id"), current_user.get("email"))
     drive = get_drive_client()
-    drive.delete_file(doc.get("drive_file_id"))
+    drive_deleted = drive.delete_file(doc.get("drive_file_id"))
+    if not drive_deleted:
+        logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove sheet row", doc.get("drive_file_id"), doc_id)
     client.delete_row_by_match("EmployeeDocuments", "id", doc_id)
+    logger.info("Document delete complete: doc_id=%s", doc_id)
     return {"message": "Document deleted"}
 
 
