@@ -56,6 +56,43 @@ async function apiRequest(method, path, body = null, auth = true) {
   return data;
 }
 
+// XHR-based request that reports upload progress (0-100). fetch() cannot
+// report upload progress natively, so document uploads use this instead
+// of apiRequest() to drive a visual progress bar in the UI.
+function apiRequestWithProgress(method, path, body, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, `${API_BASE_URL}${path}`, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    const token = TokenStore.get();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (evt) => {
+      if (onProgress && evt.lengthComputable) {
+        onProgress(Math.round((evt.loaded / evt.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (_) {}
+      if (xhr.status === 401) {
+        TokenStore.clearAll();
+        reject(new Error("Session expired. Please sign in again."));
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+      } else {
+        const detail = (data && (data.detail || data.error)) || `Request failed (${xhr.status})`;
+        reject(new Error(typeof detail === "string" ? detail : JSON.stringify(detail)));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network error - is the backend server running?"));
+    xhr.send(JSON.stringify(body));
+  });
+}
+
 let _onGoogleLoginSuccess = null;
 let _onGoogleLoginError = null;
 
@@ -132,6 +169,12 @@ const Api = {
 
   getEmployeeDocuments(empId) { return apiRequest("GET", `/api/employees/${empId}/documents`); },
   uploadEmployeeDocument(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/documents`, payload); },
+  // Same endpoint as uploadEmployeeDocument, but reports upload progress
+  // via onProgress(pct) so the UI can render a real progress bar instead
+  // of an indeterminate spinner.
+  uploadEmployeeDocumentWithProgress(empId, payload, onProgress) {
+    return apiRequestWithProgress("POST", `/api/employees/${empId}/documents`, payload, onProgress);
+  },
   deleteEmployeeDocument(docId) { return apiRequest("DELETE", `/api/employees/documents/${docId}`); },
 
   // Preview/download URLs stream bytes through our own backend (service
