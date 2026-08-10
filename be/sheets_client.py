@@ -6,6 +6,9 @@ import gspread
 from google.oauth2.service_account import Credentials
 from threading import Lock
 from config import Config
+from logging_config import get_logger
+
+logger = get_logger("sheets_client")
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -42,47 +45,71 @@ class SheetsClient:
         return cls._instance
 
     def _connect(self):
-        creds = Credentials.from_service_account_file(
-            Config.GOOGLE_CREDENTIALS_FILE, scopes=SCOPES
-        )
-        self.gc = gspread.authorize(creds)
-        self.spreadsheet = self.gc.open_by_key(Config.SPREADSHEET_ID)
+        logger.info("Connecting to Google Sheets (spreadsheet_id=%s)", Config.SPREADSHEET_ID)
+        try:
+            creds = Credentials.from_service_account_file(
+                Config.GOOGLE_CREDENTIALS_FILE, scopes=SCOPES
+            )
+            self.gc = gspread.authorize(creds)
+            self.spreadsheet = self.gc.open_by_key(Config.SPREADSHEET_ID)
+        except Exception:
+            logger.exception("Failed to connect to Google Sheets. Check GOOGLE_CREDENTIALS_FILE and SPREADSHEET_ID.")
+            raise
+        logger.info("Connected to Google Sheets successfully")
         self._ensure_tabs_exist()
 
     def _ensure_tabs_exist(self):
         existing = {ws.title for ws in self.spreadsheet.worksheets()}
         for tab_name, headers in SHEET_SCHEMAS.items():
             if tab_name not in existing:
+                logger.info("Creating missing sheet tab '%s' with headers %s", tab_name, headers)
                 ws = self.spreadsheet.add_worksheet(title=tab_name, rows=1000, cols=len(headers))
                 ws.append_row(headers)
             else:
                 ws = self._ws(tab_name)
                 first_row = ws.row_values(1)
                 if not first_row:
+                    logger.warning("Sheet tab '%s' exists but has no header row - adding headers", tab_name)
                     ws.append_row(headers)
 
     def _ws(self, tab_name):
-        return self.spreadsheet.worksheet(tab_name)
+        try:
+            return self.spreadsheet.worksheet(tab_name)
+        except gspread.exceptions.WorksheetNotFound:
+            logger.error("Worksheet '%s' not found in spreadsheet", tab_name)
+            raise
 
     def get_all_records(self, tab_name):
         with _lock:
-            return self._ws(tab_name).get_all_records()
+            try:
+                records = self._ws(tab_name).get_all_records()
+            except Exception:
+                logger.exception("Failed to read records from tab '%s'", tab_name)
+                raise
+            logger.debug("Read %d records from tab '%s'", len(records), tab_name)
+            return records
 
     def append_row(self, tab_name, row_dict):
         with _lock:
-            ws = self._ws(tab_name)
-            headers = ws.row_values(1)
-            if not headers:
-                headers = SHEET_SCHEMAS.get(tab_name, list(row_dict.keys()))
-                ws.append_row(headers)
-            row = [row_dict.get(h, "") for h in headers]
-            ws.append_row(row)
+            try:
+                ws = self._ws(tab_name)
+                headers = ws.row_values(1)
+                if not headers:
+                    headers = SHEET_SCHEMAS.get(tab_name, list(row_dict.keys()))
+                    ws.append_row(headers)
+                row = [row_dict.get(h, "") for h in headers]
+                ws.append_row(row)
+            except Exception:
+                logger.exception("Failed to append row to tab '%s': %s", tab_name, row_dict)
+                raise
+            logger.info("Appended row to tab '%s' (id=%s)", tab_name, row_dict.get("id", "?"))
 
     def update_row_by_match(self, tab_name, match_field, match_value, updates: dict):
         with _lock:
             ws = self._ws(tab_name)
             headers = ws.row_values(1)
             if match_field not in headers:
+                logger.error("update_row_by_match: '%s' is not a column in tab '%s'", match_field, tab_name)
                 raise ValueError(f"{match_field} not a column in {tab_name}")
             col_idx = headers.index(match_field) + 1
             col_values = ws.col_values(col_idx)
@@ -92,11 +119,17 @@ class SheetsClient:
                     row_num = i
                     break
             if row_num is None:
+                logger.warning("update_row_by_match: no row found in tab '%s' where %s=%s", tab_name, match_field, match_value)
                 return False
-            for field, value in updates.items():
-                if field in headers:
-                    c_idx = headers.index(field) + 1
-                    ws.update_cell(row_num, c_idx, value)
+            try:
+                for field, value in updates.items():
+                    if field in headers:
+                        c_idx = headers.index(field) + 1
+                        ws.update_cell(row_num, c_idx, value)
+            except Exception:
+                logger.exception("Failed to update row %d in tab '%s' with %s", row_num, tab_name, updates)
+                raise
+            logger.info("Updated row in tab '%s' where %s=%s with %s", tab_name, match_field, match_value, updates)
             return True
 
     def delete_row_by_match(self, tab_name, match_field, match_value):
@@ -107,8 +140,14 @@ class SheetsClient:
             col_values = ws.col_values(col_idx)
             for i, v in enumerate(col_values[1:], start=2):
                 if str(v) == str(match_value):
-                    ws.delete_rows(i)
+                    try:
+                        ws.delete_rows(i)
+                    except Exception:
+                        logger.exception("Failed to delete row %d in tab '%s' where %s=%s", i, tab_name, match_field, match_value)
+                        raise
+                    logger.info("Deleted row in tab '%s' where %s=%s", tab_name, match_field, match_value)
                     return True
+            logger.warning("delete_row_by_match: no row found in tab '%s' where %s=%s", tab_name, match_field, match_value)
             return False
 
     def next_id(self, tab_name, id_field="id"):
