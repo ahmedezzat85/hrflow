@@ -179,6 +179,28 @@ tbody tr:hover{background:var(--surface2);}
 @media(max-width:900px){.sidebar{position:fixed;left:-280px;z-index:60;box-shadow:var(--shadow-lg);transition:left .25s;}.sidebar.open{left:0;}.hamburger{display:flex;}.topbar{padding:16px 18px;}.page{padding:20px 16px;}}
 .empty-state{text-align:center;padding:40px 20px;color:var(--text2);}
 .empty-state i{font-size:34px;margin-bottom:10px;color:var(--text3);}
+
+/* NEW: document upload drop zone + progress bar + file-type icons */
+.doc-drop-zone{border:2px dashed var(--border);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;background:var(--surface2);}
+.doc-drop-zone:hover, .doc-drop-zone.drag-over{border-color:var(--accent);background:var(--accent-soft);}
+.doc-drop-empty i{font-size:28px;color:var(--text3);margin-bottom:8px;display:block;}
+.doc-drop-empty p{font-size:13.5px;color:var(--text2);margin:0;}
+.doc-drop-empty span{font-size:11.5px;color:var(--text3);}
+.doc-drop-file{display:flex;align-items:center;gap:12px;text-align:left;}
+.doc-file-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.doc-file-icon.pdf{background:#fde2e2;color:#d92d20;}
+.doc-file-icon.image{background:#e0f2fe;color:#0284c7;}
+.doc-file-meta{flex:1;min-width:0;}
+.doc-file-name{font-size:13.5px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.doc-file-size{font-size:11.5px;color:var(--text3);}
+.doc-progress-track{height:8px;border-radius:6px;background:var(--surface2);overflow:hidden;}
+.doc-progress-fill{height:100%;background:linear-gradient(90deg, var(--accent), #7dd3fc);border-radius:6px;transition:width .2s ease;}
+.doc-progress-label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text3);margin-top:6px;}
+.doc-type-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.doc-type-icon.pdf{background:#fde2e2;color:#d92d20;}
+.doc-type-icon.image{background:#e0f2fe;color:#0284c7;}
+.doc-name-cell{display:flex;align-items:center;gap:10px;}
+.doc-name-text{font-weight:600;font-size:13.5px;}
 </style>
 </head>
 <body>
@@ -331,7 +353,7 @@ tbody tr:hover{background:var(--surface2);}
             </button>
           </div>
           <table>
-            <thead><tr><th>Name</th><th>Type</th><th>Uploaded</th><th></th></tr></thead>
+            <thead><tr><th>Document</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
             <tbody id="detailDocumentsBody"></tbody>
           </table>
         </div>
@@ -677,16 +699,33 @@ tbody tr:hover{background:var(--surface2);}
           <label>Document Name</label>
           <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
         </div>
-        <div class="form-field">
-          <label>File Type</label>
-          <select id="docFileType">
-            <option value="pdf">PDF</option>
-            <option value="image">Image</option>
-          </select>
-        </div>
         <div class="form-field full">
           <label>File</label>
-          <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png">
+          <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
+            <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <div id="docDropZoneEmpty" class="doc-drop-empty">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <p><strong>Click to browse</strong> or drag a file here</p>
+              <span>PDF, JPG or PNG - up to 4MB</span>
+            </div>
+            <div id="docDropZoneFile" class="doc-drop-file" style="display:none;">
+              <div class="doc-file-icon" id="docFileIconWrap"><i class="fa-solid fa-file"></i></div>
+              <div class="doc-file-meta">
+                <p id="docFileName" class="doc-file-name">-</p>
+                <span id="docFileSize" class="doc-file-size">-</span>
+              </div>
+              <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="form-field full" id="docUploadProgressWrap" style="display:none;">
+          <div class="doc-progress-track">
+            <div class="doc-progress-fill" id="docUploadProgressFill" style="width:0%;"></div>
+          </div>
+          <div class="doc-progress-label">
+            <span id="docUploadProgressText">Uploading...</span>
+            <span id="docUploadProgressPct">0%</span>
+          </div>
         </div>
       </div>
       <p style="font-size:11.5px;color:var(--text3);margin-top:10px;">
@@ -694,8 +733,8 @@ tbody tr:hover{background:var(--surface2);}
       </p>
     </div>
     <div class="modal-foot">
-      <button class="btn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
-      <button class="btn btn-fill" onclick="submitEmployeeDocument()"><i class="fa-solid fa-check"></i> Upload</button>
+      <button class="btn" id="docCancelBtn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
+      <button class="btn btn-fill" id="docUploadBtn" onclick="submitEmployeeDocument()"><i class="fa-solid fa-check"></i> Upload</button>
     </div>
   </div>
 </div>
@@ -1180,19 +1219,29 @@ async function loadEmployeeDocuments(empId){
   }
 }
 
+function docTypeIcon(fileType){
+  return fileType === 'image'
+    ? '<i class="fa-solid fa-image"></i>'
+    : '<i class="fa-solid fa-file-pdf"></i>';
+}
+
 function renderEmployeeDocuments(docs){
   const body = document.getElementById('detailDocumentsBody');
   if(!body) return;
   body.innerHTML = docs.length ? docs.map(d=>`<tr>
-    <td>${d.name}</td>
-    <td>${d.file_type}</td>
+    <td>
+      <div class="doc-name-cell">
+        <div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docTypeIcon(d.file_type)}</div>
+        <span class="doc-name-text">${d.name}</span>
+      </div>
+    </td>
     <td>${d.uploaded_at || ''}</td>
-    <td style="display:flex;gap:6px;">
+    <td style="display:flex;gap:6px;justify-content:flex-end;">
       <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${(d.name||'').replace(/'/g,"\\'")}', '${d.file_type}')"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
-      <button class="icon-action" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
+      <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
-  </tr>`).join('') : `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
+  </tr>`).join('') : `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
 }
 
 // NEW: in-app preview (PDF/image rendered inline, no need to leave the app)
@@ -1225,41 +1274,132 @@ function downloadEmployeeDocument(docId){
   a.remove();
 }
 
+let docSelectedFile = null;
+
+function detectDocFileType(file){
+  if(file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) return 'pdf';
+  return 'image';
+}
+
+function formatFileSize(bytes){
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
 function openEmployeeDocumentModal(){
   document.getElementById('docName').value = '';
-  document.getElementById('docFileType').value = 'pdf';
+  clearDocFileSelection();
+  document.getElementById('docUploadProgressWrap').style.display = 'none';
+  document.getElementById('docUploadProgressFill').style.width = '0%';
+  document.getElementById('docUploadBtn').disabled = false;
+  document.getElementById('docCancelBtn').disabled = false;
+  document.getElementById('employeeDocumentModal').classList.add('active');
+}
+
+function clearDocFileSelection(){
+  docSelectedFile = null;
   const fileInput = document.getElementById('docFileInput');
   if(fileInput) fileInput.value = '';
-  document.getElementById('employeeDocumentModal').classList.add('active');
+  document.getElementById('docDropZoneEmpty').style.display = '';
+  document.getElementById('docDropZoneFile').style.display = 'none';
+}
+
+function handleDocFileSelected(file){
+  if(!file) return;
+  if(file.size > 4*1024*1024){
+    toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name);
+  if(!isPdf && !isImage){
+    toast('Only PDF and image files (JPG, PNG) are supported.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  docSelectedFile = file;
+  const fileType = detectDocFileType(file);
+  document.getElementById('docDropZoneEmpty').style.display = 'none';
+  document.getElementById('docDropZoneFile').style.display = 'flex';
+  document.getElementById('docFileName').textContent = file.name;
+  document.getElementById('docFileSize').textContent = formatFileSize(file.size);
+  const iconWrap = document.getElementById('docFileIconWrap');
+  iconWrap.className = 'doc-file-icon ' + (fileType === 'image' ? 'image' : 'pdf');
+  iconWrap.innerHTML = fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
+  if(!document.getElementById('docName').value.trim()){
+    document.getElementById('docName').value = file.name.replace(/\.[^.]+$/, '');
+  }
+}
+
+function initDocDropZoneListeners(){
+  const zone = document.getElementById('docDropZone');
+  const input = document.getElementById('docFileInput');
+  if(!zone || zone.dataset.bound) return;
+  zone.dataset.bound = '1';
+  input.addEventListener('change', () => { if(input.files[0]) handleDocFileSelected(input.files[0]); });
+  ['dragenter','dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drag-over'); }));
+  zone.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if(f) handleDocFileSelected(f); });
 }
 
 function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
 
 async function submitEmployeeDocument(){
   const name = document.getElementById('docName').value.trim();
-  const fileType = document.getElementById('docFileType').value;
-  const fileInput = document.getElementById('docFileInput');
-  const file = fileInput && fileInput.files[0];
+  const file = docSelectedFile;
   if(!name){ toast('Please enter a document name.','fa-solid fa-triangle-exclamation'); return; }
   if(!file){ toast('Please choose a file to upload.','fa-solid fa-triangle-exclamation'); return; }
   if(file.size > 4*1024*1024){
     toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
     return;
   }
+  const fileType = detectDocFileType(file);
+  const progressWrap = document.getElementById('docUploadProgressWrap');
+  const progressFill = document.getElementById('docUploadProgressFill');
+  const progressPct = document.getElementById('docUploadProgressPct');
+  const progressText = document.getElementById('docUploadProgressText');
+  const uploadBtn = document.getElementById('docUploadBtn');
+  const cancelBtn = document.getElementById('docCancelBtn');
   try{
+    progressWrap.style.display = 'block';
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+    progressText.textContent = 'Preparing file...';
+    uploadBtn.disabled = true;
+    cancelBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+
     const dataUrl = await readFileAsDataUrl(file);
-    await Api.uploadEmployeeDocument(currentDetailEmployeeId,{
+    progressText.textContent = 'Uploading...';
+
+    await Api.uploadEmployeeDocumentWithProgress(currentDetailEmployeeId, {
       name,
       file_type: fileType,
       data_url: dataUrl
+    }, (pct) => {
+      progressFill.style.width = pct + '%';
+      progressPct.textContent = pct + '%';
+      if(pct >= 100) progressText.textContent = 'Finishing up...';
     });
+
+    progressFill.style.width = '100%';
+    progressPct.textContent = '100%';
+    progressText.textContent = 'Done';
     toast('Document uploaded.');
     closeModal('employeeDocumentModal');
     await loadEmployeeDocuments(currentDetailEmployeeId);
   } catch(err){
     toast(err.message,'fa-solid fa-triangle-exclamation');
+  } finally {
+    progressWrap.style.display = 'none';
+    uploadBtn.disabled = false;
+    cancelBtn.disabled = false;
+    uploadBtn.innerHTML = '<i class="fa-solid fa-check"></i> Upload';
   }
 }
+
+document.addEventListener('DOMContentLoaded', initDocDropZoneListeners);
+if(document.readyState !== 'loading') initDocDropZoneListeners();
 
 async function deleteEmployeeDocument(docId){
   try{
