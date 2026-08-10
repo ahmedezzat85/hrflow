@@ -200,6 +200,26 @@ def _check_document_access(current_user, emp_id):
         raise HTTPException(status_code=403, detail="You can only access your own documents")
 
 
+def _normalize_document_record(d: dict) -> dict:
+    """
+    Google Sheets (via gspread's get_all_records) auto-types cell values,
+    so a document named e.g. "6" (from a file like 6.jpg) comes back as the
+    Python int 6 instead of the string "6". The frontend then does
+    `(d.name || '').replace(...)` on it, which throws
+    "X.replace is not a function" because numbers don't have .replace().
+    We normalize every document field to a plain string here so the API
+    contract is stable regardless of how a cell happens to be typed.
+    """
+    normalized = dict(d)
+    for field in ("id", "employee_id", "name", "file_type", "drive_file_id",
+                  "view_url", "download_url", "uploaded_by", "uploaded_at"):
+        if field in normalized and normalized[field] is not None:
+            normalized[field] = str(normalized[field])
+        elif field in normalized:
+            normalized[field] = ""
+    return normalized
+
+
 @app.get("/api/employees/{emp_id}/documents", tags=["Documents"])
 def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current_user)):
     client = get_client()
@@ -207,6 +227,7 @@ def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current
     docs = client.get_all_records("EmployeeDocuments")
     docs = [d for d in docs if str(d["employee_id"]) == str(emp_id)]
     docs.sort(key=lambda d: str(d.get("uploaded_at", "")), reverse=True)
+    docs = [_normalize_document_record(d) for d in docs]
     logger.debug("Listed %d documents for employee_id=%s", len(docs), emp_id)
     return docs
 
@@ -246,7 +267,10 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
         client.append_row("EmployeeDocuments", {
             "id": doc_id,
             "employee_id": emp_id,
-            "name": payload.name,
+            # Always store the document name as a string so Google Sheets
+            # never auto-types a purely-numeric name (e.g. "6") as an int,
+            # which previously broke `.replace()` calls on the frontend.
+            "name": str(payload.name),
             "file_type": payload.file_type,
             "drive_file_id": uploaded["file_id"],
             "view_url": uploaded["view_url"],
@@ -293,7 +317,7 @@ def stream_employee_document(doc_id: int, token: str = Query(...), download: boo
         logger.exception("Failed to stream document doc_id=%s (drive_file_id=%s)", doc_id, doc.get("drive_file_id"))
         raise HTTPException(status_code=502, detail=f"Could not fetch document from Google Drive: {exc}")
 
-    file_name = doc.get("name") or drive_name
+    file_name = str(doc.get("name") or drive_name)
     disposition = "attachment" if download else "inline"
     headers = {"Content-Disposition": f'{disposition}; filename="{file_name}"'}
     logger.info("Streaming doc_id=%s to %s (disposition=%s, %d bytes)", doc_id, current_user.get("email"), disposition, len(raw_bytes))
