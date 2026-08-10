@@ -143,20 +143,6 @@ tbody tr:hover{background:var(--surface2);}
 .timeline .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
 .timeline .txt strong{font-size:13.5px;}
 .timeline .txt p{font-size:12px;color:var(--text2);margin-top:2px;}
-.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:6px;}
-.doc-card{border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--surface2);cursor:pointer;transition:.15s;position:relative;}
-.doc-card:hover{border-color:var(--accent);transform:translateY(-2px);}
-.doc-card .doc-icon{width:38px;height:38px;border-radius:10px;background:rgba(99,102,241,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px;}
-.doc-card .doc-name{font-size:13px;font-weight:700;word-break:break-word;margin-bottom:4px;}
-.doc-card .doc-date{font-size:11px;color:var(--text3);}
-.doc-card .doc-del{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;}
-.doc-card .doc-del:hover{background:rgba(239,68,68,.12);color:var(--danger);}
-.doc-upload-drop{border:1.5px dashed var(--border);border-radius:14px;padding:32px 16px;text-align:center;cursor:pointer;transition:.15s;}
-.doc-upload-drop:hover,.doc-upload-drop.drag{border-color:var(--accent);background:var(--surface2);}
-.doc-upload-drop i{font-size:26px;color:var(--accent);margin-bottom:8px;display:block;}
-.doc-upload-drop p{font-size:13px;color:var(--text2);margin:2px 0;}
-.doc-view-img{max-width:100%;max-height:65vh;border-radius:10px;}
-.doc-view-pdf{width:100%;height:65vh;border:none;border-radius:10px;}
 .modal-overlay{position:fixed;inset:0;background:rgba(15,17,25,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(3px);}
 .modal-overlay.active{display:flex;}
 .modal{background:var(--surface);border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);border:1px solid var(--border);}
@@ -335,6 +321,21 @@ tbody tr:hover{background:var(--surface2);}
             <table><thead><tr><th>Category</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody id="detailClaimsBody"></tbody></table>
           </div>
         </div>
+
+        <!-- NEW: Employee Documents card -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head">
+            <h3>Employee Documents</h3>
+            <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
+              <i class="fa-solid fa-upload"></i> Upload Document
+            </button>
+          </div>
+          <table>
+            <thead><tr><th>Name</th><th>Type</th><th>Uploaded</th><th></th></tr></thead>
+            <tbody id="detailDocumentsBody"></tbody>
+          </table>
+        </div>
+
         <div class="card">
           <div class="card-head"><h3>Notes & Performance Tracking</h3></div>
           <div class="form-grid" style="margin-bottom:16px;">
@@ -346,13 +347,6 @@ tbody tr:hover{background:var(--surface2);}
           </div>
           <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
           <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
-        </div>
-        <div class="card" style="margin-top:20px;">
-          <div class="card-head">
-            <h3>Documents</h3>
-            <button class="btn btn-fill" onclick="openDocumentUploadModal(currentDetailEmployeeId)"><i class="fa-solid fa-plus"></i> Upload Document</button>
-          </div>
-          <div class="doc-grid" id="detailDocumentsGrid"></div>
         </div>
       </section>
 
@@ -436,7 +430,6 @@ tbody tr:hover{background:var(--surface2);}
     <a class="nav-item" data-page="e-salary"><i class="fa-solid fa-sack-dollar"></i> Salary & Raises</a>
     <a class="nav-item" data-page="e-vacations"><i class="fa-solid fa-umbrella-beach"></i> Vacations</a>
     <a class="nav-item" data-page="e-insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance</a>
-    <a class="nav-item" data-page="e-documents"><i class="fa-solid fa-folder-open"></i> Documents</a>
     <div class="sidebar-footer">
       <div class="user-mini">
         <div class="avatar" id="empUserAvatar">--</div>
@@ -557,16 +550,6 @@ tbody tr:hover{background:var(--surface2);}
           <table><thead><tr><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Document</th></tr></thead><tbody id="empInsuranceBody"></tbody></table>
         </div>
       </section>
-
-      <section class="page-section" id="e-documents">
-        <div class="card">
-          <div class="card-head">
-            <h3>My Documents</h3>
-            <button class="btn btn-fill" onclick="openDocumentUploadModal(window.LOGGED_IN_EMPLOYEE_ID)"><i class="fa-solid fa-plus"></i> Upload Document</button>
-          </div>
-          <div class="doc-grid" id="empDocumentsGrid"></div>
-        </div>
-      </section>
     </div>
   </main>
 </div>
@@ -681,31 +664,39 @@ tbody tr:hover{background:var(--surface2);}
   </div>
 </div>
 
-<div class="modal-overlay" id="documentUploadModal">
+<!-- NEW: Employee Document upload modal -->
+<div class="modal-overlay" id="employeeDocumentModal">
   <div class="modal">
-    <div class="modal-head"><h3>Upload Document</h3><button class="modal-close" onclick="closeModal('documentUploadModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body">
-      <div class="doc-upload-drop" id="docUploadDrop" onclick="document.getElementById('docUploadFile').click()">
-        <i class="fa-solid fa-cloud-arrow-up"></i>
-        <p><b>Click to choose a file</b> or drag it here</p>
-        <p style="font-size:11.5px;color:var(--text3);">PDF, JPG or PNG - up to 4MB</p>
-        <input type="file" id="docUploadFile" accept="application/pdf,image/jpeg,image/png,image/jpg" style="display:none;">
-      </div>
-      <div class="form-field" style="margin-top:14px;">
-        <label>Document Name</label>
-        <input id="docUploadName" placeholder="e.g. National ID, Contract, Certificate...">
-      </div>
-      <p id="docUploadFileInfo" style="font-size:12.5px;color:var(--text2);margin-top:8px;"></p>
+    <div class="modal-head">
+      <h3>Upload Employee Document</h3>
+      <button class="modal-close" onclick="closeModal('employeeDocumentModal')"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('documentUploadModal')">Cancel</button><button class="btn btn-fill" onclick="submitDocumentUpload()"><i class="fa-solid fa-upload"></i> Upload</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="documentViewModal">
-  <div class="modal wide">
-    <div class="modal-head"><h3 id="docViewTitle">Document</h3><button class="modal-close" onclick="closeModal('documentViewModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body" id="docViewBody" style="display:flex;justify-content:center;"></div>
-    <div class="modal-foot"><a class="btn btn-fill" id="docViewDownload" download><i class="fa-solid fa-download"></i> Download</a></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Document Name</label>
+          <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
+        </div>
+        <div class="form-field">
+          <label>File Type</label>
+          <select id="docFileType">
+            <option value="pdf">PDF</option>
+            <option value="image">Image</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>File</label>
+          <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+      </div>
+      <p style="font-size:11.5px;color:var(--text3);margin-top:10px;">
+        Files are stored securely in Google Drive under this employee's folder, with link-only access.
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
+      <button class="btn btn-fill" onclick="submitEmployeeDocument()"><i class="fa-solid fa-check"></i> Upload</button>
+    </div>
   </div>
 </div>
 
@@ -723,6 +714,7 @@ let insuranceCategories = [];
 let insuranceConsumption = [];
 let currentEditCategoryId = null;
 let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
+let employeeDocuments = [];
 
 function getInitials(name){
   if(!name) return '--';
@@ -799,7 +791,6 @@ async function loadEmployeeData(){
     document.getElementById('empUserRole').textContent = currentLoggedInEmployee.role;
     populateClaimCategoryOptions();
     renderEmployeePortal();
-    loadEmployeeDocuments(window.LOGGED_IN_EMPLOYEE_ID, 'empDocumentsGrid');
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 function logout(){
@@ -968,7 +959,11 @@ function renderRequestsTable(filter){
   body.innerHTML = list.map(r=>`<tr><td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td><td>${r.type}</td><td>${r.details}</td><td>${r.date}</td><td>${statusPill(r.status)}</td><td style="display:flex;gap:6px;">${r.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionRequest(${r.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button><button class="btn btn-sm btn-danger-outline" onclick="actionRequest(${r.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : `<span style="color:var(--text3);font-size:12.5px;">No actions</span>`}</td></tr>`).join('') || `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No requests in this category.</p></div></td></tr>`;
 }
 document.querySelectorAll('[data-reqfilter]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{ document.querySelectorAll('[data-reqfilter]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRequestsTable(btn.dataset.reqfilter); });
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('[data-reqfilter]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderRequestsTable(btn.dataset.reqfilter);
+  });
 });
 async function actionRequest(id, status){
   try{ await Api.actionRequest(id, status); toast(`Request marked as ${status}.`, status==='Approved'?'fa-solid fa-circle-check':'fa-solid fa-circle-xmark'); await loadAdminData(); }
@@ -1119,7 +1114,7 @@ async function viewProfile(id){
     const empClaims = claims.filter(c=>String(c.employee_id)===String(id));
     document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c=>`<tr><td>${c.category}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
     renderNotesList(notes);
-    loadEmployeeDocuments(id, 'detailDocumentsGrid');
+    await loadEmployeeDocuments(id);
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
@@ -1156,94 +1151,79 @@ async function deleteEmployeeNote(noteId){
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
-let currentDocTargetEmployeeId = null;
-let currentDocGridId = null;
-let currentDocFileData = null;
-let currentDocsCache = [];
+// NEW: Employee documents helpers
 
-async function loadEmployeeDocuments(empId, gridId){
+async function loadEmployeeDocuments(empId){
   try{
     const docs = await Api.getEmployeeDocuments(empId);
-    renderDocumentsGrid(docs, gridId, empId);
-  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+    employeeDocuments = docs;
+    renderEmployeeDocuments(docs);
+  } catch(err){
+    toast(err.message,'fa-solid fa-triangle-exclamation');
+  }
 }
 
-function renderDocumentsGrid(docs, gridId, empId){
-  currentDocsCache = docs;
-  const grid = document.getElementById(gridId);
-  if(!grid) return;
-  grid.innerHTML = docs.map(d => `
-    <div class="doc-card" onclick="viewDocument(${d.id})">
-      <button class="doc-del" onclick="event.stopPropagation(); deleteDocument(${d.id}, ${empId}, '${gridId}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-      <div class="doc-icon"><i class="fa-solid ${d.file_type === 'pdf' ? 'fa-file-pdf' : 'fa-file-image'}"></i></div>
-      <div class="doc-name">${d.name}</div>
-      <div class="doc-date">${d.uploaded_at}</div>
-    </div>
-  `).join('') || '<div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div>';
+function renderEmployeeDocuments(docs){
+  const body = document.getElementById('detailDocumentsBody');
+  if(!body) return;
+  body.innerHTML = docs.length ? docs.map(d=>`<tr>
+    <td>${d.name}</td>
+    <td>${d.file_type}</td>
+    <td>${d.uploaded_at || ''}</td>
+    <td style="display:flex;gap:6px;">
+      ${d.view_url ? `<a href="${d.view_url}" target="_blank" class="icon-action" title="View"><i class="fa-solid fa-eye"></i></a>` : ''}
+      ${d.download_url ? `<a href="${d.download_url}" target="_blank" class="icon-action" title="Download"><i class="fa-solid fa-download"></i></a>` : ''}
+      <button class="icon-action" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
+    </td>
+  </tr>`).join('') : `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
 }
 
-function openDocumentUploadModal(empId){
-  currentDocTargetEmployeeId = empId;
-  currentDocGridId = (currentPortal === 'employee') ? 'empDocumentsGrid' : 'detailDocumentsGrid';
-  currentDocFileData = null;
-  document.getElementById('docUploadName').value = '';
-  document.getElementById('docUploadFileInfo').textContent = '';
-  document.getElementById('docUploadFile').value = '';
-  document.getElementById('documentUploadModal').classList.add('active');
+function openEmployeeDocumentModal(){
+  document.getElementById('docName').value = '';
+  document.getElementById('docFileType').value = 'pdf';
+  const fileInput = document.getElementById('docFileInput');
+  if(fileInput) fileInput.value = '';
+  document.getElementById('employeeDocumentModal').classList.add('active');
 }
 
-document.getElementById('docUploadFile').addEventListener('change', async function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const isPdf = file.type === 'application/pdf';
-  const isImage = ['image/jpeg','image/png','image/jpg'].includes(file.type);
-  if(!isPdf && !isImage){ toast('Only PDF and image files (JPG/PNG) are supported.', 'fa-solid fa-triangle-exclamation'); e.target.value=''; return; }
-  if(file.size > 4*1024*1024){ toast('File is too large. Max size is 4MB.', 'fa-solid fa-triangle-exclamation'); e.target.value=''; return; }
+function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
+
+async function submitEmployeeDocument(){
+  const name = document.getElementById('docName').value.trim();
+  const fileType = document.getElementById('docFileType').value;
+  const fileInput = document.getElementById('docFileInput');
+  const file = fileInput && fileInput.files[0];
+  if(!name){ toast('Please enter a document name.','fa-solid fa-triangle-exclamation'); return; }
+  if(!file){ toast('Please choose a file to upload.','fa-solid fa-triangle-exclamation'); return; }
+  if(file.size > 4*1024*1024){
+    toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
+    return;
+  }
   try{
     const dataUrl = await readFileAsDataUrl(file);
-    currentDocFileData = { dataUrl, fileType: isPdf ? 'pdf' : 'image' };
-    document.getElementById('docUploadFileInfo').innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--success);"></i> ${file.name} (${(file.size/1024).toFixed(0)} KB)`;
-    if(!document.getElementById('docUploadName').value.trim()){
-      document.getElementById('docUploadName').value = file.name.replace(/\.[^/.]+$/, '');
-    }
-  } catch(err){ toast('Could not read the selected file.', 'fa-solid fa-triangle-exclamation'); }
-});
-
-async function submitDocumentUpload(){
-  const name = document.getElementById('docUploadName').value.trim();
-  if(!name){ toast('Please enter a document name.', 'fa-solid fa-triangle-exclamation'); return; }
-  if(!currentDocFileData){ toast('Please choose a file to upload.', 'fa-solid fa-triangle-exclamation'); return; }
-  try{
-    await Api.uploadEmployeeDocument(currentDocTargetEmployeeId, {
-      name, file_type: currentDocFileData.fileType, data_url: currentDocFileData.dataUrl,
+    await Api.uploadEmployeeDocument(currentDetailEmployeeId,{
+      name,
+      file_type: fileType,
+      data_url: dataUrl
     });
-    closeModal('documentUploadModal');
     toast('Document uploaded.');
-    loadEmployeeDocuments(currentDocTargetEmployeeId, currentDocGridId);
-  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+    closeModal('employeeDocumentModal');
+    await loadEmployeeDocuments(currentDetailEmployeeId);
+  } catch(err){
+    toast(err.message,'fa-solid fa-triangle-exclamation');
+  }
 }
 
-function viewDocument(docId){
-  const doc = currentDocsCache.find(d => d.id === docId);
-  if(!doc) return;
-  document.getElementById('docViewTitle').textContent = doc.name;
-  const body = document.getElementById('docViewBody');
-  body.innerHTML = doc.file_type === 'pdf'
-    ? `<iframe class="doc-view-pdf" src="${doc.data_url}"></iframe>`
-    : `<img class="doc-view-img" src="${doc.data_url}" alt="${doc.name}">`;
-  const dl = document.getElementById('docViewDownload');
-  dl.href = doc.data_url;
-  dl.download = doc.name + (doc.file_type === 'pdf' ? '.pdf' : '');
-  document.getElementById('documentViewModal').classList.add('active');
-}
-
-async function deleteDocument(docId, empId, gridId){
+async function deleteEmployeeDocument(docId){
   try{
     await Api.deleteEmployeeDocument(docId);
-    toast('Document deleted.', 'fa-solid fa-trash');
-    loadEmployeeDocuments(empId, gridId);
-  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+    toast('Document deleted.','fa-solid fa-trash');
+    await loadEmployeeDocuments(currentDetailEmployeeId);
+  } catch(err){
+    toast(err.message,'fa-solid fa-triangle-exclamation');
+  }
 }
+
 function renderEmployeeInsuranceHighlights(){
   const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(window.LOGGED_IN_EMPLOYEE_ID));
   const dashGrid = document.getElementById('empDashInsuranceCategoryChips');
@@ -1279,7 +1259,6 @@ async function submitVacation(){
   try{ await Api.requestVacation({ employee_name: currentLoggedInEmployee.name, leave_type: type, start_date: start, end_date: end || start, days: 1 }); toast('Request submitted for approval.'); await loadEmployeeData(); }
   catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
 async function submitClaim(){
   const category = document.getElementById('claimCategory').value;
   const amount = Number(document.getElementById('claimAmount').value);
