@@ -2,7 +2,16 @@
 drive_client.py
 Thin data-access layer over Google Drive using the Google API Python client.
 Stores each employee's documents in their own sub-folder under a root folder
-(DRIVE_ROOT_FOLDER_ID) that must be shared with the service account as Editor.
+(DRIVE_ROOT_FOLDER_ID) that must live inside a Shared Drive the service
+account is a Content Manager member of (service accounts have no personal
+storage quota, so a Shared Drive is required for uploads to succeed).
+
+Documents are private by default: no public "anyone with the link" sharing
+is set on uploaded files. Access is controlled entirely via the Shared
+Drive's membership and any explicit per-folder sharing you configure in
+Google Drive (e.g. sharing a single employee's sub-folder with just that
+employee). The app's own view_url/download_url only work for accounts that
+Google Drive already grants access to.
 """
 import base64
 import io
@@ -85,7 +94,11 @@ class DriveClient:
         )
         logger.debug("Searching for Drive folder: name='%s', parent_id=%s", name, parent_id)
         try:
-            res = self.service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
+            res = self.service.files().list(
+                q=query, spaces="drive", fields="files(id, name)",
+                supportsAllDrives=True, includeItemsFromAllDrives=True,
+                corpora="allDrives",
+            ).execute()
         except HttpError:
             logger.exception("Drive API error while searching for folder '%s' under parent %s", name, parent_id)
             raise
@@ -102,9 +115,11 @@ class DriveClient:
         }
         logger.info("Creating Drive folder '%s' under parent %s", name, parent_id)
         try:
-            folder = self.service.files().create(body=metadata, fields="id").execute()
+            folder = self.service.files().create(
+                body=metadata, fields="id", supportsAllDrives=True,
+            ).execute()
         except HttpError:
-            logger.exception("Drive API error while creating folder '%s' under parent %s. Verify the service account has Editor access to DRIVE_ROOT_FOLDER_ID.", name, parent_id)
+            logger.exception("Drive API error while creating folder '%s' under parent %s. Verify the service account is a Content Manager (or higher) member of the Shared Drive containing DRIVE_ROOT_FOLDER_ID.", name, parent_id)
             raise
         logger.info("Created Drive folder '%s' -> id=%s", name, folder["id"])
         return folder["id"]
@@ -128,8 +143,11 @@ class DriveClient:
 
     def upload_file(self, employee_id, employee_name: str, file_name: str, data_url: str) -> dict:
         """
-        Uploads a base64 data URL to the employee's Drive sub-folder.
-        Returns dict with file_id, view_url (webViewLink), and download_url.
+        Uploads a base64 data URL to the employee's Drive sub-folder inside
+        the Shared Drive. Returns dict with file_id, view_url (webViewLink),
+        and download_url. Files are NOT made public - visibility is fully
+        governed by the Shared Drive's membership / folder-level sharing
+        configured directly in Google Drive.
         """
         logger.info("Starting document upload: employee_id=%s, file_name='%s'", employee_id, file_name)
         mime, raw_bytes = _parse_data_url(data_url)
@@ -145,7 +163,8 @@ class DriveClient:
         logger.debug("Uploading file to Drive: folder_id=%s, mime=%s, size=%d bytes", folder_id, mime, len(raw_bytes))
         try:
             created = self.service.files().create(
-                body=metadata, media_body=media, fields="id, webViewLink, webContentLink"
+                body=metadata, media_body=media, fields="id, webViewLink, webContentLink",
+                supportsAllDrives=True,
             ).execute()
         except HttpError as exc:
             logger.exception("Drive API error while uploading file '%s' for employee_id=%s (folder_id=%s): status=%s", file_name, employee_id, folder_id, getattr(exc, "status_code", "?"))
@@ -157,20 +176,15 @@ class DriveClient:
         file_id = created["id"]
         logger.info("File uploaded to Drive: file_id=%s, name='%s', employee_id=%s", file_id, file_name, employee_id)
 
-        # Allow anyone with the link (within the org, via service account sharing)
-        # to view/download without needing their own Drive permissions on the file.
-        try:
-            self.service.permissions().create(
-                fileId=file_id, body={"role": "reader", "type": "anyone"}
-            ).execute()
-            logger.debug("Set 'anyone with link: reader' permission on file_id=%s", file_id)
-        except HttpError:
-            logger.exception("Drive API error while setting sharing permissions on file_id=%s. File was uploaded but may not be viewable via link.", file_id)
-            raise
-
+        # NOTE: We intentionally do NOT grant "anyone with the link" access
+        # here. These documents hold private employee data - visibility is
+        # controlled solely by Shared Drive membership and any explicit
+        # per-folder sharing you configure directly in Google Drive (e.g.
+        # sharing one employee's sub-folder with just that employee).
         try:
             refreshed = self.service.files().get(
-                fileId=file_id, fields="webViewLink, webContentLink"
+                fileId=file_id, fields="webViewLink, webContentLink",
+                supportsAllDrives=True,
             ).execute()
         except HttpError:
             logger.exception("Drive API error while fetching links for file_id=%s", file_id)
@@ -188,7 +202,7 @@ class DriveClient:
             logger.warning("delete_file called with empty file_id - skipping Drive delete")
             return False
         try:
-            self.service.files().delete(fileId=file_id).execute()
+            self.service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
             logger.info("Deleted Drive file_id=%s", file_id)
             return True
         except Exception:
