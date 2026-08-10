@@ -28,8 +28,15 @@ SHEET_SCHEMAS = {
                        "pct_change","reason","applied_by"],
     "Users": ["email","role","employee_id"],
     "EmployeeNotes": ["id","employee_id","date","category","note","created_by"],
-    "EmployeeDocuments": ["id","employee_id","name","file_type","data_url",
-                           "uploaded_by","uploaded_at"],
+    # EmployeeDocuments originally used only data_url; we now support
+    # Drive-backed storage as well. The union schema keeps existing
+    # data_url column unchanged and appends drive_file_id/view_url/
+    # download_url at the end so legacy rows remain valid and new
+    # uploads populate the additional metadata.
+    "EmployeeDocuments": [
+        "id","employee_id","name","file_type","data_url",
+        "uploaded_by","uploaded_at","drive_file_id","view_url","download_url"
+    ],
 }
 
 _lock = Lock()
@@ -71,6 +78,31 @@ class SheetsClient:
                 if not first_row:
                     logger.warning("Sheet tab '%s' exists but has no header row - adding headers", tab_name)
                     ws.append_row(headers)
+                # Legacy migration for EmployeeDocuments: if the tab was
+                # created before Drive-backed documents were introduced,
+                # it will only have the old headers
+                #   id, employee_id, name, file_type, data_url, uploaded_by, uploaded_at
+                # We transparently extend that header row to the union
+                # schema so existing data stays intact and new uploads can
+                # store drive_file_id/view_url/download_url.
+                if tab_name == "EmployeeDocuments":
+                    legacy_headers = [
+                        "id","employee_id","name","file_type","data_url",
+                        "uploaded_by","uploaded_at"
+                    ]
+                    if first_row == legacy_headers:
+                        try:
+                            ws.update('A1:J1', [SHEET_SCHEMAS["EmployeeDocuments"]])
+                            logger.info(
+                                "Migrated EmployeeDocuments header from legacy %s to union %s",
+                                legacy_headers, SHEET_SCHEMAS["EmployeeDocuments"]
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Failed to migrate EmployeeDocuments header row to union schema"
+                            )
+                            # Don't raise here; even if migration fails we
+                            # prefer the app to keep running.
 
     def _ws(self, tab_name):
         try:
