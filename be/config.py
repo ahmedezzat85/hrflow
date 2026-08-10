@@ -36,3 +36,16 @@ class Config:
     # domain (checked via the token's "hd" claim) will be allowed to log in.
     # Leave blank to allow any Google account (NOT recommended for production).
     ALLOWED_WORKSPACE_DOMAIN = os.getenv("ALLOWED_WORKSPACE_DOMAIN", "")
+
+    # ---- Logging settings ----
+    # Minimum severity written to both console and file:
+    # DEBUG | INFO | WARNING | ERROR | CRITICAL
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+    # Path to the log file. Directory is created automatically if missing.
+    # Point this at a persistent/mounted path in production so logs survive restarts.
+    LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", "logs/hrflow.log")
+
+    # Rotating file handler settings
+    LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024)))  # 5MB default
+    LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
