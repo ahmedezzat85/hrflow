@@ -690,12 +690,29 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </div>
       <p style="font-size:11.5px;color:var(--text3);margin-top:10px;">
-        Files are stored securely in Google Drive under this employee's folder, with link-only access.
+        Files are stored securely in Google Drive under this employee's folder. Preview and download happen inside HRFlow - no separate Drive access needed.
       </p>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
       <button class="btn btn-fill" onclick="submitEmployeeDocument()"><i class="fa-solid fa-check"></i> Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW: In-app document preview modal (no need to leave the app) -->
+<div class="modal-overlay" id="documentPreviewModal">
+  <div class="modal" style="max-width:900px;width:92vw;">
+    <div class="modal-head">
+      <h3 id="docPreviewTitle">Document Preview</h3>
+      <button class="modal-close" onclick="closeDocumentPreview()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div id="docPreviewContainer" style="width:100%;height:75vh;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:auto;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeDocumentPreview()">Close</button>
+      <a id="docPreviewDownloadBtn" class="btn btn-fill" href="#" target="_blank"><i class="fa-solid fa-download"></i> Download</a>
     </div>
   </div>
 </div>
@@ -1171,11 +1188,41 @@ function renderEmployeeDocuments(docs){
     <td>${d.file_type}</td>
     <td>${d.uploaded_at || ''}</td>
     <td style="display:flex;gap:6px;">
-      ${d.view_url ? `<a href="${d.view_url}" target="_blank" class="icon-action" title="View"><i class="fa-solid fa-eye"></i></a>` : ''}
-      ${d.download_url ? `<a href="${d.download_url}" target="_blank" class="icon-action" title="Download"><i class="fa-solid fa-download"></i></a>` : ''}
+      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${(d.name||'').replace(/'/g,"\\'")}', '${d.file_type}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
   </tr>`).join('') : `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
+}
+
+// NEW: in-app preview (PDF/image rendered inline, no need to leave the app)
+// and forced download, both streamed through our own backend so the
+// signed-in user never needs their own Google Drive permissions.
+function previewEmployeeDocument(docId, name, fileType){
+  const url = Api.getDocumentPreviewUrl(docId);
+  const container = document.getElementById('docPreviewContainer');
+  document.getElementById('docPreviewTitle').textContent = name || 'Document Preview';
+  document.getElementById('docPreviewDownloadBtn').href = Api.getDocumentDownloadUrl(docId);
+  if(fileType === 'image'){
+    container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+  } else {
+    container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
+  }
+  document.getElementById('documentPreviewModal').classList.add('active');
+}
+
+function closeDocumentPreview(){
+  document.getElementById('documentPreviewModal').classList.remove('active');
+  document.getElementById('docPreviewContainer').innerHTML = '';
+}
+
+function downloadEmployeeDocument(docId){
+  const a = document.createElement('a');
+  a.href = Api.getDocumentDownloadUrl(docId);
+  a.setAttribute('download', '');
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function openEmployeeDocumentModal(){
