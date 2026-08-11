@@ -861,6 +861,7 @@ function getInitials(name){
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '--';
 }
+
 async function handleLoginSuccess(data){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('loginThemeToggle').style.display = 'none';
@@ -877,18 +878,19 @@ async function handleLoginSuccess(data){
       document.getElementById('employee-app').classList.add('active');
       await loadEmployeeData();
     }
-    initCharts();
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
-  } finally {
-    hideAppLoader();
   }
+  try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
+  hideAppLoader();
 }
+
 function handleLoginError(err){
   const errBox = document.getElementById('loginErr');
   errBox.style.display = 'flex';
   errBox.querySelector('span').textContent = err.message || 'Sign-in failed. Please try again.';
 }
+
 async function bootstrapAppFromSession(){
   restoreSessionFromCookies();
   if(!TokenStore.get()){
@@ -917,7 +919,6 @@ async function bootstrapAppFromSession(){
       document.getElementById('employee-app').classList.add('active');
       await loadEmployeeData();
     }
-    initCharts();
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
     TokenStore.clearAll();
@@ -927,9 +928,11 @@ async function bootstrapAppFromSession(){
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('loginThemeToggle').style.display = 'flex';
     initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
-  } finally {
     hideAppLoader();
+    return;
   }
+  try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
+  hideAppLoader();
 }
 
 window.addEventListener('DOMContentLoaded', () => { bootstrapAppFromSession(); });
@@ -1604,6 +1607,7 @@ async function submitClaim(){
 }
 window._charts = {};
 function chartColors(){ const dark = document.documentElement.getAttribute('data-theme')==='dark'; return { grid: dark?'#2a2e3d':'#e7e9f3', text: dark?'#9aa0b4':'#6b7280' }; }
+
 function initCharts(){
   const c = chartColors();
   Chart.defaults.font.family = "'Inter',sans-serif";
@@ -1613,8 +1617,11 @@ function initCharts(){
   window._charts.donut = new Chart(ctx2, { type:'doughnut', data:{ labels:['Vacation','WFH','Insurance'], datasets:[{data:[45,28,27], backgroundColor:['#6366f1','#0ea5e9','#f59e0b'], borderWidth:0}]}, options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom', labels:{color:c.text, boxWidth:10, font:{size:11}}}} } });
   const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
   const ctx3 = document.getElementById('chartSalary');
-  window._charts.salary = new Chart(ctx3, { type:'line', data:{ labels: emp.salaryHistory.map(s=>s.date.slice(0,7)), datasets:[{label:'Salary (EGP)', data: emp.salaryHistory.map(s=>s.next), borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,.12)', fill:true, tension:.4, pointBackgroundColor:'#6366f1', pointRadius:5}]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } } });
+  if (ctx3 && emp && emp.salaryHistory) {
+    window._charts.salary = new Chart(ctx3, { type:'line', data:{ labels: emp.salaryHistory.map(s=>s.date.slice(0,7)), datasets:[{label:'Salary (EGP)', data: emp.salaryHistory.map(s=>s.next), borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,.12)', fill:true, tension:.4, pointBackgroundColor:'#6366f1', pointRadius:5}]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}, ticks:{color:c.text}}, y:{grid:{color:c.grid}, ticks:{color:c.text}} } } });
+  }
 }
+
 function updateSalaryChart(){ const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee; const ch = window._charts.salary; ch.data.labels = emp.salaryHistory.map(s=>s.date.slice(0,7)); ch.data.datasets[0].data = emp.salaryHistory.map(s=>s.next); ch.update(); }
 function refreshCharts(){
   const c = chartColors();
