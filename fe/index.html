@@ -54,13 +54,13 @@ button{font-family:inherit;cursor:pointer;}
 .app.active{display:flex;}
 .sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;padding:22px 16px;transition:width .25s ease;overflow:visible;}
 .sidebar-top-row{display:flex;align-items:center;justify-content:space-between;position:relative;}
-.sidebar .brand{padding:6px 10px 22px;font-size:19px;font-family:var(--font-head);transition:padding .2s,justify-content .2s;}
+.sidebar .brand{padding:6px 10px 22px;font-size:19px;font-family:var(--font-head);transition:padding .2s,justify-content .2s,width .2s;}
 .sidebar .brand i{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:24px;flex-shrink:0;}
 .sidebar .brand span.grad{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;}
 .sidebar-collapse-btn{position:absolute;top:22px;right:-12px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:10.5px;box-shadow:var(--shadow);cursor:pointer;z-index:5;transition:.15s;flex-shrink:0;}
 .sidebar-collapse-btn:hover{color:var(--accent);border-color:var(--accent);}
 .nav-section-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:600;margin:20px 10px 8px;transition:.2s;overflow:hidden;}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:11px;color:var(--text2);font-size:13.5px;font-weight:500;letter-spacing:.01em;margin-bottom:2px;position:relative;transition:background .15s,color .15s,padding .2s,justify-content .2s;}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:11px;color:var(--text2);font-size:13.5px;font-weight:500;letter-spacing:.01em;margin-bottom:2px;position:relative;transition:background .15s,color .15s,padding .2s,justify-content .2s,width .2s,height .2s,margin .2s;}
 .nav-item i{width:18px;text-align:center;font-size:14.5px;opacity:.85;flex-shrink:0;}
 .nav-item:hover{background:var(--surface2);color:var(--text);}
 .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
@@ -68,33 +68,37 @@ button{font-family:inherit;cursor:pointer;}
 .nav-item .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:10px;transition:.2s;}
 .nav-label{white-space:nowrap;overflow:hidden;transition:.2s;}
 .sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;}
-.user-mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;cursor:pointer;transition:padding .2s,justify-content .2s;}
+.user-mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;cursor:pointer;transition:padding .2s,justify-content .2s,width .2s,height .2s,margin .2s;}
 .user-mini:hover{background:var(--surface2);}
 .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
 .user-mini-text{overflow:hidden;transition:.2s;}
 .user-mini .name{font-size:13.5px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
 .user-mini .role{font-size:11.5px;color:var(--text2);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
-.logout-btn{width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:9px;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:8px;transition:padding .2s;}
+.logout-btn{width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:9px;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:8px;transition:padding .2s,width .2s,height .2s,margin .2s;}
 .logout-btn:hover{background:rgba(214,59,59,.08);color:var(--danger);border-color:rgba(214,59,59,.3);}
 .logout-btn span{white-space:nowrap;overflow:hidden;transition:.2s;}
 .sidebar-brand-footer{display:flex;justify-content:center;padding:14px 10px 4px;margin-top:2px;border-top:1px solid var(--border);border-radius:0 0 12px 12px;transition:.2s;overflow:hidden;}
 .sidebar-brand-footer img{height:20px;opacity:1;flex-shrink:0;}
+.sidebar-brand-footer .logo-mark{display:none;}
 
 /* Collapsible sidebar (desktop rail mode) */
-.sidebar.collapsed{width:76px;padding:22px 10px;}
-.sidebar.collapsed .brand{justify-content:center;padding:6px 0 22px;}
+.sidebar.collapsed{width:72px;padding:20px 10px;}
+.sidebar.collapsed .sidebar-top-row{justify-content:center;}
+.sidebar.collapsed .brand{justify-content:center;padding:4px 0 20px;width:100%;}
 .sidebar.collapsed .brand span.grad{display:none;}
 .sidebar.collapsed .sidebar-collapse-btn i{transform:rotate(180deg);}
-.sidebar.collapsed .nav-item{justify-content:center;padding:10px 0;}
+.sidebar.collapsed .nav-item{justify-content:center;padding:0;width:40px;height:40px;margin:0 auto 4px;border-radius:10px;}
+.sidebar.collapsed .nav-item i{font-size:15px;width:auto;}
 .sidebar.collapsed .nav-label{display:none;width:0;}
-.sidebar.collapsed .nav-item .badge{position:absolute;top:6px;right:16px;min-width:8px;height:8px;padding:0;font-size:0;}
-.sidebar.collapsed .nav-section-label{font-size:0;height:1px;margin:16px 8px;padding:0;background:var(--border);}
-.sidebar.collapsed .user-mini{justify-content:center;padding:8px 0;}
+.sidebar.collapsed .nav-item .badge{position:absolute;top:2px;right:2px;min-width:8px;height:8px;padding:0;font-size:0;margin-left:0;}
+.sidebar.collapsed .nav-section-label{font-size:0;height:1px;margin:14px 12px;padding:0;background:var(--border);}
+.sidebar.collapsed .user-mini{justify-content:center;padding:0;width:40px;height:40px;margin:0 auto;}
 .sidebar.collapsed .user-mini-text{display:none;width:0;}
-.sidebar.collapsed .logout-btn{padding:9px 0;}
+.sidebar.collapsed .logout-btn{padding:0;width:40px;height:40px;margin:0 auto;border-radius:10px;}
 .sidebar.collapsed .logout-btn span{display:none;width:0;}
 .sidebar.collapsed .sidebar-brand-footer{padding:10px 0 2px;}
-.sidebar.collapsed .sidebar-brand-footer img{height:18px;}
+.sidebar.collapsed .sidebar-brand-footer .logo-full{display:none;}
+.sidebar.collapsed .sidebar-brand-footer .logo-mark{display:block;height:26px;margin:0 auto;}
 
 .main{flex:1;min-width:0;height:100vh;overflow-y:auto;}
 .topbar{position:sticky;top:0;z-index:20;background:var(--surface);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);}
@@ -210,19 +214,38 @@ tbody tr:hover{background:var(--surface2);}
   .page{padding:20px 16px;}
   .sidebar-collapse-btn{display:none;}
   .sidebar.collapsed{width:260px;padding:22px 16px;}
-  .sidebar.collapsed .brand{justify-content:flex-start;padding:6px 10px 22px;}
+  .sidebar.collapsed .sidebar-top-row{justify-content:space-between;}
+  .sidebar.collapsed .brand{justify-content:flex-start;padding:6px 10px 22px;width:auto;}
   .sidebar.collapsed .brand span.grad{display:inline;}
-  .sidebar.collapsed .nav-item{justify-content:flex-start;padding:10px 12px;}
+  .sidebar.collapsed .nav-item{justify-content:flex-start;padding:10px 12px;width:auto;height:auto;margin:0 0 2px;border-radius:11px;}
+  .sidebar.collapsed .nav-item i{font-size:14.5px;width:18px;}
   .sidebar.collapsed .nav-label{display:inline;width:auto;}
   .sidebar.collapsed .nav-item .badge{position:static;min-width:auto;height:auto;padding:1px 7px;font-size:10.5px;margin-left:auto;}
   .sidebar.collapsed .nav-section-label{font-size:10.5px;height:auto;margin:20px 10px 8px;padding:0;background:none;}
-  .sidebar.collapsed .user-mini{justify-content:flex-start;padding:8px 10px;}
+  .sidebar.collapsed .user-mini{justify-content:flex-start;padding:8px 10px;width:auto;height:auto;margin:0;}
   .sidebar.collapsed .user-mini-text{display:block;width:auto;}
-  .sidebar.collapsed .logout-btn{padding:9px;}
+  .sidebar.collapsed .logout-btn{padding:9px;width:100%;height:auto;margin:0;}
   .sidebar.collapsed .logout-btn span{display:inline;width:auto;}
   .sidebar.collapsed .sidebar-brand-footer{padding:14px 10px 4px;}
-  .sidebar.collapsed .sidebar-brand-footer img{height:24px;}
+  .sidebar.collapsed .sidebar-brand-footer .logo-full{display:block;}
+  .sidebar.collapsed .sidebar-brand-footer .logo-mark{display:none;}
 }
+
+@media(max-width:760px){
+  .login-visual{ display:none; }
+  .login-form-wrap{ padding:36px 28px; }
+  .login-card{
+    grid-template-columns:1fr;
+    max-width:440px;
+  }
+  #login-screen{
+    min-height:100vh;        /* fallback for older browsers */
+    min-height:100dvh;       /* dynamic viewport height — accounts for mobile toolbars */
+    align-items:flex-start;  /* stop relying on vertical centering entirely */
+    padding-top:72px;
+  }
+}
+
 @media(max-width:600px){
   .topbar{padding:14px;}
   .topbar h2{font-size:16px;}
@@ -372,20 +395,23 @@ select option{background:var(--surface);color:var(--text);}
       <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse sidebar"><i class="fa-solid fa-chevron-left"></i></button>
     </div>
     <div class="nav-section-label">Workspace</div>
-    <a class="nav-item active" data-page="a-dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
-    <a class="nav-item" data-page="a-employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
-    <a class="nav-item" data-page="a-requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
-    <a class="nav-item" data-page="a-salary"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
+    <a class="nav-item active" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
+    <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
+    <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
     <div class="nav-section-label">Modules</div>
-    <a class="nav-item" data-page="a-vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
-    <a class="nav-item" data-page="a-insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+    <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
+    <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
     <div class="sidebar-footer">
-      <div class="user-mini">
+      <div class="user-mini" title="Account">
         <div class="avatar" id="adminUserAvatar">--</div>
         <div class="user-mini-text"><div class="name" id="adminUserName">--</div><div class="role" id="adminUserRole">--</div></div>
       </div>
-      <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></button>
-      <div class="sidebar-brand-footer"><img src="voyance-health-logo.png" alt="Voyance Health"></div>
+      <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></button>
+      <div class="sidebar-brand-footer">
+        <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
+        <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
+      </div>
     </div>
   </aside>
   <main class="main">
@@ -588,17 +614,20 @@ select option{background:var(--surface);color:var(--text);}
       <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse sidebar"><i class="fa-solid fa-chevron-left"></i></button>
     </div>
     <div class="nav-section-label">Workspace</div>
-    <a class="nav-item active" data-page="e-dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
-    <a class="nav-item" data-page="e-salary"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
-    <a class="nav-item" data-page="e-vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
-    <a class="nav-item" data-page="e-insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+    <a class="nav-item active" data-page="e-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" data-page="e-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
+    <a class="nav-item" data-page="e-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
+    <a class="nav-item" data-page="e-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
     <div class="sidebar-footer">
-      <div class="user-mini">
+      <div class="user-mini" title="Account">
         <div class="avatar" id="empUserAvatar">--</div>
         <div class="user-mini-text"><div class="name" id="empUserName">--</div><div class="role" id="empUserRole">--</div></div>
       </div>
-      <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></button>
-      <div class="sidebar-brand-footer"><img src="voyance-health-logo.png" alt="Voyance Health"></div>
+      <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></button>
+      <div class="sidebar-brand-footer">
+        <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
+        <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
+      </div>
     </div>
   </aside>
   <main class="main">
@@ -987,7 +1016,7 @@ function showTableSkeleton(tbodyId, colCount, rowCount=5){
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 
-// NEW: Collapsible desktop sidebar (icon-only rail mode), state persisted
+// Collapsible desktop sidebar (icon-only rail mode), state persisted
 function toggleSidebarCollapse(id){
   const sidebar = document.getElementById(id);
   if(!sidebar) return;
