@@ -1,49 +1,45 @@
 """
 sheets_client.py
 Thin data-access layer over Google Sheets using gspread.
-Every "table" in our HR system is simply one tab (worksheet) inside a single
-Google Spreadsheet. This module centralizes all read/write logic so the rest
-of the backend never talks to gspread directly.
-
-Sheet tabs expected in the spreadsheet (create these exact tab names):
-  1. Employees
-  2. Requests          (Vacation / WFH / Medical Insurance requests - pending workflow)
-  3. VacationHistory
-  4. InsuranceClaims
-  5. SalaryHistory
-  6. Users             (maps a Google Workspace email -> role/employee_id; no passwords stored)
-
-Each tab's header row (row 1) defines the column names used as dict keys
-throughout the backend - see SHEET_SCHEMAS below for the exact expected
-headers per tab.
 """
 import gspread
 from google.oauth2.service_account import Credentials
 from threading import Lock
 from config import Config
+from logging_config import get_logger
+
+logger = get_logger("sheets_client")
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.file",
 ]
 
-# Expected header row for each tab - used to auto-create tabs if missing.
-# NOTE: no password_hash column anywhere - authentication is fully delegated
-# to Google Sign-In; these tabs only store role/profile data.
 SHEET_SCHEMAS = {
     "Employees": ["id","name","email","role","dept","job_role",
                    "salary","join_date","status","vac_total","vac_used","next_raise"],
     "Requests": ["id","employee_id","employee_name","type","details","date",
-                 "status","reviewed_by","reviewed_at"],
-    "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status"],
-    "InsuranceClaims": ["id","employee_id","employee_name","claim_type","provider",
-                         "amount","date","status"],
+                 "status","reviewed_by","reviewed_at","submitted_by"],
+    "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status","submitted_by"],
+    "InsuranceClaims": ["id","employee_id","employee_name","category","provider",
+                         "amount","date","status","document_url","submitted_by"],
+    "InsuranceCategories": ["id","name","annual_limit"],
     "SalaryHistory": ["id","employee_id","date","previous_salary","new_salary",
                        "pct_change","reason","applied_by"],
     "Users": ["email","role","employee_id"],
+    "EmployeeNotes": ["id","employee_id","date","category","note","created_by"],
+    # EmployeeDocuments originally used only data_url; we now support
+    # Drive-backed storage as well. The union schema keeps existing
+    # data_url column unchanged and appends drive_file_id/view_url/
+    # download_url at the end so legacy rows remain valid and new
+    # uploads populate the additional metadata.
+    "EmployeeDocuments": [
+        "id","employee_id","name","file_type","data_url",
+        "uploaded_by","uploaded_at","drive_file_id","view_url","download_url"
+    ],
 }
 
-_lock = Lock()  # gspread client / worksheet writes are not thread-safe by default
+_lock = Lock()
 
 
 class SheetsClient:
@@ -56,63 +52,96 @@ class SheetsClient:
         return cls._instance
 
     def _connect(self):
-        creds = Credentials.from_service_account_file(
-            Config.GOOGLE_CREDENTIALS_FILE, scopes=SCOPES
-        )
-        self.gc = gspread.authorize(creds)
-        self.spreadsheet = self.gc.open_by_key(Config.SPREADSHEET_ID)
+        logger.info("Connecting to Google Sheets (spreadsheet_id=%s)", Config.SPREADSHEET_ID)
+        try:
+            creds = Credentials.from_service_account_file(
+                Config.GOOGLE_CREDENTIALS_FILE, scopes=SCOPES
+            )
+            self.gc = gspread.authorize(creds)
+            self.spreadsheet = self.gc.open_by_key(Config.SPREADSHEET_ID)
+        except Exception:
+            logger.exception("Failed to connect to Google Sheets. Check GOOGLE_CREDENTIALS_FILE and SPREADSHEET_ID.")
+            raise
+        logger.info("Connected to Google Sheets successfully")
         self._ensure_tabs_exist()
 
     def _ensure_tabs_exist(self):
-        """
-        Creates any missing tabs with the correct header row. Also fixes
-        the case where a tab already exists but is completely empty (e.g.
-        you created it manually in the Sheets UI before running the
-        backend) - in that case row 1 has no headers yet, so we write them
-        now instead of silently leaving the tab headerless.
-        """
         existing = {ws.title for ws in self.spreadsheet.worksheets()}
         for tab_name, headers in SHEET_SCHEMAS.items():
             if tab_name not in existing:
+                logger.info("Creating missing sheet tab '%s' with headers %s", tab_name, headers)
                 ws = self.spreadsheet.add_worksheet(title=tab_name, rows=1000, cols=len(headers))
                 ws.append_row(headers)
             else:
                 ws = self._ws(tab_name)
                 first_row = ws.row_values(1)
                 if not first_row:
+                    logger.warning("Sheet tab '%s' exists but has no header row - adding headers", tab_name)
                     ws.append_row(headers)
+                # Legacy migration for EmployeeDocuments: if the tab was
+                # created before Drive-backed documents were introduced,
+                # it will only have the old headers
+                #   id, employee_id, name, file_type, data_url, uploaded_by, uploaded_at
+                # We transparently extend that header row to the union
+                # schema so existing data stays intact and new uploads can
+                # store drive_file_id/view_url/download_url.
+                if tab_name == "EmployeeDocuments":
+                    legacy_headers = [
+                        "id","employee_id","name","file_type","data_url",
+                        "uploaded_by","uploaded_at"
+                    ]
+                    if first_row == legacy_headers:
+                        try:
+                            ws.update('A1:J1', [SHEET_SCHEMAS["EmployeeDocuments"]])
+                            logger.info(
+                                "Migrated EmployeeDocuments header from legacy %s to union %s",
+                                legacy_headers, SHEET_SCHEMAS["EmployeeDocuments"]
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Failed to migrate EmployeeDocuments header row to union schema"
+                            )
+                            # Don't raise here; even if migration fails we
+                            # prefer the app to keep running.
 
     def _ws(self, tab_name):
-        return self.spreadsheet.worksheet(tab_name)
+        try:
+            return self.spreadsheet.worksheet(tab_name)
+        except gspread.exceptions.WorksheetNotFound:
+            logger.error("Worksheet '%s' not found in spreadsheet", tab_name)
+            raise
 
-    # ---------- Generic helpers ----------
     def get_all_records(self, tab_name):
-        """Returns list of dicts, one per row, keyed by header row."""
         with _lock:
-            return self._ws(tab_name).get_all_records()
+            try:
+                records = self._ws(tab_name).get_all_records()
+            except Exception:
+                logger.exception("Failed to read records from tab '%s'", tab_name)
+                raise
+            logger.debug("Read %d records from tab '%s'", len(records), tab_name)
+            return records
 
     def append_row(self, tab_name, row_dict):
-        """
-        Appends a dict as a new row, ordering values by the tab's header row.
-        Guards against a headerless tab (which previously caused rows to be
-        silently appended as empty lists) by falling back to the tab's
-        expected schema if row 1 is blank, and writing that header row now.
-        """
         with _lock:
-            ws = self._ws(tab_name)
-            headers = ws.row_values(1)
-            if not headers:
-                headers = SHEET_SCHEMAS.get(tab_name, list(row_dict.keys()))
-                ws.append_row(headers)
-            row = [row_dict.get(h, "") for h in headers]
-            ws.append_row(row)
+            try:
+                ws = self._ws(tab_name)
+                headers = ws.row_values(1)
+                if not headers:
+                    headers = SHEET_SCHEMAS.get(tab_name, list(row_dict.keys()))
+                    ws.append_row(headers)
+                row = [row_dict.get(h, "") for h in headers]
+                ws.append_row(row)
+            except Exception:
+                logger.exception("Failed to append row to tab '%s': %s", tab_name, row_dict)
+                raise
+            logger.info("Appended row to tab '%s' (id=%s)", tab_name, row_dict.get("id", "?"))
 
     def update_row_by_match(self, tab_name, match_field, match_value, updates: dict):
-        """Finds the first row where match_field == match_value and updates given columns."""
         with _lock:
             ws = self._ws(tab_name)
             headers = ws.row_values(1)
             if match_field not in headers:
+                logger.error("update_row_by_match: '%s' is not a column in tab '%s'", match_field, tab_name)
                 raise ValueError(f"{match_field} not a column in {tab_name}")
             col_idx = headers.index(match_field) + 1
             col_values = ws.col_values(col_idx)
@@ -122,11 +151,17 @@ class SheetsClient:
                     row_num = i
                     break
             if row_num is None:
+                logger.warning("update_row_by_match: no row found in tab '%s' where %s=%s", tab_name, match_field, match_value)
                 return False
-            for field, value in updates.items():
-                if field in headers:
-                    c_idx = headers.index(field) + 1
-                    ws.update_cell(row_num, c_idx, value)
+            try:
+                for field, value in updates.items():
+                    if field in headers:
+                        c_idx = headers.index(field) + 1
+                        ws.update_cell(row_num, c_idx, value)
+            except Exception:
+                logger.exception("Failed to update row %d in tab '%s' with %s", row_num, tab_name, updates)
+                raise
+            logger.info("Updated row in tab '%s' where %s=%s with %s", tab_name, match_field, match_value, updates)
             return True
 
     def delete_row_by_match(self, tab_name, match_field, match_value):
@@ -137,12 +172,17 @@ class SheetsClient:
             col_values = ws.col_values(col_idx)
             for i, v in enumerate(col_values[1:], start=2):
                 if str(v) == str(match_value):
-                    ws.delete_rows(i)
+                    try:
+                        ws.delete_rows(i)
+                    except Exception:
+                        logger.exception("Failed to delete row %d in tab '%s' where %s=%s", i, tab_name, match_field, match_value)
+                        raise
+                    logger.info("Deleted row in tab '%s' where %s=%s", tab_name, match_field, match_value)
                     return True
+            logger.warning("delete_row_by_match: no row found in tab '%s' where %s=%s", tab_name, match_field, match_value)
             return False
 
     def next_id(self, tab_name, id_field="id"):
-        """Simple auto-increment helper based on max existing id in the tab."""
         records = self.get_all_records(tab_name)
         ids = [int(r[id_field]) for r in records if str(r.get(id_field, "")).isdigit()]
         return (max(ids) + 1) if ids else 1

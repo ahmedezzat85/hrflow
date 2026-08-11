@@ -1,17 +1,12 @@
 """
 auth.py
-Authentication for HRFlow. Supports TWO sign-in methods:
+Authentication for HRFlow via "Sign in with Google" - verifies a Google ID
+token and enforces the Workspace domain restriction.
 
-  1. "Sign in with Google" (primary, recommended) - verifies a Google ID
-     token and enforces the Workspace domain restriction.
-  2. Dummy email/password login (fallback, for testing/demo purposes only)
-     - accepts any email that already exists in the Users tab, paired with
-       a single shared TEST_PASSWORD. No real passwords are stored anywhere;
-       this exists purely so the app is usable/testable before Google OAuth
-       is fully configured, or for local demos.
-
-Both paths issue the SAME kind of session token, so the rest of the API
-(get_current_user / require_admin) doesn't need to know which method was used.
+Session tokens issued after a successful Google sign-in are consumed by
+the rest of the API via get_current_user / require_admin, or (for
+document preview/download links embedded in <a>/<iframe> tags that cannot
+send an Authorization header) via get_current_user_from_token_param.
 """
 import time
 import jwt
@@ -25,11 +20,6 @@ from sheets_client import get_client
 
 bearer_scheme = HTTPBearer()
 _google_request = google_requests.Request()
-
-# Shared dummy password for the test/demo login path. NOT secure - intended
-# only for local testing until Google Sign-In is fully wired up, or for
-# quick demos where creating real Google test accounts is inconvenient.
-TEST_PASSWORD = "demo1234"
 
 
 def verify_google_credential(credential: str) -> dict:
@@ -74,12 +64,10 @@ def decode_session_token(token: str):
 
 
 def _find_user_by_email(email: str):
-    print(f"Looking up user by email: {email}")
     client = get_client()
     users = client.get_all_records("Users")
     email = email.strip().lower()
     for u in users:
-        print(f"Checking user: {u['email']}")
         if u["email"].strip().lower() == email:
             return u
     return None
@@ -99,26 +87,6 @@ def login_with_google(credential: str):
     return {"token": token, "role": user["role"], "employee_id": user.get("employee_id"), "name": name}
 
 
-def login_with_password(email: str, password: str):
-    """
-    DUMMY / TEST-ONLY login path. Accepts any email that exists in the
-    Users tab, as long as the password matches the single shared
-    TEST_PASSWORD constant above. Returns None on any mismatch.
-
-    This intentionally does NOT check per-user passwords - there are none
-    stored, by design (see module docstring). Swap this out for a real
-    password check (e.g. bcrypt hashes in the Users tab) if you decide not
-    to rely on Google Sign-In exclusively later on.
-    """
-    if password != TEST_PASSWORD:
-        return None
-    user = _find_user_by_email(email)
-    if not user:
-        return None
-    token = create_session_token(user["email"], user["role"], user.get("employee_id"), user.get("name", ""))
-    return {"token": token, "role": user["role"], "employee_id": user.get("employee_id"), "name": ""}
-
-
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
     token = credentials.credentials
     payload = decode_session_token(token)
@@ -135,3 +103,20 @@ def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
     return current_user
+
+
+def get_current_user_from_token_param(token: str) -> dict:
+    """
+    Same session validation as get_current_user, but for the token passed
+    as a `?token=` query string parameter instead of an Authorization
+    header. Needed for document preview/download links opened directly by
+    the browser (e.g. in an <a target="_blank">, <iframe>, or <img> tag),
+    which cannot attach custom headers.
+    """
+    payload = decode_session_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session. Please sign in again.",
+        )
+    return payload
