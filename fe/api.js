@@ -195,6 +195,24 @@ const Api = {
     return `${API_BASE_URL}/api/employees/documents/${docId}/stream?token=${encodeURIComponent(token)}&download=true`;
   },
 
+  // ---------- DOCUMENT HUB (company-wide documents/policies) ----------
+  // Any signed-in user (admin or employee) may list/preview/download.
+  // Only admins may upload or delete (enforced server-side too).
+  getCompanyDocuments() { return apiRequest("GET", "/api/company-documents"); },
+  uploadCompanyDocument(payload) { return apiRequest("POST", "/api/company-documents", payload); },
+  uploadCompanyDocumentWithProgress(payload, onProgress) {
+    return apiRequestWithProgress("POST", "/api/company-documents", payload, onProgress);
+  },
+  deleteCompanyDocument(docId) { return apiRequest("DELETE", `/api/company-documents/${docId}`); },
+  getCompanyDocumentPreviewUrl(docId) {
+    const token = TokenStore.get();
+    return `${API_BASE_URL}/api/company-documents/${docId}/stream?token=${encodeURIComponent(token)}`;
+  },
+  getCompanyDocumentDownloadUrl(docId) {
+    const token = TokenStore.get();
+    return `${API_BASE_URL}/api/company-documents/${docId}/stream?token=${encodeURIComponent(token)}&download=true`;
+  },
+
   getRequests(type = "all") {
     const q = type && type !== "all" ? `?type=${encodeURIComponent(type)}` : "";
     return apiRequest("GET", `/api/requests${q}`);
