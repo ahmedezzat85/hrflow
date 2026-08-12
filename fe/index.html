@@ -394,6 +394,7 @@ select option{background:var(--surface);color:var(--text);}
     <div class="nav-section-label">Modules</div>
     <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
     <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+    <a class="nav-item" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
     <div class="sidebar-footer">
       <div class="user-mini" title="Account">
         <div class="avatar" id="adminUserAvatar">--</div>
@@ -463,7 +464,7 @@ select option{background:var(--surface);color:var(--text);}
         <div class="card">
           <div class="section-loading-bar" id="empTableLoadingBar"><span></span></div>
           <table>
-            <thead><tr><th>ID</th><th>Employee</th><th>Department</th><th>Role</th><th>Salary</th><th>Next Raise</th><th>Vacation Bal.</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Employee</th><th>Role</th><th>Employment State</th><th>Salary</th><th>Next Raise</th><th>Status</th><th></th></tr></thead>
             <tbody id="employeesTableBody"></tbody>
           </table>
         </div>
@@ -595,6 +596,19 @@ select option{background:var(--surface);color:var(--text);}
           <table><thead><tr><th>Employee</th><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="insuranceTableBody"></tbody></table>
         </div>
       </section>
+
+      <section class="page-section" id="a-dochub">
+        <div class="toolbar">
+          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..."></div>
+          <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add Document</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Document</th><th>Category</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
+            <tbody id="dochubTableBody"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </main>
 </div>
@@ -610,6 +624,7 @@ select option{background:var(--surface);color:var(--text);}
     <a class="nav-item" data-page="e-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
     <a class="nav-item" data-page="e-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
     <a class="nav-item" data-page="e-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+    <a class="nav-item" data-page="e-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
     <div class="sidebar-footer">
       <div class="user-mini" title="Account">
         <div class="avatar" id="empUserAvatar">--</div>
@@ -733,6 +748,18 @@ select option{background:var(--surface);color:var(--text);}
         <div class="card">
           <div class="card-head"><h3>Claims History</h3></div>
           <table><thead><tr><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Document</th></tr></thead><tbody id="empInsuranceBody"></tbody></table>
+        </div>
+      </section>
+
+      <section class="page-section" id="e-dochub">
+        <div class="toolbar">
+          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empDochubSearch" placeholder="Search documents..."></div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Document</th><th>Category</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
+            <tbody id="empDochubTableBody"></tbody>
+          </table>
         </div>
       </section>
     </div>
@@ -915,6 +942,44 @@ select option{background:var(--surface);color:var(--text);}
     <div class="modal-foot">
       <button class="btn" onclick="closeDocumentPreview()">Close</button>
       <a id="docPreviewDownloadBtn" class="btn btn-fill" href="#" target="_blank"><i class="fa-solid fa-download"></i> Download</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="companyDocumentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Add Company Document</h3>
+      <button class="modal-close" onclick="closeModal('companyDocumentModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Document Name</label>
+          <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
+        </div>
+        <div class="form-field full">
+          <label>Category</label>
+          <select id="dochubDocCategory"><option>General</option><option>Policy</option><option>Handbook</option><option>Form</option><option>Announcement</option></select>
+        </div>
+        <div class="form-field full">
+          <label>File</label>
+          <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+        <div class="form-field full" id="dochubUploadProgressWrap" style="display:none;">
+          <div class="doc-progress-track">
+            <div class="doc-progress-fill" id="dochubUploadProgressFill" style="width:0%;"></div>
+          </div>
+          <div class="doc-progress-label">
+            <span id="dochubUploadProgressText">Uploading...</span>
+            <span id="dochubUploadProgressPct">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('companyDocumentModal')">Cancel</button>
+      <button class="btn btn-fill" id="dochubUploadBtn" onclick="submitCompanyDocument()"><i class="fa-solid fa-check"></i> Upload</button>
     </div>
   </div>
 </div>
@@ -1139,6 +1204,7 @@ async function loadAdminData(){
       document.getElementById('adminUserRole').textContent = adminUser.role || 'HR Administrator';
     }
     renderAdminPortal();
+    await loadCompanyDocuments();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   hideSectionLoadingBar('empTableLoadingBar');
 }
@@ -1160,6 +1226,7 @@ async function loadEmployeeData(){
     document.getElementById('empUserRole').textContent = currentLoggedInEmployee.role;
     populateClaimCategoryOptions();
     renderEmployeePortal();
+    await loadCompanyDocuments();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 function logout(){
@@ -1185,10 +1252,12 @@ const titles = {
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
   'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
+  'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-vacations':['Vacations','Your balance, requests and history.'],
   'e-insurance':['Medical Insurance','Your plan, category limits and claims history.'],
+  'e-dochub':['Document Hub','Company documents and policies.'],
 };
 function showSection(pageId, portal){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
@@ -1321,8 +1390,8 @@ function renderAdminPortal(){
 function renderEmployeesTable(filter=''){
   const body = document.getElementById('employeesTableBody');
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>`<tr><td>${e.id}</td>
-      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.dept}</td><td>${e.role}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state||"").toLowerCase().includes(f)).map(e=>`<tr><td>${e.id}</td>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.role}</td><td>${e.employment_state || "Full-Time"}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
 }
 document.getElementById('empSearch').addEventListener('input', e=>renderEmployeesTable(e.target.value));
 function renderRequestsTable(filter){
@@ -1832,6 +1901,128 @@ async function submitVacation(){
   try{ await Api.requestVacation({ employee_name: currentLoggedInEmployee.name, leave_type: type, start_date: start, end_date: end || start, days: 1 }); toast('Request submitted for approval.'); await loadEmployeeData(); }
   catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
+let companyDocuments = [];
+
+function readFileAsDataUrlDochub(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function detectDochubFileType(file){
+  return file.type === 'application/pdf' ? 'pdf' : 'image';
+}
+function openCompanyDocumentModal(){
+  document.getElementById('dochubDocName').value = '';
+  document.getElementById('dochubDocCategory').value = 'General';
+  document.getElementById('dochubFileInput').value = '';
+  document.getElementById('dochubUploadProgressWrap').style.display = 'none';
+  document.getElementById('companyDocumentModal').classList.add('active');
+}
+async function loadCompanyDocuments(){
+  try{
+    companyDocuments = await Api.getCompanyDocuments();
+    renderCompanyDocumentsAdmin();
+    renderCompanyDocumentsEmployee();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+function docHubTypeIcon(fileType){
+  return fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
+}
+function renderCompanyDocumentsAdmin(filter=''){
+  const body = document.getElementById('dochubTableBody');
+  if(!body) return;
+  const f = (filter||'').toLowerCase();
+  const list = companyDocuments.filter(d => (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f));
+  body.innerHTML = list.map(d=>`<tr>
+    <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docHubTypeIcon(d.file_type)}</div><span class="doc-name-text">${String(d.name||'').replace(/'/g,"\\'")}</span></div></td>
+    <td>${d.category||'General'}</td>
+    <td>${d.uploaded_at||''}</td>
+    <td style="display:flex;gap:6px;justify-content:flex-end;">
+      <button class="icon-action" title="Preview" onclick="previewCompanyDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
+      <button class="icon-action" title="Delete" onclick="deleteCompanyDocumentPrompt(${d.id})"><i class="fa-solid fa-trash"></i></button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No company documents uploaded yet.</p></div></td></tr>`;
+}
+function renderCompanyDocumentsEmployee(filter=''){
+  const body = document.getElementById('empDochubTableBody');
+  if(!body) return;
+  const f = (filter||'').toLowerCase();
+  const list = companyDocuments.filter(d => (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f));
+  body.innerHTML = list.map(d=>`<tr>
+    <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docHubTypeIcon(d.file_type)}</div><span class="doc-name-text">${String(d.name||'').replace(/'/g,"\\'")}</span></div></td>
+    <td>${d.category||'General'}</td>
+    <td>${d.uploaded_at||''}</td>
+    <td style="display:flex;gap:6px;justify-content:flex-end;">
+      <button class="icon-action" title="Preview" onclick="previewCompanyDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No company documents available yet.</p></div></td></tr>`;
+}
+const dochubSearchEl = document.getElementById('dochubSearch');
+if(dochubSearchEl) dochubSearchEl.addEventListener('input', e=>renderCompanyDocumentsAdmin(e.target.value));
+const empDochubSearchEl = document.getElementById('empDochubSearch');
+if(empDochubSearchEl) empDochubSearchEl.addEventListener('input', e=>renderCompanyDocumentsEmployee(e.target.value));
+
+async function submitCompanyDocument(){
+  const name = document.getElementById('dochubDocName').value.trim();
+  const category = document.getElementById('dochubDocCategory').value;
+  const file = document.getElementById('dochubFileInput').files[0];
+  if(!name){ toast('Please enter a document name.','fa-solid fa-triangle-exclamation'); return; }
+  if(!file){ toast('Please choose a file to upload.','fa-solid fa-triangle-exclamation'); return; }
+  if(file.size > 4*1024*1024){ toast('File must be under 4MB.','fa-solid fa-triangle-exclamation'); return; }
+  const fileType = detectDochubFileType(file);
+  const progressWrap = document.getElementById('dochubUploadProgressWrap');
+  const progressFill = document.getElementById('dochubUploadProgressFill');
+  const progressPct = document.getElementById('dochubUploadProgressPct');
+  const progressText = document.getElementById('dochubUploadProgressText');
+  const uploadBtn = document.getElementById('dochubUploadBtn');
+  try{
+    progressWrap.style.display = 'block';
+    progressFill.style.width = '0%'; progressPct.textContent = '0%';
+    progressText.textContent = 'Preparing file...';
+    uploadBtn.disabled = true;
+    const dataUrl = await readFileAsDataUrlDochub(file);
+    progressText.textContent = 'Uploading...';
+    await Api.uploadCompanyDocumentWithProgress({ name, file_type: fileType, data_url: dataUrl, category }, (pct)=>{
+      progressFill.style.width = pct + '%'; progressPct.textContent = pct + '%';
+      if(pct>=100) progressText.textContent = 'Finishing up...';
+    });
+    toast('Document uploaded.');
+    closeModal('companyDocumentModal');
+    await loadCompanyDocuments();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  finally{
+    progressWrap.style.display = 'none';
+    uploadBtn.disabled = false;
+  }
+}
+async function deleteCompanyDocumentPrompt(docId){
+  try{
+    await Api.deleteCompanyDocument(docId);
+    toast('Document deleted.', 'fa-solid fa-trash');
+    await loadCompanyDocuments();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+function previewCompanyDocument(docId, name, fileType){
+  const url = Api.getCompanyDocumentPreviewUrl(docId);
+  const container = document.getElementById('docPreviewContainer');
+  document.getElementById('docPreviewTitle').textContent = name || 'Document Preview';
+  document.getElementById('docPreviewDownloadBtn').href = Api.getCompanyDocumentDownloadUrl(docId);
+  if(container){
+    container.innerHTML = fileType === 'image'
+      ? `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`
+      : `<iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>`;
+  }
+  document.getElementById('documentPreviewModal').classList.add('active');
+}
+function downloadCompanyDocument(docId){
+  window.open(Api.getCompanyDocumentDownloadUrl(docId), '_blank');
+}
+
 async function submitClaim(){
   const category = document.getElementById('claimCategory').value;
   const amount = Number(document.getElementById('claimAmount').value);
