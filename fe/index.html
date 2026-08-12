@@ -463,7 +463,7 @@ select option{background:var(--surface);color:var(--text);}
         <div class="card">
           <div class="section-loading-bar" id="empTableLoadingBar"><span></span></div>
           <table>
-            <thead><tr><th>Employee</th><th>Department</th><th>Role</th><th>Salary</th><th>Next Raise</th><th>Vacation Bal.</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Employee</th><th>Department</th><th>Role</th><th>Salary</th><th>Next Raise</th><th>Vacation Bal.</th><th>Status</th><th></th></tr></thead>
             <tbody id="employeesTableBody"></tbody>
           </table>
         </div>
@@ -750,6 +750,7 @@ select option{background:var(--surface);color:var(--text);}
         <div class="form-field"><label>Monthly Salary (EGP)</label><input type="number" id="fEmpSalary" placeholder="35000"></div>
         <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
         <div class="form-field"><label>Status</label><select id="fEmpStatus"><option>Active</option><option>On Leave</option><option>Suspended</option></select></div>
+        <div class="form-field"><label>Employment State</label><select id="fEmpEmploymentState"><option>Full-Time</option><option>Part-Time</option><option>Freelance</option><option>Occasional</option></select></div>
         <div class="form-field"><label>Vacation Balance (days)</label><input type="number" id="fEmpVac" value="21"></div>
       </div>
     </div>
@@ -1320,7 +1321,8 @@ function renderAdminPortal(){
 function renderEmployeesTable(filter=''){
   const body = document.getElementById('employeesTableBody');
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>`<tr><td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.dept}</td><td>${e.role}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>`<tr><td>${e.id}</td>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.dept}</td><td>${e.role}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
 }
 document.getElementById('empSearch').addEventListener('input', e=>renderEmployeesTable(e.target.value));
 function renderRequestsTable(filter){
@@ -1438,9 +1440,11 @@ function openEmployeeModal(id=null){
   if(id){
     const e = employees.find(x=>x.id===id);
     fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role; fEmpSalary.value=e.salary; fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
+    document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
   } else {
     ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value='');
     fEmpSalary.value=''; fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
+    document.getElementById('fEmpEmploymentState').value='Full-Time';
   }
   document.getElementById('employeeModal').classList.add('active');
 }
@@ -1451,11 +1455,11 @@ async function saveEmployee(){
   const vacTotal = Number(fEmpVac.value)||21;
   try{
     if(currentEditId){
-      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value };
       await Api.updateEmployee(currentEditId, updates);
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01' };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value };
       await Api.createEmployee(payload);
       toast('New employee added.');
     }
@@ -1475,7 +1479,8 @@ async function viewProfile(id){
   showSection('a-employee-detail','admin');
   const e = employees.find(x=>x.id===id);
   document.getElementById('detailProfileHead').innerHTML = `<div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div>`;
-  document.getElementById('detailInfoGrid').innerHTML = `<div class="info-item"><span>Email</span><b>${e.email}</b></div><div class="info-item"><span>Status</span><b>${e.status}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
+  document.getElementById('detailInfoGrid').innerHTML = `<div class="info-item"><span>Email</span><b>${e.email}</b></div><div class="info-item"><span>Status</span><b>${e.status}</b></div>
+      <div class="info-item"><span>Employment State</span><b>${e.employment_state || 'Full-Time'}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
   const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(id));
   document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
   document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
