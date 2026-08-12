@@ -38,6 +38,12 @@ SHEET_SCHEMAS = {
         "id","employee_id","name","file_type","data_url",
         "uploaded_by","uploaded_at","drive_file_id","view_url","download_url"
     ],
+    # Company-wide documents/policies (Document Hub) - not tied to an
+    # employee. Stored in a shared "Company Documents" Drive sub-folder.
+    "CompanyDocuments": [
+        "id","name","file_type","category","drive_file_id",
+        "view_url","download_url","uploaded_by","uploaded_at"
+    ],
 }
 
 # Columns that must exist on an already-created tab. If a tab predates a

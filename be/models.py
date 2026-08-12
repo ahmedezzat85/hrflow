@@ -120,3 +120,16 @@ class EmployeeDocumentCreate(BaseModel):
     name: str
     file_type: Literal["pdf", "image"]
     data_url: str
+
+
+class CompanyDocumentCreate(BaseModel):
+    """
+    A general company-wide document/policy visible to all employees
+    (Document Hub). Stored in a shared "Company Documents" Drive
+    sub-folder, not tied to any specific employee. Admins may add/delete;
+    all employees may view/download.
+    """
+    name: str
+    file_type: Literal["pdf", "image"]
+    data_url: str
+    category: str = "General"
