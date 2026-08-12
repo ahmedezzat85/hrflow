@@ -5,9 +5,18 @@ Pydantic request/response models for the HRFlow API.
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Literal
 
+# Allowed values for an employee's employment state (single source of truth
+# shared by EmployeeCreate / EmployeeUpdate).
+EmploymentState = Literal["Full-Time", "Part-Time", "Freelance", "Occasional"]
+
 
 class GoogleLoginRequest(BaseModel):
     credential: str
+
+
+class PasswordLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
 class LoginResponse(BaseModel):
@@ -27,6 +36,7 @@ class EmployeeCreate(BaseModel):
     status: str = "Active"
     vac_total: int = 21
     next_raise: str = ""
+    employment_state: EmploymentState = "Full-Time"
 
 
 class EmployeeUpdate(BaseModel):
@@ -40,6 +50,7 @@ class EmployeeUpdate(BaseModel):
     vac_total: Optional[int] = None
     vac_used: Optional[int] = None
     next_raise: Optional[str] = None
+    employment_state: Optional[EmploymentState] = None
 
 
 class RequestCreate(BaseModel):
@@ -109,3 +120,16 @@ class EmployeeDocumentCreate(BaseModel):
     name: str
     file_type: Literal["pdf", "image"]
     data_url: str
+
+
+class CompanyDocumentCreate(BaseModel):
+    """
+    A general company-wide document/policy visible to all employees
+    (Document Hub). Stored in a shared "Company Documents" Drive
+    sub-folder, not tied to any specific employee. Admins may add/delete;
+    all employees may view/download.
+    """
+    name: str
+    file_type: Literal["pdf", "image"]
+    data_url: str
+    category: str = "General"

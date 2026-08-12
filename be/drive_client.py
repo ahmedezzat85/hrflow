@@ -6,15 +6,18 @@ Stores each employee's documents in their own sub-folder under a root folder
 account is a Content Manager member of (service accounts have no personal
 storage quota, so a Shared Drive is required for uploads to succeed).
 
+Company-wide documents/policies (not tied to an employee) are stored in a
+single shared "Company Documents" sub-folder under the same root, created
+on first use.
+
 Documents are private by default: no public "anyone with the link" sharing
 is set on uploaded files. Access is controlled entirely via the Shared
 Drive's membership and any explicit per-folder sharing you configure in
-Google Drive (e.g. sharing a single employee's sub-folder with just that
-employee). The app streams file bytes to authorized users through its own
-`/api/employees/documents/{doc_id}/stream` endpoint (using the service
-account's Drive access), so end users never need their own Drive
-permissions to preview or download a document - the backend enforces the
-same admin/owner access rules as the rest of the API.
+Google Drive. The app streams file bytes to authorized users through its own
+streaming endpoints (using the service account's Drive access), so end
+users never need their own Drive permissions to preview or download a
+document - the backend enforces the same admin/owner access rules as the
+rest of the API.
 """
 import base64
 import io
@@ -40,7 +43,15 @@ MIME_BY_TYPE = {
     "image": "image/png",
 }
 
+COMPANY_DOCS_FOLDER_NAME = "Company Documents"
+_COMPANY_DOCS_CACHE_KEY = "__company_documents__"
+
 _lock = Lock()
+# Guards singleton CREATION only (see DriveClient.__new__). Same rationale
+# as sheets_client.py's _instance_lock: concurrent first-time calls to
+# get_drive_client() from parallel requests could otherwise race and hand
+# a half-built instance (self.service not yet set) to a second thread.
+_instance_lock = Lock()
 
 
 def _parse_data_url(data_url: str):
@@ -68,9 +79,16 @@ class DriveClient:
     _instance = None
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._connect()
+        # Fast path: already fully connected, no locking needed.
+        if cls._instance is not None:
+            return cls._instance
+        with _instance_lock:
+            # Re-check inside the lock in case another thread finished
+            # connecting while we were waiting for the lock.
+            if cls._instance is None:
+                instance = super().__new__(cls)
+                instance._connect()
+                cls._instance = instance
         return cls._instance
 
     def _connect(self):
@@ -144,6 +162,26 @@ class DriveClient:
             self._folder_cache[cache_key] = folder_id
             return folder_id
 
+    def get_or_create_company_docs_folder(self) -> str:
+        """
+        Returns the Drive folder ID for company-wide documents/policies
+        (general documents visible to every employee, not tied to one
+        person), creating a single shared "Company Documents" sub-folder
+        under the root folder the first time it's needed.
+        """
+        if not self.root_folder_id:
+            logger.error("Cannot resolve company documents folder: DRIVE_ROOT_FOLDER_ID is not configured")
+            raise RuntimeError("DRIVE_ROOT_FOLDER_ID is not configured")
+        with _lock:
+            if _COMPANY_DOCS_CACHE_KEY in self._folder_cache:
+                logger.debug("Using cached company documents folder -> %s", self._folder_cache[_COMPANY_DOCS_CACHE_KEY])
+                return self._folder_cache[_COMPANY_DOCS_CACHE_KEY]
+            folder_id = self._find_folder(COMPANY_DOCS_FOLDER_NAME, self.root_folder_id)
+            if not folder_id:
+                folder_id = self._create_folder(COMPANY_DOCS_FOLDER_NAME, self.root_folder_id)
+            self._folder_cache[_COMPANY_DOCS_CACHE_KEY] = folder_id
+            return folder_id
+
     def upload_file(self, employee_id, employee_name: str, file_name: str, data_url: str) -> dict:
         """
         Uploads a base64 data URL to the employee's Drive sub-folder inside
@@ -197,6 +235,55 @@ class DriveClient:
             "download_url": refreshed.get("webContentLink", ""),
         }
 
+    def upload_company_file(self, file_name: str, data_url: str) -> dict:
+        """
+        Uploads a base64 data URL to the shared "Company Documents"
+        sub-folder (general policies/documents visible to every employee,
+        not tied to a specific person). Same return shape as upload_file().
+        """
+        logger.info("Starting company document upload: file_name='%s'", file_name)
+        mime, raw_bytes = _parse_data_url(data_url)
+
+        try:
+            folder_id = self.get_or_create_company_docs_folder()
+        except Exception:
+            logger.exception("Failed to resolve/create company documents folder")
+            raise
+
+        media = MediaIoBaseUpload(io.BytesIO(raw_bytes), mimetype=mime, resumable=False)
+        metadata = {"name": file_name, "parents": [folder_id]}
+        logger.debug("Uploading company document to Drive: folder_id=%s, mime=%s, size=%d bytes", folder_id, mime, len(raw_bytes))
+        try:
+            created = self.service.files().create(
+                body=metadata, media_body=media, fields="id, webViewLink, webContentLink",
+                supportsAllDrives=True,
+            ).execute()
+        except HttpError as exc:
+            logger.exception("Drive API error while uploading company document '%s' (folder_id=%s): status=%s", file_name, folder_id, getattr(exc, "status_code", "?"))
+            raise
+        except Exception:
+            logger.exception("Unexpected error while uploading company document '%s'", file_name)
+            raise
+
+        file_id = created["id"]
+        logger.info("Company document uploaded to Drive: file_id=%s, name='%s'", file_id, file_name)
+
+        try:
+            refreshed = self.service.files().get(
+                fileId=file_id, fields="webViewLink, webContentLink",
+                supportsAllDrives=True,
+            ).execute()
+        except HttpError:
+            logger.exception("Drive API error while fetching links for file_id=%s", file_id)
+            raise
+
+        logger.info("Company document upload complete: file_id=%s, file_name='%s'", file_id, file_name)
+        return {
+            "file_id": file_id,
+            "view_url": refreshed.get("webViewLink", ""),
+            "download_url": refreshed.get("webContentLink", ""),
+        }
+
     def download_file(self, file_id: str):
         """
         Downloads a file's raw bytes and metadata (name, mimeType) from
@@ -204,7 +291,7 @@ class DriveClient:
         in-app preview and download: the backend fetches the bytes here and
         streams them back to the browser, so the signed-in HRFlow user
         never needs Drive permissions of their own - the API's existing
-        admin/owner access checks are the only gate.
+        access checks are the only gate.
         Returns (raw_bytes, mime_type, file_name).
         """
         if not file_id:

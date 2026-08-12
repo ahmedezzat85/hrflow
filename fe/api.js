@@ -25,6 +25,44 @@ const TokenStore = {
   }
 };
 
+// Guards against a burst of parallel 401s (e.g. the several Promise.all()
+// calls fired together on page load) triggering the forced-logout/reload
+// flow more than once.
+let _sessionExpiredHandled = false;
+
+// Called whenever an authenticated request comes back 401 (session
+// expired or otherwise invalid). Ensures the user is never left staring
+// at a logged-in-looking screen with a dead session and endlessly
+// failing requests - instead they're guaranteed to land back on the
+// Sign-In screen so they can simply log in again.
+//
+// Emits a 'hrflow:session-expired' event on window first, so the host
+// page (index.html) can react gracefully (e.g. show a toast, tear down
+// in-memory state, then re-render the login screen) without a hard
+// reload. If nothing calls event.preventDefault() on that event within
+// one tick, we fall back to reloading the page, which - now that the
+// token is cleared - will always boot back into the Sign-In screen.
+function forceSessionExpiredLogout() {
+  if (_sessionExpiredHandled) return;
+  _sessionExpiredHandled = true;
+
+  TokenStore.clearAll();
+  if (window.google && window.google.accounts && window.google.accounts.id) {
+    try { google.accounts.id.disableAutoSelect(); } catch (_) {}
+  }
+
+  const evt = new CustomEvent("hrflow:session-expired", { cancelable: true });
+  const handledByListener = !window.dispatchEvent(evt); // dispatchEvent returns false if preventDefault() was called
+
+  if (!handledByListener) {
+    setTimeout(() => { window.location.reload(); }, 50);
+  } else {
+    // A listener took over recovery; allow future 401s to be handled again
+    // once the current one has been dealt with.
+    setTimeout(() => { _sessionExpiredHandled = false; }, 500);
+  }
+}
+
 async function apiRequest(method, path, body = null, auth = true) {
   const headers = { "Content-Type": "application/json" };
   if (auth) {
@@ -42,7 +80,15 @@ async function apiRequest(method, path, body = null, auth = true) {
   }
 
   if (res.status === 401) {
-    TokenStore.clearAll();
+    // Only treat this as a session-expiry event for requests that were
+    // actually sent with a session token. Public/login calls (auth=false,
+    // e.g. /api/auth/google) returning 401 means "bad credential", not
+    // "your session died" - those should NOT force a page reload.
+    if (auth) {
+      forceSessionExpiredLogout();
+    } else {
+      TokenStore.clearAll();
+    }
     throw new Error("Session expired. Please sign in again.");
   }
 
@@ -77,7 +123,7 @@ function apiRequestWithProgress(method, path, body, onProgress) {
       let data = null;
       try { data = JSON.parse(xhr.responseText); } catch (_) {}
       if (xhr.status === 401) {
-        TokenStore.clearAll();
+        forceSessionExpiredLogout();
         reject(new Error("Session expired. Please sign in again."));
         return;
       }
@@ -141,6 +187,10 @@ function initGoogleSignIn(containerId, onSuccess, onError) {
   tryRender();
 }
 
+// Valid values for the employee's employment state (mirrors the backend
+// EmploymentState enum in be/models.py).
+const EMPLOYMENT_STATES = ["Full-Time", "Part-Time", "Freelance", "Occasional"];
+
 const Api = {
   async loginWithGoogle(credential) {
     const data = await apiRequest("POST", "/api/auth/google", { credential }, false);
@@ -159,6 +209,7 @@ const Api = {
   isLoggedIn() { return !!TokenStore.get(); },
   getEmployees() { return apiRequest("GET", "/api/employees"); },
   getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
+  // payload may include employment_state ("Full-Time" | "Part-Time" | "Freelance" | "Occasional")
   createEmployee(payload) { return apiRequest("POST", "/api/employees", payload); },
   updateEmployee(empId, payload) { return apiRequest("PUT", `/api/employees/${empId}`, payload); },
   deleteEmployee(empId) { return apiRequest("DELETE", `/api/employees/${empId}`); },
@@ -188,6 +239,24 @@ const Api = {
   getDocumentDownloadUrl(docId) {
     const token = TokenStore.get();
     return `${API_BASE_URL}/api/employees/documents/${docId}/stream?token=${encodeURIComponent(token)}&download=true`;
+  },
+
+  // ---------- DOCUMENT HUB (company-wide documents/policies) ----------
+  // Any signed-in user (admin or employee) may list/preview/download.
+  // Only admins may upload or delete (enforced server-side too).
+  getCompanyDocuments() { return apiRequest("GET", "/api/company-documents"); },
+  uploadCompanyDocument(payload) { return apiRequest("POST", "/api/company-documents", payload); },
+  uploadCompanyDocumentWithProgress(payload, onProgress) {
+    return apiRequestWithProgress("POST", "/api/company-documents", payload, onProgress);
+  },
+  deleteCompanyDocument(docId) { return apiRequest("DELETE", `/api/company-documents/${docId}`); },
+  getCompanyDocumentPreviewUrl(docId) {
+    const token = TokenStore.get();
+    return `${API_BASE_URL}/api/company-documents/${docId}/stream?token=${encodeURIComponent(token)}`;
+  },
+  getCompanyDocumentDownloadUrl(docId) {
+    const token = TokenStore.get();
+    return `${API_BASE_URL}/api/company-documents/${docId}/stream?token=${encodeURIComponent(token)}&download=true`;
   },
 
   getRequests(type = "all") {
