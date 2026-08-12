@@ -17,7 +17,8 @@ SCOPES = [
 
 SHEET_SCHEMAS = {
     "Employees": ["id","name","email","role","dept","job_role",
-                   "salary","join_date","status","vac_total","vac_used","next_raise"],
+                   "salary","join_date","status","vac_total","vac_used","next_raise",
+                   "employment_state"],
     "Requests": ["id","employee_id","employee_name","type","details","date",
                  "status","reviewed_by","reviewed_at","submitted_by"],
     "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status","submitted_by"],
@@ -37,6 +38,13 @@ SHEET_SCHEMAS = {
         "id","employee_id","name","file_type","data_url",
         "uploaded_by","uploaded_at","drive_file_id","view_url","download_url"
     ],
+}
+
+# Columns that must exist on an already-created tab. If a tab predates a
+# column, the missing header is appended at the end of row 1 so existing
+# data stays intact and new writes can populate the added column.
+REQUIRED_COLUMNS = {
+    "Employees": ["employment_state"],
 }
 
 _lock = Lock()
@@ -103,6 +111,32 @@ class SheetsClient:
                             )
                             # Don't raise here; even if migration fails we
                             # prefer the app to keep running.
+
+        self._ensure_required_columns()
+
+    def _ensure_required_columns(self):
+        """Appends any REQUIRED_COLUMNS missing from an existing tab's
+        header row, so older spreadsheets gain newly introduced columns
+        (e.g. Employees.employment_state) without manual edits."""
+        for tab_name, required in REQUIRED_COLUMNS.items():
+            try:
+                ws = self._ws(tab_name)
+            except Exception:
+                continue
+            headers = ws.row_values(1)
+            if not headers:
+                continue
+            for col in required:
+                if col not in headers:
+                    try:
+                        new_idx = len(headers) + 1
+                        if ws.col_count < new_idx:
+                            ws.add_cols(new_idx - ws.col_count)
+                        ws.update_cell(1, new_idx, col)
+                        headers.append(col)
+                        logger.info("Added missing column '%s' to tab '%s' (position %d)", col, tab_name, new_idx)
+                    except Exception:
+                        logger.exception("Failed to add missing column '%s' to tab '%s'", col, tab_name)
 
     def _ws(self, tab_name):
         try:

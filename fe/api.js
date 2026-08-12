@@ -141,6 +141,10 @@ function initGoogleSignIn(containerId, onSuccess, onError) {
   tryRender();
 }
 
+// Valid values for the employee's employment state (mirrors the backend
+// EmploymentState enum in be/models.py).
+const EMPLOYMENT_STATES = ["Full-Time", "Part-Time", "Freelance", "Occasional"];
+
 const Api = {
   async loginWithGoogle(credential) {
     const data = await apiRequest("POST", "/api/auth/google", { credential }, false);
@@ -159,6 +163,7 @@ const Api = {
   isLoggedIn() { return !!TokenStore.get(); },
   getEmployees() { return apiRequest("GET", "/api/employees"); },
   getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
+  // payload may include employment_state ("Full-Time" | "Part-Time" | "Freelance" | "Occasional")
   createEmployee(payload) { return apiRequest("POST", "/api/employees", payload); },
   updateEmployee(empId, payload) { return apiRequest("PUT", `/api/employees/${empId}`, payload); },
   deleteEmployee(empId) { return apiRequest("DELETE", `/api/employees/${empId}`); },
