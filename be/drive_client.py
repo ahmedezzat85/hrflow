@@ -47,6 +47,11 @@ COMPANY_DOCS_FOLDER_NAME = "Company Documents"
 _COMPANY_DOCS_CACHE_KEY = "__company_documents__"
 
 _lock = Lock()
+# Guards singleton CREATION only (see DriveClient.__new__). Same rationale
+# as sheets_client.py's _instance_lock: concurrent first-time calls to
+# get_drive_client() from parallel requests could otherwise race and hand
+# a half-built instance (self.service not yet set) to a second thread.
+_instance_lock = Lock()
 
 
 def _parse_data_url(data_url: str):
@@ -74,9 +79,16 @@ class DriveClient:
     _instance = None
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._connect()
+        # Fast path: already fully connected, no locking needed.
+        if cls._instance is not None:
+            return cls._instance
+        with _instance_lock:
+            # Re-check inside the lock in case another thread finished
+            # connecting while we were waiting for the lock.
+            if cls._instance is None:
+                instance = super().__new__(cls)
+                instance._connect()
+                cls._instance = instance
         return cls._instance
 
     def _connect(self):

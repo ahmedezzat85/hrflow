@@ -54,15 +54,32 @@ REQUIRED_COLUMNS = {
 }
 
 _lock = Lock()
+# Guards singleton CREATION (see SheetsClient.__new__ below). This is a
+# SEPARATE lock from _lock above, which guards individual read/write
+# operations on an already-connected client. Without this, concurrent
+# requests hitting get_client() for the first time (e.g. the frontend's
+# Promise.all() firing several endpoints at once on page load) can race:
+# one thread sets cls._instance before _connect() has finished setting
+# self.spreadsheet, and a second thread returns that half-built instance
+# and crashes with "AttributeError: 'SheetsClient' object has no
+# attribute 'spreadsheet'".
+_instance_lock = Lock()
 
 
 class SheetsClient:
     _instance = None
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._connect()
+        # Fast path: already fully connected, no locking needed.
+        if cls._instance is not None:
+            return cls._instance
+        with _instance_lock:
+            # Re-check inside the lock in case another thread finished
+            # connecting while we were waiting for the lock.
+            if cls._instance is None:
+                instance = super().__new__(cls)
+                instance._connect()
+                cls._instance = instance
         return cls._instance
 
     def _connect(self):
