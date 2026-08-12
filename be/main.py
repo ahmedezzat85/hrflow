@@ -130,6 +130,7 @@ def create_employee(payload: EmployeeCreate, current_user: dict = Depends(requir
         "dept": payload.dept, "job_role": payload.job_role, "salary": payload.salary,
         "join_date": payload.join_date, "status": payload.status, "vac_total": payload.vac_total,
         "vac_used": 0, "next_raise": payload.next_raise,
+        "employment_state": payload.employment_state,
     }
     client.append_row("Employees", employee_row)
     client.append_row("Users", {"email": payload.email, "role": "employee", "employee_id": new_id})
