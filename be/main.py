@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException, Query, Request
+from fastapi import FastAPI, Depends, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -18,7 +18,7 @@ from config import Config
 from logging_config import setup_logging, get_logger
 from sheets_client import get_client
 from drive_client import get_drive_client
-from auth import login_with_google, get_current_user, require_admin, get_current_user_from_token_param
+from auth import login_with_google, get_current_user, require_admin
 from models import (
     GoogleLoginRequest, LoginResponse, EmployeeCreate, EmployeeUpdate,
     RequestCreate, RequestAction, VacationRequestCreate,
@@ -30,7 +30,12 @@ from models import (
 setup_logging()
 logger = get_logger("main")
 
-app = FastAPI(title="HRFlow API", version="2.6.0",
+# Fails fast (before the app accepts any traffic) if security-critical
+# settings are missing or unsafe. See docs/analysis/security-analysis-plan.md
+# (Phase 1) and config.py's Config.validate() for details.
+Config.validate()
+
+app = FastAPI(title="HRFlow API", version="2.7.0",
               description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents), Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
@@ -42,7 +47,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logger.info("HRFlow API starting up (version=2.6.0, allowed_origins=%s)", origins)
+logger.info(
+    "HRFlow API starting up (version=2.7.0, environment=%s, allowed_origins=%s)",
+    Config.ENVIRONMENT, origins,
+)
+
+
+def _set_session_cookie(response: Response, token: str):
+    """
+    Issues the session as an HttpOnly cookie so the token is never exposed
+    to page JavaScript (mitigates XSS token theft) and never needs to be
+    passed as a URL query parameter (mitigates token leakage via logs /
+    browser history / Referer headers). See docs/analysis/
+    security-analysis-plan.md, Phase 1 (SEC-01 / SEC-04).
+    """
+    response.set_cookie(
+        key=Config.SESSION_COOKIE_NAME,
+        value=token,
+        max_age=Config.TOKEN_EXPIRY_HOURS * 3600,
+        httponly=True,
+        secure=Config.COOKIE_SECURE,
+        samesite=Config.COOKIE_SAMESITE,
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response):
+    response.delete_cookie(key=Config.SESSION_COOKIE_NAME, path="/")
 
 
 @app.middleware("http")
@@ -88,7 +119,7 @@ def _resolve_target_employee(client, current_user, employee_id, fallback_name):
 
 
 @app.post("/api/auth/google", response_model=LoginResponse, tags=["Auth"])
-def api_google_login(payload: GoogleLoginRequest):
+def api_google_login(payload: GoogleLoginRequest, response: Response):
     logger.info("Google login attempt received")
     result = login_with_google(payload.credential)
     if not result:
@@ -98,7 +129,26 @@ def api_google_login(payload: GoogleLoginRequest):
             detail="This Google account is not registered in HRFlow. Ask your HR admin to add you as an employee first.",
         )
     logger.info("Google login successful: role=%s, employee_id=%s", result.get("role"), result.get("employee_id"))
-    return result
+    _set_session_cookie(response, result["token"])
+    return LoginResponse(role=result["role"], employee_id=result.get("employee_id"), name=result.get("name"))
+
+
+@app.get("/api/auth/me", response_model=LoginResponse, tags=["Auth"])
+def api_get_current_session(current_user: dict = Depends(get_current_user)):
+    """Lets the frontend re-establish who's signed in on page load/refresh,
+    without ever handling the session token itself (it lives only in the
+    HttpOnly cookie, sent automatically by the browser)."""
+    return LoginResponse(
+        role=current_user["role"],
+        employee_id=current_user.get("employee_id"),
+        name=current_user.get("name"),
+    )
+
+
+@app.post("/api/auth/logout", tags=["Auth"])
+def api_logout(response: Response):
+    _clear_session_cookie(response)
+    return {"message": "Signed out"}
 
 
 @app.get("/api/employees", tags=["Employees"])
@@ -290,21 +340,23 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
 
 
 @app.get("/api/employees/documents/{doc_id}/stream", tags=["Documents"])
-def stream_employee_document(doc_id: int, token: str = Query(...), download: bool = Query(False)):
+def stream_employee_document(doc_id: int, download: bool = Query(False), current_user: dict = Depends(get_current_user)):
     """
     Streams a document's bytes through the backend using the service
     account's own Drive access, so the caller never needs Drive
-    permissions of their own. Auth is passed as `?token=` (not an
-    Authorization header) because this URL is meant to be opened directly
-    by the browser (in an <a target="_blank">, <iframe>, or download
-    click) - those cannot attach custom headers.
+    permissions of their own.
+
+    Auth is via the HttpOnly session cookie, sent automatically by the
+    browser even for direct navigations (<a target="_blank">, <iframe>,
+    or a download click) - so, unlike the previous implementation, no
+    session token is ever placed in this URL's query string. See
+    docs/analysis/security-analysis-plan.md, Phase 1 (SEC-01).
 
     `download=false` (default) returns Content-Disposition: inline, so
     browsers render PDFs/images directly (in-app preview via an <iframe>
     or new tab). `download=true` returns Content-Disposition: attachment,
     forcing a file download with the original file name.
     """
-    current_user = get_current_user_from_token_param(token)
     client = get_client()
     docs = client.get_all_records("EmployeeDocuments")
     doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
@@ -320,9 +372,9 @@ def stream_employee_document(doc_id: int, token: str = Query(...), download: boo
         logger.exception("Failed to stream document doc_id=%s (drive_file_id=%s)", doc_id, doc.get("drive_file_id"))
         raise HTTPException(status_code=502, detail=f"Could not fetch document from Google Drive: {exc}")
 
-    file_name = str(doc.get("name") or drive_name)
+    file_name = _safe_content_disposition_filename(str(doc.get("name") or drive_name))
     disposition = "attachment" if download else "inline"
-    headers = {"Content-Disposition": f'{disposition}; filename="{file_name}"'}
+    headers = {"Content-Disposition": f"{disposition}; filename*=UTF-8''{file_name}"}
     logger.info("Streaming doc_id=%s to %s (disposition=%s, %d bytes)", doc_id, current_user.get("email"), disposition, len(raw_bytes))
     return StreamingResponse(iter([raw_bytes]), media_type=mime, headers=headers)
 
@@ -363,6 +415,21 @@ def _normalize_company_document_record(d: dict) -> dict:
         elif field in normalized:
             normalized[field] = ""
     return normalized
+
+
+def _safe_content_disposition_filename(name: str) -> str:
+    """
+    Strips characters that could break or inject into the
+    Content-Disposition header (quotes, control characters, path
+    separators) and percent-encodes the remainder for the RFC 5987
+    filename*=UTF-8''... form. See docs/analysis/security-analysis-plan.md,
+    Phase 1 (finding #8: header injection via unsanitized filenames).
+    """
+    import re
+    from urllib.parse import quote
+
+    cleaned = re.sub(r'[\r\n\"\\/\x00-\x1f]', "", name).strip() or "document"
+    return quote(cleaned)
 
 
 @app.get("/api/company-documents", tags=["Document Hub"])
@@ -419,15 +486,15 @@ def upload_company_document(payload: CompanyDocumentCreate, current_user: dict =
 
 
 @app.get("/api/company-documents/{doc_id}/stream", tags=["Document Hub"])
-def stream_company_document(doc_id: int, token: str = Query(...), download: bool = Query(False)):
+def stream_company_document(doc_id: int, download: bool = Query(False), current_user: dict = Depends(get_current_user)):
     """
     Streams a company document's bytes through the backend (service
     account's Drive access). Any signed-in user (admin or employee) may
     view/download - Document Hub content is company-wide by design.
-    Auth via `?token=` for the same reason as employee document
-    streaming: this URL is opened directly by the browser.
+
+    Auth is via the HttpOnly session cookie (see stream_employee_document
+    above) - no session token is placed in this URL.
     """
-    current_user = get_current_user_from_token_param(token)
     client = get_client()
     docs = client.get_all_records("CompanyDocuments")
     doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
@@ -442,9 +509,9 @@ def stream_company_document(doc_id: int, token: str = Query(...), download: bool
         logger.exception("Failed to stream company document doc_id=%s (drive_file_id=%s)", doc_id, doc.get("drive_file_id"))
         raise HTTPException(status_code=502, detail=f"Could not fetch document from Google Drive: {exc}")
 
-    file_name = str(doc.get("name") or drive_name)
+    file_name = _safe_content_disposition_filename(str(doc.get("name") or drive_name))
     disposition = "attachment" if download else "inline"
-    headers = {"Content-Disposition": f'{disposition}; filename="{file_name}"'}
+    headers = {"Content-Disposition": f"{disposition}; filename*=UTF-8''{file_name}"}
     logger.info("Streaming company doc_id=%s to %s (disposition=%s, %d bytes)", doc_id, current_user.get("email"), disposition, len(raw_bytes))
     return StreamingResponse(iter([raw_bytes]), media_type=mime, headers=headers)
 
@@ -734,12 +801,21 @@ def action_insurance_claim(claim_id: int, payload: InsuranceClaimAction, current
 
 @app.get("/api/salary/history", tags=["Salary"])
 def get_salary_history(employee_id: Optional[int] = Query(None), current_user: dict = Depends(get_current_user)):
+    """
+    Non-admins are always restricted to their own salary history: their
+    own employee_id fully overrides (and ignores) any employee_id query
+    param they might pass. This is deliberately expressed as a single
+    if/else - not as two separate conditions that both mutate `history` -
+    so the access rule cannot be silently bypassed by future edits that
+    reorder the filtering logic. See docs/analysis/security-analysis-plan.md,
+    Phase 1 (finding #9).
+    """
     client = get_client()
     history = client.get_all_records("SalaryHistory")
     if current_user["role"] != "admin":
         my_id = str(current_user["employee_id"])
         history = [h for h in history if str(h["employee_id"]) == my_id]
-    if employee_id is not None:
+    elif employee_id is not None:
         history = [h for h in history if str(h["employee_id"]) == str(employee_id)]
     return history
 

@@ -3,22 +3,23 @@ auth.py
 Authentication for HRFlow via "Sign in with Google" - verifies a Google ID
 token and enforces the Workspace domain restriction.
 
-Session tokens issued after a successful Google sign-in are consumed by
-the rest of the API via get_current_user / require_admin, or (for
-document preview/download links embedded in <a>/<iframe> tags that cannot
-send an Authorization header) via get_current_user_from_token_param.
+Session tokens issued after a successful Google sign-in are stored in an
+HttpOnly cookie (see Config.SESSION_COOKIE_NAME) rather than being handed to
+JavaScript. This means the token is never readable by page scripts (no XSS
+exfiltration path) and is never carried in a URL query string (no leakage
+into server access logs / browser history / Referer headers). The rest of
+the API consumes the session via get_current_user / require_admin, which
+read the cookie automatically on every request.
 """
 import time
 import jwt
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, Request, status
 
 from config import Config
 from sheets_client import get_client
 
-bearer_scheme = HTTPBearer()
 _google_request = google_requests.Request()
 
 
@@ -87,14 +88,25 @@ def login_with_google(credential: str):
     return {"token": token, "role": user["role"], "employee_id": user.get("employee_id"), "name": name}
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
-    token = credentials.credentials
+def get_current_user(request: Request) -> dict:
+    """
+    Reads the session from the HttpOnly cookie (Config.SESSION_COOKIE_NAME).
+    There is intentionally no Authorization-header / bearer-token path and
+    no `?token=` query-string path anymore - every request, including the
+    document preview/download streaming endpoints, now authenticates via
+    this same cookie, which the browser attaches automatically.
+    """
+    token = request.cookies.get(Config.SESSION_COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not signed in. Please sign in again.",
+        )
     payload = decode_session_token(token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session. Please sign in again.",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     return payload
 
@@ -103,20 +115,3 @@ def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
     return current_user
-
-
-def get_current_user_from_token_param(token: str) -> dict:
-    """
-    Same session validation as get_current_user, but for the token passed
-    as a `?token=` query string parameter instead of an Authorization
-    header. Needed for document preview/download links opened directly by
-    the browser (e.g. in an <a target="_blank">, <iframe>, or <img> tag),
-    which cannot attach custom headers.
-    """
-    payload = decode_session_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired session. Please sign in again.",
-        )
-    return payload

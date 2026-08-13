@@ -7,22 +7,36 @@ if (typeof window.HRFLOW_CONFIG === "undefined") {
 const API_BASE_URL = window.HRFLOW_CONFIG.API_BASE_URL;
 const GOOGLE_CLIENT_ID = window.HRFLOW_CONFIG.GOOGLE_CLIENT_ID;
 
-const TokenStore = {
-  get() { return localStorage.getItem("hrflow_token"); },
-  set(token) { localStorage.setItem("hrflow_token", token); },
-  clear() { localStorage.removeItem("hrflow_token"); },
-  getRole() { return localStorage.getItem("hrflow_role"); },
-  setRole(role) { localStorage.setItem("hrflow_role", role); },
-  getEmployeeId() { return localStorage.getItem("hrflow_employee_id"); },
-  setEmployeeId(id) { localStorage.setItem("hrflow_employee_id", id); },
-  getName() { return localStorage.getItem("hrflow_name"); },
-  setName(name) { localStorage.setItem("hrflow_name", name); },
-  clearAll() {
-    localStorage.removeItem("hrflow_token");
-    localStorage.removeItem("hrflow_role");
-    localStorage.removeItem("hrflow_employee_id");
-    localStorage.removeItem("hrflow_name");
-  }
+// Session state (role/employee_id/name) is kept in memory only, populated
+// from the response of /api/auth/google or /api/auth/me. The session
+// token itself is NEVER handled by JavaScript at all - it lives only in
+// an HttpOnly cookie that the browser attaches automatically on every
+// request to API_BASE_URL. This closes two issues from the Phase 1
+// security pass (see docs/analysis/security-analysis-plan.md):
+//   - SEC-04: a JWT in localStorage is fully readable by any script,
+//     including an attacker's script in an XSS scenario. An HttpOnly
+//     cookie cannot be read by JavaScript at all.
+//   - SEC-01: document preview/download links previously carried the
+//     token as a URL query parameter (leaking into logs/history/Referer).
+//     They no longer need to - the browser sends the cookie on its own.
+const SessionInfo = {
+  _role: null,
+  _employeeId: null,
+  _name: null,
+  set(data) {
+    this._role = data.role ?? null;
+    this._employeeId = data.employee_id ?? null;
+    this._name = data.name ?? null;
+  },
+  clear() {
+    this._role = null;
+    this._employeeId = null;
+    this._name = null;
+  },
+  getRole() { return this._role; },
+  getEmployeeId() { return this._employeeId; },
+  getName() { return this._name; },
+  isKnown() { return this._role !== null; },
 };
 
 // Guards against a burst of parallel 401s (e.g. the several Promise.all()
@@ -40,16 +54,12 @@ let _sessionExpiredHandled = false;
 // page (index.html) can react gracefully (e.g. show a toast, tear down
 // in-memory state, then re-render the login screen) without a hard
 // reload. If nothing calls event.preventDefault() on that event within
-// one tick, we fall back to reloading the page, which - now that the
-// token is cleared - will always boot back into the Sign-In screen.
+// one tick, we fall back to reloading the page.
 function forceSessionExpiredLogout() {
   if (_sessionExpiredHandled) return;
   _sessionExpiredHandled = true;
 
-  TokenStore.clearAll();
-    if (typeof window.clearSessionCookies === 'function') {
-      window.clearSessionCookies(); // also purge the 7-day cookies, not just localStorage, so a reload can't resurrect the dead token
-    }
+  SessionInfo.clear();
   if (window.google && window.google.accounts && window.google.accounts.id) {
     try { google.accounts.id.disableAutoSelect(); } catch (_) {}
   }
@@ -68,11 +78,7 @@ function forceSessionExpiredLogout() {
 
 async function apiRequest(method, path, body = null, auth = true) {
   const headers = { "Content-Type": "application/json" };
-  if (auth) {
-    const token = TokenStore.get();
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  }
-  const opts = { method, headers };
+  const opts = { method, headers, credentials: "include" }; // send/receive the HttpOnly session cookie
   if (body !== null) opts.body = JSON.stringify(body);
 
   let res;
@@ -84,13 +90,14 @@ async function apiRequest(method, path, body = null, auth = true) {
 
   if (res.status === 401) {
     // Only treat this as a session-expiry event for requests that were
-    // actually sent with a session token. Public/login calls (auth=false,
-    // e.g. /api/auth/google) returning 401 means "bad credential", not
-    // "your session died" - those should NOT force a page reload.
+    // actually expected to be authenticated. Public/login calls
+    // (auth=false, e.g. /api/auth/google) returning 401 means "bad
+    // credential", not "your session died" - those should NOT force a
+    // page reload.
     if (auth) {
       forceSessionExpiredLogout();
     } else {
-      TokenStore.clearAll();
+      SessionInfo.clear();
     }
     throw new Error("Session expired. Please sign in again.");
   }
@@ -113,8 +120,7 @@ function apiRequestWithProgress(method, path, body, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open(method, `${API_BASE_URL}${path}`, true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    const token = TokenStore.get();
-    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.withCredentials = true; // send/receive the HttpOnly session cookie
 
     xhr.upload.onprogress = (evt) => {
       if (onProgress && evt.lengthComputable) {
@@ -197,19 +203,31 @@ const EMPLOYMENT_STATES = ["Full-Time", "Part-Time", "Freelance", "Occasional"];
 const Api = {
   async loginWithGoogle(credential) {
     const data = await apiRequest("POST", "/api/auth/google", { credential }, false);
-    TokenStore.set(data.token);
-    TokenStore.setRole(data.role);
-    TokenStore.setEmployeeId(data.employee_id);
-    TokenStore.setName(data.name || "");
+    SessionInfo.set(data);
     return data;
   },
-  logout() {
-    TokenStore.clearAll();
+  // Re-establishes who's signed in (e.g. after a page reload) by asking
+  // the backend to validate the HttpOnly session cookie. Returns null if
+  // there is no valid session, instead of throwing, so callers can treat
+  // "not logged in" as a normal state on first load.
+  async restoreSession() {
+    try {
+      const data = await apiRequest("GET", "/api/auth/me", null, false);
+      SessionInfo.set(data);
+      return data;
+    } catch (_) {
+      SessionInfo.clear();
+      return null;
+    }
+  },
+  async logout() {
+    try { await apiRequest("POST", "/api/auth/logout", null, false); } catch (_) {}
+    SessionInfo.clear();
     if (window.google && window.google.accounts) {
       google.accounts.id.disableAutoSelect();
     }
   },
-  isLoggedIn() { return !!TokenStore.get(); },
+  isLoggedIn() { return SessionInfo.isKnown(); },
   getEmployees() { return apiRequest("GET", "/api/employees"); },
   getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
   // payload may include employment_state ("Full-Time" | "Part-Time" | "Freelance" | "Occasional")
@@ -232,16 +250,16 @@ const Api = {
   deleteEmployeeDocument(docId) { return apiRequest("DELETE", `/api/employees/documents/${docId}`); },
 
   // Preview/download URLs stream bytes through our own backend (service
-  // account's Drive access), carrying the session token as a query param
-  // since these URLs are opened directly by the browser (new tab/iframe/
-  // download click) and cannot send an Authorization header.
+  // account's Drive access). They no longer carry any token - the
+  // browser sends the HttpOnly session cookie automatically for these
+  // direct navigations (<a target="_blank">, <iframe>, download click),
+  // since the cookie is scoped to API_BASE_URL's site regardless of how
+  // the request was triggered.
   getDocumentPreviewUrl(docId) {
-    const token = TokenStore.get();
-    return `${API_BASE_URL}/api/employees/documents/${docId}/stream?token=${encodeURIComponent(token)}`;
+    return `${API_BASE_URL}/api/employees/documents/${docId}/stream`;
   },
   getDocumentDownloadUrl(docId) {
-    const token = TokenStore.get();
-    return `${API_BASE_URL}/api/employees/documents/${docId}/stream?token=${encodeURIComponent(token)}&download=true`;
+    return `${API_BASE_URL}/api/employees/documents/${docId}/stream?download=true`;
   },
 
   // ---------- DOCUMENT HUB (company-wide documents/policies) ----------
@@ -254,12 +272,10 @@ const Api = {
   },
   deleteCompanyDocument(docId) { return apiRequest("DELETE", `/api/company-documents/${docId}`); },
   getCompanyDocumentPreviewUrl(docId) {
-    const token = TokenStore.get();
-    return `${API_BASE_URL}/api/company-documents/${docId}/stream?token=${encodeURIComponent(token)}`;
+    return `${API_BASE_URL}/api/company-documents/${docId}/stream`;
   },
   getCompanyDocumentDownloadUrl(docId) {
-    const token = TokenStore.get();
-    return `${API_BASE_URL}/api/company-documents/${docId}/stream?token=${encodeURIComponent(token)}&download=true`;
+    return `${API_BASE_URL}/api/company-documents/${docId}/stream?download=true`;
   },
 
   getRequests(type = "all") {
