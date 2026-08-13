@@ -47,6 +47,9 @@ function forceSessionExpiredLogout() {
   _sessionExpiredHandled = true;
 
   TokenStore.clearAll();
+    if (typeof window.clearSessionCookies === 'function') {
+      window.clearSessionCookies(); // also purge the 7-day cookies, not just localStorage, so a reload can't resurrect the dead token
+    }
   if (window.google && window.google.accounts && window.google.accounts.id) {
     try { google.accounts.id.disableAutoSelect(); } catch (_) {}
   }
