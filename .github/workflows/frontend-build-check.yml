@@ -57,17 +57,24 @@ jobs:
           name: fe-dist
           path: fe/dist
 
-      - name: Install Playwright + http-server
-        run: npm install -g playwright http-server && npx playwright install --with-deps chromium
+      - name: Set up smoke-test tooling (local, not global)
+        run: |
+          mkdir -p ci-smoke-test
+          cd ci-smoke-test
+          npm init -y > /dev/null
+          npm install playwright http-server
+          npx playwright install --with-deps chromium
 
       - name: Serve built site
         run: |
-          npx http-server fe/dist -p 4173 -s &
+          cd ci-smoke-test
+          npx http-server ../fe/dist -p 4173 -s &
           sleep 2
 
       - name: Run headless console-error check
+        working-directory: ci-smoke-test
         run: |
-          cat > /tmp/smoke.mjs <<'EOF'
+          cat > smoke.mjs <<'EOF'
           import { chromium } from 'playwright';
 
           const errors = [];
@@ -99,4 +106,4 @@ jobs:
             console.log('Smoke test PASSED: no console errors, login screen rendered correctly.');
           }
           EOF
-          node /tmp/smoke.mjs
+          node smoke.mjs
