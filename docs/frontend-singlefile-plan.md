@@ -3,88 +3,93 @@
 ## Goal
 
 `fe/` builds to a **single `dist/index.html`** with zero additional runtime
-script requests for the app's own JS modules. This is enforced by the CI
-smoke test, which fails if any `/js/*.js` request 404s or if more than one
-JS payload is fetched for the app bundle.
+script requests for the app's own JS modules, and `dist/` must be a fully
+self-contained, deployable folder on its own. This is enforced by the CI
+smoke test.
 
-`vite-plugin-singlefile` is in `fe/vite.config.js` specifically to produce
-this single-file output. Its job is to inline everything that passes through
-Vite's own module/asset pipeline into `dist/index.html`.
-
-## Root cause of the recurring 404s
+## Root cause of the recurring 404s (JS modules)
 
 `vite-plugin-singlefile` **only inlines assets Vite itself processes**
 (ES module imports, processed CSS, etc.). It does **not** inline static files
-that live in `publicDir` and are referenced via plain
-`<script src="...">` tags — those are copied to `dist/` verbatim and remain
-separate HTTP requests, by design of both Vite and the plugin.
+that live in `publicDir` and are referenced via plain `<script src="...">`
+tags — those are copied to `dist/` verbatim and remain separate HTTP
+requests, by design of both Vite and the plugin.
 
 The 11 frontend modules (`state.js`, `ui.js`, `session.js`, `employees.js`,
 `requests.js`, `salary.js`, `vacations.js`, `insurance.js`, `dochub.js`,
-`charts.js`, `app.js`) were kept as classic (non-module) scripts sharing a
-global scope, and referenced via `<script src="./js/*.js">` in
-`fe/src/index.html`. That's incompatible with the single-file goal: no matter
-how correctly `publicDir`/`outDir` are configured, or how the script paths
-are written (relative vs. absolute), the browser will always make 11 separate
-requests for those files. If any deploy/preview environment doesn't expose
-`dist/js/` correctly, every one of those requests 404s — which is exactly
-what the smoke test kept catching.
+`charts.js`, `app.js`) are classic (non-module) scripts sharing a global
+scope. No path or `publicDir`/`outDir` fix could satisfy the single-file /
+zero-extra-request goal while they remained external `<script src>` tags.
 
-Several earlier fix attempts targeted symptoms instead of this root cause:
-- Moving the 11 files into `fe/public/js/` so `publicDir` copies them (correct
-  as far as it goes, but doesn't eliminate the extra requests).
-- Pinning `publicDir`/`outDir` to absolute paths in `vite.config.js` (fixes a
-  real config bug, but orthogonal to the single-file requirement).
-- Fixing the `vite-plugin-singlefile` import name (`viteSingleFile`, not
-  `singleFile`) — a real bug, unrelated to the 404s.
-- Restoring `../config.js` / `../api.js` relative paths after an accidental
-  regression — unrelated to the `/js/*.js` 404s, but broke Google Sign-In
-  separately in the process.
+**Fix**: a custom Vite plugin (`singleFileDeployBundle`, in
+`fe/vite.config.js`) hooks `transformIndexHtml`, reads the 11 files from
+`fe/public/js/` in their original load order (order matters — they share
+one global scope), and injects their concatenated contents as a single
+inline `<script>` block before `</body>`. The corresponding
+`<script src="./js/*.js">` tags were removed from `fe/src/index.html`.
+Every file's internal code is unchanged byte-for-byte.
 
-None of these could resolve the smoke test failure, because the failure was
-never about paths or copy timing — it was about the architecture requiring
-11 external requests while the build tooling promises zero.
+## Second gap: dist/ wasn't self-contained (config.js, api.js, images)
 
-## Chosen fix: inline concatenation via a custom Vite plugin
+Even with the JS modules inlined, `dist/` was still missing files needed
+to actually run the app once deployed:
 
-Rather than rewriting all 11 files into real ES modules (high blast radius —
-every `onclick="..."` handler across the HTML and every shared global like
-`employees` in `state.js` would need export/import wiring, with no way to
-verify correctness without a real build), the fix is a small custom Vite
-plugin added to `fe/vite.config.js`:
+- `fe/src/index.html` references `../config.js` and `../api.js`. That's
+  correct **only** for `vite dev`, where the dev server root is `fe/src/`
+  and those files live one level up, in `fe/`. `vite build` / `vite preview`
+  only ever serve `outDir` (`fe/dist/`) — they never reach one level above
+  it — so in any built/deployed output those two script tags pointed
+  nowhere.
+- `voyance-health-logo.png` and `voyance-logo-v.png` are referenced by
+  **bare filename** in `index.html`, meaning they must be siblings of
+  `index.html`. They live in `fe/`, are not in `publicDir`, and were never
+  copied into `dist/`.
 
-- Hooks `transformIndexHtml`.
-- Reads the 11 files from `fe/public/js/` **in the exact order** they were
-  previously `<script src>`-included (order matters: later files reference
-  functions/variables defined in earlier ones, since they share one global
-  scope).
-- Concatenates their contents and injects them as a single inline
-  `<script>` block right before `</body>` in the emitted `dist/index.html`.
-- Runs identically in `vite dev` and `vite build`.
+A pre-existing, unrelated bug was found while wiring up the copy list: the
+actual file in the repo is `Voyance-health-logo.png` (capital V), but
+`index.html` references `voyance-health-logo.png` (lowercase). Invisible on
+case-insensitive filesystems (macOS/Windows dev machines), but a real 404
+on any case-sensitive static host (most Linux-based hosts).
 
-`fe/src/index.html` no longer has the 11 `<script src="./js/*.js">` tags —
-the plugin injects their code directly. Every other script tag
-(`../config.js`, `../api.js`, the Chart.js and Google Identity Services CDN
-tags) is unchanged; those are intentionally excluded from inlining because
-they're either external CDN scripts or come from outside the Vite build root.
+**Fix**: the same `singleFileDeployBundle` plugin adds a `closeBundle` hook
+(runs once after Vite finishes writing `dist/`) that:
+- Copies `api.js` and `config.js` (if present at build time) into `dist/`.
+- Copies both logo images into `dist/`, renaming
+  `Voyance-health-logo.png` → `voyance-health-logo.png` on the way, fixing
+  the casing bug.
+- The plugin's `transformIndexHtml` hook also rewrites `../config.js` /
+  `../api.js` → `./config.js` / `./api.js`, but **only when building**
+  (`config.command === 'build'`) — dev mode is untouched and keeps `../`,
+  since the dev server root really is one level below `fe/`.
 
-This preserves every file's internal code byte-for-byte (no functional
-rewrite, no new risk of breaking global references) while satisfying the
-true single-file / zero-extra-request requirement the smoke test checks for.
+A `closeBundle` hook was used instead of a separate npm `postbuild` /
+shell script, since shell copy commands (`cp`) aren't portable to Windows
+CI images; keeping the logic inside the existing Vite plugin also avoids a
+second source of truth for the file list.
 
-## Files touched by this fix
+### Known caveat: config.js
 
-- `fe/vite.config.js` — added the `inlineAppScripts()` plugin.
-- `fe/src/index.html` — removed the 11 `<script src="./js/*.js">` lines.
+`config.js` does not exist in the repository (only `config.example.js` /
+`config-example.js` templates do) — it's expected to be generated at
+deploy time from secrets/environment values. The copy step copies it
+**if present** at build time and emits a build warning (not a failure) if
+it's missing. Whether `fe/config.js` exists before `npm run build` runs is
+a CI/deploy-pipeline concern outside the scope of this fix.
+
+## Files touched
+
+- `fe/vite.config.js` — the `singleFileDeployBundle` plugin (inlining +
+  path rewriting + sibling file copy).
+- `fe/src/index.html` — the 11 `<script src="./js/*.js">` lines removed
+  (now inlined); `../config.js` / `../api.js` kept as-is in source (correct
+  for dev; rewritten to `./` only in the build output by the plugin).
 
 ## Non-goals / things intentionally left alone
 
 - `fe/public/js/*.js` files themselves are unchanged (still classic global
-  scripts, not ES modules). They remain in `fe/public/js/` as the plugin's
-  source of truth; they are simply no longer requested directly by the
-  browser.
-- `publicDir`/`outDir` absolute-path pinning from the earlier fix stays as-is
-  — it's still correct and needed for any other files placed under
-  `fe/public/` (e.g. static assets, favicons) that should be copied normally.
-- `../config.js` / `../api.js` relative paths stay as-is (outside the Vite
-  build root, loaded from the deploy root as before).
+  scripts, not ES modules) — they remain the plugin's source of truth for
+  inlining.
+- `publicDir`/`outDir` absolute-path pinning stays as-is — still correct
+  and needed for any other files placed under `fe/public/`.
+- No change to how `config.js` is generated/provisioned in CI — that's a
+  separate deploy-pipeline concern.
