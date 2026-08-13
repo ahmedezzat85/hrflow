@@ -130,3 +130,26 @@ function logout(){
   document.getElementById('loginThemeToggle').style.display = 'flex';
   document.getElementById('loginErr').style.display = 'none';
 }
+
+
+// Listens for the 'hrflow:session-expired' event dispatched by
+// forceSessionExpiredLogout() in api.js when an authenticated request
+// comes back 401. Clears the 7-day session cookies (previously only
+// TokenStore/localStorage was cleared here, so a page reload would
+// resurrect the dead token from the cookie and loop forever) and
+// returns the user to the Sign-In screen without needing a hard reload.
+window.addEventListener('hrflow:session-expired', (e) => {
+  e.preventDefault();
+  TokenStore.clearAll();
+  clearSessionCookies();
+  employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
+  insuranceCategories = []; insuranceConsumption = [];
+  document.getElementById('admin-app').classList.remove('active');
+  document.getElementById('employee-app').classList.remove('active');
+  hideAppLoader();
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('loginThemeToggle').style.display = 'flex';
+  document.getElementById('loginErr').style.display = 'none';
+  toast('Your session expired. Please sign in again.', 'fa-solid fa-triangle-exclamation');
+  initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
+});
