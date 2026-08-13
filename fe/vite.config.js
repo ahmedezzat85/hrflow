@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { singleFile } from 'vite-plugin-singlefile';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -12,5 +12,5 @@ export default defineConfig({
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
   },
-  plugins: [singleFile()],
+  plugins: [viteSingleFile()],
 });
