@@ -1,0 +1,16 @@
+let employees = [];
+let requests = [];
+let insuranceClaims = [];
+let empVacationHistory = [];
+let empInsuranceHistory = [];
+let currentLoggedInEmployee = null;
+let allSalaryHistory = [];
+let insuranceCategories = [];
+let insuranceConsumption = [];
+let currentEditCategoryId = null;
+let currentEditId = null, currentDeleteId = null, currentPortal = 'admin';
+let employeeDocuments = [];
+let currentDetailEmployeeId = null;
+let docSelectedFile = null;
+let companyDocuments = [];
+window._charts = {};

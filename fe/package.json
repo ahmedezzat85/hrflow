@@ -1,0 +1,16 @@
+{
+  "name": "hrflow-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "HRFlow frontend - vanilla JS, modular source bundled by Vite into a single self-contained index.html (no runtime multi-file fetches).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "5.4.21",
+    "vite-plugin-singlefile": "2.3.3"
+  }
+}

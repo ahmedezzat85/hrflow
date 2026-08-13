@@ -1,0 +1,364 @@
+function renderEmployeesTable(filter=''){
+  const body = document.getElementById('employeesTableBody');
+  const f = filter.toLowerCase();
+  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state||"").toLowerCase().includes(f)).map(e=>`<tr><td>${e.id}</td>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.role}</td><td>${e.employment_state || "Full-Time"}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+}
+document.getElementById('empSearch').addEventListener('input', e=>renderEmployeesTable(e.target.value));
+
+function openEmployeeModal(id=null){
+  currentEditId = id;
+  document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
+  if(id){
+    const e = employees.find(x=>x.id===id);
+    fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role; fEmpSalary.value=e.salary; fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
+    document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
+  } else {
+    ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value='');
+    fEmpSalary.value=''; fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
+    document.getElementById('fEmpEmploymentState').value='Full-Time';
+  }
+  document.getElementById('employeeModal').classList.add('active');
+}
+async function saveEmployee(){
+  const name = document.getElementById('fEmpName').value.trim();
+  if(!name){ toast('Please enter employee name.','fa-solid fa-triangle-exclamation'); return; }
+  const vacTotal = Number(fEmpVac.value)||21;
+  try{
+    if(currentEditId){
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value };
+      await Api.updateEmployee(currentEditId, updates);
+      toast('Employee updated successfully.');
+    } else {
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value };
+      await Api.createEmployee(payload);
+      toast('New employee added.');
+    }
+    closeModal('employeeModal');
+    await loadAdminData();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+function askDelete(id){ currentDeleteId = id; document.getElementById('delEmpName').textContent = employees.find(e=>e.id===id).name; document.getElementById('confirmModal').classList.add('active'); }
+async function confirmDelete(){
+  try{ await Api.deleteEmployee(currentDeleteId); closeModal('confirmModal'); toast('Employee removed.','fa-solid fa-trash'); await loadAdminData(); }
+  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+async function viewProfile(id){
+  currentDetailEmployeeId = id;
+  showSection('a-employee-detail','admin');
+  const e = employees.find(x=>x.id===id);
+  document.getElementById('detailProfileHead').innerHTML = `<div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div>`;
+  document.getElementById('detailInfoGrid').innerHTML = `<div class="info-item"><span>Email</span><b>${e.email}</b></div><div class="info-item"><span>Status</span><b>${e.status}</b></div>
+      <div class="info-item"><span>Employment State</span><b>${e.employment_state || 'Full-Time'}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
+  const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(id));
+  document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
+  document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
+  showTableSkeleton('detailVacationBody', 4, 3);
+  showTableSkeleton('detailClaimsBody', 4, 3);
+  showTableSkeleton('detailDocumentsBody', 3, 2);
+  try{
+    const [vacHistory, claims, notes] = await Promise.all([
+      Api.getVacationHistory(id),
+      Api.getInsuranceClaims(),
+      Api.getEmployeeNotes(id),
+    ]);
+    document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v=>`<tr><td>${v.type}</td><td>${v.start_date} to ${v.end_date}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><p>No vacation records yet.</p></div></td></tr>`;
+    const empClaims = claims.filter(c=>String(c.employee_id)===String(id));
+    document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c=>`<tr><td>${c.category}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
+    renderNotesList(notes);
+    await loadEmployeeDocuments(id);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+function renderNotesList(notes){
+  const list = document.getElementById('detailNotesList');
+  const catIcons = {General:'fa-solid fa-note-sticky',Performance:'fa-solid fa-chart-line',Incident:'fa-solid fa-triangle-exclamation',Achievement:'fa-solid fa-trophy',Attendance:'fa-solid fa-calendar-check',Warning:'fa-solid fa-flag'};
+  const catColors = {General:'accent',Performance:'success',Incident:'danger',Achievement:'success',Attendance:'info',Warning:'warning'};
+  list.innerHTML = notes.map(n=>{
+    const color = catColors[n.category] || 'accent';
+    return `<li><div class="ic" style="background:rgba(32,86,232,.12);color:var(--${color});"><i class="${catIcons[n.category]||'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+  }).join('') || '<li><div class="empty-state"><i class="fa-solid fa-note-sticky"></i><p>No notes recorded yet.</p></div></li>';
+}
+
+async function saveEmployeeNote(){
+  const date = document.getElementById('fNoteDate').value;
+  const category = document.getElementById('fNoteCategory').value;
+  const note = document.getElementById('fNoteText').value.trim();
+  if(!note){ toast('Please enter a note.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    await Api.createEmployeeNote(currentDetailEmployeeId, { date: date || null, category, note });
+    toast('Note added.');
+    document.getElementById('fNoteText').value = '';
+    const notes = await Api.getEmployeeNotes(currentDetailEmployeeId);
+    renderNotesList(notes);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+async function deleteEmployeeNote(noteId){
+  try{
+    await Api.deleteEmployeeNote(noteId);
+    toast('Note deleted.', 'fa-solid fa-trash');
+    const notes = await Api.getEmployeeNotes(currentDetailEmployeeId);
+    renderNotesList(notes);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+async function openBehalfVacationModal(){
+  document.getElementById('bvType').value = 'Annual Leave';
+  document.getElementById('bvStart').value = '';
+  document.getElementById('bvEnd').value = '';
+  document.getElementById('bvDays').value = 1;
+  document.getElementById('bvStatus').value = 'Approved';
+  document.getElementById('bvRecordDate').value = '';
+  document.getElementById('behalfVacationModal').classList.add('active');
+}
+async function submitBehalfVacation(){
+  const emp = employees.find(e=>e.id===currentDetailEmployeeId);
+  const leave_type = document.getElementById('bvType').value;
+  const start_date = document.getElementById('bvStart').value;
+  const end_date = document.getElementById('bvEnd').value || start_date;
+  const days = Number(document.getElementById('bvDays').value) || 1;
+  const status = document.getElementById('bvStatus').value;
+  const record_date = document.getElementById('bvRecordDate').value || null;
+  if(!start_date){ toast('Please select a start date.','fa-solid fa-triangle-exclamation'); return; }
+  try{
+    await Api.requestVacation({ employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, days, status, record_date });
+    closeModal('behalfVacationModal');
+    toast(`Vacation/WFH record added for ${emp.name}.`);
+    await loadAdminData();
+    await viewProfile(currentDetailEmployeeId);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+function openBehalfClaimModal(){
+  const sel = document.getElementById('bcCategory');
+  sel.innerHTML = insuranceCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('bcProvider').value = '';
+  document.getElementById('bcAmount').value = '';
+  document.getElementById('bcStatus').value = 'Approved';
+  document.getElementById('bcRecordDate').value = '';
+  const fileInput = document.getElementById('bcDocument');
+  if(fileInput) fileInput.value = '';
+  document.getElementById('behalfClaimModal').classList.add('active');
+}
+async function submitBehalfClaim(){
+  const emp = employees.find(e=>e.id===currentDetailEmployeeId);
+  const category = document.getElementById('bcCategory').value;
+  const provider = document.getElementById('bcProvider').value;
+  const amount = Number(document.getElementById('bcAmount').value);
+  const status = document.getElementById('bcStatus').value;
+  const record_date = document.getElementById('bcRecordDate').value || null;
+  const fileInput = document.getElementById('bcDocument');
+  if(!category){ toast('Please select an insurance category.','fa-solid fa-triangle-exclamation'); return; }
+  if(!amount){ toast('Please enter a claim amount.','fa-solid fa-triangle-exclamation'); return; }
+  let documentUrl = '';
+  const file = fileInput && fileInput.files[0];
+  if(file){
+    if(file.size > 2*1024*1024){ toast('Supporting document must be under 2MB.','fa-solid fa-triangle-exclamation'); return; }
+    try{ documentUrl = await readFileAsDataUrl(file); }
+    catch(e){ toast('Could not read the selected file.','fa-solid fa-triangle-exclamation'); return; }
+  }
+  try{
+    await Api.submitInsuranceClaim({ employee_name: emp.name, employee_id: emp.id, category, provider, amount, document_url: documentUrl, status, record_date });
+    closeModal('behalfClaimModal');
+    toast(`Insurance claim added for ${emp.name}.`);
+    await loadAdminData();
+    await viewProfile(currentDetailEmployeeId);
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
+async function loadEmployeeDocuments(empId){
+  try{
+    const docs = await Api.getEmployeeDocuments(empId);
+    employeeDocuments = docs;
+    renderEmployeeDocuments(docs);
+  } catch(err){
+    toast(err.message,'fa-solid fa-triangle-exclamation');
+  }
+}
+
+function docTypeIcon(fileType){
+  return fileType === 'image'
+    ? '<i class="fa-solid fa-image"></i>'
+    : '<i class="fa-solid fa-file-pdf"></i>';
+}
+
+function renderEmployeeDocuments(docs){
+  const body = document.getElementById('detailDocumentsBody');
+  if(!body) return;
+  body.innerHTML = docs.length ? docs.map(d=>`<tr>
+    <td>
+      <div class="doc-name-cell">
+        <div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docTypeIcon(d.file_type)}</div>
+        <span class="doc-name-text">${d.name}</span>
+      </div>
+    </td>
+    <td>${d.uploaded_at || ''}</td>
+    <td style="display:flex;gap:6px;justify-content:flex-end;">
+      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
+      <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
+    </td>
+  </tr>`).join('') : `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
+}
+
+function previewEmployeeDocument(docId, name, fileType){
+  const url = Api.getDocumentPreviewUrl(docId);
+  const container = document.getElementById('docPreviewContainer');
+  document.getElementById('docPreviewTitle').textContent = name || 'Document Preview';
+  document.getElementById('docPreviewDownloadBtn').href = Api.getDocumentDownloadUrl(docId);
+  if(fileType === 'image'){
+    container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+  } else {
+    container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
+  }
+  document.getElementById('documentPreviewModal').classList.add('active');
+}
+
+function closeDocumentPreview(){
+  document.getElementById('documentPreviewModal').classList.remove('active');
+  document.getElementById('docPreviewContainer').innerHTML = '';
+}
+
+function downloadEmployeeDocument(docId){
+  const a = document.createElement('a');
+  a.href = Api.getDocumentDownloadUrl(docId);
+  a.setAttribute('download', '');
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function detectDocFileType(file){
+  if(file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) return 'pdf';
+  return 'image';
+}
+
+function formatFileSize(bytes){
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function openEmployeeDocumentModal(){
+  document.getElementById('docName').value = '';
+  clearDocFileSelection();
+  document.getElementById('docUploadProgressWrap').style.display = 'none';
+  document.getElementById('docUploadProgressFill').style.width = '0%';
+  document.getElementById('docUploadBtn').disabled = false;
+  document.getElementById('docCancelBtn').disabled = false;
+  document.getElementById('employeeDocumentModal').classList.add('active');
+}
+
+function clearDocFileSelection(){
+  docSelectedFile = null;
+  const fileInput = document.getElementById('docFileInput');
+  if(fileInput) fileInput.value = '';
+  document.getElementById('docDropZoneEmpty').style.display = '';
+  document.getElementById('docDropZoneFile').style.display = 'none';
+}
+
+function handleDocFileSelected(file){
+  if(!file) return;
+  if(file.size > 4*1024*1024){
+    toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name);
+  if(!isPdf && !isImage){
+    toast('Only PDF and image files (JPG, PNG) are supported.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  docSelectedFile = file;
+  const fileType = detectDocFileType(file);
+  document.getElementById('docDropZoneEmpty').style.display = 'none';
+  document.getElementById('docDropZoneFile').style.display = 'flex';
+  document.getElementById('docFileName').textContent = file.name;
+  document.getElementById('docFileSize').textContent = formatFileSize(file.size);
+  const iconWrap = document.getElementById('docFileIconWrap');
+  iconWrap.className = 'doc-file-icon ' + (fileType === 'image' ? 'image' : 'pdf');
+  iconWrap.innerHTML = fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
+  if(!document.getElementById('docName').value.trim()){
+    document.getElementById('docName').value = file.name.replace(/\.[^.]+$/, '');
+  }
+}
+
+function initDocDropZoneListeners(){
+  const zone = document.getElementById('docDropZone');
+  const input = document.getElementById('docFileInput');
+  if(!zone || zone.dataset.bound) return;
+  zone.dataset.bound = '1';
+  input.addEventListener('change', () => { if(input.files[0]) handleDocFileSelected(input.files[0]); });
+  ['dragenter','dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drag-over'); }));
+  zone.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if(f) handleDocFileSelected(f); });
+}
+
+async function submitEmployeeDocument(){
+  const name = document.getElementById('docName').value.trim();
+  const file = docSelectedFile;
+  if(!name){ toast('Please enter a document name.','fa-solid fa-triangle-exclamation'); return; }
+  if(!file){ toast('Please choose a file to upload.','fa-solid fa-triangle-exclamation'); return; }
+  if(file.size > 4*1024*1024){
+    toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  const fileType = detectDocFileType(file);
+  const progressWrap = document.getElementById('docUploadProgressWrap');
+  const progressFill = document.getElementById('docUploadProgressFill');
+  const progressPct = document.getElementById('docUploadProgressPct');
+  const progressText = document.getElementById('docUploadProgressText');
+  const uploadBtn = document.getElementById('docUploadBtn');
+  const cancelBtn = document.getElementById('docCancelBtn');
+  try{
+    progressWrap.style.display = 'block';
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+    progressText.textContent = 'Preparing file...';
+    uploadBtn.disabled = true;
+    cancelBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+
+    const dataUrl = await readFileAsDataUrl(file);
+    progressText.textContent = 'Uploading...';
+
+    await Api.uploadEmployeeDocumentWithProgress(currentDetailEmployeeId, {
+      name,
+      file_type: fileType,
+      data_url: dataUrl
+    }, (pct) => {
+      progressFill.style.width = pct + '%';
+      progressPct.textContent = pct + '%';
+      if(pct >= 100) progressText.textContent = 'Finishing up...';
+    });
+
+    progressFill.style.width = '100%';
+    progressPct.textContent = '100%';
+    progressText.textContent = 'Done';
+    toast('Document uploaded.');
+    closeModal('employeeDocumentModal');
+    await loadEmployeeDocuments(currentDetailEmployeeId);
+  } catch(err){
+    toast(err.message,'fa-solid fa-triangle-exclamation');
+  } finally {
+    progressWrap.style.display = 'none';
+    uploadBtn.disabled = false;
+    cancelBtn.disabled = false;
+    uploadBtn.innerHTML = '<i class="fa-solid fa-check"></i> Upload';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initDocDropZoneListeners);
+if(document.readyState !== 'loading') initDocDropZoneListeners();
+
+async function deleteEmployeeDocument(docId){
+  try{
+    await Api.deleteEmployeeDocument(docId);
+    toast('Document deleted.','fa-solid fa-trash');
+    await loadEmployeeDocuments(currentDetailEmployeeId);
+  } catch(err){
+    toast(err.message,'fa-solid fa-triangle-exclamation');
+  }
+}
