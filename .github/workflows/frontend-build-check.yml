@@ -34,11 +34,18 @@ jobs:
         working-directory: fe
         run: npm run build
 
-      - name: Upload dist artifact
+      - name: Assemble servable preview (dist output + real config/api/assets)
+        run: |
+          cp fe/dist/index.html fe/_ci_preview.html
+
+      - name: Upload servable fe/ directory as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fe-dist
-          path: fe/dist
+          name: fe-preview
+          path: |
+            fe
+            !fe/node_modules
+            !fe/src
           retention-days: 7
 
   smoke-test:
@@ -51,11 +58,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download dist artifact
+      - name: Download servable fe/ artifact
         uses: actions/download-artifact@v4
         with:
-          name: fe-dist
-          path: fe/dist
+          name: fe-preview
+          path: fe
 
       - name: Set up smoke-test tooling (local, not global)
         run: |
@@ -65,10 +72,10 @@ jobs:
           npm install playwright http-server
           npx playwright install --with-deps chromium
 
-      - name: Serve built site
+      - name: Serve fe/ as site root (matches real deployment layout)
         run: |
           cd ci-smoke-test
-          npx http-server ../fe/dist -p 4173 -s &
+          npx http-server ../fe -p 4173 -s &
           sleep 2
 
       - name: Run headless console-error check
@@ -87,8 +94,11 @@ jobs:
           page.on('pageerror', (err) => {
             errors.push(`[uncaught exception] ${err.message}`);
           });
+          page.on('requestfailed', (req) => {
+            errors.push(`[network] Failed to load: ${req.url()} (${req.failure()?.errorText || 'unknown'})`);
+          });
 
-          await page.goto('http://localhost:4173', { waitUntil: 'networkidle', timeout: 15000 });
+          await page.goto('http://localhost:4173/_ci_preview.html', { waitUntil: 'networkidle', timeout: 15000 });
           await page.waitForTimeout(2000);
 
           const loginScreenVisible = await page.locator('#login-screen').isVisible().catch(() => false);
