@@ -204,16 +204,27 @@ function renderEmployeeDocuments(docs){
 }
 
 function previewEmployeeDocument(docId, name, fileType){
-  const url = Api.getDocumentPreviewUrl(docId);
   const container = document.getElementById('docPreviewContainer');
   document.getElementById('docPreviewTitle').textContent = name || 'Document Preview';
-  document.getElementById('docPreviewDownloadBtn').href = Api.getDocumentDownloadUrl(docId);
-  if(fileType === 'image'){
-    container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
-  } else {
-    container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
-  }
+  // Download button: fetch-then-blob (see Api.downloadEmployeeDocumentFile) instead of
+  // a direct href, since a plain <a href="backendUrl"> load of a cross-context resource
+  // does not reliably send the SameSite=Lax session cookie either.
+  const downloadBtn = document.getElementById('docPreviewDownloadBtn');
+  downloadBtn.onclick = (e) => {
+    e.preventDefault();
+    Api.downloadEmployeeDocumentFile(docId, name || 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
+  };
+  container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading preview...</div>';
   document.getElementById('documentPreviewModal').classList.add('active');
+  Api.getDocumentPreviewBlobUrl(docId).then(url => {
+    if(fileType === 'image'){
+      container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+    } else {
+      container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
+    }
+  }).catch(err => {
+    container.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+  });
 }
 
 function closeDocumentPreview(){
@@ -222,12 +233,7 @@ function closeDocumentPreview(){
 }
 
 function downloadEmployeeDocument(docId){
-  const a = document.createElement('a');
-  a.href = Api.getDocumentDownloadUrl(docId);
-  a.setAttribute('download', '');
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  Api.downloadEmployeeDocumentFile(docId, 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
 }
 
 function detectDocFileType(file){

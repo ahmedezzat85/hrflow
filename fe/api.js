@@ -7,18 +7,6 @@ if (typeof window.HRFLOW_CONFIG === "undefined") {
 const API_BASE_URL = window.HRFLOW_CONFIG.API_BASE_URL;
 const GOOGLE_CLIENT_ID = window.HRFLOW_CONFIG.GOOGLE_CLIENT_ID;
 
-// Session state (role/employee_id/name) is kept in memory only, populated
-// from the response of /api/auth/google or /api/auth/me. The session
-// token itself is NEVER handled by JavaScript at all - it lives only in
-// an HttpOnly cookie that the browser attaches automatically on every
-// request to API_BASE_URL. This closes two issues from the Phase 1
-// security pass (see docs/analysis/security-analysis-plan.md):
-//   - SEC-04: a JWT in localStorage is fully readable by any script,
-//     including an attacker's script in an XSS scenario. An HttpOnly
-//     cookie cannot be read by JavaScript at all.
-//   - SEC-01: document preview/download links previously carried the
-//     token as a URL query parameter (leaking into logs/history/Referer).
-//     They no longer need to - the browser sends the cookie on its own.
 const SessionInfo = {
   _role: null,
   _employeeId: null,
@@ -39,22 +27,8 @@ const SessionInfo = {
   isKnown() { return this._role !== null; },
 };
 
-// Guards against a burst of parallel 401s (e.g. the several Promise.all()
-// calls fired together on page load) triggering the forced-logout/reload
-// flow more than once.
 let _sessionExpiredHandled = false;
 
-// Called whenever an authenticated request comes back 401 (session
-// expired or otherwise invalid). Ensures the user is never left staring
-// at a logged-in-looking screen with a dead session and endlessly
-// failing requests - instead they're guaranteed to land back on the
-// Sign-In screen so they can simply log in again.
-//
-// Emits a 'hrflow:session-expired' event on window first, so the host
-// page (index.html) can react gracefully (e.g. show a toast, tear down
-// in-memory state, then re-render the login screen) without a hard
-// reload. If nothing calls event.preventDefault() on that event within
-// one tick, we fall back to reloading the page.
 function forceSessionExpiredLogout() {
   if (_sessionExpiredHandled) return;
   _sessionExpiredHandled = true;
@@ -65,20 +39,18 @@ function forceSessionExpiredLogout() {
   }
 
   const evt = new CustomEvent("hrflow:session-expired", { cancelable: true });
-  const handledByListener = !window.dispatchEvent(evt); // dispatchEvent returns false if preventDefault() was called
+  const handledByListener = !window.dispatchEvent(evt);
 
   if (!handledByListener) {
     setTimeout(() => { window.location.reload(); }, 50);
   } else {
-    // A listener took over recovery; allow future 401s to be handled again
-    // once the current one has been dealt with.
     setTimeout(() => { _sessionExpiredHandled = false; }, 500);
   }
 }
 
 async function apiRequest(method, path, body = null, auth = true) {
   const headers = { "Content-Type": "application/json" };
-  const opts = { method, headers, credentials: "include" }; // send/receive the HttpOnly session cookie
+  const opts = { method, headers, credentials: "include" };
   if (body !== null) opts.body = JSON.stringify(body);
 
   let res;
@@ -89,11 +61,6 @@ async function apiRequest(method, path, body = null, auth = true) {
   }
 
   if (res.status === 401) {
-    // Only treat this as a session-expiry event for requests that were
-    // actually expected to be authenticated. Public/login calls
-    // (auth=false, e.g. /api/auth/google) returning 401 means "bad
-    // credential", not "your session died" - those should NOT force a
-    // page reload.
     if (auth) {
       forceSessionExpiredLogout();
     } else {
@@ -112,15 +79,12 @@ async function apiRequest(method, path, body = null, auth = true) {
   return data;
 }
 
-// XHR-based request that reports upload progress (0-100). fetch() cannot
-// report upload progress natively, so document uploads use this instead
-// of apiRequest() to drive a visual progress bar in the UI.
 function apiRequestWithProgress(method, path, body, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(method, `${API_BASE_URL}${path}`, true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.withCredentials = true; // send/receive the HttpOnly session cookie
+    xhr.withCredentials = true;
 
     xhr.upload.onprogress = (evt) => {
       if (onProgress && evt.lengthComputable) {
@@ -146,6 +110,60 @@ function apiRequestWithProgress(method, path, body, onProgress) {
     xhr.onerror = () => reject(new Error("Network error - is the backend server running?"));
     xhr.send(JSON.stringify(body));
   });
+}
+
+// Fetches a document's bytes as a Blob, sending the session cookie via
+// fetch() (which DOES include SameSite=Lax cookies, unlike a passive
+// <img src>/<iframe src> load - those are treated as cross-site
+// background requests and never carry a Lax cookie, even though
+// frontend and backend are same-site). Returns a local blob: URL that
+// <img>/<iframe> can safely point to, and revokes the previous one if
+// given, to avoid leaking blob URLs as the user previews multiple
+// documents in a session.
+let _lastPreviewBlobUrl = null;
+async function _fetchDocumentAsBlobUrl(path) {
+  const res = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+  if (res.status === 401) {
+    forceSessionExpiredLogout();
+    throw new Error("Session expired. Please sign in again.");
+  }
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  const blob = await res.blob();
+  if (_lastPreviewBlobUrl) { URL.revokeObjectURL(_lastPreviewBlobUrl); }
+  _lastPreviewBlobUrl = URL.createObjectURL(blob);
+  return _lastPreviewBlobUrl;
+}
+
+// Triggers a real file download (Content-Disposition: attachment) by
+// fetching the bytes with credentials, then simulating a click on a
+// temporary <a download> pointed at the resulting blob: URL. A plain
+// `<a href="backendUrl" download>` click does NOT reliably send the
+// session cookie either (browsers vary), so this uses the same
+// authenticated-fetch pattern as preview.
+async function _downloadDocumentViaFetch(path, suggestedName) {
+  const res = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+  if (res.status === 401) {
+    forceSessionExpiredLogout();
+    throw new Error("Session expired. Please sign in again.");
+  }
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = suggestedName || "document";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
 }
 
 let _onGoogleLoginSuccess = null;
@@ -196,8 +214,6 @@ function initGoogleSignIn(containerId, onSuccess, onError) {
   tryRender();
 }
 
-// Valid values for the employee's employment state (mirrors the backend
-// EmploymentState enum in be/models.py).
 const EMPLOYMENT_STATES = ["Full-Time", "Part-Time", "Freelance", "Occasional"];
 
 const Api = {
@@ -206,10 +222,6 @@ const Api = {
     SessionInfo.set(data);
     return data;
   },
-  // Re-establishes who's signed in (e.g. after a page reload) by asking
-  // the backend to validate the HttpOnly session cookie. Returns null if
-  // there is no valid session, instead of throwing, so callers can treat
-  // "not logged in" as a normal state on first load.
   async restoreSession() {
     try {
       const data = await apiRequest("GET", "/api/auth/me", null, false);
@@ -230,7 +242,6 @@ const Api = {
   isLoggedIn() { return SessionInfo.isKnown(); },
   getEmployees() { return apiRequest("GET", "/api/employees"); },
   getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
-  // payload may include employment_state ("Full-Time" | "Part-Time" | "Freelance" | "Occasional")
   createEmployee(payload) { return apiRequest("POST", "/api/employees", payload); },
   updateEmployee(empId, payload) { return apiRequest("PUT", `/api/employees/${empId}`, payload); },
   deleteEmployee(empId) { return apiRequest("DELETE", `/api/employees/${empId}`); },
@@ -241,41 +252,35 @@ const Api = {
 
   getEmployeeDocuments(empId) { return apiRequest("GET", `/api/employees/${empId}/documents`); },
   uploadEmployeeDocument(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/documents`, payload); },
-  // Same endpoint as uploadEmployeeDocument, but reports upload progress
-  // via onProgress(pct) so the UI can render a real progress bar instead
-  // of an indeterminate spinner.
   uploadEmployeeDocumentWithProgress(empId, payload, onProgress) {
     return apiRequestWithProgress("POST", `/api/employees/${empId}/documents`, payload, onProgress);
   },
   deleteEmployeeDocument(docId) { return apiRequest("DELETE", `/api/employees/documents/${docId}`); },
 
-  // Preview/download URLs stream bytes through our own backend (service
-  // account's Drive access). They no longer carry any token - the
-  // browser sends the HttpOnly session cookie automatically for these
-  // direct navigations (<a target="_blank">, <iframe>, download click),
-  // since the cookie is scoped to API_BASE_URL's site regardless of how
-  // the request was triggered.
-  getDocumentPreviewUrl(docId) {
-    return `${API_BASE_URL}/api/employees/documents/${docId}/stream`;
+  // Returns a blob: URL suitable for direct use as an <img src> or
+  // <iframe src> - fetches the document with credentials first, since a
+  // plain <img src="backendUrl">/<iframe src="backendUrl"> would be a
+  // cross-context resource load that does NOT send a SameSite=Lax
+  // session cookie (see docs/analysis/security-analysis-plan.md).
+  getDocumentPreviewBlobUrl(docId) {
+    return _fetchDocumentAsBlobUrl(`/api/employees/documents/${docId}/stream`);
   },
-  getDocumentDownloadUrl(docId) {
-    return `${API_BASE_URL}/api/employees/documents/${docId}/stream?download=true`;
+  downloadEmployeeDocumentFile(docId, suggestedName) {
+    return _downloadDocumentViaFetch(`/api/employees/documents/${docId}/stream?download=true`, suggestedName);
   },
 
   // ---------- DOCUMENT HUB (company-wide documents/policies) ----------
-  // Any signed-in user (admin or employee) may list/preview/download.
-  // Only admins may upload or delete (enforced server-side too).
   getCompanyDocuments() { return apiRequest("GET", "/api/company-documents"); },
   uploadCompanyDocument(payload) { return apiRequest("POST", "/api/company-documents", payload); },
   uploadCompanyDocumentWithProgress(payload, onProgress) {
     return apiRequestWithProgress("POST", "/api/company-documents", payload, onProgress);
   },
   deleteCompanyDocument(docId) { return apiRequest("DELETE", `/api/company-documents/${docId}`); },
-  getCompanyDocumentPreviewUrl(docId) {
-    return `${API_BASE_URL}/api/company-documents/${docId}/stream`;
+  getCompanyDocumentPreviewBlobUrl(docId) {
+    return _fetchDocumentAsBlobUrl(`/api/company-documents/${docId}/stream`);
   },
-  getCompanyDocumentDownloadUrl(docId) {
-    return `${API_BASE_URL}/api/company-documents/${docId}/stream?download=true`;
+  downloadCompanyDocumentFile(docId, suggestedName) {
+    return _downloadDocumentViaFetch(`/api/company-documents/${docId}/stream?download=true`, suggestedName);
   },
 
   getRequests(type = "all") {
