@@ -30,12 +30,9 @@ from models import (
 setup_logging()
 logger = get_logger("main")
 
-# Fails fast (before the app accepts any traffic) if security-critical
-# settings are missing or unsafe. See docs/analysis/security-analysis-plan.md
-# (Phase 1) and config.py's Config.validate() for details.
 Config.validate()
 
-app = FastAPI(title="HRFlow API", version="2.9.0",
+app = FastAPI(title="HRFlow API", version="2.10.0",
               description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents), Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
@@ -48,29 +45,10 @@ app.add_middleware(
 )
 
 logger.info(
-    "HRFlow API starting up (version=2.9.0, environment=%s, allowed_origins=%s)",
+    "HRFlow API starting up (version=2.10.0, environment=%s, allowed_origins=%s)",
     Config.ENVIRONMENT, origins,
 )
 
-
-# ---------------------------------------------------------------------------
-# Phase 3 security headers (docs/analysis/security-analysis-plan.md).
-# Applied to every response. CSP is deliberately permissive only for the
-# specific third-party origins HRFlow actually depends on (Google Identity
-# Services for Sign-In, Google's own frames for the sign-in button/consent,
-# Font Awesome + Google Fonts CDNs, Chart.js CDN) - not a blanket wildcard.
-#
-# 'unsafe-inline' is kept for script-src/style-src because the current
-# frontend uses inline onclick="..." handlers throughout and an inline
-# <style> block. This still blocks third-party/supply-chain script
-# injection (a rogue CDN, a compromised ad script, an injected
-# <script src="evil.com">), but does NOT block an attacker's inline
-# <script> or onclick="..." injected via an XSS bug elsewhere in the app.
-# Closing that second gap requires migrating the frontend off inline event
-# handlers first - tracked as a follow-up in
-# docs/analysis/architecture-review-plan.md rather than rushed here, since
-# it is a real refactor (not a header change) and touches every page.
-# ---------------------------------------------------------------------------
 _CSP_POLICY = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
@@ -85,35 +63,17 @@ _CSP_POLICY = (
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    """
-    Adds standard defensive headers to every response. None of these
-    replace proper server-side authorization checks - they reduce the
-    blast radius of client-side bugs (XSS, clickjacking, MIME sniffing)
-    and are cheap, standard hardening with no functional downside.
-    """
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = _CSP_POLICY
-    # HSTS only makes sense (and is only safe to send) once the app is
-    # actually served over HTTPS in production. Sending it in local HTTP
-    # dev would have no effect but is misleading; gating it on
-    # Config.IS_PRODUCTION keeps the header meaningful and avoids ever
-    # accidentally shipping it while still testing over plain HTTP.
     if Config.IS_PRODUCTION:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
 def _set_session_cookie(response: Response, token: str):
-    """
-    Issues the session as an HttpOnly cookie so the token is never exposed
-    to page JavaScript (mitigates XSS token theft) and never needs to be
-    passed as a URL query parameter (mitigates token leakage via logs /
-    browser history / Referer headers). See docs/analysis/
-    security-analysis-plan.md, Phase 1 (SEC-01 / SEC-04).
-    """
     response.set_cookie(
         key=Config.SESSION_COOKIE_NAME,
         value=token,
@@ -131,9 +91,6 @@ def _clear_session_cookie(response: Response):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Logs every request with a correlation id, status code and duration.
-    On unhandled exceptions, logs the full traceback and returns a 500 so
-    the client never sees an opaque 502 without a trace in the logs."""
     request_id = uuid.uuid4().hex[:8]
     start = time.time()
     logger.info("[%s] --> %s %s", request_id, request.method, request.url.path)
@@ -151,13 +108,6 @@ async def log_requests(request: Request, call_next):
 
 
 def _resolve_target_employee(client, current_user, employee_id, fallback_name):
-    """
-    Shared helper for admin-on-behalf-of-employee creation across
-    requests/vacations/claims. Returns (emp_id, employee_name, submitted_by_admin).
-    Non-admins may never pass employee_id; if they try, this raises 403.
-    Admin-provided employee_id is resolved against the real Employees sheet
-    so the employee's name is never trusted from client input.
-    """
     if employee_id is not None:
         if current_user["role"] != "admin":
             logger.warning("User %s (role=%s) attempted to submit on behalf of employee_id=%s without admin rights", current_user.get("email"), current_user.get("role"), employee_id)
@@ -169,6 +119,30 @@ def _resolve_target_employee(client, current_user, employee_id, fallback_name):
             raise HTTPException(status_code=404, detail="Employee not found")
         return target["id"], target["name"], True
     return current_user["employee_id"], fallback_name, False
+
+
+def _audit_log(client, action: str, actor_email: str, target_type: str, target_id, details: str = ""):
+    """
+    Appends an immutable record to the AuditLog sheet for sensitive
+    mutations (employee create/update/delete, salary raises, request/claim
+    approvals, document deletions). Best-effort: a failure here is logged
+    but never blocks the actual operation - HR must never be unable to
+    process a raise or a leave request because the audit sheet had a
+    transient issue. See docs/analysis/security-analysis-plan.md, Phase 5.
+    """
+    try:
+        entry_id = client.next_id("AuditLog")
+        client.append_row("AuditLog", {
+            "id": entry_id,
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "actor_email": actor_email,
+            "action": action,
+            "target_type": target_type,
+            "target_id": str(target_id),
+            "details": details,
+        })
+    except Exception:
+        logger.exception("Audit log write failed for action=%s, target_type=%s, target_id=%s - operation proceeds regardless", action, target_type, target_id)
 
 
 @app.post("/api/auth/google", response_model=LoginResponse, tags=["Auth"])
@@ -188,9 +162,6 @@ def api_google_login(payload: GoogleLoginRequest, response: Response):
 
 @app.get("/api/auth/me", response_model=LoginResponse, tags=["Auth"])
 def api_get_current_session(current_user: dict = Depends(get_current_user)):
-    """Lets the frontend re-establish who's signed in on page load/refresh,
-    without ever handling the session token itself (it lives only in the
-    HttpOnly cookie, sent automatically by the browser)."""
     return LoginResponse(
         role=current_user["role"],
         employee_id=current_user.get("employee_id"),
@@ -240,6 +211,7 @@ def create_employee(payload: EmployeeCreate, current_user: dict = Depends(requir
     client.append_row("Employees", employee_row)
     client.append_row("Users", {"email": payload.email, "role": "employee", "employee_id": new_id})
     logger.info("Admin %s created employee id=%s (%s)", current_user.get("email"), new_id, payload.email)
+    _audit_log(client, "employee.create", current_user.get("email"), "employee", new_id, f"name={payload.name}, email={payload.email}")
     return {"message": "Employee created. They can now sign in with their Google Workspace account.", "id": new_id}
 
 
@@ -250,6 +222,7 @@ def update_employee(emp_id: int, payload: EmployeeUpdate, current_user: dict = D
     ok = client.update_row_by_match("Employees", "id", emp_id, updates)
     if not ok:
         raise HTTPException(status_code=404, detail="Employee not found")
+    _audit_log(client, "employee.update", current_user.get("email"), "employee", emp_id, f"fields={list(updates.keys())}")
     return {"message": "Employee updated"}
 
 
@@ -260,6 +233,7 @@ def delete_employee(emp_id: int, current_user: dict = Depends(require_admin)):
     client.delete_row_by_match("Users", "employee_id", emp_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Employee not found")
+    _audit_log(client, "employee.delete", current_user.get("email"), "employee", emp_id)
     return {"message": "Employee deleted"}
 
 
@@ -300,22 +274,12 @@ def delete_employee_note(note_id: int, current_user: dict = Depends(require_admi
 
 
 def _check_document_access(current_user, emp_id):
-    """Admins may access any employee's documents; employees only their own."""
     if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
         logger.warning("User %s attempted to access documents for employee_id=%s without permission", current_user.get("email"), emp_id)
         raise HTTPException(status_code=403, detail="You can only access your own documents")
 
 
 def _normalize_document_record(d: dict) -> dict:
-    """
-    Google Sheets (via gspread's get_all_records) auto-types cell values,
-    so a document named e.g. "6" (from a file like 6.jpg) comes back as the
-    Python int 6 instead of the string "6". The frontend then does
-    `(d.name || '').replace(...)` on it, which throws
-    "X.replace is not a function" because numbers don't have .replace().
-    We normalize every document field to a plain string here so the API
-    contract is stable regardless of how a cell happens to be typed.
-    """
     normalized = dict(d)
     for field in ("id", "employee_id", "name", "file_type", "drive_file_id",
                   "view_url", "download_url", "uploaded_by", "uploaded_at"):
@@ -327,15 +291,6 @@ def _normalize_document_record(d: dict) -> dict:
 
 
 def _detect_file_signature(data_url: str) -> str:
-    """
-    Decodes the base64 payload from a data URL and inspects the first
-    bytes against known magic-byte signatures, returning "pdf", "image",
-    or "unknown". This is the actual content check backing file_type
-    validation - the client-declared file_type in the request body is
-    never trusted on its own, since a browser or a direct API call can
-    set it to anything regardless of what bytes follow. See
-    docs/analysis/security-analysis-plan.md, Phase 4 (finding #7).
-    """
     import base64
     import re
 
@@ -348,11 +303,11 @@ def _detect_file_signature(data_url: str) -> str:
 
     if header_bytes.startswith(b"%PDF-"):
         return "pdf"
-    if header_bytes.startswith(b"\xff\xd8\xff"):  # JPEG
+    if header_bytes.startswith(b"\xff\xd8\xff"):
         return "image"
-    if header_bytes.startswith(b"\x89PNG\r\n\x1a\n"):  # PNG
+    if header_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image"
-    if header_bytes[:6] in (b"GIF87a", b"GIF89a"):  # GIF
+    if header_bytes[:6] in (b"GIF87a", b"GIF89a"):
         return "image"
     if header_bytes[:4] == b"RIFF" and len(header_bytes) >= 12 and header_bytes[8:12] == b"WEBP":
         return "image"
@@ -360,12 +315,6 @@ def _detect_file_signature(data_url: str) -> str:
 
 
 def _validate_upload_content(payload_file_type: str, data_url: str):
-    """
-    Raises HTTPException(400) if the actual file bytes don't match a
-    supported type, or don't match what the client declared. Called by
-    both employee and company document upload endpoints. See
-    docs/analysis/security-analysis-plan.md, Phase 4.
-    """
     detected = _detect_file_signature(data_url)
     if detected == "unknown":
         raise HTTPException(
@@ -414,9 +363,6 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
         logger.warning("Document upload rejected: data_url too large (%d chars) for employee_id=%s", len(payload.data_url), emp_id)
         raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
 
-    # Validates actual file bytes (magic-byte signature), not just the
-    # client-declared file_type. See docs/analysis/security-analysis-plan.md,
-    # Phase 4 (finding #7: disguised/malicious file upload).
     _validate_upload_content(payload.file_type, payload.data_url)
 
     drive = get_drive_client()
@@ -431,9 +377,6 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
         client.append_row("EmployeeDocuments", {
             "id": doc_id,
             "employee_id": emp_id,
-            # Always store the document name as a string so Google Sheets
-            # never auto-types a purely-numeric name (e.g. "6") as an int,
-            # which previously broke `.replace()` calls on the frontend.
             "name": str(payload.name),
             "file_type": payload.file_type,
             "drive_file_id": uploaded["file_id"],
@@ -452,22 +395,6 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
 
 @app.get("/api/employees/documents/{doc_id}/stream", tags=["Documents"])
 def stream_employee_document(doc_id: int, download: bool = Query(False), current_user: dict = Depends(get_current_user)):
-    """
-    Streams a document's bytes through the backend using the service
-    account's own Drive access, so the caller never needs Drive
-    permissions of their own.
-
-    Auth is via the HttpOnly session cookie, sent automatically by the
-    browser even for direct navigations (<a target="_blank">, <iframe>,
-    or a download click) - so, unlike the previous implementation, no
-    session token is ever placed in this URL's query string. See
-    docs/analysis/security-analysis-plan.md, Phase 1 (SEC-01).
-
-    `download=false` (default) returns Content-Disposition: inline, so
-    browsers render PDFs/images directly (in-app preview via an <iframe>
-    or new tab). `download=true` returns Content-Disposition: attachment,
-    forcing a file download with the original file name.
-    """
     client = get_client()
     docs = client.get_all_records("EmployeeDocuments")
     doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
@@ -506,18 +433,11 @@ def delete_employee_document(doc_id: int, current_user: dict = Depends(get_curre
         logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove sheet row", doc.get("drive_file_id"), doc_id)
     client.delete_row_by_match("EmployeeDocuments", "id", doc_id)
     logger.info("Document delete complete: doc_id=%s", doc_id)
+    _audit_log(client, "document.delete", current_user.get("email"), "employee_document", doc_id, f"employee_id={doc['employee_id']}")
     return {"message": "Document deleted"}
 
 
-# =========================================================
-# COMPANY DOCUMENTS (Document Hub)
-# General company documents/policies visible to every employee.
-# Admin: add/view/delete. Employee: view/download only.
-# =========================================================
-
 def _normalize_company_document_record(d: dict) -> dict:
-    """Same numeric-name safety normalization as employee documents (see
-    _normalize_document_record) applied to CompanyDocuments rows."""
     normalized = dict(d)
     for field in ("id", "name", "file_type", "category", "drive_file_id",
                   "view_url", "download_url", "uploaded_by", "uploaded_at"):
@@ -529,13 +449,6 @@ def _normalize_company_document_record(d: dict) -> dict:
 
 
 def _safe_content_disposition_filename(name: str) -> str:
-    """
-    Strips characters that could break or inject into the
-    Content-Disposition header (quotes, control characters, path
-    separators) and percent-encodes the remainder for the RFC 5987
-    filename*=UTF-8''... form. See docs/analysis/security-analysis-plan.md,
-    Phase 1 (finding #8: header injection via unsanitized filenames).
-    """
     import re
     from urllib.parse import quote
 
@@ -545,7 +458,6 @@ def _safe_content_disposition_filename(name: str) -> str:
 
 @app.get("/api/company-documents", tags=["Document Hub"])
 def get_company_documents(current_user: dict = Depends(get_current_user)):
-    """Any signed-in user (admin or employee) can list company documents."""
     client = get_client()
     docs = client.get_all_records("CompanyDocuments")
     docs.sort(key=lambda d: str(d.get("uploaded_at", "")), reverse=True)
@@ -556,7 +468,6 @@ def get_company_documents(current_user: dict = Depends(get_current_user)):
 
 @app.post("/api/company-documents", status_code=201, tags=["Document Hub"])
 def upload_company_document(payload: CompanyDocumentCreate, current_user: dict = Depends(require_admin)):
-    """Admin-only: uploads a new company-wide document/policy."""
     logger.info("Company document upload requested: name='%s', file_type=%s, category=%s, by=%s",
                 payload.name, payload.file_type, payload.category, current_user.get("email"))
 
@@ -567,9 +478,6 @@ def upload_company_document(payload: CompanyDocumentCreate, current_user: dict =
     if len(payload.data_url) > 6_000_000:
         raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
 
-    # Validates actual file bytes (magic-byte signature), not just the
-    # client-declared file_type. See docs/analysis/security-analysis-plan.md,
-    # Phase 4 (finding #7: disguised/malicious file upload).
     _validate_upload_content(payload.file_type, payload.data_url)
 
     drive = get_drive_client()
@@ -603,14 +511,6 @@ def upload_company_document(payload: CompanyDocumentCreate, current_user: dict =
 
 @app.get("/api/company-documents/{doc_id}/stream", tags=["Document Hub"])
 def stream_company_document(doc_id: int, download: bool = Query(False), current_user: dict = Depends(get_current_user)):
-    """
-    Streams a company document's bytes through the backend (service
-    account's Drive access). Any signed-in user (admin or employee) may
-    view/download - Document Hub content is company-wide by design.
-
-    Auth is via the HttpOnly session cookie (see stream_employee_document
-    above) - no session token is placed in this URL.
-    """
     client = get_client()
     docs = client.get_all_records("CompanyDocuments")
     doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
@@ -634,7 +534,6 @@ def stream_company_document(doc_id: int, download: bool = Query(False), current_
 
 @app.delete("/api/company-documents/{doc_id}", tags=["Document Hub"])
 def delete_company_document(doc_id: int, current_user: dict = Depends(require_admin)):
-    """Admin-only: deletes a company document from Drive and the sheet."""
     client = get_client()
     docs = client.get_all_records("CompanyDocuments")
     doc = next((d for d in docs if str(d["id"]) == str(doc_id)), None)
@@ -647,6 +546,7 @@ def delete_company_document(doc_id: int, current_user: dict = Depends(require_ad
         logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove sheet row", doc.get("drive_file_id"), doc_id)
     client.delete_row_by_match("CompanyDocuments", "id", doc_id)
     logger.info("Company document delete complete: doc_id=%s", doc_id)
+    _audit_log(client, "company_document.delete", current_user.get("email"), "company_document", doc_id)
     return {"message": "Document deleted"}
 
 
@@ -664,12 +564,6 @@ def get_requests(type: Optional[str] = Query(None), current_user: dict = Depends
 
 @app.post("/api/requests", status_code=201, tags=["Requests"])
 def create_request(payload: RequestCreate, current_user: dict = Depends(get_current_user)):
-    """
-    Submits a general request (currently used for Work From Home).
-    HR Admins may submit on behalf of another employee via `employee_id`,
-    optionally backdating it via `record_date` and/or directly setting
-    `status` (e.g. to log an already-approved historical WFH day).
-    """
     client = get_client()
     emp_id, employee_name, submitted_by_admin = _resolve_target_employee(
         client, current_user, payload.employee_id, payload.employee_name
@@ -701,6 +595,7 @@ def action_request(req_id: int, payload: RequestAction, current_user: dict = Dep
     })
     if not ok:
         raise HTTPException(status_code=404, detail="Request not found")
+    _audit_log(client, "request.action", current_user.get("email"), "request", req_id, f"status={payload.status}")
     return {"message": f"Request {payload.status.lower()}"}
 
 
@@ -718,12 +613,6 @@ def get_vacation_history(employee_id: Optional[int] = Query(None), current_user:
 
 @app.post("/api/vacations/request", status_code=201, tags=["Vacations"])
 def request_vacation(payload: VacationRequestCreate, current_user: dict = Depends(get_current_user)):
-    """
-    Submits a Vacation/leave request. HR Admins may submit on behalf of
-    another employee via `employee_id`, optionally backdating the
-    submission record via `record_date` and/or directly setting `status`
-    (e.g. to log a historical approved leave from a previous year).
-    """
     client = get_client()
     emp_id, employee_name, submitted_by_admin = _resolve_target_employee(
         client, current_user, payload.employee_id, payload.employee_name
@@ -862,12 +751,6 @@ def get_insurance_claims(current_user: dict = Depends(get_current_user)):
 
 @app.post("/api/insurance/claims", status_code=201, tags=["Insurance"])
 def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = Depends(get_current_user)):
-    """
-    Submits a medical insurance claim. HR Admins may submit on behalf of
-    another employee via `employee_id` (resolved server-side), optionally
-    backdating the claim via `record_date` and/or directly setting
-    `status` for historical record-keeping.
-    """
     client = get_client()
     categories = client.get_all_records("InsuranceCategories")
     if not any(c["name"] == payload.category for c in categories):
@@ -912,20 +795,12 @@ def action_insurance_claim(claim_id: int, payload: InsuranceClaimAction, current
     ok = client.update_row_by_match("InsuranceClaims", "id", claim_id, {"status": payload.status})
     if not ok:
         raise HTTPException(status_code=404, detail="Claim not found")
+    _audit_log(client, "insurance_claim.action", current_user.get("email"), "insurance_claim", claim_id, f"status={payload.status}")
     return {"message": f"Claim {payload.status.lower()}"}
 
 
 @app.get("/api/salary/history", tags=["Salary"])
 def get_salary_history(employee_id: Optional[int] = Query(None), current_user: dict = Depends(get_current_user)):
-    """
-    Non-admins are always restricted to their own salary history: their
-    own employee_id fully overrides (and ignores) any employee_id query
-    param they might pass. This is deliberately expressed as a single
-    if/else - not as two separate conditions that both mutate `history` -
-    so the access rule cannot be silently bypassed by future edits that
-    reorder the filtering logic. See docs/analysis/security-analysis-plan.md,
-    Phase 1 (finding #9).
-    """
     client = get_client()
     history = client.get_all_records("SalaryHistory")
     if current_user["role"] != "admin":
@@ -938,14 +813,6 @@ def get_salary_history(employee_id: Optional[int] = Query(None), current_user: d
 
 @app.post("/api/salary/raise", status_code=201, tags=["Salary"])
 def apply_raise(payload: RaiseApply, current_user: dict = Depends(require_admin)):
-    """
-    Admin applies a raise to one employee: percentage, flat amount, or a
-    direct new salary. `effective_date` may be backdated to create a
-    historical salary record for a previous year; in that case the
-    employee's current salary/next_raise on the Employees sheet are left
-    untouched (only a SalaryHistory row is added), so a backdated entry
-    never clobbers a more recent real salary.
-    """
     client = get_client()
     employees = client.get_all_records("Employees")
     emp = next((e for e in employees if str(e["id"]) == str(payload.employee_id)), None)
@@ -987,7 +854,19 @@ def apply_raise(payload: RaiseApply, current_user: dict = Depends(require_admin)
             "next_raise": next_raise_date,
         })
 
+    _audit_log(client, "salary.raise", current_user.get("email"), "employee", emp["id"], f"{current_salary} -> {new_salary} ({pct_change:+.2f}%), reason={payload.reason}")
+
     return {"message": "Raise applied", "previous_salary": current_salary, "new_salary": new_salary, "pct_change": pct_change}
+
+
+@app.get("/api/audit-log", tags=["System"])
+def get_audit_log(current_user: dict = Depends(require_admin)):
+    """Admin-only: returns the full audit trail, most recent first. See
+    docs/analysis/security-analysis-plan.md, Phase 5."""
+    client = get_client()
+    entries = client.get_all_records("AuditLog")
+    entries.sort(key=lambda e: str(e.get("timestamp", "")), reverse=True)
+    return entries
 
 
 @app.get("/api/health", tags=["System"])
