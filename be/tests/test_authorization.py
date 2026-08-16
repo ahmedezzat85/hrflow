@@ -3,7 +3,7 @@ test_authorization.py
 Integration tests exercising the FastAPI app end-to-end (via TestClient)
 against in-memory fake Sheets/Drive clients. Focused on access-control
 paths flagged in docs/analysis/security-analysis-plan.md - regression
-tests for findings #1, #6, #7, #9 and the Phase 1 cookie-session migration.
+tests for findings #1, #6, #7, #9, #10 and the Phase 1 cookie-session migration.
 """
 import base64
 
@@ -144,3 +144,74 @@ def test_login_response_never_contains_a_token_field(app_client, monkeypatch):
     assert response.status_code == 200
     assert "token" not in response.json()
     assert app_client.cookies.get("hrflow_session") is not None
+
+
+def test_login_sets_httponly_session_cookie_with_correct_flags(app_client, monkeypatch):
+    """
+    Regression test for finding #10: the Set-Cookie header issued by
+    /api/auth/google must actually carry HttpOnly and SameSite=lax (and,
+    in production, Secure) - not just have the right value in
+    Config.COOKIE_SECURE/COOKIE_SAMESITE, but be reflected in the real
+    HTTP response header sent to the browser.
+    """
+    def fake_login_with_google(credential):
+        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
+
+    monkeypatch.setattr("main.login_with_google", fake_login_with_google)
+
+    response = app_client.post("/api/auth/google", json={"credential": "whatever"})
+    assert response.status_code == 200
+
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "hrflow_session=" in set_cookie_header
+    assert "httponly" in set_cookie_header.lower()
+    assert "samesite=lax" in set_cookie_header.lower()
+    # Secure is intentionally NOT asserted here: in the dev/test environment
+    # (ENVIRONMENT=development, per conftest.py), Config.COOKIE_SECURE is
+    # False by design - see test_cookie_secure_flag_is_reflected_in_production_response below.
+
+
+def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fake_sheets_client, fake_drive_client):
+    """
+    Confirms that when ENVIRONMENT=production, the Set-Cookie header
+    issued at login actually carries the Secure attribute - not just that
+    Config.COOKIE_SECURE evaluates to True in isolation (already covered
+    by test_config_validation.py), but that FastAPI's response.set_cookie
+    call in be/main.py._set_session_cookie is wired to that flag correctly
+    end-to-end.
+    """
+    import importlib
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SECRET_KEY", "a-real-random-secret-value")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://app.hrflow.example.com")
+    monkeypatch.setenv("ALLOWED_WORKSPACE_DOMAIN", "hrflow.example.com")
+
+    import config as config_module
+    importlib.reload(config_module)
+    import main as main_module
+    importlib.reload(main_module)
+    import auth as auth_module
+
+    monkeypatch.setattr(main_module, "get_client", lambda: fake_sheets_client)
+    monkeypatch.setattr(main_module, "get_drive_client", lambda: fake_drive_client)
+    monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
+
+    def fake_login_with_google(credential):
+        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
+    monkeypatch.setattr(main_module, "login_with_google", fake_login_with_google)
+
+    from fastapi.testclient import TestClient
+    prod_client = TestClient(main_module.app)
+
+    response = prod_client.post("/api/auth/google", json={"credential": "whatever"})
+    assert response.status_code == 200
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "secure" in set_cookie_header.lower()
+    assert "httponly" in set_cookie_header.lower()
+
+    # Reload main/config back to development defaults so subsequent tests
+    # in the same process aren't affected by this test's environment changes.
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    importlib.reload(config_module)
+    importlib.reload(main_module)

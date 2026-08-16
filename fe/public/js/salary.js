@@ -7,7 +7,7 @@ function renderSalaryPage(filter=''){
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
   const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct),0)/thisYearRaises.length) : 0;
   document.getElementById('statAvgRaise').textContent = (avgPct>=0?'+':'') + avgPct.toFixed(1) + '%';
-  const now = new Date('2026-08-02');
+  const now = new Date(); // dynamic - was hardcoded to a fixed date (see docs/analysis/security-analysis-plan.md, finding #12)
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
   const upcoming = employees.filter(e=>{ const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
@@ -22,7 +22,7 @@ function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
   sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
-  document.getElementById('rMode').value='pct'; document.getElementById('rValue').value=''; document.getElementById('rDate').value = '2026-08-02'; document.getElementById('rReason').value='Annual performance raise';
+  document.getElementById('rMode').value='pct'; document.getElementById('rValue').value=''; document.getElementById('rDate').value = new Date().toISOString().slice(0, 10); // dynamic - was hardcoded document.getElementById('rReason').value='Annual performance raise';
   onRaiseModeChange();
   document.getElementById('raisePreview').classList.remove('show');
   document.getElementById('raiseModal').classList.add('active');
