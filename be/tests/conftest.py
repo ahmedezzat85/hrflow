@@ -19,6 +19,13 @@ import sys
 import copy
 
 import pytest
+import email_validator
+
+# `.test` is an IANA special-use domain. The test suite intentionally uses
+# @hrflow.test fixture addresses, so tell email-validator this is a test
+# process before Pydantic's EmailStr validation runs. This affects pytest
+# only; production email validation remains unchanged.
+email_validator.TEST_ENVIRONMENT = True
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-do-not-use-in-prod")
 os.environ.setdefault("GOOGLE_OAUTH_CLIENT_ID", "test-client-id.apps.googleusercontent.com")
