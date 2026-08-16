@@ -35,7 +35,7 @@ logger = get_logger("main")
 # (Phase 1) and config.py's Config.validate() for details.
 Config.validate()
 
-app = FastAPI(title="HRFlow API", version="2.8.0",
+app = FastAPI(title="HRFlow API", version="2.9.0",
               description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents), Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
@@ -48,7 +48,7 @@ app.add_middleware(
 )
 
 logger.info(
-    "HRFlow API starting up (version=2.8.0, environment=%s, allowed_origins=%s)",
+    "HRFlow API starting up (version=2.9.0, environment=%s, allowed_origins=%s)",
     Config.ENVIRONMENT, origins,
 )
 
@@ -326,6 +326,59 @@ def _normalize_document_record(d: dict) -> dict:
     return normalized
 
 
+def _detect_file_signature(data_url: str) -> str:
+    """
+    Decodes the base64 payload from a data URL and inspects the first
+    bytes against known magic-byte signatures, returning "pdf", "image",
+    or "unknown". This is the actual content check backing file_type
+    validation - the client-declared file_type in the request body is
+    never trusted on its own, since a browser or a direct API call can
+    set it to anything regardless of what bytes follow. See
+    docs/analysis/security-analysis-plan.md, Phase 4 (finding #7).
+    """
+    import base64
+    import re
+
+    match = re.match(r"^data:([^;]+);base64,(.+)$", data_url, re.DOTALL)
+    b64_payload = match.group(2) if match else data_url
+    try:
+        header_bytes = base64.b64decode(b64_payload[:64] + "==", validate=False)[:12]
+    except Exception:
+        return "unknown"
+
+    if header_bytes.startswith(b"%PDF-"):
+        return "pdf"
+    if header_bytes.startswith(b"\xff\xd8\xff"):  # JPEG
+        return "image"
+    if header_bytes.startswith(b"\x89PNG\r\n\x1a\n"):  # PNG
+        return "image"
+    if header_bytes[:6] in (b"GIF87a", b"GIF89a"):  # GIF
+        return "image"
+    if header_bytes[:4] == b"RIFF" and len(header_bytes) >= 12 and header_bytes[8:12] == b"WEBP":
+        return "image"
+    return "unknown"
+
+
+def _validate_upload_content(payload_file_type: str, data_url: str):
+    """
+    Raises HTTPException(400) if the actual file bytes don't match a
+    supported type, or don't match what the client declared. Called by
+    both employee and company document upload endpoints. See
+    docs/analysis/security-analysis-plan.md, Phase 4.
+    """
+    detected = _detect_file_signature(data_url)
+    if detected == "unknown":
+        raise HTTPException(
+            status_code=400,
+            detail="File content doesn't match a supported format (PDF, JPEG, PNG, GIF, WEBP).",
+        )
+    if detected != payload_file_type:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File content looks like '{detected}' but was declared as '{payload_file_type}'.",
+        )
+
+
 @app.get("/api/employees/{emp_id}/documents", tags=["Documents"])
 def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current_user)):
     client = get_client()
@@ -360,6 +413,11 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
     if len(payload.data_url) > 6_000_000:
         logger.warning("Document upload rejected: data_url too large (%d chars) for employee_id=%s", len(payload.data_url), emp_id)
         raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
+
+    # Validates actual file bytes (magic-byte signature), not just the
+    # client-declared file_type. See docs/analysis/security-analysis-plan.md,
+    # Phase 4 (finding #7: disguised/malicious file upload).
+    _validate_upload_content(payload.file_type, payload.data_url)
 
     drive = get_drive_client()
     try:
@@ -508,6 +566,11 @@ def upload_company_document(payload: CompanyDocumentCreate, current_user: dict =
         raise HTTPException(status_code=400, detail="No file content received")
     if len(payload.data_url) > 6_000_000:
         raise HTTPException(status_code=400, detail="File is too large (max ~4MB)")
+
+    # Validates actual file bytes (magic-byte signature), not just the
+    # client-declared file_type. See docs/analysis/security-analysis-plan.md,
+    # Phase 4 (finding #7: disguised/malicious file upload).
+    _validate_upload_content(payload.file_type, payload.data_url)
 
     drive = get_drive_client()
     try:

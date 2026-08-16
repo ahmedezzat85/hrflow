@@ -57,25 +57,26 @@ Track security findings from the review of the `salary` branch and apply fixes i
 
 ## Remediation Phases
 
-### Phase 1: Secrets and session fundamentals
+### Phase 1: Secrets and session fundamentals - ✅ DONE
 - Remove the default secret fallback; fail startup without a real `SECRET_KEY`
 - Add startup validation for other security-critical env vars (`ALLOWED_WORKSPACE_DOMAIN`, `ALLOWED_ORIGINS` in prod)
 - Decide on token expiry policy and short-term vs target-state session storage model
 
-### Phase 2: Document access security
+### Phase 2: Document access security - ✅ DONE (achieved as a side effect of the Phase 1 cookie migration - no session token is placed in any URL anymore, so the originally-planned separate signed-ticket design was not needed)
 - Design a signed, short-lived, single-use ticket flow for document preview/download
 - Remove the session JWT from any URL/query string
 - Sanitize filenames used in `Content-Disposition`
 
-### Phase 3: Browser and API hardening
+### Phase 3: Browser and API hardening - ✅ DONE
 - Tighten CORS per environment (explicit allowlist in prod)
 - Add standard security headers middleware
 - Add `Secure; SameSite=Strict` to cookies (or retire the cookie mirror entirely, pending Phase 1 decision)
 
-### Phase 4: Validation and abuse protection
-- Add magic-byte validation for uploads
-- Add rate limiting on auth and mutation endpoints
-- Centralize role-based filtering logic (finding #9)
+### Phase 4: Validation and abuse protection - ✅ DONE (upload validation only)
+- Add magic-byte validation for uploads - done (see `_detect_file_signature` / `_validate_upload_content` in `be/main.py`)
+- ~~Add rate limiting on auth and mutation endpoints~~ - deferred; see "Production Deployment Backlog" below. Rate limiting depends on deployment topology (single vs. multiple backend instances), which isn't decided yet, so it doesn't belong in this local-dev-focused security pass.
+- Centralize role-based filtering logic (finding #9) - not yet done; still tracked, low priority (finding #9 is a robustness note about code structure, not an active vulnerability - the current single if/else in `get_salary_history` already avoids the bypass risk it describes)
+
 
 ### Phase 5: Audit and verification
 - Add a security regression checklist
@@ -96,3 +97,27 @@ Track security findings from the review of the `salary` branch and apply fixes i
 - [ ] Rate limits trigger on repeated auth/mutation calls
 - [ ] Security headers present on all responses
 - [ ] Cookies (if retained) carry `Secure` and `SameSite` flags
+
+
+## Production Deployment Backlog (rate limiting)
+
+Deliberately deferred from the security phases, since it's an
+infrastructure/deployment decision rather than a code-only fix:
+
+3. **Rate limiting on auth and mutation endpoints.** No rate limiting
+   currently exists on `/api/auth/google` or any mutation endpoint (see
+   `docs/analysis/security-analysis-plan.md`, finding #5). The right
+   implementation depends on the deployment topology, which isn't decided
+   yet:
+   - **Single backend instance** (current local/dev setup): an in-memory
+     limiter (e.g. `slowapi`) is sufficient and needs no extra
+     infrastructure.
+   - **Multiple backend instances** (real horizontal scaling in
+     production): an in-memory limiter would let each instance track its
+     own counters independently, effectively multiplying the allowed
+     request rate by the instance count. A shared store (Redis-backed
+     limiter) is required for correct behavior across instances.
+   - Action: revisit this once the production deployment topology
+     (single instance vs. load-balanced multiple instances) is decided,
+     and pick the limiter implementation accordingly at that time - not
+     before.
