@@ -35,7 +35,7 @@ logger = get_logger("main")
 # (Phase 1) and config.py's Config.validate() for details.
 Config.validate()
 
-app = FastAPI(title="HRFlow API", version="2.7.0",
+app = FastAPI(title="HRFlow API", version="2.8.0",
               description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents), Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
@@ -48,9 +48,62 @@ app.add_middleware(
 )
 
 logger.info(
-    "HRFlow API starting up (version=2.7.0, environment=%s, allowed_origins=%s)",
+    "HRFlow API starting up (version=2.8.0, environment=%s, allowed_origins=%s)",
     Config.ENVIRONMENT, origins,
 )
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 security headers (docs/analysis/security-analysis-plan.md).
+# Applied to every response. CSP is deliberately permissive only for the
+# specific third-party origins HRFlow actually depends on (Google Identity
+# Services for Sign-In, Google's own frames for the sign-in button/consent,
+# Font Awesome + Google Fonts CDNs, Chart.js CDN) - not a blanket wildcard.
+#
+# 'unsafe-inline' is kept for script-src/style-src because the current
+# frontend uses inline onclick="..." handlers throughout and an inline
+# <style> block. This still blocks third-party/supply-chain script
+# injection (a rogue CDN, a compromised ad script, an injected
+# <script src="evil.com">), but does NOT block an attacker's inline
+# <script> or onclick="..." injected via an XSS bug elsewhere in the app.
+# Closing that second gap requires migrating the frontend off inline event
+# handlers first - tracked as a follow-up in
+# docs/analysis/architecture-review-plan.md rather than rushed here, since
+# it is a real refactor (not a header change) and touches every page.
+# ---------------------------------------------------------------------------
+_CSP_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+    "img-src 'self' data: https:; "
+    "connect-src 'self' https://accounts.google.com; "
+    "frame-src https://accounts.google.com; "
+    "frame-ancestors 'self';"
+)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """
+    Adds standard defensive headers to every response. None of these
+    replace proper server-side authorization checks - they reduce the
+    blast radius of client-side bugs (XSS, clickjacking, MIME sniffing)
+    and are cheap, standard hardening with no functional downside.
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = _CSP_POLICY
+    # HSTS only makes sense (and is only safe to send) once the app is
+    # actually served over HTTPS in production. Sending it in local HTTP
+    # dev would have no effect but is misleading; gating it on
+    # Config.IS_PRODUCTION keeps the header meaningful and avoids ever
+    # accidentally shipping it while still testing over plain HTTP.
+    if Config.IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 def _set_session_cookie(response: Response, token: str):

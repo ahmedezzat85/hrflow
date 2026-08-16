@@ -55,3 +55,50 @@ Architecture quality, maintainability, cloud readiness, and backend/frontend bes
 
 ## Notes
 This file intentionally does not propose code changes yet. Architecture changes should be sequenced after the security remediation phases in `security-analysis-plan.md`, since several architecture items (e.g. router decomposition) will touch the same files as security fixes (e.g. `be/main.py`).
+
+
+## Frontend Hardening Backlog (added after Phase 3 security headers)
+
+These items are deliberately deferred from the security phases because
+they are refactors, not header/config changes, and touch every page of
+the UI. Tracked here so they aren't lost.
+
+1. **Remove inline event handlers, tighten CSP.** The frontend currently
+   uses `onclick="..."` attributes throughout `fe/src/index.html` and an
+   inline `<style>` block, which requires `Content-Security-Policy` to
+   include `'unsafe-inline'` for both `script-src` and `style-src` (see
+   `be/main.py`'s `security_headers` middleware, Phase 3). This still
+   blocks third-party/supply-chain script injection, but does **not**
+   block an attacker's inline `<script>` or `onclick="..."` injected via
+   an XSS bug elsewhere in the app (e.g. via the several places the
+   frontend builds HTML with unescaped template literals - document
+   names, employee names, etc.).
+   - Migrate all `onclick="fn(...)"` attributes to `addEventListener`
+     calls wired up in the relevant `fe/src/js/*.js` module.
+   - Move the inline `<style>` block to a CSS file already partially done
+     via `fe/src/styles.css` in the Vite migration - verify no inline
+     `<style>` remains in `fe/src/index.html`.
+   - Once both are done, drop `'unsafe-inline'` from `script-src` and
+     `style-src` in `_CSP_POLICY` (`be/main.py`) and add `nonce`-based or
+     `strict-dynamic` script loading instead.
+   - Also audit and HTML-escape all user-controlled strings interpolated
+     into `innerHTML` (documents, employee names, notes) rather than
+     relying solely on CSP for this class of bug.
+
+2. **`fe/dist/` build artifact drift.** Confirmed via `fe/vite.config.js`
+   that `fe/dist/` is fully generated output (Vite build), and
+   `fe/public/js/*.js` is the real build input consumed by the
+   `singleFileDeployBundle` plugin - not just a duplicate of
+   `fe/src/js/*.js`. Both `fe/dist/` and `fe/public/js/` are currently
+   committed to git, which allowed them to silently drift out of sync
+   with `fe/src/js/` during the Phase 1 security commit (a `TokenStore`
+   reference survived in `fe/public/js/session.js` and `fe/src/js/app.js`
+   after the rest of the codebase moved to cookie-based sessions - fixed
+   in a follow-up commit, see `docs/analysis/security-analysis-plan.md`).
+   - Add `fe/dist/` to `.gitignore` and stop committing it; generate it
+     only via `npm run build` in CI/deploy.
+   - Decide whether `fe/public/js/` should remain committed (it is a
+     legitimate build input, unlike `dist/`) or whether the build process
+     should read directly from `fe/src/js/` to eliminate the duplication
+     entirely - this second option removes an entire class of "forgot to
+     sync both copies" bugs.
