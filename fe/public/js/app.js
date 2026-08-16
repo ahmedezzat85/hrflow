@@ -19,7 +19,7 @@ async function loadAdminData(){
     insuranceClaims = rawClaims.map(normalizeClaim);
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
-    const myAdminId = TokenStore.getEmployeeId();
+    const myAdminId = SessionInfo.getEmployeeId();
     const adminUser = employees.find(e => String(e.id) === String(myAdminId)) || employees.find(e => e.role && e.role.toLowerCase().includes('admin')) || employees[0];
     if(adminUser){
       document.getElementById('adminUserAvatar').textContent = getInitials(adminUser.name);
@@ -33,7 +33,7 @@ async function loadAdminData(){
 }
 async function loadEmployeeData(){
   try{
-    const myId = TokenStore.getEmployeeId();
+    const myId = SessionInfo.getEmployeeId();
     const [rawEmployees, rawSalaryHistory, rawVacHistory, rawClaims, rawCategories, rawConsumption] = await Promise.all([
       Api.getEmployees(), Api.getSalaryHistory(myId), Api.getVacationHistory(), Api.getInsuranceClaims(), Api.getInsuranceCategories(), Api.getInsuranceConsumption()
     ]);

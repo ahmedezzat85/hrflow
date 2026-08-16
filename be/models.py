@@ -20,7 +20,12 @@ class PasswordLoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    token: str
+    """
+    Note: this no longer carries a `token` field. The session token is set
+    directly as an HttpOnly cookie by the /api/auth/google endpoint and is
+    never exposed to JavaScript in the response body (see docs/analysis/
+    security-analysis-plan.md, Phase 1 - SEC-01 / SEC-04).
+    """
     role: str
     employee_id: Optional[int] = None
     name: Optional[str] = None

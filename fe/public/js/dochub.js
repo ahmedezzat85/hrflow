@@ -103,17 +103,29 @@ async function deleteCompanyDocumentPrompt(docId){
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 function previewCompanyDocument(docId, name, fileType){
-  const url = Api.getCompanyDocumentPreviewUrl(docId);
   const container = document.getElementById('docPreviewContainer');
   document.getElementById('docPreviewTitle').textContent = name || 'Document Preview';
-  document.getElementById('docPreviewDownloadBtn').href = Api.getCompanyDocumentDownloadUrl(docId);
+  // Download button: fetch-then-blob (see Api.downloadCompanyDocumentFile) instead of
+  // a direct href/window.open, since a plain cross-context resource load does not
+  // reliably send the SameSite=Lax session cookie.
+  const downloadBtn = document.getElementById('docPreviewDownloadBtn');
+  downloadBtn.onclick = (e) => {
+    e.preventDefault();
+    Api.downloadCompanyDocumentFile(docId, name || 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
+  };
   if(container){
+    container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading preview...</div>';
+  }
+  document.getElementById('documentPreviewModal').classList.add('active');
+  Api.getCompanyDocumentPreviewBlobUrl(docId).then(url => {
+    if(!container) return;
     container.innerHTML = fileType === 'image'
       ? `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`
       : `<iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>`;
-  }
-  document.getElementById('documentPreviewModal').classList.add('active');
+  }).catch(err => {
+    if(container) container.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+  });
 }
 function downloadCompanyDocument(docId){
-  window.open(Api.getCompanyDocumentDownloadUrl(docId), '_blank');
+  Api.downloadCompanyDocumentFile(docId, 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
 }
