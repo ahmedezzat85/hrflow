@@ -172,6 +172,18 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     """
     Confirms that when ENVIRONMENT=production, the Set-Cookie header
     issued at login actually carries the Secure attribute end-to-end.
+
+    Since the router-decomposition refactor (docs/analysis/
+    architecture-review-plan.md), `routers/auth.py` does its own
+    `from config import Config` at import time. Reloading `config` and
+    `main` does NOT cascade-reload `routers.auth` - Python's importlib
+    reload() only re-executes the one module passed to it, and any
+    already-imported module that references the old Config object (via
+    `from config import Config`) keeps that stale reference until it is
+    explicitly reloaded too. So `routers.auth` must be reloaded
+    explicitly, in the correct order: config -> routers.auth -> main
+    (main imports routers.auth, so it must be reloaded last to pick up
+    the fresh router module).
     """
     import importlib
 
@@ -182,6 +194,10 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
 
     import config as config_module
     importlib.reload(config_module)
+
+    import routers.auth as auth_router_module
+    importlib.reload(auth_router_module)
+
     import sheets_client
     import drive_client
     import auth as auth_module
@@ -194,7 +210,7 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
 
     def fake_login_with_google(credential):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
-    monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
+    monkeypatch.setattr(auth_router_module, "login_with_google", fake_login_with_google)
 
     from fastapi.testclient import TestClient
     prod_client = TestClient(main_module.app)
@@ -205,6 +221,17 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     assert "secure" in set_cookie_header.lower()
     assert "httponly" in set_cookie_header.lower()
 
+    # monkeypatch auto-reverts os.environ on test teardown, but the
+    # already-imported config/routers.auth/main modules would otherwise
+    # keep reflecting THIS test's production values for the rest of the
+    # pytest session (module state persists across tests in the same
+    # process). Explicitly reload all three back to development-mode
+    # settings now, using the real dev defaults from conftest.py, so
+    # later tests never see production config leaked from this test.
     monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-pytest-only-do-not-use-in-prod")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "*")
+    monkeypatch.delenv("ALLOWED_WORKSPACE_DOMAIN", raising=False)
     importlib.reload(config_module)
+    importlib.reload(auth_router_module)
     importlib.reload(main_module)

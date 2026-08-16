@@ -7,6 +7,7 @@ google-auth-httplib2==0.2.0
 python-dotenv==1.0.1
 PyJWT==2.9.0
 pydantic==2.7.4
+email-validator==2.2.0
 
 # Test dependencies (Phase 5 - docs/analysis/security-analysis-plan.md).
 # Only needed to run `pytest` from be/, not to run the app itself.
