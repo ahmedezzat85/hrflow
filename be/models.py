@@ -1,6 +1,8 @@
 """
 models.py
 Pydantic request/response models for the HRFlow API.
+FastAPI uses these for automatic validation, and auto-generates
+interactive docs (Swagger UI at /docs) from them.
 """
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Literal
@@ -11,12 +13,12 @@ EmploymentState = Literal["Full-Time", "Part-Time", "Freelance", "Occasional"]
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str
+    credential: str  # the ID token JWT string from the Google Sign-In button
 
 
 class PasswordLoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str  # dummy/test-only login - see auth.py TEST_PASSWORD
 
 
 class LoginResponse(BaseModel):
@@ -32,11 +34,21 @@ class LoginResponse(BaseModel):
 
 
 class EmployeeCreate(BaseModel):
+    """
+    Salary is modeled as two USD-denominated components rather than a
+    single flat figure - see docs/analysis/salary-advanced-plan.md
+    (Phase 1). Both are REQUIRED with no default: 0 is a valid explicit
+    value (e.g. an employee who is 100% Internal has
+    external_salary_usd=0), but the field must always be supplied by the
+    caller rather than silently defaulting - this avoids accidentally
+    creating an employee with an unintended 0/0 split.
+    """
     name: str
-    email: EmailStr
+    email: EmailStr  # must be the employee's Google Workspace email
     dept: str = ""
     job_role: str = ""
-    salary: float = 0
+    internal_salary_usd: float  # required, no default - 0 is valid
+    external_salary_usd: float  # required, no default - 0 is valid
     join_date: str = ""
     status: str = "Active"
     vac_total: int = 21
@@ -49,7 +61,8 @@ class EmployeeUpdate(BaseModel):
     email: Optional[EmailStr] = None
     dept: Optional[str] = None
     job_role: Optional[str] = None
-    salary: Optional[float] = None
+    internal_salary_usd: Optional[float] = None
+    external_salary_usd: Optional[float] = None
     join_date: Optional[str] = None
     status: Optional[str] = None
     vac_total: Optional[int] = None
@@ -64,7 +77,7 @@ class RequestCreate(BaseModel):
     details: str = ""
     employee_id: Optional[int] = None
     record_date: Optional[str] = None
-    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
+    status: Optional[Literal["Pending", "Approved", "Rejected"]] = None
 
 
 class RequestAction(BaseModel):
@@ -79,7 +92,7 @@ class VacationRequestCreate(BaseModel):
     days: int = 1
     employee_id: Optional[int] = None
     record_date: Optional[str] = None
-    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
+    status: Optional[Literal["Pending", "Approved", "Rejected"]] = None
 
 
 class InsuranceCategoryCreate(BaseModel):
@@ -97,28 +110,20 @@ class InsuranceClaimCreate(BaseModel):
     category: str
     provider: str = ""
     amount: float
-    document_url: Optional[str] = ""
     employee_id: Optional[int] = None
+    document_url: Optional[str] = None
     record_date: Optional[str] = None
-    status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
+    status: Optional[Literal["Pending", "Approved", "Rejected"]] = None
 
 
 class InsuranceClaimAction(BaseModel):
     status: Literal["Approved", "Rejected"]
 
 
-class RaiseApply(BaseModel):
-    employee_id: int
-    mode: Literal["pct", "amount", "new"]
-    value: float
-    effective_date: Optional[str] = None
-    reason: str = "Annual performance raise"
-
-
 class EmployeeNoteCreate(BaseModel):
-    date: Optional[str] = None
-    category: str = "General"
+    category: str
     note: str
+    date: Optional[str] = None
 
 
 class EmployeeDocumentCreate(BaseModel):
@@ -128,13 +133,41 @@ class EmployeeDocumentCreate(BaseModel):
 
 
 class CompanyDocumentCreate(BaseModel):
-    """
-    A general company-wide document/policy visible to all employees
-    (Document Hub). Stored in a shared "Company Documents" Drive
-    sub-folder, not tied to any specific employee. Admins may add/delete;
-    all employees may view/download.
-    """
     name: str
     file_type: Literal["pdf", "image"]
+    category: str = ""
     data_url: str
-    category: str = "General"
+
+
+class RaiseApply(BaseModel):
+    """
+    Salary is composed of two USD components - internal (transferred
+    inside Egypt) and external (transferred directly from the USA). A
+    raise may target one component, or both. See
+    docs/analysis/salary-advanced-plan.md (Phase 1) for the full design
+    rationale, including why `value` and `internal_value`/`external_value`
+    are separate fields rather than one.
+
+    Field usage by (target, mode):
+      - target in ("internal", "external"): `value` is required;
+        internal_value/external_value must be omitted.
+      - target == "both", mode in ("pct", "amount"): `value` is required
+        (applied independently to each component); internal_value/
+        external_value must be omitted.
+      - target == "both", mode == "new": internal_value AND external_value
+        are both required explicitly (0 is valid); `value` must be
+        omitted. The resulting total is always derived as
+        internal_value + external_value - it is never supplied directly.
+
+    All of the above is enforced in the endpoint (be/routers/salary.py),
+    not here, since the validity of one field depends on the values of
+    others.
+    """
+    employee_id: int
+    mode: Literal["pct", "amount", "new"]
+    target: Literal["internal", "external", "both"] = "both"
+    value: Optional[float] = None
+    internal_value: Optional[float] = None
+    external_value: Optional[float] = None
+    effective_date: Optional[str] = None
+    reason: str = "Annual performance raise"
