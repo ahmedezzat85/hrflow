@@ -478,28 +478,16 @@
         <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
       </div>
       <div class="form-grid">
-        <div class="form-field"><label>Apply To</label>
-          <select id="rTarget" onchange="onRaiseTargetChange()">
-            <option value="both">Both (Internal + External)</option>
-            <option value="internal">Internal only</option>
-            <option value="external">External only</option>
-          </select>
-        </div>
-        <div class="form-field"><label>Raise Type</label>
-          <select id="rMode" onchange="onRaiseModeChange()">
-            <option value="pct">Percentage Increase (%)</option>
-            <option value="amount">Flat Increase (USD)</option>
-            <option value="new">Set New Salary (USD)</option>
-          </select>
-        </div>
-        <div class="form-field" id="rValueField"><label id="rValueLabel">Percentage (%)</label><input type="number" id="rValue" placeholder="e.g. 8" oninput="updateRaisePreview()"></div>
-        <div class="form-field" id="rInternalValueField" style="display:none;"><label>New Internal Salary (USD)</label><input type="number" id="rInternalValue" placeholder="e.g. 1200" min="0" step="0.01" oninput="updateRaisePreview()"></div>
-        <div class="form-field" id="rExternalValueField" style="display:none;"><label>New External Salary (USD)</label><input type="number" id="rExternalValue" placeholder="e.g. 500" min="0" step="0.01" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>New Internal Salary (USD)</label><input type="number" id="rNewInternal" placeholder="e.g. 1200" min="0" step="0.01" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>New External Salary (USD)</label><input type="number" id="rNewExternal" placeholder="e.g. 500" min="0" step="0.01" oninput="updateRaisePreview()"></div>
         <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
         <div class="form-field"><label>Reason</label>
           <select id="rReason"><option>Annual performance raise</option><option>Promotion</option><option>Cost of living adjustment</option><option>Market adjustment</option><option>Retention raise</option></select>
         </div>
       </div>
+      <p style="font-size:11.5px;color:var(--text3);margin-top:2px;">
+        Enter the employee's new Internal and External salary directly. The increase amount and percentage (over the combined total) are calculated automatically below.
+      </p>
       <div class="raise-preview" id="raisePreview">
         <div class="row"><span>Current Salary</span><b id="rvCurrent">—</b></div>
         <div class="row"><span>New Salary</span><b id="rvNew">—</b></div>
