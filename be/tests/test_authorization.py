@@ -138,7 +138,7 @@ def test_login_response_never_contains_a_token_field(app_client, monkeypatch):
     def fake_login_with_google(credential):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
 
-    monkeypatch.setattr("main.login_with_google", fake_login_with_google)
+    monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
 
     response = app_client.post("/api/auth/google", json={"credential": "whatever"})
     assert response.status_code == 200
@@ -157,7 +157,7 @@ def test_login_sets_httponly_session_cookie_with_correct_flags(app_client, monke
     def fake_login_with_google(credential):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
 
-    monkeypatch.setattr("main.login_with_google", fake_login_with_google)
+    monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
 
     response = app_client.post("/api/auth/google", json={"credential": "whatever"})
     assert response.status_code == 200
@@ -166,19 +166,24 @@ def test_login_sets_httponly_session_cookie_with_correct_flags(app_client, monke
     assert "hrflow_session=" in set_cookie_header
     assert "httponly" in set_cookie_header.lower()
     assert "samesite=lax" in set_cookie_header.lower()
-    # Secure is intentionally NOT asserted here: in the dev/test environment
-    # (ENVIRONMENT=development, per conftest.py), Config.COOKIE_SECURE is
-    # False by design - see test_cookie_secure_flag_is_reflected_in_production_response below.
 
 
 def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fake_sheets_client, fake_drive_client):
     """
     Confirms that when ENVIRONMENT=production, the Set-Cookie header
-    issued at login actually carries the Secure attribute - not just that
-    Config.COOKIE_SECURE evaluates to True in isolation (already covered
-    by test_config_validation.py), but that FastAPI's response.set_cookie
-    call in be/main.py._set_session_cookie is wired to that flag correctly
-    end-to-end.
+    issued at login actually carries the Secure attribute end-to-end.
+
+    Since the router-decomposition refactor (docs/analysis/
+    architecture-review-plan.md), `routers/auth.py` does its own
+    `from config import Config` at import time. Reloading `config` and
+    `main` does NOT cascade-reload `routers.auth` - Python's importlib
+    reload() only re-executes the one module passed to it, and any
+    already-imported module that references the old Config object (via
+    `from config import Config`) keeps that stale reference until it is
+    explicitly reloaded too. So `routers.auth` must be reloaded
+    explicitly, in the correct order: config -> routers.auth -> main
+    (main imports routers.auth, so it must be reloaded last to pick up
+    the fresh router module).
     """
     import importlib
 
@@ -189,17 +194,23 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
 
     import config as config_module
     importlib.reload(config_module)
+
+    import routers.auth as auth_router_module
+    importlib.reload(auth_router_module)
+
+    import sheets_client
+    import drive_client
+    import auth as auth_module
     import main as main_module
     importlib.reload(main_module)
-    import auth as auth_module
 
-    monkeypatch.setattr(main_module, "get_client", lambda: fake_sheets_client)
-    monkeypatch.setattr(main_module, "get_drive_client", lambda: fake_drive_client)
+    monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
+    monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
     monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
     def fake_login_with_google(credential):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
-    monkeypatch.setattr(main_module, "login_with_google", fake_login_with_google)
+    monkeypatch.setattr(auth_router_module, "login_with_google", fake_login_with_google)
 
     from fastapi.testclient import TestClient
     prod_client = TestClient(main_module.app)
@@ -210,8 +221,17 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     assert "secure" in set_cookie_header.lower()
     assert "httponly" in set_cookie_header.lower()
 
-    # Reload main/config back to development defaults so subsequent tests
-    # in the same process aren't affected by this test's environment changes.
+    # monkeypatch auto-reverts os.environ on test teardown, but the
+    # already-imported config/routers.auth/main modules would otherwise
+    # keep reflecting THIS test's production values for the rest of the
+    # pytest session (module state persists across tests in the same
+    # process). Explicitly reload all three back to development-mode
+    # settings now, using the real dev defaults from conftest.py, so
+    # later tests never see production config leaked from this test.
     monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-pytest-only-do-not-use-in-prod")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "*")
+    monkeypatch.delenv("ALLOWED_WORKSPACE_DOMAIN", raising=False)
     importlib.reload(config_module)
+    importlib.reload(auth_router_module)
     importlib.reload(main_module)

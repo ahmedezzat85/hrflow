@@ -9,8 +9,20 @@ import pytest
 
 
 def _fresh_config(monkeypatch, **env_overrides):
-    for key in ("SECRET_KEY", "ENVIRONMENT", "ALLOWED_ORIGINS", "ALLOWED_WORKSPACE_DOMAIN"):
-        monkeypatch.delenv(key, raising=False)
+    """
+    Resets all Config-relevant env vars to a known-empty state before
+    applying overrides, then reloads config.py so Config's class
+    attributes reflect exactly this call's env vars - not whatever any
+    previously-run test left in os.environ or in an already-imported
+    module. Explicit empty-string overwrites (not just delenv) are used
+    for SECRET_KEY/ALLOWED_WORKSPACE_DOMAIN so a stale non-empty value
+    from another test's monkeypatch.setenv can never leak through,
+    regardless of test execution order.
+    """
+    monkeypatch.setenv("SECRET_KEY", "")
+    monkeypatch.setenv("ALLOWED_WORKSPACE_DOMAIN", "")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "*")
     for key, value in env_overrides.items():
         monkeypatch.setenv(key, value)
     import config as config_module

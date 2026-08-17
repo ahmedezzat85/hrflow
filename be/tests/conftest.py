@@ -5,12 +5,27 @@ touch a real Google Sheet or Drive - FakeSheetsClient/FakeDriveClient are
 in-memory stand-ins implementing the same interface as the real clients,
 so main.py's endpoint code runs unmodified against them. See
 docs/analysis/security-analysis-plan.md, Phase 5.
+
+Patch targets updated during the router-decomposition refactor
+(docs/analysis/architecture-review-plan.md): routers now call
+`sheets_client.get_client()` / `drive_client.get_drive_client()` via
+module-attribute access rather than importing the function by name, so
+patching those source modules is the single correct patch point
+regardless of how many routers use them - patching main_module no longer
+has any effect, since main.py itself no longer imports these functions.
 """
 import os
 import sys
 import copy
 
 import pytest
+import email_validator
+
+# `.test` is an IANA special-use domain. The test suite intentionally uses
+# @hrflow.test fixture addresses, so tell email-validator this is a test
+# process before Pydantic's EmailStr validation runs. This affects pytest
+# only; production email validation remains unchanged.
+email_validator.TEST_ENVIRONMENT = True
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-do-not-use-in-prod")
 os.environ.setdefault("GOOGLE_OAUTH_CLIENT_ID", "test-client-id.apps.googleusercontent.com")
@@ -126,13 +141,15 @@ def fake_drive_client():
 
 @pytest.fixture
 def app_client(monkeypatch, fake_sheets_client, fake_drive_client):
-    import main as main_module
+    import sheets_client
+    import drive_client
     import auth as auth_module
 
-    monkeypatch.setattr(main_module, "get_client", lambda: fake_sheets_client)
-    monkeypatch.setattr(main_module, "get_drive_client", lambda: fake_drive_client)
+    monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
+    monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
     monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
+    import main as main_module
     from fastapi.testclient import TestClient
     return TestClient(main_module.app)
 
