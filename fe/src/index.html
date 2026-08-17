@@ -217,7 +217,7 @@
 
       <section class="page-section" id="a-salary">
         <div class="grid g4" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Monthly Payroll</div><div class="stat-val" id="statPayroll">EGP 0</div></div>
+          <div class="card stat-card"><div class="stat-label">Total Monthly Payroll</div><div class="stat-val" id="statPayroll">USD 0</div></div>
           <div class="card stat-card"><div class="stat-label">Avg. Raise (Last Cycle)</div><div class="stat-val" id="statAvgRaise">+0%</div></div>
           <div class="card stat-card"><div class="stat-label">Raises Applied (YTD)</div><div class="stat-val" id="statRaisesYtd">0</div></div>
           <div class="card stat-card"><div class="stat-label">Upcoming This Quarter</div><div class="stat-val" id="statUpcomingQ">0</div></div>
@@ -325,7 +325,7 @@
         <div class="hero-banner" style="margin-bottom:20px;">
           <div class="hero-stats">
             <div class="hero-stat"><b>14</b><span>Vacation Days Left</span></div>
-            <div class="hero-stat"><b id="empDashSalary">EGP 42,000</b><span>Current Monthly Salary</span></div>
+            <div class="hero-stat"><b id="empDashSalary">USD 0</b><span>Current Monthly Salary</span></div>
             <div class="hero-stat"><b>2</b><span>WFH Days This Month</span></div>
             <div class="hero-stat"><b>1</b><span>Pending Insurance Claim</span></div>
           </div>
@@ -360,9 +360,9 @@
           </div>
           <div class="card">
             <div class="card-head"><h3>Current Package</h3></div>
-            <div class="info-item" style="margin-bottom:12px;"><span>Base Salary</span><b id="empPkgBase">EGP 42,000 / mo</b></div>
-            <div class="info-item" style="margin-bottom:12px;"><span>Annual Bonus</span><b>EGP 63,000</b></div>
-            <div class="info-item"><span>Total Annual Compensation</span><b id="empPkgTotal">EGP 567,000</b></div>
+            <div class="info-item" style="margin-bottom:12px;"><span>Base Salary</span><b id="empPkgBase">USD 0 / mo</b></div>
+            <div class="info-item" style="margin-bottom:12px;"><span>Annual Bonus</span><b>USD 0</b></div>
+            <div class="info-item"><span>Total Annual Compensation</span><b id="empPkgTotal">USD 0</b></div>
           </div>
         </div>
         <div class="card">
@@ -446,12 +446,16 @@
         <div class="form-field"><label>Email</label><input id="fEmpEmail" placeholder="laila@hrflow.com"></div>
         <div class="form-field"><label>Department</label><select id="fEmpDept"><option>Engineering</option><option>Product</option><option>Design</option><option>Sales</option><option>Finance</option><option>Operations</option></select></div>
         <div class="form-field"><label>Role / Title</label><input id="fEmpRole" placeholder="e.g. Senior Developer"></div>
-        <div class="form-field"><label>Monthly Salary (EGP)</label><input type="number" id="fEmpSalary" placeholder="35000"></div>
+        <div class="form-field"><label>Internal Salary (USD)</label><input type="number" id="fEmpInternalSalary" placeholder="e.g. 1000" min="0" step="0.01"></div>
+        <div class="form-field"><label>External Salary (USD)</label><input type="number" id="fEmpExternalSalary" placeholder="e.g. 500" min="0" step="0.01"></div>
         <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
         <div class="form-field"><label>Status</label><select id="fEmpStatus"><option>Active</option><option>On Leave</option><option>Suspended</option></select></div>
         <div class="form-field"><label>Employment State</label><select id="fEmpEmploymentState"><option>Full-Time</option><option>Part-Time</option><option>Freelance</option><option>Occasional</option></select></div>
         <div class="form-field"><label>Vacation Balance (days)</label><input type="number" id="fEmpVac" value="21"></div>
       </div>
+      <p style="font-size:11.5px;color:var(--text3);margin-top:6px;">
+        Salary is split into two USD components: Internal (transferred inside Egypt) and External (transferred directly from the USA). Both fields are required - enter 0 if an employee has no payment through that channel.
+      </p>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button class="btn btn-fill" onclick="saveEmployee()"><i class="fa-solid fa-check"></i> Save Employee</button></div>
   </div>
@@ -474,14 +478,23 @@
         <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
       </div>
       <div class="form-grid">
+        <div class="form-field"><label>Apply To</label>
+          <select id="rTarget" onchange="onRaiseTargetChange()">
+            <option value="both">Both (Internal + External)</option>
+            <option value="internal">Internal only</option>
+            <option value="external">External only</option>
+          </select>
+        </div>
         <div class="form-field"><label>Raise Type</label>
           <select id="rMode" onchange="onRaiseModeChange()">
             <option value="pct">Percentage Increase (%)</option>
-            <option value="amount">Flat Increase (EGP)</option>
-            <option value="new">Set New Salary (EGP)</option>
+            <option value="amount">Flat Increase (USD)</option>
+            <option value="new">Set New Salary (USD)</option>
           </select>
         </div>
-        <div class="form-field"><label id="rValueLabel">Percentage (%)</label><input type="number" id="rValue" placeholder="e.g. 8" oninput="updateRaisePreview()"></div>
+        <div class="form-field" id="rValueField"><label id="rValueLabel">Percentage (%)</label><input type="number" id="rValue" placeholder="e.g. 8" oninput="updateRaisePreview()"></div>
+        <div class="form-field" id="rInternalValueField" style="display:none;"><label>New Internal Salary (USD)</label><input type="number" id="rInternalValue" placeholder="e.g. 1200" min="0" step="0.01" oninput="updateRaisePreview()"></div>
+        <div class="form-field" id="rExternalValueField" style="display:none;"><label>New External Salary (USD)</label><input type="number" id="rExternalValue" placeholder="e.g. 500" min="0" step="0.01" oninput="updateRaisePreview()"></div>
         <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
         <div class="form-field"><label>Reason</label>
           <select id="rReason"><option>Annual performance raise</option><option>Promotion</option><option>Cost of living adjustment</option><option>Market adjustment</option><option>Retention raise</option></select>
@@ -656,5 +669,17 @@
   </div>
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
+
+<script src="./js/state.js"></script>
+<script src="./js/ui.js"></script>
+<script src="./js/session.js"></script>
+<script src="./js/employees.js"></script>
+<script src="./js/requests.js"></script>
+<script src="./js/salary.js"></script>
+<script src="./js/vacations.js"></script>
+<script src="./js/insurance.js"></script>
+<script src="./js/dochub.js"></script>
+<script src="./js/charts.js"></script>
+<script src="./js/app.js"></script>
 </body>
 </html>
