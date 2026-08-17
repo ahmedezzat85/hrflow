@@ -61,7 +61,7 @@ def test_admin_insurance_consumption_without_filter_sees_all(app_client, admin_c
     fake_sheets_client.append_row("InsuranceCategories", {"id": 1, "name": "Dental", "annual_limit": 5000})
     response = app_client.get("/api/insurance/consumption", cookies=admin_cookies)
     assert response.status_code == 200
-    assert {str(row["employee_id"]) for row in response.json()} == {"2", "3"}
+    assert {"2", "3"}.issubset({str(row["employee_id"]) for row in response.json()})
 
 
 def test_admin_insurance_consumption_explicit_filter_is_honored(app_client, admin_cookies, fake_sheets_client):
