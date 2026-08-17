@@ -62,18 +62,20 @@ automatically):
 - `internal_salary_usd: float` — Internal component, USD.
 - `external_salary_usd: float` — External component, USD.
 
-`salary` (legacy single EGP-ish field) is **kept temporarily** for
-backward compatibility with any code/reports not yet migrated, but is no
-longer the source of truth once this phase ships. It will be dropped in a
-later cleanup phase after frontend + any reporting is confirmed migrated
-(explicitly out of scope here, to keep this change small).
+`salary` (legacy single EGP-ish field) is **kept temporarily** on the sheet
+itself for backward compatibility with any code/reports not yet migrated,
+but is no longer the source of truth once this phase ships, and the API no
+longer writes to it (see "DECIDED" section below). It will be dropped from
+the sheet in a later cleanup phase after frontend + any reporting is
+confirmed migrated (explicitly out of scope here, to keep this change
+small).
 
 Migration behavior for existing rows: on first run after this change,
 existing `salary` values are **not** auto-split (no reliable way to infer
 the internal/external ratio). Both new columns default to `0` for
 pre-existing rows via the standard `_ensure_required_columns` behavior
-(new column, blank cells). A one-time admin data-entry pass (or a small
-one-off script, not part of this phase) will be needed to populate real
+(new column, blank cells). A one-time admin data-entry pass (via
+`EmployeeUpdate`, not a script) will be needed to populate real
 internal/external values for current employees.
 
 ### `SalaryHistory` sheet — record both components per entry
@@ -92,7 +94,42 @@ code that reads them directly, until the frontend phase migrates off them.
 (see computation rule below) — this is what the user asked for explicitly:
 raises to one or both components computed as a percentage over the total.
 
+## `EmployeeCreate` / `EmployeeUpdate` — DECIDED
+
+Confirmed by user: **both `internal_salary_usd` and `external_salary_usd`
+are required on create** (no defaults). `0` is a valid explicit value for
+either component (e.g. an employee who is 100% Internal has
+`external_salary_usd=0`, not a missing field) — validation requires the
+fields to be *present*, not non-zero.
+
+```python
+class EmployeeCreate(BaseModel):
+    name: str
+    email: EmailStr
+    dept: str = ""
+    job_role: str = ""
+    internal_salary_usd: float  # required, no default — 0 is valid
+    external_salary_usd: float  # required, no default — 0 is valid
+    join_date: str = ""
+    status: str = "Active"
+    vac_total: int = 21
+    next_raise: str = ""
+    employment_state: EmploymentState = "Full-Time"
+    # `salary` field removed from EmployeeCreate entirely — no legacy
+    # flat-salary create path once this ships.
+```
+
+`EmployeeUpdate` keeps both as `Optional[float] = None` (standard partial-
+update semantics already used for every other field on this model — `None`
+means "don't touch", not "set to zero"; the endpoint's existing
+`{k: v for k, v in payload.model_dump().items() if v is not None}` pattern
+in `be/routers/employees.py::update_employee` already handles this
+correctly with no changes needed there).
+
 ## `RaiseApply` model changes
+
+Confirmed by user: **a raise can change one component or both** in a
+single call.
 
 ```python
 class RaiseApply(BaseModel):
@@ -156,14 +193,14 @@ pct_change = round((new_total - current_total) / current_total * 100, 2) \
     if current_total > 0 else 0.0
 ```
 
-Edge case to flag explicitly for review: `mode="new"` with `target="both"`
-is ambiguous (does `value` mean the new total, split how? or the new value
+Edge case still open for review: `mode="new"` with `target="both"` is
+ambiguous (does `value` mean the new total, split how? or the new value
 for each component identically?). Proposed resolution: disallow this
 specific combination with a 400 error ("Set a new salary for internal or
 external individually, not both at once") — `mode="new"` will only be
 valid with `target="internal"` or `target="external"`. `target="both"` is
-only valid with `mode` in `("pct", "amount")`. This should be confirmed
-with you before implementation.
+only valid with `mode` in `("pct", "amount")`. **This is still open — see
+"Open questions" below.**
 
 ## Audit log
 
@@ -174,24 +211,21 @@ reflecting both components, e.g.:
 ## Explicitly out of scope for this phase (tracked as follow-ups)
 
 1. Frontend (`fe/`) changes — raise modal UI to pick target
-   (internal/external/both), salary table columns, salary chart. Separate
-   phase once backend is reviewed/merged.
-2. Dropping the legacy `salary` / `previous_salary` / `new_salary` columns.
+   (internal/external/both), Add Employee form fields for both USD
+   components, salary table columns, salary chart. Separate phase once
+   backend is reviewed/merged.
+2. Dropping the legacy `salary` / `previous_salary` / `new_salary` columns
+   from the sheets themselves (the `EmployeeCreate` model no longer writes
+   `salary`, but the column and any pre-existing values remain on the
+   sheet until a later cleanup phase).
 3. Any currency conversion / EGP display — both components stay USD-only,
    no FX logic anywhere in this phase.
 4. Backfilling real internal/external split for existing employees (manual
-   HR data entry, not code).
-5. `EmployeeCreate` / `EmployeeUpdate` — decide whether to keep accepting
-   a flat `salary` for quick-create convenience or require
-   `internal_salary_usd` + `external_salary_usd` explicitly. Leaning
-   towards requiring both explicitly (clearer, avoids silent 0/0 splits)
-   but flagging for your confirmation before changing `models.py`.
+   HR data entry via `EmployeeUpdate`, not a script) — existing rows will
+   show `0`/`0` until an admin edits them.
 
 ## Open questions for you before implementation
 
 1. Confirm the `mode="new"` + `target="both"` restriction above (disallow
-   vs. some other interpretation).
-2. Should `EmployeeCreate` require both USD components explicitly, or
-   default them to `0` and let the first raise establish real values?
-3. Any preference on keeping vs. dropping the legacy `salary` field
-   sooner rather than later, given it stays unused after this phase?
+   vs. some other interpretation) — still open, not addressed by the
+   latest feedback.
