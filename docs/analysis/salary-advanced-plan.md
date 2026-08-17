@@ -126,37 +126,61 @@ means "don't touch", not "set to zero"; the endpoint's existing
 in `be/routers/employees.py::update_employee` already handles this
 correctly with no changes needed there).
 
-## `RaiseApply` model changes
+## `RaiseApply` model changes — DECIDED
 
 Confirmed by user: **a raise can change one component or both** in a
-single call.
+single call, and when `mode="new"` targets both components, **each
+component's new value must be set explicitly** — the total is never
+supplied directly, it's always derived (`new_total = new_internal +
+new_external`). This resolves the earlier ambiguity cleanly: `mode="new"`
+is always a per-component operation, so a single shared `value` field
+cannot represent "two different new values" when `target="both"`. The
+model therefore needs **separate optional value fields per component**
+instead of one generic `value`:
 
 ```python
 class RaiseApply(BaseModel):
     employee_id: int
     mode: Literal["pct", "amount", "new"]
-    value: float
     target: Literal["internal", "external", "both"] = "both"
+    value: Optional[float] = None            # used when target != "both",
+                                              # or when target == "both" and
+                                              # mode in ("pct", "amount")
+                                              # (same value applied to each
+                                              # component independently)
+    internal_value: Optional[float] = None   # required when target=="both"
+                                              # and mode=="new"
+    external_value: Optional[float] = None   # required when target=="both"
+                                              # and mode=="new"
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
 ```
 
-- `target` is new. Defaults to `"both"` to keep existing callers (frontend
-  not yet updated) working with today's semantics-nearest equivalent.
-- `mode`/`value` keep their existing meaning but now apply only to the
-  component(s) selected by `target`:
-  - `target="internal"`: raise applies only to `internal_salary_usd`.
-  - `target="external"`: raise applies only to `external_salary_usd`.
-  - `target="both"`: raise applies to each component independently using
-    the same `mode`/`value` (e.g. `pct=10` gives +10% to internal AND
-    +10% to external separately) — this keeps `pct` mode meaningful per
-    component rather than splitting the value across them.
+Validation rules (enforced in the endpoint, not just the type system,
+since the "required when" logic is conditional on other fields):
+- `target in ("internal", "external")`: `value` is required;
+  `internal_value`/`external_value` must be omitted (400 if supplied —
+  avoids silent ambiguity about which one wins).
+- `target == "both"` and `mode in ("pct", "amount")`: `value` is required
+  (applied independently to each component — see computation section);
+  `internal_value`/`external_value` must be omitted.
+- `target == "both"` and `mode == "new"`: **both** `internal_value` and
+  `external_value` are required explicitly (0 is a valid value, same
+  "must be present, not necessarily non-zero" rule as `EmployeeCreate`);
+  `value` must be omitted. The resulting total is computed automatically
+  as `internal_value + external_value` — never supplied directly by the
+  caller.
+
+This mirrors the `EmployeeCreate` decision exactly: whenever both
+components are being set to explicit new absolute values, both must be
+stated by name, and nothing about the total is ever taken as direct
+input — it's always a derived sum.
 
 ## Raise computation rule (percentage over the **total**)
 
 This is the key behavioral requirement: whichever component(s) receive the
 raise, the reported `pct_change` must be computed against the **combined**
-total, not the individual component. Worked example:
+total, not the individual component. Worked example (mode="amount"):
 
 - Employee: `internal_salary_usd=1000`, `external_salary_usd=500` → total
   `1500`.
@@ -166,6 +190,15 @@ total, not the individual component. Worked example:
   would be `150/1000` — that's the internal-only view, not what gets
   stored/displayed as the headline `pct_change`).
 
+Worked example (mode="new", target="both" — the newly-resolved case):
+
+- Employee: `internal_salary_usd=1000`, `external_salary_usd=500` → total
+  `1500`.
+- Admin applies `mode="new", target="both", internal_value=1200,
+  external_value=500`.
+- New total = `1200 + 500 = 1700` (computed, never supplied).
+- `pct_change = (1700 - 1500) / 1500 * 100 = +13.33%`.
+
 Pseudocode for `apply_raise`:
 
 ```python
@@ -173,17 +206,30 @@ current_internal = float(emp["internal_salary_usd"] or 0)
 current_external = float(emp["external_salary_usd"] or 0)
 current_total = current_internal + current_external
 
-def _raise_component(current: float, mode: str, value: float) -> float:
+def _apply_mode(current: float, mode: str, value: float) -> float:
     if mode == "pct":
         return round(current * (1 + value / 100), 2)
     if mode == "amount":
         return round(current + value, 2)
     return round(value, 2)  # mode == "new"
 
-new_internal = _raise_component(current_internal, payload.mode, payload.value) \
-    if payload.target in ("internal", "both") else current_internal
-new_external = _raise_component(current_external, payload.mode, payload.value) \
-    if payload.target in ("external", "both") else current_external
+if payload.target == "both" and payload.mode == "new":
+    # Explicit per-component absolute values required - see validation
+    # rules above. Total is always derived, never a direct input.
+    new_internal = round(payload.internal_value, 2)
+    new_external = round(payload.external_value, 2)
+elif payload.target == "both":
+    # mode in ("pct", "amount"): same `value` applied independently to
+    # each component (e.g. pct=10 -> both components individually +10%).
+    new_internal = _apply_mode(current_internal, payload.mode, payload.value)
+    new_external = _apply_mode(current_external, payload.mode, payload.value)
+elif payload.target == "internal":
+    new_internal = _apply_mode(current_internal, payload.mode, payload.value)
+    new_external = current_external
+else:  # target == "external"
+    new_internal = current_internal
+    new_external = _apply_mode(current_external, payload.mode, payload.value)
+
 new_total = new_internal + new_external
 
 if new_total <= 0 or new_internal < 0 or new_external < 0:
@@ -192,15 +238,6 @@ if new_total <= 0 or new_internal < 0 or new_external < 0:
 pct_change = round((new_total - current_total) / current_total * 100, 2) \
     if current_total > 0 else 0.0
 ```
-
-Edge case still open for review: `mode="new"` with `target="both"` is
-ambiguous (does `value` mean the new total, split how? or the new value
-for each component identically?). Proposed resolution: disallow this
-specific combination with a 400 error ("Set a new salary for internal or
-external individually, not both at once") — `mode="new"` will only be
-valid with `target="internal"` or `target="external"`. `target="both"` is
-only valid with `mode` in `("pct", "amount")`. **This is still open — see
-"Open questions" below.**
 
 ## Audit log
 
@@ -211,9 +248,10 @@ reflecting both components, e.g.:
 ## Explicitly out of scope for this phase (tracked as follow-ups)
 
 1. Frontend (`fe/`) changes — raise modal UI to pick target
-   (internal/external/both), Add Employee form fields for both USD
-   components, salary table columns, salary chart. Separate phase once
-   backend is reviewed/merged.
+   (internal/external/both) and, for the `mode="new"` + `target="both"`
+   case, two separate new-value inputs instead of one; Add Employee form
+   fields for both USD components; salary table columns; salary chart.
+   Separate phase once backend is reviewed/merged.
 2. Dropping the legacy `salary` / `previous_salary` / `new_salary` columns
    from the sheets themselves (the `EmployeeCreate` model no longer writes
    `salary`, but the column and any pre-existing values remain on the
@@ -224,8 +262,12 @@ reflecting both components, e.g.:
    HR data entry via `EmployeeUpdate`, not a script) — existing rows will
    show `0`/`0` until an admin edits them.
 
-## Open questions for you before implementation
+## Open questions
 
-1. Confirm the `mode="new"` + `target="both"` restriction above (disallow
-   vs. some other interpretation) — still open, not addressed by the
-   latest feedback.
+None outstanding — all three original open questions are now resolved:
+`EmployeeCreate` requires both USD fields explicitly, raises may target
+one or both components, and `mode="new"` + `target="both"` requires both
+new values explicitly with the total always derived. Ready to move to
+implementation (`be/models.py`, `be/routers/salary.py`,
+`be/sheets_client.py` schema/`REQUIRED_COLUMNS` entries) pending final
+go-ahead.
