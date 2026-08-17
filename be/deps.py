@@ -2,15 +2,43 @@
 deps.py
 Shared FastAPI dependencies and small cross-router helpers, pulled out of
 main.py during the router-decomposition refactor (docs/analysis/
-architecture-review-plan.md). Pure structural move - no behavior change.
+architecture-review-plan.md).
 """
 from datetime import datetime
+from typing import Optional
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException, Query
 
 from logging_config import get_logger
+from auth import get_current_user
 
 logger = get_logger("main")
+
+
+def current_user_employee_scope(current_user: dict = Depends(get_current_user)) -> Optional[int]:
+    """
+    Resolves an employee-data list scope for endpoints without an
+    employee_id query parameter. Admins receive None, meaning unrestricted
+    access; employees receive their own employee_id.
+    """
+    if current_user["role"] == "admin":
+        return None
+    return current_user["employee_id"]
+
+
+def resolve_employee_scope(
+    employee_id: Optional[int] = Query(None),
+    current_user: dict = Depends(get_current_user),
+) -> Optional[int]:
+    """
+    Resolves the employee-data scope for history/aggregation endpoints
+    with an optional employee_id query parameter. Admins may request all
+    records (None) or a specific employee. Non-admins are always forced
+    to their own employee_id, ignoring any supplied query parameter.
+    """
+    if current_user["role"] != "admin":
+        return current_user["employee_id"]
+    return employee_id
 
 
 def resolve_target_employee(client, current_user, employee_id, fallback_name):

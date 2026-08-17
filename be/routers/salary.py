@@ -6,29 +6,27 @@ router-decomposition refactor - pure structural move, no behavior change.
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 
 import sheets_client
-from auth import get_current_user, require_admin
-from deps import audit_log
+from auth import require_admin
+from deps import audit_log, resolve_employee_scope
 from models import RaiseApply
 
 router = APIRouter(prefix="/api/salary", tags=["Salary"])
 
 
 @router.get("/history")
-def get_salary_history(employee_id: Optional[int] = Query(None), current_user: dict = Depends(get_current_user)):
+def get_salary_history(scoped_employee_id: Optional[int] = Depends(resolve_employee_scope)):
     """
-    Non-admins are always restricted to their own salary history - see
-    docs/analysis/security-analysis-plan.md, Phase 1 (finding #9).
+    Employee ownership is resolved by resolve_employee_scope before this
+    route executes. Admins can access all history or filter by employee_id;
+    non-admins are structurally forced to their own employee_id.
     """
     client = sheets_client.get_client()
     history = client.get_all_records("SalaryHistory")
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
-        history = [h for h in history if str(h["employee_id"]) == my_id]
-    elif employee_id is not None:
-        history = [h for h in history if str(h["employee_id"]) == str(employee_id)]
+    if scoped_employee_id is not None:
+        history = [h for h in history if str(h["employee_id"]) == str(scoped_employee_id)]
     return history
 
 

@@ -11,19 +11,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 import sheets_client
 from auth import get_current_user, require_admin
-from deps import resolve_target_employee, audit_log
+from deps import resolve_target_employee, audit_log, current_user_employee_scope
 from models import RequestCreate, RequestAction
 
 router = APIRouter(prefix="/api/requests", tags=["Requests"])
 
 
 @router.get("")
-def get_requests(type: Optional[str] = Query(None), current_user: dict = Depends(get_current_user)):
+def get_requests(
+    type: Optional[str] = Query(None),
+    scoped_employee_id: Optional[int] = Depends(current_user_employee_scope),
+):
     client = sheets_client.get_client()
     reqs = client.get_all_records("Requests")
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
-        reqs = [r for r in reqs if str(r["employee_id"]) == my_id]
+    if scoped_employee_id is not None:
+        reqs = [r for r in reqs if str(r["employee_id"]) == str(scoped_employee_id)]
     if type and type != "all":
         reqs = [r for r in reqs if r["type"] == type]
     return reqs

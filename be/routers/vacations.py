@@ -6,25 +6,24 @@ router-decomposition refactor - pure structural move, no behavior change.
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 import sheets_client
 from auth import get_current_user
-from deps import resolve_target_employee
+from deps import resolve_target_employee, resolve_employee_scope
 from models import VacationRequestCreate
 
 router = APIRouter(prefix="/api/vacations", tags=["Vacations"])
 
 
 @router.get("/history")
-def get_vacation_history(employee_id: Optional[int] = Query(None), current_user: dict = Depends(get_current_user)):
+def get_vacation_history(scoped_employee_id: Optional[int] = Depends(resolve_employee_scope)):
+    """Employee ownership is resolved by resolve_employee_scope before
+    this route executes."""
     client = sheets_client.get_client()
     history = client.get_all_records("VacationHistory")
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
-        history = [h for h in history if str(h["employee_id"]) == my_id]
-    elif employee_id is not None:
-        history = [h for h in history if str(h["employee_id"]) == str(employee_id)]
+    if scoped_employee_id is not None:
+        history = [h for h in history if str(h["employee_id"]) == str(scoped_employee_id)]
     return history
 
 
