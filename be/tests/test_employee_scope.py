@@ -92,3 +92,15 @@ def test_employee_insurance_claims_are_self_scoped(app_client, employee_cookies,
     response = app_client.get("/api/insurance/claims", cookies=employee_cookies)
     assert response.status_code == 200
     assert all(str(row["employee_id"]) == "2" for row in response.json())
+
+
+def test_admin_employees_list_without_scope_sees_all(app_client, admin_cookies):
+    response = app_client.get("/api/employees", cookies=admin_cookies)
+    assert response.status_code == 200
+    assert {"2", "3"}.issubset({str(row["id"]) for row in response.json()})
+
+
+def test_employee_employees_list_is_self_scoped(app_client, employee_cookies):
+    response = app_client.get("/api/employees", cookies=employee_cookies)
+    assert response.status_code == 200
+    assert all(str(row["id"]) == "2" for row in response.json())

@@ -5,6 +5,7 @@ main.py during the router-decomposition refactor - pure structural move,
 no behavior change.
 """
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -13,23 +14,22 @@ import sheets_client
 import drive_client
 from logging_config import get_logger
 from auth import get_current_user, require_admin
-from deps import audit_log
+from deps import audit_log, current_user_employee_scope
 from services.uploads import validate_upload_content, safe_content_disposition_filename
 from models import EmployeeCreate, EmployeeUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
 
-
 @router.get("")
-def get_employees(current_user: dict = Depends(get_current_user)):
+def get_employees(scoped_employee_id: Optional[int] = Depends(current_user_employee_scope)):
+    """Employee ownership is resolved by current_user_employee_scope
+    before this route executes."""
     client = sheets_client.get_client()
     employees = client.get_all_records("Employees")
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
-        employees = [e for e in employees if str(e["id"]) == my_id]
+    if scoped_employee_id is not None:
+        employees = [e for e in employees if str(e["id"]) == str(scoped_employee_id)]
     return employees
-
 
 @router.get("/{emp_id}")
 def get_employee(emp_id: int, current_user: dict = Depends(get_current_user)):
@@ -41,7 +41,6 @@ def get_employee(emp_id: int, current_user: dict = Depends(get_current_user)):
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     return emp
-
 
 @router.post("", status_code=201)
 def create_employee(payload: EmployeeCreate, current_user: dict = Depends(require_admin)):
@@ -60,7 +59,6 @@ def create_employee(payload: EmployeeCreate, current_user: dict = Depends(requir
     audit_log(client, "employee.create", current_user.get("email"), "employee", new_id, f"name={payload.name}, email={payload.email}")
     return {"message": "Employee created. They can now sign in with their Google Workspace account.", "id": new_id}
 
-
 @router.put("/{emp_id}")
 def update_employee(emp_id: int, payload: EmployeeUpdate, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
@@ -70,7 +68,6 @@ def update_employee(emp_id: int, payload: EmployeeUpdate, current_user: dict = D
         raise HTTPException(status_code=404, detail="Employee not found")
     audit_log(client, "employee.update", current_user.get("email"), "employee", emp_id, f"fields={list(updates.keys())}")
     return {"message": "Employee updated"}
-
 
 @router.delete("/{emp_id}")
 def delete_employee(emp_id: int, current_user: dict = Depends(require_admin)):
@@ -82,7 +79,6 @@ def delete_employee(emp_id: int, current_user: dict = Depends(require_admin)):
     audit_log(client, "employee.delete", current_user.get("email"), "employee", emp_id)
     return {"message": "Employee deleted"}
 
-
 @router.get("/{emp_id}/notes")
 def get_employee_notes(emp_id: int, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
@@ -90,7 +86,6 @@ def get_employee_notes(emp_id: int, current_user: dict = Depends(require_admin))
     notes = [n for n in notes if str(n["employee_id"]) == str(emp_id)]
     notes.sort(key=lambda n: str(n.get("date", "")), reverse=True)
     return notes
-
 
 @router.post("/{emp_id}/notes", status_code=201)
 def create_employee_note(emp_id: int, payload: EmployeeNoteCreate, current_user: dict = Depends(require_admin)):
@@ -109,7 +104,6 @@ def create_employee_note(emp_id: int, payload: EmployeeNoteCreate, current_user:
     })
     return {"message": "Note added", "id": note_id}
 
-
 @router.delete("/notes/{note_id}")
 def delete_employee_note(note_id: int, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
@@ -118,12 +112,10 @@ def delete_employee_note(note_id: int, current_user: dict = Depends(require_admi
         raise HTTPException(status_code=404, detail="Note not found")
     return {"message": "Note deleted"}
 
-
 def _check_document_access(current_user, emp_id):
     if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
         logger.warning("User %s attempted to access documents for employee_id=%s without permission", current_user.get("email"), emp_id)
         raise HTTPException(status_code=403, detail="You can only access your own documents")
-
 
 def _normalize_document_record(d: dict) -> dict:
     normalized = dict(d)
@@ -135,7 +127,6 @@ def _normalize_document_record(d: dict) -> dict:
             normalized[field] = ""
     return normalized
 
-
 @router.get("/{emp_id}/documents", tags=["Documents"])
 def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current_user)):
     client = sheets_client.get_client()
@@ -146,7 +137,6 @@ def get_employee_documents(emp_id: int, current_user: dict = Depends(get_current
     docs = [_normalize_document_record(d) for d in docs]
     logger.debug("Listed %d documents for employee_id=%s", len(docs), emp_id)
     return docs
-
 
 @router.post("/{emp_id}/documents", status_code=201, tags=["Documents"])
 def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, current_user: dict = Depends(get_current_user)):
@@ -200,7 +190,6 @@ def upload_employee_document(emp_id: int, payload: EmployeeDocumentCreate, curre
     logger.info("Document upload complete: doc_id=%s, employee_id=%s, drive_file_id=%s", doc_id, emp_id, uploaded["file_id"])
     return {"message": "Document uploaded", "id": doc_id}
 
-
 @router.get("/documents/{doc_id}/stream", tags=["Documents"])
 def stream_employee_document(doc_id: int, download: bool = Query(False), current_user: dict = Depends(get_current_user)):
     client = sheets_client.get_client()
@@ -223,7 +212,6 @@ def stream_employee_document(doc_id: int, download: bool = Query(False), current
     headers = {"Content-Disposition": f"{disposition}; filename*=UTF-8''{file_name}"}
     logger.info("Streaming doc_id=%s to %s (disposition=%s, %d bytes)", doc_id, current_user.get("email"), disposition, len(raw_bytes))
     return StreamingResponse(iter([raw_bytes]), media_type=mime, headers=headers)
-
 
 @router.delete("/documents/{doc_id}", tags=["Documents"])
 def delete_employee_document(doc_id: int, current_user: dict = Depends(get_current_user)):
