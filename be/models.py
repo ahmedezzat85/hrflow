@@ -7,48 +7,31 @@ interactive docs (Swagger UI at /docs) from them.
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Literal
 
-# Allowed values for an employee's employment state (single source of truth
-# shared by EmployeeCreate / EmployeeUpdate).
 EmploymentState = Literal["Full-Time", "Part-Time", "Freelance", "Occasional"]
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str  # the ID token JWT string from the Google Sign-In button
+    credential: str
 
 
 class PasswordLoginRequest(BaseModel):
     email: EmailStr
-    password: str  # dummy/test-only login - see auth.py TEST_PASSWORD
+    password: str
 
 
 class LoginResponse(BaseModel):
-    """
-    Note: this no longer carries a `token` field. The session token is set
-    directly as an HttpOnly cookie by the /api/auth/google endpoint and is
-    never exposed to JavaScript in the response body (see docs/analysis/
-    security-analysis-plan.md, Phase 1 - SEC-01 / SEC-04).
-    """
     role: str
     employee_id: Optional[int] = None
     name: Optional[str] = None
 
 
 class EmployeeCreate(BaseModel):
-    """
-    Salary is modeled as two USD-denominated components rather than a
-    single flat figure - see docs/analysis/salary-advanced-plan.md
-    (Phase 1). Both are REQUIRED with no default: 0 is a valid explicit
-    value (e.g. an employee who is 100% Internal has
-    external_salary_usd=0), but the field must always be supplied by the
-    caller rather than silently defaulting - this avoids accidentally
-    creating an employee with an unintended 0/0 split.
-    """
     name: str
-    email: EmailStr  # must be the employee's Google Workspace email
+    email: EmailStr
     dept: str = ""
     job_role: str = ""
-    internal_salary_usd: float  # required, no default - 0 is valid
-    external_salary_usd: float  # required, no default - 0 is valid
+    internal_salary_usd: float
+    external_salary_usd: float
     join_date: str = ""
     status: str = "Active"
     vac_total: int = 21
@@ -143,31 +126,18 @@ class RaiseApply(BaseModel):
     """
     Salary is composed of two USD components - internal (transferred
     inside Egypt) and external (transferred directly from the USA). A
-    raise may target one component, or both. See
-    docs/analysis/salary-advanced-plan.md (Phase 1) for the full design
-    rationale, including why `value` and `internal_value`/`external_value`
-    are separate fields rather than one.
+    raise sets BOTH components to their new absolute values directly;
+    the increase amount and percentage (over the combined total) are
+    always derived automatically, never supplied by the caller. See
+    docs/analysis/salary-advanced-plan.md (Phase 1, revised) for the
+    full design rationale.
 
-    Field usage by (target, mode):
-      - target in ("internal", "external"): `value` is required;
-        internal_value/external_value must be omitted.
-      - target == "both", mode in ("pct", "amount"): `value` is required
-        (applied independently to each component); internal_value/
-        external_value must be omitted.
-      - target == "both", mode == "new": internal_value AND external_value
-        are both required explicitly (0 is valid); `value` must be
-        omitted. The resulting total is always derived as
-        internal_value + external_value - it is never supplied directly.
-
-    All of the above is enforced in the endpoint (be/routers/salary.py),
-    not here, since the validity of one field depends on the values of
-    others.
+    Both fields are required with no default - 0 is a valid explicit
+    value, but each must be stated so a raise can never accidentally
+    zero out a component the admin forgot to include.
     """
     employee_id: int
-    mode: Literal["pct", "amount", "new"]
-    target: Literal["internal", "external", "both"] = "both"
-    value: Optional[float] = None
-    internal_value: Optional[float] = None
-    external_value: Optional[float] = None
+    new_internal_usd: float
+    new_external_usd: float
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
