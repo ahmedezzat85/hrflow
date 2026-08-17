@@ -1,7 +1,16 @@
 function normalizeEmployee(e, salaryHistoryForEmp){
+  const internalSalary = Number(e.internal_salary_usd || 0);
+  const externalSalary = Number(e.external_salary_usd || 0);
   return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
-    nextRaise: e.next_raise, salary: Number(e.salary),
-    salaryHistory: (salaryHistoryForEmp || []).map(h=>({ date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary), pct: h.pct_change, reason: h.reason })) };
+    nextRaise: e.next_raise, internalSalary, externalSalary, salary: internalSalary + externalSalary,
+    salaryHistory: (salaryHistoryForEmp || []).map(h=>({
+      date: h.date,
+      prevInternal: Number(h.previous_internal_usd || 0), prevExternal: Number(h.previous_external_usd || 0),
+      nextInternal: Number(h.new_internal_usd || 0), nextExternal: Number(h.new_external_usd || 0),
+      prev: Number(h.previous_internal_usd || 0) + Number(h.previous_external_usd || 0),
+      next: Number(h.new_internal_usd || 0) + Number(h.new_external_usd || 0),
+      pct: h.pct_change, reason: h.reason,
+    })) };
 }
 function normalizeRequest(r){ return { ...r, emp: r.employee_name }; }
 function normalizeClaim(c){ return { ...c, emp: c.employee_name }; }
@@ -19,7 +28,7 @@ async function loadAdminData(){
     insuranceClaims = rawClaims.map(normalizeClaim);
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
-    const myAdminId = SessionInfo.getEmployeeId();
+    const myAdminId = TokenStore.getEmployeeId();
     const adminUser = employees.find(e => String(e.id) === String(myAdminId)) || employees.find(e => e.role && e.role.toLowerCase().includes('admin')) || employees[0];
     if(adminUser){
       document.getElementById('adminUserAvatar').textContent = getInitials(adminUser.name);
@@ -33,7 +42,7 @@ async function loadAdminData(){
 }
 async function loadEmployeeData(){
   try{
-    const myId = SessionInfo.getEmployeeId();
+    const myId = TokenStore.getEmployeeId();
     const [rawEmployees, rawSalaryHistory, rawVacHistory, rawClaims, rawCategories, rawConsumption] = await Promise.all([
       Api.getEmployees(), Api.getSalaryHistory(myId), Api.getVacationHistory(), Api.getInsuranceClaims(), Api.getInsuranceCategories(), Api.getInsuranceConsumption()
     ]);
