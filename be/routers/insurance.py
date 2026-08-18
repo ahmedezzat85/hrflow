@@ -7,11 +7,11 @@ move, no behavior change.
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 
 import sheets_client
 from auth import get_current_user, require_admin
-from deps import resolve_target_employee, audit_log
+from deps import resolve_target_employee, audit_log, resolve_employee_scope, current_user_employee_scope
 from models import (
     InsuranceCategoryCreate, InsuranceCategoryUpdate,
     InsuranceClaimCreate, InsuranceClaimAction,
@@ -20,7 +20,6 @@ from models import (
 router = APIRouter(prefix="/api/insurance", tags=["Insurance"])
 
 APPROACHING_THRESHOLD_PCT = 80
-
 
 def compute_consumption(employees, categories, claims):
     approved_claims = [c for c in claims if c.get("status") == "Approved"]
@@ -63,12 +62,10 @@ def compute_consumption(employees, categories, claims):
         })
     return results
 
-
 @router.get("/categories")
 def get_insurance_categories(current_user: dict = Depends(get_current_user)):
     client = sheets_client.get_client()
     return client.get_all_records("InsuranceCategories")
-
 
 @router.post("/categories", status_code=201)
 def create_insurance_category(payload: InsuranceCategoryCreate, current_user: dict = Depends(require_admin)):
@@ -80,7 +77,6 @@ def create_insurance_category(payload: InsuranceCategoryCreate, current_user: di
     client.append_row("InsuranceCategories", {"id": new_id, "name": payload.name, "annual_limit": payload.annual_limit})
     return {"message": "Category created", "id": new_id}
 
-
 @router.put("/categories/{cat_id}")
 def update_insurance_category(cat_id: int, payload: InsuranceCategoryUpdate, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
@@ -90,7 +86,6 @@ def update_insurance_category(cat_id: int, payload: InsuranceCategoryUpdate, cur
         raise HTTPException(status_code=404, detail="Category not found")
     return {"message": "Category updated"}
 
-
 @router.delete("/categories/{cat_id}")
 def delete_insurance_category(cat_id: int, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
@@ -99,32 +94,33 @@ def delete_insurance_category(cat_id: int, current_user: dict = Depends(require_
         raise HTTPException(status_code=404, detail="Category not found")
     return {"message": "Category deleted"}
 
-
 @router.get("/consumption")
-def get_insurance_consumption(employee_id: Optional[int] = Query(None), current_user: dict = Depends(get_current_user)):
+def get_insurance_consumption(scoped_employee_id: Optional[int] = Depends(resolve_employee_scope)):
+    """
+    Employee ownership is resolved by resolve_employee_scope before this
+    route executes. Admins can access all employees' consumption or filter
+    by employee_id; non-admins are structurally forced to their own
+    employee_id.
+    """
     client = sheets_client.get_client()
     employees = client.get_all_records("Employees")
     categories = client.get_all_records("InsuranceCategories")
     claims = client.get_all_records("InsuranceClaims")
 
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
-        employees = [e for e in employees if str(e["id"]) == my_id]
-    elif employee_id is not None:
-        employees = [e for e in employees if str(e["id"]) == str(employee_id)]
+    if scoped_employee_id is not None:
+        employees = [e for e in employees if str(e["id"]) == str(scoped_employee_id)]
 
     return compute_consumption(employees, categories, claims)
 
-
 @router.get("/claims")
-def get_insurance_claims(current_user: dict = Depends(get_current_user)):
+def get_insurance_claims(scoped_employee_id: Optional[int] = Depends(current_user_employee_scope)):
+    """Employee ownership is resolved by current_user_employee_scope
+    before this route executes."""
     client = sheets_client.get_client()
     claims = client.get_all_records("InsuranceClaims")
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
-        claims = [c for c in claims if str(c["employee_id"]) == my_id]
+    if scoped_employee_id is not None:
+        claims = [c for c in claims if str(c["employee_id"]) == str(scoped_employee_id)]
     return claims
-
 
 @router.post("/claims", status_code=201)
 def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = Depends(get_current_user)):
@@ -164,7 +160,6 @@ def submit_insurance_claim(payload: InsuranceClaimCreate, current_user: dict = D
         "submitted_by": current_user["email"] if submitted_by_admin else "",
     })
     return {"message": "Claim submitted", "id": claim_id}
-
 
 @router.post("/claims/{claim_id}/action")
 def action_insurance_claim(claim_id: int, payload: InsuranceClaimAction, current_user: dict = Depends(require_admin)):
