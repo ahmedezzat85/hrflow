@@ -18,7 +18,7 @@ SCOPES = [
 SHEET_SCHEMAS = {
     "Employees": ["id","name","email","role","dept","job_role",
                    "salary","join_date","status","vac_total","vac_used","next_raise",
-                   "employment_state"],
+                   "employment_state","internal_salary_usd","external_salary_usd"],
     "Requests": ["id","employee_id","employee_name","type","details","date",
                  "status","reviewed_by","reviewed_at","submitted_by"],
     "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status","submitted_by"],
@@ -50,7 +50,7 @@ SHEET_SCHEMAS = {
 # column, the missing header is appended at the end of row 1 so existing
 # data stays intact and new writes can populate the added column.
 REQUIRED_COLUMNS = {
-    "Employees": ["employment_state"],
+    "Employees": ["employment_state", "internal_salary_usd", "external_salary_usd"],
 }
 
 _lock = Lock()
