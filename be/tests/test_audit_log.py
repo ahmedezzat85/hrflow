@@ -20,7 +20,8 @@ def test_audit_log_records_salary_raise(app_client, admin_cookies):
 
 
 def test_audit_log_records_employee_creation(app_client, admin_cookies):
-    payload = {"name": "Audit Test Person", "email": "audittest@hrflow.test"}
+    payload = {"name": "Audit Test Person", "email": "audittest@hrflow.test",
+               "internal_salary_usd": 1000, "external_salary_usd": 0}
     response = app_client.post("/api/employees", json=payload, cookies=admin_cookies)
     assert response.status_code == 201
     new_id = response.json()["id"]
