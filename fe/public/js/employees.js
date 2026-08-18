@@ -11,11 +11,16 @@ function openEmployeeModal(id=null){
   document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
   if(id){
     const e = employees.find(x=>x.id===id);
-    fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role; fEmpSalary.value=e.salary; fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
+    fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role;
+    document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
+    document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
+    fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
     document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
   } else {
     ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value='');
-    fEmpSalary.value=''; fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
+    document.getElementById('fEmpInternalSalary').value = '';
+    document.getElementById('fEmpExternalSalary').value = '';
+    fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
     document.getElementById('fEmpEmploymentState').value='Full-Time';
   }
   document.getElementById('employeeModal').classList.add('active');
@@ -24,13 +29,15 @@ async function saveEmployee(){
   const name = document.getElementById('fEmpName').value.trim();
   if(!name){ toast('Please enter employee name.','fa-solid fa-triangle-exclamation'); return; }
   const vacTotal = Number(fEmpVac.value)||21;
+  const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value)||0;
+  const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value)||0;
   try{
     if(currentEditId){
-      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value };
       await Api.updateEmployee(currentEditId, updates);
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, salary: Number(fEmpSalary.value)||0, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value };
       await Api.createEmployee(payload);
       toast('New employee added.');
     }
@@ -50,7 +57,7 @@ async function viewProfile(id){
   const e = employees.find(x=>x.id===id);
   document.getElementById('detailProfileHead').innerHTML = `<div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div>`;
   document.getElementById('detailInfoGrid').innerHTML = `<div class="info-item"><span>Email</span><b>${e.email}</b></div><div class="info-item"><span>Status</span><b>${e.status}</b></div>
-      <div class="info-item"><span>Employment State</span><b>${e.employment_state || 'Full-Time'}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
+      <div class="info-item"><span>Employment State</span><b>${e.employment_state || 'Full-Time'}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Internal Salary (USD)</span><b>$${(e.internalSalaryUsd||0).toLocaleString()}</b></div><div class="info-item"><span>External Salary (USD)</span><b>$${(e.externalSalaryUsd||0).toLocaleString()}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
   const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(id));
   document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
   document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
@@ -206,9 +213,6 @@ function renderEmployeeDocuments(docs){
 function previewEmployeeDocument(docId, name, fileType){
   const container = document.getElementById('docPreviewContainer');
   document.getElementById('docPreviewTitle').textContent = name || 'Document Preview';
-  // Download button: fetch-then-blob (see Api.downloadEmployeeDocumentFile) instead of
-  // a direct href, since a plain <a href="backendUrl"> load of a cross-context resource
-  // does not reliably send the SameSite=Lax session cookie either.
   const downloadBtn = document.getElementById('docPreviewDownloadBtn');
   downloadBtn.onclick = (e) => {
     e.preventDefault();
