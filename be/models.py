@@ -32,11 +32,23 @@ class LoginResponse(BaseModel):
 
 
 class EmployeeCreate(BaseModel):
+    """
+    Salary is modeled as two USD-denominated components (see docs/analysis/
+    salary-advanced-plan.md, Phase 1):
+    - internal_salary_usd: paid within Egypt.
+    - external_salary_usd: paid directly from the USA.
+    Both are required (no defaults) - 0 is a valid explicit value for an
+    employee who is 100% one or the other, but the field must be present.
+    There is no flat `salary` field on create anymore; any legacy total
+    shown elsewhere in the app is derived server-side as the sum of the
+    two components.
+    """
     name: str
     email: EmailStr
     dept: str = ""
     job_role: str = ""
-    salary: float = 0
+    internal_salary_usd: float
+    external_salary_usd: float
     join_date: str = ""
     status: str = "Active"
     vac_total: int = 21
@@ -49,7 +61,8 @@ class EmployeeUpdate(BaseModel):
     email: Optional[EmailStr] = None
     dept: Optional[str] = None
     job_role: Optional[str] = None
-    salary: Optional[float] = None
+    internal_salary_usd: Optional[float] = None
+    external_salary_usd: Optional[float] = None
     join_date: Optional[str] = None
     status: Optional[str] = None
     vac_total: Optional[int] = None
