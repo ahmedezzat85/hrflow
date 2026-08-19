@@ -7,7 +7,7 @@ function renderSalaryPage(filter=''){
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
   const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct),0)/thisYearRaises.length) : 0;
   document.getElementById('statAvgRaise').textContent = (avgPct>=0?'+':'') + avgPct.toFixed(1) + '%';
-  const now = new Date(); // dynamic - was hardcoded to a fixed date (see docs/analysis/security-analysis-plan.md, finding #12)
+  const now = new Date();
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
   const upcoming = employees.filter(e=>{ const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
@@ -22,50 +22,107 @@ function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
   sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
-  document.getElementById('rMode').value='pct'; document.getElementById('rValue').value=''; document.getElementById('rDate').value = new Date().toISOString().slice(0, 10); // dynamic - was hardcoded document.getElementById('rReason').value='Annual performance raise';
-  onRaiseModeChange();
+  document.getElementById('rTarget').value='both';
+  document.getElementById('rMode').value='pct'; document.getElementById('rValue').value=''; document.getElementById('rNewInternal').value=''; document.getElementById('rNewExternal').value='';
+  document.getElementById('rDate').value = new Date().toISOString().slice(0, 10); document.getElementById('rReason').value='Annual performance raise';
+  onRaiseTargetChange();
   document.getElementById('raisePreview').classList.remove('show');
   document.getElementById('raiseModal').classList.add('active');
 }
 function onRaiseEmployeeChange(){ updateRaisePreview(); }
+function isBothNewMode(){
+  return document.getElementById('rTarget').value === 'both' && document.getElementById('rMode').value === 'new';
+}
+function onRaiseTargetChange(){
+  onRaiseModeChange();
+}
 function onRaiseModeChange(){
   const mode = document.getElementById('rMode').value;
+  const bothNew = isBothNewMode();
+  document.getElementById('rValueWrap').style.display = bothNew ? 'none' : '';
+  document.getElementById('rNewInternalWrap').style.display = bothNew ? '' : 'none';
+  document.getElementById('rNewExternalWrap').style.display = bothNew ? '' : 'none';
   const label = document.getElementById('rValueLabel');
-  label.textContent = mode==='pct' ? 'Percentage (%)' : (mode==='amount' ? 'Increase Amount (EGP)' : 'New Salary (EGP)');
+  label.textContent = mode==='pct' ? 'Percentage (%)' : (mode==='amount' ? 'Increase Amount (USD)' : 'New Salary (USD)');
   updateRaisePreview();
 }
-function computeNewSalary(current, mode, value){
-  if(mode==='pct') return Math.round(current * (1 + value/100));
-  if(mode==='amount') return Math.round(current + value);
-  return Math.round(value);
+function applyMode(current, mode, value){
+  if(mode==='pct') return Math.round((current * (1 + value/100)) * 100) / 100;
+  if(mode==='amount') return Math.round((current + value) * 100) / 100;
+  return Math.round(value * 100) / 100;
+}
+function computeRaisePreviewValues(emp){
+  const target = document.getElementById('rTarget').value;
+  const mode = document.getElementById('rMode').value;
+  const currentInternal = Number(emp.internalSalaryUsd || 0);
+  const currentExternal = Number(emp.externalSalaryUsd || 0);
+  let newInternal = currentInternal, newExternal = currentExternal;
+  if(target === 'both' && mode === 'new'){
+    const ni = Number(document.getElementById('rNewInternal').value);
+    const ne = Number(document.getElementById('rNewExternal').value);
+    if(document.getElementById('rNewInternal').value === '' || document.getElementById('rNewExternal').value === '') return null;
+    newInternal = ni; newExternal = ne;
+  } else {
+    const value = Number(document.getElementById('rValue').value);
+    if(document.getElementById('rValue').value === '' || isNaN(value)) return null;
+    if(target === 'both'){
+      newInternal = applyMode(currentInternal, mode, value);
+      newExternal = applyMode(currentExternal, mode, value);
+    } else if(target === 'internal'){
+      newInternal = applyMode(currentInternal, mode, value);
+    } else {
+      newExternal = applyMode(currentExternal, mode, value);
+    }
+  }
+  return { currentInternal, currentExternal, newInternal, newExternal };
 }
 function updateRaisePreview(){
   const empId = Number(document.getElementById('rEmpSelect').value);
   const emp = employees.find(e=>e.id===empId);
-  const mode = document.getElementById('rMode').value;
-  const value = Number(document.getElementById('rValue').value);
   const preview = document.getElementById('raisePreview');
-  if(!emp || !value){ preview.classList.remove('show'); return; }
-  const newSalary = computeNewSalary(emp.salary, mode, value);
-  const pct = ((newSalary-emp.salary)/emp.salary*100);
-  document.getElementById('rvCurrent').textContent = fmtMoney(emp.salary);
-  document.getElementById('rvNew').textContent = fmtMoney(newSalary);
-  document.getElementById('rvIncrease').textContent = (pct>=0?'+':'') + pct.toFixed(1) + '% (' + fmtMoney(newSalary-emp.salary) + ')';
+  if(!emp){ preview.classList.remove('show'); return; }
+  const vals = computeRaisePreviewValues(emp);
+  if(!vals){ preview.classList.remove('show'); return; }
+  const { currentInternal, currentExternal, newInternal, newExternal } = vals;
+  const currentTotal = currentInternal + currentExternal;
+  const newTotal = newInternal + newExternal;
+  const pct = currentTotal > 0 ? ((newTotal-currentTotal)/currentTotal*100) : 0;
+  document.getElementById('rvCurrentInternal').textContent = fmtUSD(currentInternal);
+  document.getElementById('rvNewInternal').textContent = fmtUSD(newInternal);
+  document.getElementById('rvCurrentExternal').textContent = fmtUSD(currentExternal);
+  document.getElementById('rvNewExternal').textContent = fmtUSD(newExternal);
+  document.getElementById('rvCurrent').textContent = fmtUSD(currentTotal);
+  document.getElementById('rvNew').textContent = fmtUSD(newTotal);
+  document.getElementById('rvIncrease').textContent = (pct>=0?'+':'') + pct.toFixed(1) + '% (' + fmtUSD(newTotal-currentTotal) + ')';
   preview.classList.add('show');
 }
 async function applyRaise(){
   const empId = Number(document.getElementById('rEmpSelect').value);
   const emp = employees.find(e=>e.id===empId);
+  const target = document.getElementById('rTarget').value;
   const mode = document.getElementById('rMode').value;
-  const value = Number(document.getElementById('rValue').value);
   const date = document.getElementById('rDate').value;
   const reason = document.getElementById('rReason').value;
-  if(!emp || !value || !date){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
+  if(!emp || !date){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
+
+  const payload = { employee_id: empId, mode, target, effective_date: date, reason };
+  if(target === 'both' && mode === 'new'){
+    const internalVal = document.getElementById('rNewInternal').value;
+    const externalVal = document.getElementById('rNewExternal').value;
+    if(internalVal === '' || externalVal === ''){ toast('Please enter both new salary values.','fa-solid fa-triangle-exclamation'); return; }
+    payload.internal_value = Number(internalVal);
+    payload.external_value = Number(externalVal);
+  } else {
+    const value = document.getElementById('rValue').value;
+    if(value === ''){ toast('Please enter a value.','fa-solid fa-triangle-exclamation'); return; }
+    payload.value = Number(value);
+  }
+
   try{
-    const result = await Api.applyRaise({ employee_id: empId, mode, value, effective_date: date, reason });
+    const result = await Api.applyRaise(payload);
     closeModal('raiseModal');
-    const pctStr = (result.pct_change>=0?'+':'') + result.pct_change.toFixed(1);
-    toast(`Raise applied to ${emp.name}: ${pctStr}% (${fmtMoney(result.new_salary)}).`);
+    const pctStr = (result.pct_change>=0?'+':'') + result.pct_change.toFixed(1) + '%';
+    toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtUSD(result.new_internal_salary_usd + result.new_external_salary_usd)}.`);
     await loadAdminData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
