@@ -121,9 +121,28 @@ class InsuranceClaimAction(BaseModel):
 
 
 class RaiseApply(BaseModel):
+    """
+    A raise can change one component or both in a single call (see
+    docs/analysis/salary-advanced-plan.md - "RaiseApply model changes").
+
+    Validation (enforced in the endpoint, not just here, since the
+    "required when" logic is conditional on other fields):
+    - target in ("internal", "external"): `value` is required;
+      internal_value/external_value must be omitted.
+    - target == "both" and mode in ("pct", "amount"): `value` is required
+      (applied independently to each component); internal_value/
+      external_value must be omitted.
+    - target == "both" and mode == "new": both internal_value and
+      external_value are required explicitly (0 is valid, must be
+      present); `value` must be omitted. The resulting total is always
+      derived as internal_value + external_value, never supplied directly.
+    """
     employee_id: int
     mode: Literal["pct", "amount", "new"]
-    value: float
+    target: Literal["internal", "external", "both"] = "both"
+    value: Optional[float] = None
+    internal_value: Optional[float] = None
+    external_value: Optional[float] = None
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
 
