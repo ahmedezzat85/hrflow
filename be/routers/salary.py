@@ -1,7 +1,8 @@
 """
-routers/salary.py
-Salary history and raise application. Moved from main.py during the
-router-decomposition refactor - pure structural move, no behavior change.
+salary.py
+Salary & Raises router: salary history + applying raises, with support
+for the Internal/External USD component split (see docs/analysis/
+salary-advanced-plan.md).
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -119,14 +120,11 @@ def apply_raise(payload: RaiseApply, current_user: dict = Depends(require_admin)
         "previous_salary": current_total, "new_salary": new_total,
         "pct_change": f"{'+' if pct_change >= 0 else ''}{pct_change}%",
         "reason": payload.reason, "applied_by": current_user["email"],
+        "previous_internal_usd": current_internal, "previous_external_usd": current_external,
+        "new_internal_usd": new_internal, "new_external_usd": new_external,
     })
 
-    is_backdated = False
-    try:
-        is_backdated = datetime.strptime(effective_date, "%Y-%m-%d") < (datetime.utcnow() - timedelta(days=1))
-    except ValueError:
-        pass
-
+    is_backdated = payload.effective_date is not None and effective_date < datetime.utcnow().strftime("%Y-%m-%d")
     if not is_backdated:
         next_raise_date = (datetime.strptime(effective_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
         client.update_row_by_match("Employees", "id", emp["id"], {
