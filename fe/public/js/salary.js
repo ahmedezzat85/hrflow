@@ -1,8 +1,23 @@
+function fmtDelta(amount, pct){
+  const sign = amount >= 0 ? '+' : '';
+  return `${sign}${fmtUSD(amount)} (${sign}${pct.toFixed(1)}%)`;
+}
+function computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal){
+  const prevTotal = prevInternal + prevExternal;
+  const newTotal = newInternal + newExternal;
+  const internalAmt = newInternal - prevInternal;
+  const internalPct = prevInternal > 0 ? (internalAmt / prevInternal * 100) : 0;
+  const externalAmt = newExternal - prevExternal;
+  const externalPct = prevExternal > 0 ? (externalAmt / prevExternal * 100) : 0;
+  const totalAmt = newTotal - prevTotal;
+  const totalPct = prevTotal > 0 ? (totalAmt / prevTotal * 100) : 0;
+  return { internalAmt, internalPct, externalAmt, externalPct, totalAmt, totalPct };
+}
 function renderSalaryPage(filter=''){
   const f = filter.toLowerCase();
   const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
   document.getElementById('statPayroll').textContent = fmtMoney(totalPayroll);
-  const allRaises = employees.flatMap(e=>e.salaryHistory.map(h=>({...h, emp:e.name})));
+  const allRaises = employees.flatMap(e=>e.salaryHistory.map(h=>({...h, emp:e.name, empId:e.id})));
   const thisYearRaises = allRaises.filter(h=>h.date.startsWith('2026'));
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
   const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct),0)/thisYearRaises.length) : 0;
@@ -15,113 +30,76 @@ function renderSalaryPage(filter=''){
   body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>{ const last = e.salaryHistory.length ? e.salaryHistory[e.salaryHistory.length-1] : null; return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${last ? `${last.date} (${last.pct})` : '<span style="color:var(--text3);">No history</span>'}</td><td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`; }).join('');
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
-  histBody.innerHTML = sortedHist.map(h=>`<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtMoney(h.prev)}</td><td>${fmtMoney(h.next)}</td><td><span class="badge-pill pill-success">${h.pct}</span></td><td>${h.reason}</td></tr>`).join('') || `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raises recorded yet.</p></div></td></tr>`;
+  histBody.innerHTML = sortedHist.map((h, idx) => {
+    const olderSameEmp = sortedHist.slice(idx+1).find(o => o.empId === h.empId);
+    const prevInternal = olderSameEmp ? Number(olderSameEmp.newInternal || 0) : Number(h.prevInternal || 0);
+    const prevExternal = olderSameEmp ? Number(olderSameEmp.newExternal || 0) : Number(h.prevExternal || 0);
+    const newInternal = Number(h.newInternal || 0);
+    const newExternal = Number(h.newExternal || 0);
+    const d = computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal);
+    return `<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtUSD(newInternal)}</td><td>${fmtUSD(newExternal)}</td><td>${fmtUSD(newInternal+newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${h.reason}</td></tr>`;
+  }).join('') || `<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raises recorded yet.</p></div></td></tr>`;
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
 function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
   sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
-  document.getElementById('rTarget').value='both';
-  document.getElementById('rMode').value='pct'; document.getElementById('rValue').value=''; document.getElementById('rNewInternal').value=''; document.getElementById('rNewExternal').value='';
-  document.getElementById('rDate').value = new Date().toISOString().slice(0, 10); document.getElementById('rReason').value='Annual performance raise';
-  onRaiseTargetChange();
-  document.getElementById('raisePreview').classList.remove('show');
+  document.getElementById('rNewInternal').value = '';
+  document.getElementById('rNewExternal').value = '';
+  document.getElementById('rDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('rReason').value = 'Annual performance raise';
+  onRaiseEmployeeChange();
   document.getElementById('raiseModal').classList.add('active');
 }
-function onRaiseEmployeeChange(){ updateRaisePreview(); }
-function isBothNewMode(){
-  return document.getElementById('rTarget').value === 'both' && document.getElementById('rMode').value === 'new';
-}
-function onRaiseTargetChange(){
-  onRaiseModeChange();
-}
-function onRaiseModeChange(){
-  const mode = document.getElementById('rMode').value;
-  const bothNew = isBothNewMode();
-  document.getElementById('rValueWrap').style.display = bothNew ? 'none' : '';
-  document.getElementById('rNewInternalWrap').style.display = bothNew ? '' : 'none';
-  document.getElementById('rNewExternalWrap').style.display = bothNew ? '' : 'none';
-  const label = document.getElementById('rValueLabel');
-  label.textContent = mode==='pct' ? 'Percentage (%)' : (mode==='amount' ? 'Increase Amount (USD)' : 'New Salary (USD)');
+function onRaiseEmployeeChange(){
+  const empId = Number(document.getElementById('rEmpSelect').value);
+  const emp = employees.find(e=>e.id===empId);
+  document.getElementById('rvCurrentInternal').value = emp ? fmtUSD(emp.internalSalaryUsd || 0) : '—';
+  document.getElementById('rvCurrentExternal').value = emp ? fmtUSD(emp.externalSalaryUsd || 0) : '—';
   updateRaisePreview();
-}
-function applyMode(current, mode, value){
-  if(mode==='pct') return Math.round((current * (1 + value/100)) * 100) / 100;
-  if(mode==='amount') return Math.round((current + value) * 100) / 100;
-  return Math.round(value * 100) / 100;
-}
-function computeRaisePreviewValues(emp){
-  const target = document.getElementById('rTarget').value;
-  const mode = document.getElementById('rMode').value;
-  const currentInternal = Number(emp.internalSalaryUsd || 0);
-  const currentExternal = Number(emp.externalSalaryUsd || 0);
-  let newInternal = currentInternal, newExternal = currentExternal;
-  if(target === 'both' && mode === 'new'){
-    const ni = Number(document.getElementById('rNewInternal').value);
-    const ne = Number(document.getElementById('rNewExternal').value);
-    if(document.getElementById('rNewInternal').value === '' || document.getElementById('rNewExternal').value === '') return null;
-    newInternal = ni; newExternal = ne;
-  } else {
-    const value = Number(document.getElementById('rValue').value);
-    if(document.getElementById('rValue').value === '' || isNaN(value)) return null;
-    if(target === 'both'){
-      newInternal = applyMode(currentInternal, mode, value);
-      newExternal = applyMode(currentExternal, mode, value);
-    } else if(target === 'internal'){
-      newInternal = applyMode(currentInternal, mode, value);
-    } else {
-      newExternal = applyMode(currentExternal, mode, value);
-    }
-  }
-  return { currentInternal, currentExternal, newInternal, newExternal };
 }
 function updateRaisePreview(){
   const empId = Number(document.getElementById('rEmpSelect').value);
   const emp = employees.find(e=>e.id===empId);
   const preview = document.getElementById('raisePreview');
-  if(!emp){ preview.classList.remove('show'); return; }
-  const vals = computeRaisePreviewValues(emp);
-  if(!vals){ preview.classList.remove('show'); return; }
-  const { currentInternal, currentExternal, newInternal, newExternal } = vals;
-  const currentTotal = currentInternal + currentExternal;
-  const newTotal = newInternal + newExternal;
-  const pct = currentTotal > 0 ? ((newTotal-currentTotal)/currentTotal*100) : 0;
-  document.getElementById('rvCurrentInternal').textContent = fmtUSD(currentInternal);
-  document.getElementById('rvNewInternal').textContent = fmtUSD(newInternal);
-  document.getElementById('rvCurrentExternal').textContent = fmtUSD(currentExternal);
-  document.getElementById('rvNewExternal').textContent = fmtUSD(newExternal);
-  document.getElementById('rvCurrent').textContent = fmtUSD(currentTotal);
-  document.getElementById('rvNew').textContent = fmtUSD(newTotal);
-  document.getElementById('rvIncrease').textContent = (pct>=0?'+':'') + pct.toFixed(1) + '% (' + fmtUSD(newTotal-currentTotal) + ')';
+  const internalVal = document.getElementById('rNewInternal').value;
+  const externalVal = document.getElementById('rNewExternal').value;
+  if(!emp || internalVal === '' || externalVal === ''){ preview.classList.remove('show'); return; }
+  const newInternal = Number(internalVal);
+  const newExternal = Number(externalVal);
+  if(isNaN(newInternal) || isNaN(newExternal)){ preview.classList.remove('show'); return; }
+  const currentInternal = Number(emp.internalSalaryUsd || 0);
+  const currentExternal = Number(emp.externalSalaryUsd || 0);
+  const d = computeRowDeltas(currentInternal, currentExternal, newInternal, newExternal);
+  document.getElementById('rvInternalDelta').textContent = fmtDelta(d.internalAmt, d.internalPct);
+  document.getElementById('rvExternalDelta').textContent = fmtDelta(d.externalAmt, d.externalPct);
+  document.getElementById('rvCurrent').textContent = fmtUSD(currentInternal + currentExternal);
+  document.getElementById('rvNew').textContent = fmtUSD(newInternal + newExternal);
+  document.getElementById('rvIncrease').textContent = fmtDelta(d.totalAmt, d.totalPct);
   preview.classList.add('show');
 }
 async function applyRaise(){
   const empId = Number(document.getElementById('rEmpSelect').value);
   const emp = employees.find(e=>e.id===empId);
-  const target = document.getElementById('rTarget').value;
-  const mode = document.getElementById('rMode').value;
   const date = document.getElementById('rDate').value;
   const reason = document.getElementById('rReason').value;
-  if(!emp || !date){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
+  const internalVal = document.getElementById('rNewInternal').value;
+  const externalVal = document.getElementById('rNewExternal').value;
+  if(!emp || !date || internalVal === '' || externalVal === ''){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
 
-  const payload = { employee_id: empId, mode, target, effective_date: date, reason };
-  if(target === 'both' && mode === 'new'){
-    const internalVal = document.getElementById('rNewInternal').value;
-    const externalVal = document.getElementById('rNewExternal').value;
-    if(internalVal === '' || externalVal === ''){ toast('Please enter both new salary values.','fa-solid fa-triangle-exclamation'); return; }
-    payload.internal_value = Number(internalVal);
-    payload.external_value = Number(externalVal);
-  } else {
-    const value = document.getElementById('rValue').value;
-    if(value === ''){ toast('Please enter a value.','fa-solid fa-triangle-exclamation'); return; }
-    payload.value = Number(value);
-  }
+  const payload = {
+    employee_id: empId,
+    new_internal_salary_usd: Number(internalVal),
+    new_external_salary_usd: Number(externalVal),
+    effective_date: date,
+    reason,
+  };
 
   try{
     const result = await Api.applyRaise(payload);
     closeModal('raiseModal');
-    const pctStr = (result.pct_change>=0?'+':'') + result.pct_change.toFixed(1) + '%';
+    const pctStr = (result.total_delta_pct>=0?'+':'') + result.total_delta_pct.toFixed(1) + '%';
     toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtUSD(result.new_internal_salary_usd + result.new_external_salary_usd)}.`);
     await loadAdminData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
