@@ -26,43 +26,28 @@ SHEET_SCHEMAS = {
                          "amount","date","status","document_url","submitted_by"],
     "InsuranceCategories": ["id","name","annual_limit"],
     "SalaryHistory": ["id","employee_id","date","previous_salary","new_salary",
-                       "pct_change","reason","applied_by"],
+                       "pct_change","reason","applied_by",
+                       "previous_internal_usd","previous_external_usd",
+                       "new_internal_usd","new_external_usd"],
     "Users": ["email","role","employee_id"],
     "EmployeeNotes": ["id","employee_id","date","category","note","created_by"],
-    # EmployeeDocuments originally used only data_url; we now support
-    # Drive-backed storage as well. The union schema keeps existing
-    # data_url column unchanged and appends drive_file_id/view_url/
-    # download_url at the end so legacy rows remain valid and new
-    # uploads populate the additional metadata.
     "EmployeeDocuments": [
         "id","employee_id","name","file_type","data_url",
         "uploaded_by","uploaded_at","drive_file_id","view_url","download_url"
     ],
-    # Company-wide documents/policies (Document Hub) - not tied to an
-    # employee. Stored in a shared "Company Documents" Drive sub-folder.
     "CompanyDocuments": [
         "id","name","file_type","category","drive_file_id",
         "view_url","download_url","uploaded_by","uploaded_at"
     ],
 }
 
-# Columns that must exist on an already-created tab. If a tab predates a
-# column, the missing header is appended at the end of row 1 so existing
-# data stays intact and new writes can populate the added column.
 REQUIRED_COLUMNS = {
     "Employees": ["employment_state", "internal_salary_usd", "external_salary_usd"],
+    "SalaryHistory": ["previous_internal_usd", "previous_external_usd",
+                       "new_internal_usd", "new_external_usd"],
 }
 
 _lock = Lock()
-# Guards singleton CREATION (see SheetsClient.__new__ below). This is a
-# SEPARATE lock from _lock above, which guards individual read/write
-# operations on an already-connected client. Without this, concurrent
-# requests hitting get_client() for the first time (e.g. the frontend's
-# Promise.all() firing several endpoints at once on page load) can race:
-# one thread sets cls._instance before _connect() has finished setting
-# self.spreadsheet, and a second thread returns that half-built instance
-# and crashes with "AttributeError: 'SheetsClient' object has no
-# attribute 'spreadsheet'".
 _instance_lock = Lock()
 
 
@@ -70,12 +55,9 @@ class SheetsClient:
     _instance = None
 
     def __new__(cls):
-        # Fast path: already fully connected, no locking needed.
         if cls._instance is not None:
             return cls._instance
         with _instance_lock:
-            # Re-check inside the lock in case another thread finished
-            # connecting while we were waiting for the lock.
             if cls._instance is None:
                 instance = super().__new__(cls)
                 instance._connect()
@@ -109,13 +91,6 @@ class SheetsClient:
                 if not first_row:
                     logger.warning("Sheet tab '%s' exists but has no header row - adding headers", tab_name)
                     ws.append_row(headers)
-                # Legacy migration for EmployeeDocuments: if the tab was
-                # created before Drive-backed documents were introduced,
-                # it will only have the old headers
-                #   id, employee_id, name, file_type, data_url, uploaded_by, uploaded_at
-                # We transparently extend that header row to the union
-                # schema so existing data stays intact and new uploads can
-                # store drive_file_id/view_url/download_url.
                 if tab_name == "EmployeeDocuments":
                     legacy_headers = [
                         "id","employee_id","name","file_type","data_url",
@@ -132,8 +107,6 @@ class SheetsClient:
                             logger.exception(
                                 "Failed to migrate EmployeeDocuments header row to union schema"
                             )
-                            # Don't raise here; even if migration fails we
-                            # prefer the app to keep running.
 
         self._ensure_required_columns()
 
