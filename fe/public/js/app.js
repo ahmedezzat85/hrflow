@@ -1,6 +1,7 @@
 function normalizeEmployee(e, salaryHistoryForEmp){
   return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
     nextRaise: e.next_raise, salary: Number(e.salary),
+    internalSalaryUsd: Number(e.internal_salary_usd || 0), externalSalaryUsd: Number(e.external_salary_usd || 0),
     salaryHistory: (salaryHistoryForEmp || []).map(h=>({ date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary), pct: h.pct_change, reason: h.reason })) };
 }
 function normalizeRequest(r){ return { ...r, emp: r.employee_name }; }
