@@ -46,12 +46,19 @@ def get_employee(emp_id: int, current_user: dict = Depends(get_current_user)):
 def create_employee(payload: EmployeeCreate, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
     new_id = client.next_id("Employees")
+    # `salary` (legacy, total) is derived here purely for backward
+    # compatibility with frontend code that hasn't migrated to the two
+    # USD components yet - see docs/analysis/salary-advanced-plan.md,
+    # Phase 1. It is not an independent input anymore.
+    legacy_total_salary = payload.internal_salary_usd + payload.external_salary_usd
     employee_row = {
         "id": new_id, "name": payload.name, "email": payload.email, "role": "employee",
-        "dept": payload.dept, "job_role": payload.job_role, "salary": payload.salary,
+        "dept": payload.dept, "job_role": payload.job_role, "salary": legacy_total_salary,
         "join_date": payload.join_date, "status": payload.status, "vac_total": payload.vac_total,
         "vac_used": 0, "next_raise": payload.next_raise,
         "employment_state": payload.employment_state,
+        "internal_salary_usd": payload.internal_salary_usd,
+        "external_salary_usd": payload.external_salary_usd,
     }
     client.append_row("Employees", employee_row)
     client.append_row("Users", {"email": payload.email, "role": "employee", "employee_id": new_id})
@@ -63,6 +70,23 @@ def create_employee(payload: EmployeeCreate, current_user: dict = Depends(requir
 def update_employee(emp_id: int, payload: EmployeeUpdate, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+
+    # If either USD component is being changed, the legacy `salary` total
+    # must be recomputed as internal + external - using the *resulting*
+    # values (updated field if supplied, otherwise the employee's current
+    # stored value), not just the field(s) present in this payload. See
+    # docs/analysis/salary-advanced-plan.md, Phase 1.
+    if "internal_salary_usd" in updates or "external_salary_usd" in updates:
+        employees = client.get_all_records("Employees")
+        emp = next((e for e in employees if str(e["id"]) == str(emp_id)), None)
+        if not emp:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        current_internal = float(emp.get("internal_salary_usd") or 0)
+        current_external = float(emp.get("external_salary_usd") or 0)
+        new_internal = updates.get("internal_salary_usd", current_internal)
+        new_external = updates.get("external_salary_usd", current_external)
+        updates["salary"] = new_internal + new_external
+
     ok = client.update_row_by_match("Employees", "id", emp_id, updates)
     if not ok:
         raise HTTPException(status_code=404, detail="Employee not found")

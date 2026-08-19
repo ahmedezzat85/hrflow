@@ -1,7 +1,12 @@
 function normalizeEmployee(e, salaryHistoryForEmp){
   return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
     nextRaise: e.next_raise, salary: Number(e.salary),
-    salaryHistory: (salaryHistoryForEmp || []).map(h=>({ date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary), pct: h.pct_change, reason: h.reason })) };
+    internalSalaryUsd: Number(e.internal_salary_usd || 0), externalSalaryUsd: Number(e.external_salary_usd || 0),
+    salaryHistory: (salaryHistoryForEmp || []).map(h=>({
+      date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary), pct: h.pct_change, reason: h.reason,
+      newInternal: Number(h.new_internal_usd || 0), newExternal: Number(h.new_external_usd || 0),
+      prevInternal: Number(h.previous_internal_usd || 0), prevExternal: Number(h.previous_external_usd || 0),
+    })) };
 }
 function normalizeRequest(r){ return { ...r, emp: r.employee_name }; }
 function normalizeClaim(c){ return { ...c, emp: c.employee_name }; }
@@ -77,7 +82,14 @@ function renderEmployeePortal(){
     {ic:'fa-solid fa-sack-dollar',c:'success',t:'Annual raise applied',d: emp.salaryHistory.length ? `${emp.salaryHistory[emp.salaryHistory.length-1].pct} • ${emp.salaryHistory[emp.salaryHistory.length-1].date}` : 'No raises yet'},
     {ic:'fa-solid fa-house-laptop',c:'info',t:'Work from home approved',d:'May 20 - May 21, 2026'},
   ].map(x=>`<li><div class="ic" style="background:var(--${x.c==='accent'?'accent-soft':'surface2'});color:var(--${x.c});"><i class="${x.ic}"></i></div><div class="txt"><strong>${x.t}</strong><p>${x.d}</p></div></li>`).join('');
-  document.getElementById('salaryHistoryBody').innerHTML = emp.salaryHistory.slice().reverse().map(s=>`<tr><td>${s.date}</td><td>${fmtMoney(s.prev)}</td><td>${fmtMoney(s.next)}</td><td><span class="badge-pill pill-success">${s.pct}</span></td><td>${s.reason}</td></tr>`).join('') || `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raise history yet.</p></div></td></tr>`;
+  const histSorted = emp.salaryHistory.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('salaryHistoryBody').innerHTML = histSorted.map((s, idx) => {
+    const older = histSorted[idx+1];
+    const prevInternal = older ? older.newInternal : (s.prevInternal || 0);
+    const prevExternal = older ? older.newExternal : (s.prevExternal || 0);
+    const d = computeRowDeltas(prevInternal, prevExternal, s.newInternal, s.newExternal);
+    return `<tr><td>${s.date}</td><td>${fmtUSD(s.newInternal)}</td><td>${fmtUSD(s.newExternal)}</td><td>${fmtUSD(s.newInternal+s.newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${s.reason}</td></tr>`;
+  }).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raise history yet.</p></div></td></tr>`;
   document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v=>`<tr><td>${v.type}</td><td>${v.dates}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('');
   document.getElementById('empInsuranceBody').innerHTML = empInsuranceHistory.map(c=>`<tr><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td>${c.document_url ? `<a href="${c.document_url}" target="_blank" class="icon-action" style="display:inline-flex;" title="View supporting document"><i class="fa-solid fa-paperclip"></i></a>` : '<span style="color:var(--text3);">—</span>'}</td></tr>`).join('');
   renderEmployeeInsuranceHighlights();

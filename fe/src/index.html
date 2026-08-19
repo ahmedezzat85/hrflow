@@ -232,7 +232,7 @@
         </div>
         <div class="card">
           <div class="card-head"><h3>Company-wide Raise History</h3></div>
-          <table><thead><tr><th>Employee</th><th>Effective Date</th><th>Previous Salary</th><th>New Salary</th><th>Increase</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
+          <table><thead><tr><th>Employee</th><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
         </div>
       </section>
 
@@ -367,7 +367,7 @@
         </div>
         <div class="card">
           <div class="card-head"><h3>Raise History</h3></div>
-          <table><thead><tr><th>Effective Date</th><th>Previous Salary</th><th>New Salary</th><th>Increase</th><th>Reason</th></tr></thead>
+          <table><thead><tr><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead>
           <tbody id="salaryHistoryBody"></tbody></table>
         </div>
       </section>
@@ -446,7 +446,8 @@
         <div class="form-field"><label>Email</label><input id="fEmpEmail" placeholder="laila@hrflow.com"></div>
         <div class="form-field"><label>Department</label><select id="fEmpDept"><option>Engineering</option><option>Product</option><option>Design</option><option>Sales</option><option>Finance</option><option>Operations</option></select></div>
         <div class="form-field"><label>Role / Title</label><input id="fEmpRole" placeholder="e.g. Senior Developer"></div>
-        <div class="form-field"><label>Monthly Salary (EGP)</label><input type="number" id="fEmpSalary" placeholder="35000"></div>
+        <div class="form-field"><label>Internal Salary (USD)</label><input type="number" id="fEmpInternalSalary" placeholder="1000"></div>
+        <div class="form-field"><label>External Salary (USD)</label><input type="number" id="fEmpExternalSalary" placeholder="0"></div>
         <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
         <div class="form-field"><label>Status</label><select id="fEmpStatus"><option>Active</option><option>On Leave</option><option>Suspended</option></select></div>
         <div class="form-field"><label>Employment State</label><select id="fEmpEmploymentState"><option>Full-Time</option><option>Part-Time</option><option>Freelance</option><option>Occasional</option></select></div>
@@ -474,23 +475,21 @@
         <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
       </div>
       <div class="form-grid">
-        <div class="form-field"><label>Raise Type</label>
-          <select id="rMode" onchange="onRaiseModeChange()">
-            <option value="pct">Percentage Increase (%)</option>
-            <option value="amount">Flat Increase (EGP)</option>
-            <option value="new">Set New Salary (EGP)</option>
-          </select>
-        </div>
-        <div class="form-field"><label id="rValueLabel">Percentage (%)</label><input type="number" id="rValue" placeholder="e.g. 8" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>Current Internal (USD)</label><input type="text" id="rvCurrentInternal" value="—" disabled></div>
+        <div class="form-field"><label>Current External (USD)</label><input type="text" id="rvCurrentExternal" value="—" disabled></div>
+        <div class="form-field"><label>New Internal (USD)</label><input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>New External (USD)</label><input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()"></div>
         <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
         <div class="form-field"><label>Reason</label>
           <select id="rReason"><option>Annual performance raise</option><option>Promotion</option><option>Cost of living adjustment</option><option>Market adjustment</option><option>Retention raise</option></select>
         </div>
       </div>
       <div class="raise-preview" id="raisePreview">
-        <div class="row"><span>Current Salary</span><b id="rvCurrent">—</b></div>
-        <div class="row"><span>New Salary</span><b id="rvNew">—</b></div>
-        <div class="row"><span>Increase</span><b id="rvIncrease">—</b></div>
+        <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
+        <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
+        <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
+        <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
+        <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
       </div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button class="btn btn-fill" onclick="applyRaise()"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
@@ -548,7 +547,6 @@
   </div>
 </div>
 
-<!-- NEW: Employee Document upload modal -->
 <div class="modal-overlay" id="employeeDocumentModal">
   <div class="modal">
     <div class="modal-head">
@@ -601,7 +599,6 @@
   </div>
 </div>
 
-<!-- NEW: In-app document preview modal (no need to leave the app) -->
 <div class="modal-overlay" id="documentPreviewModal">
   <div class="modal" style="max-width:900px;width:92vw;">
     <div class="modal-head">

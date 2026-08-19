@@ -45,7 +45,8 @@ def test_non_admin_cannot_create_employee(app_client, employee_cookies):
 
 
 def test_admin_can_create_employee(app_client, admin_cookies):
-    payload = {"name": "New Person", "email": "new@hrflow.test"}
+    payload = {"name": "New Person", "email": "new@hrflow.test",
+               "internal_salary_usd": 1000, "external_salary_usd": 0}
     response = app_client.post("/api/employees", json=payload, cookies=admin_cookies)
     assert response.status_code == 201
 

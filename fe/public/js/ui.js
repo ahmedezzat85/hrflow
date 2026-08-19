@@ -104,6 +104,7 @@ function toast(msg, icon='fa-solid fa-circle-check'){
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
 function fmtMoney(n){ return 'EGP ' + Number(n).toLocaleString(); }
+function fmtUSD(n){ return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
 function statusPill(status){
   const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
