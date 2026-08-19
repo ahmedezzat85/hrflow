@@ -122,27 +122,16 @@ class InsuranceClaimAction(BaseModel):
 
 class RaiseApply(BaseModel):
     """
-    A raise can change one component or both in a single call (see
-    docs/analysis/salary-advanced-plan.md - "RaiseApply model changes").
-
-    Validation (enforced in the endpoint, not just here, since the
-    "required when" logic is conditional on other fields):
-    - target in ("internal", "external"): `value` is required;
-      internal_value/external_value must be omitted.
-    - target == "both" and mode in ("pct", "amount"): `value` is required
-      (applied independently to each component); internal_value/
-      external_value must be omitted.
-    - target == "both" and mode == "new": both internal_value and
-      external_value are required explicitly (0 is valid, must be
-      present); `value` must be omitted. The resulting total is always
-      derived as internal_value + external_value, never supplied directly.
+    Redesigned raise model (see docs/analysis/salary-raise-redesign-plan.md):
+    every raise always supplies both new absolute USD values directly - no
+    percentage/flat-amount modes and no internal/external/both target
+    selector anymore. 0 is a valid explicit value for either component (an
+    employee who is 100% one component still states the other as 0), but
+    both fields must always be present.
     """
     employee_id: int
-    mode: Literal["pct", "amount", "new"]
-    target: Literal["internal", "external", "both"] = "both"
-    value: Optional[float] = None
-    internal_value: Optional[float] = None
-    external_value: Optional[float] = None
+    new_internal_salary_usd: float
+    new_external_salary_usd: float
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
 
