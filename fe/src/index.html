@@ -232,7 +232,7 @@
         </div>
         <div class="card">
           <div class="card-head"><h3>Company-wide Raise History</h3></div>
-          <table><thead><tr><th>Employee</th><th>Effective Date</th><th>Previous Salary</th><th>New Salary</th><th>Increase</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
+          <table><thead><tr><th>Employee</th><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
         </div>
       </section>
 
@@ -367,7 +367,7 @@
         </div>
         <div class="card">
           <div class="card-head"><h3>Raise History</h3></div>
-          <table><thead><tr><th>Effective Date</th><th>Previous Salary</th><th>New Salary</th><th>Increase</th><th>Reason</th></tr></thead>
+          <table><thead><tr><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead>
           <tbody id="salaryHistoryBody"></tbody></table>
         </div>
       </section>
@@ -475,36 +475,21 @@
         <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
       </div>
       <div class="form-grid">
-        <div class="form-field"><label>Target Component</label>
-          <select id="rTarget" onchange="onRaiseTargetChange()">
-            <option value="both">Both (Internal + External)</option>
-            <option value="internal">Internal Only</option>
-            <option value="external">External Only</option>
-          </select>
-        </div>
-        <div class="form-field"><label>Raise Type</label>
-          <select id="rMode" onchange="onRaiseModeChange()">
-            <option value="pct">Percentage Increase (%)</option>
-            <option value="amount">Flat Increase (USD)</option>
-            <option value="new">Set New Salary (USD)</option>
-          </select>
-        </div>
-        <div class="form-field" id="rValueWrap"><label id="rValueLabel">Percentage (%)</label><input type="number" id="rValue" placeholder="e.g. 8" oninput="updateRaisePreview()"></div>
-        <div class="form-field" id="rNewInternalWrap" style="display:none;"><label>New Internal Salary (USD)</label><input type="number" id="rNewInternal" placeholder="e.g. 1200" oninput="updateRaisePreview()"></div>
-        <div class="form-field" id="rNewExternalWrap" style="display:none;"><label>New External Salary (USD)</label><input type="number" id="rNewExternal" placeholder="e.g. 500" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>Current Internal (USD)</label><input type="text" id="rvCurrentInternal" value="—" disabled></div>
+        <div class="form-field"><label>Current External (USD)</label><input type="text" id="rvCurrentExternal" value="—" disabled></div>
+        <div class="form-field"><label>New Internal (USD)</label><input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()"></div>
+        <div class="form-field"><label>New External (USD)</label><input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()"></div>
         <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
         <div class="form-field"><label>Reason</label>
           <select id="rReason"><option>Annual performance raise</option><option>Promotion</option><option>Cost of living adjustment</option><option>Market adjustment</option><option>Retention raise</option></select>
         </div>
       </div>
       <div class="raise-preview" id="raisePreview">
-        <div class="row"><span>Current Internal</span><b id="rvCurrentInternal">—</b></div>
-        <div class="row"><span>New Internal</span><b id="rvNewInternal">—</b></div>
-        <div class="row"><span>Current External</span><b id="rvCurrentExternal">—</b></div>
-        <div class="row"><span>New External</span><b id="rvNewExternal">—</b></div>
+        <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
+        <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
         <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
         <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
-        <div class="row"><span>Increase</span><b id="rvIncrease">—</b></div>
+        <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
       </div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button class="btn btn-fill" onclick="applyRaise()"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
