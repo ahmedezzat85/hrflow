@@ -2,7 +2,7 @@
 models.py
 Pydantic request/response models for the HRFlow API.
 """
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Literal
 
 # Allowed values for an employee's employment state (single source of truth
@@ -42,6 +42,13 @@ class EmployeeCreate(BaseModel):
     There is no flat `salary` field on create anymore; any legacy total
     shown elsewhere in the app is derived server-side as the sum of the
     two components.
+
+    invoice_id / address_line_1 / address_line_2 (docs/analysis/
+    invoice-autopay-plan.md) are only required at invoice-generation time,
+    not at employee-creation time, so they stay optional here. invoice_id
+    must be a two-digit numeric string ("01"-"99") when set, since it is
+    embedded directly into the six-digit invoice number (YY + invoice_id
+    + MM).
     """
     name: str
     email: EmailStr
@@ -54,6 +61,9 @@ class EmployeeCreate(BaseModel):
     vac_total: int = 21
     next_raise: str = ""
     employment_state: EmploymentState = "Full-Time"
+    invoice_id: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
 
 
 class EmployeeUpdate(BaseModel):
@@ -69,6 +79,9 @@ class EmployeeUpdate(BaseModel):
     vac_used: Optional[int] = None
     next_raise: Optional[str] = None
     employment_state: Optional[EmploymentState] = None
+    invoice_id: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
 
 
 class RequestCreate(BaseModel):
@@ -159,3 +172,17 @@ class CompanyDocumentCreate(BaseModel):
     file_type: Literal["pdf", "image"]
     data_url: str
     category: str = "General"
+
+
+class InvoiceGenerateRequest(BaseModel):
+    """
+    Request body for bulk/per-employee external-salary invoice generation
+    (docs/analysis/invoice-autopay-plan.md). payment_year/payment_month
+    identify the period being invoiced (not the generation date, which is
+    always "now"). skip_existing defaults to True so a repeated click never
+    silently overwrites a previously generated invoice for the same
+    employee + period - the caller gets back the existing record instead.
+    """
+    payment_year: int
+    payment_month: int = Field(ge=1, le=12)
+    skip_existing: bool = True

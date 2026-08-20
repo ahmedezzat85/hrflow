@@ -10,6 +10,11 @@ Company-wide documents/policies (not tied to an employee) are stored in a
 single shared "Company Documents" sub-folder under the same root, created
 on first use.
 
+External-salary invoice generation (docs/analysis/invoice-autopay-plan.md)
+stores every generated invoice in a global "Invoices" sub-folder under the
+same root, organized by year and year-month, separate from per-employee
+folders.
+
 Documents are private by default: no public "anyone with the link" sharing
 is set on uploaded files. Access is controlled entirely via the Shared
 Drive's membership and any explicit per-folder sharing you configure in
@@ -78,6 +83,8 @@ def _safe_folder_name(employee_id, employee_name: str) -> str:
 class DriveClient:
     _instance = None
 
+    INVOICES_FOLDER_NAME = "Invoices"
+
     def __new__(cls):
         # Fast path: already fully connected, no locking needed.
         if cls._instance is not None:
@@ -105,7 +112,7 @@ class DriveClient:
         if not self.root_folder_id:
             logger.warning("DRIVE_ROOT_FOLDER_ID is not set. Document uploads will fail until it is configured.")
         self._folder_cache = {}
-        logger.info("Google Drive client initialized (root_folder_id=%s)", self.root_folder_id or "<empty>")
+        logger.info("Google Drive client initialized (root_folder_id=%s)", self.root_folder_id or "")
 
     def _find_folder(self, name: str, parent_id: str):
         safe_name = name.replace("'", "\\'")
@@ -155,12 +162,13 @@ class DriveClient:
             if cache_key in self._folder_cache:
                 logger.debug("Using cached Drive folder for employee_id=%s -> %s", employee_id, self._folder_cache[cache_key])
                 return self._folder_cache[cache_key]
-            folder_name = _safe_folder_name(employee_id, employee_name)
-            folder_id = self._find_folder(folder_name, self.root_folder_id)
-            if not folder_id:
-                folder_id = self._create_folder(folder_name, self.root_folder_id)
+        folder_name = _safe_folder_name(employee_id, employee_name)
+        folder_id = self._find_folder(folder_name, self.root_folder_id)
+        if not folder_id:
+            folder_id = self._create_folder(folder_name, self.root_folder_id)
+        with _lock:
             self._folder_cache[cache_key] = folder_id
-            return folder_id
+        return folder_id
 
     def get_or_create_company_docs_folder(self) -> str:
         """
@@ -176,11 +184,12 @@ class DriveClient:
             if _COMPANY_DOCS_CACHE_KEY in self._folder_cache:
                 logger.debug("Using cached company documents folder -> %s", self._folder_cache[_COMPANY_DOCS_CACHE_KEY])
                 return self._folder_cache[_COMPANY_DOCS_CACHE_KEY]
-            folder_id = self._find_folder(COMPANY_DOCS_FOLDER_NAME, self.root_folder_id)
-            if not folder_id:
-                folder_id = self._create_folder(COMPANY_DOCS_FOLDER_NAME, self.root_folder_id)
+        folder_id = self._find_folder(COMPANY_DOCS_FOLDER_NAME, self.root_folder_id)
+        if not folder_id:
+            folder_id = self._create_folder(COMPANY_DOCS_FOLDER_NAME, self.root_folder_id)
+        with _lock:
             self._folder_cache[_COMPANY_DOCS_CACHE_KEY] = folder_id
-            return folder_id
+        return folder_id
 
     def upload_file(self, employee_id, employee_name: str, file_name: str, data_url: str) -> dict:
         """
@@ -278,6 +287,79 @@ class DriveClient:
             raise
 
         logger.info("Company document upload complete: file_id=%s, file_name='%s'", file_id, file_name)
+        return {
+            "file_id": file_id,
+            "view_url": refreshed.get("webViewLink", ""),
+            "download_url": refreshed.get("webContentLink", ""),
+        }
+
+    def get_or_create_invoices_period_folder(self, payment_year: int, payment_month: int) -> str:
+        """
+        Returns the Drive folder ID for a given invoice payment period,
+        creating the "Invoices/<year>/<year>-<month>/" folder chain under
+        the root folder if needed (docs/analysis/invoice-autopay-plan.md).
+        Kept separate from per-employee folders so all generated invoices
+        live in one predictable, admin-browsable location.
+        """
+        if not self.root_folder_id:
+            logger.error("Cannot resolve invoices folder: DRIVE_ROOT_FOLDER_ID is not configured")
+            raise RuntimeError("DRIVE_ROOT_FOLDER_ID is not configured")
+
+        year_str = str(payment_year)
+        period_str = f"{payment_year}-{payment_month:02d}"
+        cache_key = f"__invoices__{period_str}"
+        with _lock:
+            if cache_key in self._folder_cache:
+                return self._folder_cache[cache_key]
+
+        invoices_root_id = self._find_folder(self.INVOICES_FOLDER_NAME, self.root_folder_id)
+        if not invoices_root_id:
+            invoices_root_id = self._create_folder(self.INVOICES_FOLDER_NAME, self.root_folder_id)
+
+        year_folder_id = self._find_folder(year_str, invoices_root_id)
+        if not year_folder_id:
+            year_folder_id = self._create_folder(year_str, invoices_root_id)
+
+        period_folder_id = self._find_folder(period_str, year_folder_id)
+        if not period_folder_id:
+            period_folder_id = self._create_folder(period_str, year_folder_id)
+
+        with _lock:
+            self._folder_cache[cache_key] = period_folder_id
+        return period_folder_id
+
+    def upload_invoice_file(self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes) -> dict:
+        """
+        Uploads a rendered invoice .docx (raw bytes, not a data URL) into
+        the global Invoices/<year>/<year>-<month>/ folder. Returns dict
+        with file_id and view_url, matching the shape of upload_file()/
+        upload_company_file() for consistency across the codebase.
+        """
+        logger.info("Starting invoice upload: period=%s-%02d, file_name='%s'", payment_year, payment_month, file_name)
+        folder_id = self.get_or_create_invoices_period_folder(payment_year, payment_month)
+
+        docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=docx_mime, resumable=False)
+        metadata = {"name": file_name, "parents": [folder_id]}
+        try:
+            created = self.service.files().create(
+                body=metadata, media_body=media, fields="id, webViewLink, webContentLink",
+                supportsAllDrives=True,
+            ).execute()
+        except HttpError:
+            logger.exception("Drive API error while uploading invoice '%s' (folder_id=%s)", file_name, folder_id)
+            raise
+
+        file_id = created["id"]
+        try:
+            refreshed = self.service.files().get(
+                fileId=file_id, fields="webViewLink, webContentLink", supportsAllDrives=True,
+            ).execute()
+        except HttpError:
+            logger.exception("Drive API error while fetching links for invoice file_id=%s", file_id)
+            raise
+
+        logger.info("Invoice upload complete: file_id=%s, file_name='%s'", file_id, file_name)
         return {
             "file_id": file_id,
             "view_url": refreshed.get("webViewLink", ""),

@@ -17,8 +17,9 @@ SCOPES = [
 
 SHEET_SCHEMAS = {
     "Employees": ["id","name","email","role","dept","job_role",
-                   "salary","join_date","status","vac_total","vac_used","next_raise",
-                   "employment_state","internal_salary_usd","external_salary_usd"],
+                  "salary","join_date","status","vac_total","vac_used","next_raise",
+                  "employment_state","internal_salary_usd","external_salary_usd",
+                  "invoice_id","address_line_1","address_line_2"],
     "Requests": ["id","employee_id","employee_name","type","details","date",
                  "status","reviewed_by","reviewed_at","submitted_by"],
     "VacationHistory": ["id","employee_id","type","start_date","end_date","days","status","submitted_by"],
@@ -39,10 +40,21 @@ SHEET_SCHEMAS = {
         "id","name","file_type","category","drive_file_id",
         "view_url","download_url","uploaded_by","uploaded_at"
     ],
+    # External-salary invoice generation (docs/analysis/invoice-autopay-plan.md).
+    # One row per successfully-generated (or attempted) invoice, keyed by
+    # employee + payment period, to enforce idempotency and provide history.
+    "Invoices": [
+        "id","employee_id","employee_name","invoice_number",
+        "payment_year","payment_month","invoice_date","amount_usd",
+        "currency","document_name","drive_file_id","drive_web_url",
+        "template_version","status","failure_reason",
+        "generated_by","created_at",
+    ],
 }
 
 REQUIRED_COLUMNS = {
-    "Employees": ["employment_state", "internal_salary_usd", "external_salary_usd"],
+    "Employees": ["employment_state", "internal_salary_usd", "external_salary_usd",
+                  "invoice_id", "address_line_1", "address_line_2"],
     "SalaryHistory": ["previous_internal_usd", "previous_external_usd",
                        "new_internal_usd", "new_external_usd"],
 }
@@ -148,8 +160,8 @@ class SheetsClient:
             except Exception:
                 logger.exception("Failed to read records from tab '%s'", tab_name)
                 raise
-            logger.debug("Read %d records from tab '%s'", len(records), tab_name)
-            return records
+        logger.debug("Read %d records from tab '%s'", len(records), tab_name)
+        return records
 
     def append_row(self, tab_name, row_dict):
         with _lock:
@@ -164,7 +176,7 @@ class SheetsClient:
             except Exception:
                 logger.exception("Failed to append row to tab '%s': %s", tab_name, row_dict)
                 raise
-            logger.info("Appended row to tab '%s' (id=%s)", tab_name, row_dict.get("id", "?"))
+        logger.info("Appended row to tab '%s' (id=%s)", tab_name, row_dict.get("id", "?"))
 
     def update_row_by_match(self, tab_name, match_field, match_value, updates: dict):
         with _lock:
@@ -191,8 +203,8 @@ class SheetsClient:
             except Exception:
                 logger.exception("Failed to update row %d in tab '%s' with %s", row_num, tab_name, updates)
                 raise
-            logger.info("Updated row in tab '%s' where %s=%s with %s", tab_name, match_field, match_value, updates)
-            return True
+        logger.info("Updated row in tab '%s' where %s=%s with %s", tab_name, match_field, match_value, updates)
+        return True
 
     def delete_row_by_match(self, tab_name, match_field, match_value):
         with _lock:
@@ -209,8 +221,8 @@ class SheetsClient:
                         raise
                     logger.info("Deleted row in tab '%s' where %s=%s", tab_name, match_field, match_value)
                     return True
-            logger.warning("delete_row_by_match: no row found in tab '%s' where %s=%s", tab_name, match_field, match_value)
-            return False
+        logger.warning("delete_row_by_match: no row found in tab '%s' where %s=%s", tab_name, match_field, match_value)
+        return False
 
     def next_id(self, tab_name, id_field="id"):
         records = self.get_all_records(tab_name)
