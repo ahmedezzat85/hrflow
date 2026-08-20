@@ -7,5 +7,9 @@ Add a separate **Bank Account Details** section to the employee profile.
 - Display only a status indicator by default: **Bank details set** or **Bank details missing**.
 - Provide an action button such as **Add Bank Details** or **Edit Bank Details**, depending on whether records already exist.
 - Open a modal/pop-up form when the action button is clicked. The form will be used to add, view, or update the employee’s bank account information.
+- The bank details form must include the following fields:
+  - **Bank Name** — required.
+  - **IBAN** — required.
+  - **SWIFT Code** — optional.
 - Keep bank account values hidden in the normal employee-details view. Show sensitive values only inside the modal and consider masking account identifiers when displayed.
 - Store bank information as a separate employee-related data entity/section so that it remains logically separate from the employee’s core profile data.
