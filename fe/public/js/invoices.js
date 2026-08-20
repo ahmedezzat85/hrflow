@@ -1,15 +1,17 @@
 /**
  * public/js/invoices.js
  * External-salary "Consultant Fees" invoice generation UI
- * (docs/analysis/invoice-autopay-plan.md). Admin-only screen: lets HR
- * preview eligibility, generate invoices in bulk or per-employee for a
- * selected payment month, and browse invoice history. Kept as its own
- * module (classic script, same pattern as insurance.js/vacations.js) so
- * it can be added to index.html's script list without touching the
- * existing salary.js/employees.js internals.
+ * (docs/analysis/invoice-autopay-plan.md). Admin-only screen (section id
+ * "a-invoices", added to the existing #adminSidebar nav-item/data-page
+ * pattern - see docs/analysis/invoice-autopay-html-snippet.html for the
+ * exact markup). Lets HR preview eligibility, generate invoices in bulk
+ * or per-employee for a selected payment month, and browse invoice
+ * history. Kept as its own module (classic script, same pattern as
+ * insurance.js/vacations.js) so it can be added to index.html's script
+ * list without touching the existing salary.js/employees.js internals.
  *
  * Depends on globals already defined elsewhere: Api, employees, toast,
- * closeModal, initials, fmtUSD.
+ * showSection, initials, fmtUSD.
  */
 
 let _invoiceEligiblePreview = [];
@@ -25,12 +27,19 @@ function _invoicePeriodLabel(year, month){
   return `${names[month]} ${year}`;
 }
 
+/**
+ * Called when the Invoices nav-item/section becomes active. Wire this
+ * from the same place other sections initialize on show (e.g. alongside
+ * loadAdminData()'s per-section setup, or via a data-page click listener
+ * check for 'a-invoices'), consistent with how the app already
+ * initializes a-salary/a-vacations content on first view.
+ */
 function initInvoicesPage(){
   const { year, month } = _currentInvoicePeriod();
   const yearInput = document.getElementById('invPaymentYear');
   const monthInput = document.getElementById('invPaymentMonth');
-  if(yearInput) yearInput.value = year;
-  if(monthInput) monthInput.value = month;
+  if(yearInput && !yearInput.value) yearInput.value = year;
+  if(monthInput && !monthInput.value) monthInput.value = month;
   renderInvoiceResultsPlaceholder();
   loadInvoiceHistory();
 }
@@ -137,7 +146,7 @@ async function generateSingleInvoice(employeeId){
     } else if(result.status === 'already_exists'){
       toast(`Invoice ${result.invoice_number} already exists for this period.`, 'fa-solid fa-circle-info');
     }
-    await previewInvoiceEligibility();
+    if(_invoiceEligiblePreview.length) await previewInvoiceEligibility();
     loadInvoiceHistory();
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');

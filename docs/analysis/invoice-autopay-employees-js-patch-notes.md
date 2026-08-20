@@ -1,43 +1,59 @@
-# fe/public/js/employees.js — Required Patch (invoice fields)
+# fe/public/js/employees.js — Verified Exact Patch (invoice fields)
 
-Based on the confirmed current shape of openEmployeeModal() / saveEmployee()
-(commit e445be8), apply these exact edits. Shown as before/after since I
-cannot safely push a full-file overwrite of employees.js without its
-complete current content.
+Content below is confirmed against the actual current file content
+(verified via attached employees-2.js), not guessed. Apply these edits
+directly with a find-and-replace in your editor — I'm not pushing a
+full-file overwrite because I've only seen these specific functions, not
+the whole file (document upload/preview, notes, behalf-modals, etc. are
+also in this file but were not part of what I could verify), and
+overwriting the full file would delete that unseen code.
 
-## 1. openEmployeeModal(id=null) — populate on edit, clear on create
+## 1. openEmployeeModal(id=null)
 
-FIND (edit branch, right after the External Salary line):
+FIND:
 ```js
+    document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
     document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
+    fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
 ```
-ADD immediately after:
+REPLACE WITH:
 ```js
+    document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
+    document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
     document.getElementById('fEmpInvoiceId').value = e.invoice_id || '';
     document.getElementById('fEmpAddressLine1').value = e.address_line_1 || '';
     document.getElementById('fEmpAddressLine2').value = e.address_line_2 || '';
+    fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
 ```
 
-FIND (create branch, right after the External Salary reset line):
+FIND:
 ```js
+    document.getElementById('fEmpInternalSalary').value = '';
     document.getElementById('fEmpExternalSalary').value = '';
+    fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
 ```
-ADD immediately after:
+REPLACE WITH:
 ```js
+    document.getElementById('fEmpInternalSalary').value = '';
+    document.getElementById('fEmpExternalSalary').value = '';
     document.getElementById('fEmpInvoiceId').value = '';
     document.getElementById('fEmpAddressLine1').value = '';
     document.getElementById('fEmpAddressLine2').value = '';
+    fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
 ```
 
-## 2. saveEmployee() — read + validate + include in payload
+## 2. saveEmployee()
 
-FIND (near the internal/external salary reads):
+FIND:
 ```js
   const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value)||0;
   const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value)||0;
+  try{
 ```
-ADD immediately after:
+REPLACE WITH:
 ```js
+  const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value)||0;
+  const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value)||0;
   const invoice_id = document.getElementById('fEmpInvoiceId').value.trim();
   const address_line_1 = document.getElementById('fEmpAddressLine1').value.trim();
   const address_line_2 = document.getElementById('fEmpAddressLine2').value.trim();
@@ -45,45 +61,54 @@ ADD immediately after:
     toast('Invoice ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
     return;
   }
+  try{
 ```
 
-FIND (both the `updates` object for edit and the `payload` object for create):
+FIND:
 ```js
       const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value };
+      await Api.updateEmployee(currentEditId, updates);
 ```
 REPLACE WITH:
 ```js
       const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
+      await Api.updateEmployee(currentEditId, updates);
 ```
 
-Similarly for the create-branch `payload` object, add `invoice_id, address_line_1, address_line_2` to the object literal.
-
-## 3. viewProfile(id) — show on Employee Detail page (optional, recommended)
-
-FIND (the External Salary info-item added in commit dc9f6e7):
+FIND:
 ```js
-<div class="info-item"><span>External Salary (USD)</span><b>$${(e.externalSalaryUsd||0).toLocaleString()}</b></div>
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value };
+      await Api.createEmployee(payload);
 ```
-ADD immediately after (inside the same template string):
+REPLACE WITH:
 ```js
-<div class="info-item"><span>Invoice ID</span><b>${e.invoice_id || '—'}</b></div>
-<div class="info-item"><span>Address</span><b>${[e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—'}</b></div>
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
+      await Api.createEmployee(payload);
 ```
 
-## 4. app.js normalizeEmployee() — expose the raw fields
+## 3. viewProfile(id) — Employee Detail info grid
 
-Based on confirmed commit e6006334, normalizeEmployee currently does:
+FIND the `External Salary (USD)` info-item div inside
+`detailInfoGrid.innerHTML`'s template literal (immediately followed by
+the `Next Raise Date` info-item div), and INSERT two new info-item divs
+between them:
 ```js
-function normalizeEmployee(e, salaryHistoryForEmp){
-  return { ...e, role: e.job_role, join: e.join_date, vacTotal: Number(e.vac_total), vacUsed: Number(e.vac_used),
-    nextRaise: e.next_raise, salary: Number(e.salary),
-    internalSalaryUsd: Number(e.internal_salary_usd || 0), externalSalaryUsd: Number(e.external_salary_usd || 0),
-    salaryHistory: (salaryHistoryForEmp || []).map(h=>({ date: h.date, prev: Number(h.previous_salary), next: Number(h.new_salary), pct: h.pct_change, reason: h.reason })) };
-}
+<div class="info-item"><span>Invoice ID</span><b>${e.invoice_id || '—'}</b></div><div class="info-item"><span>Address</span><b>${[e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—'}</b></div>
 ```
-No change is strictly required here: the spread `...e` already carries
-`invoice_id`, `address_line_1`, `address_line_2` through untouched (same
-as how `e.employment_state` already passes through without an explicit
-mapping). The steps above reference `e.invoice_id` etc. directly for
-this reason - consistent with how `e.employment_state` is read elsewhere
-in the codebase.
+
+## 4. Employees table row — per-employee invoice action (optional)
+
+In `renderEmployeesTable()`, inside the row's action `<td>` (the one
+containing the view/edit/delete icon-action buttons), add:
+```js
+<button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice(${e.id})"><i class="fa-solid fa-file-invoice"></i></button>
+```
+
+## Notes on what was verified vs. assumed
+
+Sections 1–2 above are copied verbatim from the actual current file
+content (confirmed via the attached employees-2.js). Section 3's anchor
+text is reconstructed from a whitespace-stripped extraction, so double-
+check the exact surrounding characters in your editor before applying -
+if it doesn't match exactly, search for `External Salary (USD)` directly
+inside `viewProfile()`'s `detailInfoGrid.innerHTML` template literal.
