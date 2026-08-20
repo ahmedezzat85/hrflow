@@ -170,9 +170,19 @@ let _onGoogleLoginSuccess = null;
 let _onGoogleLoginError = null;
 
 function handleGoogleCredentialResponse(response) {
+  if (typeof showAppLoader === 'function') {
+    showAppLoader('Signing you in', 'Authenticating with Google...');
+  }
   Api.loginWithGoogle(response.credential)
-    .then(data => { if (_onGoogleLoginSuccess) _onGoogleLoginSuccess(data); })
-    .catch(err => { if (_onGoogleLoginError) _onGoogleLoginError(err); });
+    .then(data => {
+      if (_onGoogleLoginSuccess) _onGoogleLoginSuccess(data);
+    })
+    .catch(err => {
+      if (typeof hideAppLoader === 'function') {
+        hideAppLoader();
+      }
+      if (_onGoogleLoginError) _onGoogleLoginError(err);
+    });
 }
 
 function _renderGoogleButton(containerId) {
