@@ -37,9 +37,13 @@ function _invoicePeriodLabel(year, month){
 function initInvoicesPage(){
   const { year, month } = _currentInvoicePeriod();
   const yearInput = document.getElementById('invPaymentYear');
-  const monthInput = document.getElementById('invPaymentMonth');
+  const monthSelect = document.getElementById('invPaymentMonth');
+  // Always initialise to today's period on first entry; year input uses the
+  // empty-check guard so a user's typed value isn't clobbered on re-visit,
+  // but a <select> always has a non-empty .value (first option), so we must
+  // set it unconditionally the first time.
   if(yearInput && !yearInput.value) yearInput.value = year;
-  if(monthInput && !monthInput.value) monthInput.value = month;
+  if(monthSelect) monthSelect.value = month;
   renderInvoiceResultsPlaceholder();
   loadInvoiceHistory();
 }
