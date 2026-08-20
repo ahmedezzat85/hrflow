@@ -82,6 +82,11 @@ class Config:
     LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024)))  # 5MB default
     LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
 
+    # ---- Invoice template settings ----
+    INVOICE_TEMPLATE_PATH = os.getenv("INVOICE_TEMPLATE_PATH", "")
+    INVOICE_TEMPLATE_VERSION = os.getenv("INVOICE_TEMPLATE_VERSION", "v1")
+
+
     @classmethod
     def validate(cls):
         """
