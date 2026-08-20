@@ -174,30 +174,35 @@
           </div>
         </div>
 
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head">
-            <h3>Employee Documents</h3>
-            <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
-              <i class="fa-solid fa-upload"></i> Upload Document
-            </button>
+        <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-head">
+              <h3>Employee Documents</h3>
+              <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
+                <i class="fa-solid fa-upload"></i> Upload Document
+              </button>
+            </div>
+            <table>
+              <thead><tr><th>Document</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
+              <tbody id="detailDocumentsBody"></tbody>
+            </table>
           </div>
-          <table>
-            <thead><tr><th>Document</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
-            <tbody id="detailDocumentsBody"></tbody>
-          </table>
-        </div>
 
-        <div class="card" style="margin-bottom:20px;" id="bankAccountCard">
-          <div class="card-head">
-            <h3>Bank Account Details</h3>
-            <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal()">
-              <i class="fa-solid fa-plus"></i> Add Bank Details
-            </button>
-          </div>
-          <div id="bankAccountStatus" style="display:flex;align-items:center;gap:10px;padding:4px 0;">
-            <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
-              <i class="fa-solid fa-circle-question"></i> Not loaded
-            </span>
+          <div class="card" id="bankAccountCard">
+            <div class="card-head">
+              <h3><i class="fa-solid fa-building-columns" style="color:var(--accent);margin-right:6px;"></i>Bank Account Details</h3>
+              <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal(event)">
+                <i class="fa-solid fa-plus"></i> Add Bank Details
+              </button>
+            </div>
+            <div id="bankAccountStatus" style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
+              <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);width:fit-content;">
+                <i class="fa-solid fa-circle-question"></i> Not loaded
+              </span>
+              <p style="font-size:12px;color:var(--text2);line-height:1.4;">
+                Bank details are stored securely for salary transfers. Click the action button to manage account information.
+              </p>
+            </div>
           </div>
         </div>
         <div class="card">
