@@ -35,7 +35,7 @@ function forceSessionExpiredLogout() {
 
   SessionInfo.clear();
   if (window.google && window.google.accounts && window.google.accounts.id) {
-    try { google.accounts.id.disableAutoSelect(); } catch (_) {}
+    try { google.accounts.id.disableAutoSelect(); } catch (_) { }
   }
 
   const evt = new CustomEvent("hrflow:session-expired", { cancelable: true });
@@ -70,7 +70,7 @@ async function apiRequest(method, path, body = null, auth = true) {
   }
 
   let data = null;
-  try { data = await res.json(); } catch (_) {}
+  try { data = await res.json(); } catch (_) { }
 
   if (!res.ok) {
     const detail = (data && (data.detail || data.error)) || `Request failed (${res.status})`;
@@ -94,7 +94,7 @@ function apiRequestWithProgress(method, path, body, onProgress) {
 
     xhr.onload = () => {
       let data = null;
-      try { data = JSON.parse(xhr.responseText); } catch (_) {}
+      try { data = JSON.parse(xhr.responseText); } catch (_) { }
       if (xhr.status === 401) {
         forceSessionExpiredLogout();
         reject(new Error("Session expired. Please sign in again."));
@@ -129,7 +129,7 @@ async function _fetchDocumentAsBlobUrl(path) {
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
-    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) {}
+    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) { }
     throw new Error(detail);
   }
   const blob = await res.blob();
@@ -152,7 +152,7 @@ async function _downloadDocumentViaFetch(path, suggestedName) {
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
-    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) {}
+    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) { }
     throw new Error(detail);
   }
   const blob = await res.blob();
@@ -233,7 +233,7 @@ const Api = {
     }
   },
   async logout() {
-    try { await apiRequest("POST", "/api/auth/logout", null, false); } catch (_) {}
+    try { await apiRequest("POST", "/api/auth/logout", null, false); } catch (_) { }
     SessionInfo.clear();
     if (window.google && window.google.accounts) {
       google.accounts.id.disableAutoSelect();
