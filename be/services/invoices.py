@@ -92,7 +92,7 @@ def _sanitize_filename_part(value: str) -> str:
 
 
 def build_document_name(invoice_number: str, employee_name: str) -> str:
-    return f"Invoice_{invoice_number}_{_sanitize_filename_part(employee_name)}.docx"
+    return f"Invoice_{_sanitize_filename_part(employee_name).upper()}_{invoice_number}.docx"
 
 
 def find_existing_invoice(client, employee_id, payment_year: int, payment_month: int) -> Optional[dict]:
@@ -196,7 +196,10 @@ def generate_invoice_for_employee(
 
     try:
         drive = drive_client.get_drive_client()
-        uploaded = drive.upload_invoice_file(payment_year, payment_month, document_name, file_bytes)
+        uploaded = drive.upload_invoice_file(
+            payment_year, payment_month, document_name, file_bytes,
+            employee_id=employee_id, employee_name=employee_name,
+        )
     except Exception as exc:
         logger.exception("Failed to upload invoice to Drive for employee_id=%s", employee_id)
         _record_invoice(

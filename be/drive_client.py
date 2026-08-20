@@ -328,14 +328,44 @@ class DriveClient:
             self._folder_cache[cache_key] = period_folder_id
         return period_folder_id
 
-    def upload_invoice_file(self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes) -> dict:
+    def get_or_create_employee_invoices_year_folder(self, employee_id, employee_name: str, payment_year: int) -> str:
         """
-        Uploads a rendered invoice .docx (raw bytes, not a data URL) into
-        the global Invoices/<year>/<year>-<month>/ folder. Returns dict
-        with file_id and view_url, matching the shape of upload_file()/
-        upload_company_file() for consistency across the codebase.
+        Returns the Drive folder ID for an employee's annual invoices folder:
+        {employee_root_folder}/invoices/{year}
+        creating the 'invoices' subfolder and '{year}' subfolder if needed.
         """
-        logger.info("Starting invoice upload: period=%s-%02d, file_name='%s'", payment_year, payment_month, file_name)
+        emp_folder_id = self.get_or_create_employee_folder(employee_id, employee_name)
+        year_str = str(payment_year)
+        cache_key = f"__emp_invoices__{employee_id}__{year_str}"
+        with _lock:
+            if cache_key in self._folder_cache:
+                return self._folder_cache[cache_key]
+
+        invoices_subfolder_id = self._find_folder("invoices", emp_folder_id)
+        if not invoices_subfolder_id:
+            invoices_subfolder_id = self._create_folder("invoices", emp_folder_id)
+
+        year_folder_id = self._find_folder(year_str, invoices_subfolder_id)
+        if not year_folder_id:
+            year_folder_id = self._create_folder(year_str, invoices_subfolder_id)
+
+        with _lock:
+            self._folder_cache[cache_key] = year_folder_id
+        return year_folder_id
+
+    def upload_invoice_file(
+        self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes,
+        employee_id=None, employee_name: str = "",
+    ) -> dict:
+        """
+        Uploads a rendered invoice .docx (raw bytes, not a data URL) into:
+        1. The global Invoices/<year>/<year>-<month>/ folder.
+        2. If employee_id is provided, also into the employee's personal folder at:
+           <employee_root_folder>/invoices/<year>/
+        Returns dict with file_id and view_url of the primary invoice file,
+        matching the shape of upload_file()/upload_company_file().
+        """
+        logger.info("Starting invoice upload: period=%s-%02d, file_name='%s', employee_id=%s", payment_year, payment_month, file_name, employee_id)
         folder_id = self.get_or_create_invoices_period_folder(payment_year, payment_month)
 
         docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -358,6 +388,28 @@ class DriveClient:
         except HttpError:
             logger.exception("Drive API error while fetching links for invoice file_id=%s", file_id)
             raise
+
+        # Also upload copy into {employee_root_folder}/invoices/{year}
+        if employee_id is not None:
+            try:
+                emp_invoices_folder_id = self.get_or_create_employee_invoices_year_folder(
+                    employee_id, employee_name, payment_year
+                )
+                emp_media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=docx_mime, resumable=False)
+                emp_metadata = {"name": file_name, "parents": [emp_invoices_folder_id]}
+                self.service.files().create(
+                    body=emp_metadata, media_body=emp_media, fields="id",
+                    supportsAllDrives=True,
+                ).execute()
+                logger.info(
+                    "Invoice copy uploaded to employee folder: employee_id=%s, folder_id=%s, file_name='%s'",
+                    employee_id, emp_invoices_folder_id, file_name,
+                )
+            except Exception:
+                logger.exception(
+                    "Warning: Failed to upload second invoice copy to employee folder for employee_id=%s ('%s')",
+                    employee_id, employee_name,
+                )
 
         logger.info("Invoice upload complete: file_id=%s, file_name='%s'", file_id, file_name)
         return {
