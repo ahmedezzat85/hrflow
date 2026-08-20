@@ -130,6 +130,7 @@ tbody tr:hover{background:var(--surface2);}
 .pill-neutral{background:var(--surface2);color:var(--text2);}
 .btn{padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:7px;transition:.15s;}
 .btn:hover{border-color:var(--accent);color:var(--accent);}
+button:disabled, .btn:disabled { opacity: 0.65; cursor: not-allowed !important; pointer-events: none !important; transform: none !important; box-shadow: none !important; }
 .btn-fill{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;box-shadow:0 6px 16px rgba(32,86,232,.3);}
 .btn-fill:hover{color:#fff;transform:translateY(-1px);}
 .btn-sm{padding:6px 11px;font-size:12px;}

@@ -60,18 +60,22 @@ function _getInvoicePeriodInputs(){
   return { year, month };
 }
 
-async function previewInvoiceEligibility(){
+async function previewInvoiceEligibility(evt){
+  const btn = (evt && evt.currentTarget) || document.querySelector('#a-invoices .toolbar + .card .btn');
   const { year, month } = _getInvoicePeriodInputs();
   if(!year || !month || month < 1 || month > 12){
     toast('Please select a valid payment year and month.', 'fa-solid fa-triangle-exclamation');
     return;
   }
+  setButtonLoading(btn, true, 'Loading...');
   try{
     const data = await Api.previewEligibleInvoices(year, month);
     _invoiceEligiblePreview = data.results || [];
     renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    setButtonLoading(btn, false);
   }
 }
 
@@ -103,7 +107,8 @@ function renderInvoicePreviewResults(results, year, month){
   </tr>`).join('');
 }
 
-async function generateBulkInvoices(){
+async function generateBulkInvoices(evt){
+  const btn = (evt && evt.currentTarget) || document.querySelector('#a-invoices .toolbar + .card .btn-fill');
   const { year, month } = _getInvoicePeriodInputs();
   if(!year || !month || month < 1 || month > 12){
     toast('Please select a valid payment year and month.', 'fa-solid fa-triangle-exclamation');
@@ -112,6 +117,7 @@ async function generateBulkInvoices(){
   const label = _invoicePeriodLabel(year, month);
   if(!confirm(`Generate invoices for all eligible employees for ${label}? This cannot be undone for already-generated invoices.`)) return;
 
+  setButtonLoading(btn, true, 'Generating...');
   try{
     const result = await Api.generateInvoices({ payment_year: year, payment_month: month, skip_existing: true });
     renderInvoiceBatchResults(result, year, month);
@@ -119,6 +125,8 @@ async function generateBulkInvoices(){
     loadInvoiceHistory();
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    setButtonLoading(btn, false);
   }
 }
 
@@ -135,25 +143,33 @@ function renderInvoiceBatchResults(result, year, month){
   </tr>`).join('');
 }
 
-async function generateSingleInvoice(employeeId){
+async function generateSingleInvoice(employeeId, evt){
+  const btn = (evt && evt.currentTarget) || (window.event && window.event.currentTarget);
   const { year, month } = _getInvoicePeriodInputs();
   const emp = employees.find(e => e.id === employeeId);
   const label = _invoicePeriodLabel(year, month);
   if(!confirm(`Generate a ${label} invoice for ${emp ? emp.name : 'this employee'}?`)) return;
 
+  if (btn) setButtonLoading(btn, true, 'Generating...');
   try{
     const result = await Api.generateInvoiceForEmployee(employeeId, {
-      payment_year: year, payment_month: month, skip_existing: true,
+      payment_year: year,
+      payment_month: month,
+      skip_existing: true,
     });
     if(result.status === 'generated'){
       toast(`Invoice ${result.invoice_number} generated for ${emp ? emp.name : ''}.`);
-    } else if(result.status === 'already_exists'){
+    } else {
       toast(`Invoice ${result.invoice_number} already exists for this period.`, 'fa-solid fa-circle-info');
     }
-    if(_invoiceEligiblePreview.length) await previewInvoiceEligibility();
-    loadInvoiceHistory();
+    await loadInvoiceHistory();
+    if(_invoiceEligiblePreview.length){
+      await previewInvoiceEligibility();
+    }
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    if (btn) setButtonLoading(btn, false);
   }
 }
 

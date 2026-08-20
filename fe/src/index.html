@@ -271,8 +271,8 @@
             Generates "Consultant Fees" invoices for employees whose external USD salary is greater than zero, using their invoice ID and address on file. Documents are saved to the global Invoices folder in Google Drive.
           </p>
           <div style="display:flex;gap:10px;">
-            <button class="btn" onclick="previewInvoiceEligibility()"><i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
-            <button class="btn btn-fill" onclick="generateBulkInvoices()"><i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
+            <button class="btn" onclick="previewInvoiceEligibility(event)"><i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
+            <button class="btn btn-fill" onclick="generateBulkInvoices(event)"><i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
           </div>
         </div>
         <div class="card" style="margin-bottom:20px;">
@@ -512,7 +512,7 @@
         <div class="form-field"><label>Vacation Balance (days)</label><input type="number" id="fEmpVac" value="21"></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button class="btn btn-fill" onclick="saveEmployee()"><i class="fa-solid fa-check"></i> Save Employee</button></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button class="btn btn-fill" onclick="saveEmployee(event)"><i class="fa-solid fa-check"></i> Save Employee</button></div>
   </div>
 </div>
 
@@ -520,7 +520,7 @@
   <div class="modal">
     <div class="modal-head"><h3>Confirm Deletion</h3><button class="modal-close" onclick="closeModal('confirmModal')"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="modal-body"><p style="color:var(--text2);font-size:14px;">Are you sure you want to remove <b id="delEmpName" style="color:var(--text);"></b> from the system? This action cannot be undone.</p></div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('confirmModal')">Cancel</button><button class="btn btn-danger-outline" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Delete</button></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('confirmModal')">Cancel</button><button class="btn btn-danger-outline" onclick="confirmDelete(event)"><i class="fa-solid fa-trash"></i> Delete</button></div>
   </div>
 </div>
 
@@ -550,7 +550,7 @@
         <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button class="btn btn-fill" onclick="applyRaise()"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button class="btn btn-fill" onclick="applyRaise(event)"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
   </div>
 </div>
 
@@ -561,7 +561,7 @@
       <div class="form-field" style="margin-bottom:14px;"><label>Category Name</label><input id="fCatName" placeholder="e.g. Dental"></div>
       <div class="form-field"><label>Annual Limit (EGP)</label><input type="number" id="fCatLimit" placeholder="10000"></div>
     </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('categoryModal')">Cancel</button><button class="btn btn-fill" onclick="saveCategory()"><i class="fa-solid fa-check"></i> Save</button></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('categoryModal')">Cancel</button><button class="btn btn-fill" onclick="saveCategory(event)"><i class="fa-solid fa-check"></i> Save</button></div>
   </div>
 </div>
 
@@ -582,7 +582,7 @@
         <div class="form-field full"><label>Record Date (optional, for backdating historical records)</label><input type="date" id="bvRecordDate"></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfVacationModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfVacation()"><i class="fa-solid fa-check"></i> Submit</button></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfVacationModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfVacation(event)"><i class="fa-solid fa-check"></i> Submit</button></div>
   </div>
 </div>
 
@@ -601,7 +601,7 @@
         <div class="form-field full"><label>Supporting Document (optional)</label><input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfClaimModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfClaim()"><i class="fa-solid fa-check"></i> Submit</button></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfClaimModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button></div>
   </div>
 </div>
 
@@ -741,7 +741,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('bankAccountModal')">Cancel</button>
-      <button class="btn btn-fill" onclick="saveBankAccount()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <button class="btn btn-fill" onclick="saveBankAccount(event)"><i class="fa-solid fa-floppy-disk"></i> Save</button>
     </div>
   </div>
 </div>

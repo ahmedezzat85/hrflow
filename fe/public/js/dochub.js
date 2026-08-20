@@ -62,7 +62,7 @@ if(dochubSearchEl) dochubSearchEl.addEventListener('input', e=>renderCompanyDocu
 const empDochubSearchEl = document.getElementById('empDochubSearch');
 if(empDochubSearchEl) empDochubSearchEl.addEventListener('input', e=>renderCompanyDocumentsEmployee(e.target.value));
 
-async function submitCompanyDocument(){
+async function submitCompanyDocument(evt){
   const name = document.getElementById('dochubDocName').value.trim();
   const category = document.getElementById('dochubDocCategory').value;
   const file = document.getElementById('dochubFileInput').files[0];
@@ -75,11 +75,11 @@ async function submitCompanyDocument(){
   const progressPct = document.getElementById('dochubUploadProgressPct');
   const progressText = document.getElementById('dochubUploadProgressText');
   const uploadBtn = document.getElementById('dochubUploadBtn');
+  setButtonLoading(uploadBtn, true, 'Uploading...');
   try{
     progressWrap.style.display = 'block';
     progressFill.style.width = '0%'; progressPct.textContent = '0%';
     progressText.textContent = 'Preparing file...';
-    uploadBtn.disabled = true;
     const dataUrl = await readFileAsDataUrlDochub(file);
     progressText.textContent = 'Uploading...';
     await Api.uploadCompanyDocumentWithProgress({ name, file_type: fileType, data_url: dataUrl, category }, (pct)=>{
@@ -92,7 +92,7 @@ async function submitCompanyDocument(){
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   finally{
     progressWrap.style.display = 'none';
-    uploadBtn.disabled = false;
+    setButtonLoading(uploadBtn, false);
   }
 }
 async function deleteCompanyDocumentPrompt(docId){
