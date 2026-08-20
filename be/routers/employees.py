@@ -59,6 +59,9 @@ def create_employee(payload: EmployeeCreate, current_user: dict = Depends(requir
         "employment_state": payload.employment_state,
         "internal_salary_usd": payload.internal_salary_usd,
         "external_salary_usd": payload.external_salary_usd,
+        "invoice_id": payload.invoice_id or "",
+        "address_line_1": payload.address_line_1 or "",
+        "address_line_2": payload.address_line_2 or "",
     }
     client.append_row("Employees", employee_row)
     client.append_row("Users", {"email": payload.email, "role": "employee", "employee_id": new_id})

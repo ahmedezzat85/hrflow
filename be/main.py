@@ -31,6 +31,8 @@ from routers import vacations as vacations_router
 from routers import insurance as insurance_router
 from routers import salary as salary_router
 from routers import system as system_router
+from routers import invoices as invoices_router
+from routers import bank as bank_router
 
 # Re-exported here so existing code/tests that reach into main.py for
 # these pure-logic helpers (e.g. be/tests/test_salary_logic.py) keep
@@ -51,8 +53,8 @@ logger = get_logger("main")
 # (Phase 1) and config.py's Config.validate() for details.
 Config.validate()
 
-app = FastAPI(title="HRFlow API", version="2.11.0",
-              description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents), Sign in with Google authentication only.")
+app = FastAPI(title="HRFlow API", version="2.12.0",
+              description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents + external-salary invoices), Sign in with Google authentication only.")
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
 app.add_middleware(
@@ -64,10 +66,9 @@ app.add_middleware(
 )
 
 logger.info(
-    "HRFlow API starting up (version=2.11.0, environment=%s, allowed_origins=%s)",
+    "HRFlow API starting up (version=2.12.0, environment=%s, allowed_origins=%s)",
     Config.ENVIRONMENT, origins,
 )
-
 
 _CSP_POLICY = (
     "default-src 'self'; "
@@ -80,7 +81,6 @@ _CSP_POLICY = (
     "frame-ancestors 'self';"
 )
 
-
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -91,7 +91,6 @@ async def security_headers(request: Request, call_next):
     if Config.IS_PRODUCTION:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -113,7 +112,6 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     return response
 
-
 app.include_router(auth_router.router)
 app.include_router(employees_router.router)
 app.include_router(documents_router.router)
@@ -122,3 +120,5 @@ app.include_router(vacations_router.router)
 app.include_router(insurance_router.router)
 app.include_router(salary_router.router)
 app.include_router(system_router.router)
+app.include_router(invoices_router.router)
+app.include_router(bank_router.router)

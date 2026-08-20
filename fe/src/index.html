@@ -63,6 +63,7 @@
     <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
     <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
     <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
+    <a class="nav-item" data-page="a-invoices" title="Invoices"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="nav-label">Invoices</span></a>
     <div class="nav-section-label">Modules</div>
     <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
     <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
@@ -186,6 +187,19 @@
           </table>
         </div>
 
+        <div class="card" style="margin-bottom:20px;" id="bankAccountCard">
+          <div class="card-head">
+            <h3>Bank Account Details</h3>
+            <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal()">
+              <i class="fa-solid fa-plus"></i> Add Bank Details
+            </button>
+          </div>
+          <div id="bankAccountStatus" style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+            <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
+              <i class="fa-solid fa-circle-question"></i> Not loaded
+            </span>
+          </div>
+        </div>
         <div class="card">
           <div class="card-head"><h3>Notes & Performance Tracking</h3></div>
           <div class="form-grid" style="margin-bottom:16px;">
@@ -233,6 +247,47 @@
         <div class="card">
           <div class="card-head"><h3>Company-wide Raise History</h3></div>
           <table><thead><tr><th>Employee</th><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
+        </div>
+      </section>
+
+      <section class="page-section" id="a-invoices">
+        <div class="toolbar">
+          <div class="form-grid" style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+            <div class="form-field"><label>Payment Year</label><input type="number" id="invPaymentYear" placeholder="2026"></div>
+            <div class="form-field">
+              <label>Payment Month</label>
+              <select id="invPaymentMonth">
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3>Generate External-Salary Invoices</h3></div>
+          <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
+            Generates "Consultant Fees" invoices for employees whose external USD salary is greater than zero, using their invoice ID and address on file. Documents are saved to the global Invoices folder in Google Drive.
+          </p>
+          <div style="display:flex;gap:10px;">
+            <button class="btn" onclick="previewInvoiceEligibility()"><i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
+            <button class="btn btn-fill" onclick="generateBulkInvoices()"><i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-head"><h3 id="invoiceResultsTitle">Eligibility Preview</h3></div>
+          <table>
+            <thead><tr><th>Employee</th><th>Status</th><th>Detail</th><th>Action</th></tr></thead>
+            <tbody id="invoiceResultsBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Invoice History</h3></div>
+          <table>
+            <thead><tr><th>Employee</th><th>Invoice #</th><th>Period</th><th>Amount</th><th>Status</th><th>Drive Link</th></tr></thead>
+            <tbody id="invoiceHistoryBody"></tbody>
+          </table>
         </div>
       </section>
 
@@ -448,6 +503,9 @@
         <div class="form-field"><label>Role / Title</label><input id="fEmpRole" placeholder="e.g. Senior Developer"></div>
         <div class="form-field"><label>Internal Salary (USD)</label><input type="number" id="fEmpInternalSalary" placeholder="1000"></div>
         <div class="form-field"><label>External Salary (USD)</label><input type="number" id="fEmpExternalSalary" placeholder="0"></div>
+        <div class="form-field"><label>Invoice ID (01–99, for external invoices)</label><input type="text" id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2"></div>
+        <div class="form-field"><label>Address Line 1 (for external invoices)</label><input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street"></div>
+        <div class="form-field"><label>Address Line 2</label><input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate"></div>
         <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
         <div class="form-field"><label>Status</label><select id="fEmpStatus"><option>Active</option><option>On Leave</option><option>Suspended</option></select></div>
         <div class="form-field"><label>Employment State</label><select id="fEmpEmploymentState"><option>Full-Time</option><option>Part-Time</option><option>Freelance</option><option>Occasional</option></select></div>
@@ -653,5 +711,39 @@
   </div>
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
+<div class="modal-overlay" id="bankAccountModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+      <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Bank Name <span style="color:var(--danger)">*</span></label>
+          <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
+        </div>
+        <div class="form-field full">
+          <label>IBAN <span style="color:var(--danger)">*</span></label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002" style="flex:1;font-family:monospace;">
+            <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()" title="Reveal full IBAN">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+          <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by default. Click the eye icon to reveal.</span>
+        </div>
+        <div class="form-field full">
+          <label>SWIFT / BIC Code <span style="color:var(--text3);font-size:11px;">(Optional)</span></label>
+          <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('bankAccountModal')">Cancel</button>
+      <button class="btn btn-fill" onclick="saveBankAccount()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

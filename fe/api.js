@@ -35,7 +35,7 @@ function forceSessionExpiredLogout() {
 
   SessionInfo.clear();
   if (window.google && window.google.accounts && window.google.accounts.id) {
-    try { google.accounts.id.disableAutoSelect(); } catch (_) {}
+    try { google.accounts.id.disableAutoSelect(); } catch (_) { }
   }
 
   const evt = new CustomEvent("hrflow:session-expired", { cancelable: true });
@@ -70,7 +70,7 @@ async function apiRequest(method, path, body = null, auth = true) {
   }
 
   let data = null;
-  try { data = await res.json(); } catch (_) {}
+  try { data = await res.json(); } catch (_) { }
 
   if (!res.ok) {
     const detail = (data && (data.detail || data.error)) || `Request failed (${res.status})`;
@@ -94,7 +94,7 @@ function apiRequestWithProgress(method, path, body, onProgress) {
 
     xhr.onload = () => {
       let data = null;
-      try { data = JSON.parse(xhr.responseText); } catch (_) {}
+      try { data = JSON.parse(xhr.responseText); } catch (_) { }
       if (xhr.status === 401) {
         forceSessionExpiredLogout();
         reject(new Error("Session expired. Please sign in again."));
@@ -129,7 +129,7 @@ async function _fetchDocumentAsBlobUrl(path) {
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
-    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) {}
+    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) { }
     throw new Error(detail);
   }
   const blob = await res.blob();
@@ -152,7 +152,7 @@ async function _downloadDocumentViaFetch(path, suggestedName) {
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
-    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) {}
+    try { const data = await res.json(); detail = data.detail || data.error || detail; } catch (_) { }
     throw new Error(detail);
   }
   const blob = await res.blob();
@@ -233,7 +233,7 @@ const Api = {
     }
   },
   async logout() {
-    try { await apiRequest("POST", "/api/auth/logout", null, false); } catch (_) {}
+    try { await apiRequest("POST", "/api/auth/logout", null, false); } catch (_) { }
     SessionInfo.clear();
     if (window.google && window.google.accounts) {
       google.accounts.id.disableAutoSelect();
@@ -312,5 +312,38 @@ const Api = {
     return apiRequest("GET", `/api/salary/history${q}`);
   },
   applyRaise(payload) { return apiRequest("POST", "/api/salary/raise", payload); },
+
+  // ---------- INVOICES (external-salary autopay / consultant fee invoices) ----------
+  previewEligibleInvoices(paymentYear, paymentMonth) {
+    return apiRequest("GET", `/api/invoices/eligible?payment_year=${encodeURIComponent(paymentYear)}&payment_month=${encodeURIComponent(paymentMonth)}`);
+  },
+  generateInvoices(payload) {
+    return apiRequest("POST", "/api/invoices/generate", payload);
+  },
+  generateInvoiceForEmployee(employeeId, payload) {
+    return apiRequest("POST", `/api/invoices/generate/${encodeURIComponent(employeeId)}`, payload);
+  },
+  listInvoices(params = {}) {
+    const q = new URLSearchParams();
+    if (params && params.employee_id) q.set("employee_id", params.employee_id);
+    if (params && params.payment_year) q.set("payment_year", params.payment_year);
+    if (params && params.payment_month) q.set("payment_month", params.payment_month);
+    if (params && params.status) q.set("status", params.status);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return apiRequest("GET", `/api/invoices${qs}`);
+  },
+  getInvoice(invoiceId) {
+    return apiRequest("GET", `/api/invoices/${encodeURIComponent(invoiceId)}`);
+  },
+
+  getBankAccount(empId) {
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/bank-account`);
+  },
+  getBankAccountRevealed(empId) {
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/bank-account?reveal=true`);
+  },
+  upsertBankAccount(empId, payload) {
+    return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/bank-account`, payload);
+  },
   health() { return apiRequest("GET", "/api/health", null, false); },
 };

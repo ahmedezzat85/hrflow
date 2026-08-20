@@ -1,0 +1,84 @@
+<!--
+  Invoice Autopay frontend markup — CORRECTED against the actual source
+  fe/src/index.html (verified via attached file). Two portals exist:
+  admin ("a-" prefixed section ids, #admin-app) and employee ("e-"
+  prefixed, #employee-app). This feature is admin-only, so all markup
+  below goes in the #admin-app sidebar/content area only.
+-->
+
+<!-- ============ 1. Sidebar nav item ============
+     Insert as a sibling of the existing Salary nav-item, inside the
+     "Workspace" nav-section-label group in #adminSidebar:
+     <a class="nav-item" data-page="a-salary" title="Salary Raises">...</a>
+-->
+<a class="nav-item" data-page="a-invoices" title="Invoices">
+  <i class="fa-solid fa-file-invoice-dollar"></i>
+  <span class="nav-label">Invoices</span>
+</a>
+
+<!-- ============ 2. Main content section ============
+     Insert as a sibling <section class="page-section" id="a-salary"> ...
+     </section>, i.e. right after the closing </section> of a-salary and
+     before <section class="page-section" id="a-vacations">.
+-->
+<section class="page-section" id="a-invoices">
+  <div class="toolbar">
+    <div class="form-grid" style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+      <div class="form-field"><label>Payment Year</label><input type="number" id="invPaymentYear" placeholder="2026"></div>
+      <div class="form-field">
+        <label>Payment Month</label>
+        <select id="invPaymentMonth">
+          <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+          <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+          <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-head"><h3>Generate External-Salary Invoices</h3></div>
+    <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
+      Generates "Consultant Fees" invoices for employees whose external USD salary is greater than zero, using their invoice ID and address on file. Documents are saved to the global Invoices folder in Google Drive.
+    </p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" onclick="previewInvoiceEligibility()"><i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
+      <button class="btn btn-fill" onclick="generateBulkInvoices()"><i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-head"><h3 id="invoiceResultsTitle">Eligibility Preview</h3></div>
+    <table>
+      <thead><tr><th>Employee</th><th>Status</th><th>Detail</th><th>Action</th></tr></thead>
+      <tbody id="invoiceResultsBody"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Invoice History</h3></div>
+    <table>
+      <thead><tr><th>Employee</th><th>Invoice #</th><th>Period</th><th>Amount</th><th>Status</th><th>Drive Link</th></tr></thead>
+      <tbody id="invoiceHistoryBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 3. Per-employee row action ============
+     Insert inside the employees table row template in employees.js
+     (renderEmployeesTable), in the same action <td> as the existing
+     view/edit/delete icon-action buttons:
+-->
+<!--
+<button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); document.getElementById('invPaymentYear') && (invPaymentYear.value = new Date().getFullYear()); generateSingleInvoice(${e.id})">
+  <i class="fa-solid fa-file-invoice"></i>
+</button>
+-->
+
+<!-- ============ 4. Employee Create/Edit modal additions ============
+     Insert inside #employeeModal's .form-grid, immediately after:
+     <div class="form-field"><label>External Salary (USD)</label><input type="number" id="fEmpExternalSalary" placeholder="0"></div>
+     and BEFORE:
+     <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
+-->
+<div class="form-field"><label>Invoice ID (01–99, for external invoices)</label><input type="text" id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2"></div>
+<div class="form-field"><label>Address Line 1 (for external invoices)</label><input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street"></div>
+<div class="form-field"><label>Address Line 2</label><input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate"></div>

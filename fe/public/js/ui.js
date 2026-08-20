@@ -62,6 +62,7 @@ const titles = {
   'a-employees':['Employees',"Manage employee profiles and information."],
   'a-requests':['Pending Requests',"Review and action employee requests."],
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
+  'a-invoices':['Invoices',"Generate and manage external-salary invoices."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
   'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
   'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
@@ -79,6 +80,7 @@ function showSection(pageId, portal){
   const t = titles[pageId];
   if(t){ document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0]; document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1]; }
   document.getElementById(portal==='admin'?'adminSidebar':'empSidebar').classList.remove('open');
+  if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
 }
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);

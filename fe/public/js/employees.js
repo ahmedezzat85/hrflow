@@ -1,8 +1,20 @@
 function renderEmployeesTable(filter=''){
   const body = document.getElementById('employeesTableBody');
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state||"").toLowerCase().includes(f)).map(e=>`<tr><td>${e.id}</td>
-      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td><td>${e.role}</td><td>${e.employment_state || "Full-Time"}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${statusPill(e.status)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button><button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+  body.innerHTML = employees.filter(e=> e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state||"").toLowerCase().includes(f)).map(e=>`<tr>
+    <td>${e.id}</td>
+    <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
+    <td>${e.role}</td>
+    <td>${e.employment_state || 'Full-Time'}</td>
+    <td>${fmtMoney(e.salary)}</td>
+    <td>${e.nextRaise}</td>
+    <td>${statusPill(e.status)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
+      <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice(${e.id})"><i class="fa-solid fa-file-invoice"></i></button>
+      <button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button>
+    </td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
 }
 document.getElementById('empSearch').addEventListener('input', e=>renderEmployeesTable(e.target.value));
 
@@ -14,30 +26,44 @@ function openEmployeeModal(id=null){
     fEmpName.value=e.name; fEmpEmail.value=e.email; fEmpDept.value=e.dept; fEmpRole.value=e.role;
     document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
     document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
+    document.getElementById('fEmpInvoiceId').value = e.invoice_id || '';
+    document.getElementById('fEmpAddressLine1').value = e.address_line_1 || '';
+    document.getElementById('fEmpAddressLine2').value = e.address_line_2 || '';
     fEmpJoin.value=e.join; fEmpStatus.value=e.status; fEmpVac.value=e.vacTotal-e.vacUsed;
     document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
   } else {
     ['fEmpName','fEmpEmail','fEmpRole'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('fEmpInternalSalary').value = '';
     document.getElementById('fEmpExternalSalary').value = '';
+    document.getElementById('fEmpInvoiceId').value = '';
+    document.getElementById('fEmpAddressLine1').value = '';
+    document.getElementById('fEmpAddressLine2').value = '';
     fEmpJoin.value=''; fEmpVac.value=21; fEmpStatus.value='Active'; fEmpDept.value='Engineering';
     document.getElementById('fEmpEmploymentState').value='Full-Time';
   }
   document.getElementById('employeeModal').classList.add('active');
 }
+
 async function saveEmployee(){
   const name = document.getElementById('fEmpName').value.trim();
   if(!name){ toast('Please enter employee name.','fa-solid fa-triangle-exclamation'); return; }
   const vacTotal = Number(fEmpVac.value)||21;
   const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value)||0;
   const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value)||0;
+  const invoice_id = document.getElementById('fEmpInvoiceId').value.trim();
+  const address_line_1 = document.getElementById('fEmpAddressLine1').value.trim();
+  const address_line_2 = document.getElementById('fEmpAddressLine2').value.trim();
+  if(invoice_id && !/^\d{1,2}$/.test(invoice_id)){
+    toast('Invoice ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
   try{
     if(currentEditId){
-      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
       await Api.updateEmployee(currentEditId, updates);
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
       await Api.createEmployee(payload);
       toast('New employee added.');
     }
@@ -45,10 +71,19 @@ async function saveEmployee(){
     await loadAdminData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
-function askDelete(id){ currentDeleteId = id; document.getElementById('delEmpName').textContent = employees.find(e=>e.id===id).name; document.getElementById('confirmModal').classList.add('active'); }
+
+function askDelete(id){
+  currentDeleteId = id;
+  document.getElementById('delEmpName').textContent = employees.find(e=>e.id===id).name;
+  document.getElementById('confirmModal').classList.add('active');
+}
 async function confirmDelete(){
-  try{ await Api.deleteEmployee(currentDeleteId); closeModal('confirmModal'); toast('Employee removed.','fa-solid fa-trash'); await loadAdminData(); }
-  catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  try{
+    await Api.deleteEmployee(currentDeleteId);
+    closeModal('confirmModal');
+    toast('Employee removed.','fa-solid fa-trash');
+    await loadAdminData();
+  } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
 async function viewProfile(id){
@@ -57,7 +92,7 @@ async function viewProfile(id){
   const e = employees.find(x=>x.id===id);
   document.getElementById('detailProfileHead').innerHTML = `<div class="avatar">${initials(e.name)}</div><div><h4>${e.name}</h4><p>${e.role} • ${e.dept}</p></div>`;
   document.getElementById('detailInfoGrid').innerHTML = `<div class="info-item"><span>Email</span><b>${e.email}</b></div><div class="info-item"><span>Status</span><b>${e.status}</b></div>
-      <div class="info-item"><span>Employment State</span><b>${e.employment_state || 'Full-Time'}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Internal Salary (USD)</span><b>$${(e.internalSalaryUsd||0).toLocaleString()}</b></div><div class="info-item"><span>External Salary (USD)</span><b>$${(e.externalSalaryUsd||0).toLocaleString()}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
+      <div class="info-item"><span>Employment State</span><b>${e.employment_state || 'Full-Time'}</b></div><div class="info-item"><span>Join Date</span><b>${e.join}</b></div><div class="info-item"><span>Monthly Salary</span><b>${fmtMoney(e.salary)}</b></div><div class="info-item"><span>Internal Salary (USD)</span><b>$${(e.internalSalaryUsd||0).toLocaleString()}</b></div><div class="info-item"><span>External Salary (USD)</span><b>$${(e.externalSalaryUsd||0).toLocaleString()}</b></div><div class="info-item"><span>Invoice ID</span><b>${e.invoice_id || '—'}</b></div><div class="info-item"><span>Address</span><b>${[e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—'}</b></div><div class="info-item"><span>Next Raise Date</span><b>${e.nextRaise}</b></div><div class="info-item"><span>Vacation Balance</span><b>${e.vacTotal-e.vacUsed} / ${e.vacTotal} days</b></div>`;
   const consumption = insuranceConsumption.find(c=>String(c.employee_id)===String(id));
   document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
   document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
@@ -75,17 +110,18 @@ async function viewProfile(id){
     document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c=>`<tr><td>${c.category}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
     renderNotesList(notes);
     await loadEmployeeDocuments(id);
+    await loadBankAccountStatus(id);
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
 function renderNotesList(notes){
   const list = document.getElementById('detailNotesList');
-  const catIcons = {General:'fa-solid fa-note-sticky',Performance:'fa-solid fa-chart-line',Incident:'fa-solid fa-triangle-exclamation',Achievement:'fa-solid fa-trophy',Attendance:'fa-solid fa-calendar-check',Warning:'fa-solid fa-flag'};
-  const catColors = {General:'accent',Performance:'success',Incident:'danger',Achievement:'success',Attendance:'info',Warning:'warning'};
+  const catIcons = { General:'fa-solid fa-note-sticky', Performance:'fa-solid fa-chart-line', Incident:'fa-solid fa-triangle-exclamation', Achievement:'fa-solid fa-trophy', Attendance:'fa-solid fa-calendar-check', Warning:'fa-solid fa-flag' };
+  const catColors = { General:'accent', Performance:'success', Incident:'danger', Achievement:'success', Attendance:'info', Warning:'warning' };
   list.innerHTML = notes.map(n=>{
     const color = catColors[n.category] || 'accent';
-    return `<li><div class="ic" style="background:rgba(32,86,232,.12);color:var(--${color});"><i class="${catIcons[n.category]||'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
-  }).join('') || '<li><div class="empty-state"><i class="fa-solid fa-note-sticky"></i><p>No notes recorded yet.</p></div></li>';
+    return `<li><div class="ic" style="background:rgba(32,86,232,.12);color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+  }).join('') || `<li><div class="empty-state"><i class="fa-solid fa-note-sticky"></i><p>No notes recorded yet.</p></div></li>`;
 }
 
 async function saveEmployeeNote(){
@@ -159,7 +195,7 @@ async function submitBehalfClaim(){
   const fileInput = document.getElementById('bcDocument');
   if(!category){ toast('Please select an insurance category.','fa-solid fa-triangle-exclamation'); return; }
   if(!amount){ toast('Please enter a claim amount.','fa-solid fa-triangle-exclamation'); return; }
-  let documentUrl = '';
+  let documentUrl;
   const file = fileInput && fileInput.files[0];
   if(file){
     if(file.size > 2*1024*1024){ toast('Supporting document must be under 2MB.','fa-solid fa-triangle-exclamation'); return; }
@@ -180,34 +216,24 @@ async function loadEmployeeDocuments(empId){
     const docs = await Api.getEmployeeDocuments(empId);
     employeeDocuments = docs;
     renderEmployeeDocuments(docs);
-  } catch(err){
-    toast(err.message,'fa-solid fa-triangle-exclamation');
-  }
+  } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
 }
 
 function docTypeIcon(fileType){
-  return fileType === 'image'
-    ? '<i class="fa-solid fa-image"></i>'
-    : '<i class="fa-solid fa-file-pdf"></i>';
+  return fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
 }
 
 function renderEmployeeDocuments(docs){
   const body = document.getElementById('detailDocumentsBody');
   if(!body) return;
   body.innerHTML = docs.length ? docs.map(d=>`<tr>
-    <td>
-      <div class="doc-name-cell">
-        <div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docTypeIcon(d.file_type)}</div>
-        <span class="doc-name-text">${d.name}</span>
-      </div>
-    </td>
-    <td>${d.uploaded_at || ''}</td>
+    <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${d.name}</span></div></td>
+    <td>${d.uploaded_at}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, ${JSON.stringify(String(d.name).replace(/`/g,''))}, ${JSON.stringify(d.file_type)})"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
-    </td>
-  </tr>`).join('') : `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
+    </td></tr>`).join('') : `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
 }
 
 function previewEmployeeDocument(docId, name, fileType){
@@ -216,17 +242,17 @@ function previewEmployeeDocument(docId, name, fileType){
   const downloadBtn = document.getElementById('docPreviewDownloadBtn');
   downloadBtn.onclick = (e) => {
     e.preventDefault();
-    Api.downloadEmployeeDocumentFile(docId, name || 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
+    Api.downloadEmployeeDocumentFile(docId, name).catch(err=>toast(err.message, 'fa-solid fa-triangle-exclamation'));
   };
   container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading preview...</div>';
   document.getElementById('documentPreviewModal').classList.add('active');
-  Api.getDocumentPreviewBlobUrl(docId).then(url => {
+  Api.getDocumentPreviewBlobUrl(docId).then(url=>{
     if(fileType === 'image'){
       container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
     } else {
       container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
     }
-  }).catch(err => {
+  }).catch(err=>{
     container.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
   });
 }
@@ -237,7 +263,7 @@ function closeDocumentPreview(){
 }
 
 function downloadEmployeeDocument(docId){
-  Api.downloadEmployeeDocumentFile(docId, 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
+  Api.downloadEmployeeDocumentFile(docId).catch(err=>toast(err.message, 'fa-solid fa-triangle-exclamation'));
 }
 
 function detectDocFileType(file){
@@ -271,16 +297,10 @@ function clearDocFileSelection(){
 
 function handleDocFileSelected(file){
   if(!file) return;
-  if(file.size > 4*1024*1024){
-    toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
-    return;
-  }
+  if(file.size > 4*1024*1024){ toast('File must be under 4MB.','fa-solid fa-triangle-exclamation'); return; }
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name);
-  if(!isPdf && !isImage){
-    toast('Only PDF and image files (JPG, PNG) are supported.','fa-solid fa-triangle-exclamation');
-    return;
-  }
+  if(!isPdf && !isImage){ toast('Only PDF and image files (JPG, PNG) are supported.','fa-solid fa-triangle-exclamation'); return; }
   docSelectedFile = file;
   const fileType = detectDocFileType(file);
   document.getElementById('docDropZoneEmpty').style.display = 'none';
@@ -300,10 +320,13 @@ function initDocDropZoneListeners(){
   const input = document.getElementById('docFileInput');
   if(!zone || zone.dataset.bound) return;
   zone.dataset.bound = '1';
-  input.addEventListener('change', () => { if(input.files[0]) handleDocFileSelected(input.files[0]); });
-  ['dragenter','dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drag-over'); }));
-  ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drag-over'); }));
-  zone.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if(f) handleDocFileSelected(f); });
+  input.addEventListener('change', ()=>{ if(input.files[0]) handleDocFileSelected(input.files[0]); });
+  ['dragenter','dragover'].forEach(evt=>zone.addEventListener(evt, e=>{ e.preventDefault(); zone.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(evt=>zone.addEventListener(evt, e=>{ e.preventDefault(); zone.classList.remove('drag-over'); }));
+  zone.addEventListener('drop', e=>{
+    const f = e.dataTransfer.files[0];
+    if(f) handleDocFileSelected(f);
+  });
 }
 
 async function submitEmployeeDocument(){
@@ -311,10 +334,7 @@ async function submitEmployeeDocument(){
   const file = docSelectedFile;
   if(!name){ toast('Please enter a document name.','fa-solid fa-triangle-exclamation'); return; }
   if(!file){ toast('Please choose a file to upload.','fa-solid fa-triangle-exclamation'); return; }
-  if(file.size > 4*1024*1024){
-    toast('File must be under 4MB.','fa-solid fa-triangle-exclamation');
-    return;
-  }
+  if(file.size > 4*1024*1024){ toast('File must be under 4MB.','fa-solid fa-triangle-exclamation'); return; }
   const fileType = detectDocFileType(file);
   const progressWrap = document.getElementById('docUploadProgressWrap');
   const progressFill = document.getElementById('docUploadProgressFill');
@@ -330,20 +350,13 @@ async function submitEmployeeDocument(){
     uploadBtn.disabled = true;
     cancelBtn.disabled = true;
     uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
-
     const dataUrl = await readFileAsDataUrl(file);
     progressText.textContent = 'Uploading...';
-
-    await Api.uploadEmployeeDocumentWithProgress(currentDetailEmployeeId, {
-      name,
-      file_type: fileType,
-      data_url: dataUrl
-    }, (pct) => {
+    await Api.uploadEmployeeDocumentWithProgress(currentDetailEmployeeId, { name, file_type: fileType, data_url: dataUrl }, (pct)=>{
       progressFill.style.width = pct + '%';
       progressPct.textContent = pct + '%';
-      if(pct >= 100) progressText.textContent = 'Finishing up...';
+      if(pct >= 100){ progressText.textContent = 'Finishing up...'; }
     });
-
     progressFill.style.width = '100%';
     progressPct.textContent = '100%';
     progressText.textContent = 'Done';
@@ -359,7 +372,6 @@ async function submitEmployeeDocument(){
     uploadBtn.innerHTML = '<i class="fa-solid fa-check"></i> Upload';
   }
 }
-
 document.addEventListener('DOMContentLoaded', initDocDropZoneListeners);
 if(document.readyState !== 'loading') initDocDropZoneListeners();
 
@@ -368,7 +380,94 @@ async function deleteEmployeeDocument(docId){
     await Api.deleteEmployeeDocument(docId);
     toast('Document deleted.','fa-solid fa-trash');
     await loadEmployeeDocuments(currentDetailEmployeeId);
+  } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
+}
+let _bankAccountHasDetails = false;
+let _bankIbanRevealed = false;
+async function loadBankAccountStatus(empId){
+  const pill = document.getElementById('bankAccountPill');
+  const btn  = document.getElementById('bankAccountActionBtn');
+  if(!pill) return;
+  pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+  pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  try{
+    const data = await Api.getBankAccount(empId);
+    _bankAccountHasDetails = !!data.has_details;
+    if(_bankAccountHasDetails){
+      pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Bank details on file';
+      pill.style.cssText = 'background:rgba(34,197,94,.12);color:#22c55e;';
+      btn.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Bank Details';
+    } else {
+      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Bank details missing';
+      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Bank Details';
+    }
   } catch(err){
-    toast(err.message,'fa-solid fa-triangle-exclamation');
+    pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
+    pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
   }
+}
+async function openBankAccountModal(){
+  _bankIbanRevealed = false;
+  const ibanInput  = document.getElementById('fBankIban');
+  const revealBtn  = document.getElementById('bankRevealBtn');
+  const titleEl    = document.getElementById('bankAccountModalTitle');
+  document.getElementById('fBankName').value  = '';
+  ibanInput.value = '';
+  ibanInput.readOnly = false;
+  document.getElementById('fBankSwift').value = '';
+  revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+  titleEl.textContent = _bankAccountHasDetails ? 'Edit Bank Account' : 'Add Bank Account';
+  if(_bankAccountHasDetails){
+    try{
+      const data = await Api.getBankAccount(currentDetailEmployeeId);
+      document.getElementById('fBankName').value  = data.bank_name  || '';
+      ibanInput.value  = data.iban       || '';  // masked
+      ibanInput.readOnly = true;                 // masked — read-only until revealed
+      document.getElementById('fBankSwift').value = data.swift_code || '';
+    } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
+  }
+  document.getElementById('bankAccountModal').classList.add('active');
+}
+async function toggleBankIbanReveal(){
+  const ibanInput = document.getElementById('fBankIban');
+  const btn       = document.getElementById('bankRevealBtn');
+  if(_bankIbanRevealed){
+    try{
+      const data = await Api.getBankAccount(currentDetailEmployeeId);
+      ibanInput.value    = data.iban || '';
+      ibanInput.readOnly = true;
+      _bankIbanRevealed  = false;
+      btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+    } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
+  } else {
+    try{
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      const data = await Api.getBankAccountRevealed(currentDetailEmployeeId);
+      ibanInput.value    = data.iban || '';
+      ibanInput.readOnly = false;
+      _bankIbanRevealed  = true;
+      btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+    } catch(err){
+      btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+      toast(err.message,'fa-solid fa-triangle-exclamation');
+    }
+  }
+}
+async function saveBankAccount(){
+  const bank_name  = document.getElementById('fBankName').value.trim();
+  const iban       = document.getElementById('fBankIban').value.trim();
+  const swift_code = document.getElementById('fBankSwift').value.trim() || null;
+  if(!bank_name){ toast('Bank Name is required.','fa-solid fa-triangle-exclamation'); return; }
+  if(!iban){ toast('IBAN is required.','fa-solid fa-triangle-exclamation'); return; }
+  if(iban.startsWith('****')){
+    toast('Please reveal the IBAN before editing, or enter a new IBAN.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  try{
+    await Api.upsertBankAccount(currentDetailEmployeeId, { bank_name, iban, swift_code });
+    toast('Bank account saved.');
+    closeModal('bankAccountModal');
+    await loadBankAccountStatus(currentDetailEmployeeId);
+  } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
 }
