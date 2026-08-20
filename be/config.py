@@ -86,6 +86,11 @@ class Config:
     INVOICE_TEMPLATE_PATH = os.getenv("INVOICE_TEMPLATE_PATH", "")
     INVOICE_TEMPLATE_VERSION = os.getenv("INVOICE_TEMPLATE_VERSION", "v1")
 
+    # ---- Google Sheets caching & quota settings ----
+    # In-memory TTL in seconds for get_all_records() reads per sheet tab.
+    # Set to 0 to disable caching (not recommended; causes quota exhaustion).
+    SHEETS_CACHE_TTL_SECONDS = int(os.getenv("SHEETS_CACHE_TTL_SECONDS", "30"))
+
 
     @classmethod
     def validate(cls):

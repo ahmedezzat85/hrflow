@@ -312,5 +312,29 @@ const Api = {
     return apiRequest("GET", `/api/salary/history${q}`);
   },
   applyRaise(payload) { return apiRequest("POST", "/api/salary/raise", payload); },
+
+  // ---------- INVOICES (external-salary autopay / consultant fee invoices) ----------
+  previewEligibleInvoices(paymentYear, paymentMonth) {
+    return apiRequest("GET", `/api/invoices/eligible?payment_year=${encodeURIComponent(paymentYear)}&payment_month=${encodeURIComponent(paymentMonth)}`);
+  },
+  generateInvoices(payload) {
+    return apiRequest("POST", "/api/invoices/generate", payload);
+  },
+  generateInvoiceForEmployee(employeeId, payload) {
+    return apiRequest("POST", `/api/invoices/generate/${encodeURIComponent(employeeId)}`, payload);
+  },
+  listInvoices(params = {}) {
+    const q = new URLSearchParams();
+    if (params && params.employee_id) q.set("employee_id", params.employee_id);
+    if (params && params.payment_year) q.set("payment_year", params.payment_year);
+    if (params && params.payment_month) q.set("payment_month", params.payment_month);
+    if (params && params.status) q.set("status", params.status);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return apiRequest("GET", `/api/invoices${qs}`);
+  },
+  getInvoice(invoiceId) {
+    return apiRequest("GET", `/api/invoices/${encodeURIComponent(invoiceId)}`);
+  },
+
   health() { return apiRequest("GET", "/api/health", null, false); },
 };
