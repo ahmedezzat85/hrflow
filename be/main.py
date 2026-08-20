@@ -32,6 +32,7 @@ from routers import insurance as insurance_router
 from routers import salary as salary_router
 from routers import system as system_router
 from routers import invoices as invoices_router
+from routers import bank as bank_router
 
 # Re-exported here so existing code/tests that reach into main.py for
 # these pure-logic helpers (e.g. be/tests/test_salary_logic.py) keep
@@ -120,3 +121,4 @@ app.include_router(insurance_router.router)
 app.include_router(salary_router.router)
 app.include_router(system_router.router)
 app.include_router(invoices_router.router)
+app.include_router(bank_router.router)

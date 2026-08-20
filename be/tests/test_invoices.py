@@ -82,12 +82,12 @@ def test_eligibility_fails_on_missing_address():
 
 def test_build_document_name_sanitizes_spaces():
     name = build_document_name("260208", "Ahmed Ezzat")
-    assert name == "Invoice_260208_Ahmed_Ezzat.docx"
+    assert name == "Invoice_AHMED_EZZAT_260208.docx"
 
 
 def test_build_document_name_strips_unsafe_characters():
     name = build_document_name("260208", "Ahmed/Ezzat*?")
-    assert name == "Invoice_260208_AhmedEzzat.docx"
+    assert name == "Invoice_AHMEDEZZAT_260208.docx"
 
 
 class _FakeSheetsClient:

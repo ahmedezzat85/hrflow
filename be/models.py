@@ -186,3 +186,13 @@ class InvoiceGenerateRequest(BaseModel):
     payment_year: int
     payment_month: int = Field(ge=1, le=12)
     skip_existing: bool = True
+class BankAccountUpsert(BaseModel):
+    """
+    Create or update an employee's bank account details.
+    bank_name and iban are required; swift_code is optional.
+    Stored in the EmployeeBankAccounts sheet tab, separate from the
+    core Employees tab so sensitive financial data is logically isolated.
+    """
+    bank_name: str
+    iban: str
+    swift_code: Optional[str] = None

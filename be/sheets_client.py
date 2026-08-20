@@ -49,6 +49,10 @@ SHEET_SCHEMAS = {
         "id","name","file_type","category","drive_file_id",
         "view_url","download_url","uploaded_by","uploaded_at"
     ],
+    "EmployeeBankAccounts": [
+        "id", "employee_id", "bank_name", "iban", "swift_code",
+        "updated_by", "updated_at",
+    ],
     # External-salary invoice generation (docs/analysis/invoice-autopay-plan.md).
     # One row per successfully-generated (or attempted) invoice, keyed by
     # employee + payment period, to enforce idempotency and provide history.

@@ -336,5 +336,14 @@ const Api = {
     return apiRequest("GET", `/api/invoices/${encodeURIComponent(invoiceId)}`);
   },
 
+  getBankAccount(empId) {
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/bank-account`);
+  },
+  getBankAccountRevealed(empId) {
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/bank-account?reveal=true`);
+  },
+  upsertBankAccount(empId, payload) {
+    return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/bank-account`, payload);
+  },
   health() { return apiRequest("GET", "/api/health", null, false); },
 };

@@ -187,6 +187,19 @@
           </table>
         </div>
 
+        <div class="card" style="margin-bottom:20px;" id="bankAccountCard">
+          <div class="card-head">
+            <h3>Bank Account Details</h3>
+            <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal()">
+              <i class="fa-solid fa-plus"></i> Add Bank Details
+            </button>
+          </div>
+          <div id="bankAccountStatus" style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+            <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
+              <i class="fa-solid fa-circle-question"></i> Not loaded
+            </span>
+          </div>
+        </div>
         <div class="card">
           <div class="card-head"><h3>Notes & Performance Tracking</h3></div>
           <div class="form-grid" style="margin-bottom:16px;">
@@ -698,5 +711,39 @@
   </div>
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
+<div class="modal-overlay" id="bankAccountModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+      <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Bank Name <span style="color:var(--danger)">*</span></label>
+          <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
+        </div>
+        <div class="form-field full">
+          <label>IBAN <span style="color:var(--danger)">*</span></label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002" style="flex:1;font-family:monospace;">
+            <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()" title="Reveal full IBAN">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+          <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by default. Click the eye icon to reveal.</span>
+        </div>
+        <div class="form-field full">
+          <label>SWIFT / BIC Code <span style="color:var(--text3);font-size:11px;">(Optional)</span></label>
+          <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('bankAccountModal')">Cancel</button>
+      <button class="btn btn-fill" onclick="saveBankAccount()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

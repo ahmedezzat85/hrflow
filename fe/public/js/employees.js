@@ -110,6 +110,7 @@ async function viewProfile(id){
     document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c=>`<tr><td>${c.category}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
     renderNotesList(notes);
     await loadEmployeeDocuments(id);
+    await loadBankAccountStatus(id);
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
@@ -379,5 +380,94 @@ async function deleteEmployeeDocument(docId){
     await Api.deleteEmployeeDocument(docId);
     toast('Document deleted.','fa-solid fa-trash');
     await loadEmployeeDocuments(currentDetailEmployeeId);
+  } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
+}
+let _bankAccountHasDetails = false;
+let _bankIbanRevealed = false;
+async function loadBankAccountStatus(empId){
+  const pill = document.getElementById('bankAccountPill');
+  const btn  = document.getElementById('bankAccountActionBtn');
+  if(!pill) return;
+  pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+  pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  try{
+    const data = await Api.getBankAccount(empId);
+    _bankAccountHasDetails = !!data.has_details;
+    if(_bankAccountHasDetails){
+      pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Bank details on file';
+      pill.style.cssText = 'background:rgba(34,197,94,.12);color:#22c55e;';
+      btn.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Bank Details';
+    } else {
+      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Bank details missing';
+      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Bank Details';
+    }
+  } catch(err){
+    pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
+    pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  }
+}
+async function openBankAccountModal(){
+  _bankIbanRevealed = false;
+  const ibanInput  = document.getElementById('fBankIban');
+  const revealBtn  = document.getElementById('bankRevealBtn');
+  const titleEl    = document.getElementById('bankAccountModalTitle');
+  document.getElementById('fBankName').value  = '';
+  ibanInput.value = '';
+  ibanInput.readOnly = false;
+  document.getElementById('fBankSwift').value = '';
+  revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+  titleEl.textContent = _bankAccountHasDetails ? 'Edit Bank Account' : 'Add Bank Account';
+  if(_bankAccountHasDetails){
+    try{
+      const data = await Api.getBankAccount(currentDetailEmployeeId);
+      document.getElementById('fBankName').value  = data.bank_name  || '';
+      ibanInput.value  = data.iban       || '';  // masked
+      ibanInput.readOnly = true;                 // masked — read-only until revealed
+      document.getElementById('fBankSwift').value = data.swift_code || '';
+    } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
+  }
+  document.getElementById('bankAccountModal').classList.add('active');
+}
+async function toggleBankIbanReveal(){
+  const ibanInput = document.getElementById('fBankIban');
+  const btn       = document.getElementById('bankRevealBtn');
+  if(_bankIbanRevealed){
+    try{
+      const data = await Api.getBankAccount(currentDetailEmployeeId);
+      ibanInput.value    = data.iban || '';
+      ibanInput.readOnly = true;
+      _bankIbanRevealed  = false;
+      btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+    } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
+  } else {
+    try{
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      const data = await Api.getBankAccountRevealed(currentDetailEmployeeId);
+      ibanInput.value    = data.iban || '';
+      ibanInput.readOnly = false;
+      _bankIbanRevealed  = true;
+      btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+    } catch(err){
+      btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+      toast(err.message,'fa-solid fa-triangle-exclamation');
+    }
+  }
+}
+async function saveBankAccount(){
+  const bank_name  = document.getElementById('fBankName').value.trim();
+  const iban       = document.getElementById('fBankIban').value.trim();
+  const swift_code = document.getElementById('fBankSwift').value.trim() || null;
+  if(!bank_name){ toast('Bank Name is required.','fa-solid fa-triangle-exclamation'); return; }
+  if(!iban){ toast('IBAN is required.','fa-solid fa-triangle-exclamation'); return; }
+  if(iban.startsWith('****')){
+    toast('Please reveal the IBAN before editing, or enter a new IBAN.','fa-solid fa-triangle-exclamation');
+    return;
+  }
+  try{
+    await Api.upsertBankAccount(currentDetailEmployeeId, { bank_name, iban, swift_code });
+    toast('Bank account saved.');
+    closeModal('bankAccountModal');
+    await loadBankAccountStatus(currentDetailEmployeeId);
   } catch(err){ toast(err.message,'fa-solid fa-triangle-exclamation'); }
 }
