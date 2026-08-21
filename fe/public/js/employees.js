@@ -98,6 +98,14 @@ async function confirmDelete(evt) {
   }
 }
 
+function escRow(icon, label, valueHtml, opts = {}) {
+  const { wrap = false, title = '' } = opts;
+  return `<div class="esc-row${wrap ? ' wrap' : ''}">
+    <span class="esc-k"><i class="fa-solid ${icon}"></i> ${label}</span>
+    <span class="esc-v"${title ? ` title="${title}"` : ''}>${valueHtml}</span>
+  </div>`;
+}
+
 async function viewProfile(id) {
   currentDetailEmployeeId = id;
   showSection('a-employee-detail', 'admin');
@@ -106,36 +114,58 @@ async function viewProfile(id) {
 
   const internalUsd = Number(e.internalSalaryUsd || 0);
   const externalUsd = Number(e.externalSalaryUsd || 0);
-  const monthlyTotalUsd = internalUsd + externalUsd;
-  const statusPill = e.status === 'Active' ? 'pill-success' : (e.status === 'On Leave' ? 'pill-warning' : 'pill-neutral');
-  const subtitle = [e.role, e.dept, e.join && 'Joined ' + fmtDateShort(e.join)].filter(Boolean).join(' · ');
-  const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—';
   const vacRemaining = (e.vacTotal || 21) - (e.vacUsed || 0);
+  const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—';
 
-  const head = document.getElementById('detailProfileHead');
-  head.className = 'esc-head';
-  head.innerHTML = `
-    <div class="esc-avatar">${initials(e.name)}</div>
-    <div class="esc-identity">
-      <h4>${e.name}</h4>
-      <p>${subtitle}</p>
-    </div>
-    <div class="esc-head-actions">
-      <span class="badge-pill ${statusPill}"><i class="fa-solid fa-circle" style="font-size:7px"></i> ${e.status}</span>
-      <span class="badge-pill pill-neutral">${e.employment_state || 'Full-Time'}</span>
+  document.getElementById('detailProfileHead').innerHTML = `
+    <div class="esc-head">
+      <div class="esc-avatar">${initials(e.name)}</div>
+      <div class="esc-identity">
+        <h4>${e.name}</h4>
+        <div class="esc-meta">
+          <span>${e.role}</span><span class="esc-dot"></span>
+          <span>${e.dept}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}
+        </div>
+      </div>
+      <div class="esc-badges">
+        <span class="esc-pill ${e.status === 'Active' ? 'esc-pill-active' : 'esc-pill-neutral'}">
+          <i class="fa-solid fa-circle"></i> ${e.status}
+        </span>
+        <span class="esc-pill esc-pill-neutral">${e.employment_state || 'Full-Time'}</span>
+      </div>
     </div>`;
 
-  const grid = document.getElementById('detailInfoGrid');
-  grid.className = 'esc-grid';
-  grid.innerHTML = `
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-envelope"></i> Email</span><span class="esc-value" title="${e.email}">${e.email}</span></div>
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-sack-dollar"></i> Monthly Salary</span><span class="esc-value esc-salary">${fmtUSD(monthlyTotalUsd)} <span class="sub">/ mo</span></span></div>
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-building"></i> Internal Salary (USD)</span><span class="esc-value">${fmtUSD(internalUsd)}</span></div>
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-file-invoice-dollar"></i> External Salary (USD)</span><span class="esc-value">${fmtUSD(externalUsd)}</span></div>
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-arrow-trend-up"></i> Next Raise Date</span><span class="esc-value">${fmtDateShort(e.nextRaise)}</span></div>
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-umbrella-beach"></i> Vacation Balance</span><span class="esc-value">${vacRemaining} / ${e.vacTotal || 21} days</span></div>
-    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-hashtag"></i> Invoice ID</span><span class="esc-value">${e.invoice_id || '—'}</span></div>
-    <div class="esc-item wrap"><span class="esc-label"><i class="fa-solid fa-location-dot"></i> Address</span><span class="esc-value" title="${address}">${address}</span></div>`;
+  document.getElementById('detailInfoGrid').innerHTML = `
+    <div class="esc-body">
+      <div class="esc-comp-zone">
+        <div class="esc-zone-label">Monthly Compensation</div>
+        <div class="esc-comp-total">
+          <span class="esc-amount">${fmtMoney(e.salary)}</span>
+          <span class="esc-unit">/ month total</span>
+        </div>
+        <div class="esc-comp-breakdown">
+          <div class="esc-comp-piece">
+            <div class="esc-k"><i class="fa-solid fa-building"></i> Internal</div>
+            <div class="esc-v">${fmtUSD(internalUsd)}</div>
+          </div>
+          <div class="esc-comp-piece">
+            <div class="esc-k"><i class="fa-solid fa-file-invoice-dollar"></i> External</div>
+            <div class="esc-v">${fmtUSD(externalUsd)}</div>
+          </div>
+          <div class="esc-comp-piece">
+            <div class="esc-k"><i class="fa-solid fa-arrow-trend-up"></i> Next Raise</div>
+            <div class="esc-v" style="font-size:14px">${fmtDateShort(e.nextRaise)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="esc-meta-zone">
+        <div class="esc-zone-label">Employee Details</div>
+        ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
+        ${escRow('fa-umbrella-beach', 'Vacation', `${vacRemaining} / ${e.vacTotal || 21} days`)}
+        ${escRow('fa-hashtag', 'Invoice ID', e.invoice_id || '—')}
+        ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}
+      </div>
+    </div>`;
   const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
   document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
   document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
