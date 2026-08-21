@@ -9,11 +9,11 @@ function insuranceProgressColor(status){
   return 'var(--accent)';
 }
 function renderCategoryChip(cat){
-  return `<div class="card" style="padding:16px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
-      <b style="font-size:13px;">${cat.category}</b>${insuranceStatusBadge(cat.status)}
+  return `<div class="insurance-chip">
+    <div class="chip-top">
+      <b>${cat.category}</b>${insuranceStatusBadge(cat.status)}
     </div>
-    <div style="font-size:12.5px;color:var(--text2);margin-bottom:8px;">${fmtMoney(cat.consumed)} of ${fmtMoney(cat.limit)}</div>
+    <div class="chip-amount">${fmtMoney(cat.consumed)} of ${fmtMoney(cat.limit)}</div>
     <div class="progress-bar"><span style="width:${Math.min(cat.pct_used,100)}%;background:${insuranceProgressColor(cat.status)};"></span></div>
   </div>`;
 }
@@ -44,6 +44,7 @@ function renderAdminInsuranceHighlights(){
   const agg = aggregateCompanyConsumption();
   container.innerHTML = agg.map(renderCategoryChip).join('') || '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>';
 }
+
 function renderCategoriesTable(){
   const body = document.getElementById('categoriesTableBody');
   if(!body) return;

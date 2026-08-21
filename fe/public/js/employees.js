@@ -168,7 +168,7 @@ async function viewProfile(id) {
     </div>`;
   const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
   document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
-  document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
+  document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
   showTableSkeleton('detailVacationBody', 4, 3);
   showTableSkeleton('detailClaimsBody', 4, 3);
   showTableSkeleton('detailDocumentsBody', 3, 2);
@@ -478,20 +478,38 @@ let _bankIbanRevealed = false;
 async function loadBankAccountStatus(empId) {
   const pill = document.getElementById('bankAccountPill');
   const btn = document.getElementById('bankAccountActionBtn');
+  const nameEl = document.getElementById('bankDetailName');
+  const ibanEl = document.getElementById('bankDetailIban');
+  const swiftEl = document.getElementById('bankDetailSwift');
   if (!pill) return;
   pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
   pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  if (nameEl) nameEl.textContent = '—';
+  if (ibanEl) ibanEl.textContent = '—';
+  if (swiftEl) swiftEl.textContent = '—';
   try {
     const data = await Api.getBankAccount(empId);
     _bankAccountHasDetails = !!data.has_details;
     if (_bankAccountHasDetails) {
-      pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Bank details on file';
-      pill.style.cssText = 'background:rgba(34,197,94,.12);color:#22c55e;';
-      btn.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Bank Details';
+      pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> On file';
+      pill.style.cssText = 'background:#e6f9f1;color:var(--success);';
+      if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+        btn.title = 'Edit Bank Details';
+      }
+      if (nameEl) nameEl.textContent = data.bank_name || '—';
+      if (ibanEl) ibanEl.textContent = data.iban || '—';
+      if (swiftEl) swiftEl.textContent = data.swift_code || '—';
     } else {
-      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Bank details missing';
+      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Missing';
       pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
-      btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Bank Details';
+      if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+        btn.title = 'Add Bank Details';
+      }
+      if (nameEl) nameEl.textContent = 'Not configured';
+      if (ibanEl) ibanEl.textContent = 'Not configured';
+      if (swiftEl) swiftEl.textContent = 'Not configured';
     }
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';

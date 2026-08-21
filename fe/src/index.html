@@ -219,7 +219,7 @@
               <div class="employee-detail-history-grid">
                 <div class="card">
                   <div class="card-head">
-                    <h3>Vacation History</h3>
+                    <h3><i class="fa-solid fa-umbrella-beach"></i> Vacation History</h3>
                   </div>
                   <table>
                     <thead>
@@ -235,7 +235,7 @@
                 </div>
                 <div class="card">
                   <div class="card-head">
-                    <h3>Insurance Claims</h3>
+                    <h3><i class="fa-solid fa-briefcase-medical"></i> Insurance Claims</h3>
                   </div>
                   <table>
                     <thead>
@@ -253,11 +253,15 @@
 
               <div class="card employee-insurance-summary-card">
                 <div class="card-head">
-                  <h3>Medical Insurance Consumption</h3>
+                  <h3><i class="fa-solid fa-shield-heart"></i> Medical Insurance Consumption</h3>
                 </div>
-                <div class="info-item" style="margin-bottom:14px;"><span>Total Consumption</span><b
-                    id="detailInsuranceTotal">—</b></div>
-                <div class="grid g2" id="detailInsuranceGrid"></div>
+                <div class="card-body">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+                    <span style="font-size:12.5px;color:var(--text2)">Total Consumption</span>
+                    <strong style="font-family:var(--font-head);font-size:16px" id="detailInsuranceTotal">—</strong>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="detailInsuranceGrid"></div>
+                </div>
               </div>
 
               <div class="employee-detail-section-label">
@@ -267,9 +271,9 @@
 
               <div class="card">
                 <div class="card-head">
-                  <h3>Employee Documents</h3>
-                  <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
-                    <i class="fa-solid fa-upload"></i> Upload Document
+                  <h3><i class="fa-solid fa-folder-open"></i> Employee Documents</h3>
+                  <button class="action-btn" onclick="openEmployeeDocumentModal()">
+                    <i class="fa-solid fa-upload"></i> Upload
                   </button>
                 </div>
                 <table>
@@ -286,25 +290,27 @@
 
               <div class="card">
                 <div class="card-head">
-                  <h3>Notes &amp; Performance Tracking</h3>
+                  <h3><i class="fa-solid fa-note-sticky"></i> Notes &amp; Performance Tracking</h3>
                 </div>
-                <div class="form-grid" style="margin-bottom:16px;">
-                  <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
-                  <div class="form-field"><label>Category</label>
-                    <select id="fNoteCategory">
-                      <option>General</option>
-                      <option>Performance</option>
-                      <option>Incident</option>
-                      <option>Achievement</option>
-                      <option>Attendance</option>
-                      <option>Warning</option>
-                    </select>
+                <div class="card-body">
+                  <div class="form-grid" style="margin-bottom:16px;">
+                    <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
+                    <div class="form-field"><label>Category</label>
+                      <select id="fNoteCategory">
+                        <option>General</option>
+                        <option>Performance</option>
+                        <option>Incident</option>
+                        <option>Achievement</option>
+                        <option>Attendance</option>
+                        <option>Warning</option>
+                      </select>
+                    </div>
+                    <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText"
+                        placeholder="Describe the observation, incident, or performance note..."></textarea></div>
                   </div>
-                  <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText"
-                      placeholder="Describe the observation, incident, or performance note..."></textarea></div>
+                  <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
+                  <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
                 </div>
-                <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
-                <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
               </div>
             </main>
 
@@ -316,20 +322,21 @@
 
               <div class="card employee-bank-card" id="bankAccountCard">
                 <div class="card-head">
-                  <h3><i class="fa-solid fa-building-columns"></i> Bank Account Details</h3>
-                  <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal(event)">
-                    <i class="fa-solid fa-plus"></i> Add Bank Details
+                  <h3><i class="fa-solid fa-building-columns"></i> Bank Account</h3>
+                  <button class="action-btn" id="bankAccountActionBtn" onclick="openBankAccountModal(event)" title="Edit Bank Details">
+                    <i class="fa-solid fa-pen"></i>
                   </button>
                 </div>
-                <div id="bankAccountStatus" style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
-                  <span class="badge-pill" id="bankAccountPill"
-                    style="background:var(--surface2);color:var(--text2);width:fit-content;">
+                <div class="status-line" id="bankAccountStatusLine">
+                  <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
-                  <p style="font-size:12px;color:var(--text2);line-height:1.4;">
-                    Bank details are stored securely for salary transfers. Click the action button to manage account
-                    information.
-                  </p>
+                </div>
+                <div class="card-body" id="bankAccountDetailsBody">
+                  <div class="iban-row"><span class="k">Bank</span><span class="v" id="bankDetailName">—</span></div>
+                  <div class="iban-row"><span class="k">IBAN</span><span class="v" id="bankDetailIban">—</span></div>
+                  <div class="iban-row"><span class="k">SWIFT</span><span class="v" id="bankDetailSwift">—</span></div>
+                  <p class="helper">Masked by default. Click edit to reveal or update.</p>
                 </div>
               </div>
 
