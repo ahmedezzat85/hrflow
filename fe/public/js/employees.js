@@ -102,16 +102,40 @@ async function viewProfile(id) {
   currentDetailEmployeeId = id;
   showSection('a-employee-detail', 'admin');
   const e = employees.find(x => x.id === id);
-  document.getElementById('detailProfileHead').innerHTML = `<div class="esc-head"><div class="esc-avatar">${initials(e.name)}</div><div class="esc-identity"><h4>${e.name}</h4><p>${e.role} • ${e.dept}${e.join ? ' • Joined ' + e.join : ''}</p></div><div class="esc-head-actions"><span class="badge-pill ${e.status === 'Active' ? 'pill-success' : (e.status === 'On Leave' ? 'pill-warning' : 'pill-neutral')}"><i class="fa-solid fa-circle" style="font-size:7px"></i> ${e.status}</span><span class="badge-pill pill-neutral">${e.employment_state || 'Full-Time'}</span></div></div>`;
-  document.getElementById('detailInfoGrid').innerHTML = `<div class="esc-grid">
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-envelope"></i> Email</span><span class="esc-value" title="${e.email}">${e.email}</span></div>
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-sack-dollar"></i> Monthly Salary</span><span class="esc-value esc-salary">${fmtMoney(e.salary)}</span></div>
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-building"></i> Internal Salary (USD)</span><span class="esc-value">${fmtUSD(e.internalSalaryUsd)}</span></div>
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-file-invoice-dollar"></i> External Salary (USD)</span><span class="esc-value">${fmtUSD(e.externalSalaryUsd)}</span></div>
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-arrow-trend-up"></i> Next Raise Date</span><span class="esc-value">${e.nextRaise}</span></div>
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-umbrella-beach"></i> Vacation Balance</span><span class="esc-value">${e.vacTotal - e.vacUsed} / ${e.vacTotal} days</span></div>
-  <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-hashtag"></i> Invoice ID</span><span class="esc-value">${e.invoice_id || '—'}</span></div>
-  <div class="esc-item wrap"><span class="esc-label"><i class="fa-solid fa-location-dot"></i> Address</span><span class="esc-value">${[e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—'}</span></div></div>`;
+  if (!e) return;
+
+  const internalUsd = Number(e.internalSalaryUsd || 0);
+  const externalUsd = Number(e.externalSalaryUsd || 0);
+  const monthlyTotalUsd = internalUsd + externalUsd;
+  const statusPill = e.status === 'Active' ? 'pill-success' : (e.status === 'On Leave' ? 'pill-warning' : 'pill-neutral');
+  const subtitle = [e.role, e.dept, e.join && 'Joined ' + fmtDateShort(e.join)].filter(Boolean).join(' · ');
+  const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—';
+  const vacRemaining = (e.vacTotal || 21) - (e.vacUsed || 0);
+
+  const head = document.getElementById('detailProfileHead');
+  head.className = 'esc-head';
+  head.innerHTML = `
+    <div class="esc-avatar">${initials(e.name)}</div>
+    <div class="esc-identity">
+      <h4>${e.name}</h4>
+      <p>${subtitle}</p>
+    </div>
+    <div class="esc-head-actions">
+      <span class="badge-pill ${statusPill}"><i class="fa-solid fa-circle" style="font-size:7px"></i> ${e.status}</span>
+      <span class="badge-pill pill-neutral">${e.employment_state || 'Full-Time'}</span>
+    </div>`;
+
+  const grid = document.getElementById('detailInfoGrid');
+  grid.className = 'esc-grid';
+  grid.innerHTML = `
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-envelope"></i> Email</span><span class="esc-value" title="${e.email}">${e.email}</span></div>
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-sack-dollar"></i> Monthly Salary</span><span class="esc-value esc-salary">${fmtUSD(monthlyTotalUsd)} <span class="sub">/ mo</span></span></div>
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-building"></i> Internal Salary (USD)</span><span class="esc-value">${fmtUSD(internalUsd)}</span></div>
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-file-invoice-dollar"></i> External Salary (USD)</span><span class="esc-value">${fmtUSD(externalUsd)}</span></div>
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-arrow-trend-up"></i> Next Raise Date</span><span class="esc-value">${fmtDateShort(e.nextRaise)}</span></div>
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-umbrella-beach"></i> Vacation Balance</span><span class="esc-value">${vacRemaining} / ${e.vacTotal || 21} days</span></div>
+    <div class="esc-item"><span class="esc-label"><i class="fa-solid fa-hashtag"></i> Invoice ID</span><span class="esc-value">${e.invoice_id || '—'}</span></div>
+    <div class="esc-item wrap"><span class="esc-label"><i class="fa-solid fa-location-dot"></i> Address</span><span class="esc-value" title="${address}">${address}</span></div>`;
   const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
   document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
   document.getElementById('detailInsuranceTotal').textContent = consumption ? `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}` : '—';
