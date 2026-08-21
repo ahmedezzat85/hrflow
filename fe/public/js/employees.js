@@ -6,7 +6,7 @@ function renderEmployeesTable(filter = '') {
     <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
     <td>${e.role}</td>
     <td>${e.employment_state || 'Full-Time'}</td>
-    <td>${fmtUSD(e.salary)}</td>
+    <td style="display:none;">${fmtUSD(e.salary)}</td>
     <td>${e.nextRaise}</td>
     <td>${statusPill(e.status)}</td>
     <td style="display:flex;gap:6px;">
@@ -14,7 +14,7 @@ function renderEmployeesTable(filter = '') {
       <button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
       <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice(${e.id})"><i class="fa-solid fa-file-invoice"></i></button>
       <button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button>
-    </td></tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+    </td></tr>`).join('') || `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 
