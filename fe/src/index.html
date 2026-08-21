@@ -209,125 +209,150 @@
             <div class="profile-head" id="detailProfileHead"></div>
             <div id="detailInfoGrid"></div>
           </div>
-          <div class="grid g-2-1" style="margin-bottom:20px;">
-            <div class="card">
-              <div class="card-head">
-                <h3>Medical Insurance Consumption</h3>
+          <div class="employee-detail-workspace">
+            <main class="employee-detail-main">
+              <div class="employee-detail-section-label">
+                <span>Time Off &amp; Benefits</span>
+                <span class="employee-detail-section-line"></span>
               </div>
-              <div class="info-item" style="margin-bottom:14px;"><span>Total Consumption</span><b
-                  id="detailInsuranceTotal">—</b></div>
-              <div class="grid g2" id="detailInsuranceGrid"></div>
-            </div>
-            <div class="card">
-              <div class="card-head">
-                <h3>Submit on Behalf</h3>
-              </div>
-              <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px;">Create records for this employee,
-                optionally backdated for previous years.</p>
-              <button class="btn btn-fill" style="width:100%;margin-bottom:10px;" onclick="openBehalfVacationModal()"><i
-                  class="fa-solid fa-umbrella-beach"></i> Vacation / WFH Request</button>
-              <button class="btn btn-fill" style="width:100%;margin-bottom:10px;" onclick="openBehalfClaimModal()"><i
-                  class="fa-solid fa-briefcase-medical"></i> Medical Insurance Claim</button>
-              <button class="btn btn-fill" style="width:100%;" onclick="openRaiseModal(currentDetailEmployeeId)"><i
-                  class="fa-solid fa-arrow-trend-up"></i> Apply Salary Raise</button>
-            </div>
-          </div>
-          <div class="grid g2" style="margin-bottom:20px;">
-            <div class="card">
-              <div class="card-head">
-                <h3>Vacation History</h3>
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Dates</th>
-                    <th>Days</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="detailVacationBody"></tbody>
-              </table>
-            </div>
-            <div class="card">
-              <div class="card-head">
-                <h3>Insurance Claims</h3>
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="detailClaimsBody"></tbody>
-              </table>
-            </div>
-          </div>
 
-          <div class="grid g-2-1" style="margin-bottom:20px;">
-            <div class="card">
-              <div class="card-head">
-                <h3>Employee Documents</h3>
-                <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
-                  <i class="fa-solid fa-upload"></i> Upload Document
+              <div class="employee-detail-history-grid">
+                <div class="card">
+                  <div class="card-head">
+                    <h3>Vacation History</h3>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="detailVacationBody"></tbody>
+                  </table>
+                </div>
+                <div class="card">
+                  <div class="card-head">
+                    <h3>Insurance Claims</h3>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="detailClaimsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card employee-insurance-summary-card">
+                <div class="card-head">
+                  <h3>Medical Insurance Consumption</h3>
+                </div>
+                <div class="info-item" style="margin-bottom:14px;"><span>Total Consumption</span><b
+                    id="detailInsuranceTotal">—</b></div>
+                <div class="grid g2" id="detailInsuranceGrid"></div>
+              </div>
+
+              <div class="employee-detail-section-label">
+                <span>Documents &amp; Notes</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h3>Employee Documents</h3>
+                  <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
+                    <i class="fa-solid fa-upload"></i> Upload Document
+                  </button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Document</th>
+                      <th>Uploaded</th>
+                      <th style="text-align:right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="detailDocumentsBody"></tbody>
+                </table>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h3>Notes &amp; Performance Tracking</h3>
+                </div>
+                <div class="form-grid" style="margin-bottom:16px;">
+                  <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
+                  <div class="form-field"><label>Category</label>
+                    <select id="fNoteCategory">
+                      <option>General</option>
+                      <option>Performance</option>
+                      <option>Incident</option>
+                      <option>Achievement</option>
+                      <option>Attendance</option>
+                      <option>Warning</option>
+                    </select>
+                  </div>
+                  <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText"
+                      placeholder="Describe the observation, incident, or performance note..."></textarea></div>
+                </div>
+                <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
+                <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
+              </div>
+            </main>
+
+            <aside class="employee-detail-sidebar">
+              <div class="employee-detail-section-label">
+                <span>Sensitive Data</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
+
+              <div class="card employee-bank-card" id="bankAccountCard">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-building-columns"></i> Bank Account Details</h3>
+                  <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal(event)">
+                    <i class="fa-solid fa-plus"></i> Add Bank Details
+                  </button>
+                </div>
+                <div id="bankAccountStatus" style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
+                  <span class="badge-pill" id="bankAccountPill"
+                    style="background:var(--surface2);color:var(--text2);width:fit-content;">
+                    <i class="fa-solid fa-circle-question"></i> Not loaded
+                  </span>
+                  <p style="font-size:12px;color:var(--text2);line-height:1.4;">
+                    Bank details are stored securely for salary transfers. Click the action button to manage account
+                    information.
+                  </p>
+                </div>
+              </div>
+
+              <div class="employee-detail-section-label">
+                <span>Quick Actions</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
+
+              <div class="card employee-quick-actions-card">
+                <button class="employee-quick-action" onclick="openBehalfVacationModal()">
+                  <i class="fa-solid fa-umbrella-beach"></i>
+                  <span>Vacation / WFH Request</span>
+                </button>
+                <button class="employee-quick-action" onclick="openBehalfClaimModal()">
+                  <i class="fa-solid fa-briefcase-medical"></i>
+                  <span>Medical Insurance Claim</span>
+                </button>
+                <button class="employee-quick-action employee-quick-action-primary" onclick="openRaiseModal(currentDetailEmployeeId)">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                  <span>Apply Salary Raise</span>
                 </button>
               </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Document</th>
-                    <th>Uploaded</th>
-                    <th style="text-align:right;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="detailDocumentsBody"></tbody>
-              </table>
-            </div>
-
-            <div class="card" id="bankAccountCard">
-              <div class="card-head">
-                <h3><i class="fa-solid fa-building-columns" style="color:var(--accent);margin-right:6px;"></i>Bank
-                  Account Details</h3>
-                <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal(event)">
-                  <i class="fa-solid fa-plus"></i> Add Bank Details
-                </button>
-              </div>
-              <div id="bankAccountStatus" style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
-                <span class="badge-pill" id="bankAccountPill"
-                  style="background:var(--surface2);color:var(--text2);width:fit-content;">
-                  <i class="fa-solid fa-circle-question"></i> Not loaded
-                </span>
-                <p style="font-size:12px;color:var(--text2);line-height:1.4;">
-                  Bank details are stored securely for salary transfers. Click the action button to manage account
-                  information.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-head">
-              <h3>Notes & Performance Tracking</h3>
-            </div>
-            <div class="form-grid" style="margin-bottom:16px;">
-              <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
-              <div class="form-field"><label>Category</label>
-                <select id="fNoteCategory">
-                  <option>General</option>
-                  <option>Performance</option>
-                  <option>Incident</option>
-                  <option>Achievement</option>
-                  <option>Attendance</option>
-                  <option>Warning</option>
-                </select>
-              </div>
-              <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText"
-                  placeholder="Describe the observation, incident, or performance note..."></textarea></div>
-            </div>
-            <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
-            <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
+            </aside>
           </div>
         </section>
 
