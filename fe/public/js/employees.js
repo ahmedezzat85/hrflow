@@ -6,7 +6,7 @@ function renderEmployeesTable(filter = '') {
     <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
     <td>${e.role}</td>
     <td>${e.employment_state || 'Full-Time'}</td>
-    <td>${fmtMoney(e.salary)}</td>
+    <td>${fmtUSD(e.salary)}</td>
     <td>${e.nextRaise}</td>
     <td>${statusPill(e.status)}</td>
     <td style="display:flex;gap:6px;">
@@ -140,7 +140,7 @@ async function viewProfile(id) {
       <div class="esc-comp-zone">
         <div class="esc-zone-label">Monthly Compensation</div>
         <div class="esc-comp-total">
-          <span class="esc-amount">${fmtMoney(e.salary)}</span>
+          <span class="esc-amount">${fmtUSD(internalUsd + externalUsd)}</span>
           <span class="esc-unit">/ month total</span>
         </div>
         <div class="esc-comp-breakdown">
