@@ -319,8 +319,7 @@ async function openBehalfClaimModal() {
   document.getElementById('bcAmount').value = '';
   document.getElementById('bcStatus').value = 'Approved';
   document.getElementById('bcRecordDate').value = '';
-  const fileInput = document.getElementById('bcDocument');
-  if (fileInput) fileInput.value = '';
+  clearBcDocFileSelection();
   document.getElementById('behalfClaimModal').classList.add('active');
 }
 async function submitBehalfClaim(evt) {
@@ -439,6 +438,16 @@ function clearDocFileSelection() {
   document.getElementById('docDropZoneFile').style.display = 'none';
 }
 
+function clearBcDocFileSelection() {
+  bcDocSelectedFile = null;
+  const fileInput = document.getElementById('bcDocument');
+  if (fileInput) fileInput.value = '';
+  const emptyEl = document.getElementById('bcDocDropZoneEmpty');
+  const fileEl = document.getElementById('bcDocDropZoneFile');
+  if (emptyEl) emptyEl.style.display = '';
+  if (fileEl) fileEl.style.display = 'none';
+}
+
 function handleDocFileSelected(file) {
   if (!file) return;
   if (file.size > 4 * 1024 * 1024) { toast('File must be under 4MB.', 'fa-solid fa-triangle-exclamation'); return; }
@@ -459,6 +468,35 @@ function handleDocFileSelected(file) {
   }
 }
 
+function handleBcDocFileSelected(file) {
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    toast('Supporting document must be under 2MB.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name);
+  if (!isPdf && !isImage) {
+    toast('Only PDF and image files (JPG, PNG) are supported.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  bcDocSelectedFile = file;
+  const fileType = detectDocFileType(file);
+  const emptyEl = document.getElementById('bcDocDropZoneEmpty');
+  const fileEl = document.getElementById('bcDocDropZoneFile');
+  const nameEl = document.getElementById('bcDocFileName');
+  const sizeEl = document.getElementById('bcDocFileSize');
+  const iconWrap = document.getElementById('bcDocFileIconWrap');
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (fileEl) fileEl.style.display = 'flex';
+  if (nameEl) nameEl.textContent = file.name;
+  if (sizeEl) sizeEl.textContent = formatFileSize(file.size);
+  if (iconWrap) {
+    iconWrap.className = 'doc-file-icon ' + (fileType === 'image' ? 'image' : 'pdf');
+    iconWrap.innerHTML = fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
+  }
+}
+
 function initDocDropZoneListeners() {
   const zone = document.getElementById('docDropZone');
   const input = document.getElementById('docFileInput');
@@ -470,6 +508,23 @@ function initDocDropZoneListeners() {
   zone.addEventListener('drop', e => {
     const f = e.dataTransfer.files[0];
     if (f) handleDocFileSelected(f);
+  });
+}
+
+function initBcDocDropZoneListeners() {
+  const zone = document.getElementById('bcDocDropZone');
+  const input = document.getElementById('bcDocument');
+  if (!zone || !input || zone.dataset.bound) return;
+  zone.dataset.bound = '1';
+  input.addEventListener('change', () => { if (input.files[0]) handleBcDocFileSelected(input.files[0]); });
+  ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drag-over'); }));
+  ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drag-over'); }));
+  zone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      input.files = e.dataTransfer.files;
+      handleBcDocFileSelected(f);
+    }
   });
 }
 
@@ -516,6 +571,8 @@ async function submitEmployeeDocument() {
 }
 document.addEventListener('DOMContentLoaded', initDocDropZoneListeners);
 if (document.readyState !== 'loading') initDocDropZoneListeners();
+document.addEventListener('DOMContentLoaded', initBcDocDropZoneListeners);
+if (document.readyState !== 'loading') initBcDocDropZoneListeners();
 
 async function deleteEmployeeDocument(docId) {
   try {

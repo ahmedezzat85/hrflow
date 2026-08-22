@@ -2465,3 +2465,30 @@ select option {
 }
 @keyframes btnSpin{to{transform:rotate(360deg)}}
 .btn:disabled,.btn-fill:disabled{opacity:.65;cursor:not-allowed;transform:none}
+
+/* ===== Compact drop-zone variant (used in Behalf Claim modal) ===== */
+.doc-drop-zone.compact{
+  padding:14px 12px;
+}
+.doc-drop-zone.compact .doc-drop-empty i{
+  font-size:20px;
+  margin-bottom:4px;
+}
+.doc-drop-zone.compact .doc-drop-empty p{
+  font-size:12.5px;
+  margin:0;
+}
+.doc-drop-zone.compact .doc-drop-empty span{
+  font-size:11px;
+}
+.doc-drop-zone.compact .doc-file-icon{
+  width:32px;
+  height:32px;
+  font-size:14px;
+}
+.doc-drop-zone.compact .doc-file-name{
+  font-size:12.5px;
+}
+.doc-drop-zone.compact .doc-file-size{
+  font-size:10.5px;
+}

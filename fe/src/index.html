@@ -1264,7 +1264,22 @@
             </div>
             <div class="form-field full">
               <label>Supporting Document <span class="opt">Optional</span></label>
-              <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png">
+              <div id="bcDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('bcDocument').click()">
+                <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="bcDocDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 2MB</span>
+                </div>
+                <div id="bcDocDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="bcDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="bcDocFileName" class="doc-file-name">-</p>
+                    <span id="bcDocFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearBcDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
