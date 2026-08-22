@@ -1374,45 +1374,67 @@
   </div>
 
   <div class="modal-overlay" id="companyDocumentModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3>Add Company Document</h3>
+        <div class="modal-head-icon"><i class="fa-solid fa-folder-plus"></i></div>
+        <div class="modal-head-text">
+          <h3 id="companyDocumentModalTitle">Add Company Document</h3>
+          <p>Publish shared company policies, handbooks, and documents.</p>
+        </div>
         <button class="modal-close" onclick="closeModal('companyDocumentModal')"><i
             class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field full">
-            <label>Document Name</label>
-            <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
-          </div>
-          <div class="form-field full">
-            <label>Category</label>
-            <select id="dochubDocCategory">
-              <option>General</option>
-              <option>Policy</option>
-              <option>Handbook</option>
-              <option>Form</option>
-              <option>Announcement</option>
-            </select>
-          </div>
-          <div class="form-field full">
-            <label>File</label>
-            <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png">
-          </div>
-          <div class="form-field full" id="dochubUploadProgressWrap" style="display:none;">
-            <div class="doc-progress-track">
-              <div class="doc-progress-fill" id="dochubUploadProgressFill" style="width:0%;"></div>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-circle-plus"></i> Document Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Document Name <span class="req">*</span></label>
+              <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
             </div>
-            <div class="doc-progress-label">
-              <span id="dochubUploadProgressText">Uploading...</span>
-              <span id="dochubUploadProgressPct">0%</span>
+            <div class="form-field full">
+              <label>Category <span class="req">*</span></label>
+              <select id="dochubDocCategory">
+                <option>General</option>
+                <option>Policy</option>
+                <option>Handbook</option>
+                <option>Form</option>
+                <option>Announcement</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label>File <span class="req">*</span></label>
+              <div id="dochubDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('dochubFileInput').click()">
+                <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="dochubDocDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 4MB</span>
+                </div>
+                <div id="dochubDocDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="dochubDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="dochubDocFileName" class="doc-file-name">-</p>
+                    <span id="dochubDocFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearDochubDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="form-field full" id="dochubUploadProgressWrap" style="display:none;">
+              <div class="doc-progress-track">
+                <div class="doc-progress-fill" id="dochubUploadProgressFill" style="width:0%;"></div>
+              </div>
+              <div class="doc-progress-label">
+                <span id="dochubUploadProgressText">Uploading...</span>
+                <span id="dochubUploadProgressPct">0%</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn" onclick="closeModal('companyDocumentModal')">Cancel</button>
+        <button class="btn" id="dochubCancelBtn" onclick="closeModal('companyDocumentModal')">Cancel</button>
         <button class="btn btn-fill" id="dochubUploadBtn" onclick="submitCompanyDocument()"><i
             class="fa-solid fa-check"></i> Upload</button>
       </div>
