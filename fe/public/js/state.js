@@ -13,5 +13,6 @@ let employeeDocuments = [];
 let currentDetailEmployeeId = null;
 let docSelectedFile = null;
 let bcDocSelectedFile = null;
+let dochubSelectedFile = null;
 let companyDocuments = [];
 window._charts = {};
