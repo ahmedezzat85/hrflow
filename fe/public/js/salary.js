@@ -79,7 +79,8 @@ function updateRaisePreview(){
   document.getElementById('rvIncrease').textContent = fmtDelta(d.totalAmt, d.totalPct);
   preview.classList.add('show');
 }
-async function applyRaise(){
+async function applyRaise(evt){
+  const btn = (evt && evt.currentTarget) || document.getElementById('raiseModalSaveBtn') || document.querySelector('#raiseModal .btn-fill');
   const empId = Number(document.getElementById('rEmpSelect').value);
   const emp = employees.find(e=>e.id===empId);
   const date = document.getElementById('rDate').value;
@@ -96,6 +97,7 @@ async function applyRaise(){
     reason,
   };
 
+  setButtonLoading(btn, true, 'Applying…');
   try{
     const result = await Api.applyRaise(payload);
     closeModal('raiseModal');
@@ -103,5 +105,6 @@ async function applyRaise(){
     toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtUSD(result.new_internal_salary_usd + result.new_external_salary_usd)}.`);
     await loadAdminData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  finally { setButtonLoading(btn, false); }
 }
 function updateSalaryChart(){ const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee; const ch = window._charts.salary; if(!ch) return; ch.data.labels = emp.salaryHistory.map(s=>s.date.slice(0,7)); ch.data.datasets[0].data = emp.salaryHistory.map(s=>s.next); ch.update(); }

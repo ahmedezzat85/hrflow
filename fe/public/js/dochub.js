@@ -12,10 +12,72 @@ function detectDochubFileType(file){
 function openCompanyDocumentModal(){
   document.getElementById('dochubDocName').value = '';
   document.getElementById('dochubDocCategory').value = 'General';
-  document.getElementById('dochubFileInput').value = '';
+  clearDochubDocFileSelection();
   document.getElementById('dochubUploadProgressWrap').style.display = 'none';
   document.getElementById('companyDocumentModal').classList.add('active');
 }
+
+function clearDochubDocFileSelection(){
+  dochubSelectedFile = null;
+  const fileInput = document.getElementById('dochubFileInput');
+  if(fileInput) fileInput.value = '';
+  const emptyEl = document.getElementById('dochubDocDropZoneEmpty');
+  const fileEl = document.getElementById('dochubDocDropZoneFile');
+  if(emptyEl) emptyEl.style.display = '';
+  if(fileEl) fileEl.style.display = 'none';
+}
+
+function handleDochubDocFileSelected(file){
+  if(!file) return;
+  if(file.size > 4 * 1024 * 1024){
+    toast('File must be under 4MB.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name);
+  if(!isPdf && !isImage){
+    toast('Only PDF and image files (JPG, PNG) are supported.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  dochubSelectedFile = file;
+  const fileType = detectDochubFileType(file);
+  const emptyEl = document.getElementById('dochubDocDropZoneEmpty');
+  const fileEl = document.getElementById('dochubDocDropZoneFile');
+  const nameEl = document.getElementById('dochubDocFileName');
+  const sizeEl = document.getElementById('dochubDocFileSize');
+  const iconWrap = document.getElementById('dochubDocFileIconWrap');
+  if(emptyEl) emptyEl.style.display = 'none';
+  if(fileEl) fileEl.style.display = 'flex';
+  if(nameEl) nameEl.textContent = file.name;
+  if(sizeEl) sizeEl.textContent = typeof formatFileSize === 'function' ? formatFileSize(file.size) : (file.size < 1024*1024 ? (file.size/1024).toFixed(1) + ' KB' : (file.size/(1024*1024)).toFixed(1) + ' MB');
+  if(iconWrap){
+    iconWrap.className = 'doc-file-icon ' + (fileType === 'image' ? 'image' : 'pdf');
+    iconWrap.innerHTML = fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
+  }
+  if(!document.getElementById('dochubDocName').value.trim()){
+    document.getElementById('dochubDocName').value = file.name.replace(/\.[^.]+$/, '');
+  }
+}
+
+function initDochubDocDropZoneListeners(){
+  const zone = document.getElementById('dochubDocDropZone');
+  const input = document.getElementById('dochubFileInput');
+  if(!zone || !input || zone.dataset.bound) return;
+  zone.dataset.bound = '1';
+  input.addEventListener('change', () => { if(input.files[0]) handleDochubDocFileSelected(input.files[0]); });
+  ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drag-over'); }));
+  ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drag-over'); }));
+  zone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files[0];
+    if(f){
+      input.files = e.dataTransfer.files;
+      handleDochubDocFileSelected(f);
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', initDochubDocDropZoneListeners);
+if (document.readyState !== 'loading') initDochubDocDropZoneListeners();
+
 async function loadCompanyDocuments(){
   try{
     companyDocuments = await Api.getCompanyDocuments();
@@ -62,10 +124,10 @@ if(dochubSearchEl) dochubSearchEl.addEventListener('input', e=>renderCompanyDocu
 const empDochubSearchEl = document.getElementById('empDochubSearch');
 if(empDochubSearchEl) empDochubSearchEl.addEventListener('input', e=>renderCompanyDocumentsEmployee(e.target.value));
 
-async function submitCompanyDocument(){
+async function submitCompanyDocument(evt){
   const name = document.getElementById('dochubDocName').value.trim();
   const category = document.getElementById('dochubDocCategory').value;
-  const file = document.getElementById('dochubFileInput').files[0];
+  const file = dochubSelectedFile || (document.getElementById('dochubFileInput') && document.getElementById('dochubFileInput').files[0]);
   if(!name){ toast('Please enter a document name.','fa-solid fa-triangle-exclamation'); return; }
   if(!file){ toast('Please choose a file to upload.','fa-solid fa-triangle-exclamation'); return; }
   if(file.size > 4*1024*1024){ toast('File must be under 4MB.','fa-solid fa-triangle-exclamation'); return; }
@@ -75,11 +137,13 @@ async function submitCompanyDocument(){
   const progressPct = document.getElementById('dochubUploadProgressPct');
   const progressText = document.getElementById('dochubUploadProgressText');
   const uploadBtn = document.getElementById('dochubUploadBtn');
+  const cancelBtn = document.getElementById('dochubCancelBtn');
+  if(cancelBtn) cancelBtn.disabled = true;
+  setButtonLoading(uploadBtn, true, 'Uploading…');
   try{
     progressWrap.style.display = 'block';
     progressFill.style.width = '0%'; progressPct.textContent = '0%';
     progressText.textContent = 'Preparing file...';
-    uploadBtn.disabled = true;
     const dataUrl = await readFileAsDataUrlDochub(file);
     progressText.textContent = 'Uploading...';
     await Api.uploadCompanyDocumentWithProgress({ name, file_type: fileType, data_url: dataUrl, category }, (pct)=>{
@@ -92,7 +156,8 @@ async function submitCompanyDocument(){
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   finally{
     progressWrap.style.display = 'none';
-    uploadBtn.disabled = false;
+    if(cancelBtn) cancelBtn.disabled = false;
+    setButtonLoading(uploadBtn, false);
   }
 }
 async function deleteCompanyDocumentPrompt(docId){

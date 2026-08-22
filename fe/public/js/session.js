@@ -15,15 +15,20 @@ async function handleLoginSuccess(data){
     }
   } catch(err){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
+    hideAppLoader();
   }
-  try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
-  hideAppLoader();
 }
 
 function handleLoginError(err){
+  hideAppLoader();
   const errBox = document.getElementById('loginErr');
-  errBox.style.display = 'flex';
-  errBox.querySelector('span').textContent = err.message || 'Sign-in failed. Please try again.';
+  if(errBox){
+    errBox.style.display = 'flex';
+    const span = errBox.querySelector('span');
+    if(span) span.textContent = err.message || 'Sign-in failed. Please try again.';
+  }
 }
 
 // On page load, the session itself lives only in an HttpOnly cookie set

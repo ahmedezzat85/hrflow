@@ -9,11 +9,11 @@ function insuranceProgressColor(status){
   return 'var(--accent)';
 }
 function renderCategoryChip(cat){
-  return `<div class="card" style="padding:16px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
-      <b style="font-size:13px;">${cat.category}</b>${insuranceStatusBadge(cat.status)}
+  return `<div class="insurance-chip">
+    <div class="chip-top">
+      <b>${cat.category}</b>${insuranceStatusBadge(cat.status)}
     </div>
-    <div style="font-size:12.5px;color:var(--text2);margin-bottom:8px;">${fmtMoney(cat.consumed)} of ${fmtMoney(cat.limit)}</div>
+    <div class="chip-amount">${fmtMoney(cat.consumed)} of ${fmtMoney(cat.limit)}</div>
     <div class="progress-bar"><span style="width:${Math.min(cat.pct_used,100)}%;background:${insuranceProgressColor(cat.status)};"></span></div>
   </div>`;
 }
@@ -44,6 +44,7 @@ function renderAdminInsuranceHighlights(){
   const agg = aggregateCompanyConsumption();
   container.innerHTML = agg.map(renderCategoryChip).join('') || '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>';
 }
+
 function renderCategoriesTable(){
   const body = document.getElementById('categoriesTableBody');
   if(!body) return;
@@ -56,16 +57,19 @@ function openCategoryModal(id=null){
   else { document.getElementById('fCatName').value = ''; document.getElementById('fCatLimit').value = ''; }
   document.getElementById('categoryModal').classList.add('active');
 }
-async function saveCategory(){
+async function saveCategory(evt){
+  const btn = (evt && evt.currentTarget) || document.getElementById('categoryModalSaveBtn') || document.querySelector('#categoryModal .btn-fill');
   const name = document.getElementById('fCatName').value.trim();
   const limit = Number(document.getElementById('fCatLimit').value);
   if(!name || !limit){ toast('Please fill in category name and annual limit.','fa-solid fa-triangle-exclamation'); return; }
+  setButtonLoading(btn, true, 'Saving…');
   try{
     if(currentEditCategoryId){ await Api.updateInsuranceCategory(currentEditCategoryId, {name, annual_limit: limit}); toast('Category updated.'); }
     else { await Api.createInsuranceCategory({name, annual_limit: limit}); toast('Category added.'); }
     closeModal('categoryModal');
     await loadAdminData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  finally { setButtonLoading(btn, false); }
 }
 async function deleteCategory(id){
   try{ await Api.deleteInsuranceCategory(id); toast('Category removed.', 'fa-solid fa-trash'); await loadAdminData(); }
@@ -80,6 +84,7 @@ function populateClaimCategoryOptions(){
 }
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
+  if(!body) return;
   body.innerHTML = insuranceClaims.map(c=>`<tr><td class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td style="display:flex;gap:6px;">${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td></tr>`).join('');
   document.getElementById('statClaimsYtd').textContent = insuranceClaims.length;
   document.getElementById('statClaimsApproved').textContent = insuranceClaims.filter(c=>c.status==='Approved').length;
@@ -103,7 +108,8 @@ function renderEmployeeInsuranceHighlights(){
   if(pageGrid) pageGrid.innerHTML = chips;
   if(totalEl) totalEl.textContent = `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}`;
 }
-async function submitClaim(){
+async function submitClaim(evt){
+  const btn = (evt && evt.currentTarget) || document.querySelector('#e-insurance .btn-fill');
   const category = document.getElementById('claimCategory').value;
   const amount = Number(document.getElementById('claimAmount').value);
   const fileInput = document.getElementById('claimDocument');
@@ -116,11 +122,13 @@ async function submitClaim(){
     try{ documentUrl = await readFileAsDataUrl(file); }
     catch(e){ toast('Could not read the selected file.','fa-solid fa-triangle-exclamation'); return; }
   }
+  setButtonLoading(btn, true, 'Submitting…');
   try{
     await Api.submitInsuranceClaim({ employee_name: currentLoggedInEmployee.name, category, provider: '—', amount, document_url: documentUrl });
-    toast('Insurance claim submitted.');
-    document.getElementById('claimAmount').value='';
-    if(fileInput) fileInput.value='';
+    toast('Insurance claim submitted for approval.');
+    document.getElementById('claimAmount').value = '';
+    if(fileInput) fileInput.value = '';
     await loadEmployeeData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  finally { setButtonLoading(btn, false); }
 }

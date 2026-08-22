@@ -1,749 +1,1491 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HRFlow | HR Management System</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="../config.js"></script>
-<script src="../api.js"></script>
-<link rel="stylesheet" href="./styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRFlow | HR Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="../config.js"></script>
+  <script src="../api.js"></script>
+  <link rel="stylesheet" href="./styles.css">
 </head>
+
 <body>
-<button class="theme-fab" id="loginThemeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
-<div id="appLoader" class="app-loader" style="display:none;">
-  <div class="app-loader-inner">
-    <div class="app-loader-spinner"><span></span></div>
-    <h3>Loading HRFlow</h3>
-    <p>Fetching your latest data, this only takes a moment.</p>
-  </div>
-</div>
-
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-visual">
-      <div class="brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
-      <div>
-        <h2>People operations,<br>beautifully simplified.</h2>
-        <p>Manage vacations, work-from-home, medical insurance claims and salary history — all in one elegant workspace.</p>
-        <div class="visual-stats">
-          <div><span><i class="fa-solid fa-shield-halved"></i></span><small>Secure Google Sign-In</small></div>
-          <div><span><i class="fa-solid fa-clock"></i></span><small>Real-time Approvals</small></div>
-          <div><span><i class="fa-solid fa-lock"></i></span><small>Role-based Access</small></div>
-        </div>
-      </div>
-    </div>
-    <div class="login-form-wrap">
-      <h1>Welcome back</h1>
-      <p>Sign in to access your HR workspace.</p>
-      <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i> <span>Sign-in failed.</span></div>
-      <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:28px;"></div>
-      <p style="text-align:center; color:var(--text3); font-size:12px; margin-top:16px;">
-        Not registered yet? Ask your HR admin to add you as an employee first.
-      </p>
-      <div class="login-footer-brand">
-        <img src="voyance-health-logo.png" alt="Voyance Health">
-      </div>
+  <button class="theme-fab" id="loginThemeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+  <div id="appLoader" class="app-loader" style="display:none;">
+    <div class="app-loader-inner">
+      <div class="app-loader-spinner"><span></span></div>
+      <h3>Loading HRFlow</h3>
+      <p>Fetching your latest data, this only takes a moment.</p>
     </div>
   </div>
-</div>
 
-<div class="app" id="admin-app">
-  <aside class="sidebar" id="adminSidebar">
-    <div class="sidebar-top-row">
-      <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
-      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse sidebar"><i class="fa-solid fa-chevron-left"></i></button>
-    </div>
-    <div class="nav-section-label">Workspace</div>
-    <a class="nav-item active" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
-    <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
-    <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
-    <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
-    <a class="nav-item" data-page="a-invoices" title="Invoices"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="nav-label">Invoices</span></a>
-    <div class="nav-section-label">Modules</div>
-    <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
-    <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
-    <a class="nav-item" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
-    <div class="sidebar-footer">
-      <div class="user-mini" title="Account">
-        <div class="avatar" id="adminUserAvatar">--</div>
-        <div class="user-mini-text"><div class="name" id="adminUserName">--</div><div class="role" id="adminUserRole">--</div></div>
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-visual">
+        <div class="brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
+        <div>
+          <h2>People operations,<br>beautifully simplified.</h2>
+          <p>Manage vacations, work-from-home, medical insurance claims and salary history — all in one elegant
+            workspace.</p>
+          <div class="visual-stats">
+            <div><span><i class="fa-solid fa-shield-halved"></i></span><small>Secure Google Sign-In</small></div>
+            <div><span><i class="fa-solid fa-clock"></i></span><small>Real-time Approvals</small></div>
+            <div><span><i class="fa-solid fa-lock"></i></span><small>Role-based Access</small></div>
+          </div>
+        </div>
       </div>
-      <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></button>
-      <div class="sidebar-brand-footer">
-        <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
-        <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
-      </div>
-    </div>
-  </aside>
-  <main class="main">
-    <div class="topbar">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button class="hamburger" onclick="toggleSidebar('adminSidebar')"><i class="fa-solid fa-bars"></i></button>
-        <div><h2 id="adminPageTitle">General Dashboard</h2><div class="sub" id="adminPageSub">Welcome back, here's what's happening today.</div></div>
-      </div>
-      <div class="top-actions">
-        <button class="icon-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
-        <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
-        <button class="icon-btn" id="adminThemeToggle"><i class="fa-solid fa-moon"></i></button>
+      <div class="login-form-wrap">
+        <h1>Welcome back</h1>
+        <p>Sign in to access your HR workspace.</p>
+        <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i>
+          <span>Sign-in failed.</span>
+        </div>
+        <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:28px;"></div>
+        <p style="text-align:center; color:var(--text3); font-size:12px; margin-top:16px;">
+          Not registered yet? Ask your HR admin to add you as an employee first.
+        </p>
+        <div class="login-footer-brand">
+          <img src="voyance-health-logo.png" alt="Voyance Health">
+        </div>
       </div>
     </div>
-    <div class="page">
-      <section class="page-section active" id="a-dashboard">
-        <div class="hero-banner" style="margin-bottom:20px;">
-          <div class="hero-stats">
-            <div class="hero-stat"><b id="statEmployees">248</b><span>Total Employees</span></div>
-            <div class="hero-stat"><b id="statPending">14</b><span>Pending Requests</span></div>
-            <div class="hero-stat"><b id="statOnLeave">37</b><span>On Leave This Month</span></div>
-            <div class="hero-stat"><b id="statOpenClaims">9</b><span>Open Insurance Claims</span></div>
-          </div>
-          <span id="statClaimsTotal" style="display:none;"></span>
-        </div>
-        <div class="grid g-2-1" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>Requests Overview (Last 6 Months)</h3><a class="link">Export</a></div>
-            <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>Request Types</h3></div>
-            <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
-          </div>
-        </div>
-        <div class="grid g-1-2" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>Upcoming Annual Raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a></div>
-            <ul class="timeline" id="upcomingRaisesList"></ul>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>Pending Requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a></div>
-            <table><thead><tr><th>Employee</th><th>Type</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody id="dashPendingBody"></tbody></table>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Medical Insurance Highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Manage insurance</a></div>
-          <div class="grid g4" id="dashInsuranceCategoryChips"></div>
-        </div>
-      </section>
+  </div>
 
-      <section class="page-section" id="a-employees">
-        <div class="toolbar">
-          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch" placeholder="Search employees by name, role, department..."></div>
-          <button class="btn btn-fill" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add Employee</button>
-        </div>
-        <div class="card">
-          <div class="section-loading-bar" id="empTableLoadingBar"><span></span></div>
-          <table>
-            <thead><tr><th>ID</th><th>Employee</th><th>Role</th><th>Employment State</th><th>Salary</th><th>Next Raise</th><th>Status</th><th></th></tr></thead>
-            <tbody id="employeesTableBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="page-section" id="a-employee-detail">
-        <button class="btn btn-sm" style="margin-bottom:18px;" onclick="showSection('a-employees','admin')"><i class="fa-solid fa-arrow-left"></i> Back to Employees</button>
-        <div class="card" style="margin-bottom:20px;">
-          <div class="profile-head" id="detailProfileHead"></div>
-          <div class="info-grid" id="detailInfoGrid"></div>
-        </div>
-        <div class="grid g-2-1" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>Medical Insurance Consumption</h3></div>
-            <div class="info-item" style="margin-bottom:14px;"><span>Total Consumption</span><b id="detailInsuranceTotal">—</b></div>
-            <div class="grid g2" id="detailInsuranceGrid"></div>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>Submit on Behalf</h3></div>
-            <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px;">Create records for this employee, optionally backdated for previous years.</p>
-            <button class="btn btn-fill" style="width:100%;margin-bottom:10px;" onclick="openBehalfVacationModal()"><i class="fa-solid fa-umbrella-beach"></i> Vacation / WFH Request</button>
-            <button class="btn btn-fill" style="width:100%;margin-bottom:10px;" onclick="openBehalfClaimModal()"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance Claim</button>
-            <button class="btn btn-fill" style="width:100%;" onclick="openRaiseModal(currentDetailEmployeeId)"><i class="fa-solid fa-arrow-trend-up"></i> Apply Salary Raise</button>
-          </div>
-        </div>
-        <div class="grid g2" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>Vacation History</h3></div>
-            <table><thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Status</th></tr></thead><tbody id="detailVacationBody"></tbody></table>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>Insurance Claims</h3></div>
-            <table><thead><tr><th>Category</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody id="detailClaimsBody"></tbody></table>
+  <div class="app" id="admin-app">
+    <aside class="sidebar" id="adminSidebar">
+      <div class="sidebar-top-row">
+        <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
+        <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse sidebar"><i
+            class="fa-solid fa-chevron-left"></i></button>
+      </div>
+      <div class="nav-section-label">Workspace</div>
+      <a class="nav-item active" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span
+          class="nav-label">Dashboard</span></a>
+      <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span
+          class="nav-label">Employees</span></a>
+      <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span
+          class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
+      <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span
+          class="nav-label">Salary & Raises</span></a>
+      <a class="nav-item" data-page="a-invoices" title="Invoices"><i class="fa-solid fa-file-invoice-dollar"></i> <span
+          class="nav-label">Invoices</span></a>
+      <div class="nav-section-label">Modules</div>
+      <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span
+          class="nav-label">Vacations</span></a>
+      <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i
+          class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+      <a class="nav-item" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span
+          class="nav-label">Document Hub</span></a>
+      <div class="sidebar-footer">
+        <div class="user-mini" title="Account">
+          <div class="avatar" id="adminUserAvatar">--</div>
+          <div class="user-mini-text">
+            <div class="name" id="adminUserName">--</div>
+            <div class="role" id="adminUserRole">--</div>
           </div>
         </div>
-
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head">
-            <h3>Employee Documents</h3>
-            <button class="btn btn-fill btn-sm" onclick="openEmployeeDocumentModal()">
-              <i class="fa-solid fa-upload"></i> Upload Document
-            </button>
-          </div>
-          <table>
-            <thead><tr><th>Document</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
-            <tbody id="detailDocumentsBody"></tbody>
-          </table>
+        <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i>
+          <span>Logout</span></button>
+        <div class="sidebar-brand-footer">
+          <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
+          <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
         </div>
-
-        <div class="card" style="margin-bottom:20px;" id="bankAccountCard">
-          <div class="card-head">
-            <h3>Bank Account Details</h3>
-            <button class="btn btn-fill btn-sm" id="bankAccountActionBtn" onclick="openBankAccountModal()">
-              <i class="fa-solid fa-plus"></i> Add Bank Details
-            </button>
-          </div>
-          <div id="bankAccountStatus" style="display:flex;align-items:center;gap:10px;padding:4px 0;">
-            <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
-              <i class="fa-solid fa-circle-question"></i> Not loaded
-            </span>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar('adminSidebar')"><i class="fa-solid fa-bars"></i></button>
+          <div>
+            <h2 id="adminPageTitle">General Dashboard</h2>
+            <div class="sub" id="adminPageSub">Welcome back, here's what's happening today.</div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-head"><h3>Notes & Performance Tracking</h3></div>
-          <div class="form-grid" style="margin-bottom:16px;">
-            <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
-            <div class="form-field"><label>Category</label>
-              <select id="fNoteCategory"><option>General</option><option>Performance</option><option>Incident</option><option>Achievement</option><option>Attendance</option><option>Warning</option></select>
+        <div class="top-actions">
+          <button class="icon-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+          <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
+          <button class="icon-btn" id="adminThemeToggle"><i class="fa-solid fa-moon"></i></button>
+        </div>
+      </div>
+      <div class="page">
+        <section class="page-section active" id="a-dashboard">
+          <div class="hero-banner" style="margin-bottom:20px;">
+            <div class="hero-stats">
+              <div class="hero-stat"><b id="statEmployees">248</b><span>Total Employees</span></div>
+              <div class="hero-stat"><b id="statPending">14</b><span>Pending Requests</span></div>
+              <div class="hero-stat"><b id="statOnLeave">37</b><span>On Leave This Month</span></div>
+              <div class="hero-stat"><b id="statOpenClaims">9</b><span>Open Insurance Claims</span></div>
             </div>
-            <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText" placeholder="Describe the observation, incident, or performance note..."></textarea></div>
+            <span id="statClaimsTotal" style="display:none;"></span>
           </div>
-          <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
-          <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
-        </div>
-      </section>
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Requests Overview (Last 6 Months)</h3><a class="link">Export</a>
+              </div>
+              <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Request Types</h3>
+              </div>
+              <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
+            </div>
+          </div>
+          <div class="grid g-1-2" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Upcoming Annual Raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a>
+              </div>
+              <ul class="timeline" id="upcomingRaisesList"></ul>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Pending Requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="dashPendingBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Medical Insurance Highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Manage
+                insurance</a>
+            </div>
+            <div class="grid g4" id="dashInsuranceCategoryChips"></div>
+          </div>
+        </section>
 
-      <section class="page-section" id="a-requests">
-        <div class="filter-tabs" style="margin-bottom:20px;">
-          <button class="filter-tab active" data-reqfilter="all">All</button>
-          <button class="filter-tab" data-reqfilter="Vacation">Vacation</button>
-          <button class="filter-tab" data-reqfilter="Work From Home">Work From Home</button>
-          <button class="filter-tab" data-reqfilter="Medical Insurance">Medical Insurance</button>
-        </div>
-        <div class="card">
-          <table>
-            <thead><tr><th>Employee</th><th>Type</th><th>Details</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="requestsTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+        <section class="page-section" id="a-employees">
+          <div class="toolbar">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch"
+                placeholder="Search employees by name, role, department..."></div>
+            <button class="btn btn-fill" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add
+              Employee</button>
+          </div>
+          <div class="card">
+            <div class="section-loading-bar" id="empTableLoadingBar"><span></span></div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Employee</th>
+                  <th>Role</th>
+                  <th>Employment State</th>
+                  <th style="display:none;">Salary</th>
+                  <th>Next Raise</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="employeesTableBody"></tbody>
+            </table>
+          </div>
+        </section>
 
-      <section class="page-section" id="a-salary">
-        <div class="grid g4" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Monthly Payroll</div><div class="stat-val" id="statPayroll">EGP 0</div></div>
-          <div class="card stat-card"><div class="stat-label">Avg. Raise (Last Cycle)</div><div class="stat-val" id="statAvgRaise">+0%</div></div>
-          <div class="card stat-card"><div class="stat-label">Raises Applied (YTD)</div><div class="stat-val" id="statRaisesYtd">0</div></div>
-          <div class="card stat-card"><div class="stat-label">Upcoming This Quarter</div><div class="stat-val" id="statUpcomingQ">0</div></div>
-        </div>
-        <div class="toolbar">
-          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch" placeholder="Search employees..."></div>
-          <button class="btn btn-fill" onclick="openRaiseModal()"><i class="fa-solid fa-arrow-trend-up"></i> Apply New Raise</button>
-        </div>
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3>Employee Compensation</h3></div>
-          <table><thead><tr><th>Employee</th><th>Department</th><th>Current Salary</th><th>Next Raise Date</th><th>Last Raise Applied</th><th></th></tr></thead><tbody id="salaryTableBody"></tbody></table>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Company-wide Raise History</h3></div>
-          <table><thead><tr><th>Employee</th><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead><tbody id="companyRaiseHistoryBody"></tbody></table>
-        </div>
-      </section>
+        <section class="page-section" id="a-employee-detail">
+          <button class="btn btn-sm" style="margin-bottom:18px" onclick="showSection('a-employees','admin')">
+            <i class="fa-solid fa-arrow-left"></i> Back to Employees
+          </button>
+          <div class="card emp-summary-card" style="margin-bottom:20px">
+            <div class="profile-head" id="detailProfileHead"></div>
+            <div id="detailInfoGrid"></div>
+          </div>
+          <div class="employee-detail-workspace">
+            <main class="employee-detail-main">
+              <div class="employee-detail-section-label">
+                <span>Time Off &amp; Benefits</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
 
-      <section class="page-section" id="a-invoices">
-        <div class="toolbar">
-          <div class="form-grid" style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
-            <div class="form-field"><label>Payment Year</label><input type="number" id="invPaymentYear" placeholder="2026"></div>
+              <div class="employee-detail-history-grid">
+                <div class="card">
+                  <div class="card-head">
+                    <h3><i class="fa-solid fa-umbrella-beach"></i> Vacation History</h3>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="detailVacationBody"></tbody>
+                  </table>
+                </div>
+                <div class="card">
+                  <div class="card-head">
+                    <h3><i class="fa-solid fa-briefcase-medical"></i> Insurance Claims</h3>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="detailClaimsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card employee-insurance-summary-card">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-shield-heart"></i> Medical Insurance Consumption</h3>
+                </div>
+                <div class="card-body">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+                    <span style="font-size:12.5px;color:var(--text2)">Total Consumption</span>
+                    <strong style="font-family:var(--font-head);font-size:16px" id="detailInsuranceTotal">—</strong>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="detailInsuranceGrid"></div>
+                </div>
+              </div>
+
+              <div class="employee-detail-section-label">
+                <span>Documents &amp; Notes</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-folder-open"></i> Employee Documents</h3>
+                  <button class="action-btn" onclick="openEmployeeDocumentModal()">
+                    <i class="fa-solid fa-upload"></i> Upload
+                  </button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Document</th>
+                      <th>Uploaded</th>
+                      <th style="text-align:right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="detailDocumentsBody"></tbody>
+                </table>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-note-sticky"></i> Notes &amp; Performance Tracking</h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-grid" style="margin-bottom:16px;">
+                    <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
+                    <div class="form-field"><label>Category</label>
+                      <select id="fNoteCategory">
+                        <option>General</option>
+                        <option>Performance</option>
+                        <option>Incident</option>
+                        <option>Achievement</option>
+                        <option>Attendance</option>
+                        <option>Warning</option>
+                      </select>
+                    </div>
+                    <div class="form-field full"><label>Note</label><textarea rows="3" id="fNoteText"
+                        placeholder="Describe the observation, incident, or performance note..."></textarea></div>
+                  </div>
+                  <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
+                  <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
+                </div>
+              </div>
+            </main>
+
+            <aside class="employee-detail-sidebar">
+              <div class="employee-detail-section-label">
+                <span>Sensitive Data</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
+
+              <div class="card employee-bank-card" id="bankAccountCard">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-building-columns"></i> Bank Account</h3>
+                  <button class="action-btn" id="bankAccountActionBtn" onclick="openBankAccountModal(event)" title="Edit Bank Details">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                </div>
+                <div class="status-line" id="bankAccountStatusLine">
+                  <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
+                    <i class="fa-solid fa-circle-question"></i> Not loaded
+                  </span>
+                </div>
+                <div class="card-body" id="bankAccountDetailsBody">
+                  <div class="iban-row"><span class="k">Bank</span><span class="v" id="bankDetailName">—</span></div>
+                  <div class="iban-row"><span class="k">IBAN</span><span class="v" id="bankDetailIban">—</span></div>
+                  <div class="iban-row"><span class="k">SWIFT</span><span class="v" id="bankDetailSwift">—</span></div>
+                  <p class="helper">Masked by default. Click edit to reveal or update.</p>
+                </div>
+              </div>
+
+              <div class="employee-detail-section-label">
+                <span>Quick Actions</span>
+                <span class="employee-detail-section-line"></span>
+              </div>
+
+              <div class="card employee-quick-actions-card">
+                <button class="employee-quick-action" onclick="openBehalfVacationModal()">
+                  <i class="fa-solid fa-umbrella-beach"></i>
+                  <span>Vacation / WFH Request</span>
+                </button>
+                <button class="employee-quick-action" onclick="openBehalfClaimModal()">
+                  <i class="fa-solid fa-briefcase-medical"></i>
+                  <span>Medical Insurance Claim</span>
+                </button>
+                <button class="employee-quick-action employee-quick-action-primary" onclick="openRaiseModal(currentDetailEmployeeId)">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                  <span>Apply Salary Raise</span>
+                </button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page-section" id="a-requests">
+          <div class="filter-tabs" style="margin-bottom:20px;">
+            <button class="filter-tab active" data-reqfilter="all">All</button>
+            <button class="filter-tab" data-reqfilter="Vacation">Vacation</button>
+            <button class="filter-tab" data-reqfilter="Work From Home">Work From Home</button>
+            <button class="filter-tab" data-reqfilter="Medical Insurance">Medical Insurance</button>
+          </div>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Type</th>
+                  <th>Details</th>
+                  <th>Submitted</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requestsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="a-salary">
+          <div class="grid g4" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-label">Total Monthly Payroll</div>
+              <div class="stat-val" id="statPayroll">EGP 0</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Avg. Raise (Last Cycle)</div>
+              <div class="stat-val" id="statAvgRaise">+0%</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Raises Applied (YTD)</div>
+              <div class="stat-val" id="statRaisesYtd">0</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Upcoming This Quarter</div>
+              <div class="stat-val" id="statUpcomingQ">0</div>
+            </div>
+          </div>
+          <div class="toolbar">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch"
+                placeholder="Search employees..."></div>
+            <button class="btn btn-fill" onclick="openRaiseModal()"><i class="fa-solid fa-arrow-trend-up"></i> Apply New
+              Raise</button>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Employee Compensation</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th>Current Salary</th>
+                  <th>Next Raise Date</th>
+                  <th>Last Raise Applied</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="salaryTableBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Company-wide Raise History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Effective Date</th>
+                  <th>New Internal</th>
+                  <th>New External</th>
+                  <th>New Total</th>
+                  <th>Internal Δ</th>
+                  <th>External Δ</th>
+                  <th>Total Δ</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="companyRaiseHistoryBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="a-invoices">
+          <div class="toolbar">
+            <div class="form-grid" style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+              <div class="form-field"><label>Payment Year</label><input type="number" id="invPaymentYear"
+                  placeholder="2026"></div>
+              <div class="form-field">
+                <label>Payment Month</label>
+                <select id="invPaymentMonth">
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Generate External-Salary Invoices</h3>
+            </div>
+            <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
+              Generates "Consultant Fees" invoices for employees whose external USD salary is greater than zero, using
+              their invoice ID and address on file. Documents are saved to the global Invoices folder in Google Drive.
+            </p>
+            <div style="display:flex;gap:10px;">
+              <button class="btn" onclick="previewInvoiceEligibility(event)"><i
+                  class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
+              <button class="btn btn-fill" onclick="generateBulkInvoices(event)"><i
+                  class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3 id="invoiceResultsTitle">Eligibility Preview</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Status</th>
+                  <th>Detail</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="invoiceResultsBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Invoice History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Invoice #</th>
+                  <th>Period</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Drive Link</th>
+                </tr>
+              </thead>
+              <tbody id="invoiceHistoryBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="a-vacations">
+          <div class="grid g3" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-label">Total Vacation Days Allotted (Year)</div>
+              <div class="stat-val" id="statVacAllotted">5,208</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Days Used So Far</div>
+              <div class="stat-val" id="statVacUsed">2,014</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Employees Currently On Leave</div>
+              <div class="stat-val" id="statEmployeesOnLeave">6</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Employee Vacation Balances</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th>Entitled</th>
+                  <th>Used</th>
+                  <th>Remaining</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody id="vacationBalanceBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="a-insurance">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Company-wide Consumption Highlights</h3>
+            </div>
+            <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
+          </div>
+          <div class="grid g4" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-label">Total Claims (YTD)</div>
+              <div class="stat-val" id="statClaimsYtd">142</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Approved</div>
+              <div class="stat-val" id="statClaimsApproved" style="color:var(--success)">118</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Pending Review</div>
+              <div class="stat-val" id="statClaimsPending" style="color:var(--warning)">9</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Total Reimbursed</div>
+              <div class="stat-val" id="statClaimsReimbursed">EGP 1.24M</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Insurance Categories & Limits</h3><button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i
+                  class="fa-solid fa-plus"></i> Add Category</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Annual Limit</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="categoriesTableBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Claims History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Category</th>
+                  <th>Provider</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="insuranceTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="a-dochub">
+          <div class="toolbar">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch"
+                placeholder="Search documents..."></div>
+            <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add
+              Document</button>
+          </div>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Category</th>
+                  <th>Uploaded</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="dochubTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="app" id="employee-app">
+    <aside class="sidebar" id="empSidebar">
+      <div class="sidebar-top-row">
+        <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
+        <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse sidebar"><i
+            class="fa-solid fa-chevron-left"></i></button>
+      </div>
+      <div class="nav-section-label">Workspace</div>
+      <a class="nav-item active" data-page="e-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span
+          class="nav-label">Dashboard</span></a>
+      <a class="nav-item" data-page="e-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span
+          class="nav-label">Salary & Raises</span></a>
+      <a class="nav-item" data-page="e-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span
+          class="nav-label">Vacations</span></a>
+      <a class="nav-item" data-page="e-insurance" title="Medical Insurance"><i
+          class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+      <a class="nav-item" data-page="e-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span
+          class="nav-label">Document Hub</span></a>
+      <div class="sidebar-footer">
+        <div class="user-mini" title="Account">
+          <div class="avatar" id="empUserAvatar">--</div>
+          <div class="user-mini-text">
+            <div class="name" id="empUserName">--</div>
+            <div class="role" id="empUserRole">--</div>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i>
+          <span>Logout</span></button>
+        <div class="sidebar-brand-footer">
+          <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
+          <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
+        </div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar('empSidebar')"><i class="fa-solid fa-bars"></i></button>
+          <div>
+            <h2 id="empPageTitle">My Dashboard</h2>
+            <div class="sub" id="empPageSub">Welcome back, Ahmed. Here's your snapshot.</div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
+          <button class="icon-btn" id="empThemeToggle"><i class="fa-solid fa-moon"></i></button>
+        </div>
+      </div>
+      <div class="page">
+        <section class="page-section active" id="e-dashboard">
+          <div class="hero-banner" style="margin-bottom:20px;">
+            <div class="hero-stats">
+              <div class="hero-stat"><b>14</b><span>Vacation Days Left</span></div>
+              <div class="hero-stat"><b id="empDashSalary">EGP 42,000</b><span>Current Monthly Salary</span></div>
+              <div class="hero-stat"><b>2</b><span>WFH Days This Month</span></div>
+              <div class="hero-stat"><b>1</b><span>Pending Insurance Claim</span></div>
+            </div>
+          </div>
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>My Requests Timeline</h3>
+              </div>
+              <ul class="timeline" id="empTimeline"></ul>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Next Salary Raise</h3>
+              </div>
+              <div style="text-align:center; padding:10px 0 6px;">
+                <div style="font-size:30px;font-weight:800;color:var(--accent);">Mar 2027</div>
+                <p style="color:var(--text2);font-size:13px;margin-top:6px;">Estimated +8% based on performance cycle
+                </p>
+                <div class="progress-bar" style="margin-top:18px;"><span style="width:64%;"></span></div>
+                <p style="font-size:11.5px;color:var(--text3);margin-top:8px;">7 of 12 months completed</p>
+              </div>
+              <button class="btn btn-fill" style="width:100%;margin-top:10px;"
+                onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> View Salary
+                History</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Medical Insurance Highlights</h3><a class="link" onclick="showSection('e-insurance','employee')">View
+                details</a>
+            </div>
+            <div class="grid g3" id="empDashInsuranceCategoryChips"></div>
+          </div>
+        </section>
+
+        <section class="page-section" id="e-salary">
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Salary Growth</h3>
+              </div>
+              <div class="chart-wrap"><canvas id="chartSalary"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Current Package</h3>
+              </div>
+              <div class="info-item" style="margin-bottom:12px;"><span>Base Salary</span><b id="empPkgBase">EGP 42,000 /
+                  mo</b></div>
+              <div class="info-item" style="margin-bottom:12px;"><span>Annual Bonus</span><b>EGP 63,000</b></div>
+              <div class="info-item"><span>Total Annual Compensation</span><b id="empPkgTotal">EGP 567,000</b></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Raise History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Effective Date</th>
+                  <th>New Internal</th>
+                  <th>New External</th>
+                  <th>New Total</th>
+                  <th>Internal Δ</th>
+                  <th>External Δ</th>
+                  <th>Total Δ</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="salaryHistoryBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="e-vacations">
+          <div class="grid g3" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-label">Annual Entitlement</div>
+              <div class="stat-val">21 days</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Used</div>
+              <div class="stat-val">7 days</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Remaining</div>
+              <div class="stat-val" style="color:var(--success)">14 days</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Request Time Off</h3>
+            </div>
+            <div class="form-grid">
+              <div class="form-field"><label>Leave Type</label><select id="vacType">
+                  <option>Annual Leave</option>
+                  <option>Sick Leave</option>
+                  <option>Work From Home</option>
+                  <option>Unpaid Leave</option>
+                </select></div>
+              <div class="form-field"><label>Duration</label><select id="vacDuration">
+                  <option>Full Day(s)</option>
+                  <option>Half Day</option>
+                </select></div>
+              <div class="form-field"><label>Start Date</label><input type="date" id="vacStart"></div>
+              <div class="form-field"><label>End Date</label><input type="date" id="vacEnd"></div>
+              <div class="form-field full"><label>Reason (optional)</label><textarea rows="2"
+                  placeholder="Add context for your manager..."></textarea></div>
+            </div>
+            <button class="btn btn-fill" style="margin-top:16px;" onclick="submitVacation()"><i
+                class="fa-solid fa-paper-plane"></i> Submit Request</button>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Vacation History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Dates</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="empVacationBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="e-insurance">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>My Insurance Consumption</h3>
+            </div>
+            <div class="info-item" style="margin-bottom:16px;"><span>Total Consumption</span><b
+                id="empInsuranceTotalConsumed">—</b></div>
+            <div class="grid g3" id="empInsuranceCategoryGrid"></div>
+          </div>
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>My Insurance Plan</h3><span class="badge-pill pill-success"><i class="fa-solid fa-check"></i>
+                  Active</span>
+              </div>
+              <div class="info-grid">
+                <div class="info-item"><span>Plan</span><b>Premium Family Care</b></div>
+                <div class="info-item"><span>Provider</span><b>Allianz Egypt</b></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Submit a Claim</h3>
+              </div>
+              <div class="form-field" style="margin-bottom:12px;"><label>Category</label><select
+                  id="claimCategory"></select></div>
+              <div class="form-field" style="margin-bottom:12px;"><label>Amount (EGP)</label><input type="number"
+                  id="claimAmount" placeholder="e.g. 1500"></div>
+              <div class="form-field" style="margin-bottom:12px;"><label>Supporting Document (optional)</label><input
+                  type="file" id="claimDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
+              <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i
+                  class="fa-solid fa-file-medical"></i> Submit Claim</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Claims History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Provider</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Document</th>
+                </tr>
+              </thead>
+              <tbody id="empInsuranceBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" id="e-dochub">
+          <div class="toolbar">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empDochubSearch"
+                placeholder="Search documents..."></div>
+          </div>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Category</th>
+                  <th>Uploaded</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="empDochubTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="modal-overlay" id="employeeModal">
+    <div class="modal wide modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="modal-head-text">
+          <h3 id="empModalTitle">Add Employee</h3>
+          <p>Create a new employee record and invite them to sign in.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('employeeModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Basic Information <span class="line"></span></div>
+          <div class="form-grid">
             <div class="form-field">
-              <label>Payment Month</label>
-              <select id="invPaymentMonth">
-                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
-                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
-                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
-                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              <label>Full Name <span class="req">*</span></label>
+              <input id="fEmpName" placeholder="e.g. Laila Hassan">
+            </div>
+            <div class="form-field">
+              <label>Email <span class="req">*</span></label>
+              <input id="fEmpEmail" placeholder="laila@hrflow.com">
+            </div>
+            <div class="form-field">
+              <label>Department</label>
+              <select id="fEmpDept">
+                <option>Engineering</option>
+                <option>Product</option>
+                <option>Design</option>
+                <option>Sales</option>
+                <option>Finance</option>
+                <option>Operations</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Role Title</label>
+              <input id="fEmpRole" placeholder="e.g. Senior Developer">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Internal Salary <span class="opt">USD</span></label>
+              <input type="number" id="fEmpInternalSalary" placeholder="1000">
+            </div>
+            <div class="form-field">
+              <label>External Salary <span class="opt">USD</span></label>
+              <input type="number" id="fEmpExternalSalary" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-briefcase"></i> Employment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Join Date</label>
+              <input type="date" id="fEmpJoin">
+            </div>
+            <div class="form-field">
+              <label>Status</label>
+              <select id="fEmpStatus">
+                <option>Active</option>
+                <option>On Leave</option>
+                <option>Suspended</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Employment State</label>
+              <select id="fEmpEmploymentState">
+                <option>Full-Time</option>
+                <option>Part-Time</option>
+                <option>Freelance</option>
+                <option>Occasional</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Vacation Balance <span class="opt">days</span></label>
+              <input type="number" id="fEmpVac" value="21">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section optional-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-invoice-dollar"></i> Consultant Invoicing <span class="line"></span></div>
+          <p style="font-size:11.5px;color:var(--text2);margin-bottom:12px;">
+            Only needed if this employee has an external USD salary and requires consultant-fee invoices.
+          </p>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Invoice ID <span class="opt">01–99</span></label>
+              <input type="text" id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2">
+            </div>
+            <div class="form-field full">
+              <label>Address Line 1</label>
+              <input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street">
+            </div>
+            <div class="form-field full">
+              <label>Address Line 2</label>
+              <input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn" id="empModalCancelBtn" onclick="closeModal('employeeModal')">Cancel</button>
+        <button class="btn btn-fill" id="empModalSaveBtn" onclick="saveEmployee(event)">
+          <i class="fa-solid fa-check"></i> Save Employee
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Confirm Deletion</h3><button class="modal-close" onclick="closeModal('confirmModal')"><i
+            class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text2);font-size:14px;">Are you sure you want to remove <b id="delEmpName"
+            style="color:var(--text);"></b> from the system? This action cannot be undone.</p>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal('confirmModal')">Cancel</button><button
+          class="btn btn-danger-outline" onclick="confirmDelete(event)"><i class="fa-solid fa-trash"></i>
+          Delete</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="raiseModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        <div class="modal-head-text">
+          <h3 id="raiseModalTitle">Apply New Raise</h3>
+          <p>Adjust compensation packages and record raises.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('raiseModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user"></i> Employee Selection <span class="line"></span></div>
+          <div class="form-field full">
+            <label>Employee <span class="req">*</span></label>
+            <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation Adjustment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Current Internal <span class="opt">USD</span></label>
+              <input type="text" id="rvCurrentInternal" value="—" disabled>
+            </div>
+            <div class="form-field">
+              <label>Current External <span class="opt">USD</span></label>
+              <input type="text" id="rvCurrentExternal" value="—" disabled>
+            </div>
+            <div class="form-field">
+              <label>New Internal <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
+            </div>
+            <div class="form-field">
+              <label>New External <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-calendar-check"></i> Raise Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Effective Date <span class="req">*</span></label>
+              <input type="date" id="rDate">
+            </div>
+            <div class="form-field">
+              <label>Reason</label>
+              <select id="rReason">
+                <option>Annual performance raise</option>
+                <option>Promotion</option>
+                <option>Cost of living adjustment</option>
+                <option>Market adjustment</option>
+                <option>Retention raise</option>
               </select>
             </div>
           </div>
         </div>
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3>Generate External-Salary Invoices</h3></div>
-          <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
-            Generates "Consultant Fees" invoices for employees whose external USD salary is greater than zero, using their invoice ID and address on file. Documents are saved to the global Invoices folder in Google Drive.
-          </p>
-          <div style="display:flex;gap:10px;">
-            <button class="btn" onclick="previewInvoiceEligibility()"><i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
-            <button class="btn btn-fill" onclick="generateBulkInvoices()"><i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
-          </div>
-        </div>
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3 id="invoiceResultsTitle">Eligibility Preview</h3></div>
-          <table>
-            <thead><tr><th>Employee</th><th>Status</th><th>Detail</th><th>Action</th></tr></thead>
-            <tbody id="invoiceResultsBody"></tbody>
-          </table>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Invoice History</h3></div>
-          <table>
-            <thead><tr><th>Employee</th><th>Invoice #</th><th>Period</th><th>Amount</th><th>Status</th><th>Drive Link</th></tr></thead>
-            <tbody id="invoiceHistoryBody"></tbody>
-          </table>
-        </div>
-      </section>
 
-      <section class="page-section" id="a-vacations">
-        <div class="grid g3" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Vacation Days Allotted (Year)</div><div class="stat-val" id="statVacAllotted">5,208</div></div>
-          <div class="card stat-card"><div class="stat-label">Days Used So Far</div><div class="stat-val" id="statVacUsed">2,014</div></div>
-          <div class="card stat-card"><div class="stat-label">Employees Currently On Leave</div><div class="stat-val" id="statEmployeesOnLeave">6</div></div>
+        <div class="raise-preview" id="raisePreview">
+          <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
+          <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
+          <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
+          <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
+          <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
         </div>
-        <div class="card">
-          <div class="card-head"><h3>Employee Vacation Balances</h3></div>
-          <table><thead><tr><th>Employee</th><th>Department</th><th>Entitled</th><th>Used</th><th>Remaining</th><th>Progress</th></tr></thead><tbody id="vacationBalanceBody"></tbody></table>
-        </div>
-      </section>
-
-      <section class="page-section" id="a-insurance">
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3>Company-wide Consumption Highlights</h3></div>
-          <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
-        </div>
-        <div class="grid g4" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Total Claims (YTD)</div><div class="stat-val" id="statClaimsYtd">142</div></div>
-          <div class="card stat-card"><div class="stat-label">Approved</div><div class="stat-val" id="statClaimsApproved" style="color:var(--success)">118</div></div>
-          <div class="card stat-card"><div class="stat-label">Pending Review</div><div class="stat-val" id="statClaimsPending" style="color:var(--warning)">9</div></div>
-          <div class="card stat-card"><div class="stat-label">Total Reimbursed</div><div class="stat-val" id="statClaimsReimbursed">EGP 1.24M</div></div>
-        </div>
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3>Insurance Categories & Limits</h3><button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i class="fa-solid fa-plus"></i> Add Category</button></div>
-          <table><thead><tr><th>Category</th><th>Annual Limit</th><th>Actions</th></tr></thead><tbody id="categoriesTableBody"></tbody></table>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Claims History</h3></div>
-          <table><thead><tr><th>Employee</th><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="insuranceTableBody"></tbody></table>
-        </div>
-      </section>
-
-      <section class="page-section" id="a-dochub">
-        <div class="toolbar">
-          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..."></div>
-          <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add Document</button>
-        </div>
-        <div class="card">
-          <table>
-            <thead><tr><th>Document</th><th>Category</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
-            <tbody id="dochubTableBody"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  </main>
-</div>
-
-<div class="app" id="employee-app">
-  <aside class="sidebar" id="empSidebar">
-    <div class="sidebar-top-row">
-      <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
-      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse sidebar"><i class="fa-solid fa-chevron-left"></i></button>
-    </div>
-    <div class="nav-section-label">Workspace</div>
-    <a class="nav-item active" data-page="e-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
-    <a class="nav-item" data-page="e-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary & Raises</span></a>
-    <a class="nav-item" data-page="e-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
-    <a class="nav-item" data-page="e-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
-    <a class="nav-item" data-page="e-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
-    <div class="sidebar-footer">
-      <div class="user-mini" title="Account">
-        <div class="avatar" id="empUserAvatar">--</div>
-        <div class="user-mini-text"><div class="name" id="empUserName">--</div><div class="role" id="empUserRole">--</div></div>
       </div>
-      <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></button>
-      <div class="sidebar-brand-footer">
-        <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
-        <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
+      <div class="modal-foot">
+        <button class="btn" id="raiseModalCancelBtn" onclick="closeModal('raiseModal')">Cancel</button>
+        <button class="btn btn-fill" id="raiseModalSaveBtn" onclick="applyRaise(event)"><i class="fa-solid fa-check"></i> Apply Raise</button>
       </div>
     </div>
-  </aside>
-  <main class="main">
-    <div class="topbar">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button class="hamburger" onclick="toggleSidebar('empSidebar')"><i class="fa-solid fa-bars"></i></button>
-        <div><h2 id="empPageTitle">My Dashboard</h2><div class="sub" id="empPageSub">Welcome back, Ahmed. Here's your snapshot.</div></div>
-      </div>
-      <div class="top-actions">
-        <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
-        <button class="icon-btn" id="empThemeToggle"><i class="fa-solid fa-moon"></i></button>
-      </div>
-    </div>
-    <div class="page">
-      <section class="page-section active" id="e-dashboard">
-        <div class="hero-banner" style="margin-bottom:20px;">
-          <div class="hero-stats">
-            <div class="hero-stat"><b>14</b><span>Vacation Days Left</span></div>
-            <div class="hero-stat"><b id="empDashSalary">EGP 42,000</b><span>Current Monthly Salary</span></div>
-            <div class="hero-stat"><b>2</b><span>WFH Days This Month</span></div>
-            <div class="hero-stat"><b>1</b><span>Pending Insurance Claim</span></div>
-          </div>
-        </div>
-        <div class="grid g-2-1" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>My Requests Timeline</h3></div>
-            <ul class="timeline" id="empTimeline"></ul>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>Next Salary Raise</h3></div>
-            <div style="text-align:center; padding:10px 0 6px;">
-              <div style="font-size:30px;font-weight:800;color:var(--accent);">Mar 2027</div>
-              <p style="color:var(--text2);font-size:13px;margin-top:6px;">Estimated +8% based on performance cycle</p>
-              <div class="progress-bar" style="margin-top:18px;"><span style="width:64%;"></span></div>
-              <p style="font-size:11.5px;color:var(--text3);margin-top:8px;">7 of 12 months completed</p>
-            </div>
-            <button class="btn btn-fill" style="width:100%;margin-top:10px;" onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> View Salary History</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Medical Insurance Highlights</h3><a class="link" onclick="showSection('e-insurance','employee')">View details</a></div>
-          <div class="grid g3" id="empDashInsuranceCategoryChips"></div>
-        </div>
-      </section>
+  </div>
 
-      <section class="page-section" id="e-salary">
-        <div class="grid g-2-1" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>Salary Growth</h3></div>
-            <div class="chart-wrap"><canvas id="chartSalary"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>Current Package</h3></div>
-            <div class="info-item" style="margin-bottom:12px;"><span>Base Salary</span><b id="empPkgBase">EGP 42,000 / mo</b></div>
-            <div class="info-item" style="margin-bottom:12px;"><span>Annual Bonus</span><b>EGP 63,000</b></div>
-            <div class="info-item"><span>Total Annual Compensation</span><b id="empPkgTotal">EGP 567,000</b></div>
-          </div>
+  <div class="modal-overlay" id="categoryModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-list-check"></i></div>
+        <div class="modal-head-text">
+          <h3 id="categoryModalTitle">Add Category</h3>
+          <p>Configure coverage categories and annual spending limits.</p>
         </div>
-        <div class="card">
-          <div class="card-head"><h3>Raise History</h3></div>
-          <table><thead><tr><th>Effective Date</th><th>New Internal</th><th>New External</th><th>New Total</th><th>Internal Δ</th><th>External Δ</th><th>Total Δ</th><th>Reason</th></tr></thead>
-          <tbody id="salaryHistoryBody"></tbody></table>
-        </div>
-      </section>
-
-      <section class="page-section" id="e-vacations">
-        <div class="grid g3" style="margin-bottom:20px;">
-          <div class="card stat-card"><div class="stat-label">Annual Entitlement</div><div class="stat-val">21 days</div></div>
-          <div class="card stat-card"><div class="stat-label">Used</div><div class="stat-val">7 days</div></div>
-          <div class="card stat-card"><div class="stat-label">Remaining</div><div class="stat-val" style="color:var(--success)">14 days</div></div>
-        </div>
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3>Request Time Off</h3></div>
+        <button class="modal-close" onclick="closeModal('categoryModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sliders"></i> Category Settings <span class="line"></span></div>
           <div class="form-grid">
-            <div class="form-field"><label>Leave Type</label><select id="vacType"><option>Annual Leave</option><option>Sick Leave</option><option>Work From Home</option><option>Unpaid Leave</option></select></div>
-            <div class="form-field"><label>Duration</label><select id="vacDuration"><option>Full Day(s)</option><option>Half Day</option></select></div>
-            <div class="form-field"><label>Start Date</label><input type="date" id="vacStart"></div>
-            <div class="form-field"><label>End Date</label><input type="date" id="vacEnd"></div>
-            <div class="form-field full"><label>Reason (optional)</label><textarea rows="2" placeholder="Add context for your manager..."></textarea></div>
-          </div>
-          <button class="btn btn-fill" style="margin-top:16px;" onclick="submitVacation()"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Vacation History</h3></div>
-          <table><thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Status</th></tr></thead><tbody id="empVacationBody"></tbody></table>
-        </div>
-      </section>
-
-      <section class="page-section" id="e-insurance">
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-head"><h3>My Insurance Consumption</h3></div>
-          <div class="info-item" style="margin-bottom:16px;"><span>Total Consumption</span><b id="empInsuranceTotalConsumed">—</b></div>
-          <div class="grid g3" id="empInsuranceCategoryGrid"></div>
-        </div>
-        <div class="grid g-2-1" style="margin-bottom:20px;">
-          <div class="card">
-            <div class="card-head"><h3>My Insurance Plan</h3><span class="badge-pill pill-success"><i class="fa-solid fa-check"></i> Active</span></div>
-            <div class="info-grid">
-              <div class="info-item"><span>Plan</span><b>Premium Family Care</b></div>
-              <div class="info-item"><span>Provider</span><b>Allianz Egypt</b></div>
+            <div class="form-field full">
+              <label>Category Name <span class="req">*</span></label>
+              <input id="fCatName" placeholder="e.g. Dental">
+            </div>
+            <div class="form-field full">
+              <label>Annual Limit <span class="opt">EGP</span> <span class="req">*</span></label>
+              <input type="number" id="fCatLimit" placeholder="10000">
             </div>
           </div>
-          <div class="card">
-            <div class="card-head"><h3>Submit a Claim</h3></div>
-            <div class="form-field" style="margin-bottom:12px;"><label>Category</label><select id="claimCategory"></select></div>
-            <div class="form-field" style="margin-bottom:12px;"><label>Amount (EGP)</label><input type="number" id="claimAmount" placeholder="e.g. 1500"></div>
-            <div class="form-field" style="margin-bottom:12px;"><label>Supporting Document (optional)</label><input type="file" id="claimDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
-            <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i class="fa-solid fa-file-medical"></i> Submit Claim</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="categoryModalCancelBtn" onclick="closeModal('categoryModal')">Cancel</button>
+        <button class="btn btn-fill" id="categoryModalSaveBtn" onclick="saveCategory(event)"><i class="fa-solid fa-check"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="behalfVacationModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+        <div class="modal-head-text">
+          <h3>Submit Vacation / WFH on Behalf</h3>
+          <p>Log a leave or remote work request for this employee.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-calendar-days"></i> Request Parameters <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Type <span class="req">*</span></label>
+              <select id="bvType">
+                <option>Annual Leave</option>
+                <option>Sick Leave</option>
+                <option>Work From Home</option>
+                <option>Unpaid Leave</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Start Date <span class="req">*</span></label>
+              <input type="date" id="bvStart">
+            </div>
+            <div class="form-field">
+              <label>End Date</label>
+              <input type="date" id="bvEnd">
+            </div>
+            <div class="form-field full">
+              <label>Days <span class="opt">Count</span></label>
+              <input type="number" id="bvDays" value="1" min="1">
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-head"><h3>Claims History</h3></div>
-          <table><thead><tr><th>Category</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th><th>Document</th></tr></thead><tbody id="empInsuranceBody"></tbody></table>
-        </div>
-      </section>
 
-      <section class="page-section" id="e-dochub">
-        <div class="toolbar">
-          <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empDochubSearch" placeholder="Search documents..."></div>
-        </div>
-        <div class="card">
-          <table>
-            <thead><tr><th>Document</th><th>Category</th><th>Uploaded</th><th style="text-align:right;">Actions</th></tr></thead>
-            <tbody id="empDochubTableBody"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  </main>
-</div>
-<div class="modal-overlay" id="employeeModal">
-  <div class="modal wide">
-    <div class="modal-head"><h3 id="empModalTitle">Add Employee</h3><button class="modal-close" onclick="closeModal('employeeModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-field"><label>Full Name</label><input id="fEmpName" placeholder="e.g. Laila Hassan"></div>
-        <div class="form-field"><label>Email</label><input id="fEmpEmail" placeholder="laila@hrflow.com"></div>
-        <div class="form-field"><label>Department</label><select id="fEmpDept"><option>Engineering</option><option>Product</option><option>Design</option><option>Sales</option><option>Finance</option><option>Operations</option></select></div>
-        <div class="form-field"><label>Role / Title</label><input id="fEmpRole" placeholder="e.g. Senior Developer"></div>
-        <div class="form-field"><label>Internal Salary (USD)</label><input type="number" id="fEmpInternalSalary" placeholder="1000"></div>
-        <div class="form-field"><label>External Salary (USD)</label><input type="number" id="fEmpExternalSalary" placeholder="0"></div>
-        <div class="form-field"><label>Invoice ID (01–99, for external invoices)</label><input type="text" id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2"></div>
-        <div class="form-field"><label>Address Line 1 (for external invoices)</label><input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street"></div>
-        <div class="form-field"><label>Address Line 2</label><input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate"></div>
-        <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
-        <div class="form-field"><label>Status</label><select id="fEmpStatus"><option>Active</option><option>On Leave</option><option>Suspended</option></select></div>
-        <div class="form-field"><label>Employment State</label><select id="fEmpEmploymentState"><option>Full-Time</option><option>Part-Time</option><option>Freelance</option><option>Occasional</option></select></div>
-        <div class="form-field"><label>Vacation Balance (days)</label><input type="number" id="fEmpVac" value="21"></div>
-      </div>
-    </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button class="btn btn-fill" onclick="saveEmployee()"><i class="fa-solid fa-check"></i> Save Employee</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal">
-    <div class="modal-head"><h3>Confirm Deletion</h3><button class="modal-close" onclick="closeModal('confirmModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body"><p style="color:var(--text2);font-size:14px;">Are you sure you want to remove <b id="delEmpName" style="color:var(--text);"></b> from the system? This action cannot be undone.</p></div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('confirmModal')">Cancel</button><button class="btn btn-danger-outline" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Delete</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="raiseModal">
-  <div class="modal">
-    <div class="modal-head"><h3 id="raiseModalTitle">Apply New Raise</h3><button class="modal-close" onclick="closeModal('raiseModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body">
-      <div class="form-field" style="margin-bottom:16px;">
-        <label>Employee</label>
-        <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
-      </div>
-      <div class="form-grid">
-        <div class="form-field"><label>Current Internal (USD)</label><input type="text" id="rvCurrentInternal" value="—" disabled></div>
-        <div class="form-field"><label>Current External (USD)</label><input type="text" id="rvCurrentExternal" value="—" disabled></div>
-        <div class="form-field"><label>New Internal (USD)</label><input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()"></div>
-        <div class="form-field"><label>New External (USD)</label><input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()"></div>
-        <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
-        <div class="form-field"><label>Reason</label>
-          <select id="rReason"><option>Annual performance raise</option><option>Promotion</option><option>Cost of living adjustment</option><option>Market adjustment</option><option>Retention raise</option></select>
-        </div>
-      </div>
-      <div class="raise-preview" id="raisePreview">
-        <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
-        <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
-        <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
-        <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
-        <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
-      </div>
-    </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button class="btn btn-fill" onclick="applyRaise()"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="categoryModal">
-  <div class="modal">
-    <div class="modal-head"><h3 id="categoryModalTitle">Add Category</h3><button class="modal-close" onclick="closeModal('categoryModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body">
-      <div class="form-field" style="margin-bottom:14px;"><label>Category Name</label><input id="fCatName" placeholder="e.g. Dental"></div>
-      <div class="form-field"><label>Annual Limit (EGP)</label><input type="number" id="fCatLimit" placeholder="10000"></div>
-    </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('categoryModal')">Cancel</button><button class="btn btn-fill" onclick="saveCategory()"><i class="fa-solid fa-check"></i> Save</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="behalfVacationModal">
-  <div class="modal">
-    <div class="modal-head"><h3>Submit Vacation / WFH on Behalf</h3><button class="modal-close" onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-field full"><label>Type</label>
-          <select id="bvType"><option>Annual Leave</option><option>Sick Leave</option><option>Work From Home</option><option>Unpaid Leave</option></select>
-        </div>
-        <div class="form-field"><label>Start Date</label><input type="date" id="bvStart"></div>
-        <div class="form-field"><label>End Date</label><input type="date" id="bvEnd"></div>
-        <div class="form-field"><label>Days</label><input type="number" id="bvDays" value="1" min="1"></div>
-        <div class="form-field"><label>Status</label>
-          <select id="bvStatus"><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option></select>
-        </div>
-        <div class="form-field full"><label>Record Date (optional, for backdating historical records)</label><input type="date" id="bvRecordDate"></div>
-      </div>
-    </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfVacationModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfVacation()"><i class="fa-solid fa-check"></i> Submit</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="behalfClaimModal">
-  <div class="modal">
-    <div class="modal-head"><h3>Submit Insurance Claim on Behalf</h3><button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-field full"><label>Category</label><select id="bcCategory"></select></div>
-        <div class="form-field"><label>Provider</label><input id="bcProvider" placeholder="e.g. Allianz Egypt"></div>
-        <div class="form-field"><label>Amount (EGP)</label><input type="number" id="bcAmount" placeholder="e.g. 1500"></div>
-        <div class="form-field"><label>Status</label>
-          <select id="bcStatus"><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option></select>
-        </div>
-        <div class="form-field"><label>Record Date (optional, for backdating historical records)</label><input type="date" id="bcRecordDate"></div>
-        <div class="form-field full"><label>Supporting Document (optional)</label><input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
-      </div>
-    </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal('behalfClaimModal')">Cancel</button><button class="btn btn-fill" onclick="submitBehalfClaim()"><i class="fa-solid fa-check"></i> Submit</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="employeeDocumentModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Upload Employee Document</h3>
-      <button class="modal-close" onclick="closeModal('employeeDocumentModal')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-field full">
-          <label>Document Name</label>
-          <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
-        </div>
-        <div class="form-field full">
-          <label>File</label>
-          <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
-            <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
-            <div id="docDropZoneEmpty" class="doc-drop-empty">
-              <i class="fa-solid fa-cloud-arrow-up"></i>
-              <p><strong>Click to browse</strong> or drag a file here</p>
-              <span>PDF, JPG or PNG - up to 4MB</span>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user-shield"></i> Administrative Status <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Status</label>
+              <select id="bvStatus">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
             </div>
-            <div id="docDropZoneFile" class="doc-drop-file" style="display:none;">
-              <div class="doc-file-icon" id="docFileIconWrap"><i class="fa-solid fa-file"></i></div>
-              <div class="doc-file-meta">
-                <p id="docFileName" class="doc-file-name">-</p>
-                <span id="docFileSize" class="doc-file-size">-</span>
+            <div class="form-field">
+              <label>Record Date <span class="opt">Optional</span></label>
+              <input type="date" id="bvRecordDate">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="behalfVacationCancelBtn" onclick="closeModal('behalfVacationModal')">Cancel</button>
+        <button class="btn btn-fill" id="behalfVacationSaveBtn" onclick="submitBehalfVacation(event)"><i class="fa-solid fa-check"></i> Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="behalfClaimModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-briefcase-medical"></i></div>
+        <div class="modal-head-text">
+          <h3>Submit Insurance Claim on Behalf</h3>
+          <p>Record medical claims and calculate policy reimbursements.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Category <span class="req">*</span></label>
+              <select id="bcCategory"></select>
+            </div>
+            <div class="form-field">
+              <label>Provider</label>
+              <input id="bcProvider" placeholder="e.g. Allianz Egypt">
+            </div>
+            <div class="form-field">
+              <label>Amount <span class="opt">EGP</span> <span class="req">*</span></label>
+              <input type="number" id="bcAmount" placeholder="e.g. 1500">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing & Attachment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Status</label>
+              <select id="bcStatus">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Record Date <span class="opt">Optional</span></label>
+              <input type="date" id="bcRecordDate">
+            </div>
+            <div class="form-field full">
+              <label>Supporting Document <span class="opt">Optional</span></label>
+              <div id="bcDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('bcDocument').click()">
+                <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="bcDocDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 2MB</span>
+                </div>
+                <div id="bcDocDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="bcDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="bcDocFileName" class="doc-file-name">-</p>
+                    <span id="bcDocFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearBcDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
               </div>
-              <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
             </div>
           </div>
         </div>
-        <div class="form-field full" id="docUploadProgressWrap" style="display:none;">
-          <div class="doc-progress-track">
-            <div class="doc-progress-fill" id="docUploadProgressFill" style="width:0%;"></div>
-          </div>
-          <div class="doc-progress-label">
-            <span id="docUploadProgressText">Uploading...</span>
-            <span id="docUploadProgressPct">0%</span>
-          </div>
-        </div>
       </div>
-      <p style="font-size:11.5px;color:var(--text3);margin-top:10px;">
-        Files are stored securely in Google Drive under this employee's folder. Preview and download happen inside HRFlow - no separate Drive access needed.
-      </p>
-    </div>
-    <div class="modal-foot">
-      <button class="btn" id="docCancelBtn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
-      <button class="btn btn-fill" id="docUploadBtn" onclick="submitEmployeeDocument()"><i class="fa-solid fa-check"></i> Upload</button>
+      <div class="modal-foot">
+        <button class="btn" id="behalfClaimCancelBtn" onclick="closeModal('behalfClaimModal')">Cancel</button>
+        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="modal-overlay" id="documentPreviewModal">
-  <div class="modal" style="max-width:900px;width:92vw;">
-    <div class="modal-head">
-      <h3 id="docPreviewTitle">Document Preview</h3>
-      <button class="modal-close" onclick="closeDocumentPreview()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body" style="padding:0;">
-      <div id="docPreviewContainer" style="width:100%;height:75vh;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:auto;"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn" onclick="closeDocumentPreview()">Close</button>
-      <a id="docPreviewDownloadBtn" class="btn btn-fill" href="#" target="_blank"><i class="fa-solid fa-download"></i> Download</a>
+  <div class="modal-overlay" id="employeeDocumentModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="modal-head-text">
+          <h3>Upload Employee Document</h3>
+          <p>Securely store documents in Google Drive under the employee's folder.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('employeeDocumentModal')"><i
+            class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file"></i> Document Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Document Name <span class="req">*</span></label>
+              <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
+            </div>
+            <div class="form-field full">
+              <label>File <span class="req">*</span></label>
+              <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
+                <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="docDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 4MB</span>
+                </div>
+                <div id="docDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="docFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="docFileName" class="doc-file-name">-</p>
+                    <span id="docFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove"
+                    onclick="event.stopPropagation(); clearDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="form-field full" id="docUploadProgressWrap" style="display:none;">
+              <div class="doc-progress-track">
+                <div class="doc-progress-fill" id="docUploadProgressFill" style="width:0%;"></div>
+              </div>
+              <div class="doc-progress-label">
+                <span id="docUploadProgressText">Uploading...</span>
+                <span id="docUploadProgressPct">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:11.5px;color:var(--text3);margin-top:12px;">
+          Files are stored securely in Google Drive under this employee's folder. Preview and download happen inside
+          HRFlow - no separate Drive access needed.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="docCancelBtn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
+        <button class="btn btn-fill" id="docUploadBtn" onclick="submitEmployeeDocument()"><i
+            class="fa-solid fa-check"></i> Upload</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="modal-overlay" id="companyDocumentModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Add Company Document</h3>
-      <button class="modal-close" onclick="closeModal('companyDocumentModal')"><i class="fa-solid fa-xmark"></i></button>
+  <div class="modal-overlay" id="documentPreviewModal">
+    <div class="modal" style="max-width:900px;width:92vw;">
+      <div class="modal-head">
+        <h3 id="docPreviewTitle">Document Preview</h3>
+        <button class="modal-close" onclick="closeDocumentPreview()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <div id="docPreviewContainer"
+          style="width:100%;height:75vh;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:auto;">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeDocumentPreview()">Close</button>
+        <a id="docPreviewDownloadBtn" class="btn btn-fill" href="#" target="_blank"><i class="fa-solid fa-download"></i>
+          Download</a>
+      </div>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-field full">
-          <label>Document Name</label>
-          <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
+  </div>
+
+  <div class="modal-overlay" id="companyDocumentModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-folder-plus"></i></div>
+        <div class="modal-head-text">
+          <h3 id="companyDocumentModalTitle">Add Company Document</h3>
+          <p>Publish shared company policies, handbooks, and documents.</p>
         </div>
-        <div class="form-field full">
-          <label>Category</label>
-          <select id="dochubDocCategory"><option>General</option><option>Policy</option><option>Handbook</option><option>Form</option><option>Announcement</option></select>
-        </div>
-        <div class="form-field full">
-          <label>File</label>
-          <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png">
-        </div>
-        <div class="form-field full" id="dochubUploadProgressWrap" style="display:none;">
-          <div class="doc-progress-track">
-            <div class="doc-progress-fill" id="dochubUploadProgressFill" style="width:0%;"></div>
-          </div>
-          <div class="doc-progress-label">
-            <span id="dochubUploadProgressText">Uploading...</span>
-            <span id="dochubUploadProgressPct">0%</span>
+        <button class="modal-close" onclick="closeModal('companyDocumentModal')"><i
+            class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-circle-plus"></i> Document Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Document Name <span class="req">*</span></label>
+              <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
+            </div>
+            <div class="form-field full">
+              <label>Category <span class="req">*</span></label>
+              <select id="dochubDocCategory">
+                <option>General</option>
+                <option>Policy</option>
+                <option>Handbook</option>
+                <option>Form</option>
+                <option>Announcement</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label>File <span class="req">*</span></label>
+              <div id="dochubDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('dochubFileInput').click()">
+                <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="dochubDocDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 4MB</span>
+                </div>
+                <div id="dochubDocDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="dochubDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="dochubDocFileName" class="doc-file-name">-</p>
+                    <span id="dochubDocFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearDochubDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="form-field full" id="dochubUploadProgressWrap" style="display:none;">
+              <div class="doc-progress-track">
+                <div class="doc-progress-fill" id="dochubUploadProgressFill" style="width:0%;"></div>
+              </div>
+              <div class="doc-progress-label">
+                <span id="dochubUploadProgressText">Uploading...</span>
+                <span id="dochubUploadProgressPct">0%</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn" onclick="closeModal('companyDocumentModal')">Cancel</button>
-      <button class="btn btn-fill" id="dochubUploadBtn" onclick="submitCompanyDocument()"><i class="fa-solid fa-check"></i> Upload</button>
-    </div>
-  </div>
-</div>
-<div class="toast-wrap" id="toastWrap"></div>
-<div class="modal-overlay" id="bankAccountModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="bankAccountModalTitle">Bank Account Details</h3>
-      <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-field full">
-          <label>Bank Name <span style="color:var(--danger)">*</span></label>
-          <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
-        </div>
-        <div class="form-field full">
-          <label>IBAN <span style="color:var(--danger)">*</span></label>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002" style="flex:1;font-family:monospace;">
-            <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()" title="Reveal full IBAN">
-              <i class="fa-solid fa-eye"></i>
-            </button>
-          </div>
-          <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by default. Click the eye icon to reveal.</span>
-        </div>
-        <div class="form-field full">
-          <label>SWIFT / BIC Code <span style="color:var(--text3);font-size:11px;">(Optional)</span></label>
-          <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
-        </div>
+      <div class="modal-foot">
+        <button class="btn" id="dochubCancelBtn" onclick="closeModal('companyDocumentModal')">Cancel</button>
+        <button class="btn btn-fill" id="dochubUploadBtn" onclick="submitCompanyDocument()"><i
+            class="fa-solid fa-check"></i> Upload</button>
       </div>
     </div>
-    <div class="modal-foot">
-      <button class="btn" onclick="closeModal('bankAccountModal')">Cancel</button>
-      <button class="btn btn-fill" onclick="saveBankAccount()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+  </div>
+  <div class="toast-wrap" id="toastWrap"></div>
+  <div class="modal-overlay" id="bankAccountModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <div class="modal-head-text">
+          <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+          <p>Employee payout banking details and wire routing.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-credit-card"></i> Banking Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Bank Name <span class="req">*</span></label>
+              <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
+            </div>
+            <div class="form-field full">
+              <label>IBAN <span class="req">*</span></label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002"
+                  style="flex:1;font-family:monospace;">
+                <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()"
+                  title="Reveal full IBAN">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by
+                default. Click the eye icon to reveal.</span>
+            </div>
+            <div class="form-field full">
+              <label>SWIFT / BIC Code <span class="opt">Optional</span></label>
+              <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="bankAccountCancelBtn" onclick="closeModal('bankAccountModal')">Cancel</button>
+        <button class="btn btn-fill" id="bankAccountSaveBtn" onclick="saveBankAccount(event)"><i class="fa-solid fa-floppy-disk"></i>
+          Save</button>
+      </div>
     </div>
   </div>
-</div>
 </body>
+
 </html>

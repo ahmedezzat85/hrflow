@@ -105,11 +105,38 @@ function toast(msg, icon='fa-solid fa-circle-check'){
   setTimeout(()=>el.remove(), 3200);
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
-function fmtMoney(n){ return 'EGP ' + Number(n).toLocaleString(); }
+function fmtMoney(n){
+  const val = Number(n);
+  if(isNaN(val)) return 'EGP 0';
+  return 'EGP ' + val.toLocaleString('en-EG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
 function fmtUSD(n){ return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+function fmtDateShort(d){
+  if(!d || d === '—') return '—';
+  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 function statusPill(status){
   const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
 }
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
+
+function setButtonLoading(buttonEl, isLoading, loadingText = 'Saving…') {
+  const btn = typeof buttonEl === 'string' ? document.getElementById(buttonEl) : buttonEl;
+  if (!btn) return;
+  if (isLoading) {
+    if (!btn.dataset.originalHtml) {
+      btn.dataset.originalHtml = btn.innerHTML;
+    }
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span> ${loadingText}`;
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalHtml) {
+      btn.innerHTML = btn.dataset.originalHtml;
+      delete btn.dataset.originalHtml;
+    }
+  }
+}
