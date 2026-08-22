@@ -123,23 +123,20 @@ function statusPill(status){
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
 
-function setButtonLoading(buttonEl, isLoading, loadingText) {
+function setButtonLoading(buttonEl, isLoading, loadingText = 'Saving…') {
   const btn = typeof buttonEl === 'string' ? document.getElementById(buttonEl) : buttonEl;
   if (!btn) return;
   if (isLoading) {
-    if (btn.dataset.loading === 'true') return;
-    btn.dataset.loading = 'true';
-    btn.dataset.originalHtml = btn.innerHTML;
+    if (!btn.dataset.originalHtml) {
+      btn.dataset.originalHtml = btn.innerHTML;
+    }
     btn.disabled = true;
-    const txt = loadingText || 'Saving...';
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${txt}`;
+    btn.innerHTML = `<span class="btn-spinner"></span> ${loadingText}`;
   } else {
-    if (btn.dataset.loading !== 'true') return;
-    delete btn.dataset.loading;
-    if (btn.dataset.originalHtml !== undefined) {
+    btn.disabled = false;
+    if (btn.dataset.originalHtml) {
       btn.innerHTML = btn.dataset.originalHtml;
       delete btn.dataset.originalHtml;
     }
-    btn.disabled = false;
   }
 }

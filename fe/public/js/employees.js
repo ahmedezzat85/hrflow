@@ -44,6 +44,23 @@ function openEmployeeModal(id = null) {
   document.getElementById('employeeModal').classList.add('active');
 }
 
+function setButtonLoading(btn, isLoading, loadingText = 'Saving…') {
+  if (!btn) return;
+  if (isLoading) {
+    if (!btn.dataset.originalHtml) {
+      btn.dataset.originalHtml = btn.innerHTML;
+    }
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span> ${loadingText}`;
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalHtml) {
+      btn.innerHTML = btn.dataset.originalHtml;
+      delete btn.dataset.originalHtml;
+    }
+  }
+}
+
 async function saveEmployee(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('empModalSaveBtn') || document.querySelector('#employeeModal .btn-fill');
   const name = document.getElementById('fEmpName').value.trim();
@@ -58,7 +75,7 @@ async function saveEmployee(evt) {
     toast('Invoice ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
     return;
   }
-  setButtonLoading(btn, true, 'Saving...');
+  setButtonLoading(btn, true, 'Saving…');
   try {
     if (currentEditId) {
       const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
