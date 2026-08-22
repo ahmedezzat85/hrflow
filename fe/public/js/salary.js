@@ -80,7 +80,7 @@ function updateRaisePreview(){
   preview.classList.add('show');
 }
 async function applyRaise(evt){
-  const btn = (evt && evt.currentTarget) || document.querySelector('#raiseModal .btn-fill');
+  const btn = (evt && evt.currentTarget) || document.getElementById('raiseModalSaveBtn') || document.querySelector('#raiseModal .btn-fill');
   const empId = Number(document.getElementById('rEmpSelect').value);
   const emp = employees.find(e=>e.id===empId);
   const date = document.getElementById('rDate').value;
@@ -97,7 +97,7 @@ async function applyRaise(evt){
     reason,
   };
 
-  setButtonLoading(btn, true, 'Applying...');
+  setButtonLoading(btn, true, 'Applying…');
   try{
     const result = await Api.applyRaise(payload);
     closeModal('raiseModal');

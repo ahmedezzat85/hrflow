@@ -281,7 +281,7 @@ function openBehalfVacationModal() {
   document.getElementById('behalfVacationModal').classList.add('active');
 }
 async function submitBehalfVacation(evt) {
-  const btn = (evt && evt.currentTarget) || document.querySelector('#behalfVacationModal .btn-fill');
+  const btn = (evt && evt.currentTarget) || document.getElementById('behalfVacationSaveBtn') || document.querySelector('#behalfVacationModal .btn-fill');
   const emp = employees.find(e => e.id === currentDetailEmployeeId);
   const leave_type = document.getElementById('bvType').value;
   const start_date = document.getElementById('bvStart').value;
@@ -290,7 +290,7 @@ async function submitBehalfVacation(evt) {
   const status = document.getElementById('bvStatus').value;
   const record_date = document.getElementById('bvRecordDate').value || null;
   if (!start_date) { toast('Please select a start date.', 'fa-solid fa-triangle-exclamation'); return; }
-  setButtonLoading(btn, true, 'Submitting...');
+  setButtonLoading(btn, true, 'Submitting…');
   try {
     await Api.requestVacation({ employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, days, status, record_date });
     closeModal('behalfVacationModal');
@@ -324,7 +324,7 @@ async function openBehalfClaimModal() {
   document.getElementById('behalfClaimModal').classList.add('active');
 }
 async function submitBehalfClaim(evt) {
-  const btn = (evt && evt.currentTarget) || document.querySelector('#behalfClaimModal .btn-fill');
+  const btn = (evt && evt.currentTarget) || document.getElementById('behalfClaimSaveBtn') || document.querySelector('#behalfClaimModal .btn-fill');
   const emp = employees.find(e => e.id === currentDetailEmployeeId);
   const category = document.getElementById('bcCategory').value;
   const provider = document.getElementById('bcProvider').value;
@@ -341,7 +341,7 @@ async function submitBehalfClaim(evt) {
     try { documentUrl = await readFileAsDataUrl(file); }
     catch (e) { toast('Could not read the selected file.', 'fa-solid fa-triangle-exclamation'); return; }
   }
-  setButtonLoading(btn, true, 'Submitting...');
+  setButtonLoading(btn, true, 'Submitting…');
   try {
     await Api.submitInsuranceClaim({ employee_name: emp.name, employee_id: emp.id, category, provider, amount, document_url: documentUrl, status, record_date });
     closeModal('behalfClaimModal');
@@ -491,9 +491,8 @@ async function submitEmployeeDocument() {
     progressFill.style.width = '0%';
     progressPct.textContent = '0%';
     progressText.textContent = 'Preparing file...';
-    uploadBtn.disabled = true;
-    cancelBtn.disabled = true;
-    uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+    if (cancelBtn) cancelBtn.disabled = true;
+    setButtonLoading(uploadBtn, true, 'Uploading…');
     const dataUrl = await readFileAsDataUrl(file);
     progressText.textContent = 'Uploading...';
     await Api.uploadEmployeeDocumentWithProgress(currentDetailEmployeeId, { name, file_type: fileType, data_url: dataUrl }, (pct) => {
@@ -511,9 +510,8 @@ async function submitEmployeeDocument() {
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   } finally {
     progressWrap.style.display = 'none';
-    uploadBtn.disabled = false;
-    cancelBtn.disabled = false;
-    uploadBtn.innerHTML = '<i class="fa-solid fa-check"></i> Upload';
+    if (cancelBtn) cancelBtn.disabled = false;
+    setButtonLoading(uploadBtn, false);
   }
 }
 document.addEventListener('DOMContentLoaded', initDocDropZoneListeners);
@@ -617,7 +615,7 @@ async function toggleBankIbanReveal() {
   }
 }
 async function saveBankAccount(evt) {
-  const btn = (evt && evt.currentTarget) || document.querySelector('#bankAccountModal .btn-fill');
+  const btn = (evt && evt.currentTarget) || document.getElementById('bankAccountSaveBtn') || document.querySelector('#bankAccountModal .btn-fill');
   const bank_name = document.getElementById('fBankName').value.trim();
   const iban = document.getElementById('fBankIban').value.trim();
   const swift_code = document.getElementById('fBankSwift').value.trim() || null;
@@ -627,7 +625,7 @@ async function saveBankAccount(evt) {
     toast('Please reveal the IBAN before editing, or enter a new IBAN.', 'fa-solid fa-triangle-exclamation');
     return;
   }
-  setButtonLoading(btn, true, 'Saving...');
+  setButtonLoading(btn, true, 'Saving…');
   try {
     await Api.upsertBankAccount(currentDetailEmployeeId, { bank_name, iban, swift_code });
     toast('Bank account saved.');

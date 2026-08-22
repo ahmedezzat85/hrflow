@@ -1048,178 +1048,285 @@
   </div>
 
   <div class="modal-overlay" id="raiseModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3 id="raiseModalTitle">Apply New Raise</h3><button class="modal-close" onclick="closeModal('raiseModal')"><i
-            class="fa-solid fa-xmark"></i></button>
+        <div class="modal-head-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        <div class="modal-head-text">
+          <h3 id="raiseModalTitle">Apply New Raise</h3>
+          <p>Adjust compensation packages and record raises.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('raiseModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-field" style="margin-bottom:16px;">
-          <label>Employee</label>
-          <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
-        </div>
-        <div class="form-grid">
-          <div class="form-field"><label>Current Internal (USD)</label><input type="text" id="rvCurrentInternal"
-              value="—" disabled></div>
-          <div class="form-field"><label>Current External (USD)</label><input type="text" id="rvCurrentExternal"
-              value="—" disabled></div>
-          <div class="form-field"><label>New Internal (USD)</label><input type="number" id="rNewInternal"
-              placeholder="e.g. 550" oninput="updateRaisePreview()"></div>
-          <div class="form-field"><label>New External (USD)</label><input type="number" id="rNewExternal"
-              placeholder="e.g. 1000" oninput="updateRaisePreview()"></div>
-          <div class="form-field"><label>Effective Date</label><input type="date" id="rDate"></div>
-          <div class="form-field"><label>Reason</label>
-            <select id="rReason">
-              <option>Annual performance raise</option>
-              <option>Promotion</option>
-              <option>Cost of living adjustment</option>
-              <option>Market adjustment</option>
-              <option>Retention raise</option>
-            </select>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user"></i> Employee Selection <span class="line"></span></div>
+          <div class="form-field full">
+            <label>Employee <span class="req">*</span></label>
+            <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
           </div>
         </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation Adjustment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Current Internal <span class="opt">USD</span></label>
+              <input type="text" id="rvCurrentInternal" value="—" disabled>
+            </div>
+            <div class="form-field">
+              <label>Current External <span class="opt">USD</span></label>
+              <input type="text" id="rvCurrentExternal" value="—" disabled>
+            </div>
+            <div class="form-field">
+              <label>New Internal <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
+            </div>
+            <div class="form-field">
+              <label>New External <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-calendar-check"></i> Raise Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Effective Date <span class="req">*</span></label>
+              <input type="date" id="rDate">
+            </div>
+            <div class="form-field">
+              <label>Reason</label>
+              <select id="rReason">
+                <option>Annual performance raise</option>
+                <option>Promotion</option>
+                <option>Cost of living adjustment</option>
+                <option>Market adjustment</option>
+                <option>Retention raise</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div class="raise-preview" id="raisePreview">
           <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
           <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
-          <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current
-              Total</span><b id="rvCurrent">—</b></div>
+          <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
           <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
           <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
         </div>
       </div>
-      <div class="modal-foot"><button class="btn" onclick="closeModal('raiseModal')">Cancel</button><button
-          class="btn btn-fill" onclick="applyRaise(event)"><i class="fa-solid fa-check"></i> Apply Raise</button></div>
+      <div class="modal-foot">
+        <button class="btn" id="raiseModalCancelBtn" onclick="closeModal('raiseModal')">Cancel</button>
+        <button class="btn btn-fill" id="raiseModalSaveBtn" onclick="applyRaise(event)"><i class="fa-solid fa-check"></i> Apply Raise</button>
+      </div>
     </div>
   </div>
 
   <div class="modal-overlay" id="categoryModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3 id="categoryModalTitle">Add Category</h3><button class="modal-close"
-          onclick="closeModal('categoryModal')"><i class="fa-solid fa-xmark"></i></button>
+        <div class="modal-head-icon"><i class="fa-solid fa-list-check"></i></div>
+        <div class="modal-head-text">
+          <h3 id="categoryModalTitle">Add Category</h3>
+          <p>Configure coverage categories and annual spending limits.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('categoryModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-field" style="margin-bottom:14px;"><label>Category Name</label><input id="fCatName"
-            placeholder="e.g. Dental"></div>
-        <div class="form-field"><label>Annual Limit (EGP)</label><input type="number" id="fCatLimit"
-            placeholder="10000"></div>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sliders"></i> Category Settings <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Category Name <span class="req">*</span></label>
+              <input id="fCatName" placeholder="e.g. Dental">
+            </div>
+            <div class="form-field full">
+              <label>Annual Limit <span class="opt">EGP</span> <span class="req">*</span></label>
+              <input type="number" id="fCatLimit" placeholder="10000">
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="modal-foot"><button class="btn" onclick="closeModal('categoryModal')">Cancel</button><button
-          class="btn btn-fill" onclick="saveCategory(event)"><i class="fa-solid fa-check"></i> Save</button></div>
+      <div class="modal-foot">
+        <button class="btn" id="categoryModalCancelBtn" onclick="closeModal('categoryModal')">Cancel</button>
+        <button class="btn btn-fill" id="categoryModalSaveBtn" onclick="saveCategory(event)"><i class="fa-solid fa-check"></i> Save</button>
+      </div>
     </div>
   </div>
 
   <div class="modal-overlay" id="behalfVacationModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3>Submit Vacation / WFH on Behalf</h3><button class="modal-close"
-          onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button>
+        <div class="modal-head-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+        <div class="modal-head-text">
+          <h3>Submit Vacation / WFH on Behalf</h3>
+          <p>Log a leave or remote work request for this employee.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field full"><label>Type</label>
-            <select id="bvType">
-              <option>Annual Leave</option>
-              <option>Sick Leave</option>
-              <option>Work From Home</option>
-              <option>Unpaid Leave</option>
-            </select>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-calendar-days"></i> Request Parameters <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Type <span class="req">*</span></label>
+              <select id="bvType">
+                <option>Annual Leave</option>
+                <option>Sick Leave</option>
+                <option>Work From Home</option>
+                <option>Unpaid Leave</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Start Date <span class="req">*</span></label>
+              <input type="date" id="bvStart">
+            </div>
+            <div class="form-field">
+              <label>End Date</label>
+              <input type="date" id="bvEnd">
+            </div>
+            <div class="form-field full">
+              <label>Days <span class="opt">Count</span></label>
+              <input type="number" id="bvDays" value="1" min="1">
+            </div>
           </div>
-          <div class="form-field"><label>Start Date</label><input type="date" id="bvStart"></div>
-          <div class="form-field"><label>End Date</label><input type="date" id="bvEnd"></div>
-          <div class="form-field"><label>Days</label><input type="number" id="bvDays" value="1" min="1"></div>
-          <div class="form-field"><label>Status</label>
-            <select id="bvStatus">
-              <option value="Approved">Approved</option>
-              <option value="Pending">Pending</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user-shield"></i> Administrative Status <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Status</label>
+              <select id="bvStatus">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Record Date <span class="opt">Optional</span></label>
+              <input type="date" id="bvRecordDate">
+            </div>
           </div>
-          <div class="form-field full"><label>Record Date (optional, for backdating historical records)</label><input
-              type="date" id="bvRecordDate"></div>
         </div>
       </div>
-      <div class="modal-foot"><button class="btn" onclick="closeModal('behalfVacationModal')">Cancel</button><button
-          class="btn btn-fill" onclick="submitBehalfVacation(event)"><i class="fa-solid fa-check"></i> Submit</button>
+      <div class="modal-foot">
+        <button class="btn" id="behalfVacationCancelBtn" onclick="closeModal('behalfVacationModal')">Cancel</button>
+        <button class="btn btn-fill" id="behalfVacationSaveBtn" onclick="submitBehalfVacation(event)"><i class="fa-solid fa-check"></i> Submit</button>
       </div>
     </div>
   </div>
 
   <div class="modal-overlay" id="behalfClaimModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3>Submit Insurance Claim on Behalf</h3><button class="modal-close" onclick="closeModal('behalfClaimModal')"><i
-            class="fa-solid fa-xmark"></i></button>
+        <div class="modal-head-icon"><i class="fa-solid fa-briefcase-medical"></i></div>
+        <div class="modal-head-text">
+          <h3>Submit Insurance Claim on Behalf</h3>
+          <p>Record medical claims and calculate policy reimbursements.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field full"><label>Category</label><select id="bcCategory"></select></div>
-          <div class="form-field"><label>Provider</label><input id="bcProvider" placeholder="e.g. Allianz Egypt"></div>
-          <div class="form-field"><label>Amount (EGP)</label><input type="number" id="bcAmount" placeholder="e.g. 1500">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Category <span class="req">*</span></label>
+              <select id="bcCategory"></select>
+            </div>
+            <div class="form-field">
+              <label>Provider</label>
+              <input id="bcProvider" placeholder="e.g. Allianz Egypt">
+            </div>
+            <div class="form-field">
+              <label>Amount <span class="opt">EGP</span> <span class="req">*</span></label>
+              <input type="number" id="bcAmount" placeholder="e.g. 1500">
+            </div>
           </div>
-          <div class="form-field"><label>Status</label>
-            <select id="bcStatus">
-              <option value="Approved">Approved</option>
-              <option value="Pending">Pending</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing & Attachment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Status</label>
+              <select id="bcStatus">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Record Date <span class="opt">Optional</span></label>
+              <input type="date" id="bcRecordDate">
+            </div>
+            <div class="form-field full">
+              <label>Supporting Document <span class="opt">Optional</span></label>
+              <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
           </div>
-          <div class="form-field"><label>Record Date (optional, for backdating historical records)</label><input
-              type="date" id="bcRecordDate"></div>
-          <div class="form-field full"><label>Supporting Document (optional)</label><input type="file" id="bcDocument"
-              accept=".pdf,.jpg,.jpeg,.png"></div>
         </div>
       </div>
-      <div class="modal-foot"><button class="btn" onclick="closeModal('behalfClaimModal')">Cancel</button><button
-          class="btn btn-fill" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button>
+      <div class="modal-foot">
+        <button class="btn" id="behalfClaimCancelBtn" onclick="closeModal('behalfClaimModal')">Cancel</button>
+        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button>
       </div>
     </div>
   </div>
 
   <div class="modal-overlay" id="employeeDocumentModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3>Upload Employee Document</h3>
+        <div class="modal-head-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="modal-head-text">
+          <h3>Upload Employee Document</h3>
+          <p>Securely store documents in Google Drive under the employee's folder.</p>
+        </div>
         <button class="modal-close" onclick="closeModal('employeeDocumentModal')"><i
             class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field full">
-            <label>Document Name</label>
-            <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
-          </div>
-          <div class="form-field full">
-            <label>File</label>
-            <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
-              <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
-              <div id="docDropZoneEmpty" class="doc-drop-empty">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <p><strong>Click to browse</strong> or drag a file here</p>
-                <span>PDF, JPG or PNG - up to 4MB</span>
-              </div>
-              <div id="docDropZoneFile" class="doc-drop-file" style="display:none;">
-                <div class="doc-file-icon" id="docFileIconWrap"><i class="fa-solid fa-file"></i></div>
-                <div class="doc-file-meta">
-                  <p id="docFileName" class="doc-file-name">-</p>
-                  <span id="docFileSize" class="doc-file-size">-</span>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file"></i> Document Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Document Name <span class="req">*</span></label>
+              <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
+            </div>
+            <div class="form-field full">
+              <label>File <span class="req">*</span></label>
+              <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
+                <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="docDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 4MB</span>
                 </div>
-                <button type="button" class="icon-action" title="Remove"
-                  onclick="event.stopPropagation(); clearDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                <div id="docDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="docFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="docFileName" class="doc-file-name">-</p>
+                    <span id="docFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove"
+                    onclick="event.stopPropagation(); clearDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="form-field full" id="docUploadProgressWrap" style="display:none;">
-            <div class="doc-progress-track">
-              <div class="doc-progress-fill" id="docUploadProgressFill" style="width:0%;"></div>
-            </div>
-            <div class="doc-progress-label">
-              <span id="docUploadProgressText">Uploading...</span>
-              <span id="docUploadProgressPct">0%</span>
+            <div class="form-field full" id="docUploadProgressWrap" style="display:none;">
+              <div class="doc-progress-track">
+                <div class="doc-progress-fill" id="docUploadProgressFill" style="width:0%;"></div>
+              </div>
+              <div class="doc-progress-label">
+                <span id="docUploadProgressText">Uploading...</span>
+                <span id="docUploadProgressPct">0%</span>
+              </div>
             </div>
           </div>
         </div>
-        <p style="font-size:11.5px;color:var(--text3);margin-top:10px;">
+        <p style="font-size:11.5px;color:var(--text3);margin-top:12px;">
           Files are stored securely in Google Drive under this employee's folder. Preview and download happen inside
           HRFlow - no separate Drive access needed.
         </p>
@@ -1298,39 +1405,46 @@
   </div>
   <div class="toast-wrap" id="toastWrap"></div>
   <div class="modal-overlay" id="bankAccountModal">
-    <div class="modal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+        <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <div class="modal-head-text">
+          <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+          <p>Employee payout banking details and wire routing.</p>
+        </div>
         <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field full">
-            <label>Bank Name <span style="color:var(--danger)">*</span></label>
-            <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
-          </div>
-          <div class="form-field full">
-            <label>IBAN <span style="color:var(--danger)">*</span></label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002"
-                style="flex:1;font-family:monospace;">
-              <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()"
-                title="Reveal full IBAN">
-                <i class="fa-solid fa-eye"></i>
-              </button>
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-credit-card"></i> Banking Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Bank Name <span class="req">*</span></label>
+              <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
             </div>
-            <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by
-              default. Click the eye icon to reveal.</span>
-          </div>
-          <div class="form-field full">
-            <label>SWIFT / BIC Code <span style="color:var(--text3);font-size:11px;">(Optional)</span></label>
-            <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+            <div class="form-field full">
+              <label>IBAN <span class="req">*</span></label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002"
+                  style="flex:1;font-family:monospace;">
+                <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()"
+                  title="Reveal full IBAN">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by
+                default. Click the eye icon to reveal.</span>
+            </div>
+            <div class="form-field full">
+              <label>SWIFT / BIC Code <span class="opt">Optional</span></label>
+              <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+            </div>
           </div>
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn" onclick="closeModal('bankAccountModal')">Cancel</button>
-        <button class="btn btn-fill" onclick="saveBankAccount(event)"><i class="fa-solid fa-floppy-disk"></i>
+        <button class="btn" id="bankAccountCancelBtn" onclick="closeModal('bankAccountModal')">Cancel</button>
+        <button class="btn btn-fill" id="bankAccountSaveBtn" onclick="saveBankAccount(event)"><i class="fa-solid fa-floppy-disk"></i>
           Save</button>
       </div>
     </div>

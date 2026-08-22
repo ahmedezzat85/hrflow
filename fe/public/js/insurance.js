@@ -58,11 +58,11 @@ function openCategoryModal(id=null){
   document.getElementById('categoryModal').classList.add('active');
 }
 async function saveCategory(evt){
-  const btn = (evt && evt.currentTarget) || document.querySelector('#categoryModal .btn-fill');
+  const btn = (evt && evt.currentTarget) || document.getElementById('categoryModalSaveBtn') || document.querySelector('#categoryModal .btn-fill');
   const name = document.getElementById('fCatName').value.trim();
   const limit = Number(document.getElementById('fCatLimit').value);
   if(!name || !limit){ toast('Please fill in category name and annual limit.','fa-solid fa-triangle-exclamation'); return; }
-  setButtonLoading(btn, true, 'Saving...');
+  setButtonLoading(btn, true, 'Saving…');
   try{
     if(currentEditCategoryId){ await Api.updateInsuranceCategory(currentEditCategoryId, {name, annual_limit: limit}); toast('Category updated.'); }
     else { await Api.createInsuranceCategory({name, annual_limit: limit}); toast('Category added.'); }
@@ -84,6 +84,7 @@ function populateClaimCategoryOptions(){
 }
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
+  if(!body) return;
   body.innerHTML = insuranceClaims.map(c=>`<tr><td class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td style="display:flex;gap:6px;">${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td></tr>`).join('');
   document.getElementById('statClaimsYtd').textContent = insuranceClaims.length;
   document.getElementById('statClaimsApproved').textContent = insuranceClaims.filter(c=>c.status==='Approved').length;
@@ -121,7 +122,7 @@ async function submitClaim(evt){
     try{ documentUrl = await readFileAsDataUrl(file); }
     catch(e){ toast('Could not read the selected file.','fa-solid fa-triangle-exclamation'); return; }
   }
-  setButtonLoading(btn, true, 'Submitting...');
+  setButtonLoading(btn, true, 'Submitting…');
   try{
     await Api.submitInsuranceClaim({ employee_name: currentLoggedInEmployee.name, category, provider: '—', amount, document_url: documentUrl });
     toast('Insurance claim submitted for approval.');
