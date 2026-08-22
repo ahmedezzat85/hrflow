@@ -158,33 +158,59 @@ async function viewProfile(id) {
           </div>
         </div>
       </div>
-      <div class="esc-meta-zone">
-        <div class="esc-zone-label">Employee Details</div>
-        ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
-        ${escRow('fa-umbrella-beach', 'Vacation', `${vacRemaining} / ${e.vacTotal || 21} days`)}
-        ${escRow('fa-hashtag', 'Invoice ID', e.invoice_id || '—')}
-        ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}
-      </div>
-    </div>`;
-  const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
-  document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
-  document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
-  showTableSkeleton('detailVacationBody', 4, 3);
-  showTableSkeleton('detailClaimsBody', 4, 3);
-  showTableSkeleton('detailDocumentsBody', 3, 2);
-  try {
-    const [vacHistory, claims, notes] = await Promise.all([
-      Api.getVacationHistory(id),
-      Api.getInsuranceClaims(),
-      Api.getEmployeeNotes(id),
-    ]);
-    document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td>${v.type}</td><td>${v.start_date} to ${v.end_date}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><p>No vacation records yet.</p></div></td></tr>`;
-    const empClaims = claims.filter(c => String(c.employee_id) === String(id));
-    document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => `<tr><td>${c.category}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
-    renderNotesList(notes);
-    await loadEmployeeDocuments(id);
-    await loadBankAccountStatus(id);
-  } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+        <div class="esc-meta-zone">
+          <div class="esc-zone-label">Employee Details</div>
+          ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
+          ${escRow('fa-umbrella-beach', 'Vacation', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21} days</span>`)}
+          ${escRow('fa-hashtag', 'Invoice ID', e.invoice_id || '—')}
+          ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}
+        </div>
+      </div>`;
+    const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
+    document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
+    document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
+    showTableSkeleton('detailVacationBody', 4, 3);
+    showTableSkeleton('detailClaimsBody', 4, 3);
+    showTableSkeleton('detailDocumentsBody', 3, 2);
+    try {
+      const [vacHistory, claims, notes, freshConsumption] = await Promise.all([
+        Api.getVacationHistory(id),
+        Api.getInsuranceClaims(),
+        Api.getEmployeeNotes(id),
+        Api.getInsuranceConsumption(),
+      ]);
+      const usedVacDays = vacHistory
+        .filter(v => v.status === 'Approved' && (v.type === 'Annual Leave' || !v.type))
+        .reduce((sum, v) => sum + (Number(v.days) || 0), 0);
+      const totalVacDays = e.vacTotal || 21;
+      const remainingVacDays = Math.max(0, totalVacDays - usedVacDays);
+      const vacRemainingEl = document.getElementById('detailVacRemaining');
+      if (vacRemainingEl) {
+        vacRemainingEl.textContent = `${remainingVacDays} / ${totalVacDays} days`;
+      }
+
+      if (freshConsumption) {
+        insuranceConsumption = freshConsumption;
+        const empConsumption = freshConsumption.find(c => String(c.employee_id) === String(id));
+        if (empConsumption) {
+          document.getElementById('detailInsuranceGrid').innerHTML = empConsumption.categories && empConsumption.categories.length ? empConsumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
+          document.getElementById('detailInsuranceTotal').innerHTML = `${fmtMoney(empConsumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(empConsumption.total_limit)}</span>`;
+        }
+      }
+
+      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td>${v.type}</td><td>${v.start_date} to ${v.end_date}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><p>No vacation records yet.</p></div></td></tr>`;
+      const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id));
+      document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => {
+        const cat = c.category || c.Category || c.name || c.claim_category || '—';
+        const amt = c.amount !== undefined ? c.amount : (c.Amount || 0);
+        const dt = c.date || c.Date || '—';
+        const st = c.status || c.Status || 'Pending';
+        return `<tr><td>${cat}</td><td>${fmtMoney(amt)}</td><td>${dt}</td><td>${statusPill(st)}</td></tr>`;
+      }).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
+      renderNotesList(notes);
+      await loadEmployeeDocuments(id);
+      await loadBankAccountStatus(id);
+    } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
 function renderNotesList(notes) {

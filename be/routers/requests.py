@@ -58,11 +58,44 @@ def create_request(payload: RequestCreate, current_user: dict = Depends(get_curr
 @router.post("/{req_id}/action")
 def action_request(req_id: int, payload: RequestAction, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
+    reqs = client.get_all_records("Requests")
+    req = next((r for r in reqs if str(r.get("id")) == str(req_id)), None)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
     ok = client.update_row_by_match("Requests", "id", req_id, {
         "status": payload.status, "reviewed_by": current_user["email"],
         "reviewed_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
     })
     if not ok:
         raise HTTPException(status_code=404, detail="Request not found")
+
+    emp_id = req.get("employee_id")
+    req_type = req.get("type")
+    req_date = req.get("date")
+
+    if req_type == "Medical Insurance":
+        claims = client.get_all_records("InsuranceClaims")
+        matched_claim = next(
+            (c for c in claims if str(c.get("employee_id")) == str(emp_id) and str(c.get("date")) == str(req_date) and c.get("status") != payload.status),
+            None
+        )
+        if not matched_claim:
+            matched_claim = next(
+                (c for c in claims if str(c.get("employee_id")) == str(emp_id) and c.get("status") == "Pending"),
+                None
+            )
+        if matched_claim:
+            client.update_row_by_match("InsuranceClaims", "id", matched_claim["id"], {"status": payload.status})
+
+    elif req_type == "Vacation":
+        vols = client.get_all_records("VacationHistory")
+        matched_vac = next(
+            (v for v in vols if str(v.get("employee_id")) == str(emp_id) and v.get("status") != payload.status and (str(v.get("start_date")) in str(req.get("details")) or v.get("status") == "Pending")),
+            None
+        )
+        if matched_vac:
+            client.update_row_by_match("VacationHistory", "id", matched_vac["id"], {"status": payload.status})
+
     audit_log(client, "request.action", current_user.get("email"), "request", req_id, f"status={payload.status}")
     return {"message": f"Request {payload.status.lower()}"}
