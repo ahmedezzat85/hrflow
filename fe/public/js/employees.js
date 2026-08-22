@@ -190,18 +190,20 @@ async function viewProfile(id) {
       }
 
       if (freshConsumption) {
-        insuranceConsumption = freshConsumption;
-        const empConsumption = freshConsumption.find(c => String(c.employee_id) === String(id));
-        if (empConsumption) {
-          document.getElementById('detailInsuranceGrid').innerHTML = empConsumption.categories && empConsumption.categories.length ? empConsumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
-          document.getElementById('detailInsuranceTotal').innerHTML = `${fmtMoney(empConsumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(empConsumption.total_limit)}</span>`;
+        if (Array.isArray(freshConsumption)) {
+          insuranceConsumption = freshConsumption;
+          const empConsumption = freshConsumption.find(c => String(c.employee_id) === String(id) || (e.name && (c.employee_name || '').toLowerCase() === e.name.toLowerCase())) || (freshConsumption.length === 1 ? freshConsumption[0] : null);
+          if (empConsumption) {
+            document.getElementById('detailInsuranceGrid').innerHTML = empConsumption.categories && empConsumption.categories.length ? empConsumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
+            document.getElementById('detailInsuranceTotal').innerHTML = `${fmtMoney(empConsumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(empConsumption.total_limit)}</span>`;
+          }
         }
       }
 
       document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td>${v.type}</td><td>${v.start_date} to ${v.end_date}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><p>No vacation records yet.</p></div></td></tr>`;
-      const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id));
+      const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id) || (e.name && (c.employee_name || c.Employee_Name || '').toLowerCase() === e.name.toLowerCase()));
       document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => {
-        const cat = c.category || c.Category || c.name || c.claim_category || '—';
+        const cat = c.category || c.Category || c.claim_category || c.type || '—';
         const amt = c.amount !== undefined ? c.amount : (c.Amount || 0);
         const dt = c.date || c.Date || '—';
         const st = c.status || c.Status || 'Pending';
@@ -252,11 +254,11 @@ async function deleteEmployeeNote(noteId) {
   } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
-async function openBehalfVacationModal() {
+function openBehalfVacationModal() {
   document.getElementById('bvType').value = 'Annual Leave';
   document.getElementById('bvStart').value = '';
   document.getElementById('bvEnd').value = '';
-  document.getElementById('bvDays').value = 1;
+  document.getElementById('bvDays').value = '1';
   document.getElementById('bvStatus').value = 'Approved';
   document.getElementById('bvRecordDate').value = '';
   document.getElementById('behalfVacationModal').classList.add('active');
@@ -285,9 +287,17 @@ async function submitBehalfVacation(evt) {
   }
 }
 
-function openBehalfClaimModal() {
+async function openBehalfClaimModal() {
+  if (!insuranceCategories || insuranceCategories.length === 0) {
+    try {
+      insuranceCategories = await Api.getInsuranceCategories();
+    } catch (e) {}
+  }
   const sel = document.getElementById('bcCategory');
-  sel.innerHTML = insuranceCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  sel.innerHTML = (insuranceCategories || []).map(c => {
+    const name = c.name || c.category || c.Name || c.Category;
+    return name ? `<option value="${name}">${name}</option>` : '';
+  }).filter(Boolean).join('');
   document.getElementById('bcProvider').value = '';
   document.getElementById('bcAmount').value = '';
   document.getElementById('bcStatus').value = 'Approved';
@@ -305,7 +315,7 @@ async function submitBehalfClaim(evt) {
   const status = document.getElementById('bcStatus').value;
   const record_date = document.getElementById('bcRecordDate').value || null;
   const fileInput = document.getElementById('bcDocument');
-  if (!category) { toast('Please select an insurance category.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!category || category === 'undefined') { toast('Please select a valid insurance category.', 'fa-solid fa-triangle-exclamation'); return; }
   if (!amount) { toast('Please enter a claim amount.', 'fa-solid fa-triangle-exclamation'); return; }
   let documentUrl;
   const file = fileInput && fileInput.files[0];

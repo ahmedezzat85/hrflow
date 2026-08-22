@@ -21,13 +21,24 @@ router = APIRouter(prefix="/api/insurance", tags=["Insurance"])
 
 APPROACHING_THRESHOLD_PCT = 80
 
+def _clean_amount(val) -> float:
+    if val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    cleaned = str(val).replace("EGP", "").replace("$", "").replace(",", "").strip()
+    try:
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return 0.0
+
 def _normalize_claim_record(c: dict) -> dict:
     if not isinstance(c, dict):
         return c
     normalized = dict(c)
     category = normalized.get("category") or normalized.get("Category") or ""
     provider = normalized.get("provider") or normalized.get("Provider") or ""
-    amount = normalized.get("amount") if normalized.get("amount") is not None else normalized.get("Amount") or 0
+    amount = _clean_amount(normalized.get("amount") if normalized.get("amount") is not None else normalized.get("Amount"))
     date = normalized.get("date") or normalized.get("Date") or ""
     status = normalized.get("status") or normalized.get("Status") or "Pending"
     emp_id = (
@@ -45,7 +56,7 @@ def _normalize_claim_record(c: dict) -> dict:
         "employee_name": str(emp_name or ""),
         "category": str(category or "").strip(),
         "provider": str(provider or "").strip(),
-        "amount": float(amount or 0),
+        "amount": amount,
         "date": str(date or ""),
         "status": str(status or "Pending").strip(),
         "document_url": str(doc_url or ""),
@@ -58,7 +69,7 @@ def _normalize_category_record(cat: dict) -> dict:
         return cat
     cat_id = cat.get("id") or cat.get("ID") or cat.get("Id")
     name = cat.get("name") or cat.get("Name") or cat.get("category") or cat.get("Category") or ""
-    limit = (
+    limit = _clean_amount(
         cat.get("annual_limit")
         if cat.get("annual_limit") is not None
         else cat.get("Annual_Limit") or cat.get("Annual Limit") or cat.get("limit") or cat.get("Limit") or 0
@@ -66,7 +77,7 @@ def _normalize_category_record(cat: dict) -> dict:
     return {
         "id": int(cat_id) if cat_id is not None and str(cat_id).isdigit() else (cat_id or 0),
         "name": str(name or "").strip(),
-        "annual_limit": float(limit or 0),
+        "annual_limit": limit,
     }
 
 
@@ -77,14 +88,23 @@ def compute_consumption(employees, categories, claims):
     results = []
     for emp in employees:
         emp_id = emp["id"]
-        emp_claims = [c for c in approved_claims if str(c.get("employee_id")) == str(emp_id)]
+        emp_name = str(emp.get("name") or "").strip().lower()
+        emp_claims = [
+            c for c in approved_claims
+            if (c.get("employee_id") is not None and str(c.get("employee_id")).strip() == str(emp_id).strip())
+            or (emp_name and str(c.get("employee_name") or "").strip().lower() == emp_name)
+        ]
         cat_results = []
         total_limit = 0.0
         total_consumed = 0.0
         for cat in categories:
-            limit = float(cat.get("annual_limit") or 0)
-            cat_name_lower = str(cat.get("name") or "").strip().lower()
-            consumed = sum(float(c.get("amount") or 0) for c in emp_claims if str(c.get("category") or "").strip().lower() == cat_name_lower)
+            limit = _clean_amount(cat.get("annual_limit") or 0)
+            cat_name_clean = str(cat.get("name") or "").strip().lower()
+            consumed = sum(
+                _clean_amount(c.get("amount") or 0)
+                for c in emp_claims
+                if cat_name_clean and str(c.get("category") or "").strip().lower() == cat_name_clean
+            )
             remaining = max(limit - consumed, 0)
             pct_used = round((consumed / limit) * 100, 1) if limit > 0 else 0
             if limit > 0 and consumed >= limit:
