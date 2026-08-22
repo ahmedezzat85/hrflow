@@ -45,7 +45,7 @@ function openEmployeeModal(id = null) {
 }
 
 async function saveEmployee(evt) {
-  const btn = (evt && evt.currentTarget) || document.querySelector('#employeeModal .btn-fill');
+  const btn = (evt && evt.currentTarget) || document.getElementById('empModalSaveBtn') || document.querySelector('#employeeModal .btn-fill');
   const name = document.getElementById('fEmpName').value.trim();
   if (!name) { toast('Please enter employee name.', 'fa-solid fa-triangle-exclamation'); return; }
   const vacTotal = Number(fEmpVac.value) || 21;

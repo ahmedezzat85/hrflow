@@ -913,53 +913,120 @@
     </main>
   </div>
   <div class="modal-overlay" id="employeeModal">
-    <div class="modal wide">
+    <div class="modal wide modal-v2">
       <div class="modal-head">
-        <h3 id="empModalTitle">Add Employee</h3><button class="modal-close" onclick="closeModal('employeeModal')"><i
-            class="fa-solid fa-xmark"></i></button>
+        <div class="modal-head-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="modal-head-text">
+          <h3 id="empModalTitle">Add Employee</h3>
+          <p>Create a new employee record and invite them to sign in.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('employeeModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
+
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field"><label>Full Name</label><input id="fEmpName" placeholder="e.g. Laila Hassan"></div>
-          <div class="form-field"><label>Email</label><input id="fEmpEmail" placeholder="laila@hrflow.com"></div>
-          <div class="form-field"><label>Department</label><select id="fEmpDept">
-              <option>Engineering</option>
-              <option>Product</option>
-              <option>Design</option>
-              <option>Sales</option>
-              <option>Finance</option>
-              <option>Operations</option>
-            </select></div>
-          <div class="form-field"><label>Role / Title</label><input id="fEmpRole" placeholder="e.g. Senior Developer">
-          </div>
-          <div class="form-field"><label>Internal Salary (USD)</label><input type="number" id="fEmpInternalSalary"
-              placeholder="1000"></div>
-          <div class="form-field"><label>External Salary (USD)</label><input type="number" id="fEmpExternalSalary"
-              placeholder="0"></div>
-          <div class="form-field"><label>Invoice ID (01–99, for external invoices)</label><input type="text"
-              id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2"></div>
-          <div class="form-field"><label>Address Line 1 (for external invoices)</label><input id="fEmpAddressLine1"
-              placeholder="e.g. 15 Example Street"></div>
-          <div class="form-field"><label>Address Line 2</label><input id="fEmpAddressLine2"
-              placeholder="e.g. New Cairo, Cairo Governorate"></div>
-          <div class="form-field"><label>Join Date</label><input type="date" id="fEmpJoin"></div>
-          <div class="form-field"><label>Status</label><select id="fEmpStatus">
-              <option>Active</option>
-              <option>On Leave</option>
-              <option>Suspended</option>
-            </select></div>
-          <div class="form-field"><label>Employment State</label><select id="fEmpEmploymentState">
-              <option>Full-Time</option>
-              <option>Part-Time</option>
-              <option>Freelance</option>
-              <option>Occasional</option>
-            </select></div>
-          <div class="form-field"><label>Vacation Balance (days)</label><input type="number" id="fEmpVac" value="21">
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Basic Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Full Name <span class="req">*</span></label>
+              <input id="fEmpName" placeholder="e.g. Laila Hassan">
+            </div>
+            <div class="form-field">
+              <label>Email <span class="req">*</span></label>
+              <input id="fEmpEmail" placeholder="laila@hrflow.com">
+            </div>
+            <div class="form-field">
+              <label>Department</label>
+              <select id="fEmpDept">
+                <option>Engineering</option>
+                <option>Product</option>
+                <option>Design</option>
+                <option>Sales</option>
+                <option>Finance</option>
+                <option>Operations</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Role Title</label>
+              <input id="fEmpRole" placeholder="e.g. Senior Developer">
+            </div>
           </div>
         </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Internal Salary <span class="opt">USD</span></label>
+              <input type="number" id="fEmpInternalSalary" placeholder="1000">
+            </div>
+            <div class="form-field">
+              <label>External Salary <span class="opt">USD</span></label>
+              <input type="number" id="fEmpExternalSalary" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-briefcase"></i> Employment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Join Date</label>
+              <input type="date" id="fEmpJoin">
+            </div>
+            <div class="form-field">
+              <label>Status</label>
+              <select id="fEmpStatus">
+                <option>Active</option>
+                <option>On Leave</option>
+                <option>Suspended</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Employment State</label>
+              <select id="fEmpEmploymentState">
+                <option>Full-Time</option>
+                <option>Part-Time</option>
+                <option>Freelance</option>
+                <option>Occasional</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Vacation Balance <span class="opt">days</span></label>
+              <input type="number" id="fEmpVac" value="21">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section optional-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-invoice-dollar"></i> Consultant Invoicing <span class="line"></span></div>
+          <p style="font-size:11.5px;color:var(--text2);margin-bottom:12px;">
+            Only needed if this employee has an external USD salary and requires consultant-fee invoices.
+          </p>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Invoice ID <span class="opt">01–99</span></label>
+              <input type="text" id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2">
+            </div>
+            <div class="form-field full">
+              <label>Address Line 1</label>
+              <input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street">
+            </div>
+            <div class="form-field full">
+              <label>Address Line 2</label>
+              <input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate">
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div class="modal-foot"><button class="btn" onclick="closeModal('employeeModal')">Cancel</button><button
-          class="btn btn-fill" onclick="saveEmployee(event)"><i class="fa-solid fa-check"></i> Save Employee</button>
+
+      <div class="modal-foot">
+        <button class="btn" id="empModalCancelBtn" onclick="closeModal('employeeModal')">Cancel</button>
+        <button class="btn btn-fill" id="empModalSaveBtn" onclick="saveEmployee(event)">
+          <i class="fa-solid fa-check"></i> Save Employee
+        </button>
       </div>
     </div>
   </div>
