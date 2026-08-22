@@ -248,10 +248,18 @@ def action_insurance_claim(claim_id: int, payload: InsuranceClaimAction, current
         raise HTTPException(status_code=404, detail="Claim not found")
 
     reqs = client.get_all_records("Requests")
+    emp_reqs = [
+        r for r in reqs
+        if str(r.get("employee_id")) == str(claim.get("employee_id")) and r.get("type") == "Medical Insurance"
+    ]
     matched_req = next(
-        (r for r in reqs if str(r.get("employee_id")) == str(claim.get("employee_id")) and r.get("type") == "Medical Insurance" and r.get("status") != payload.status and (str(claim.get("date")) == str(r.get("date")) or r.get("status") == "Pending")),
+        (r for r in emp_reqs if r.get("status") != payload.status and str(r.get("date")) == str(claim.get("date"))),
         None
     )
+    if not matched_req:
+        pending_reqs = [r for r in emp_reqs if r.get("status") == "Pending"]
+        if len(pending_reqs) == 1:
+            matched_req = pending_reqs[0]
     if matched_req:
         client.update_row_by_match("Requests", "id", matched_req["id"], {
             "status": payload.status,
@@ -260,4 +268,5 @@ def action_insurance_claim(claim_id: int, payload: InsuranceClaimAction, current
         })
 
     audit_log(client, "insurance_claim.action", current_user.get("email"), "insurance_claim", claim_id, f"status={payload.status}")
-    return {"message": f"Claim {payload.status.lower()}"}
+    return {"message": f"Claim {payload.status.lower()}"
+}

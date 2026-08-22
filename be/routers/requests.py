@@ -54,7 +54,6 @@ def create_request(payload: RequestCreate, current_user: dict = Depends(get_curr
     client.append_row("Requests", row)
     return {"message": "Request submitted", "id": new_id}
 
-
 @router.post("/{req_id}/action")
 def action_request(req_id: int, payload: RequestAction, current_user: dict = Depends(require_admin)):
     client = sheets_client.get_client()
@@ -76,26 +75,32 @@ def action_request(req_id: int, payload: RequestAction, current_user: dict = Dep
 
     if req_type == "Medical Insurance":
         claims = client.get_all_records("InsuranceClaims")
+        emp_claims = [c for c in claims if str(c.get("employee_id")) == str(emp_id)]
         matched_claim = next(
-            (c for c in claims if str(c.get("employee_id")) == str(emp_id) and str(c.get("date")) == str(req_date) and c.get("status") != payload.status),
+            (c for c in emp_claims if str(c.get("date")) == str(req_date) and c.get("status") != payload.status),
             None
         )
         if not matched_claim:
-            matched_claim = next(
-                (c for c in claims if str(c.get("employee_id")) == str(emp_id) and c.get("status") == "Pending"),
-                None
-            )
+            pending_claims = [c for c in emp_claims if c.get("status") == "Pending"]
+            if len(pending_claims) == 1:
+                matched_claim = pending_claims[0]
         if matched_claim:
             client.update_row_by_match("InsuranceClaims", "id", matched_claim["id"], {"status": payload.status})
 
     elif req_type == "Vacation":
         vols = client.get_all_records("VacationHistory")
+        emp_vacs = [v for v in vols if str(v.get("employee_id")) == str(emp_id)]
         matched_vac = next(
-            (v for v in vols if str(v.get("employee_id")) == str(emp_id) and v.get("status") != payload.status and (str(v.get("start_date")) in str(req.get("details")) or v.get("status") == "Pending")),
+            (v for v in emp_vacs if v.get("status") != payload.status and str(v.get("start_date")) in str(req.get("details"))),
             None
         )
+        if not matched_vac:
+            pending_vacs = [v for v in emp_vacs if v.get("status") == "Pending"]
+            if len(pending_vacs) == 1:
+                matched_vac = pending_vacs[0]
         if matched_vac:
             client.update_row_by_match("VacationHistory", "id", matched_vac["id"], {"status": payload.status})
 
     audit_log(client, "request.action", current_user.get("email"), "request", req_id, f"status={payload.status}")
-    return {"message": f"Request {payload.status.lower()}"}
+    return {"message": f"Request {payload.status.lower()}"
+}
