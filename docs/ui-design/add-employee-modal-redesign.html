@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HRFlow — Modal & Form System Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root{
+    --accent:#2056e8; --accent2:#4f7af8; --accent-soft:#eef2ff;
+    --success:#0ea966; --warning:#e07d10; --danger:#d63b3b;
+    --bg:#f4f6fb; --surface:#ffffff;
+    --border:rgba(30,60,140,.09);
+    --text:#0f1729; --text2:#64748b; --text3:#b6c0d0;
+    --font-head:'Sora',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);padding:40px 24px;color:var(--text)}
+  .wrap{max-width:920px;margin:0 auto}
+  .intro{margin-bottom:28px}
+  .intro h1{font-family:var(--font-head);font-size:20px;margin-bottom:6px}
+  .intro p{color:var(--text2);font-size:13.5px;line-height:1.6;max-width:760px}
+  .variant-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:36px 0 12px}
+  .variant-label:first-of-type{margin-top:0}
+
+  /* ============ SHARED MODAL SYSTEM ============ */
+  .modal-demo-frame{
+    background:#e7ebf3;border-radius:20px;padding:40px 24px;
+    display:flex;align-items:flex-start;justify-content:center;
+  }
+  .modal{
+    background:var(--surface);border-radius:20px;width:100%;max-width:640px;
+    box-shadow:0 20px 60px rgba(20,40,100,.18);border:1px solid var(--border);
+    overflow:hidden;
+  }
+
+  /* --- Header: icon + title + subtitle, cleaner than plain text --- */
+  .modal-head{
+    display:flex;align-items:center;gap:14px;
+    padding:20px 26px;border-bottom:1px solid var(--border);
+  }
+  .modal-head-icon{
+    width:40px;height:40px;border-radius:12px;flex-shrink:0;
+    background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;font-size:16px;
+  }
+  .modal-head-text{flex:1;min-width:0}
+  .modal-head-text h3{font-size:16px;font-weight:700;font-family:var(--font-head)}
+  .modal-head-text p{font-size:12px;color:var(--text2);margin-top:2px}
+  .modal-close{
+    width:34px;height:34px;border-radius:10px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text2);font-size:13px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;flex-shrink:0;
+  }
+  .modal-close:hover{border-color:var(--danger);color:var(--danger)}
+
+  /* --- Body: sectioned, not one flat grid --- */
+  .modal-body{padding:22px 26px;max-height:64vh;overflow-y:auto}
+  .form-section{margin-bottom:26px}
+  .form-section:last-child{margin-bottom:0}
+  .form-section-label{
+    display:flex;align-items:center;gap:9px;margin-bottom:14px;
+    font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);
+  }
+  .form-section-label i{font-size:11px;color:var(--accent)}
+  .form-section-label .line{flex:1;height:1px;background:var(--border)}
+  .form-section.optional-section{
+    background:#fafbfd;border:1px dashed var(--border);border-radius:14px;padding:16px 18px;
+  }
+  .form-section.optional-section .form-section-label{margin-bottom:12px}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+  .form-grid .full{grid-column:1/-1}
+  .form-field label{
+    display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;
+  }
+  .form-field label .req{color:var(--danger);font-size:11px}
+  .form-field label .opt{color:var(--text3);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+  .form-field input,.form-field select,.form-field textarea{
+    width:100%;padding:10px 13px;border-radius:10px;
+    border:1.5px solid var(--border);background:var(--surface);
+    color:var(--text);font-size:13.5px;outline:none;font-family:inherit;transition:.15s;
+  }
+  .form-field input:focus,.form-field select:focus,.form-field textarea:focus{
+    border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  .form-field input::placeholder{color:var(--text3)}
+  .field-hint{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.4}
+
+  /* Toggle switch for conditional section */
+  .toggle-row{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:14px;
+  }
+  .toggle-row .t-label{font-size:13px;font-weight:600}
+  .toggle-row .t-sub{font-size:11.5px;color:var(--text2);margin-top:2px}
+  .switch{position:relative;width:40px;height:22px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{
+    position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.2s;
+  }
+  .slider:before{
+    content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;
+    background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .switch input:checked + .slider{background:var(--accent)}
+  .switch input:checked + .slider:before{transform:translateX(18px)}
+
+  /* --- Footer: loading-capable primary button --- */
+  .modal-foot{
+    padding:16px 26px;border-top:1px solid var(--border);
+    display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;
+  }
+  .btn{
+    padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);
+    display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:.15s;font-family:inherit;
+  }
+  .btn:hover{border-color:var(--text3)}
+  .btn-fill{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
+    box-shadow:0 6px 16px rgba(32,86,232,.28);
+  }
+  .btn-fill:hover{color:#fff;transform:translateY(-1px)}
+  .btn-fill:disabled{opacity:.75;cursor:not-allowed;transform:none}
+  .spinner{
+    width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+    animation:spin .7s linear infinite;flex-shrink:0;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .compact-note{font-size:12px;color:var(--text2);background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin-bottom:18px;display:flex;gap:8px;align-items:flex-start}
+  .compact-note i{color:var(--accent);margin-top:1px;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <h1>Modal &amp; Form System — Add Employee (representative example)</h1>
+    <p>
+      Shared visual language intended for every modal in the app: sectioned fields instead of one flat grid,
+      required/optional signaling, a de-emphasized optional block for invoicing fields, clean (non-grey) inputs,
+      and a button that visibly loads during submission. Once approved, these same classes roll onto Bank Account,
+      Raise, Behalf Vacation/Claim, Category, and Document Upload modals with no new design decisions needed.
+    </p>
+  </div>
+
+  <p class="variant-label">Default state — Save button idle</p>
+  <div class="modal-demo-frame">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="modal-head-text">
+          <h3>Add Employee</h3>
+          <p>Create a new employee record and invite them to sign in.</p>
+        </div>
+        <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Basic Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Full Name <span class="req">*</span></label>
+              <input placeholder="e.g. Laila Hassan">
+            </div>
+            <div class="form-field">
+              <label>Email <span class="req">*</span></label>
+              <input placeholder="laila@hrflow.com">
+            </div>
+            <div class="form-field">
+              <label>Department</label>
+              <select><option>Engineering</option><option>Product</option><option>Design</option><option>Sales</option><option>Finance</option><option>Operations</option></select>
+            </div>
+            <div class="form-field">
+              <label>Role Title</label>
+              <input placeholder="e.g. Senior Developer">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Internal Salary <span class="opt">USD</span></label>
+              <input type="number" placeholder="1000">
+            </div>
+            <div class="form-field">
+              <label>External Salary <span class="opt">USD</span></label>
+              <input type="number" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-briefcase"></i> Employment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Join Date</label>
+              <input type="date">
+            </div>
+            <div class="form-field">
+              <label>Status</label>
+              <select><option>Active</option><option>On Leave</option><option>Suspended</option></select>
+            </div>
+            <div class="form-field">
+              <label>Employment State</label>
+              <select><option>Full-Time</option><option>Part-Time</option><option>Freelance</option><option>Occasional</option></select>
+            </div>
+            <div class="form-field">
+              <label>Vacation Balance <span class="opt">days</span></label>
+              <input type="number" value="21">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section optional-section">
+          <div class="toggle-row">
+            <div>
+              <div class="t-label">Consultant Invoicing</div>
+              <div class="t-sub">Only needed if this employee has an external USD salary</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Invoice ID <span class="opt">01–99</span></label>
+              <input type="text" maxlength="2" placeholder="e.g. 02">
+            </div>
+            <div class="form-field"></div>
+            <div class="form-field full">
+              <label>Address Line 1</label>
+              <input placeholder="e.g. 15 Example Street">
+            </div>
+            <div class="form-field full">
+              <label>Address Line 2</label>
+              <input placeholder="e.g. New Cairo, Cairo Governorate">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-fill"><i class="fa-solid fa-check"></i> Save Employee</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="variant-label">Loading state — Save button while request is in flight</p>
+  <div class="modal-demo-frame">
+    <div class="modal" style="max-width:640px">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="modal-head-text">
+          <h3>Add Employee</h3>
+          <p>Create a new employee record and invite them to sign in.</p>
+        </div>
+        <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="compact-note">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>This is a condensed preview showing only the footer loading state — the full sectioned form above is unchanged while saving; only the button and cancel action become disabled.</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" disabled style="opacity:.5;cursor:not-allowed">Cancel</button>
+        <button class="btn btn-fill" disabled><span class="spinner"></span> Saving…</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
