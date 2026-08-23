@@ -10,6 +10,8 @@ from config import Config
 from logging_config import get_logger
 from auth import login_with_google, get_current_user
 from models import GoogleLoginRequest, LoginResponse
+from repositories.interfaces import UserRepository
+from repositories.deps import get_user_repo
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -32,9 +34,12 @@ def _clear_session_cookie(response: Response):
 
 
 @router.post("/google", response_model=LoginResponse)
-def api_google_login(payload: GoogleLoginRequest, response: Response):
+def api_google_login(payload: GoogleLoginRequest, response: Response, user_repo: UserRepository = Depends(get_user_repo)):
     logger.info("Google login attempt received")
-    result = login_with_google(payload.credential)
+    try:
+        result = login_with_google(payload.credential, user_repo=user_repo)
+    except TypeError:
+        result = login_with_google(payload.credential)
     if not result:
         logger.warning("Google login rejected: credential valid but no matching HRFlow user found")
         raise HTTPException(

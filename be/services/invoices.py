@@ -95,8 +95,13 @@ def build_document_name(invoice_number: str, employee_name: str) -> str:
     return f"Invoice_{_sanitize_filename_part(employee_name).upper()}_{invoice_number}.docx"
 
 
-def find_existing_invoice(client, employee_id, payment_year: int, payment_month: int) -> Optional[dict]:
-    invoices = client.get_all_records("Invoices")
+def find_existing_invoice(repo_or_client, employee_id, payment_year: int, payment_month: int) -> Optional[dict]:
+    if hasattr(repo_or_client, "find_existing"):
+        return repo_or_client.find_existing(employee_id, payment_year, payment_month)
+    if hasattr(repo_or_client, "get_all_records"):
+        invoices = repo_or_client.get_all_records("Invoices")
+    else:
+        invoices = sheets_client.get_client().get_all_records("Invoices")
     for inv in invoices:
         if (str(inv.get("employee_id")) == str(employee_id)
                 and str(inv.get("payment_year")) == str(payment_year)
@@ -232,13 +237,11 @@ def generate_invoice_for_employee(
 
 
 def _record_invoice(
-    client, employee_id, employee_name, invoice_number, payment_year, payment_month,
+    repo_or_client, employee_id, employee_name, invoice_number, payment_year, payment_month,
     invoice_date, amount_usd, document_name, drive_file_id, drive_web_url,
     status, failure_reason, generated_by,
 ):
-    invoice_row_id = client.next_id("Invoices")
-    client.append_row("Invoices", {
-        "id": invoice_row_id,
+    row_data = {
         "employee_id": employee_id,
         "employee_name": employee_name,
         "invoice_number": invoice_number,
@@ -255,18 +258,39 @@ def _record_invoice(
         "failure_reason": failure_reason,
         "generated_by": generated_by,
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-    })
+    }
+    if hasattr(repo_or_client, "create"):
+        return repo_or_client.create(row_data)
+    elif hasattr(repo_or_client, "next_id"):
+        invoice_row_id = repo_or_client.next_id("Invoices")
+        repo_or_client.append_row("Invoices", {"id": invoice_row_id, **row_data})
+        return invoice_row_id
+    else:
+        client = sheets_client.get_client()
+        invoice_row_id = client.next_id("Invoices")
+        client.append_row("Invoices", {"id": invoice_row_id, **row_data})
+        return invoice_row_id
 
 
 def generate_invoices_bulk(
-    payment_year: int, payment_month: int, generated_by: str, skip_existing: bool = True,
+    payment_year: int,
+    payment_month: int,
+    generated_by: str,
+    skip_existing: bool = True,
+    invoice_repo=None,
+    employee_repo=None,
 ) -> dict:
-    client = sheets_client.get_client()
-    employees = client.get_all_records("Employees")
+    if employee_repo is not None and hasattr(employee_repo, "list_all"):
+        employees = employee_repo.list_all()
+    else:
+        client = sheets_client.get_client()
+        employees = client.get_all_records("Employees")
+
+    repo_or_client = invoice_repo or sheets_client.get_client()
     results = []
     for emp in employees:
         result = generate_invoice_for_employee(
-            client, emp, payment_year, payment_month, generated_by, skip_existing,
+            repo_or_client, emp, payment_year, payment_month, generated_by, skip_existing,
         )
         results.append(result)
 
