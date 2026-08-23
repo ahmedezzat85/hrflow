@@ -191,6 +191,9 @@ class InvoiceRepository(Protocol):
     def create(self, data: Dict[str, Any]) -> int:
         ...
 
+    def update(self, invoice_id: Union[int, str], updates: Dict[str, Any]) -> bool:
+        ...
+
 
 @runtime_checkable
 class AuditRepository(Protocol):

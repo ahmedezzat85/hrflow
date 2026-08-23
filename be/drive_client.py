@@ -468,5 +468,12 @@ class DriveClient:
             return False
 
 
-def get_drive_client() -> DriveClient:
-    return DriveClient()
+def get_drive_client():
+    """
+    Returns the active storage client.
+    Delegates to storage.get_storage_client() so callers get either
+    DriveClient or LocalStorageClient based on Config.FILE_STORAGE_BACKEND.
+    """
+    from storage import get_storage_client
+    return get_storage_client()
+

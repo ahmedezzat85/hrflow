@@ -5,6 +5,7 @@ added in Phase 1. See docs/analysis/security-analysis-plan.md, findings
 #1 and #4/#6.
 """
 import importlib
+import os
 import pytest
 
 
@@ -78,3 +79,17 @@ def test_cookie_secure_flag_follows_environment(monkeypatch):
     assert dev_config.COOKIE_SECURE is False
     prod_config = _fresh_config(monkeypatch, SECRET_KEY="x", ENVIRONMENT="production")
     assert prod_config.COOKIE_SECURE is True
+
+
+def test_validate_raises_with_invalid_storage_backend(monkeypatch):
+    Config = _fresh_config(monkeypatch, SECRET_KEY="x", FILE_STORAGE_BACKEND="invalid_backend")
+    with pytest.raises(RuntimeError, match="FILE_STORAGE_BACKEND must be 'drive' or 'local'"):
+        Config.validate()
+
+
+def test_validate_passes_with_local_storage_backend(monkeypatch, tmp_path):
+    local_path = str(tmp_path / "custom_storage")
+    Config = _fresh_config(monkeypatch, SECRET_KEY="x", FILE_STORAGE_BACKEND="local", LOCAL_STORAGE_PATH=local_path)
+    Config.validate()
+    assert os.path.isdir(local_path)
+

@@ -98,6 +98,16 @@ class Config:
     # Relational database connection URL (e.g. postgresql://user:pass@localhost:5432/hrflow or sqlite:///./hrflow.db)
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hrflow.db")
 
+    # ---- File & Document Storage Destination settings ----
+    # Storage backend: "drive" (default, Google Drive) or "local" (local filesystem)
+    FILE_STORAGE_BACKEND = os.getenv("FILE_STORAGE_BACKEND", "drive").lower()
+
+    # Local storage base directory when FILE_STORAGE_BACKEND="local"
+    LOCAL_STORAGE_PATH = os.getenv(
+        "LOCAL_STORAGE_PATH",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage")
+    )
+
 
     @classmethod
     def validate(cls):
@@ -116,6 +126,19 @@ class Config:
                 "    python -c \"import secrets; print(secrets.token_hex(32))\"\n"
                 "  and set it as the SECRET_KEY environment variable before starting the app."
             )
+
+        if cls.FILE_STORAGE_BACKEND not in ("drive", "local"):
+            errors.append(
+                f"FILE_STORAGE_BACKEND must be 'drive' or 'local', got '{cls.FILE_STORAGE_BACKEND}'"
+            )
+
+        if cls.FILE_STORAGE_BACKEND == "local":
+            try:
+                os.makedirs(cls.LOCAL_STORAGE_PATH, exist_ok=True)
+            except Exception as e:
+                errors.append(
+                    f"LOCAL_STORAGE_PATH '{cls.LOCAL_STORAGE_PATH}' cannot be created or accessed: {e}"
+                )
 
         if cls.IS_PRODUCTION:
             if cls.ALLOWED_ORIGINS == "*":

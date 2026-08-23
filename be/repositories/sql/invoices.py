@@ -106,3 +106,22 @@ class SqlInvoiceRepository:
             db.add(inv)
             db.commit()
             return inv.id
+
+    def update(self, invoice_id: Union[int, str], updates: Dict[str, Any]) -> bool:
+        with self._get_session() as db:
+            inv = db.query(InvoiceDB).filter(InvoiceDB.id == int(invoice_id)).first()
+            if not inv:
+                return False
+            for field, val in updates.items():
+                if field == "id":
+                    continue
+                if hasattr(inv, field):
+                    if field in ("employee_id", "payment_year", "payment_month") and val is not None:
+                        setattr(inv, field, int(val))
+                    elif field == "amount_usd" and val is not None:
+                        setattr(inv, field, float(val))
+                    else:
+                        setattr(inv, field, val)
+            db.commit()
+            return True
+

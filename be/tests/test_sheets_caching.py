@@ -11,8 +11,9 @@ from sheets_client import SheetsClient, _is_quota_error
 
 
 @pytest.fixture
-def mock_sheets_client():
+def mock_sheets_client(monkeypatch):
     """Creates a SheetsClient instance with mocked Google Sheets dependencies."""
+    monkeypatch.setattr(Config, "SHEETS_CACHE_TTL_SECONDS", 30)
     with patch.object(SheetsClient, "_connect"):
         client = SheetsClient()
         client._cache = {}

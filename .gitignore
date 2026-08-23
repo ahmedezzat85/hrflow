@@ -233,7 +233,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# HRFlow Secrets & Frontend
+# HRFlow Secrets, Storage & Frontend
 credentials.json
 credentials*.json
 *secret*.json
@@ -243,4 +243,8 @@ token*.json
 fe/config.js
 dist/
 node_modules/
+storage/
+/be/storage/
+/storage/
+
 

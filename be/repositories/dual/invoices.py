@@ -49,3 +49,12 @@ class DualWriteInvoiceRepository:
         except Exception:
             logger.exception("Dual-write shadow create invoice failed for %s", data.get("invoice_number"))
         return inv_id
+
+    def update(self, invoice_id: Union[int, str], updates: Dict[str, Any]) -> bool:
+        res = self.primary.update(invoice_id, updates)
+        try:
+            self.shadow.update(invoice_id, updates)
+        except Exception:
+            logger.exception("Dual-write shadow update invoice failed for id=%s", invoice_id)
+        return res
+

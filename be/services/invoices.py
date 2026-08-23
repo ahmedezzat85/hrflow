@@ -259,6 +259,16 @@ def _record_invoice(
         "generated_by": generated_by,
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
     }
+    existing = find_existing_invoice(repo_or_client, employee_id, payment_year, payment_month)
+    if existing and existing.get("id") is not None:
+        inv_id = existing["id"]
+        if hasattr(repo_or_client, "update"):
+            repo_or_client.update(inv_id, row_data)
+            return inv_id
+        elif hasattr(repo_or_client, "update_row_by_match"):
+            repo_or_client.update_row_by_match("Invoices", "id", inv_id, row_data)
+            return inv_id
+
     if hasattr(repo_or_client, "create"):
         return repo_or_client.create(row_data)
     elif hasattr(repo_or_client, "next_id"):
@@ -270,6 +280,7 @@ def _record_invoice(
         invoice_row_id = client.next_id("Invoices")
         client.append_row("Invoices", {"id": invoice_row_id, **row_data})
         return invoice_row_id
+
 
 
 def generate_invoices_bulk(

@@ -63,3 +63,7 @@ class SheetsInvoiceRepository:
         record["id"] = new_id
         self.client.append_row("Invoices", record)
         return new_id
+
+    def update(self, invoice_id: Union[int, str], updates: Dict[str, Any]) -> bool:
+        return self.client.update_row_by_match("Invoices", "id", invoice_id, updates)
+
