@@ -91,6 +91,13 @@ class Config:
     # Set to 0 to disable caching (not recommended; causes quota exhaustion).
     SHEETS_CACHE_TTL_SECONDS = int(os.getenv("SHEETS_CACHE_TTL_SECONDS", "30"))
 
+    # ---- Database & Storage Engine settings ----
+    # Storage engine mode: "sheets" (default), "dual" (sheets primary + sql shadow), or "sql" (sql primary)
+    STORAGE_ENGINE = os.getenv("STORAGE_ENGINE", "sheets").lower()
+
+    # Relational database connection URL (e.g. postgresql://user:pass@localhost:5432/hrflow or sqlite:///./hrflow.db)
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hrflow.db")
+
 
     @classmethod
     def validate(cls):

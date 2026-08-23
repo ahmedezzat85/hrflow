@@ -27,12 +27,16 @@ import email_validator
 # only; production email validation remains unchanged.
 email_validator.TEST_ENVIRONMENT = True
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-do-not-use-in-prod")
-os.environ.setdefault("GOOGLE_OAUTH_CLIENT_ID", "test-client-id.apps.googleusercontent.com")
-os.environ.setdefault("ALLOWED_ORIGINS", "*")
-os.environ.setdefault("ENVIRONMENT", "development")
+os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-only-do-not-use-in-prod"
+os.environ["GOOGLE_OAUTH_CLIENT_ID"] = "test-client-id.apps.googleusercontent.com"
+os.environ["ALLOWED_ORIGINS"] = "*"
+os.environ["ENVIRONMENT"] = "development"
+os.environ["STORAGE_ENGINE"] = "sheets"
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from config import Config
+Config.STORAGE_ENGINE = "sheets"
 
 
 class FakeSheetsClient:
@@ -140,18 +144,35 @@ def fake_drive_client():
 
 
 @pytest.fixture
-def app_client(monkeypatch, fake_sheets_client, fake_drive_client):
+def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path):
     import sheets_client
     import drive_client
     import auth as auth_module
+    from config import Config
+    from db import Base, reset_engine_for_testing
+    from scripts.backfill_sheets_to_sql import backfill_all
 
     monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
     monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
+    if Config.STORAGE_ENGINE == "sql":
+        test_db_file = tmp_path / "test_app_sql.db"
+        test_db_url = f"sqlite:///{test_db_file}"
+        monkeypatch.setattr(Config, "DATABASE_URL", test_db_url)
+        reset_engine_for_testing(test_db_url)
+        from sqlalchemy import create_engine
+        engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
+        Base.metadata.create_all(bind=engine)
+        backfill_all(client=fake_sheets_client)
+
     import main as main_module
     from fastapi.testclient import TestClient
-    return TestClient(main_module.app)
+    client = TestClient(main_module.app)
+    yield client
+
+    if Config.STORAGE_ENGINE == "sql":
+        reset_engine_for_testing(None)
 
 
 def _login_cookie_for(app_client, email):
