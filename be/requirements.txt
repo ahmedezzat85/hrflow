@@ -6,6 +6,8 @@ PyJWT==2.9.0
 pydantic==2.7.4
 email-validator==2.2.0
 docxtpl==0.16.8
+pywin32>=306; sys_platform == "win32"
+
 
 # Database & Migration dependencies (SQLAlchemy ORM + Alembic)
 SQLAlchemy>=2.0.0

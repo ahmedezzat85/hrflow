@@ -23,8 +23,10 @@ Invoice number format: YYIIMM
 e.g. payment 2026-08, invoice_id "02" -> "260208".
 """
 import io
+import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Tuple
+
 
 from docxtpl import DocxTemplate
 
@@ -199,11 +201,20 @@ def generate_invoice_for_employee(
             "status": "failed", "reason": "template render failed",
         }
 
+    # Post-generation step: convert .docx bytes to .pdf bytes (graceful if no converter installed)
+    pdf_bytes = None
+    try:
+        from services.pdf_converter import convert_docx_to_pdf_bytes
+        pdf_bytes = convert_docx_to_pdf_bytes(file_bytes)
+    except Exception:
+        logger.exception("PDF conversion post-generation step failed for employee_id=%s; continuing with .docx only", employee_id)
+
     try:
         drive = drive_client.get_drive_client()
         uploaded = drive.upload_invoice_file(
             payment_year, payment_month, document_name, file_bytes,
             employee_id=employee_id, employee_name=employee_name,
+            pdf_bytes=pdf_bytes,
         )
     except Exception as exc:
         logger.exception("Failed to upload invoice to Drive for employee_id=%s", employee_id)
@@ -234,6 +245,7 @@ def generate_invoice_for_employee(
         "invoice_number": invoice_number,
         "drive_web_url": uploaded.get("view_url", ""),
     }
+
 
 
 def _record_invoice(
@@ -318,3 +330,44 @@ def generate_invoices_bulk(
         "summary": summary,
         "results": results,
     }
+
+
+def get_invoice_pdf_bytes(invoice: dict) -> Tuple[bytes, str]:
+    """
+    Retrieves the PDF bytes and file name for an invoice.
+    1. If a .pdf file exists in storage for this invoice, downloads and returns it.
+    2. If only .docx exists, converts it to .pdf on the fly.
+    Returns (pdf_bytes, pdf_filename).
+    """
+    drive_file_id = str(invoice.get("drive_file_id") or "")
+    doc_name = str(invoice.get("document_name") or f"Invoice_{invoice.get('invoice_number', 'doc')}.docx")
+    pdf_filename = (doc_name[:-5] if doc_name.lower().endswith(".docx") else doc_name) + ".pdf"
+
+    storage_client = drive_client.get_drive_client()
+
+    # 1. Check if storage client is LocalStorageClient and has the .pdf file
+    if hasattr(storage_client, "_resolve_secure_path") and drive_file_id:
+        pdf_rel_path = (drive_file_id[:-5] if drive_file_id.lower().endswith(".docx") else drive_file_id) + ".pdf"
+        try:
+            full_pdf_path = storage_client._resolve_secure_path(pdf_rel_path)
+            if os.path.isfile(full_pdf_path):
+                with open(full_pdf_path, "rb") as f:
+                    return f.read(), pdf_filename
+        except Exception:
+            pass
+
+    # 2. Try to download file from storage and convert
+    from services.pdf_converter import convert_docx_to_pdf_bytes
+    if drive_file_id:
+        try:
+            raw_bytes, mime_type, filename = storage_client.download_file(drive_file_id)
+            if mime_type == "application/pdf" or filename.lower().endswith(".pdf"):
+                return raw_bytes, pdf_filename
+            pdf_bytes = convert_docx_to_pdf_bytes(raw_bytes)
+            if pdf_bytes:
+                return pdf_bytes, pdf_filename
+        except Exception as exc:
+            logger.warning("Could not download/convert invoice file %s: %s", drive_file_id, exc)
+
+    raise ValueError(f"PDF version of invoice {invoice.get('invoice_number')} could not be found or converted.")
+

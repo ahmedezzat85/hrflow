@@ -345,6 +345,13 @@ const Api = {
   getInvoice(invoiceId) {
     return apiRequest("GET", `/api/invoices/${encodeURIComponent(invoiceId)}`);
   },
+  getInvoicePreviewBlobUrl(invoiceId) {
+    return _fetchDocumentAsBlobUrl(`/api/invoices/${encodeURIComponent(invoiceId)}/stream`);
+  },
+  downloadInvoiceFile(invoiceId, suggestedName) {
+    return _downloadDocumentViaFetch(`/api/invoices/${encodeURIComponent(invoiceId)}/stream?download=true`, suggestedName);
+  },
+
 
   getBankAccount(empId) {
     return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/bank-account`);

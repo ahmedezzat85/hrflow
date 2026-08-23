@@ -131,3 +131,35 @@ def get_invoice(
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return inv
+
+
+@router.get("/{invoice_id}/stream")
+def stream_invoice_pdf(
+    invoice_id: int,
+    download: bool = Query(False),
+    current_user: dict = Depends(require_admin),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
+):
+    import urllib.parse
+    import io
+    from fastapi.responses import StreamingResponse
+    from services.invoices import get_invoice_pdf_bytes
+
+    inv = invoice_repo.get_by_id(invoice_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    try:
+        pdf_bytes, filename = get_invoice_pdf_bytes(inv)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"PDF preview unavailable: {exc}")
+
+    disposition = "attachment" if download else "inline"
+    safe_filename = urllib.parse.quote(filename)
+    headers = {
+        "Content-Disposition": f'{disposition}; filename="{filename}"; filename*=UTF-8\'\'{safe_filename}',
+        "Content-Type": "application/pdf",
+        "Cache-Control": "public, max-age=3600",
+    }
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+

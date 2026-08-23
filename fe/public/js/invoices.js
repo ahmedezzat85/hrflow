@@ -5,7 +5,7 @@
  * "a-invoices", added to the existing #adminSidebar nav-item/data-page
  * pattern). Lets HR preview eligibility, generate invoices in bulk
  * or per-employee for a selected payment month, regenerate existing invoices
- * with confirmation modal, and browse invoice history.
+ * with confirmation modal, preview PDF invoices in-app, and browse invoice history.
  *
  * Depends on globals already defined elsewhere: Api, employees, toast,
  * showSection, initials, fmtUSD, setButtonLoading, closeModal.
@@ -171,7 +171,11 @@ function renderInvoiceBatchResults(result, year, month){
     <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
     <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
     <td>${r.reason || r.invoice_number || '—'}</td>
-    <td>${r.drive_web_url ? `<a href="${r.drive_web_url}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i> View</a>` : '—'}</td>
+    <td>
+      <div style="display:flex;gap:6px;align-items:center;">
+        ${r.drive_web_url ? `<a href="${r.drive_web_url}" target="_blank" rel="noopener" class="btn btn-sm btn-outline" style="font-size:11.5px;padding:3px 8px;"><i class="fa-solid fa-file-word"></i> Word</a>` : ''}
+      </div>
+    </td>
   </tr>`).join('');
 }
 
@@ -245,6 +249,34 @@ async function generateSingleInvoice(employeeId, evt){
   }
 }
 
+function previewInvoicePdf(invoiceId, invoiceNumber){
+  const container = document.getElementById('docPreviewContainer');
+  const modal = document.getElementById('documentPreviewModal');
+  const titleEl = document.getElementById('docPreviewTitle');
+  const downloadBtn = document.getElementById('docPreviewDownloadBtn');
+
+  if (titleEl) titleEl.textContent = `Invoice ${invoiceNumber || ''} (PDF Preview)`;
+  if (downloadBtn) {
+    downloadBtn.onclick = (e) => {
+      e.preventDefault();
+      Api.downloadInvoiceFile(invoiceId, `Invoice_${invoiceNumber || 'file'}.pdf`)
+        .catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
+    };
+  }
+  if (container) container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading PDF preview...</div>';
+  if (modal) modal.classList.add('active');
+
+  Api.getInvoicePreviewBlobUrl(invoiceId).then(url => {
+    if (container) {
+      container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
+    }
+  }).catch(err => {
+    if (container) {
+      container.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+    }
+  });
+}
+
 async function loadInvoiceHistory(){
   const body = document.getElementById('invoiceHistoryBody');
   if(!body) return;
@@ -260,11 +292,18 @@ async function loadInvoiceHistory(){
       <td>${_invoicePeriodLabel(Number(inv.payment_year), Number(inv.payment_month))}</td>
       <td>${fmtUSD(Number(inv.amount_usd))}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(inv.status)}">${inv.status}</span></td>
-      <td>${inv.drive_web_url ? `<a href="${inv.drive_web_url}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i> View</a>` : '—'}</td>
       <td>
-        <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this invoice" onclick="openRegenerateInvoiceModal(${inv.employee_id}, '${_escapeAttr(inv.employee_name)}', ${inv.payment_year}, ${inv.payment_month}, '${_escapeAttr(inv.invoice_number)}')">
-          <i class="fa-solid fa-arrows-rotate"></i> Regenerate
-        </button>
+        ${inv.drive_web_url ? `<a href="${inv.drive_web_url}" target="_blank" rel="noopener" style="font-size:12px;"><i class="fa-solid fa-file-word"></i> Word</a>` : '—'}
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-sm btn-fill" style="font-size:11.5px;padding:4px 8px;" title="Preview PDF invoice" onclick="previewInvoicePdf(${inv.id}, '${_escapeAttr(inv.invoice_number)}')">
+            <i class="fa-solid fa-file-pdf"></i> Preview PDF
+          </button>
+          <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this invoice" onclick="openRegenerateInvoiceModal(${inv.employee_id}, '${_escapeAttr(inv.employee_name)}', ${inv.payment_year}, ${inv.payment_month}, '${_escapeAttr(inv.invoice_number)}')">
+            <i class="fa-solid fa-arrows-rotate"></i> Regenerate
+          </button>
+        </div>
       </td>
     </tr>`).join('');
   } catch(err){

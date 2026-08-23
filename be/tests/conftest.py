@@ -87,16 +87,18 @@ class FakeDriveClient:
         self.uploaded_files[file_id] = {"name": doc_name, "data_url": data_url}
         return {"file_id": file_id, "view_url": f"https://drive.fake/{file_id}/view", "download_url": f"https://drive.fake/{file_id}/download"}
 
-    def upload_invoice_file(self, payment_year, payment_month, file_name, file_bytes, employee_id=None, employee_name=""):
+    def upload_invoice_file(self, payment_year, payment_month, file_name, file_bytes, employee_id=None, employee_name="", pdf_bytes=None):
         file_id = f"fake-drive-invoice-{self._next_file_id}"
         self._next_file_id += 1
         self.uploaded_files[file_id] = {
             "name": file_name,
             "bytes": file_bytes,
+            "pdf_bytes": pdf_bytes,
             "employee_id": employee_id,
             "period": f"{payment_year}-{payment_month:02d}",
         }
         return {"file_id": file_id, "view_url": f"https://drive.fake/{file_id}/view", "download_url": f"https://drive.fake/{file_id}/download"}
+
 
     def download_file(self, file_id):
         return b"fake file bytes", "application/octet-stream", "fake.bin"

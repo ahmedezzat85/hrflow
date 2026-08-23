@@ -68,9 +68,9 @@ class StorageClient(ABC):
     @abstractmethod
     def upload_invoice_file(
         self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes,
-        employee_id=None, employee_name: str = "",
+        employee_id=None, employee_name: str = "", pdf_bytes: Optional[bytes] = None,
     ) -> Dict[str, str]:
-        """Uploads an invoice document and returns {'file_id': ..., 'view_url': ..., 'download_url': ...}."""
+        """Uploads an invoice document (and optional PDF) and returns {'file_id': ..., 'view_url': ..., 'download_url': ...}."""
         pass
 
     @abstractmethod
@@ -184,7 +184,7 @@ class LocalStorageClient(StorageClient):
 
     def upload_invoice_file(
         self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes,
-        employee_id=None, employee_name: str = "",
+        employee_id=None, employee_name: str = "", pdf_bytes: Optional[bytes] = None,
     ) -> Dict[str, str]:
         folder_path = self.get_or_create_invoices_period_folder(payment_year, payment_month)
         safe_name = sanitize_filename(file_name)
@@ -193,6 +193,17 @@ class LocalStorageClient(StorageClient):
         logger.info("Saving local invoice file: target_path=%s (%d bytes)", target_path, len(file_bytes))
         with open(target_path, "wb") as f:
             f.write(file_bytes)
+
+        # Also write PDF version if available
+        if pdf_bytes is not None:
+            pdf_filename = os.path.splitext(safe_name)[0] + ".pdf"
+            target_pdf_path = os.path.join(folder_path, pdf_filename)
+            try:
+                with open(target_pdf_path, "wb") as f:
+                    f.write(pdf_bytes)
+                logger.info("Saved local invoice PDF file: target_path=%s (%d bytes)", target_pdf_path, len(pdf_bytes))
+            except Exception:
+                logger.exception("Warning: Failed to save invoice PDF to %s", target_pdf_path)
 
         # Also store copy in employee's invoices directory if employee_id provided
         if employee_id is not None:
@@ -204,6 +215,12 @@ class LocalStorageClient(StorageClient):
                 with open(emp_target_path, "wb") as f:
                     f.write(file_bytes)
                 logger.info("Saved local invoice copy to employee folder: %s", emp_target_path)
+
+                if pdf_bytes is not None:
+                    emp_target_pdf_path = os.path.join(emp_invoices_folder, pdf_filename)
+                    with open(emp_target_pdf_path, "wb") as f:
+                        f.write(pdf_bytes)
+                    logger.info("Saved local invoice PDF copy to employee folder: %s", emp_target_pdf_path)
             except Exception:
                 logger.exception("Warning: Failed to save second invoice copy to employee folder for employee_id=%s", employee_id)
 
@@ -213,6 +230,7 @@ class LocalStorageClient(StorageClient):
             "view_url": "",
             "download_url": "",
         }
+
 
     def download_file(self, file_id: str) -> Tuple[bytes, str, str]:
         if not file_id:

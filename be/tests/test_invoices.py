@@ -130,9 +130,11 @@ def test_regenerate_invoice_updates_existing_record_in_place(monkeypatch):
     import services.invoices as inv_svc
 
     monkeypatch.setattr(inv_svc, "render_invoice_document", lambda ctx: b"fake-docx-bytes")
+    monkeypatch.setattr("services.pdf_converter.convert_docx_to_pdf_bytes", lambda b: b"%PDF-1.4 fake-pdf")
     fake_drive = type("FakeDrive", (), {
         "upload_invoice_file": lambda self, *args, **kwargs: {"file_id": "file-123", "view_url": "http://view/123"}
     })()
+
     monkeypatch.setattr("drive_client.get_drive_client", lambda: fake_drive)
 
     class MockRepo:
@@ -197,8 +199,11 @@ def test_regenerate_invoice_updates_existing_record_in_place(monkeypatch):
 
 def test_api_regenerate_single_invoice_flow(app_client, admin_cookies, monkeypatch):
     import services.invoices as inv_svc
+    import services.pdf_converter as pdf_svc
 
     monkeypatch.setattr(inv_svc, "render_invoice_document", lambda ctx: b"fake-docx-bytes")
+    monkeypatch.setattr(pdf_svc, "convert_docx_to_pdf_bytes", lambda b: b"%PDF-1.4 fake-pdf")
+
 
     # 1. Setup employee with external salary
     app_client.put(
@@ -240,4 +245,25 @@ def test_api_regenerate_single_invoice_flow(app_client, admin_cookies, monkeypat
     invoices = list_res.json()
     assert len(invoices) == 1
     assert invoices[0]["status"] == "generated"
+    invoice_id = invoices[0]["id"]
+
+    # 6. Stream PDF preview for this invoice
+    monkeypatch.setattr("services.invoices.get_invoice_pdf_bytes", lambda inv: (b"%PDF-1.4 fake-pdf-content", "Invoice_TEST_260208.pdf"))
+    stream_res = app_client.get(f"/api/invoices/{invoice_id}/stream", cookies=admin_cookies)
+    assert stream_res.status_code == 200
+    assert stream_res.headers["content-type"] == "application/pdf"
+    assert "inline" in stream_res.headers.get("content-disposition", "")
+    assert stream_res.content == b"%PDF-1.4 fake-pdf-content"
+
+    # 7. Download PDF
+    download_res = app_client.get(f"/api/invoices/{invoice_id}/stream?download=true", cookies=admin_cookies)
+    assert download_res.status_code == 200
+    assert "attachment" in download_res.headers.get("content-disposition", "")
+
+
+def test_pdf_converter_graceful_handling_empty_input():
+    from services.pdf_converter import convert_docx_to_pdf_bytes
+    assert convert_docx_to_pdf_bytes(b"") is None
+    assert convert_docx_to_pdf_bytes(None) is None
+
 
