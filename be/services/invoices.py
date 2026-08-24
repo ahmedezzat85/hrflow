@@ -23,8 +23,10 @@ Invoice number format: YYIIMM
 e.g. payment 2026-08, invoice_id "02" -> "260208".
 """
 import io
+import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Tuple
+
 
 from docxtpl import DocxTemplate
 
@@ -95,8 +97,13 @@ def build_document_name(invoice_number: str, employee_name: str) -> str:
     return f"Invoice_{_sanitize_filename_part(employee_name).upper()}_{invoice_number}.docx"
 
 
-def find_existing_invoice(client, employee_id, payment_year: int, payment_month: int) -> Optional[dict]:
-    invoices = client.get_all_records("Invoices")
+def find_existing_invoice(repo_or_client, employee_id, payment_year: int, payment_month: int) -> Optional[dict]:
+    if hasattr(repo_or_client, "find_existing"):
+        return repo_or_client.find_existing(employee_id, payment_year, payment_month)
+    if hasattr(repo_or_client, "get_all_records"):
+        invoices = repo_or_client.get_all_records("Invoices")
+    else:
+        invoices = sheets_client.get_client().get_all_records("Invoices")
     for inv in invoices:
         if (str(inv.get("employee_id")) == str(employee_id)
                 and str(inv.get("payment_year")) == str(payment_year)
@@ -194,11 +201,20 @@ def generate_invoice_for_employee(
             "status": "failed", "reason": "template render failed",
         }
 
+    # Post-generation step: convert .docx bytes to .pdf bytes (graceful if no converter installed)
+    pdf_bytes = None
+    try:
+        from services.pdf_converter import convert_docx_to_pdf_bytes
+        pdf_bytes = convert_docx_to_pdf_bytes(file_bytes)
+    except Exception:
+        logger.exception("PDF conversion post-generation step failed for employee_id=%s; continuing with .docx only", employee_id)
+
     try:
         drive = drive_client.get_drive_client()
         uploaded = drive.upload_invoice_file(
             payment_year, payment_month, document_name, file_bytes,
             employee_id=employee_id, employee_name=employee_name,
+            pdf_bytes=pdf_bytes,
         )
     except Exception as exc:
         logger.exception("Failed to upload invoice to Drive for employee_id=%s", employee_id)
@@ -231,14 +247,13 @@ def generate_invoice_for_employee(
     }
 
 
+
 def _record_invoice(
-    client, employee_id, employee_name, invoice_number, payment_year, payment_month,
+    repo_or_client, employee_id, employee_name, invoice_number, payment_year, payment_month,
     invoice_date, amount_usd, document_name, drive_file_id, drive_web_url,
     status, failure_reason, generated_by,
 ):
-    invoice_row_id = client.next_id("Invoices")
-    client.append_row("Invoices", {
-        "id": invoice_row_id,
+    row_data = {
         "employee_id": employee_id,
         "employee_name": employee_name,
         "invoice_number": invoice_number,
@@ -255,18 +270,50 @@ def _record_invoice(
         "failure_reason": failure_reason,
         "generated_by": generated_by,
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-    })
+    }
+    existing = find_existing_invoice(repo_or_client, employee_id, payment_year, payment_month)
+    if existing and existing.get("id") is not None:
+        inv_id = existing["id"]
+        if hasattr(repo_or_client, "update"):
+            repo_or_client.update(inv_id, row_data)
+            return inv_id
+        elif hasattr(repo_or_client, "update_row_by_match"):
+            repo_or_client.update_row_by_match("Invoices", "id", inv_id, row_data)
+            return inv_id
+
+    if hasattr(repo_or_client, "create"):
+        return repo_or_client.create(row_data)
+    elif hasattr(repo_or_client, "next_id"):
+        invoice_row_id = repo_or_client.next_id("Invoices")
+        repo_or_client.append_row("Invoices", {"id": invoice_row_id, **row_data})
+        return invoice_row_id
+    else:
+        client = sheets_client.get_client()
+        invoice_row_id = client.next_id("Invoices")
+        client.append_row("Invoices", {"id": invoice_row_id, **row_data})
+        return invoice_row_id
+
 
 
 def generate_invoices_bulk(
-    payment_year: int, payment_month: int, generated_by: str, skip_existing: bool = True,
+    payment_year: int,
+    payment_month: int,
+    generated_by: str,
+    skip_existing: bool = True,
+    invoice_repo=None,
+    employee_repo=None,
 ) -> dict:
-    client = sheets_client.get_client()
-    employees = client.get_all_records("Employees")
+    if employee_repo is not None and hasattr(employee_repo, "list_all"):
+        employees = employee_repo.list_all()
+    else:
+        client = sheets_client.get_client()
+        employees = client.get_all_records("Employees")
+
+    repo_or_client = invoice_repo or sheets_client.get_client()
     results = []
     for emp in employees:
         result = generate_invoice_for_employee(
-            client, emp, payment_year, payment_month, generated_by, skip_existing,
+            repo_or_client, emp, payment_year, payment_month, generated_by, skip_existing,
         )
         results.append(result)
 
@@ -283,3 +330,44 @@ def generate_invoices_bulk(
         "summary": summary,
         "results": results,
     }
+
+
+def get_invoice_pdf_bytes(invoice: dict) -> Tuple[bytes, str]:
+    """
+    Retrieves the PDF bytes and file name for an invoice.
+    1. If a .pdf file exists in storage for this invoice, downloads and returns it.
+    2. If only .docx exists, converts it to .pdf on the fly.
+    Returns (pdf_bytes, pdf_filename).
+    """
+    drive_file_id = str(invoice.get("drive_file_id") or "")
+    doc_name = str(invoice.get("document_name") or f"Invoice_{invoice.get('invoice_number', 'doc')}.docx")
+    pdf_filename = (doc_name[:-5] if doc_name.lower().endswith(".docx") else doc_name) + ".pdf"
+
+    storage_client = drive_client.get_drive_client()
+
+    # 1. Check if storage client is LocalStorageClient and has the .pdf file
+    if hasattr(storage_client, "_resolve_secure_path") and drive_file_id:
+        pdf_rel_path = (drive_file_id[:-5] if drive_file_id.lower().endswith(".docx") else drive_file_id) + ".pdf"
+        try:
+            full_pdf_path = storage_client._resolve_secure_path(pdf_rel_path)
+            if os.path.isfile(full_pdf_path):
+                with open(full_pdf_path, "rb") as f:
+                    return f.read(), pdf_filename
+        except Exception:
+            pass
+
+    # 2. Try to download file from storage and convert
+    from services.pdf_converter import convert_docx_to_pdf_bytes
+    if drive_file_id:
+        try:
+            raw_bytes, mime_type, filename = storage_client.download_file(drive_file_id)
+            if mime_type == "application/pdf" or filename.lower().endswith(".pdf"):
+                return raw_bytes, pdf_filename
+            pdf_bytes = convert_docx_to_pdf_bytes(raw_bytes)
+            if pdf_bytes:
+                return pdf_bytes, pdf_filename
+        except Exception as exc:
+            logger.warning("Could not download/convert invoice file %s: %s", drive_file_id, exc)
+
+    raise ValueError(f"PDF version of invoice {invoice.get('invoice_number')} could not be found or converted.")
+

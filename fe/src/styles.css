@@ -2492,3 +2492,128 @@ select option {
 .doc-drop-zone.compact .doc-file-size{
   font-size:10.5px;
 }
+
+/* ===== Invoice History Month Grouping & Sorting ===== */
+.invoice-history-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.invoice-month-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.invoice-month-card:hover {
+  border-color: var(--border2, rgba(255, 255, 255, 0.18));
+}
+
+.invoice-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  background: var(--surface2);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.invoice-month-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.invoice-month-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.invoice-month-title .toggle-caret {
+  font-size: 12px;
+  color: var(--text3);
+  transition: transform 0.2s ease;
+  width: 14px;
+  text-align: center;
+}
+
+.invoice-month-card.collapsed .invoice-month-title .toggle-caret {
+  transform: rotate(-90deg);
+}
+
+.invoice-month-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.invoice-month-total {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-head);
+}
+
+.invoice-month-content {
+  overflow-x: auto;
+}
+
+.invoice-month-card.collapsed .invoice-month-content {
+  display: none;
+}
+
+.btn-sort-pill {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-sort-pill:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-sort-pill.active {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.th-sortable:hover {
+  color: var(--accent);
+}
+
+.th-sortable i {
+  margin-left: 5px;
+  font-size: 11px;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.th-sortable.active i {
+  opacity: 1;
+  color: var(--accent);
+}

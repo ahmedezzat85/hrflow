@@ -28,6 +28,8 @@ import base64
 import io
 import re
 from threading import Lock
+from typing import Optional
+
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -355,13 +357,14 @@ class DriveClient:
 
     def upload_invoice_file(
         self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes,
-        employee_id=None, employee_name: str = "",
+        employee_id=None, employee_name: str = "", pdf_bytes: Optional[bytes] = None,
     ) -> dict:
         """
         Uploads a rendered invoice .docx (raw bytes, not a data URL) into:
         1. The global Invoices/<year>/<year>-<month>/ folder.
         2. If employee_id is provided, also into the employee's personal folder at:
            <employee_root_folder>/invoices/<year>/
+        If pdf_bytes is provided, also uploads the corresponding .pdf file into both locations.
         Returns dict with file_id and view_url of the primary invoice file,
         matching the shape of upload_file()/upload_company_file().
         """
@@ -389,6 +392,20 @@ class DriveClient:
             logger.exception("Drive API error while fetching links for invoice file_id=%s", file_id)
             raise
 
+        # If PDF bytes provided, upload PDF version to period folder
+        pdf_filename = ""
+        if pdf_bytes is not None:
+            pdf_filename = (file_name[:-5] if file_name.lower().endswith(".docx") else file_name) + ".pdf"
+            try:
+                pdf_media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf", resumable=False)
+                pdf_metadata = {"name": pdf_filename, "parents": [folder_id]}
+                self.service.files().create(
+                    body=pdf_metadata, media_body=pdf_media, fields="id", supportsAllDrives=True,
+                ).execute()
+                logger.info("Uploaded invoice PDF to Drive period folder: name='%s'", pdf_filename)
+            except Exception:
+                logger.exception("Warning: Failed to upload invoice PDF to period folder: %s", pdf_filename)
+
         # Also upload copy into {employee_root_folder}/invoices/{year}
         if employee_id is not None:
             try:
@@ -405,6 +422,15 @@ class DriveClient:
                     "Invoice copy uploaded to employee folder: employee_id=%s, folder_id=%s, file_name='%s'",
                     employee_id, emp_invoices_folder_id, file_name,
                 )
+
+                if pdf_bytes is not None and pdf_filename:
+                    emp_pdf_media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf", resumable=False)
+                    emp_pdf_metadata = {"name": pdf_filename, "parents": [emp_invoices_folder_id]}
+                    self.service.files().create(
+                        body=emp_pdf_metadata, media_body=emp_pdf_media, fields="id",
+                        supportsAllDrives=True,
+                    ).execute()
+                    logger.info("Invoice PDF copy uploaded to employee folder: %s", pdf_filename)
             except Exception:
                 logger.exception(
                     "Warning: Failed to upload second invoice copy to employee folder for employee_id=%s ('%s')",
@@ -417,6 +443,7 @@ class DriveClient:
             "view_url": refreshed.get("webViewLink", ""),
             "download_url": refreshed.get("webContentLink", ""),
         }
+
 
     def download_file(self, file_id: str):
         """
@@ -468,5 +495,12 @@ class DriveClient:
             return False
 
 
-def get_drive_client() -> DriveClient:
-    return DriveClient()
+def get_drive_client():
+    """
+    Returns the active storage client.
+    Delegates to storage.get_storage_client() so callers get either
+    DriveClient or LocalStorageClient based on Config.FILE_STORAGE_BACKEND.
+    """
+    from storage import get_storage_client
+    return get_storage_client()
+

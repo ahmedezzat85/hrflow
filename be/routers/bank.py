@@ -19,87 +19,56 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
-import sheets_client
 from auth import require_admin
 from deps import audit_log
 from logging_config import get_logger
 from models import BankAccountUpsert
+from repositories.interfaces import BankRepository, AuditRepository
+from repositories.deps import get_bank_repo, get_audit_repo
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/employees", tags=["Bank"])
 
 
-def _mask_iban(iban: str) -> str:
-    """Returns IBAN with all but the last 4 characters replaced by *."""
-    iban = str(iban)
-    if len(iban) <= 4:
-        return iban
-    return "*" * (len(iban) - 4) + iban[-4:]
-
-
-def _normalize_bank_record(r: dict) -> dict:
-    """Stringify all fields so Google Sheets int-coercion doesn't leak."""
-    out = dict(r)
-    for f in ("id", "employee_id", "bank_name", "iban", "swift_code", "updated_by", "updated_at"):
-        out[f] = str(out.get(f, "") or "")
-    return out
-
-
 @router.get("/{emp_id}/bank-account")
-def get_bank_account(emp_id: int, reveal: bool = False, current_user: dict = Depends(require_admin)):
+def get_bank_account(
+    emp_id: int,
+    reveal: bool = False,
+    current_user: dict = Depends(require_admin),
+    bank_repo: BankRepository = Depends(get_bank_repo),
+):
     """Return the employee's bank account details. IBAN is masked unless reveal=true."""
-    client = sheets_client.get_client()
-    records = client.get_all_records("EmployeeBankAccounts")
-    record = next((r for r in records if str(r.get("employee_id")) == str(emp_id)), None)
-
-    if not record:
-        return {"has_details": False}
-
-    record = _normalize_bank_record(record)
-    result = {
-        "has_details": True,
-        "bank_name": record["bank_name"],
-        "iban": record["iban"] if reveal else _mask_iban(record["iban"]),
-        "swift_code": record["swift_code"],
-        "updated_by": record["updated_by"],
-        "updated_at": record["updated_at"],
-    }
+    result = bank_repo.get_by_employee_id(emp_id, reveal=reveal)
     logger.debug("Bank account fetched for employee_id=%s by %s (reveal=%s)", emp_id, current_user.get("email"), reveal)
     return result
 
 
 @router.put("/{emp_id}/bank-account")
-def upsert_bank_account(emp_id: int, payload: BankAccountUpsert, current_user: dict = Depends(require_admin)):
+def upsert_bank_account(
+    emp_id: int,
+    payload: BankAccountUpsert,
+    current_user: dict = Depends(require_admin),
+    bank_repo: BankRepository = Depends(get_bank_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
     """Create or update the bank account record for this employee."""
-    client = sheets_client.get_client()
+    try:
+        action_type, record_id = bank_repo.upsert(
+            employee_id=emp_id,
+            bank_name=payload.bank_name,
+            iban=payload.iban,
+            swift_code=payload.swift_code or "",
+            actor_email=current_user.get("email", ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
-    # Verify employee exists
-    employees = client.get_all_records("Employees")
-    if not any(str(e.get("id")) == str(emp_id) for e in employees):
-        raise HTTPException(status_code=404, detail="Employee not found")
-
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-    records = client.get_all_records("EmployeeBankAccounts")
-    existing = next((r for r in records if str(r.get("employee_id")) == str(emp_id)), None)
-
-    updates = {
-        "bank_name": payload.bank_name.strip(),
-        "iban": payload.iban.strip(),
-        "swift_code": (payload.swift_code or "").strip(),
-        "updated_by": current_user.get("email", ""),
-        "updated_at": now,
-    }
-
-    if existing:
-        client.update_row_by_match("EmployeeBankAccounts", "employee_id", emp_id, updates)
-        action = "bank_account.update"
+    action = f"bank_account.{action_type}"
+    if action_type == "update":
         logger.info("Bank account updated for employee_id=%s by %s", emp_id, current_user.get("email"))
     else:
-        new_id = client.next_id("EmployeeBankAccounts")
-        client.append_row("EmployeeBankAccounts", {"id": new_id, "employee_id": emp_id, **updates})
-        action = "bank_account.create"
-        logger.info("Bank account created for employee_id=%s by %s (id=%s)", emp_id, current_user.get("email"), new_id)
+        logger.info("Bank account created for employee_id=%s by %s (id=%s)", emp_id, current_user.get("email"), record_id)
 
-    audit_log(client, action, current_user.get("email"), "employee_bank_account", emp_id,
+    audit_log(audit_repo, action, current_user.get("email"), "employee_bank_account", emp_id,
               f"bank_name={payload.bank_name}")
     return {"message": "Bank account saved"}

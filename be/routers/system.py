@@ -7,18 +7,19 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 
-import sheets_client
 from auth import require_admin
+from repositories.interfaces import AuditRepository
+from repositories.deps import get_audit_repo
 
 router = APIRouter(prefix="/api", tags=["System"])
 
 
 @router.get("/audit-log")
-def get_audit_log(current_user: dict = Depends(require_admin)):
-    client = sheets_client.get_client()
-    entries = client.get_all_records("AuditLog")
-    entries.sort(key=lambda e: str(e.get("timestamp", "")), reverse=True)
-    return entries
+def get_audit_log(
+    current_user: dict = Depends(require_admin),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
+    return audit_repo.list_all()
 
 
 @router.get("/health")

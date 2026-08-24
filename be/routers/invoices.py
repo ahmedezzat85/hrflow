@@ -9,11 +9,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-import sheets_client
 from auth import require_admin
 from deps import audit_log
 from models import InvoiceGenerateRequest
 from services.invoices import generate_invoices_bulk, generate_invoice_for_employee
+from repositories.interfaces import InvoiceRepository, EmployeeRepository, AuditRepository
+from repositories.deps import get_invoice_repo, get_employee_repo, get_audit_repo
 
 router = APIRouter(prefix="/api/invoices", tags=["Invoices"])
 
@@ -23,6 +24,8 @@ def preview_eligible_employees(
     payment_year: int = Query(...),
     payment_month: int = Query(..., ge=1, le=12),
     current_user: dict = Depends(require_admin),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
 ):
     """
     Read-only preview: for each employee, reports whether they are
@@ -31,11 +34,10 @@ def preview_eligible_employees(
     """
     from services.invoices import check_eligibility, find_existing_invoice, InvoiceEligibilityError
 
-    client = sheets_client.get_client()
-    employees = client.get_all_records("Employees")
+    employees = employee_repo.list_all()
     results = []
     for emp in employees:
-        existing = find_existing_invoice(client, emp["id"], payment_year, payment_month)
+        existing = find_existing_invoice(invoice_repo, emp["id"], payment_year, payment_month)
         if existing:
             results.append({
                 "employee_id": emp["id"], "employee_name": emp.get("name", ""),
@@ -57,12 +59,19 @@ def preview_eligible_employees(
 
 
 @router.post("/generate")
-def generate_invoices(payload: InvoiceGenerateRequest, current_user: dict = Depends(require_admin)):
+def generate_invoices(
+    payload: InvoiceGenerateRequest,
+    current_user: dict = Depends(require_admin),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
     result = generate_invoices_bulk(
         payload.payment_year, payload.payment_month, current_user.get("email"), payload.skip_existing,
+        invoice_repo=invoice_repo, employee_repo=employee_repo,
     )
     audit_log(
-        sheets_client.get_client(), "invoice.generate_bulk", current_user.get("email"), "invoice_batch",
+        audit_repo, "invoice.generate_bulk", current_user.get("email"), "invoice_batch",
         f"{payload.payment_year}-{payload.payment_month:02d}",
         f"summary={result['summary']}",
     )
@@ -71,20 +80,23 @@ def generate_invoices(payload: InvoiceGenerateRequest, current_user: dict = Depe
 
 @router.post("/generate/{employee_id}")
 def generate_invoice_single(
-    employee_id: int, payload: InvoiceGenerateRequest, current_user: dict = Depends(require_admin),
+    employee_id: int,
+    payload: InvoiceGenerateRequest,
+    current_user: dict = Depends(require_admin),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
-    client = sheets_client.get_client()
-    employees = client.get_all_records("Employees")
-    emp = next((e for e in employees if str(e["id"]) == str(employee_id)), None)
+    emp = employee_repo.get_by_id(employee_id)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
     result = generate_invoice_for_employee(
-        client, emp, payload.payment_year, payload.payment_month,
+        invoice_repo, emp, payload.payment_year, payload.payment_month,
         current_user.get("email"), payload.skip_existing,
     )
     audit_log(
-        client, "invoice.generate_single", current_user.get("email"), "employee", employee_id,
+        audit_repo, "invoice.generate_single", current_user.get("email"), "employee", employee_id,
         f"period={payload.payment_year}-{payload.payment_month:02d}, status={result['status']}",
     )
     if result["status"] == "failed":
@@ -99,26 +111,55 @@ def list_invoices(
     payment_month: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
     current_user: dict = Depends(require_admin),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
 ):
-    client = sheets_client.get_client()
-    invoices = client.get_all_records("Invoices")
-    if employee_id is not None:
-        invoices = [i for i in invoices if str(i.get("employee_id")) == str(employee_id)]
-    if payment_year is not None:
-        invoices = [i for i in invoices if str(i.get("payment_year")) == str(payment_year)]
-    if payment_month is not None:
-        invoices = [i for i in invoices if str(i.get("payment_month")) == str(payment_month)]
-    if status is not None:
-        invoices = [i for i in invoices if i.get("status") == status]
-    invoices.sort(key=lambda i: str(i.get("created_at", "")), reverse=True)
-    return invoices
+    return invoice_repo.list_all(
+        employee_id=employee_id,
+        payment_year=payment_year,
+        payment_month=payment_month,
+        status=status,
+    )
 
 
 @router.get("/{invoice_id}")
-def get_invoice(invoice_id: int, current_user: dict = Depends(require_admin)):
-    client = sheets_client.get_client()
-    invoices = client.get_all_records("Invoices")
-    inv = next((i for i in invoices if str(i.get("id")) == str(invoice_id)), None)
+def get_invoice(
+    invoice_id: int,
+    current_user: dict = Depends(require_admin),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
+):
+    inv = invoice_repo.get_by_id(invoice_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return inv
+
+
+@router.get("/{invoice_id}/stream")
+def stream_invoice_pdf(
+    invoice_id: int,
+    download: bool = Query(False),
+    current_user: dict = Depends(require_admin),
+    invoice_repo: InvoiceRepository = Depends(get_invoice_repo),
+):
+    import urllib.parse
+    import io
+    from fastapi.responses import StreamingResponse
+    from services.invoices import get_invoice_pdf_bytes
+
+    inv = invoice_repo.get_by_id(invoice_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    try:
+        pdf_bytes, filename = get_invoice_pdf_bytes(inv)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"PDF preview unavailable: {exc}")
+
+    disposition = "attachment" if download else "inline"
+    safe_filename = urllib.parse.quote(filename)
+    headers = {
+        "Content-Disposition": f'{disposition}; filename="{filename}"; filename*=UTF-8\'\'{safe_filename}',
+        "Content-Type": "application/pdf",
+        "Cache-Control": "public, max-age=3600",
+    }
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+

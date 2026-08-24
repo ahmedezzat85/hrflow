@@ -6,7 +6,7 @@ docs/analysis/security-analysis-plan.md.
 
 
 def test_audit_log_records_salary_raise(app_client, admin_cookies):
-    payload = {"employee_id": 2, "mode": "pct", "value": 10, "effective_date": "2026-08-16"}
+    payload = {"employee_id": 2, "new_internal_salary_usd": 44000, "new_external_salary_usd": 0, "effective_date": "2026-08-16"}
     response = app_client.post("/api/salary/raise", json=payload, cookies=admin_cookies)
     assert response.status_code == 201
 
@@ -68,8 +68,8 @@ def test_non_admin_cannot_read_audit_log(app_client, employee_cookies):
 
 
 def test_audit_log_is_append_only_and_never_truncated(app_client, admin_cookies):
-    app_client.post("/api/salary/raise", json={"employee_id": 2, "mode": "amount", "value": 1000, "effective_date": "2026-08-16"}, cookies=admin_cookies)
-    app_client.post("/api/salary/raise", json={"employee_id": 3, "mode": "amount", "value": 2000, "effective_date": "2026-08-16"}, cookies=admin_cookies)
+    app_client.post("/api/salary/raise", json={"employee_id": 2, "new_internal_salary_usd": 41000, "new_external_salary_usd": 0, "effective_date": "2026-08-16"}, cookies=admin_cookies)
+    app_client.post("/api/salary/raise", json={"employee_id": 3, "new_internal_salary_usd": 37000, "new_external_salary_usd": 0, "effective_date": "2026-08-16"}, cookies=admin_cookies)
 
     audit_response = app_client.get("/api/audit-log", cookies=admin_cookies)
     entries = audit_response.json()

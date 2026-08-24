@@ -19,6 +19,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from config import Config
 from sheets_client import get_client
+from repositories.sheets.auth import SheetsUserRepository
 
 _google_request = google_requests.Request()
 
@@ -64,24 +65,19 @@ def decode_session_token(token: str):
         return None
 
 
-def _find_user_by_email(email: str):
-    client = get_client()
-    users = client.get_all_records("Users")
-    email = email.strip().lower()
-    for u in users:
-        if u["email"].strip().lower() == email:
-            return u
-    return None
+def _find_user_by_email(email: str, user_repo=None):
+    repo = user_repo or SheetsUserRepository()
+    return repo.find_by_email(email)
 
 
-def login_with_google(credential: str):
-    """Verifies the Google credential and matches it to a row in the Users
-    tab. Returns None if the email has no HRFlow account yet."""
+def login_with_google(credential: str, user_repo=None):
+    """Verifies the Google credential and matches it to a user.
+    Returns None if the email has no HRFlow account yet."""
     google_payload = verify_google_credential(credential)
     email = google_payload["email"]
     name = google_payload.get("name", "")
 
-    user = _find_user_by_email(email)
+    user = _find_user_by_email(email, user_repo=user_repo)
     if not user:
         return None
     token = create_session_token(user["email"], user["role"], user.get("employee_id"), name)
