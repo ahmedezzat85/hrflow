@@ -5,7 +5,8 @@
  * "a-invoices", added to the existing #adminSidebar nav-item/data-page
  * pattern). Lets HR preview eligibility, generate invoices in bulk
  * or per-employee for a selected payment month, regenerate existing invoices
- * with confirmation modal, preview PDF invoices in-app, and browse invoice history.
+ * with confirmation modal, preview PDF invoices in-app, and browse grouped &
+ * sortable invoice history.
  *
  * Depends on globals already defined elsewhere: Api, employees, toast,
  * showSection, initials, fmtUSD, setButtonLoading, closeModal.
@@ -13,6 +14,10 @@
 
 let _invoiceEligiblePreview = [];
 let _activeRegenTarget = null;
+let _rawInvoiceHistory = [];
+let _invoiceSortField = 'name'; // 'name' | 'number'
+let _invoiceSortDir = 'asc';    // 'asc' | 'desc'
+let _expandedInvoiceMonths = new Set();
 
 function _currentInvoicePeriod(){
   const now = new Date();
@@ -277,19 +282,158 @@ function previewInvoicePdf(invoiceId, invoiceNumber){
   });
 }
 
-async function loadInvoiceHistory(){
-  const body = document.getElementById('invoiceHistoryBody');
-  if(!body) return;
-  try{
-    const invoices = await Api.listInvoices();
-    if(!invoices.length){
-      body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>No invoices generated yet.</p></div></td></tr>`;
-      return;
+function toggleInvoiceSort(field){
+  if(_invoiceSortField === field){
+    _invoiceSortDir = (_invoiceSortDir === 'asc' ? 'desc' : 'asc');
+  } else {
+    _invoiceSortField = field;
+    _invoiceSortDir = 'asc';
+  }
+  renderGroupedInvoiceHistory();
+}
+
+function toggleInvoiceMonth(monthKey){
+  if(_expandedInvoiceMonths.has(monthKey)){
+    _expandedInvoiceMonths.delete(monthKey);
+  } else {
+    _expandedInvoiceMonths.add(monthKey);
+  }
+  const card = document.getElementById(`monthCard-${monthKey}`);
+  if(card){
+    card.classList.toggle('collapsed', !_expandedInvoiceMonths.has(monthKey));
+  }
+  _updateToggleAllMonthsButton();
+}
+
+function toggleAllInvoiceMonths(){
+  // Gather all available month keys
+  const monthKeys = new Set();
+  _rawInvoiceHistory.forEach(inv => {
+    const key = `${inv.payment_year}-${String(inv.payment_month).padStart(2, '0')}`;
+    monthKeys.add(key);
+  });
+
+  const allExpanded = monthKeys.size > 0 && Array.from(monthKeys).every(k => _expandedInvoiceMonths.has(k));
+  if(allExpanded){
+    _expandedInvoiceMonths.clear();
+  } else {
+    monthKeys.forEach(k => _expandedInvoiceMonths.add(k));
+  }
+  renderGroupedInvoiceHistory();
+}
+
+function _updateToggleAllMonthsButton(){
+  const btnText = document.getElementById('toggleAllMonthsText');
+  if(!btnText) return;
+  const monthKeys = new Set();
+  _rawInvoiceHistory.forEach(inv => {
+    const key = `${inv.payment_year}-${String(inv.payment_month).padStart(2, '0')}`;
+    monthKeys.add(key);
+  });
+  const allExpanded = monthKeys.size > 0 && Array.from(monthKeys).every(k => _expandedInvoiceMonths.has(k));
+  btnText.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+}
+
+function _sortInvoicesList(list){
+  return [...list].sort((a, b) => {
+    let cmp = 0;
+    if(_invoiceSortField === 'number'){
+      const numA = String(a.invoice_number || '');
+      const numB = String(b.invoice_number || '');
+      cmp = numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' });
+    } else {
+      const nameA = String(a.employee_name || '');
+      const nameB = String(b.employee_name || '');
+      cmp = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
     }
-    body.innerHTML = invoices.map(inv => `<tr>
+    return _invoiceSortDir === 'desc' ? -cmp : cmp;
+  });
+}
+
+function renderGroupedInvoiceHistory(){
+  const container = document.getElementById('invoiceHistoryContainer');
+  const badgeEl = document.getElementById('invoiceHistoryTotalBadge');
+  if(!container) return;
+
+  if(!_rawInvoiceHistory.length){
+    if(badgeEl) badgeEl.style.display = 'none';
+    container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>No invoices generated yet.</p></div>`;
+    return;
+  }
+
+  // Update badge with totals
+  const totalCount = _rawInvoiceHistory.length;
+  const totalAmount = _rawInvoiceHistory.reduce((sum, inv) => sum + Number(inv.amount_usd || 0), 0);
+  if(badgeEl){
+    badgeEl.textContent = `${totalCount} Invoices • ${fmtUSD(totalAmount)}`;
+    badgeEl.style.display = 'inline-block';
+  }
+
+  // Update Toolbar Sort Button states & icons
+  const btnSortName = document.getElementById('sortByNameBtn');
+  const btnSortNumber = document.getElementById('sortByNumberBtn');
+  const iconSortName = document.getElementById('sortNameIcon');
+  const iconSortNumber = document.getElementById('sortNumberIcon');
+
+  if(btnSortName){
+    btnSortName.classList.toggle('active', _invoiceSortField === 'name');
+  }
+  if(btnSortNumber){
+    btnSortNumber.classList.toggle('active', _invoiceSortField === 'number');
+  }
+  if(iconSortName){
+    iconSortName.className = _invoiceSortField === 'name'
+      ? (_invoiceSortDir === 'asc' ? 'fa-solid fa-arrow-up-a-z' : 'fa-solid fa-arrow-down-z-a')
+      : 'fa-solid fa-sort';
+  }
+  if(iconSortNumber){
+    iconSortNumber.className = _invoiceSortField === 'number'
+      ? (_invoiceSortDir === 'asc' ? 'fa-solid fa-arrow-up-1-9' : 'fa-solid fa-arrow-down-9-1')
+      : 'fa-solid fa-sort';
+  }
+
+  // Group invoices by period (year-month)
+  const groups = {};
+  _rawInvoiceHistory.forEach(inv => {
+    const key = `${inv.payment_year}-${String(inv.payment_month).padStart(2, '0')}`;
+    if(!groups[key]) {
+      groups[key] = {
+        year: Number(inv.payment_year),
+        month: Number(inv.payment_month),
+        invoices: [],
+      };
+    }
+    groups[key].invoices.push(inv);
+  });
+
+  // Sort groups descending (newest month first)
+  const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  // Default to expanding the newest month if set is empty
+  if(_expandedInvoiceMonths.size === 0 && sortedKeys.length > 0){
+    _expandedInvoiceMonths.add(sortedKeys[0]);
+  }
+  _updateToggleAllMonthsButton();
+
+  // Render collapsible cards for each month
+  container.innerHTML = sortedKeys.map(key => {
+    const group = groups[key];
+    const isExpanded = _expandedInvoiceMonths.has(key);
+    const sortedInvoices = _sortInvoicesList(group.invoices);
+    const monthTotal = group.invoices.reduce((sum, inv) => sum + Number(inv.amount_usd || 0), 0);
+    const periodName = _invoicePeriodLabel(group.year, group.month);
+
+    const nameSortIcon = _invoiceSortField === 'name'
+      ? (_invoiceSortDir === 'asc' ? 'fa-solid fa-arrow-up-a-z' : 'fa-solid fa-arrow-down-z-a')
+      : 'fa-solid fa-sort';
+
+    const numSortIcon = _invoiceSortField === 'number'
+      ? (_invoiceSortDir === 'asc' ? 'fa-solid fa-arrow-up-1-9' : 'fa-solid fa-arrow-down-9-1')
+      : 'fa-solid fa-sort';
+
+    const rowsHtml = sortedInvoices.map(inv => `<tr>
       <td class="tname"><div class="avatar">${initials(inv.employee_name)}</div>${inv.employee_name}</td>
       <td><strong>${inv.invoice_number}</strong></td>
-      <td>${_invoicePeriodLabel(Number(inv.payment_year), Number(inv.payment_month))}</td>
       <td>${fmtUSD(Number(inv.amount_usd))}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(inv.status)}">${inv.status}</span></td>
       <td>
@@ -306,7 +450,51 @@ async function loadInvoiceHistory(){
         </div>
       </td>
     </tr>`).join('');
+
+    return `<div class="invoice-month-card ${isExpanded ? '' : 'collapsed'}" id="monthCard-${key}">
+      <div class="invoice-month-header" onclick="toggleInvoiceMonth('${key}')">
+        <div class="invoice-month-title">
+          <i class="fa-solid fa-chevron-down toggle-caret"></i>
+          <span>${periodName}</span>
+          <span class="badge-pill pill-info" style="font-size:11.5px;">${group.invoices.length} ${group.invoices.length === 1 ? 'Invoice' : 'Invoices'}</span>
+        </div>
+        <div class="invoice-month-summary">
+          <span class="invoice-month-total">${fmtUSD(monthTotal)}</span>
+        </div>
+      </div>
+      <div class="invoice-month-content">
+        <table>
+          <thead>
+            <tr>
+              <th class="th-sortable ${_invoiceSortField === 'name' ? 'active' : ''}" onclick="toggleInvoiceSort('name')">
+                Employee <i class="${nameSortIcon}"></i>
+              </th>
+              <th class="th-sortable ${_invoiceSortField === 'number' ? 'active' : ''}" onclick="toggleInvoiceSort('number')">
+                Invoice # <i class="${numSortIcon}"></i>
+              </th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Document</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadInvoiceHistory(){
+  const container = document.getElementById('invoiceHistoryContainer');
+  try{
+    _rawInvoiceHistory = await Api.listInvoices();
+    renderGroupedInvoiceHistory();
   } catch(err){
-    body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load invoice history: ${err.message}</p></div></td></tr>`;
+    if(container){
+      container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load invoice history: ${err.message}</p></div>`;
+    }
   }
 }
