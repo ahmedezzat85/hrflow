@@ -3,7 +3,7 @@ be/repositories/deps.py
 FastAPI dependency providers for domain repositories.
 Dynamically resolves to Sheets, Dual-Write, or SQL implementations based on Config.STORAGE_ENGINE.
 """
-from config import Config
+import config
 from repositories.interfaces import (
     EmployeeRepository,
     SalaryRepository,
@@ -53,8 +53,12 @@ from repositories.dual.audit import DualWriteAuditRepository
 from repositories.dual.auth import DualWriteUserRepository
 
 
+def _get_storage_engine() -> str:
+    return config.Config.STORAGE_ENGINE
+
+
 def get_employee_repo() -> EmployeeRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlEmployeeRepository()
     elif mode == "dual":
@@ -63,7 +67,7 @@ def get_employee_repo() -> EmployeeRepository:
 
 
 def get_salary_repo() -> SalaryRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlSalaryRepository()
     elif mode == "dual":
@@ -72,7 +76,7 @@ def get_salary_repo() -> SalaryRepository:
 
 
 def get_bank_repo() -> BankRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlBankRepository()
     elif mode == "dual":
@@ -81,7 +85,7 @@ def get_bank_repo() -> BankRepository:
 
 
 def get_company_document_repo() -> CompanyDocumentRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlCompanyDocumentRepository()
     elif mode == "dual":
@@ -90,7 +94,7 @@ def get_company_document_repo() -> CompanyDocumentRepository:
 
 
 def get_insurance_repo() -> InsuranceRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlInsuranceRepository()
     elif mode == "dual":
@@ -99,7 +103,7 @@ def get_insurance_repo() -> InsuranceRepository:
 
 
 def get_request_repo() -> RequestRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlRequestRepository()
     elif mode == "dual":
@@ -108,7 +112,7 @@ def get_request_repo() -> RequestRepository:
 
 
 def get_vacation_repo() -> VacationRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlVacationRepository()
     elif mode == "dual":
@@ -117,7 +121,7 @@ def get_vacation_repo() -> VacationRepository:
 
 
 def get_invoice_repo() -> InvoiceRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlInvoiceRepository()
     elif mode == "dual":
@@ -126,7 +130,7 @@ def get_invoice_repo() -> InvoiceRepository:
 
 
 def get_audit_repo() -> AuditRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlAuditRepository()
     elif mode == "dual":
@@ -135,7 +139,7 @@ def get_audit_repo() -> AuditRepository:
 
 
 def get_user_repo() -> UserRepository:
-    mode = Config.STORAGE_ENGINE
+    mode = _get_storage_engine()
     if mode == "sql":
         return SqlUserRepository()
     elif mode == "dual":

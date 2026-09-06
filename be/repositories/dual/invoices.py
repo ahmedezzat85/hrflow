@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteInvoiceRepository:
     def __init__(self, primary: Optional[InvoiceRepository] = None, shadow: Optional[InvoiceRepository] = None):
-        self.primary = primary or SheetsInvoiceRepository()
-        self.shadow = shadow or SqlInvoiceRepository()
+        self.primary = primary or SqlInvoiceRepository()
+        self.shadow = shadow or SheetsInvoiceRepository()
 
     def list_all(
         self,

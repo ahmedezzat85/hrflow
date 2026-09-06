@@ -92,8 +92,11 @@ class Config:
     SHEETS_CACHE_TTL_SECONDS = int(os.getenv("SHEETS_CACHE_TTL_SECONDS", "30"))
 
     # ---- Database & Storage Engine settings ----
-    # Storage engine mode: "sheets" (default), "dual" (sheets primary + sql shadow), or "sql" (sql primary)
-    STORAGE_ENGINE = os.getenv("STORAGE_ENGINE", "sheets").lower()
+    # Storage engine mode: "sql" (default, SQL as primary system of record), "dual", or "sheets" (legacy)
+    STORAGE_ENGINE = os.getenv("STORAGE_ENGINE", "sql").lower()
+
+    # Read source when in "dual" mode: "sql" (default, reads from SQL) or "sheets" (legacy)
+    DUAL_READ_SOURCE = os.getenv("DUAL_READ_SOURCE", "sql").lower()
 
     # Relational Database engine type: "sqlite" (default) or "postgres" / "postgresql"
     DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()

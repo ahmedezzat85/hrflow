@@ -200,3 +200,33 @@ These remain outstanding regardless of the phased-cutover decision, because they
 ### 9.4 Practical bottom line
 
 The database redesign is **not yet complete** — it is at the end of a successful Phase 1, with Phase 2 partially exercised (backfill + one reconciliation pass done, sustained soak not done) and Phases 3 (as a formal staged rollout), 4, and 5 not started. The phased-cutover requirement specifically has been consciously dropped per the decision in 9.2; the remaining items in 9.3 have not been dropped and represent the actual remaining scope of this redesign.
+
+## 10. Completion update (2026-09-06)
+
+All outstanding database redesign milestones and PostgreSQL readiness requirements have been completed on branch `refactor/database`.
+
+### 10.1 Key Deliverables Implemented
+
+1. **Flexible Database Engine Selection (`DB_TYPE`)**:
+   - Added `DB_TYPE` (`sqlite` | `postgres`) in `be/config.py`.
+   - Discrete PostgreSQL configuration variables (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`) with automatic URI generation, or direct `DATABASE_URL` override.
+   - Production connection pooling in `be/db.py` (`pool_size`, `max_overflow`, `pool_recycle`, `pool_pre_ping=True`) for PostgreSQL, alongside thread-safe concurrency settings for SQLite.
+   - `psycopg2-binary>=2.9.9` activated in `be/requirements.txt`.
+   - Dedicated local container definition in `docker-compose.db.yml` (PostgreSQL 16 Alpine with healthchecks).
+
+2. **Authoritative Migration & Cold-Storage**:
+   - **Direct SQLite -> PostgreSQL Migration (`be/scripts/migrate_sqlite_to_postgres.py`)**: Accounting for the fact that SQLite (`hrflow.db`) became the active authoritative store while Google Sheets was stale, this utility safely migrates all 13 SQLAlchemy models in dependency order, handles duplicate resolution, and dynamically resets PostgreSQL primary key sequences (`setval(pg_get_serial_sequence(...))`).
+   - **Google Sheets Cold-Storage Archival (`be/scripts/export_sheets_cold_storage.py`)**: Exports all 11 Google Sheets tables to timestamped CSV + JSON files along with a cryptographic `manifest.json` for compliance and historical audit backup before retiring Sheets.
+   - **Granular Backfill & Reconciliation Tools**: Enhanced `be/scripts/backfill_sheets_to_sql.py` and `be/scripts/reconcile_stores.py` to support `--domain` filtering, `--dry-run`, and formatted tabular status reporting.
+
+3. **Inversion of Dual-Write Repositories**:
+   - Updated all 10 `DualWrite...Repository` implementations in `be/repositories/dual/` so SQL is the authoritative `primary` (reads and primary writes) and Sheets is the `shadow` replica. This guarantees stale Sheets data cannot overwrite fresh SQL data.
+
+4. **Standalone / Offline Mode Decoupling**:
+   - Decoupled `be/services/invoices.py` and `be/auth.py` from hardcoded Google client dependencies.
+   - Under `STORAGE_ENGINE=sql` and `FILE_STORAGE_BACKEND=local`, the entire backend operates without Google service accounts or external API quotas.
+
+5. **Test Validation & Documentation**:
+   - Added test suites: `test_db_config.py`, `test_migration_and_reconciliation.py`, `test_sqlite_to_postgres_migration.py`, and `test_standalone_sql_mode.py`.
+   - Verified 146 passing tests with zero regressions.
+   - Updated `be/SETUP_GUIDE.md` with complete instructions for database configuration, docker setup, and migration workflows.

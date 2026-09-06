@@ -83,7 +83,7 @@ class SqlEmployeeRepository:
     def create(self, data: Dict[str, Any]) -> int:
         internal_salary = float(data.get("internal_salary_usd") or 0)
         external_salary = float(data.get("external_salary_usd") or 0)
-        legacy_total_salary = internal_salary + external_salary
+        legacy_total_salary = (internal_salary + external_salary) if (internal_salary or external_salary) else float(data.get("salary") or 0)
 
         with self._get_session() as db:
             emp_kwargs = {

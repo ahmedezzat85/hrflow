@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteRequestRepository:
     def __init__(self, primary: Optional[RequestRepository] = None, shadow: Optional[RequestRepository] = None):
-        self.primary = primary or SheetsRequestRepository()
-        self.shadow = shadow or SqlRequestRepository()
+        self.primary = primary or SqlRequestRepository()
+        self.shadow = shadow or SheetsRequestRepository()
 
     def list_requests(
         self,

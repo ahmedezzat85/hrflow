@@ -66,8 +66,10 @@ def decode_session_token(token: str):
 
 
 def _find_user_by_email(email: str, user_repo=None):
-    repo = user_repo or SheetsUserRepository()
-    return repo.find_by_email(email)
+    if user_repo is None:
+        from repositories.deps import get_user_repo
+        user_repo = get_user_repo()
+    return user_repo.find_by_email(email)
 
 
 def login_with_google(credential: str, user_repo=None):

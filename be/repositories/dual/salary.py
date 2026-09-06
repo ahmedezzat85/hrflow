@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteSalaryRepository:
     def __init__(self, primary: Optional[SalaryRepository] = None, shadow: Optional[SalaryRepository] = None):
-        self.primary = primary or SheetsSalaryRepository()
-        self.shadow = shadow or SqlSalaryRepository()
+        self.primary = primary or SqlSalaryRepository()
+        self.shadow = shadow or SheetsSalaryRepository()
 
     def get_history(self, employee_id: Optional[Union[int, str]] = None) -> List[Dict[str, Any]]:
         return self.primary.get_history(employee_id=employee_id)

@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteUserRepository:
     def __init__(self, primary: Optional[UserRepository] = None, shadow: Optional[UserRepository] = None):
-        self.primary = primary or SheetsUserRepository()
-        self.shadow = shadow or SqlUserRepository()
+        self.primary = primary or SqlUserRepository()
+        self.shadow = shadow or SheetsUserRepository()
 
     def find_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         return self.primary.find_by_email(email)
