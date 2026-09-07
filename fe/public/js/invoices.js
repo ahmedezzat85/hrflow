@@ -120,7 +120,7 @@ if(typeof window !== 'undefined'){
 function renderInvoiceResultsPlaceholder(){
   const body = document.getElementById('invoiceResultsBody');
   if(!body) return;
-  body.innerHTML = renderEmptyTableRow(4, 'Click "Preview Eligible Employees" to see who will be invoiced for the selected month.', 'fa-solid fa-file-invoice-dollar');
+  body.innerHTML = renderEmptyTableRow(3, 'Click "Preview Eligible Employees" to see who will be invoiced for the selected month.', 'fa-solid fa-file-invoice-dollar');
 }
 
 function _getInvoicePeriodInputs(){
@@ -129,6 +129,21 @@ function _getInvoicePeriodInputs(){
   const year = yearInput ? Number(yearInput.value) : new Date().getFullYear();
   const month = monthInput ? Number(monthInput.value) : (new Date().getMonth() + 1);
   return { year, month };
+}
+
+let _invoiceEligibilityFilter = 'eligible'; // 'eligible' | 'skipped' | 'all'
+
+function setInvoiceEligibilityFilter(filterKey){
+  _invoiceEligibilityFilter = filterKey;
+  const eligibleBtn = document.getElementById('invFilterEligibleBtn');
+  const skippedBtn = document.getElementById('invFilterSkippedBtn');
+  const allBtn = document.getElementById('invFilterAllBtn');
+  if(eligibleBtn) eligibleBtn.classList.toggle('active', filterKey === 'eligible');
+  if(skippedBtn) skippedBtn.classList.toggle('active', filterKey === 'skipped');
+  if(allBtn) allBtn.classList.toggle('active', filterKey === 'all');
+
+  const { year, month } = _getInvoicePeriodInputs();
+  renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
 }
 
 async function previewInvoiceEligibility(evt){
@@ -140,6 +155,17 @@ async function previewInvoiceEligibility(evt){
   }
   setButtonLoading(btn, true, 'Loading...');
   try{
+    if(typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')){
+      _invoiceEligiblePreview = [
+        { employee_id: 1, employee_name: 'Sarah Connor', status: 'eligible', reason: null },
+        { employee_id: 2, employee_name: 'John Doe', status: 'eligible', reason: null },
+        { employee_id: 3, employee_name: 'Alex Rivera', status: 'skipped', reason: 'External salary is 0 USD' },
+        { employee_id: 4, employee_name: 'Elena Rostova', status: 'already_exists', invoice_number: 'INV-202609-01' },
+        { employee_id: 5, employee_name: 'Marcus Vance', status: 'skipped', reason: 'Missing invoice ID on file' }
+      ];
+      renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
+      return;
+    }
     const data = await Api.previewEligibleInvoices(year, month);
     _invoiceEligiblePreview = data.results || [];
     renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
@@ -166,11 +192,29 @@ function renderInvoicePreviewResults(results, year, month){
   if(!body) return;
   document.getElementById('invoiceResultsTitle').textContent =
     `Eligibility Preview — ${_invoicePeriodLabel(year, month)}`;
-  if(!results.length){
-    body.innerHTML = renderEmptyTableRow(4, 'No eligible employees found for this period.', 'fa-solid fa-file-invoice-dollar');
+  if(!results || !results.length){
+    body.innerHTML = renderEmptyTableRow(3, 'No employee records found for this period.', 'fa-solid fa-file-invoice-dollar');
     return;
   }
-  body.innerHTML = results.map(r => {
+
+  const filtered = results.filter(r => {
+    if (_invoiceEligibilityFilter === 'eligible') {
+      return r.status === 'eligible' || r.status === 'already_exists';
+    } else if (_invoiceEligibilityFilter === 'skipped') {
+      return r.status === 'skipped';
+    }
+    return true; // 'all'
+  });
+
+  if(!filtered.length){
+    let msg = 'No eligible employees found.';
+    if (_invoiceEligibilityFilter === 'skipped') msg = 'No skipped employees found.';
+    else if (_invoiceEligibilityFilter === 'all') msg = 'No employee records found.';
+    body.innerHTML = renderEmptyTableRow(3, msg, 'fa-solid fa-file-invoice-dollar');
+    return;
+  }
+
+  body.innerHTML = filtered.map(r => {
     let actionBtn = '—';
     if (r.status === 'eligible') {
       actionBtn = `<button class="btn btn-sm btn-fill" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
@@ -180,7 +224,6 @@ function renderInvoicePreviewResults(results, year, month){
     return `<tr>
       <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
-      <td>${r.reason || r.invoice_number || '—'}</td>
       <td>${actionBtn}</td>
     </tr>`;
   }).join('');

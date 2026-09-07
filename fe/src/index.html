@@ -488,15 +488,25 @@
             Generate external-salary consultant fee invoices for eligible employees based on approved rates.
           </div>
           <div class="card" style="margin-bottom:20px;">
-            <div class="card-head">
+            <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
               <h3 id="invoiceResultsTitle">Eligibility Preview</h3>
+              <div class="invoice-filter-group">
+                <button type="button" class="btn-filter-pill active" id="invFilterEligibleBtn" onclick="setInvoiceEligibilityFilter('eligible')">
+                  Eligible Only
+                </button>
+                <button type="button" class="btn-filter-pill" id="invFilterSkippedBtn" onclick="setInvoiceEligibilityFilter('skipped')">
+                  Skipped
+                </button>
+                <button type="button" class="btn-filter-pill" id="invFilterAllBtn" onclick="setInvoiceEligibilityFilter('all')">
+                  All
+                </button>
+              </div>
             </div>
             <table>
               <thead>
                 <tr>
                   <th>Employee</th>
                   <th>Status</th>
-                  <th>Detail</th>
                   <th>Action</th>
                 </tr>
               </thead>

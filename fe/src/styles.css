@@ -3510,6 +3510,43 @@ select option {
   margin-bottom: 18px;
 }
 
+/* Eligibility Preview Filter Tabs */
+.invoice-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 4px;
+}
+
+.btn-filter-pill {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-filter-pill:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.btn-filter-pill.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 /* Popover Modal for Period Selection */
 .invoice-period-popover-modal {
   max-width: 320px;
