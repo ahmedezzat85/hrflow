@@ -92,11 +92,42 @@ class Config:
     SHEETS_CACHE_TTL_SECONDS = int(os.getenv("SHEETS_CACHE_TTL_SECONDS", "30"))
 
     # ---- Database & Storage Engine settings ----
-    # Storage engine mode: "sheets" (default), "dual" (sheets primary + sql shadow), or "sql" (sql primary)
-    STORAGE_ENGINE = os.getenv("STORAGE_ENGINE", "sheets").lower()
+    # Storage engine mode: "sql" (default, SQL as primary system of record), "dual", or "sheets" (legacy)
+    STORAGE_ENGINE = os.getenv("STORAGE_ENGINE", "sql").lower()
 
-    # Relational database connection URL (e.g. postgresql://user:pass@localhost:5432/hrflow or sqlite:///./hrflow.db)
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hrflow.db")
+    # Read source when in "dual" mode: "sql" (default, reads from SQL) or "sheets" (legacy)
+    DUAL_READ_SOURCE = os.getenv("DUAL_READ_SOURCE", "sql").lower()
+
+    # Relational Database engine type: "sqlite" (default) or "postgres" / "postgresql"
+    DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
+
+    # Discrete PostgreSQL connection parameters (used if DATABASE_URL is not explicitly set)
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "hrflow")
+
+    # SQLite file path when DB_TYPE="sqlite"
+    SQLITE_PATH = os.getenv("SQLITE_PATH", "./hrflow.db")
+
+    # Database connection pool tuning (PostgreSQL)
+    DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+    DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+    DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+
+    # Relational database connection URL.
+    # If explicitly set in the environment, takes precedence. Otherwise resolved from DB_TYPE.
+    _raw_db_url = os.getenv("DATABASE_URL")
+    if _raw_db_url and _raw_db_url.strip():
+        DATABASE_URL = _raw_db_url.strip()
+    elif DB_TYPE in ("postgres", "postgresql"):
+        if POSTGRES_PASSWORD:
+            DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+        else:
+            DATABASE_URL = f"postgresql://{POSTGRES_USER}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    else:
+        DATABASE_URL = f"sqlite:///{SQLITE_PATH}"
 
     # ---- File & Document Storage Destination settings ----
     # Storage backend: "drive" (default, Google Drive) or "local" (local filesystem)
@@ -138,6 +169,26 @@ class Config:
             except Exception as e:
                 errors.append(
                     f"LOCAL_STORAGE_PATH '{cls.LOCAL_STORAGE_PATH}' cannot be created or accessed: {e}"
+                )
+
+        if cls.STORAGE_ENGINE not in ("sheets", "dual", "sql"):
+            errors.append(
+                f"STORAGE_ENGINE must be 'sheets', 'dual', or 'sql', got '{cls.STORAGE_ENGINE}'"
+            )
+
+        if cls.DB_TYPE not in ("sqlite", "postgres", "postgresql"):
+            errors.append(
+                f"DB_TYPE must be 'sqlite', 'postgres', or 'postgresql', got '{cls.DB_TYPE}'"
+            )
+
+        if cls.STORAGE_ENGINE in ("dual", "sql"):
+            if cls.DB_TYPE in ("postgres", "postgresql") and not cls.DATABASE_URL.startswith(("postgresql://", "postgres://")):
+                errors.append(
+                    f"DB_TYPE is '{cls.DB_TYPE}' but DATABASE_URL '{cls.DATABASE_URL}' does not start with postgresql://"
+                )
+            elif cls.DB_TYPE == "sqlite" and not cls.DATABASE_URL.startswith("sqlite"):
+                errors.append(
+                    f"DB_TYPE is 'sqlite' but DATABASE_URL '{cls.DATABASE_URL}' does not start with sqlite"
                 )
 
         if cls.IS_PRODUCTION:

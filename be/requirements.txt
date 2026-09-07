@@ -19,8 +19,8 @@ google-auth==2.29.0
 google-api-python-client==2.137.0
 google-auth-httplib2==0.2.0
 
-# Optional PostgreSQL driver (only needed when using postgresql:// in DATABASE_URL)
-# psycopg2-binary>=2.9.9
+# PostgreSQL driver (used when DB_TYPE=postgres)
+psycopg2-binary>=2.9.9
 
 # Test dependencies (Phase 5 - docs/analysis/security-analysis-plan.md).
 # Only needed to run `pytest` from be/, not to run the app itself.

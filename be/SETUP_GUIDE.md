@@ -62,18 +62,71 @@ your web app to Google so it can show the Sign-In button and issue ID tokens.
    sign-in itself succeeds - this is enforced server-side via the token's
    `hd` (hosted domain) claim, so it can't be bypassed from the browser.
 
-## 4. Configure and Run
+## 4. Database Architecture (SQL Engine: SQLite & PostgreSQL)
 
+HRFlow uses a **relational SQL database** as its authoritative system of record:
+
+* **SQLite (Default / Local / Staging)**: Zero-configuration local database (`hrflow.db`), pre-configured and active out-of-the-box.
+* **PostgreSQL (Production / Containerized)**: High-concurrency production database with connection pool tuning and ACID transaction isolation.
+
+### Selecting the Database Engine (`DB_TYPE`)
+
+In your `.env` file:
+```bash
+# Choose 'sqlite' (default) or 'postgres'
+DB_TYPE=sqlite
+STORAGE_ENGINE=sql
+
+# For SQLite:
+SQLITE_PATH=./hrflow.db
+
+# For PostgreSQL (when DB_TYPE=postgres):
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-postgres-password
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=hrflow
 ```
+
+### Running Local PostgreSQL with Docker Compose
+To spin up a local PostgreSQL 16 instance with automatic healthchecks:
+```bash
+docker compose -f docker-compose.db.yml up -d
+```
+
+### Applying Schema Migrations
+Alembic manages all schema migrations:
+```bash
+alembic upgrade head
+```
+
+### Migrating Data from SQLite to PostgreSQL
+Because SQLite (`hrflow.db`) is the active authoritative database, you can migrate all records directly to PostgreSQL with a single command:
+```bash
+# Preview what will be copied without modifying PostgreSQL:
+python scripts/migrate_sqlite_to_postgres.py --dry-run
+
+# Execute data migration and sequence resets:
+python scripts/migrate_sqlite_to_postgres.py
+```
+
+### Cold-Storage Backup of Google Sheets
+To capture a permanent JSON and CSV archive of historical Google Sheets data:
+```bash
+python scripts/export_sheets_cold_storage.py
+```
+
+## 5. Configure and Run
+
+```bash
 pip install -r requirements.txt
-cp .env.example .env   # then fill in the values from steps 1-3
-python seed_data.py    # OPTIONAL: replace the demo emails in seed_data.py
-                        # with real Workspace addresses you can test with first!
+cp .env.example .env   # then fill in values as needed
+alembic upgrade head   # ensure schema is up-to-date
 uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ```
 Visit `http://localhost:5000/docs` for interactive API docs.
 
-## 5. How Employees Get Access
+## 6. How Employees Get Access
 
 Because there's no password to set, onboarding a new employee is simpler
 than before:
@@ -84,7 +137,7 @@ than before:
 3. If someone outside the company (or someone not yet added by HR) tries to
    sign in, they'll see: *"This Google account is not registered in HRFlow."*
 
-## 6. Frontend Files
+## 7. Frontend Files
 
 - `hrflow_hr_management_system_google_signin.html` — the prototype, now with
   the email/password form replaced by the official Google Sign-In button.

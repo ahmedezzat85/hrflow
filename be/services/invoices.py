@@ -98,12 +98,16 @@ def build_document_name(invoice_number: str, employee_name: str) -> str:
 
 
 def find_existing_invoice(repo_or_client, employee_id, payment_year: int, payment_month: int) -> Optional[dict]:
+    if repo_or_client is None:
+        from repositories.deps import get_invoice_repo
+        repo_or_client = get_invoice_repo()
+
     if hasattr(repo_or_client, "find_existing"):
         return repo_or_client.find_existing(employee_id, payment_year, payment_month)
     if hasattr(repo_or_client, "get_all_records"):
         invoices = repo_or_client.get_all_records("Invoices")
     else:
-        invoices = sheets_client.get_client().get_all_records("Invoices")
+        invoices = []
     for inv in invoices:
         if (str(inv.get("employee_id")) == str(employee_id)
                 and str(inv.get("payment_year")) == str(payment_year)
@@ -288,10 +292,9 @@ def _record_invoice(
         repo_or_client.append_row("Invoices", {"id": invoice_row_id, **row_data})
         return invoice_row_id
     else:
-        client = sheets_client.get_client()
-        invoice_row_id = client.next_id("Invoices")
-        client.append_row("Invoices", {"id": invoice_row_id, **row_data})
-        return invoice_row_id
+        from repositories.deps import get_invoice_repo
+        repo = get_invoice_repo()
+        return repo.create(row_data)
 
 
 
@@ -306,10 +309,20 @@ def generate_invoices_bulk(
     if employee_repo is not None and hasattr(employee_repo, "list_all"):
         employees = employee_repo.list_all()
     else:
-        client = sheets_client.get_client()
-        employees = client.get_all_records("Employees")
+        from repositories.deps import get_employee_repo
+        emp_repo = get_employee_repo()
+        if hasattr(emp_repo, "list_all"):
+            employees = emp_repo.list_all()
+        else:
+            client = sheets_client.get_client()
+            employees = client.get_all_records("Employees")
 
-    repo_or_client = invoice_repo or sheets_client.get_client()
+    if invoice_repo is None:
+        from repositories.deps import get_invoice_repo
+        repo_or_client = get_invoice_repo()
+    else:
+        repo_or_client = invoice_repo
+
     results = []
     for emp in employees:
         result = generate_invoice_for_employee(

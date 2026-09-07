@@ -10,7 +10,7 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-from config import Config
+import config
 
 Base = declarative_base()
 
@@ -21,14 +21,20 @@ _SessionFactory = None
 def get_engine():
     global _engine
     if _engine is None:
-        db_url = Config.DATABASE_URL
-        connect_args = {}
+        db_url = config.Config.DATABASE_URL
+        engine_kwargs = {
+            "pool_pre_ping": True,
+        }
         if db_url.startswith("sqlite"):
-            connect_args["check_same_thread"] = False
+            engine_kwargs["connect_args"] = {"check_same_thread": False}
+        else:
+            engine_kwargs["pool_size"] = config.Config.DB_POOL_SIZE
+            engine_kwargs["max_overflow"] = config.Config.DB_MAX_OVERFLOW
+            engine_kwargs["pool_recycle"] = config.Config.DB_POOL_RECYCLE
+
         _engine = create_engine(
             db_url,
-            connect_args=connect_args,
-            pool_pre_ping=True,
+            **engine_kwargs,
         )
     return _engine
 

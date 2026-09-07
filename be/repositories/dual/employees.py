@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteEmployeeRepository:
     def __init__(self, primary: Optional[EmployeeRepository] = None, shadow: Optional[EmployeeRepository] = None):
-        self.primary = primary or SheetsEmployeeRepository()
-        self.shadow = shadow or SqlEmployeeRepository()
+        self.primary = primary or SqlEmployeeRepository()
+        self.shadow = shadow or SheetsEmployeeRepository()
 
     def get_by_id(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
         return self.primary.get_by_id(employee_id)

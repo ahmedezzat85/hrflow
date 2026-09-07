@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteCompanyDocumentRepository:
     def __init__(self, primary: Optional[CompanyDocumentRepository] = None, shadow: Optional[CompanyDocumentRepository] = None):
-        self.primary = primary or SheetsCompanyDocumentRepository()
-        self.shadow = shadow or SqlCompanyDocumentRepository()
+        self.primary = primary or SqlCompanyDocumentRepository()
+        self.shadow = shadow or SheetsCompanyDocumentRepository()
 
     def list_all(self) -> List[Dict[str, Any]]:
         return self.primary.list_all()

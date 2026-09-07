@@ -14,8 +14,8 @@ logger = get_logger("dual_write")
 
 class DualWriteInsuranceRepository:
     def __init__(self, primary: Optional[InsuranceRepository] = None, shadow: Optional[InsuranceRepository] = None):
-        self.primary = primary or SheetsInsuranceRepository()
-        self.shadow = shadow or SqlInsuranceRepository()
+        self.primary = primary or SqlInsuranceRepository()
+        self.shadow = shadow or SheetsInsuranceRepository()
 
     def list_categories(self) -> List[Dict[str, Any]]:
         return self.primary.list_categories()
