@@ -104,6 +104,23 @@ function renderEmployeePortal() {
     return `<tr><td>${s.date}</td><td>${fmtUSD(s.newInternal)}</td><td>${fmtUSD(s.newExternal)}</td><td>${fmtUSD(s.newInternal + s.newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${s.reason}</td></tr>`;
   }).join('') || `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raise history yet.</p></div></td></tr>`;
   document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v => `<tr><td>${v.type}</td><td>${v.dates}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('');
+  
+  // Dynamic employee vacation stat cards
+  const vacEntitlement = emp.vacTotal || 21;
+  const vacUsed = emp.vacUsed || 0;
+  const vacRemaining = Math.max(0, vacEntitlement - vacUsed);
+  const elEnt = document.getElementById('empStatVacEntitlement');
+  const elUsed = document.getElementById('empStatVacUsed');
+  const elRem = document.getElementById('empStatVacRemaining');
+  const elTrend = document.getElementById('empStatVacUsedTrend');
+  if (elEnt) elEnt.textContent = `${vacEntitlement} days`;
+  if (elUsed) elUsed.textContent = `${vacUsed} days`;
+  if (elRem) elRem.textContent = `${vacRemaining} days`;
+  if (elTrend) {
+    const pct = vacEntitlement ? Math.round((vacUsed / vacEntitlement) * 100) : 0;
+    elTrend.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> ${pct}% of quota`;
+  }
+
   document.getElementById('empInsuranceBody').innerHTML = empInsuranceHistory.map(c => `<tr><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td>${c.document_url ? `<a href="${c.document_url}" target="_blank" class="icon-action" style="display:inline-flex;" title="View supporting document"><i class="fa-solid fa-paperclip"></i></a>` : '<span style="color:var(--text3);">—</span>'}</td></tr>`).join('');
   renderEmployeeInsuranceHighlights();
 }

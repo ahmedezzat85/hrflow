@@ -1,33 +1,89 @@
 :root {
+  /* Brand & Accents */
   --accent: #2056e8;
   --accent2: #4f7af8;
   --accent-soft: #e8eeff;
+
+  /* Semantic State Colors */
   --success: #0ea966;
+  --success-soft: rgba(14, 169, 102, .12);
   --warning: #e07d10;
+  --warning-soft: rgba(224, 125, 16, .12);
   --danger: #d63b3b;
+  --danger-soft: rgba(214, 59, 59, .12);
   --info: #4f7af8;
+  --info-soft: rgba(79, 122, 248, .12);
+
+  /* Surfaces, Backgrounds & Borders */
   --bg: #f7f8fb;
   --surface: #ffffff;
   --surface2: #fafbfd;
   --border: rgba(30, 60, 140, .08);
+  --border2: rgba(30, 60, 140, .15);
+
+  /* Typography Colors */
   --text: #141e30;
   --text2: #7a8ea8;
   --text3: #c2cedc;
-  --radius: 18px;
-  --radius-sm: 12px;
+
+  /* Spacing Scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-full: 9999px;
+  --radius: 18px; /* backward compatibility */
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(20, 50, 120, .05);
   --shadow: 0 2px 12px rgba(20, 50, 120, .07);
   --shadow-lg: 0 20px 60px rgba(20, 50, 120, .13);
+
+  /* Fonts */
   --font-head: 'Sora', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
 [data-theme="dark"] {
+  /* Brand & Accents (Dark) */
+  --accent: #3e72f8;
+  --accent2: #5d86f9;
+  --accent-soft: rgba(32, 86, 232, .18);
+
+  /* Semantic State Colors (Dark) */
+  --success: #1fc27a;
+  --success-soft: rgba(31, 194, 122, .18);
+  --warning: #f09228;
+  --warning-soft: rgba(240, 146, 40, .18);
+  --danger: #e25353;
+  --danger-soft: rgba(226, 83, 83, .18);
+  --info: #5d86f9;
+  --info-soft: rgba(93, 134, 249, .18);
+
+  /* Surfaces, Backgrounds & Borders (Dark) */
   --bg: #0f1117;
   --surface: #171a24;
   --surface2: #1d2130;
   --border: #2a2e3d;
+  --border2: rgba(255, 255, 255, .14);
+
+  /* Typography Colors (Dark) */
   --text: #f1f2f6;
   --text2: #9aa0b4;
   --text3: #6b7280;
+
+  /* Shadows (Dark) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, .3);
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, .5);
 }
@@ -2616,4 +2672,201 @@ select option {
 .th-sortable.active i {
   opacity: 1;
   color: var(--accent);
-}
+}
+
+/* ===== Vacations & Requests Visual Parity Redesign ===== */
+
+/* Requests Header & Filter Tabs */
+.requests-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.filter-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+}
+
+.filter-tab:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.filter-tab.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(32, 86, 232, 0.25);
+}
+
+.filter-tab .tab-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  line-height: 1;
+}
+
+.filter-tab.active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Request Row Actions & Details */
+.request-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.request-details-cell {
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.request-details-title {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.request-details-sub {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+/* Vacation Balances Table Progress */
+.vac-progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.vac-progress-cell .progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.progress-bar.progress-accent span {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.progress-bar.progress-warning span {
+  background: linear-gradient(90deg, #e07d10, #f59e0b);
+}
+
+.progress-bar.progress-danger span {
+  background: linear-gradient(90deg, #d63b3b, #ef4444);
+}
+
+.progress-bar.progress-success span {
+  background: linear-gradient(90deg, #0ea966, #10b981);
+}
+
+.vac-progress-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vac-emp-link {
+  font-weight: 600;
+  color: var(--text);
+  transition: color 0.15s ease;
+  cursor: pointer;
+}
+
+.vac-emp-link:hover {
+  color: var(--accent);
+}
+
+/* Time Off Request Card in Employee Portal */
+.time-off-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.time-off-head {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+}
+
+.time-off-body {
+  padding: 24px;
+}
+
+.time-off-summary-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.time-off-days-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.time-off-days-badge b {
+  color: var(--accent);
+  font-family: var(--font-head);
+  font-size: 16px;
+}
+
+/* Stat subtext & trend updates */
+.stat-subtext {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
