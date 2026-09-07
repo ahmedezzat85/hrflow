@@ -50,7 +50,7 @@ function initInvoicesPage(){
 function renderInvoiceResultsPlaceholder(){
   const body = document.getElementById('invoiceResultsBody');
   if(!body) return;
-  body.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-file-invoice-dollar"></i><p>Click "Preview Eligible Employees" to see who will be invoiced for the selected month.</p></div></td></tr>`;
+  body.innerHTML = renderEmptyTableRow(4, 'Click "Preview Eligible Employees" to see who will be invoiced for the selected month.', 'fa-solid fa-file-invoice-dollar');
 }
 
 function _getInvoicePeriodInputs(){
@@ -95,7 +95,7 @@ function renderInvoicePreviewResults(results, year, month){
   document.getElementById('invoiceResultsTitle').textContent =
     `Eligibility Preview — ${_invoicePeriodLabel(year, month)}`;
   if(!results.length){
-    body.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-file-invoice-dollar"></i><p>No employees found.</p></div></td></tr>`;
+    body.innerHTML = renderEmptyTableRow(4, 'No eligible employees found for this period.', 'fa-solid fa-file-invoice-dollar');
     return;
   }
   body.innerHTML = results.map(r => {
@@ -268,7 +268,7 @@ function previewInvoicePdf(invoiceId, invoiceNumber){
         .catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
     };
   }
-  if (container) container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading PDF preview...</div>';
+  if (container) renderLoadingState(container, 'Loading PDF preview...');
   if (modal) modal.classList.add('active');
 
   Api.getInvoicePreviewBlobUrl(invoiceId).then(url => {
@@ -357,7 +357,7 @@ function renderGroupedInvoiceHistory(){
 
   if(!_rawInvoiceHistory.length){
     if(badgeEl) badgeEl.style.display = 'none';
-    container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>No invoices generated yet.</p></div>`;
+    renderEmptyState(container, 'No invoices generated yet.', 'fa-solid fa-clock-rotate-left');
     return;
   }
 
@@ -494,7 +494,7 @@ async function loadInvoiceHistory(){
     renderGroupedInvoiceHistory();
   } catch(err){
     if(container){
-      container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load invoice history: ${err.message}</p></div>`;
+      renderEmptyState(container, `Could not load invoice history: ${err.message}`, 'fa-solid fa-triangle-exclamation');
     }
   }
 }

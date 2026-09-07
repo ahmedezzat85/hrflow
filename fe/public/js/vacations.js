@@ -41,7 +41,7 @@ function renderVacationBalances() {
   }
 
   if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-user-xmark"></i><p>No employee balances match "${vacationBalanceSearchQuery}".</p></div></td></tr>`;
+    body.innerHTML = renderEmptyTableRow(6, vacationBalanceSearchQuery ? `No employee balances match "${vacationBalanceSearchQuery}".` : 'No employee vacation balances recorded yet.', 'fa-solid fa-user-xmark');
     return;
   }
 

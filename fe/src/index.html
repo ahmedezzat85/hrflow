@@ -100,6 +100,7 @@
         </div>
       </div>
     </aside>
+    <div class="sidebar-backdrop" id="adminSidebarBackdrop" onclick="closeAllSidebars()"></div>
     <main class="main">
       <div class="topbar">
         <div style="display:flex;align-items:center;gap:12px;">
@@ -110,7 +111,7 @@
           </div>
         </div>
         <div class="top-actions">
-          <button class="icon-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+          <button class="icon-btn" id="adminSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
           <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
           <button class="icon-btn" id="adminThemeToggle"><i class="fa-solid fa-moon"></i></button>
         </div>
@@ -119,17 +120,17 @@
         <section class="page-section active" id="a-dashboard">
           <div class="hero-banner" style="margin-bottom:20px;">
             <div class="hero-stats">
-              <div class="hero-stat"><b id="statEmployees">248</b><span>Total Employees</span></div>
-              <div class="hero-stat"><b id="statPending">14</b><span>Pending Requests</span></div>
-              <div class="hero-stat"><b id="statOnLeave">37</b><span>On Leave This Month</span></div>
-              <div class="hero-stat"><b id="statOpenClaims">9</b><span>Open Insurance Claims</span></div>
+              <div class="hero-stat"><b id="statEmployees">—</b><span>Active Headcount</span></div>
+              <div class="hero-stat"><b id="statPending">—</b><span>Pending Approvals</span></div>
+              <div class="hero-stat"><b id="statOnLeave">—</b><span>Currently On Leave</span></div>
+              <div class="hero-stat"><b id="statOpenClaims">—</b><span>Open Claims</span></div>
             </div>
             <span id="statClaimsTotal" style="display:none;"></span>
           </div>
           <div class="grid g-2-1" style="margin-bottom:20px;">
             <div class="card">
               <div class="card-head">
-                <h3>Requests Overview (Last 6 Months)</h3><a class="link">Export</a>
+                <h3>Requests Overview (Last 6 Months)</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
               </div>
               <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
             </div>
@@ -151,7 +152,7 @@
               <div class="card-head">
                 <h3>Pending Requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
               </div>
-              <table>
+              <table class="responsive-card-table">
                 <thead>
                   <tr>
                     <th>Employee</th>
@@ -183,7 +184,7 @@
           </div>
           <div class="card">
             <div class="section-loading-bar" id="empTableLoadingBar"><span></span></div>
-            <table>
+            <table class="responsive-card-table">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -221,7 +222,7 @@
                   <div class="card-head">
                     <h3><i class="fa-solid fa-umbrella-beach"></i> Vacation History</h3>
                   </div>
-                  <table>
+                  <table class="responsive-card-table">
                     <thead>
                       <tr>
                         <th>Type</th>
@@ -237,7 +238,7 @@
                   <div class="card-head">
                     <h3><i class="fa-solid fa-briefcase-medical"></i> Insurance Claims</h3>
                   </div>
-                  <table>
+                  <table class="responsive-card-table">
                     <thead>
                       <tr>
                         <th>Category</th>
@@ -276,7 +277,7 @@
                     <i class="fa-solid fa-upload"></i> Upload
                   </button>
                 </div>
-                <table>
+                <table class="responsive-card-table">
                   <thead>
                     <tr>
                       <th>Document</th>
@@ -379,7 +380,7 @@
                 <p style="font-size:12px;color:var(--text2);margin-top:2px;">Review, approve or reject employee leave and claim requests in real-time.</p>
               </div>
             </div>
-            <table>
+            <table class="responsive-card-table">
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -587,7 +588,7 @@
                 <input id="vacBalanceSearch" placeholder="Search by name, dept..." oninput="filterVacationBalances()">
               </div>
             </div>
-            <table>
+            <table class="responsive-card-table">
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -648,7 +649,7 @@
             <div class="card-head">
               <h3>Claims History</h3>
             </div>
-            <table>
+            <table class="responsive-card-table">
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -724,6 +725,7 @@
         </div>
       </div>
     </aside>
+    <div class="sidebar-backdrop" id="empSidebarBackdrop" onclick="closeAllSidebars()"></div>
     <main class="main">
       <div class="topbar">
         <div style="display:flex;align-items:center;gap:12px;">
@@ -734,6 +736,7 @@
           </div>
         </div>
         <div class="top-actions">
+          <button class="icon-btn" id="empSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
           <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
           <button class="icon-btn" id="empThemeToggle"><i class="fa-solid fa-moon"></i></button>
         </div>
@@ -742,10 +745,10 @@
         <section class="page-section active" id="e-dashboard">
           <div class="hero-banner" style="margin-bottom:20px;">
             <div class="hero-stats">
-              <div class="hero-stat"><b>14</b><span>Vacation Days Left</span></div>
-              <div class="hero-stat"><b id="empDashSalary">EGP 42,000</b><span>Current Monthly Salary</span></div>
-              <div class="hero-stat"><b>2</b><span>WFH Days This Month</span></div>
-              <div class="hero-stat"><b>1</b><span>Pending Insurance Claim</span></div>
+              <div class="hero-stat"><b id="empDashVacDays">—</b><span>Vacation Days Left</span></div>
+              <div class="hero-stat"><b id="empDashSalary">—</b><span>Monthly Compensation</span></div>
+              <div class="hero-stat"><b id="empDashWfh">—</b><span>WFH Days This Month</span></div>
+              <div class="hero-stat"><b id="empDashClaims">—</b><span>Pending Claims</span></div>
             </div>
           </div>
           <div class="grid g-2-1" style="margin-bottom:20px;">
@@ -908,7 +911,7 @@
                 <p style="font-size:12px;color:var(--text2);margin-top:2px;">Overview of all previous and pending leave requests.</p>
               </div>
             </div>
-            <table>
+            <table class="responsive-card-table">
               <thead>
                 <tr>
                   <th>Type</th>
@@ -960,7 +963,7 @@
             <div class="card-head">
               <h3>Claims History</h3>
             </div>
-            <table>
+            <table class="responsive-card-table">
               <thead>
                 <tr>
                   <th>Category</th>
@@ -1576,7 +1579,7 @@
   <div class="modal-overlay" id="regenerateInvoiceModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon" style="background:rgba(234, 179, 8, 0.15);color:var(--warning, #eab308);"><i class="fa-solid fa-arrows-rotate"></i></div>
+        <div class="modal-head-icon" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-arrows-rotate"></i></div>
         <div class="modal-head-text">
           <h3 id="regenModalTitle">Regenerate Invoice</h3>
           <p id="regenModalSubtitle">Overwrite and regenerate invoice document.</p>
@@ -1584,7 +1587,7 @@
         <button class="modal-close" onclick="closeModal('regenerateInvoiceModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div style="background:var(--surface2, #181c24);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:16px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-4);margin-bottom:var(--space-4);">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
             <span style="font-size:12px;color:var(--text2);">Employee</span>
             <strong id="regenEmpName" style="font-size:13px;color:var(--text);">-</strong>
@@ -1620,7 +1623,7 @@
         <button class="modal-close" onclick="closeModal('bulkInvoiceModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <div style="background:var(--surface2, #181c24);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:16px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-4);margin-bottom:var(--space-4);">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
             <span style="font-size:12px;color:var(--text2);">Billing Period</span>
             <strong id="bulkModalPeriod" style="font-size:13px;color:var(--text);">-</strong>
@@ -1647,6 +1650,26 @@
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('bulkInvoiceModal')">Cancel</button>
         <button class="btn btn-fill" id="btnConfirmBulkGenerate" onclick="executeBulkGenerateInvoices(event)"><i class="fa-solid fa-check"></i> Generate Batch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Search / Command Palette Modal (§4) -->
+  <div class="modal-overlay" id="commandPaletteModal" onclick="if(event.target===this)closeCommandPalette()">
+    <div class="modal command-palette-modal">
+      <div class="command-palette-head">
+        <div class="palette-search-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+        <input type="text" id="commandPaletteInput" class="palette-input" placeholder="Search employees by name, role, department..." autocomplete="off" spellcheck="false">
+        <button class="palette-shortcut-badge" onclick="closeCommandPalette()" title="Close (Esc)">ESC</button>
+      </div>
+      <div class="command-palette-body" id="commandPaletteResults"></div>
+      <div class="command-palette-foot">
+        <div class="palette-tips">
+          <span class="palette-tip"><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+          <span class="palette-tip"><kbd>↵</kbd> Select</span>
+          <span class="palette-tip"><kbd>ESC</kbd> Close</span>
+        </div>
+        <span class="palette-domain-tag"><i class="fa-solid fa-users"></i> Employees</span>
       </div>
     </div>
   </div>

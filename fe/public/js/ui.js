@@ -27,6 +27,47 @@ function showTableSkeleton(tbodyId, colCount, rowCount=5){
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 
+/**
+ * Standardized Empty & Loading state helpers across all domain modules
+ */
+function getEmptyStateHtml(message = 'No data available.', icon = 'fa-solid fa-inbox') {
+  return `<div class="empty-state"><i class="${icon}"></i><p>${message}</p></div>`;
+}
+
+function getEmptyTableRowHtml(colCount = 1, message = 'No data available.', icon = 'fa-solid fa-inbox') {
+  return `<tr><td colspan="${colCount}">${getEmptyStateHtml(message, icon)}</td></tr>`;
+}
+
+function getLoadingStateHtml(message = 'Loading data...') {
+  return `<div class="empty-state loading-state"><i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent);"></i><p style="color:var(--text2);margin-top:10px;">${message}</p></div>`;
+}
+
+function getLoadingTableRowHtml(colCount = 1, message = 'Loading data...') {
+  return `<tr><td colspan="${colCount}">${getLoadingStateHtml(message)}</td></tr>`;
+}
+
+function renderEmptyState(target, message, icon = 'fa-solid fa-inbox') {
+  const el = typeof target === 'string' ? document.getElementById(target) : target;
+  const html = getEmptyStateHtml(message, icon);
+  if (el) el.innerHTML = html;
+  return html;
+}
+
+function renderEmptyTableRow(colCount, message, icon = 'fa-solid fa-inbox') {
+  return getEmptyTableRowHtml(colCount, message, icon);
+}
+
+function renderLoadingState(target, message = 'Loading...') {
+  const el = typeof target === 'string' ? document.getElementById(target) : target;
+  const html = getLoadingStateHtml(message);
+  if (el) el.innerHTML = html;
+  return html;
+}
+
+function renderLoadingTableRow(colCount, message = 'Loading...') {
+  return getLoadingTableRowHtml(colCount, message);
+}
+
 function toggleSidebarCollapse(id){
   const sidebar = document.getElementById(id);
   if(!sidebar) return;
@@ -53,7 +94,26 @@ function getInitials(name){
   return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '--';
 }
 
-function toggleSidebar(id){ document.getElementById(id).classList.toggle('open'); }
+function toggleSidebar(id){
+  const sb = document.getElementById(id);
+  if(!sb) return;
+  sb.classList.toggle('open');
+  const isOpened = sb.classList.contains('open');
+  const backdrop = document.getElementById(id === 'adminSidebar' ? 'adminSidebarBackdrop' : 'empSidebarBackdrop');
+  if(backdrop) backdrop.classList.toggle('active', isOpened);
+}
+
+function closeAllSidebars(){
+  ['adminSidebar', 'empSidebar'].forEach(sid => {
+    const el = document.getElementById(sid);
+    if (el) el.classList.remove('open');
+  });
+  ['adminSidebarBackdrop', 'empSidebarBackdrop'].forEach(bid => {
+    const el = document.getElementById(bid);
+    if (el) el.classList.remove('active');
+  });
+}
+
 document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'admin')); });
 document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'employee')); });
 document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
@@ -79,7 +139,7 @@ function showSection(pageId, portal){
   document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>n.classList.toggle('active', n.dataset.page===pageId));
   const t = titles[pageId];
   if(t){ document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0]; document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1]; }
-  document.getElementById(portal==='admin'?'adminSidebar':'empSidebar').classList.remove('open');
+  closeAllSidebars();
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
 }
 function applyTheme(theme){

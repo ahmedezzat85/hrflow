@@ -45,7 +45,7 @@ function renderRequestsTable(filter) {
     : requests.filter(r => r.type === currentRequestsFilter);
 
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No requests found in this category.</p></div></td></tr>`;
+    body.innerHTML = renderEmptyTableRow(6, currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`, 'fa-solid fa-inbox');
     return;
   }
 
@@ -55,26 +55,26 @@ function renderRequestsTable(filter) {
 
     return `
       <tr>
-        <td class="tname">
+        <td data-label="Employee" class="tname">
           <div class="avatar">${initials(r.employee_name)}</div>
           <div>
             <div style="font-weight:600;color:var(--text);">${r.employee_name}</div>
             ${deptTag ? `<div style="margin-top:2px;">${deptTag}</div>` : ''}
           </div>
         </td>
-        <td>${getRequestTypeBadge(r.type)}</td>
-        <td>
+        <td data-label="Type">${getRequestTypeBadge(r.type)}</td>
+        <td data-label="Details">
           <div class="request-details-cell">
             <div class="request-details-title">${r.details || 'No details provided'}</div>
           </div>
         </td>
-        <td>
+        <td data-label="Date">
           <div style="font-size:12.5px;color:var(--text2);display:inline-flex;align-items:center;gap:6px;">
             <i class="fa-regular fa-calendar" style="color:var(--text3);"></i> ${r.date || '—'}
           </div>
         </td>
-        <td>${statusPill(r.status)}</td>
-        <td>
+        <td data-label="Status">${statusPill(r.status)}</td>
+        <td data-label="Actions" class="col-actions">
           <div class="request-actions">
             ${r.status === 'Pending' ? `
               <button class="btn btn-sm btn-success-outline" onclick="actionRequest(${r.id}, 'Approved', this)">

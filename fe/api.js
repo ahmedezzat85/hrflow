@@ -30,6 +30,7 @@ const SessionInfo = {
 let _sessionExpiredHandled = false;
 
 function forceSessionExpiredLogout() {
+  if (typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')) return;
   if (_sessionExpiredHandled) return;
   _sessionExpiredHandled = true;
 

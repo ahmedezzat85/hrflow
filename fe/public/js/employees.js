@@ -2,19 +2,19 @@ function renderEmployeesTable(filter = '') {
   const body = document.getElementById('employeesTableBody');
   const f = filter.toLowerCase();
   body.innerHTML = employees.filter(e => e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
-    <td>${e.id}</td>
-    <td class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
-    <td>${e.role}</td>
-    <td>${e.employment_state || 'Full-Time'}</td>
+    <td data-label="ID" class="col-id">${e.id}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
+    <td data-label="Role">${e.role}</td>
+    <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
-    <td>${e.nextRaise}</td>
-    <td>${statusPill(e.status)}</td>
-    <td style="display:flex;gap:6px;">
-      <button class="icon-action" onclick="viewProfile(${e.id})"><i class="fa-solid fa-eye"></i></button>
-      <button class="icon-action" onclick="openEmployeeModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
+    <td data-label="Next Raise">${e.nextRaise}</td>
+    <td data-label="Status">${statusPill(e.status)}</td>
+    <td data-label="Actions" class="col-actions">
+      <button class="icon-action" onclick="viewProfile(${e.id})" title="View Profile"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" onclick="openEmployeeModal(${e.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
       <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice(${e.id})"><i class="fa-solid fa-file-invoice"></i></button>
-      <button class="icon-action" onclick="askDelete(${e.id})"><i class="fa-solid fa-trash"></i></button>
-    </td></tr>`).join('') || `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-user-slash"></i><p>No employees found.</p></div></td></tr>`;
+      <button class="icon-action" onclick="askDelete(${e.id})" title="Delete"><i class="fa-solid fa-trash"></i></button>
+    </td></tr>`).join('') || renderEmptyTableRow(7, 'No employees found.', 'fa-solid fa-user-slash');
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 
@@ -42,23 +42,6 @@ function openEmployeeModal(id = null) {
     document.getElementById('fEmpEmploymentState').value = 'Full-Time';
   }
   document.getElementById('employeeModal').classList.add('active');
-}
-
-function setButtonLoading(btn, isLoading, loadingText = 'Saving…') {
-  if (!btn) return;
-  if (isLoading) {
-    if (!btn.dataset.originalHtml) {
-      btn.dataset.originalHtml = btn.innerHTML;
-    }
-    btn.disabled = true;
-    btn.innerHTML = `<span class="btn-spinner"></span> ${loadingText}`;
-  } else {
-    btn.disabled = false;
-    if (btn.dataset.originalHtml) {
-      btn.innerHTML = btn.dataset.originalHtml;
-      delete btn.dataset.originalHtml;
-    }
-  }
 }
 
 async function saveEmployee(evt) {
@@ -189,6 +172,12 @@ async function viewProfile(id) {
     showTableSkeleton('detailVacationBody', 4, 3);
     showTableSkeleton('detailClaimsBody', 4, 3);
     showTableSkeleton('detailDocumentsBody', 3, 2);
+    if (window.location && window.location.search && window.location.search.includes('mock=')) {
+      document.getElementById('detailVacationBody').innerHTML = renderEmptyTableRow(4, 'No vacation records in mock view.');
+      document.getElementById('detailClaimsBody').innerHTML = renderEmptyTableRow(4, 'No insurance claims in mock view.');
+      document.getElementById('detailDocumentsBody').innerHTML = renderEmptyTableRow(3, 'No employee documents in mock view.');
+      return;
+    }
     try {
       const [vacHistory, claims, notes, freshConsumption] = await Promise.all([
         Api.getVacationHistory(id),
@@ -217,15 +206,15 @@ async function viewProfile(id) {
         }
       }
 
-      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td>${v.type}</td><td>${v.start_date} to ${v.end_date}</td><td>${v.days}</td><td>${statusPill(v.status)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><p>No vacation records yet.</p></div></td></tr>`;
+      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type">${v.type}</td><td data-label="Dates">${v.start_date} to ${v.end_date}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
       const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id) || (e.name && (c.employee_name || c.Employee_Name || '').toLowerCase() === e.name.toLowerCase()));
       document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => {
         const cat = c.category || c.Category || c.claim_category || c.type || '—';
         const amt = c.amount !== undefined ? c.amount : (c.Amount || 0);
         const dt = c.date || c.Date || '—';
         const st = c.status || c.Status || 'Pending';
-        return `<tr><td>${cat}</td><td>${fmtMoney(amt)}</td><td>${dt}</td><td>${statusPill(st)}</td></tr>`;
-      }).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-briefcase-medical"></i><p>No insurance claims yet.</p></div></td></tr>`;
+        return `<tr><td data-label="Category">${cat}</td><td data-label="Amount">${fmtMoney(amt)}</td><td data-label="Date">${dt}</td><td data-label="Status">${statusPill(st)}</td></tr>`;
+      }).join('') || renderEmptyTableRow(4, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');
       renderNotesList(notes);
       await loadEmployeeDocuments(id);
       await loadBankAccountStatus(id);
@@ -238,8 +227,8 @@ function renderNotesList(notes) {
   const catColors = { General: 'accent', Performance: 'success', Incident: 'danger', Achievement: 'success', Attendance: 'info', Warning: 'warning' };
   list.innerHTML = notes.map(n => {
     const color = catColors[n.category] || 'accent';
-    return `<li><div class="ic" style="background:rgba(32,86,232,.12);color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
-  }).join('') || `<li><div class="empty-state"><i class="fa-solid fa-note-sticky"></i><p>No notes recorded yet.</p></div></li>`;
+    return `<li><div class="ic" style="background:var(--${color}-soft, var(--accent-soft));color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+  }).join('') || `<li>${getEmptyStateHtml('No notes recorded yet.', 'fa-solid fa-note-sticky')}</li>`;
 }
 
 async function saveEmployeeNote(evt) {
@@ -370,13 +359,13 @@ function renderEmployeeDocuments(docs) {
   const body = document.getElementById('detailDocumentsBody');
   if (!body) return;
   body.innerHTML = docs.length ? docs.map(d => `<tr>
-    <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${d.name}</span></div></td>
-    <td>${d.uploaded_at}</td>
-    <td style="display:flex;gap:6px;justify-content:flex-end;">
+    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${d.name}</span></div></td>
+    <td data-label="Uploaded">${d.uploaded_at}</td>
+    <td data-label="Actions" class="col-actions">
       <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, ${JSON.stringify(String(d.name).replace(/`/g, ''))}, ${JSON.stringify(d.file_type)})"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
-    </td></tr>`).join('') : `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No documents uploaded yet.</p></div></td></tr>`;
+    </td></tr>`).join('') : renderEmptyTableRow(3, 'No documents uploaded yet.', 'fa-solid fa-folder-open');
 }
 
 function previewEmployeeDocument(docId, name, fileType) {
@@ -387,16 +376,16 @@ function previewEmployeeDocument(docId, name, fileType) {
     e.preventDefault();
     Api.downloadEmployeeDocumentFile(docId, name).catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
   };
-  container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading preview...</div>';
+  renderLoadingState(container, 'Loading preview...');
   document.getElementById('documentPreviewModal').classList.add('active');
   Api.getDocumentPreviewBlobUrl(docId).then(url => {
     if (fileType === 'image') {
       container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
     } else {
-      container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:#fff;"></iframe>`;
+      container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:var(--surface);"></iframe>`;
     }
   }).catch(err => {
-    container.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
   });
 }
 
@@ -600,7 +589,7 @@ async function loadBankAccountStatus(empId) {
     _bankAccountHasDetails = !!data.has_details;
     if (_bankAccountHasDetails) {
       pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> On file';
-      pill.style.cssText = 'background:#e6f9f1;color:var(--success);';
+      pill.style.cssText = 'background:var(--success-soft);color:var(--success);';
       if (btn) {
         btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
         btn.title = 'Edit Bank Details';

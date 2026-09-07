@@ -17,17 +17,17 @@ function renderSalaryPage(filter=''){
   const f = filter.toLowerCase();
   const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
   document.getElementById('statPayroll').textContent = fmtMoney(totalPayroll);
-  const allRaises = employees.flatMap(e=>e.salaryHistory.map(h=>({...h, emp:e.name, empId:e.id})));
-  const thisYearRaises = allRaises.filter(h=>h.date.startsWith('2026'));
+  const allRaises = employees.flatMap(e=>(e.salaryHistory || []).map(h=>({...h, emp:e.name, empId:e.id})));
+  const thisYearRaises = allRaises.filter(h=>h.date && h.date.startsWith('2026'));
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
-  const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct),0)/thisYearRaises.length) : 0;
+  const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct || 0),0)/thisYearRaises.length) : 0;
   document.getElementById('statAvgRaise').textContent = (avgPct>=0?'+':'') + avgPct.toFixed(1) + '%';
   const now = new Date();
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
-  const upcoming = employees.filter(e=>{ const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
+  const upcoming = employees.filter(e=>{ if (!e.nextRaise || isNaN(new Date(e.nextRaise).getTime())) return false; const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
   const body = document.getElementById('salaryTableBody');
-  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || e.dept.toLowerCase().includes(f)).map(e=>{ const last = e.salaryHistory.length ? e.salaryHistory[e.salaryHistory.length-1] : null; return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise}</td><td>${last ? `${last.date} (${last.pct})` : '<span style="color:var(--text3);">No history</span>'}</td><td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`; }).join('');
+  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f)).map(e=>{ const last = (e.salaryHistory && e.salaryHistory.length) ? e.salaryHistory[e.salaryHistory.length-1] : null; return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept || e.department || '—'}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise || '—'}</td><td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td><td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`; }).join('') || renderEmptyTableRow(6, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   histBody.innerHTML = sortedHist.map((h, idx) => {
@@ -38,7 +38,7 @@ function renderSalaryPage(filter=''){
     const newExternal = Number(h.newExternal || 0);
     const d = computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal);
     return `<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtUSD(newInternal)}</td><td>${fmtUSD(newExternal)}</td><td>${fmtUSD(newInternal+newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${h.reason}</td></tr>`;
-  }).join('') || `<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-sack-dollar"></i><p>No raises recorded yet.</p></div></td></tr>`;
+  }).join('') || renderEmptyTableRow(9, 'No raises recorded yet.', 'fa-solid fa-sack-dollar');
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
 function openRaiseModal(empId=null){
