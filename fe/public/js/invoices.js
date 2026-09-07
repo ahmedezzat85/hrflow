@@ -18,6 +18,8 @@ let _rawInvoiceHistory = [];
 let _invoiceSortField = 'name'; // 'name' | 'number'
 let _invoiceSortDir = 'asc';    // 'asc' | 'desc'
 let _expandedInvoiceMonths = new Set();
+let _popoverSelectedYear = new Date().getFullYear();
+let _popoverSelectedMonth = new Date().getMonth() + 1;
 
 function _currentInvoicePeriod(){
   const now = new Date();
@@ -34,17 +36,85 @@ function _escapeAttr(str){
   return String(str || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function updateInvoicePeriodLabel(year, month){
+  const lbl = document.getElementById('invPeriodBtnLabel');
+  if(lbl){
+    const names = ["", "January", "February", "March", "April", "May", "June",
+                   "July", "August", "September", "October", "November", "December"];
+    lbl.textContent = `${names[month] || 'Month'} ${year || ''}`;
+  }
+}
+
+function openInvoicePeriodModal(){
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  _popoverSelectedYear = (yearInput && Number(yearInput.value)) || new Date().getFullYear();
+  _popoverSelectedMonth = (monthInput && Number(monthInput.value)) || (new Date().getMonth() + 1);
+  renderInvoicePeriodModal();
+  const modal = document.getElementById('invoicePeriodModal');
+  if(modal) modal.classList.add('active');
+}
+
+function renderInvoicePeriodModal(){
+  const yearLbl = document.getElementById('invPopoverYearLabel');
+  if(yearLbl) yearLbl.textContent = _popoverSelectedYear;
+
+  const monthGrid = document.getElementById('invPopoverMonthGrid');
+  if(!monthGrid) return;
+  const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  monthGrid.innerHTML = monthNames.slice(1).map((name, idx) => {
+    const mNum = idx + 1;
+    const isActive = mNum === _popoverSelectedMonth;
+    return `<button type="button" class="inv-month-btn ${isActive ? 'active' : ''}" onclick="selectInvoicePopoverMonth(${mNum})">${name}</button>`;
+  }).join('');
+}
+
+function changeInvoicePopoverYear(delta){
+  _popoverSelectedYear += delta;
+  renderInvoicePeriodModal();
+}
+
+function selectInvoicePopoverMonth(monthNum){
+  _popoverSelectedMonth = monthNum;
+  renderInvoicePeriodModal();
+  applyInvoicePeriodSelection();
+}
+
+function applyInvoicePeriodSelection(){
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  if(yearInput) yearInput.value = _popoverSelectedYear;
+  if(monthInput) monthInput.value = _popoverSelectedMonth;
+  updateInvoicePeriodLabel(_popoverSelectedYear, _popoverSelectedMonth);
+  closeModal('invoicePeriodModal');
+}
+
 /**
  * Called when the Invoices nav-item/section becomes active.
  */
 function initInvoicesPage(){
   const { year, month } = _currentInvoicePeriod();
   const yearInput = document.getElementById('invPaymentYear');
-  const monthSelect = document.getElementById('invPaymentMonth');
+  const monthInput = document.getElementById('invPaymentMonth');
   if(yearInput && !yearInput.value) yearInput.value = year;
-  if(monthSelect) monthSelect.value = month;
+  if(monthInput && !monthInput.value) monthInput.value = month;
+  const activeYear = (yearInput && yearInput.value) ? Number(yearInput.value) : year;
+  const activeMonth = (monthInput && monthInput.value) ? Number(monthInput.value) : month;
+  updateInvoicePeriodLabel(activeYear, activeMonth);
   renderInvoiceResultsPlaceholder();
   loadInvoiceHistory();
+}
+
+function setupDefaultInvoicePeriod(){
+  const { year, month } = _currentInvoicePeriod();
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  if(yearInput) yearInput.value = year;
+  if(monthInput) monthInput.value = month;
+  updateInvoicePeriodLabel(year, month);
+}
+if(typeof window !== 'undefined'){
+  window.addEventListener('DOMContentLoaded', setupDefaultInvoicePeriod);
 }
 
 function renderInvoiceResultsPlaceholder(){
@@ -54,13 +124,15 @@ function renderInvoiceResultsPlaceholder(){
 }
 
 function _getInvoicePeriodInputs(){
-  const year = Number(document.getElementById('invPaymentYear').value);
-  const month = Number(document.getElementById('invPaymentMonth').value);
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  const year = yearInput ? Number(yearInput.value) : new Date().getFullYear();
+  const month = monthInput ? Number(monthInput.value) : (new Date().getMonth() + 1);
   return { year, month };
 }
 
 async function previewInvoiceEligibility(evt){
-  const btn = (evt && evt.currentTarget) || document.querySelector('#a-invoices .toolbar + .card .btn');
+  const btn = (evt && evt.currentTarget) || document.querySelector('#a-invoices .invoice-toolbar-actions .btn');
   const { year, month } = _getInvoicePeriodInputs();
   if(!year || !month || month < 1 || month > 12){
     toast('Please select a valid payment year and month.', 'fa-solid fa-triangle-exclamation');

@@ -463,43 +463,29 @@
         </section>
 
         <section class="page-section" id="a-invoices">
-          <div class="toolbar">
-            <div class="form-grid" style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
-              <div class="form-field"><label>Payment Year</label><input type="number" id="invPaymentYear"
-                  placeholder="2026"></div>
-              <div class="form-field">
-                <label>Payment Month</label>
-                <select id="invPaymentMonth">
-                  <option value="1">January</option>
-                  <option value="2">February</option>
-                  <option value="3">March</option>
-                  <option value="4">April</option>
-                  <option value="5">May</option>
-                  <option value="6">June</option>
-                  <option value="7">July</option>
-                  <option value="8">August</option>
-                  <option value="9">September</option>
-                  <option value="10">October</option>
-                  <option value="11">November</option>
-                  <option value="12">December</option>
-                </select>
-              </div>
+          <!-- Invoices Toolbar (Variant C - §7) -->
+          <div class="invoice-toolbar-row">
+            <div class="invoice-period-picker-wrap">
+              <button type="button" class="btn-period-trigger" id="invPeriodBtn" onclick="openInvoicePeriodModal()">
+                <i class="fa-regular fa-calendar" style="color:var(--accent);"></i>
+                <span id="invPeriodBtnLabel">—</span>
+                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--text2);margin-left:4px;"></i>
+              </button>
+              <input type="hidden" id="invPaymentYear">
+              <input type="hidden" id="invPaymentMonth">
+            </div>
+
+            <div class="invoice-toolbar-actions">
+              <button type="button" class="btn btn-secondary" onclick="previewInvoiceEligibility(event)">
+                <i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees
+              </button>
+              <button type="button" class="btn btn-fill" onclick="generateBulkInvoices(event)">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices
+              </button>
             </div>
           </div>
-          <div class="card" style="margin-bottom:20px;">
-            <div class="card-head">
-              <h3>Generate External-Salary Invoices</h3>
-            </div>
-            <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
-              Generates "Consultant Fees" invoices for employees whose external USD salary is greater than zero, using
-              their invoice ID and address on file. Documents are saved to the global Invoices folder in Google Drive.
-            </p>
-            <div style="display:flex;gap:10px;">
-              <button class="btn" onclick="previewInvoiceEligibility(event)"><i
-                  class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees</button>
-              <button class="btn btn-fill" onclick="generateBulkInvoices(event)"><i
-                  class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices for All Eligible</button>
-            </div>
+          <div class="invoice-toolbar-caption">
+            Generate external-salary consultant fee invoices for eligible employees based on approved rates.
           </div>
           <div class="card" style="margin-bottom:20px;">
             <div class="card-head">
@@ -1670,6 +1656,23 @@
           <span class="palette-tip"><kbd>ESC</kbd> Close</span>
         </div>
         <span class="palette-domain-tag"><i class="fa-solid fa-users"></i> Employees</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoice Period Selection Popover Modal (Variant C - §7) -->
+  <div class="modal-overlay" id="invoicePeriodModal" onclick="if(event.target===this)closeModal('invoicePeriodModal')">
+    <div class="modal invoice-period-popover-modal">
+      <div class="invoice-popover-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button type="button" class="btn btn-sm" onclick="changeInvoicePopoverYear(-1)" title="Previous Year"><i class="fa-solid fa-chevron-left"></i></button>
+          <span class="invoice-popover-year-label" id="invPopoverYearLabel">2026</span>
+          <button type="button" class="btn btn-sm" onclick="changeInvoicePopoverYear(1)" title="Next Year"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <button class="modal-close" onclick="closeModal('invoicePeriodModal')" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding:14px 16px;">
+        <div class="invoice-popover-month-grid" id="invPopoverMonthGrid"></div>
       </div>
     </div>
   </div>
