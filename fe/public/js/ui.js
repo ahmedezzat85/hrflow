@@ -180,7 +180,8 @@ function statusPill(status){
   const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
 }
-function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function openModal(id){ const el = document.getElementById(id); if (el) el.classList.add('active'); }
+function closeModal(id){ const el = document.getElementById(id); if (el) el.classList.remove('active'); }
 function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
 
 function setButtonLoading(buttonEl, isLoading, loadingText = 'Saving…') {

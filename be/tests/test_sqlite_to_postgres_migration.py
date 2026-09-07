@@ -149,6 +149,7 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
 
 
 def test_dual_write_reads_from_sql_primary(fake_sheets_client, tmp_path):
+    fake_sheets_client.auto_sync_to_sql = False
     from db import reset_engine_for_testing
 
     db_file = tmp_path / "dual_test.db"

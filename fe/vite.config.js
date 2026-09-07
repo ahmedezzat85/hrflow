@@ -19,6 +19,7 @@ const APP_SCRIPT_ORDER = [
   'insurance.js',
   'dochub.js',
   'charts.js',
+  'export.js',
   'app.js',
 ];
 

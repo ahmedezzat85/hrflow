@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 def _fresh_config(monkeypatch, **env_overrides):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-12345")
     monkeypatch.setenv("ENVIRONMENT", "development")
-    monkeypatch.setenv("STORAGE_ENGINE", "sheets")
+    monkeypatch.setenv("STORAGE_ENGINE", "sql")
     monkeypatch.setenv("DB_TYPE", "sqlite")
     monkeypatch.setenv("DATABASE_URL", "")
 
@@ -69,8 +69,15 @@ def test_validate_rejects_invalid_db_type(monkeypatch):
 
 def test_validate_rejects_invalid_storage_engine(monkeypatch):
     Config = _fresh_config(monkeypatch, STORAGE_ENGINE="couchdb")
-    with pytest.raises(RuntimeError, match="STORAGE_ENGINE must be 'sheets', 'dual', or 'sql'"):
+    with pytest.raises(RuntimeError, match="STORAGE_ENGINE 'couchdb' is not supported. HRFlow operates exclusively on SQL"):
         Config.validate()
+
+
+def test_validate_rejects_sheets_as_storage_engine(monkeypatch):
+    Config = _fresh_config(monkeypatch, STORAGE_ENGINE="sheets")
+    with pytest.raises(RuntimeError, match="STORAGE_ENGINE 'sheets' is not supported. HRFlow operates exclusively on SQL"):
+        Config.validate()
+
 
 
 def test_validate_rejects_mismatched_scheme_for_postgres(monkeypatch):

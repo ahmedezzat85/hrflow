@@ -1,26 +1,27 @@
-# HRFlow Backend — Setup Guide (FastAPI + Google Sheets + Sign in with Google)
+# HRFlow Backend — Setup Guide (FastAPI + SQL Database + Google Sheets Export)
 
-This backend uses **FastAPI**, a **Google Sheet** as the database, and
-**Sign in with Google** as the ONLY authentication method — no passwords
-anywhere in the system. Since your company already runs on Google
-Workspace, employees simply click "Sign in with Google" and use their
-existing work account; there's nothing new for them to remember.
+This backend uses **FastAPI**, an operational **SQL Database** (PostgreSQL in production, SQLite for local/testing), and **Sign in with Google** as authentication.
 
-## 1. Create the Google Sheet
+Google Sheets is retained strictly as an **Export Destination**, allowing Admins and HR Admins to live-export employee profiles, insurance claims, raises, and invoices to customized Google Sheets worksheets or local CSVs.
 
-1. Go to https://sheets.new to create a blank Google Sheet, rename it
-   `HRFlow Database`.
-2. Create these 6 tabs (exact names, case-sensitive):
-   `Employees`, `Users`, `Requests`, `VacationHistory`, `InsuranceClaims`, `SalaryHistory`.
-   Headers are auto-created by the backend on first connect if a tab is empty.
-3. Copy the Spreadsheet ID from the URL:
-   `https://docs.google.com/spreadsheets/d/`**`THIS_ID`**`/edit` → this goes
-   into `.env` as `SPREADSHEET_ID`.
+## 1. Operational Database (SQL)
 
-## 2. Create a Service Account (for Sheets access only)
+HRFlow uses SQLAlchemy with PostgreSQL (recommended for production) or SQLite:
+- `DB_TYPE=postgres` (or `sqlite`)
+- `DATABASE_URL=postgresql://user:password@localhost:5432/hrflow_db`
+- `STORAGE_ENGINE=sql` (strictly enforced; Google Sheets is not used as a database)
 
-This is unrelated to user login — it's just a "robot" account so the backend
-can read/write your Sheet.
+Run database migrations/initialization:
+```bash
+python scripts/backfill_sheets_to_sql.py --domain all
+```
+
+## 2. Google Sheets Configuration (Export Destination Only)
+
+To enable live exporting to Google Sheets:
+1. Create a Google Sheet or use an existing company spreadsheet, copy the Spreadsheet ID into `.env` as `SPREADSHEET_ID`.
+2. Place your service account `credentials.json` in `be/` with Google Sheets API and Drive API access. Share the spreadsheet with your service account email.
+3. If Google Sheets credentials are not configured, exports will still function via local CSV download (UTF-8 BOM formatted for Excel).
 
 1. https://console.cloud.google.com/ → select/create a project.
 2. Enable **Google Sheets API** and **Google Drive API**.

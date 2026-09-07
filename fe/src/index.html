@@ -111,6 +111,7 @@
           </div>
         </div>
         <div class="top-actions">
+          <button class="icon-btn" id="adminExportBtn" onclick="openExportModal()" title="Export Data"><i class="fa-solid fa-file-export"></i></button>
           <button class="icon-btn" id="adminSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
           <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
           <button class="icon-btn" id="adminThemeToggle"><i class="fa-solid fa-moon"></i></button>
@@ -179,6 +180,7 @@
           <div class="toolbar">
             <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch"
                 placeholder="Search employees by name, role, department..."></div>
+            <button class="btn" id="employeesExportBtn" onclick="openExportModal('employees')" title="Export employee records"><i class="fa-solid fa-file-export"></i> Export</button>
             <button class="btn btn-fill" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add
               Employee</button>
           </div>
@@ -644,6 +646,7 @@
           <div class="card">
             <div class="card-head">
               <h3>Claims History</h3>
+              <button class="btn btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims"><i class="fa-solid fa-file-export"></i> Export</button>
             </div>
             <table class="responsive-card-table">
               <thead>
@@ -1683,6 +1686,115 @@
       </div>
       <div class="modal-body" style="padding:14px 16px;">
         <div class="invoice-popover-month-grid" id="invPopoverMonthGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Export Modal -->
+  <div class="modal-overlay" id="exportModal" onclick="if(event.target===this)closeExportModal()">
+    <div class="modal modal-v2" style="max-width:560px;">
+      <div class="modal-head">
+        <div class="modal-head-icon" style="background:rgba(59,130,246,0.12);color:var(--primary);"><i class="fa-solid fa-file-export"></i></div>
+        <div class="modal-head-text">
+          <h3>Export HR Data</h3>
+          <p>Export operational records to local CSV or Google Sheets.</p>
+        </div>
+        <button class="modal-close" onclick="closeExportModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <!-- Dataset Selector -->
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-database"></i> Dataset &amp; Content <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Select Dataset <span class="req">*</span></label>
+              <select id="exportDatasetSelect" onchange="onExportDatasetChange()">
+                <option value="employees">Employees (Full profiles, salaries, banking, contact)</option>
+                <option value="insurance">Medical Insurance (Claims, categories, providers &amp; amounts)</option>
+                <option value="salary">Salary History (Raises, revisions &amp; percentages)</option>
+                <option value="vacations">Vacation History (Leave tracking &amp; durations)</option>
+                <option value="invoices">Invoices (Generated contractor billing records)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Period Filter (Conditional) -->
+        <div class="form-section" id="exportPeriodSection" style="display:none;margin-top:16px;">
+          <div class="form-section-label"><i class="fa-regular fa-calendar"></i> Period Filter <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Timeframe</label>
+              <select id="exportPeriodType" onchange="onExportPeriodTypeChange()">
+                <option value="all">All Records</option>
+                <option value="year" selected>Specific Calendar Year</option>
+                <option value="range">Custom Date Range</option>
+              </select>
+            </div>
+            <div class="form-field full" id="exportYearGroup">
+              <label>Year</label>
+              <input type="number" id="exportYearFilter" min="2020" max="2030" value="2026">
+            </div>
+            <div class="form-field full" id="exportRangeGroup" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label>Start Date</label>
+                  <input type="date" id="exportStartDateFilter">
+                </div>
+                <div>
+                  <label>End Date</label>
+                  <input type="date" id="exportEndDateFilter">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Destination Format -->
+        <div class="form-section" style="margin-top:16px;">
+          <div class="form-section-label"><i class="fa-solid fa-arrow-up-right-from-square"></i> Destination Format <span class="line"></span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+            <label class="export-format-card" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;">
+              <input type="radio" name="exportFormat" id="exportFormatCsv" value="csv" checked onchange="toggleExportFormatFields('csv')" style="margin-top:3px;">
+              <div>
+                <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-file-csv" style="color:#10b981;"></i> Local CSV</div>
+                <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">Excel-compatible UTF-8 BOM download.</div>
+              </div>
+            </label>
+            <label class="export-format-card" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;">
+              <input type="radio" name="exportFormat" id="exportFormatSheets" value="sheets" onchange="toggleExportFormatFields('sheets')" style="margin-top:3px;">
+              <div>
+                <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-table-cells" style="color:#0ea5e9;"></i> Google Sheets</div>
+                <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">Export into spreadsheet worksheet tab.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Google Sheets options -->
+        <div id="exportSheetsGroup" style="display:none;margin-top:16px;">
+          <div class="form-section">
+            <div class="form-section-label"><i class="fa-brands fa-google-drive"></i> Google Sheets Target <span class="line"></span></div>
+            <div class="form-grid">
+              <div class="form-field full">
+                <label>Worksheet Title <span class="opt">Optional</span></label>
+                <input type="text" id="exportWorksheetTitle" placeholder="Employees_Export_20260907">
+                <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">
+                  Creates a new tab or refreshes an existing tab in the company Google Spreadsheet.
+                </span>
+              </div>
+              <div class="form-field full" style="margin-top:4px;">
+                <div id="exportSheetsStatusBadge" style="font-size:12px;padding:6px 10px;background:var(--surface2);border-radius:8px;display:inline-flex;align-items:center;gap:6px;">
+                  <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Google Sheets connection...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeExportModal()">Cancel</button>
+        <button class="btn btn-fill" id="executeExportBtn" onclick="executeExport()"><i class="fa-solid fa-cloud-arrow-down"></i> Export Now</button>
       </div>
     </div>
   </div>

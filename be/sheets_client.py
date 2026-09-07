@@ -353,7 +353,49 @@ class SheetsClient:
         ids = [int(r[id_field]) for r in records if str(r.get(id_field, "")).isdigit()]
         return (max(ids) + 1) if ids else 1
 
+    def export_to_worksheet(self, title: str, headers: list[str], rows: list[list]) -> dict:
+        """
+        Exports a dataset to a named worksheet in the configured Google Spreadsheet.
+        If a worksheet with `title` already exists, clears it and updates with new data.
+        Otherwise creates a new worksheet.
+        Returns a dict with worksheet title, row count, and direct link.
+        """
+        with _lock:
+            try:
+                try:
+                    ws = self.spreadsheet.worksheet(title)
+                    self._execute_with_retry(lambda: ws.clear())
+                except gspread.exceptions.WorksheetNotFound:
+                    cols = max(len(headers), 1)
+                    num_rows = max(len(rows) + 5, 20)
+                    ws = self._execute_with_retry(
+                        lambda: self.spreadsheet.add_worksheet(title=title, rows=num_rows, cols=cols)
+                    )
+                    self._worksheets[title] = ws
+
+                matrix = [headers] + rows
+                self._execute_with_retry(lambda: ws.update(matrix))
+
+                # Format header row to bold if possible
+                try:
+                    ws.format("1:1", {"textFormat": {"bold": True}})
+                except Exception:
+                    pass
+
+                spreadsheet_url = f"https://docs.google.com/spreadsheets/d/{Config.SPREADSHEET_ID}/edit#gid={ws.id}"
+                logger.info("Exported %d rows to Google Sheet worksheet '%s'", len(rows), title)
+                return {
+                    "worksheet_title": title,
+                    "rows_count": len(rows),
+                    "spreadsheet_url": spreadsheet_url,
+                    "spreadsheet_id": Config.SPREADSHEET_ID,
+                }
+            except Exception:
+                logger.exception("Failed to export dataset to Google Sheets worksheet '%s'", title)
+                raise
+
 
 def get_client() -> SheetsClient:
     return SheetsClient()
+
 
