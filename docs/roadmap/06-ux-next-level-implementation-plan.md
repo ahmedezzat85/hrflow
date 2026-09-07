@@ -132,13 +132,42 @@ Each numbered item below is an independent unit of work with its own scope, targ
 
 ---
 
+## 7. Invoices page — period selector redesign (Variant C: calendar-trigger toolbar)
+
+**Why:** The current invoices page header uses two wide native `<select>` dropdowns (year, month) inside a card with a long, now-unnecessary description paragraph, and Preview/Generate buttons with no visual hierarchy between them. Approved direction: **Variant C** — a single compact period-trigger button ("📅 Aug 2026") that opens a small month popover, no card wrapper, clear primary/secondary button treatment. See the working prototype (`invoices_redesign_prototypes.html`, Variant C section) agreed in review before implementation.
+
+**Scope:**
+- Target files: `fe/public/js/invoices.js` (period-selection logic, popover open/close, wiring to existing generate/preview handlers), `fe/src/index.html` (invoices page markup — replace year/month `<select>` elements and the description card with the new toolbar structure), `fe/src/styles.css` (new toolbar/popover/button styles, using tokens from `docs/ui-design/tokens.md`).
+- Remove the card wrapper around the period controls entirely — this becomes an inline toolbar row directly on the page, not a bordered/shadowed card.
+- Remove the long description paragraph. If any context is worth keeping, it should be a single small muted caption line below the toolbar, not a paragraph inside a card (see prototype for exact placement/sizing).
+- Replace the two `<select>` elements (year, month) with a single button showing the current period (e.g., "Aug 2026") that opens a small popover for month/year selection. The popover should reuse the existing centralized modal/popover pattern already used elsewhere in the app (see the `ux-enhance` modal work) rather than introducing a new interaction pattern.
+- Preview button: secondary/ghost style (outlined or neutral, no fill) — visually quieter than Generate.
+- Generate Invoices button: primary/filled style using the brand color token — visually dominant, since it's the primary action on this page.
+- Both buttons should be the same height and consistent with button sizing used elsewhere in the app post-token-audit (item 1 of this plan).
+
+**Out of scope:**
+- Do not change the underlying invoice generation/preview logic, API calls, or data model — this is a presentation-layer change only to the period-selection UI and its surrounding chrome.
+- Do not redesign the invoice list/table below the toolbar in this pass.
+- Do not implement full calendar-grid date-range picking — this is a month/year picker only (matching current functionality, just presented differently).
+
+**Acceptance criteria:**
+- No `<select>` elements remain for year/month on the invoices page; replaced by the single period-trigger button + popover.
+- No card border/shadow/background wraps the period controls — they sit directly on the page as an inline toolbar.
+- The long description paragraph is removed; at most one short muted caption line remains, if kept at all.
+- Generate Invoices and Preview buttons are visually distinguishable at a glance (primary vs. secondary), matching the styling established in the approved Variant C prototype.
+- Popover opens/closes via the existing modal system's conventions (e.g., Escape to close, click-outside to close) rather than custom-built behavior.
+- Existing invoice generation and preview functionality is unchanged from the user's perspective, aside from how the period is selected.
+
+---
+
 ## Suggested execution order
 
 1. Token audit and backfill (§1) — foundation for everything else.
-2. Empty/loading state standardization (§3) — cheap, contained, immediately visible improvement.
-3. Mobile responsiveness pass (§5) — do before adding new surfaces (§2, §4) so they inherit responsive behavior instead of needing a second pass.
-4. Dashboard/charts.js overhaul (§2) — highest-impact new surface.
-5. Global search/command palette (§4) — second new surface.
-6. Motion/transition layer (§6) — polish pass once surfaces are stable.
+2. Invoices page period selector redesign (§7) — approved, contained, ready to implement now.
+3. Empty/loading state standardization (§3) — cheap, contained, immediately visible improvement.
+4. Mobile responsiveness pass (§5) — do before adding new surfaces (§2, §4) so they inherit responsive behavior instead of needing a second pass.
+5. Dashboard/charts.js overhaul (§2) — highest-impact new surface.
+6. Global search/command palette (§4) — second new surface.
+7. Motion/transition layer (§6) — polish pass once surfaces are stable.
 
 Reorder based on priority if needed, but keep items independent and complete each fully (including its acceptance criteria) before moving to the next.
