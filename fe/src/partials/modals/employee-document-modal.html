@@ -1,0 +1,62 @@
+  <div class="modal-overlay" id="employeeDocumentModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="modal-head-text">
+          <h3>Upload Employee Document</h3>
+          <p>Securely store documents in Google Drive under the employee's folder.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('employeeDocumentModal')"><i
+            class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file"></i> Document Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Document Name <span class="req">*</span></label>
+              <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
+            </div>
+            <div class="form-field full">
+              <label>File <span class="req">*</span></label>
+              <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
+                <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="docDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 4MB</span>
+                </div>
+                <div id="docDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="docFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="docFileName" class="doc-file-name">-</p>
+                    <span id="docFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove"
+                    onclick="event.stopPropagation(); clearDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="form-field full" id="docUploadProgressWrap" style="display:none;">
+              <div class="doc-progress-track">
+                <div class="doc-progress-fill" id="docUploadProgressFill" style="width:0%;"></div>
+              </div>
+              <div class="doc-progress-label">
+                <span id="docUploadProgressText">Uploading...</span>
+                <span id="docUploadProgressPct">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:11.5px;color:var(--text3);margin-top:12px;">
+          Files are stored securely in Google Drive under this employee's folder. Preview and download happen inside
+          HRFlow - no separate Drive access needed.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="docCancelBtn" onclick="closeModal('employeeDocumentModal')">Cancel</button>
+        <button class="btn btn-fill" id="docUploadBtn" onclick="submitEmployeeDocument()"><i
+            class="fa-solid fa-check"></i> Upload</button>
+      </div>
+    </div>
+  </div>

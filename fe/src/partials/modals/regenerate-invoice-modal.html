@@ -1,0 +1,35 @@
+  <div class="modal-overlay" id="regenerateInvoiceModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-arrows-rotate"></i></div>
+        <div class="modal-head-text">
+          <h3 id="regenModalTitle">Regenerate Invoice</h3>
+          <p id="regenModalSubtitle">Overwrite and regenerate invoice document.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('regenerateInvoiceModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-4);margin-bottom:var(--space-4);">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;color:var(--text2);">Employee</span>
+            <strong id="regenEmpName" style="font-size:13px;color:var(--text);">-</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;color:var(--text2);">Billing Period</span>
+            <span id="regenPeriod" style="font-size:13px;color:var(--text);font-weight:600;">-</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:12px;color:var(--text2);">Existing Invoice #</span>
+            <span id="regenInvoiceNumber" style="font-size:13px;font-family:monospace;color:var(--accent);font-weight:600;">-</span>
+          </div>
+        </div>
+        <p style="color:var(--text2);font-size:13px;line-height:1.5;">
+          An invoice has already been generated for this period. Regenerating will generate a new document with current salary and address details and update the record.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('regenerateInvoiceModal')">Cancel</button>
+        <button class="btn btn-fill" id="btnConfirmRegenerate" onclick="executeRegenerateInvoice(event)"><i class="fa-solid fa-arrows-rotate"></i> Regenerate Invoice</button>
+      </div>
+    </div>
+  </div>

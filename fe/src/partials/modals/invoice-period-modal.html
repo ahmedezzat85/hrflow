@@ -1,0 +1,15 @@
+  <div class="modal-overlay" id="invoicePeriodModal" onclick="if(event.target===this)closeModal('invoicePeriodModal')">
+    <div class="modal invoice-period-popover-modal">
+      <div class="invoice-popover-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button type="button" class="btn btn-sm" onclick="changeInvoicePopoverYear(-1)" title="Previous Year"><i class="fa-solid fa-chevron-left"></i></button>
+          <span class="invoice-popover-year-label" id="invPopoverYearLabel">2026</span>
+          <button type="button" class="btn btn-sm" onclick="changeInvoicePopoverYear(1)" title="Next Year"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <button class="modal-close" onclick="closeModal('invoicePeriodModal')" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding:14px 16px;">
+        <div class="invoice-popover-month-grid" id="invPopoverMonthGrid"></div>
+      </div>
+    </div>
+  </div>

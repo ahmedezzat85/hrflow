@@ -1,0 +1,72 @@
+  <div class="modal-overlay" id="behalfClaimModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-briefcase-medical"></i></div>
+        <div class="modal-head-text">
+          <h3>Submit Insurance Claim on Behalf</h3>
+          <p>Record medical claims and calculate policy reimbursements.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Category <span class="req">*</span></label>
+              <select id="bcCategory"></select>
+            </div>
+            <div class="form-field">
+              <label>Provider</label>
+              <input id="bcProvider" placeholder="e.g. Allianz Egypt">
+            </div>
+            <div class="form-field">
+              <label>Amount <span class="opt">EGP</span> <span class="req">*</span></label>
+              <input type="number" id="bcAmount" placeholder="e.g. 1500">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing & Attachment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Status</label>
+              <select id="bcStatus">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Record Date <span class="opt">Optional</span></label>
+              <input type="date" id="bcRecordDate">
+            </div>
+            <div class="form-field full">
+              <label>Supporting Document <span class="opt">Optional</span></label>
+              <div id="bcDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('bcDocument').click()">
+                <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                <div id="bcDocDropZoneEmpty" class="doc-drop-empty">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p><strong>Click to browse</strong> or drag a file here</p>
+                  <span>PDF, JPG or PNG - up to 2MB</span>
+                </div>
+                <div id="bcDocDropZoneFile" class="doc-drop-file" style="display:none;">
+                  <div class="doc-file-icon" id="bcDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
+                  <div class="doc-file-meta">
+                    <p id="bcDocFileName" class="doc-file-name">-</p>
+                    <span id="bcDocFileSize" class="doc-file-size">-</span>
+                  </div>
+                  <button type="button" class="icon-action" title="Remove" onclick="event.stopPropagation(); clearBcDocFileSelection();"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="behalfClaimCancelBtn" onclick="closeModal('behalfClaimModal')">Cancel</button>
+        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button>
+      </div>
+    </div>
+  </div>

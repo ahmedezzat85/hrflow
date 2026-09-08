@@ -1,0 +1,296 @@
+/* Invoices Module (History, Toolbar, Popovers, Filters) */
+/* ===== Invoice History Month Grouping & Sorting ===== */
+.invoice-history-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.invoice-month-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.invoice-month-card:hover {
+  border-color: var(--border2, rgba(255, 255, 255, 0.18));
+}
+
+.invoice-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  background: var(--surface2);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.invoice-month-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.invoice-month-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.invoice-month-title .toggle-caret {
+  font-size: 12px;
+  color: var(--text3);
+  transition: transform 0.2s ease;
+  width: 14px;
+  text-align: center;
+}
+
+.invoice-month-card.collapsed .invoice-month-title .toggle-caret {
+  transform: rotate(-90deg);
+}
+
+.invoice-month-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.invoice-month-total {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-head);
+}
+
+.invoice-month-content {
+  overflow-x: auto;
+}
+
+.invoice-month-card.collapsed .invoice-month-content {
+  display: none;
+}
+
+.btn-sort-pill {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-sort-pill:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-sort-pill.active {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.th-sortable:hover {
+  color: var(--accent);
+}
+
+.th-sortable i {
+  margin-left: 5px;
+  font-size: 11px;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.th-sortable.active i {
+  opacity: 1;
+  color: var(--accent);
+}
+
+
+/* ==========================================================================
+   Invoices Page — Period Selector Redesign (Variant C - §7)
+   ========================================================================== */
+.invoice-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.invoice-period-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-period-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 8px 15px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-period-trigger:hover {
+  background: var(--surface2);
+  border-color: var(--border2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.invoice-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.invoice-toolbar-caption {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 18px;
+}
+
+/* Eligibility Preview Filter Tabs */
+.invoice-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 4px;
+}
+
+.btn-filter-pill {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-filter-pill:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.btn-filter-pill.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Popover Modal for Period Selection */
+.invoice-period-popover-modal {
+  max-width: 320px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.invoice-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.invoice-popover-year-label {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.invoice-popover-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.inv-month-btn {
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.inv-month-btn:hover {
+  background: var(--surface2);
+  border-color: var(--border2);
+}
+
+.inv-month-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(32, 86, 232, 0.35);
+}
+
+
+
+

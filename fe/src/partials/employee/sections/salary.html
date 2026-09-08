@@ -1,0 +1,39 @@
+        <section class="page-section" id="e-salary">
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Salary Growth</h3>
+              </div>
+              <div class="chart-wrap"><canvas id="chartSalary"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Current Package</h3>
+              </div>
+              <div class="info-item" style="margin-bottom:12px;"><span>Base Salary</span><b id="empPkgBase">EGP 42,000 /
+                  mo</b></div>
+              <div class="info-item" style="margin-bottom:12px;"><span>Annual Bonus</span><b>EGP 63,000</b></div>
+              <div class="info-item"><span>Total Annual Compensation</span><b id="empPkgTotal">EGP 567,000</b></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Raise History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Effective Date</th>
+                  <th>New Internal</th>
+                  <th>New External</th>
+                  <th>New Total</th>
+                  <th>Internal Δ</th>
+                  <th>External Δ</th>
+                  <th>Total Δ</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="salaryHistoryBody"></tbody>
+            </table>
+          </div>
+        </section>

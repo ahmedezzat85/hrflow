@@ -1,0 +1,57 @@
+        <section class="page-section active" id="a-dashboard">
+          <div class="hero-banner" style="margin-bottom:20px;">
+            <div class="hero-stats">
+              <div class="hero-stat"><b id="statEmployees">—</b><span>Active Headcount</span></div>
+              <div class="hero-stat"><b id="statPending">—</b><span>Pending Approvals</span></div>
+              <div class="hero-stat"><b id="statOnLeave">—</b><span>Currently On Leave</span></div>
+              <div class="hero-stat"><b id="statOpenClaims">—</b><span>Open Claims</span></div>
+            </div>
+            <span id="statClaimsTotal" style="display:none;"></span>
+          </div>
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Requests Overview (Last 6 Months)</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
+              </div>
+              <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Request Types</h3>
+              </div>
+              <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
+            </div>
+          </div>
+          <div class="grid g-1-2" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Upcoming Annual Raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a>
+              </div>
+              <ul class="timeline" id="upcomingRaisesList"></ul>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Pending Requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
+              </div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="dashPendingBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Medical Insurance Highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Manage
+                insurance</a>
+            </div>
+            <div class="grid g4" id="dashInsuranceCategoryChips"></div>
+          </div>
+        </section>

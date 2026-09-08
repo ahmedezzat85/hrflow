@@ -1,0 +1,62 @@
+        <section class="page-section" id="a-insurance">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Company-wide Consumption Highlights</h3>
+            </div>
+            <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
+          </div>
+          <div class="grid g4" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-label">Total Claims (YTD)</div>
+              <div class="stat-val" id="statClaimsYtd">142</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Approved</div>
+              <div class="stat-val" id="statClaimsApproved" style="color:var(--success)">118</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Pending Review</div>
+              <div class="stat-val" id="statClaimsPending" style="color:var(--warning)">9</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Total Reimbursed</div>
+              <div class="stat-val" id="statClaimsReimbursed">EGP 1.24M</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Insurance Categories & Limits</h3><button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i
+                  class="fa-solid fa-plus"></i> Add Category</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Annual Limit</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="categoriesTableBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Claims History</h3>
+              <button class="btn btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims"><i class="fa-solid fa-file-export"></i> Export</button>
+            </div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Category</th>
+                  <th>Provider</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="insuranceTableBody"></tbody>
+            </table>
+          </div>
+        </section>

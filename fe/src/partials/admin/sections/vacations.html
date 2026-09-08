@@ -1,0 +1,59 @@
+        <section class="page-section" id="a-vacations">
+          <div class="grid g3" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-top">
+                <div class="stat-label">Total Vacation Days Allotted</div>
+                <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-calendar-days"></i></div>
+              </div>
+              <div class="stat-val" id="statVacAllotted">0</div>
+              <div class="stat-subtext">
+                <span class="stat-trend" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-users"></i> Across all employees</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-top">
+                <div class="stat-label">Days Used So Far</div>
+                <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-clock-rotate-left"></i></div>
+              </div>
+              <div class="stat-val" id="statVacUsed">0</div>
+              <div class="stat-subtext">
+                <span class="stat-trend" id="statVacUsedPct" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-chart-pie"></i> 0% consumed</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-top">
+                <div class="stat-label">Employees Currently On Leave</div>
+                <div class="stat-icon" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-person-walking-luggage"></i></div>
+              </div>
+              <div class="stat-val" id="statEmployeesOnLeave">0</div>
+              <div class="stat-subtext">
+                <span class="stat-trend" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-circle-check"></i> Real-time status</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Employee Vacation Balances</h3>
+                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Track annual leave quotas, utilization, and remaining balances per employee.</p>
+              </div>
+              <div class="search-box sm" style="max-width:260px;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="vacBalanceSearch" placeholder="Search by name, dept..." oninput="filterVacationBalances()">
+              </div>
+            </div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th>Entitled</th>
+                  <th>Used</th>
+                  <th>Remaining</th>
+                  <th style="min-width:180px;">Utilization Progress</th>
+                </tr>
+              </thead>
+              <tbody id="vacationBalanceBody"></tbody>
+            </table>
+          </div>
+        </section>

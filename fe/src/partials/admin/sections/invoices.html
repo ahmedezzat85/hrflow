@@ -1,0 +1,77 @@
+        <section class="page-section" id="a-invoices">
+          <!-- Invoices Toolbar (Variant C - §7) -->
+          <div class="invoice-toolbar-row">
+            <div class="invoice-period-picker-wrap">
+              <button type="button" class="btn-period-trigger" id="invPeriodBtn" onclick="openInvoicePeriodModal()">
+                <i class="fa-regular fa-calendar" style="color:var(--accent);"></i>
+                <span id="invPeriodBtnLabel">—</span>
+                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--text2);margin-left:4px;"></i>
+              </button>
+              <input type="hidden" id="invPaymentYear">
+              <input type="hidden" id="invPaymentMonth">
+            </div>
+
+            <div class="invoice-toolbar-actions">
+              <button type="button" class="btn btn-secondary" onclick="previewInvoiceEligibility(event)">
+                <i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees
+              </button>
+              <button type="button" class="btn btn-fill" onclick="generateBulkInvoices(event)">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices
+              </button>
+            </div>
+          </div>
+          <div class="invoice-toolbar-caption">
+            Generate external-salary consultant fee invoices for eligible employees based on approved rates.
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+              <h3 id="invoiceResultsTitle">Eligibility Preview</h3>
+              <div class="invoice-filter-group">
+                <button type="button" class="btn-filter-pill active" id="invFilterEligibleBtn" onclick="setInvoiceEligibilityFilter('eligible')">
+                  Eligible Only
+                </button>
+                <button type="button" class="btn-filter-pill" id="invFilterSkippedBtn" onclick="setInvoiceEligibilityFilter('skipped')">
+                  Skipped
+                </button>
+                <button type="button" class="btn-filter-pill" id="invFilterAllBtn" onclick="setInvoiceEligibilityFilter('all')">
+                  All
+                </button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="invoiceResultsBody"></tbody>
+            </table>
+          </div>
+          <div class="card" id="invoiceHistoryCard">
+            <div class="card-head">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <h3>Invoice History</h3>
+                <span id="invoiceHistoryTotalBadge" class="badge-pill pill-info" style="display:none;">0 Invoices</span>
+              </div>
+              <div class="invoice-history-toolbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <div class="sort-toolbar-group" style="display:flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 5px;">
+                  <span style="font-size:11.5px;color:var(--text3);font-weight:600;padding:0 5px;"><i class="fa-solid fa-arrow-down-short-wide"></i> Sort:</span>
+                  <button type="button" class="btn-sort-pill active" id="sortByNameBtn" onclick="toggleInvoiceSort('name')">
+                    Name <i id="sortNameIcon" class="fa-solid fa-arrow-up-a-z"></i>
+                  </button>
+                  <button type="button" class="btn-sort-pill" id="sortByNumberBtn" onclick="toggleInvoiceSort('number')">
+                    Invoice # <i id="sortNumberIcon" class="fa-solid fa-sort"></i>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" id="toggleAllMonthsBtn" onclick="toggleAllInvoiceMonths()" style="font-size:12px;padding:5px 10px;">
+                  <i class="fa-solid fa-arrows-up-down"></i> <span id="toggleAllMonthsText">Collapse All</span>
+                </button>
+              </div>
+            </div>
+            <div id="invoiceHistoryContainer" class="invoice-history-container">
+              <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>Loading invoice history...</p></div>
+            </div>
+          </div>
+        </section>

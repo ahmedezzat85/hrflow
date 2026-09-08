@@ -1,0 +1,27 @@
+        <section class="page-section" id="a-employees">
+          <div class="toolbar">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch"
+                placeholder="Search employees by name, role, department..."></div>
+            <button class="btn" id="employeesExportBtn" onclick="openExportModal('employees')" title="Export employee records"><i class="fa-solid fa-file-export"></i> Export</button>
+            <button class="btn btn-fill" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add
+              Employee</button>
+          </div>
+          <div class="card">
+            <div class="section-loading-bar" id="empTableLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Employee</th>
+                  <th>Role</th>
+                  <th>Employment State</th>
+                  <th style="display:none;">Salary</th>
+                  <th>Next Raise</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="employeesTableBody"></tbody>
+            </table>
+          </div>
+        </section>

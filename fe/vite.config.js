@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, copyFileSync, existsSync } from 'fs';
 import { viteSingleFile } from 'vite-plugin-singlefile';
@@ -51,6 +51,20 @@ const DEPLOY_SIBLING_FILES = [
 //   3. On closeBundle (after Vite finishes writing dist/), copies
 //      config.js, api.js and the two logo images from fe/ into dist/, so
 //      dist/ is a complete, deployable folder on its own.
+// Helper to recursively inline <!-- @include "partials/..." --> HTML partials
+function resolveHtmlPartials(content, baseDir) {
+  const includeRegex = /<!--\s*@include\s+["']([^"']+)["']\s*-->/g;
+  return content.replace(includeRegex, (match, relPath) => {
+    const filePath = resolve(baseDir, relPath);
+    if (!existsSync(filePath)) {
+      console.warn(`[html-partials] Missing partial: ${filePath}`);
+      return `<!-- Missing partial: ${relPath} -->`;
+    }
+    const partialContent = readFileSync(filePath, 'utf-8');
+    return resolveHtmlPartials(partialContent, dirname(filePath));
+  });
+}
+
 function singleFileDeployBundle() {
   let outDir;
   let isBuild = false;
@@ -60,17 +74,29 @@ function singleFileDeployBundle() {
       outDir = config.build.outDir;
       isBuild = config.command === 'build';
     },
-    transformIndexHtml(html) {
-      const combined = APP_SCRIPT_ORDER
-        .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
-        .join('\n;\n');
-      let out = html.replace('</body>', `<script>\n${combined}\n</script>\n</body>`);
-      if (isBuild) {
-        out = out
-          .replace('src="../config.js"', 'src="./config.js"')
-          .replace('src="../api.js"', 'src="./api.js"');
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        let out = resolveHtmlPartials(html, resolve(__dirname, 'src'));
+        const combined = APP_SCRIPT_ORDER
+          .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
+          .join('\n;\n');
+        out = out.replace('</body>', `<script>\n${combined}\n</script>\n</body>`);
+        if (isBuild) {
+          out = out
+            .replace('src="../config.js"', 'src="./config.js"')
+            .replace('src="../api.js"', 'src="./api.js"');
+        }
+        return out;
+      },
+    },
+    handleHotUpdate({ file, server }) {
+      if (file.endsWith('.html')) {
+        server.ws.send({
+          type: 'full-reload',
+          path: '*',
+        });
       }
-      return out;
     },
     closeBundle() {
       if (!isBuild) return;
