@@ -13,7 +13,7 @@ HRFlow's database is **relational SQL only**: SQLite for local development, Post
 Two Google integrations exist in the codebase and should not be confused with the database layer:
 
 - **Google Drive** (`be/drive_client.py`) — file storage for documents and generated PDFs (e.g. payslips). A storage concern, not a database.
-- **Google Sheets** (`be/sheets_client.py`) — present in the codebase; usage should be treated as legacy/export-only unless documented otherwise after the Phase 0 audit (see Implementation Plan). It is never a source of truth for HR or Finance data.
+- **Google Sheets** (`be/sheets_client.py`) — audited in Phase 0. Confirmed to be solely an export destination utility (used by `be/services/export.py` for exporting reporting data to Google Sheets tabs) and legacy backup scripts. `be/db.py` contains zero switches pointing to Google Sheets. It is never a source of truth for HR or Finance data.
 
 ## Product Modules
 
@@ -87,6 +87,7 @@ Use this table to track module maturity as implementation proceeds. Update after
 | Module | Status | Last updated |
 |---|---|---|
 | HR core (existing) | Implemented | — |
+| Phase 0 Housekeeping & Audit | Implemented | 2026-09-08 |
 | RBAC skeleton (Phase 1) | Not started | — |
 | Finance placeholders (Phase 2) | Not started | — |
 | Finance data model (Phase 3) | Not started | — |

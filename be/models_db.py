@@ -63,7 +63,11 @@ class EmployeeDB(Base):
     claims = relationship("InsuranceClaimDB", back_populates="employee", cascade="all, delete-orphan")
     requests = relationship("RequestDB", back_populates="employee", cascade="all, delete-orphan")
     vacations = relationship("VacationHistoryDB", back_populates="employee", cascade="all, delete-orphan")
-    invoices = relationship("InvoiceDB", back_populates="employee", cascade="all, delete-orphan")
+    salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
+
+    @property
+    def invoices(self):
+        return self.salary_payment_docs
 
 
 class SalaryHistoryDB(Base):
@@ -204,8 +208,8 @@ class VacationHistoryDB(Base):
     employee = relationship("EmployeeDB", back_populates="vacations")
 
 
-class InvoiceDB(Base):
-    __tablename__ = "invoices"
+class SalaryPaymentDocDB(Base):
+    __tablename__ = "salary_payment_docs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -225,11 +229,14 @@ class InvoiceDB(Base):
     generated_by = Column(String(255), default="")
     created_at = Column(String(50), default="")
 
-    employee = relationship("EmployeeDB", back_populates="invoices")
+    employee = relationship("EmployeeDB", back_populates="salary_payment_docs")
 
     __table_args__ = (
-        Index("ix_invoices_emp_period", "employee_id", "payment_year", "payment_month"),
+        Index("ix_salary_payment_docs_emp_period", "employee_id", "payment_year", "payment_month"),
     )
+
+# Backward compatibility alias
+InvoiceDB = SalaryPaymentDocDB
 
 
 class AuditLogDB(Base):

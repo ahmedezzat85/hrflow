@@ -31,8 +31,8 @@ from routers import vacations as vacations_router
 from routers import insurance as insurance_router
 from routers import salary as salary_router
 from routers import system as system_router
-from routers import invoices as invoices_router
-from routers import bank as bank_router
+from routers import salary_payment_docs as salary_payment_docs_router
+from routers import employee_bank_accounts as employee_bank_accounts_router
 from routers import export as export_router
 
 # Re-exported here so existing code/tests that reach into main.py for
@@ -121,7 +121,8 @@ app.include_router(vacations_router.router)
 app.include_router(insurance_router.router)
 app.include_router(salary_router.router)
 app.include_router(system_router.router)
-app.include_router(invoices_router.router)
-app.include_router(bank_router.router)
+app.include_router(salary_payment_docs_router.router)
+app.include_router(salary_payment_docs_router.compat_router)
+app.include_router(employee_bank_accounts_router.router)
 app.include_router(export_router.router)
 

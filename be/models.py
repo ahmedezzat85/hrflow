@@ -174,28 +174,36 @@ class CompanyDocumentCreate(BaseModel):
     category: str = "General"
 
 
-class InvoiceGenerateRequest(BaseModel):
+class SalaryPaymentDocGenerateRequest(BaseModel):
     """
-    Request body for bulk/per-employee external-salary invoice generation
+    Request body for bulk/per-employee external-salary payment document generation
     (docs/analysis/invoice-autopay-plan.md). payment_year/payment_month
     identify the period being invoiced (not the generation date, which is
     always "now"). skip_existing defaults to True so a repeated click never
-    silently overwrites a previously generated invoice for the same
+    silently overwrites a previously generated document for the same
     employee + period - the caller gets back the existing record instead.
     """
     payment_year: int
     payment_month: int = Field(ge=1, le=12)
     skip_existing: bool = True
-class BankAccountUpsert(BaseModel):
+
+# Backward compatibility alias
+InvoiceGenerateRequest = SalaryPaymentDocGenerateRequest
+
+
+class EmployeeBankAccountUpsert(BaseModel):
     """
-    Create or update an employee's bank account details.
+    Create or update an employee's personal external bank account details.
     bank_name and iban are required; swift_code is optional.
-    Stored in the EmployeeBankAccounts sheet tab, separate from the
-    core Employees tab so sensitive financial data is logically isolated.
+    Stored in employee_bank_accounts table, separate from the
+    core Employees table so sensitive financial data is logically isolated.
     """
     bank_name: str
     iban: str
     swift_code: Optional[str] = None
+
+# Backward compatibility alias
+BankAccountUpsert = EmployeeBankAccountUpsert
 
 
 class SheetsExportRequest(BaseModel):

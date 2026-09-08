@@ -1,8 +1,9 @@
 """
 sheets_client.py
-Thin data-access layer over Google Sheets using gspread.
-Includes in-memory TTL caching, write invalidation, batch row updates,
-and quota error resilience.
+Export & integration utility over Google Sheets using gspread.
+ROLE: Google Sheets is strictly an EXPORT DESTINATION (via be/services/export.py)
+and legacy tool. It is NEVER used as an operational database engine for HR or Finance.
+All operational persistence is relational SQL (SQLite dev / PostgreSQL prod) via SQLAlchemy.
 """
 import copy
 import random
