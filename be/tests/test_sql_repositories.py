@@ -10,12 +10,12 @@ from sqlalchemy.orm import sessionmaker
 from db import Base, reset_engine_for_testing
 from repositories.sql.employees import SqlEmployeeRepository
 from repositories.sql.salary import SqlSalaryRepository
-from repositories.sql.bank import SqlBankRepository
+from repositories.sql.employee_bank_accounts import SqlEmployeeBankAccountRepository, SqlBankRepository
 from repositories.sql.documents import SqlCompanyDocumentRepository
 from repositories.sql.insurance import SqlInsuranceRepository
 from repositories.sql.requests import SqlRequestRepository
 from repositories.sql.vacations import SqlVacationRepository
-from repositories.sql.invoices import SqlInvoiceRepository
+from repositories.sql.salary_payment_docs import SqlSalaryPaymentDocRepository, SqlInvoiceRepository
 from repositories.sql.audit import SqlAuditRepository
 from repositories.sql.auth import SqlUserRepository
 from repositories.dual.employees import DualWriteEmployeeRepository

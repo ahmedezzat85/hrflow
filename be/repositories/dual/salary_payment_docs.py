@@ -1,13 +1,13 @@
 """
-be/repositories/dual/invoices.py
+be/repositories/dual/salary_payment_docs.py
 DualWriteInvoiceRepository
 """
 from typing import Optional, List, Dict, Any, Union
 from logging_config import get_logger
 
-from repositories.interfaces import InvoiceRepository
-from repositories.sheets.invoices import SheetsInvoiceRepository
-from repositories.sql.invoices import SqlInvoiceRepository
+from repositories.interfaces import InvoiceRepository, SalaryPaymentDocRepository
+from repositories.sheets.salary_payment_docs import SheetsInvoiceRepository
+from repositories.sql.salary_payment_docs import SqlInvoiceRepository
 
 logger = get_logger("dual_write")
 

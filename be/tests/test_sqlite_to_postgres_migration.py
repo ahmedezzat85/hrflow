@@ -16,11 +16,11 @@ from models_db import (
 )
 from scripts.migrate_sqlite_to_postgres import migrate_data
 from repositories.dual.employees import DualWriteEmployeeRepository
-from repositories.dual.bank import DualWriteBankRepository
+from repositories.dual.employee_bank_accounts import DualWriteBankRepository
 from repositories.sql.employees import SqlEmployeeRepository
-from repositories.sql.bank import SqlBankRepository
+from repositories.sql.employee_bank_accounts import SqlBankRepository
 from repositories.sheets.employees import SheetsEmployeeRepository
-from repositories.sheets.bank import SheetsBankRepository
+from repositories.sheets.employee_bank_accounts import SheetsBankRepository
 
 
 @pytest.fixture

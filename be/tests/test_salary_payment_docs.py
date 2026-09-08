@@ -7,7 +7,7 @@ sheets client so no real Google Sheets/Drive access is required.
 """
 import pytest
 
-from services.invoices import (
+from services.salary_payment_docs import (
     format_invoice_number,
     format_usd_amount,
     format_invoice_date,
@@ -126,8 +126,8 @@ def test_find_existing_invoice_returns_none_for_different_period():
 
 
 def test_regenerate_invoice_updates_existing_record_in_place(monkeypatch):
-    from services.invoices import generate_invoice_for_employee
-    import services.invoices as inv_svc
+    from services.salary_payment_docs import generate_invoice_for_employee
+    import services.salary_payment_docs as inv_svc
 
     monkeypatch.setattr(inv_svc, "render_invoice_document", lambda ctx: b"fake-docx-bytes")
     monkeypatch.setattr("services.pdf_converter.convert_docx_to_pdf_bytes", lambda b: b"%PDF-1.4 fake-pdf")
@@ -198,7 +198,7 @@ def test_regenerate_invoice_updates_existing_record_in_place(monkeypatch):
 
 
 def test_api_regenerate_single_invoice_flow(app_client, admin_cookies, monkeypatch):
-    import services.invoices as inv_svc
+    import services.salary_payment_docs as inv_svc
     import services.pdf_converter as pdf_svc
 
     monkeypatch.setattr(inv_svc, "render_invoice_document", lambda ctx: b"fake-docx-bytes")
@@ -248,7 +248,7 @@ def test_api_regenerate_single_invoice_flow(app_client, admin_cookies, monkeypat
     invoice_id = invoices[0]["id"]
 
     # 6. Stream PDF preview for this invoice
-    monkeypatch.setattr("services.invoices.get_invoice_pdf_bytes", lambda inv: (b"%PDF-1.4 fake-pdf-content", "Invoice_TEST_260208.pdf"))
+    monkeypatch.setattr("services.salary_payment_docs.get_invoice_pdf_bytes", lambda inv: (b"%PDF-1.4 fake-pdf-content", "Invoice_TEST_260208.pdf"))
     stream_res = app_client.get(f"/api/invoices/{invoice_id}/stream", cookies=admin_cookies)
     assert stream_res.status_code == 200
     assert stream_res.headers["content-type"] == "application/pdf"

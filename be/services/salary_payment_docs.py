@@ -225,9 +225,8 @@ def generate_salary_payment_doc_for_employee(
 
     context = build_template_context(employee, payment_year, payment_month, now=now)
     try:
-        import sys
-        inv_mod = sys.modules.get("services.invoices")
-        render_fn = getattr(inv_mod, "render_invoice_document", render_invoice_document) if inv_mod else render_invoice_document
+        import services.salary_payment_docs as spd_mod
+        render_fn = getattr(spd_mod, "render_invoice_document", render_invoice_document)
         file_bytes = render_fn(context)
     except Exception as exc:
         logger.exception("Template render failed for employee_id=%s", employee_id)

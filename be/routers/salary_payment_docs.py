@@ -162,9 +162,8 @@ def stream_invoice_pdf(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     try:
-        import sys
-        inv_mod = sys.modules.get("services.invoices")
-        get_pdf_fn = getattr(inv_mod, "get_invoice_pdf_bytes", get_salary_payment_doc_pdf_bytes) if inv_mod else get_salary_payment_doc_pdf_bytes
+        import services.salary_payment_docs as spd_mod
+        get_pdf_fn = getattr(spd_mod, "get_invoice_pdf_bytes", getattr(spd_mod, "get_salary_payment_doc_pdf_bytes", get_salary_payment_doc_pdf_bytes))
         pdf_bytes, filename = get_pdf_fn(inv)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=f"PDF preview unavailable: {exc}")

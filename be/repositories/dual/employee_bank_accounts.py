@@ -1,13 +1,13 @@
 """
-be/repositories/dual/bank.py
+be/repositories/dual/employee_bank_accounts.py
 DualWriteBankRepository
 """
 from typing import Dict, Any, Union, Tuple, Optional
 from logging_config import get_logger
 
-from repositories.interfaces import BankRepository
-from repositories.sheets.bank import SheetsBankRepository
-from repositories.sql.bank import SqlBankRepository
+from repositories.interfaces import BankRepository, EmployeeBankAccountRepository
+from repositories.sheets.employee_bank_accounts import SheetsBankRepository
+from repositories.sql.employee_bank_accounts import SqlBankRepository
 
 logger = get_logger("dual_write")
 
