@@ -1,0 +1,40 @@
+        <section class="page-section active" id="e-dashboard">
+          <div class="hero-banner" style="margin-bottom:20px;">
+            <div class="hero-stats">
+              <div class="hero-stat"><b id="empDashVacDays">—</b><span>Vacation Days Left</span></div>
+              <div class="hero-stat"><b id="empDashSalary">—</b><span>Monthly Compensation</span></div>
+              <div class="hero-stat"><b id="empDashWfh">—</b><span>WFH Days This Month</span></div>
+              <div class="hero-stat"><b id="empDashClaims">—</b><span>Pending Claims</span></div>
+            </div>
+          </div>
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>My Requests Timeline</h3>
+              </div>
+              <ul class="timeline" id="empTimeline"></ul>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Next Salary Raise</h3>
+              </div>
+              <div style="text-align:center; padding:10px 0 6px;">
+                <div style="font-size:30px;font-weight:800;color:var(--accent);">Mar 2027</div>
+                <p style="color:var(--text2);font-size:13px;margin-top:6px;">Estimated +8% based on performance cycle
+                </p>
+                <div class="progress-bar" style="margin-top:18px;"><span style="width:64%;"></span></div>
+                <p style="font-size:11.5px;color:var(--text3);margin-top:8px;">7 of 12 months completed</p>
+              </div>
+              <button class="btn btn-fill" style="width:100%;margin-top:10px;"
+                onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> View Salary
+                History</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Medical Insurance Highlights</h3><a class="link" onclick="showSection('e-insurance','employee')">View
+                details</a>
+            </div>
+            <div class="grid g3" id="empDashInsuranceCategoryChips"></div>
+          </div>
+        </section>

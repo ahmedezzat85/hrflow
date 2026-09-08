@@ -1,0 +1,15 @@
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar('adminSidebar')"><i class="fa-solid fa-bars"></i></button>
+          <div>
+            <h2 id="adminPageTitle">General Dashboard</h2>
+            <div class="sub" id="adminPageSub">Welcome back, here's what's happening today.</div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="adminExportBtn" onclick="openExportModal()" title="Export Data"><i class="fa-solid fa-file-export"></i></button>
+          <button class="icon-btn" id="adminSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
+          <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
+          <button class="icon-btn" id="adminThemeToggle"><i class="fa-solid fa-moon"></i></button>
+        </div>
+      </div>

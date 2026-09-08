@@ -1,0 +1,197 @@
+/* Vacations & Requests Module */
+/* ===== Vacations & Requests Visual Parity Redesign ===== */
+
+/* Requests Header & Filter Tabs */
+.requests-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.filter-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+}
+
+.filter-tab:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.filter-tab.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(32, 86, 232, 0.25);
+}
+
+.filter-tab .tab-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  line-height: 1;
+}
+
+.filter-tab.active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Request Row Actions & Details */
+.request-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.request-details-cell {
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.request-details-title {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.request-details-sub {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+/* Vacation Balances Table Progress */
+.vac-progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.vac-progress-cell .progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.progress-bar.progress-accent span {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.progress-bar.progress-warning span {
+  background: linear-gradient(90deg, #e07d10, #f59e0b);
+}
+
+.progress-bar.progress-danger span {
+  background: linear-gradient(90deg, #d63b3b, #ef4444);
+}
+
+.progress-bar.progress-success span {
+  background: linear-gradient(90deg, #0ea966, #10b981);
+}
+
+.vac-progress-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vac-emp-link {
+  font-weight: 600;
+  color: var(--text);
+  transition: color 0.15s ease;
+  cursor: pointer;
+}
+
+.vac-emp-link:hover {
+  color: var(--accent);
+}
+
+/* Time Off Request Card in Employee Portal */
+.time-off-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.time-off-head {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+}
+
+.time-off-body {
+  padding: 24px;
+}
+
+.time-off-summary-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.time-off-days-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.time-off-days-badge b {
+  color: var(--accent);
+  font-family: var(--font-head);
+  font-size: 16px;
+}
+
+/* Stat subtext & trend updates */
+.stat-subtext {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+

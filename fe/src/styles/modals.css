@@ -1,0 +1,329 @@
+/* Modals, Overlays, Dropzones, Form Sectioning */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 25, .55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  backdrop-filter: blur(3px);
+}
+
+.modal-overlay.active {
+  display: flex;
+  animation: modalFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-overlay.active .modal {
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+}
+
+.modal.wide {
+  max-width: 680px;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-head h3 {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font-head);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 14px;
+}
+
+.modal-body {
+  padding: 22px 24px;
+}
+
+.modal-foot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-grid .full {
+  grid-column: 1/-1;
+}
+
+
+.doc-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  background: var(--surface2);
+}
+
+.doc-drop-zone:hover,
+.doc-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.doc-drop-empty i {
+  font-size: 28px;
+  color: var(--text3);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.doc-drop-empty p {
+  font-size: 13.5px;
+  color: var(--text2);
+  margin: 0;
+}
+
+.doc-drop-empty span {
+  font-size: 11.5px;
+  color: var(--text3);
+}
+
+.doc-drop-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.doc-file-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.doc-file-icon.pdf {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.doc-file-icon.image {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.doc-file-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-file-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-file-size {
+  font-size: 11.5px;
+  color: var(--text3);
+}
+
+.doc-progress-track {
+  height: 8px;
+  border-radius: var(--radius-xs);
+  background: var(--surface2);
+  overflow: hidden;
+}
+
+.doc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: var(--radius-xs);
+  transition: width .2s ease;
+}
+
+.doc-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text3);
+  margin-top: 6px;
+}
+
+.doc-type-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.doc-type-icon.pdf {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.doc-type-icon.image {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.doc-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-name-text {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+
+/* ===== Modal & form system v2 (sectioned forms) ===== */
+.modal-v2 .modal-head{
+  display:flex;align-items:center;gap:14px;
+  padding:20px 26px;
+}
+.modal-v2 .modal-head-icon{
+  width:40px;height:40px;border-radius:var(--radius-sm);flex-shrink:0;
+  background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.modal-v2 .modal-head-text{flex:1;min-width:0}
+.modal-v2 .modal-head-text h3{font-size:16px;font-weight:700;font-family:var(--font-head)}
+.modal-v2 .modal-head-text p{font-size:12px;color:var(--text2);margin-top:2px}
+
+.modal-v2 .modal-body{padding:22px 26px}
+
+.modal-v2 .form-section{margin-bottom:26px}
+.modal-v2 .form-section:last-child{margin-bottom:0}
+.modal-v2 .form-section-label{
+  display:flex;align-items:center;gap:9px;margin-bottom:14px;
+  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);
+}
+.modal-v2 .form-section-label i{font-size:11px;color:var(--accent)}
+.modal-v2 .form-section-label .line{flex:1;height:1px;background:var(--border)}
+.modal-v2 .form-section.optional-section{
+  background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius-md);padding:16px 18px;
+}
+.modal-v2 .form-section.optional-section .form-section-label{margin-bottom:12px}
+
+.modal-v2 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.modal-v2 .form-grid .full{grid-column:1/-1}
+.modal-v2 .form-field label{
+  display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;
+}
+.modal-v2 .form-field label .req{color:var(--danger);font-size:11px}
+.modal-v2 .form-field label .opt{color:var(--text3);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+.modal-v2 .form-field input,
+.modal-v2 .form-field select,
+.modal-v2 .form-field textarea{
+  width:100%;padding:10px 13px;border-radius:var(--radius-sm);
+  border:1.5px solid var(--border);background:var(--surface);
+  color:var(--text);font-size:13.5px;outline:none;font-family:inherit;transition:.15s;
+}
+.modal-v2 .form-field input:focus,
+.modal-v2 .form-field select:focus,
+.modal-v2 .form-field textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+}
+
+.modal-v2 .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.modal-v2 .toggle-row .t-label{font-size:13px;font-weight:600}
+.modal-v2 .toggle-row .t-sub{font-size:11.5px;color:var(--text2);margin-top:2px}
+.modal-v2 .switch{position:relative;width:40px;height:22px;flex-shrink:0}
+.modal-v2 .switch input{opacity:0;width:0;height:0}
+.modal-v2 .slider{position:absolute;inset:0;background:var(--border);border-radius:var(--radius-full);cursor:pointer;transition:.2s}
+.modal-v2 .slider:before{
+  content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;
+  background:#fff;border-radius:var(--radius-full);transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.modal-v2 .switch input:checked + .slider{background:var(--accent)}
+.modal-v2 .switch input:checked + .slider:before{transform:translateX(18px)}
+
+/* Button loading spinner (reusable outside modal-v2 too) */
+.btn-spinner{
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+  animation:btnSpin .7s linear infinite;flex-shrink:0;display:inline-block;
+}
+@keyframes btnSpin{to{transform:rotate(360deg)}}
+.btn:disabled,.btn-fill:disabled{opacity:.65;cursor:not-allowed;transform:none}
+
+/* ===== Compact drop-zone variant (used in Behalf Claim modal) ===== */
+.doc-drop-zone.compact{
+  padding:14px 12px;
+}
+.doc-drop-zone.compact .doc-drop-empty i{
+  font-size:20px;
+  margin-bottom:4px;
+}
+.doc-drop-zone.compact .doc-drop-empty p{
+  font-size:12.5px;
+  margin:0;
+}
+.doc-drop-zone.compact .doc-drop-empty span{
+  font-size:11px;
+}
+.doc-drop-zone.compact .doc-file-icon{
+  width:32px;
+  height:32px;
+  font-size:14px;
+}
+.doc-drop-zone.compact .doc-file-name{
+  font-size:12.5px;
+}
+.doc-drop-zone.compact .doc-file-size{
+  font-size:10.5px;
+}
+

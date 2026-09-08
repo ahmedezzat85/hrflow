@@ -1,0 +1,15 @@
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Confirm Deletion</h3><button class="modal-close" onclick="closeModal('confirmModal')"><i
+            class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text2);font-size:14px;">Are you sure you want to remove <b id="delEmpName"
+            style="color:var(--text);"></b> from the system? This action cannot be undone.</p>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal('confirmModal')">Cancel</button><button
+          class="btn btn-danger-outline" onclick="confirmDelete(event)"><i class="fa-solid fa-trash"></i>
+          Delete</button></div>
+    </div>
+  </div>

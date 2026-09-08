@@ -1,0 +1,65 @@
+        <section class="page-section" id="a-salary">
+          <div class="grid g4" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-label">Total Monthly Payroll</div>
+              <div class="stat-val" id="statPayroll">EGP 0</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Avg. Raise (Last Cycle)</div>
+              <div class="stat-val" id="statAvgRaise">+0%</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Raises Applied (YTD)</div>
+              <div class="stat-val" id="statRaisesYtd">0</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label">Upcoming This Quarter</div>
+              <div class="stat-val" id="statUpcomingQ">0</div>
+            </div>
+          </div>
+          <div class="toolbar">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch"
+                placeholder="Search employees..."></div>
+            <button class="btn btn-fill" onclick="openRaiseModal()"><i class="fa-solid fa-arrow-trend-up"></i> Apply New
+              Raise</button>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>Employee Compensation</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th>Current Salary</th>
+                  <th>Next Raise Date</th>
+                  <th>Last Raise Applied</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="salaryTableBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Company-wide Raise History</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Effective Date</th>
+                  <th>New Internal</th>
+                  <th>New External</th>
+                  <th>New Total</th>
+                  <th>Internal Δ</th>
+                  <th>External Δ</th>
+                  <th>Total Δ</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="companyRaiseHistoryBody"></tbody>
+            </table>
+          </div>
+        </section>

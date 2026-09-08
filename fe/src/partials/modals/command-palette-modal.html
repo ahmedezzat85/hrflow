@@ -1,0 +1,19 @@
+  <div class="modal-overlay" id="commandPaletteModal" onclick="if(event.target===this)closeCommandPalette()">
+    <div class="modal command-palette-modal">
+      <div class="command-palette-head">
+        <div class="palette-search-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+        <input type="text" id="commandPaletteInput" class="palette-input" placeholder="Search employees by name, role, department..." autocomplete="off" spellcheck="false">
+        <button class="palette-shortcut-badge" onclick="closeCommandPalette()" title="Close (Esc)">ESC</button>
+      </div>
+      <div class="command-palette-body" id="commandPaletteResults"></div>
+      <div class="command-palette-foot">
+        <div class="palette-tips">
+          <span class="palette-tip"><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+          <span class="palette-tip"><kbd>↵</kbd> Select</span>
+          <span class="palette-tip"><kbd>ESC</kbd> Close</span>
+        </div>
+        <span class="palette-domain-tag"><i class="fa-solid fa-users"></i> Employees</span>
+      </div>
+    </div>
+  </div>
+

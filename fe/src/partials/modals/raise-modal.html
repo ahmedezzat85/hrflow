@@ -1,0 +1,75 @@
+  <div class="modal-overlay" id="raiseModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        <div class="modal-head-text">
+          <h3 id="raiseModalTitle">Apply New Raise</h3>
+          <p>Adjust compensation packages and record raises.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('raiseModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user"></i> Employee Selection <span class="line"></span></div>
+          <div class="form-field full">
+            <label>Employee <span class="req">*</span></label>
+            <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation Adjustment <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Current Internal <span class="opt">USD</span></label>
+              <input type="text" id="rvCurrentInternal" value="—" disabled>
+            </div>
+            <div class="form-field">
+              <label>Current External <span class="opt">USD</span></label>
+              <input type="text" id="rvCurrentExternal" value="—" disabled>
+            </div>
+            <div class="form-field">
+              <label>New Internal <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
+            </div>
+            <div class="form-field">
+              <label>New External <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-calendar-check"></i> Raise Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Effective Date <span class="req">*</span></label>
+              <input type="date" id="rDate">
+            </div>
+            <div class="form-field">
+              <label>Reason</label>
+              <select id="rReason">
+                <option>Annual performance raise</option>
+                <option>Promotion</option>
+                <option>Cost of living adjustment</option>
+                <option>Market adjustment</option>
+                <option>Retention raise</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="raise-preview" id="raisePreview">
+          <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
+          <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
+          <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
+          <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
+          <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="raiseModalCancelBtn" onclick="closeModal('raiseModal')">Cancel</button>
+        <button class="btn btn-fill" id="raiseModalSaveBtn" onclick="applyRaise(event)"><i class="fa-solid fa-check"></i> Apply Raise</button>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,101 @@
+        <section class="page-section" id="e-vacations">
+          <div class="grid g3" style="margin-bottom:20px;">
+            <div class="card stat-card">
+              <div class="stat-top">
+                <div class="stat-label">Annual Entitlement</div>
+                <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-calendar-check"></i></div>
+              </div>
+              <div class="stat-val" id="empStatVacEntitlement">—</div>
+              <div class="stat-subtext">
+                <span class="stat-trend" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-shield-halved"></i> Allocated days</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-top">
+                <div class="stat-label">Days Used</div>
+                <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-clock-rotate-left"></i></div>
+              </div>
+              <div class="stat-val" id="empStatVacUsed">—</div>
+              <div class="stat-subtext">
+                <span class="stat-trend" id="empStatVacUsedTrend" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-hourglass-half"></i> Consumed</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-top">
+                <div class="stat-label">Days Remaining</div>
+                <div class="stat-icon" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div>
+              </div>
+              <div class="stat-val" id="empStatVacRemaining" style="color:var(--success)">—</div>
+              <div class="stat-subtext">
+                <span class="stat-trend" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-check"></i> Available balance</span>
+              </div>
+            </div>
+          </div>
+          <div class="card time-off-card" style="margin-bottom:20px;">
+            <div class="time-off-head">
+              <div>
+                <h3 style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-plane-departure" style="color:var(--accent);"></i> Request Time Off</h3>
+                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Submit a leave or remote work request for HR and manager approval.</p>
+              </div>
+            </div>
+            <div class="time-off-body">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>Leave Type</label>
+                  <select id="vacType">
+                    <option>Annual Leave</option>
+                    <option>Sick Leave</option>
+                    <option>Work From Home</option>
+                    <option>Unpaid Leave</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Duration</label>
+                  <select id="vacDuration" onchange="onVacationDatesChange()">
+                    <option value="Full Day(s)">Full Day(s)</option>
+                    <option value="Half Day">Half Day (0.5 day)</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Start Date</label>
+                  <input type="date" id="vacStart" onchange="onVacationDatesChange()">
+                </div>
+                <div class="form-field">
+                  <label>End Date</label>
+                  <input type="date" id="vacEnd" onchange="onVacationDatesChange()">
+                </div>
+                <div class="form-field full">
+                  <label>Reason / Additional Details (optional)</label>
+                  <textarea rows="2" id="vacReason" placeholder="Add context for your manager..."></textarea>
+                </div>
+              </div>
+              <div class="time-off-summary-bar">
+                <div class="time-off-days-badge">
+                  <i class="fa-solid fa-calculator" style="color:var(--accent);"></i>
+                  <span>Calculated Duration: <b id="vacComputedDays">0 days</b></span>
+                </div>
+                <button class="btn btn-fill" id="btnSubmitVacation" onclick="submitVacation()"><i
+                    class="fa-solid fa-paper-plane"></i> Submit Request</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>My Vacation &amp; Leave History</h3>
+                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Overview of all previous and pending leave requests.</p>
+              </div>
+            </div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Dates</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="empVacationBody"></tbody>
+            </table>
+          </div>
+        </section>

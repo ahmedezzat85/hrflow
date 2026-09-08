@@ -1,0 +1,45 @@
+  <div class="modal-overlay" id="bankAccountModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <div class="modal-head-text">
+          <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+          <p>Employee payout banking details and wire routing.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-credit-card"></i> Banking Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Bank Name <span class="req">*</span></label>
+              <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
+            </div>
+            <div class="form-field full">
+              <label>IBAN <span class="req">*</span></label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002"
+                  style="flex:1;font-family:monospace;">
+                <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()"
+                  title="Reveal full IBAN">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by
+                default. Click the eye icon to reveal.</span>
+            </div>
+            <div class="form-field full">
+              <label>SWIFT / BIC Code <span class="opt">Optional</span></label>
+              <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="bankAccountCancelBtn" onclick="closeModal('bankAccountModal')">Cancel</button>
+        <button class="btn btn-fill" id="bankAccountSaveBtn" onclick="saveBankAccount(event)"><i class="fa-solid fa-floppy-disk"></i>
+          Save</button>
+      </div>
+    </div>
+  </div>

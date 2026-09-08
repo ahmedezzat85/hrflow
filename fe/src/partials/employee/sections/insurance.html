@@ -1,0 +1,53 @@
+        <section class="page-section" id="e-insurance">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-head">
+              <h3>My Insurance Consumption</h3>
+            </div>
+            <div class="info-item" style="margin-bottom:16px;"><span>Total Consumption</span><b
+                id="empInsuranceTotalConsumed">—</b></div>
+            <div class="grid g3" id="empInsuranceCategoryGrid"></div>
+          </div>
+          <div class="grid g-2-1" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>My Insurance Plan</h3><span class="badge-pill pill-success"><i class="fa-solid fa-check"></i>
+                  Active</span>
+              </div>
+              <div class="info-grid">
+                <div class="info-item"><span>Plan</span><b>Premium Family Care</b></div>
+                <div class="info-item"><span>Provider</span><b>Allianz Egypt</b></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Submit a Claim</h3>
+              </div>
+              <div class="form-field" style="margin-bottom:12px;"><label>Category</label><select
+                  id="claimCategory"></select></div>
+              <div class="form-field" style="margin-bottom:12px;"><label>Amount (EGP)</label><input type="number"
+                  id="claimAmount" placeholder="e.g. 1500"></div>
+              <div class="form-field" style="margin-bottom:12px;"><label>Supporting Document (optional)</label><input
+                  type="file" id="claimDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
+              <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i
+                  class="fa-solid fa-file-medical"></i> Submit Claim</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Claims History</h3>
+            </div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Provider</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Document</th>
+                </tr>
+              </thead>
+              <tbody id="empInsuranceBody"></tbody>
+            </table>
+          </div>
+        </section>

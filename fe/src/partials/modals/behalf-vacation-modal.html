@@ -1,0 +1,62 @@
+  <div class="modal-overlay" id="behalfVacationModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+        <div class="modal-head-text">
+          <h3>Submit Vacation / WFH on Behalf</h3>
+          <p>Log a leave or remote work request for this employee.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-calendar-days"></i> Request Parameters <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Type <span class="req">*</span></label>
+              <select id="bvType">
+                <option>Annual Leave</option>
+                <option>Sick Leave</option>
+                <option>Work From Home</option>
+                <option>Unpaid Leave</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Start Date <span class="req">*</span></label>
+              <input type="date" id="bvStart">
+            </div>
+            <div class="form-field">
+              <label>End Date</label>
+              <input type="date" id="bvEnd">
+            </div>
+            <div class="form-field full">
+              <label>Days <span class="opt">Count</span></label>
+              <input type="number" id="bvDays" value="1" min="1">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user-shield"></i> Administrative Status <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Status</label>
+              <select id="bvStatus">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Record Date <span class="opt">Optional</span></label>
+              <input type="date" id="bvRecordDate">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="behalfVacationCancelBtn" onclick="closeModal('behalfVacationModal')">Cancel</button>
+        <button class="btn btn-fill" id="behalfVacationSaveBtn" onclick="submitBehalfVacation(event)"><i class="fa-solid fa-check"></i> Submit</button>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,421 @@
+/* Responsive Design, Mobile Overrides, Reduced Motion */
+@media(max-width:768px) {
+  /* Root horizontal containment */
+  html, body, .app, .main {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    padding: 12px 14px 6px;
+  }
+
+  .top-actions {
+    gap: 8px;
+  }
+
+  .icon-btn,
+  .icon-action {
+    width: 38px;
+    height: 38px;
+  }
+
+  .page {
+    padding: 10px 14px 24px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .card {
+    padding: 16px 14px;
+    border-radius: var(--radius);
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .stat-val {
+    font-size: 22px;
+  }
+
+  /* Toolbar and search */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .search-box {
+    max-width: none;
+    width: 100%;
+  }
+
+  .toolbar button,
+  .toolbar .btn,
+  .toolbar .btn-fill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Filter tabs horizontal pill scroll */
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    width: 100%;
+  }
+
+  .filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ===== Responsive Card Tables for Touch Devices ===== */
+  .responsive-card-table thead {
+    display: none;
+  }
+
+  .responsive-card-table,
+  .responsive-card-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .responsive-card-table tr {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Keep empty/loading states neutral and centered */
+  .responsive-card-table tr:has(.empty-state),
+  .responsive-card-table tr.empty-row {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  .responsive-card-table tr:has(.empty-state) td,
+  .responsive-card-table tr.empty-row td {
+    display: block;
+    border: none;
+    padding: 0;
+  }
+
+  .responsive-card-table tr:has(.empty-state) td::before,
+  .responsive-card-table tr.empty-row td::before {
+    display: none;
+  }
+
+  .responsive-card-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    min-height: 28px;
+    box-sizing: border-box;
+  }
+
+  .responsive-card-table td:last-child {
+    border-bottom: none;
+  }
+
+  .responsive-card-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text3);
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .responsive-card-table td.tname {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0 0 8px 0;
+    margin-bottom: 4px;
+    border-bottom: 1.5px solid var(--border);
+  }
+
+  .responsive-card-table td.tname::before {
+    display: none;
+  }
+
+  .responsive-card-table td.tname .avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .responsive-card-table td.col-actions,
+  .responsive-card-table td[data-label="Actions"] {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+  }
+
+  .responsive-card-table td.col-actions::before,
+  .responsive-card-table td[data-label="Actions"]::before {
+    display: none;
+  }
+
+  .responsive-card-table td.col-actions .request-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .responsive-card-table td.col-actions .request-actions button {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .responsive-card-table td.col-id,
+  .responsive-card-table td[data-label="ID"] {
+    font-size: 11.5px;
+    color: var(--text3);
+  }
+
+  /* Avoid unwanted horizontal overflow on cards with responsive tables */
+  .card:has(.responsive-card-table) {
+    overflow-x: visible;
+  }
+
+  .card:has(table) .responsive-card-table,
+  .responsive-card-table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Non-responsive-card tables fall back to clean internal scroll */
+  .card:has(table:not(.responsive-card-table)) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .card:has(table:not(.responsive-card-table)) table {
+    min-width: 580px;
+  }
+
+  /* Modals */
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-height: 92vh;
+    border-radius: var(--radius-lg);
+    width: 100%;
+  }
+
+  .modal-v2 .modal-head {
+    padding: 16px 18px;
+  }
+
+  .modal-v2 .modal-body {
+    padding: 18px 16px;
+  }
+
+  .modal-v2 .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .modal-v2 .form-section {
+    margin-bottom: 18px;
+  }
+
+  .modal-foot {
+    padding: 14px 16px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-foot button,
+  .modal-foot .btn,
+  .modal-foot .btn-fill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Employee Summary Card in Detail View */
+  .emp-summary-card .esc-head {
+    padding: 16px 14px;
+    gap: 12px;
+  }
+
+  .emp-summary-card .esc-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+  }
+
+  .emp-summary-card .esc-identity {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .emp-summary-card .esc-identity h4 {
+    font-size: 16px;
+  }
+
+  .emp-summary-card .esc-identity .esc-meta {
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .emp-summary-card .esc-badges {
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: 4px;
+    gap: 6px;
+  }
+
+  .emp-summary-card .esc-comp-zone {
+    padding: 16px 14px;
+  }
+
+  .emp-summary-card .esc-comp-total .esc-amount {
+    font-size: 24px;
+  }
+
+  .emp-summary-card .esc-comp-breakdown {
+    gap: 10px;
+  }
+
+  .emp-summary-card .esc-comp-piece {
+    min-width: 80px;
+  }
+
+  .emp-summary-card .esc-meta-zone {
+    padding: 16px 14px;
+  }
+
+  .emp-summary-card .esc-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 0;
+  }
+
+  /* Time-Off summary bar */
+  .time-off-summary-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .time-off-summary-bar button,
+  #btnSubmitVacation {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .time-off-head {
+    padding: 14px 16px;
+  }
+
+  .time-off-body {
+    padding: 16px 14px;
+  }
+
+  /* Login screen */
+  .login-visual {
+    display: none;
+  }
+
+  .login-form-wrap {
+    padding: 36px 20px;
+  }
+
+  .login-card {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: 0 14px;
+  }
+
+  #login-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  .toast-wrap {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .toast {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+
+/* ==========================================================================
+   Motion & Transition Layer (§6)
+   ========================================================================== */
+@keyframes rowActionSuccess {
+  0% { background-color: var(--success-soft); }
+  100% { background-color: transparent; }
+}
+
+@keyframes rowActionDanger {
+  0% { background-color: var(--danger-soft); }
+  100% { background-color: transparent; }
+}
+
+.row-action-highlight-success {
+  animation: rowActionSuccess 0.8s ease forwards;
+}
+
+.row-action-highlight-danger {
+  animation: rowActionDanger 0.8s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .modal-overlay.active,
+  .modal-overlay.active .modal {
+    animation: none !important;
+  }
+}
+

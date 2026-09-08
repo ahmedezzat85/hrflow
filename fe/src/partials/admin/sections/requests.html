@@ -1,0 +1,31 @@
+        <section class="page-section" id="a-requests">
+          <div class="requests-toolbar">
+            <div class="filter-tabs">
+              <button class="filter-tab active" data-reqfilter="all">All <span class="tab-count" id="countReqAll">0</span></button>
+              <button class="filter-tab" data-reqfilter="Vacation"><i class="fa-solid fa-umbrella-beach"></i> Vacation <span class="tab-count" id="countReqVacation">0</span></button>
+              <button class="filter-tab" data-reqfilter="Work From Home"><i class="fa-solid fa-house-laptop"></i> Work From Home <span class="tab-count" id="countReqWFH">0</span></button>
+              <button class="filter-tab" data-reqfilter="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical Insurance <span class="tab-count" id="countReqInsurance">0</span></button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Pending Requests Queue</h3>
+                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Review, approve or reject employee leave and claim requests in real-time.</p>
+              </div>
+            </div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Type</th>
+                  <th>Details &amp; Reason</th>
+                  <th>Submitted</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requestsTableBody"></tbody>
+            </table>
+          </div>
+        </section>

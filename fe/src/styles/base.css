@@ -1,0 +1,50 @@
+/* Base & Global Typography */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background .25s, color .25s;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-head);
+}
+
+.brand {
+  font-family: var(--font-head);
+}
+
