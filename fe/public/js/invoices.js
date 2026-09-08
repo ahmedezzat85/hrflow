@@ -18,6 +18,8 @@ let _rawInvoiceHistory = [];
 let _invoiceSortField = 'name'; // 'name' | 'number'
 let _invoiceSortDir = 'asc';    // 'asc' | 'desc'
 let _expandedInvoiceMonths = new Set();
+let _popoverSelectedYear = new Date().getFullYear();
+let _popoverSelectedMonth = new Date().getMonth() + 1;
 
 function _currentInvoicePeriod(){
   const now = new Date();
@@ -34,33 +36,118 @@ function _escapeAttr(str){
   return String(str || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function updateInvoicePeriodLabel(year, month){
+  const lbl = document.getElementById('invPeriodBtnLabel');
+  if(lbl){
+    const names = ["", "January", "February", "March", "April", "May", "June",
+                   "July", "August", "September", "October", "November", "December"];
+    lbl.textContent = `${names[month] || 'Month'} ${year || ''}`;
+  }
+}
+
+function openInvoicePeriodModal(){
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  _popoverSelectedYear = (yearInput && Number(yearInput.value)) || new Date().getFullYear();
+  _popoverSelectedMonth = (monthInput && Number(monthInput.value)) || (new Date().getMonth() + 1);
+  renderInvoicePeriodModal();
+  const modal = document.getElementById('invoicePeriodModal');
+  if(modal) modal.classList.add('active');
+}
+
+function renderInvoicePeriodModal(){
+  const yearLbl = document.getElementById('invPopoverYearLabel');
+  if(yearLbl) yearLbl.textContent = _popoverSelectedYear;
+
+  const monthGrid = document.getElementById('invPopoverMonthGrid');
+  if(!monthGrid) return;
+  const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  monthGrid.innerHTML = monthNames.slice(1).map((name, idx) => {
+    const mNum = idx + 1;
+    const isActive = mNum === _popoverSelectedMonth;
+    return `<button type="button" class="inv-month-btn ${isActive ? 'active' : ''}" onclick="selectInvoicePopoverMonth(${mNum})">${name}</button>`;
+  }).join('');
+}
+
+function changeInvoicePopoverYear(delta){
+  _popoverSelectedYear += delta;
+  renderInvoicePeriodModal();
+}
+
+function selectInvoicePopoverMonth(monthNum){
+  _popoverSelectedMonth = monthNum;
+  renderInvoicePeriodModal();
+  applyInvoicePeriodSelection();
+}
+
+function applyInvoicePeriodSelection(){
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  if(yearInput) yearInput.value = _popoverSelectedYear;
+  if(monthInput) monthInput.value = _popoverSelectedMonth;
+  updateInvoicePeriodLabel(_popoverSelectedYear, _popoverSelectedMonth);
+  closeModal('invoicePeriodModal');
+}
+
 /**
  * Called when the Invoices nav-item/section becomes active.
  */
 function initInvoicesPage(){
   const { year, month } = _currentInvoicePeriod();
   const yearInput = document.getElementById('invPaymentYear');
-  const monthSelect = document.getElementById('invPaymentMonth');
+  const monthInput = document.getElementById('invPaymentMonth');
   if(yearInput && !yearInput.value) yearInput.value = year;
-  if(monthSelect) monthSelect.value = month;
+  if(monthInput && !monthInput.value) monthInput.value = month;
+  const activeYear = (yearInput && yearInput.value) ? Number(yearInput.value) : year;
+  const activeMonth = (monthInput && monthInput.value) ? Number(monthInput.value) : month;
+  updateInvoicePeriodLabel(activeYear, activeMonth);
   renderInvoiceResultsPlaceholder();
   loadInvoiceHistory();
+}
+
+function setupDefaultInvoicePeriod(){
+  const { year, month } = _currentInvoicePeriod();
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  if(yearInput) yearInput.value = year;
+  if(monthInput) monthInput.value = month;
+  updateInvoicePeriodLabel(year, month);
+}
+if(typeof window !== 'undefined'){
+  window.addEventListener('DOMContentLoaded', setupDefaultInvoicePeriod);
 }
 
 function renderInvoiceResultsPlaceholder(){
   const body = document.getElementById('invoiceResultsBody');
   if(!body) return;
-  body.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-file-invoice-dollar"></i><p>Click "Preview Eligible Employees" to see who will be invoiced for the selected month.</p></div></td></tr>`;
+  body.innerHTML = renderEmptyTableRow(3, 'Click "Preview Eligible Employees" to see who will be invoiced for the selected month.', 'fa-solid fa-file-invoice-dollar');
 }
 
 function _getInvoicePeriodInputs(){
-  const year = Number(document.getElementById('invPaymentYear').value);
-  const month = Number(document.getElementById('invPaymentMonth').value);
+  const yearInput = document.getElementById('invPaymentYear');
+  const monthInput = document.getElementById('invPaymentMonth');
+  const year = yearInput ? Number(yearInput.value) : new Date().getFullYear();
+  const month = monthInput ? Number(monthInput.value) : (new Date().getMonth() + 1);
   return { year, month };
 }
 
+let _invoiceEligibilityFilter = 'eligible'; // 'eligible' | 'skipped' | 'all'
+
+function setInvoiceEligibilityFilter(filterKey){
+  _invoiceEligibilityFilter = filterKey;
+  const eligibleBtn = document.getElementById('invFilterEligibleBtn');
+  const skippedBtn = document.getElementById('invFilterSkippedBtn');
+  const allBtn = document.getElementById('invFilterAllBtn');
+  if(eligibleBtn) eligibleBtn.classList.toggle('active', filterKey === 'eligible');
+  if(skippedBtn) skippedBtn.classList.toggle('active', filterKey === 'skipped');
+  if(allBtn) allBtn.classList.toggle('active', filterKey === 'all');
+
+  const { year, month } = _getInvoicePeriodInputs();
+  renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
+}
+
 async function previewInvoiceEligibility(evt){
-  const btn = (evt && evt.currentTarget) || document.querySelector('#a-invoices .toolbar + .card .btn');
+  const btn = (evt && evt.currentTarget) || document.querySelector('#a-invoices .invoice-toolbar-actions .btn');
   const { year, month } = _getInvoicePeriodInputs();
   if(!year || !month || month < 1 || month > 12){
     toast('Please select a valid payment year and month.', 'fa-solid fa-triangle-exclamation');
@@ -68,6 +155,17 @@ async function previewInvoiceEligibility(evt){
   }
   setButtonLoading(btn, true, 'Loading...');
   try{
+    if(typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')){
+      _invoiceEligiblePreview = [
+        { employee_id: 1, employee_name: 'Sarah Connor', status: 'eligible', reason: null },
+        { employee_id: 2, employee_name: 'John Doe', status: 'eligible', reason: null },
+        { employee_id: 3, employee_name: 'Alex Rivera', status: 'skipped', reason: 'External salary is 0 USD' },
+        { employee_id: 4, employee_name: 'Elena Rostova', status: 'already_exists', invoice_number: 'INV-202609-01' },
+        { employee_id: 5, employee_name: 'Marcus Vance', status: 'skipped', reason: 'Missing invoice ID on file' }
+      ];
+      renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
+      return;
+    }
     const data = await Api.previewEligibleInvoices(year, month);
     _invoiceEligiblePreview = data.results || [];
     renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
@@ -94,11 +192,29 @@ function renderInvoicePreviewResults(results, year, month){
   if(!body) return;
   document.getElementById('invoiceResultsTitle').textContent =
     `Eligibility Preview — ${_invoicePeriodLabel(year, month)}`;
-  if(!results.length){
-    body.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-file-invoice-dollar"></i><p>No employees found.</p></div></td></tr>`;
+  if(!results || !results.length){
+    body.innerHTML = renderEmptyTableRow(3, 'No employee records found for this period.', 'fa-solid fa-file-invoice-dollar');
     return;
   }
-  body.innerHTML = results.map(r => {
+
+  const filtered = results.filter(r => {
+    if (_invoiceEligibilityFilter === 'eligible') {
+      return r.status === 'eligible' || r.status === 'already_exists';
+    } else if (_invoiceEligibilityFilter === 'skipped') {
+      return r.status === 'skipped';
+    }
+    return true; // 'all'
+  });
+
+  if(!filtered.length){
+    let msg = 'No eligible employees found.';
+    if (_invoiceEligibilityFilter === 'skipped') msg = 'No skipped employees found.';
+    else if (_invoiceEligibilityFilter === 'all') msg = 'No employee records found.';
+    body.innerHTML = renderEmptyTableRow(3, msg, 'fa-solid fa-file-invoice-dollar');
+    return;
+  }
+
+  body.innerHTML = filtered.map(r => {
     let actionBtn = '—';
     if (r.status === 'eligible') {
       actionBtn = `<button class="btn btn-sm btn-fill" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
@@ -108,7 +224,6 @@ function renderInvoicePreviewResults(results, year, month){
     return `<tr>
       <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
-      <td>${r.reason || r.invoice_number || '—'}</td>
       <td>${actionBtn}</td>
     </tr>`;
   }).join('');
@@ -268,7 +383,7 @@ function previewInvoicePdf(invoiceId, invoiceNumber){
         .catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
     };
   }
-  if (container) container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading PDF preview...</div>';
+  if (container) renderLoadingState(container, 'Loading PDF preview...');
   if (modal) modal.classList.add('active');
 
   Api.getInvoicePreviewBlobUrl(invoiceId).then(url => {
@@ -357,7 +472,7 @@ function renderGroupedInvoiceHistory(){
 
   if(!_rawInvoiceHistory.length){
     if(badgeEl) badgeEl.style.display = 'none';
-    container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>No invoices generated yet.</p></div>`;
+    renderEmptyState(container, 'No invoices generated yet.', 'fa-solid fa-clock-rotate-left');
     return;
   }
 
@@ -494,7 +609,7 @@ async function loadInvoiceHistory(){
     renderGroupedInvoiceHistory();
   } catch(err){
     if(container){
-      container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load invoice history: ${err.message}</p></div>`;
+      renderEmptyState(container, `Could not load invoice history: ${err.message}`, 'fa-solid fa-triangle-exclamation');
     }
   }
 }

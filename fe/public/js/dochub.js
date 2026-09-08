@@ -102,7 +102,7 @@ function renderCompanyDocumentsAdmin(filter=''){
       <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteCompanyDocumentPrompt(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
-  </tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No company documents uploaded yet.</p></div></td></tr>`;
+  </tr>`).join('') || renderEmptyTableRow(4, 'No company documents uploaded yet.', 'fa-solid fa-folder-open');
 }
 function renderCompanyDocumentsEmployee(filter=''){
   const body = document.getElementById('empDochubTableBody');
@@ -117,7 +117,7 @@ function renderCompanyDocumentsEmployee(filter=''){
       <button class="icon-action" title="Preview" onclick="previewCompanyDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
     </td>
-  </tr>`).join('') || `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No company documents available yet.</p></div></td></tr>`;
+  </tr>`).join('') || renderEmptyTableRow(4, 'No company documents available yet.', 'fa-solid fa-folder-open');
 }
 const dochubSearchEl = document.getElementById('dochubSearch');
 if(dochubSearchEl) dochubSearchEl.addEventListener('input', e=>renderCompanyDocumentsAdmin(e.target.value));
@@ -179,7 +179,7 @@ function previewCompanyDocument(docId, name, fileType){
     Api.downloadCompanyDocumentFile(docId, name || 'document').catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
   };
   if(container){
-    container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading preview...</div>';
+    renderLoadingState(container, 'Loading preview...');
   }
   document.getElementById('documentPreviewModal').classList.add('active');
   Api.getCompanyDocumentPreviewBlobUrl(docId).then(url => {
@@ -188,7 +188,7 @@ function previewCompanyDocument(docId, name, fileType){
       ? `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`
       : `<iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>`;
   }).catch(err => {
-    if(container) container.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+    if(container) container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
   });
 }
 function downloadCompanyDocument(docId){

@@ -171,9 +171,9 @@ class Config:
                     f"LOCAL_STORAGE_PATH '{cls.LOCAL_STORAGE_PATH}' cannot be created or accessed: {e}"
                 )
 
-        if cls.STORAGE_ENGINE not in ("sheets", "dual", "sql"):
+        if cls.STORAGE_ENGINE != "sql":
             errors.append(
-                f"STORAGE_ENGINE must be 'sheets', 'dual', or 'sql', got '{cls.STORAGE_ENGINE}'"
+                f"STORAGE_ENGINE '{cls.STORAGE_ENGINE}' is not supported. HRFlow operates exclusively on SQL ('sql') as its database engine. Google Sheets is only supported as an export destination."
             )
 
         if cls.DB_TYPE not in ("sqlite", "postgres", "postgresql"):
@@ -181,15 +181,14 @@ class Config:
                 f"DB_TYPE must be 'sqlite', 'postgres', or 'postgresql', got '{cls.DB_TYPE}'"
             )
 
-        if cls.STORAGE_ENGINE in ("dual", "sql"):
-            if cls.DB_TYPE in ("postgres", "postgresql") and not cls.DATABASE_URL.startswith(("postgresql://", "postgres://")):
-                errors.append(
-                    f"DB_TYPE is '{cls.DB_TYPE}' but DATABASE_URL '{cls.DATABASE_URL}' does not start with postgresql://"
-                )
-            elif cls.DB_TYPE == "sqlite" and not cls.DATABASE_URL.startswith("sqlite"):
-                errors.append(
-                    f"DB_TYPE is 'sqlite' but DATABASE_URL '{cls.DATABASE_URL}' does not start with sqlite"
-                )
+        if cls.DB_TYPE in ("postgres", "postgresql") and not cls.DATABASE_URL.startswith(("postgresql://", "postgres://")):
+            errors.append(
+                f"DB_TYPE is '{cls.DB_TYPE}' but DATABASE_URL '{cls.DATABASE_URL}' does not start with postgresql://"
+            )
+        elif cls.DB_TYPE == "sqlite" and not cls.DATABASE_URL.startswith("sqlite"):
+            errors.append(
+                f"DB_TYPE is 'sqlite' but DATABASE_URL '{cls.DATABASE_URL}' does not start with sqlite"
+            )
 
         if cls.IS_PRODUCTION:
             if cls.ALLOWED_ORIGINS == "*":

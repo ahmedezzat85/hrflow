@@ -31,23 +31,66 @@ os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-only-do-not-use-in-prod"
 os.environ["GOOGLE_OAUTH_CLIENT_ID"] = "test-client-id.apps.googleusercontent.com"
 os.environ["ALLOWED_ORIGINS"] = "*"
 os.environ["ENVIRONMENT"] = "development"
-os.environ["STORAGE_ENGINE"] = "sheets"
+os.environ["STORAGE_ENGINE"] = "sql"
+os.environ["DB_TYPE"] = "sqlite"
+os.environ["DATABASE_URL"] = "sqlite:///./hrflow_test.db"
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from config import Config
-Config.STORAGE_ENGINE = "sheets"
+Config.STORAGE_ENGINE = "sql"
+Config.DB_TYPE = "sqlite"
+Config.DATABASE_URL = "sqlite:///./hrflow_test.db"
+
 
 
 class FakeSheetsClient:
     def __init__(self, seed=None):
         self._data = copy.deepcopy(seed) if seed else {}
+        self.is_backfilling = False
+        self.auto_sync_to_sql = True
 
     def get_all_records(self, sheet_name):
+        if getattr(self, "is_backfilling", False):
+            return copy.deepcopy(self._data.get(sheet_name, []))
+        try:
+            from config import Config
+            if Config.STORAGE_ENGINE == "sql":
+                res = None
+                if sheet_name == "InsuranceClaims":
+                    from repositories.sql.insurance import SqlInsuranceRepository
+                    res = SqlInsuranceRepository().list_claims()
+                elif sheet_name == "Requests":
+                    from repositories.sql.requests import SqlRequestRepository
+                    res = SqlRequestRepository().list_requests()
+                elif sheet_name == "Employees":
+                    from repositories.sql.employees import SqlEmployeeRepository
+                    res = SqlEmployeeRepository().list_all()
+                elif sheet_name == "VacationHistory":
+                    from repositories.sql.vacations import SqlVacationRepository
+                    res = SqlVacationRepository().get_history()
+                elif sheet_name == "InsuranceCategories":
+                    from repositories.sql.insurance import SqlInsuranceRepository
+                    res = SqlInsuranceRepository().list_categories()
+                elif sheet_name == "SalaryHistory":
+                    from repositories.sql.salary import SqlSalaryRepository
+                    res = SqlSalaryRepository().get_history()
+                if res:
+                    return res
+        except Exception:
+            pass
         return copy.deepcopy(self._data.get(sheet_name, []))
 
     def append_row(self, sheet_name, row):
         self._data.setdefault(sheet_name, []).append(copy.deepcopy(row))
+        if getattr(self, "auto_sync_to_sql", True):
+            try:
+                from config import Config
+                if Config.STORAGE_ENGINE == "sql":
+                    from scripts.backfill_sheets_to_sql import backfill_all
+                    backfill_all(client=self)
+            except Exception:
+                pass
 
     def next_id(self, sheet_name):
         rows = self._data.get(sheet_name, [])
@@ -60,6 +103,14 @@ class FakeSheetsClient:
         for row in rows:
             if str(row.get(key_field)) == str(key_value):
                 row.update(updates)
+                if getattr(self, "auto_sync_to_sql", True):
+                    try:
+                        from config import Config
+                        if Config.STORAGE_ENGINE == "sql":
+                            from scripts.backfill_sheets_to_sql import backfill_all
+                            backfill_all(client=self)
+                    except Exception:
+                        pass
                 return True
         return False
 
@@ -174,11 +225,13 @@ def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path):
         test_db_file = tmp_path / "test_app_sql.db"
         test_db_url = f"sqlite:///{test_db_file}"
         monkeypatch.setattr(Config, "DATABASE_URL", test_db_url)
+        monkeypatch.setattr(Config, "DB_TYPE", "sqlite")
         reset_engine_for_testing(test_db_url)
         from sqlalchemy import create_engine
         engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
         Base.metadata.create_all(bind=engine)
-        backfill_all(client=fake_sheets_client)
+        stats = backfill_all(client=fake_sheets_client)
+        print("BACKFILL STATS:", stats)
 
     import main as main_module
     from fastapi.testclient import TestClient

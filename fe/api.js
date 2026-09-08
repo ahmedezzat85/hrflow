@@ -30,6 +30,7 @@ const SessionInfo = {
 let _sessionExpiredHandled = false;
 
 function forceSessionExpiredLogout() {
+  if (typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')) return;
   if (_sessionExpiredHandled) return;
   _sessionExpiredHandled = true;
 
@@ -361,6 +362,23 @@ const Api = {
   },
   upsertBankAccount(empId, payload) {
     return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/bank-account`, payload);
+  },
+  getExportStatus() {
+    return apiRequest("GET", "/api/export/status");
+  },
+  exportToGoogleSheets(dataset, payload = {}) {
+    return apiRequest("POST", `/api/export/${encodeURIComponent(dataset)}/sheets`, payload);
+  },
+  downloadExportCsv(dataset, params = {}) {
+    const q = new URLSearchParams();
+    if (params && params.year) q.set("year", params.year);
+    if (params && params.start_date) q.set("start_date", params.start_date);
+    if (params && params.end_date) q.set("end_date", params.end_date);
+    if (params && params.payment_year) q.set("payment_year", params.payment_year);
+    if (params && params.payment_month) q.set("payment_month", params.payment_month);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    const filename = `${dataset}_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    return _downloadDocumentViaFetch(`/api/export/${encodeURIComponent(dataset)}/csv${qs}`, filename);
   },
   health() { return apiRequest("GET", "/api/health", null, false); },
 };

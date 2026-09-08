@@ -1,9 +1,9 @@
 """
 be/repositories/deps.py
 FastAPI dependency providers for domain repositories.
-Dynamically resolves to Sheets, Dual-Write, or SQL implementations based on Config.STORAGE_ENGINE.
+HRFlow operates exclusively on SQL (PostgreSQL/SQLite via SQLAlchemy) as its database engine.
+Google Sheets is used solely as an export destination.
 """
-import config
 from repositories.interfaces import (
     EmployeeRepository,
     SalaryRepository,
@@ -16,19 +16,7 @@ from repositories.interfaces import (
     AuditRepository,
     UserRepository,
 )
-# Sheets Repositories
-from repositories.sheets.employees import SheetsEmployeeRepository
-from repositories.sheets.salary import SheetsSalaryRepository
-from repositories.sheets.bank import SheetsBankRepository
-from repositories.sheets.documents import SheetsCompanyDocumentRepository
-from repositories.sheets.insurance import SheetsInsuranceRepository
-from repositories.sheets.requests import SheetsRequestRepository
-from repositories.sheets.vacations import SheetsVacationRepository
-from repositories.sheets.invoices import SheetsInvoiceRepository
-from repositories.sheets.audit import SheetsAuditRepository
-from repositories.sheets.auth import SheetsUserRepository
-
-# SQL Repositories
+# SQL Repositories (exclusive operational engine)
 from repositories.sql.employees import SqlEmployeeRepository
 from repositories.sql.salary import SqlSalaryRepository
 from repositories.sql.bank import SqlBankRepository
@@ -40,108 +28,42 @@ from repositories.sql.invoices import SqlInvoiceRepository
 from repositories.sql.audit import SqlAuditRepository
 from repositories.sql.auth import SqlUserRepository
 
-# Dual-Write Repositories
-from repositories.dual.employees import DualWriteEmployeeRepository
-from repositories.dual.salary import DualWriteSalaryRepository
-from repositories.dual.bank import DualWriteBankRepository
-from repositories.dual.documents import DualWriteCompanyDocumentRepository
-from repositories.dual.insurance import DualWriteInsuranceRepository
-from repositories.dual.requests import DualWriteRequestRepository
-from repositories.dual.vacations import DualWriteVacationRepository
-from repositories.dual.invoices import DualWriteInvoiceRepository
-from repositories.dual.audit import DualWriteAuditRepository
-from repositories.dual.auth import DualWriteUserRepository
-
-
-def _get_storage_engine() -> str:
-    return config.Config.STORAGE_ENGINE
-
 
 def get_employee_repo() -> EmployeeRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlEmployeeRepository()
-    elif mode == "dual":
-        return DualWriteEmployeeRepository()
-    return SheetsEmployeeRepository()
+    return SqlEmployeeRepository()
 
 
 def get_salary_repo() -> SalaryRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlSalaryRepository()
-    elif mode == "dual":
-        return DualWriteSalaryRepository()
-    return SheetsSalaryRepository()
+    return SqlSalaryRepository()
 
 
 def get_bank_repo() -> BankRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlBankRepository()
-    elif mode == "dual":
-        return DualWriteBankRepository()
-    return SheetsBankRepository()
+    return SqlBankRepository()
 
 
 def get_company_document_repo() -> CompanyDocumentRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlCompanyDocumentRepository()
-    elif mode == "dual":
-        return DualWriteCompanyDocumentRepository()
-    return SheetsCompanyDocumentRepository()
+    return SqlCompanyDocumentRepository()
 
 
 def get_insurance_repo() -> InsuranceRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlInsuranceRepository()
-    elif mode == "dual":
-        return DualWriteInsuranceRepository()
-    return SheetsInsuranceRepository()
+    return SqlInsuranceRepository()
 
 
 def get_request_repo() -> RequestRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlRequestRepository()
-    elif mode == "dual":
-        return DualWriteRequestRepository()
-    return SheetsRequestRepository()
+    return SqlRequestRepository()
 
 
 def get_vacation_repo() -> VacationRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlVacationRepository()
-    elif mode == "dual":
-        return DualWriteVacationRepository()
-    return SheetsVacationRepository()
+    return SqlVacationRepository()
 
 
 def get_invoice_repo() -> InvoiceRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlInvoiceRepository()
-    elif mode == "dual":
-        return DualWriteInvoiceRepository()
-    return SheetsInvoiceRepository()
+    return SqlInvoiceRepository()
 
 
 def get_audit_repo() -> AuditRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlAuditRepository()
-    elif mode == "dual":
-        return DualWriteAuditRepository()
-    return SheetsAuditRepository()
+    return SqlAuditRepository()
 
 
 def get_user_repo() -> UserRepository:
-    mode = _get_storage_engine()
-    if mode == "sql":
-        return SqlUserRepository()
-    elif mode == "dual":
-        return DualWriteUserRepository()
-    return SheetsUserRepository()
+    return SqlUserRepository()

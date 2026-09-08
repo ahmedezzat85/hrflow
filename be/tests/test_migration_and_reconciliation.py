@@ -66,6 +66,7 @@ def test_cold_storage_export(fake_sheets_client, tmp_path):
 
 
 def test_backfill_dry_run_and_domain_filter(fake_sheets_client):
+    fake_sheets_client.auto_sync_to_sql = False
     fake_sheets_client.append_row("EmployeeBankAccounts", {
         "employee_id": 1,
         "bank_name": "QNB",

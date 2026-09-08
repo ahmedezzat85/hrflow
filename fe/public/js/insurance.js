@@ -36,19 +36,19 @@ function renderDashboardInsuranceHighlights(){
   const container = document.getElementById('dashInsuranceCategoryChips');
   if(!container) return;
   const agg = aggregateCompanyConsumption();
-  container.innerHTML = agg.map(renderCategoryChip).join('') || '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>';
+  container.innerHTML = agg.map(renderCategoryChip).join('') || getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
 }
 function renderAdminInsuranceHighlights(){
   const container = document.getElementById('adminInsuranceCategoryHighlights');
   if(!container) return;
   const agg = aggregateCompanyConsumption();
-  container.innerHTML = agg.map(renderCategoryChip).join('') || '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>';
+  container.innerHTML = agg.map(renderCategoryChip).join('') || getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
 }
 
 function renderCategoriesTable(){
   const body = document.getElementById('categoriesTableBody');
   if(!body) return;
-  body.innerHTML = insuranceCategories.map(c=>`<tr><td>${c.name}</td><td>${fmtMoney(c.annual_limit)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="openCategoryModal(${c.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="deleteCategory(${c.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="3"><div class="empty-state"><i class="fa-solid fa-list"></i><p>No categories configured yet.</p></div></td></tr>`;
+  body.innerHTML = insuranceCategories.map(c=>`<tr><td>${c.name}</td><td>${fmtMoney(c.annual_limit)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="openCategoryModal(${c.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="deleteCategory(${c.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || renderEmptyTableRow(3, 'No categories configured yet.', 'fa-solid fa-list');
 }
 function openCategoryModal(id=null){
   currentEditCategoryId = id;
@@ -85,7 +85,15 @@ function populateClaimCategoryOptions(){
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
   if(!body) return;
-  body.innerHTML = insuranceClaims.map(c=>`<tr><td class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td><td>${c.category}</td><td>${c.provider}</td><td>${fmtMoney(c.amount)}</td><td>${c.date}</td><td>${statusPill(c.status)}</td><td style="display:flex;gap:6px;">${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i></button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td></tr>`).join('');
+  body.innerHTML = insuranceClaims.map(c=>`<tr>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td>
+    <td data-label="Category">${c.category}</td>
+    <td data-label="Provider">${c.provider}</td>
+    <td data-label="Amount">${fmtMoney(c.amount)}</td>
+    <td data-label="Date">${c.date}</td>
+    <td data-label="Status">${statusPill(c.status)}</td>
+    <td data-label="Actions" class="col-actions">${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td>
+  </tr>`).join('') || renderEmptyTableRow(7, 'No insurance claims recorded yet.', 'fa-solid fa-briefcase-medical');
   document.getElementById('statClaimsYtd').textContent = insuranceClaims.length;
   document.getElementById('statClaimsApproved').textContent = insuranceClaims.filter(c=>c.status==='Approved').length;
   document.getElementById('statClaimsPending').textContent = insuranceClaims.filter(c=>c.status==='Pending').length;
@@ -102,7 +110,11 @@ function renderEmployeeInsuranceHighlights(){
   const dashGrid = document.getElementById('empDashInsuranceCategoryChips');
   const pageGrid = document.getElementById('empInsuranceCategoryGrid');
   const totalEl = document.getElementById('empInsuranceTotalConsumed');
-  if(!consumption){ if(dashGrid) dashGrid.innerHTML = '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>'; if(pageGrid) pageGrid.innerHTML = '<p style="color:var(--text2);font-size:13px;">No insurance data yet.</p>'; return; }
+  if(!consumption){
+    if(dashGrid) dashGrid.innerHTML = getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
+    if(pageGrid) pageGrid.innerHTML = getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
+    return;
+  }
   const chips = consumption.categories.map(renderCategoryChip).join('');
   if(dashGrid) dashGrid.innerHTML = chips;
   if(pageGrid) pageGrid.innerHTML = chips;

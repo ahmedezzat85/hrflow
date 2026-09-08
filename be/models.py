@@ -196,3 +196,14 @@ class BankAccountUpsert(BaseModel):
     bank_name: str
     iban: str
     swift_code: Optional[str] = None
+
+
+class SheetsExportRequest(BaseModel):
+    """Request payload for exporting HR data to Google Sheets."""
+    year: Optional[int] = None
+    month: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    status: Optional[str] = None
+    worksheet_title: Optional[str] = None
+
