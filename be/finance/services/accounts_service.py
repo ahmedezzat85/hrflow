@@ -31,6 +31,8 @@ class AccountsService:
             currency=account.currency,
             opening_balance=account.opening_balance,
             current_balance=account.current_balance,
+            account_type=getattr(account, "account_type", "bank"),
+            country=getattr(account, "country", "Egypt"),
             is_active=account.is_active,
             created_at=account.created_at,
         )
@@ -94,3 +96,21 @@ class AccountsService:
             )
         deactivated = self.repo.soft_delete(account_id)
         return self.to_response(deactivated)
+
+    def compute_balance_as_of(self, account_id: int, as_of_date: Optional[str] = None) -> float:
+        existing = self.repo.get_by_id(account_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Bank account with ID {account_id} not found",
+            )
+        return self.repo.compute_balance(account_id, as_of_date=as_of_date)
+
+    def recalculate_balance(self, account_id: int) -> float:
+        existing = self.repo.get_by_id(account_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Bank account with ID {account_id} not found",
+            )
+        return self.repo.recalculate_and_sync_current_balance(account_id)

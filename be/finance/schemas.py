@@ -15,6 +15,8 @@ class BankAccountBase(BaseModel):
     bank_name: str = Field(..., min_length=2, max_length=100, description="Financial institution name")
     currency: str = Field("USD", min_length=3, max_length=10, description="ISO Currency code")
     opening_balance: float = Field(0.0, ge=0.0, description="Starting cash balance")
+    account_type: str = Field("bank", description="Account type: bank or cash")
+    country: Optional[str] = Field("Egypt", description="Country location, e.g. Egypt, US")
 
 
 class BankAccountCreate(BankAccountBase):
@@ -26,6 +28,8 @@ class BankAccountUpdate(BaseModel):
     bank_name: Optional[str] = Field(None, min_length=2, max_length=100)
     account_number: Optional[str] = Field(None, min_length=4, max_length=50)
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    account_type: Optional[str] = Field(None, description="Account type: bank or cash")
+    country: Optional[str] = Field(None, description="Country location")
     is_active: Optional[bool] = None
 
 
@@ -35,6 +39,36 @@ class BankAccountResponse(BankAccountBase):
     current_balance: float
     is_active: bool
     created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Ledger Transaction Schemas
+# ==========================================
+class LedgerTransactionBase(BaseModel):
+    date: str = Field(..., description="Transaction date (YYYY-MM-DD)")
+    amount: float = Field(..., gt=0.0, description="Transaction amount")
+    direction: str = Field(..., description="Transaction direction: in or out")
+    currency: str = Field("USD", min_length=3, max_length=10, description="Currency code")
+    category: str = Field("other", max_length=100, description="Category (revenue, cost, withdrawal, other)")
+    description: str = Field("", max_length=255, description="Description / memo")
+    source: str = Field("manual", max_length=50, description="Source (manual, invoice_payment, bill_payment, transfer, cheque, subscription_charge, statement_import)")
+    linked_invoice_id: Optional[int] = None
+    linked_bill_id: Optional[int] = None
+
+
+class LedgerTransactionCreate(LedgerTransactionBase):
+    pass
+
+
+class LedgerTransactionResponse(LedgerTransactionBase):
+    id: int
+    account_id: int
+    running_balance: float
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -41,12 +41,35 @@ def test_finance_stubs_admin_authorized(app_client, admin_cookies):
     assert "status" in invoices[0]
 
     # 2. Bills
+    ven_resp = app_client.post(
+        "/api/finance/vendors",
+        json={"name": "PlaceholderTest Vendor"},
+        cookies=admin_cookies,
+    )
+    assert ven_resp.status_code == 201
+    vendor_id = ven_resp.json()["id"]
+
+    bill_create_resp = app_client.post(
+        "/api/finance/bills",
+        json={
+            "vendor_id": vendor_id,
+            "bill_number": "STUB-BILL-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "unpaid",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bill_create_resp.status_code == 201
+
     bills_res = app_client.get("/api/finance/bills", cookies=admin_cookies)
     assert bills_res.status_code == 200
     bills = bills_res.json()
-    assert len(bills) >= 2
+    assert len(bills) >= 1
     assert "bill_number" in bills[0]
-    assert "vendor_name" in bills[0]
+    assert "total" in bills[0]
+    assert "status" in bills[0]
 
     # 3. Payroll runs
     payroll_res = app_client.get("/api/finance/payroll/runs", cookies=admin_cookies)

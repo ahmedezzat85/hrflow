@@ -18,6 +18,7 @@ from finance.models import (
     PaymentDB,
     FinanceBankAccountDB,
     VendorDB,
+    LedgerTransactionDB,
 )
 
 
@@ -221,6 +222,7 @@ class BillsRepository:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
 
         # Auto-mark bill as paid if this payment covers remaining total
+        bill = None
         if data.get("related_bill_id"):
             bill = self.db.query(BillDB).filter(
                 BillDB.id == data["related_bill_id"]
@@ -230,6 +232,22 @@ class BillsRepository:
                 paid_so_far = sum(p.amount for p in existing_payments)
                 if paid_so_far + payment.amount >= bill.total:
                     bill.status = "paid"
+
+        # Record corresponding ledger transaction for single source of truth
+        ledger_tx = LedgerTransactionDB(
+            account_id=bank_account.id,
+            date=payment.payment_date,
+            amount=payment.amount,
+            direction="in" if payment.direction == "incoming" else "out",
+            currency=payment.currency,
+            category=bill.category if bill else "cost",
+            description=f"Payment for bill #{bill.bill_number}" if bill else (payment.reference or f"Outgoing payment #{payment.id}"),
+            source="bill_payment",
+            linked_bill_id=payment.related_bill_id,
+            running_balance=bank_account.current_balance,
+            created_at=payment.created_at,
+        )
+        self.db.add(ledger_tx)
 
         self.db.commit()
         self.db.refresh(payment)

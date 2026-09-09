@@ -45,6 +45,8 @@ from finance.models import (  # noqa: E402, F401
     BillLineDB,
     FinanceBankAccountDB,
     BankAccountDB,
+    LedgerTransactionDB,
+    FinanceLedgerTransactionDB,
     PaymentDB,
     SubscriptionDB,
     PayrollRunDB,

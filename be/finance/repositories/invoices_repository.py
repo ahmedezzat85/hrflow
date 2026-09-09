@@ -18,6 +18,7 @@ from finance.models import (
     PaymentDB,
     FinanceBankAccountDB,
     CustomerDB,
+    LedgerTransactionDB,
 )
 
 
@@ -218,6 +219,7 @@ class InvoicesRepository:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
 
         # Auto-mark invoice as paid if this payment covers remaining total
+        invoice = None
         if data.get("related_invoice_id"):
             invoice = self.db.query(SalesInvoiceDB).filter(
                 SalesInvoiceDB.id == data["related_invoice_id"]
@@ -227,6 +229,22 @@ class InvoicesRepository:
                 paid_so_far = sum(p.amount for p in existing_payments)
                 if paid_so_far + payment.amount >= invoice.total:
                     invoice.status = "paid"
+
+        # Record corresponding ledger transaction for single source of truth
+        ledger_tx = LedgerTransactionDB(
+            account_id=bank_account.id,
+            date=payment.payment_date,
+            amount=payment.amount,
+            direction="in" if payment.direction == "incoming" else "out",
+            currency=payment.currency,
+            category="revenue" if payment.direction == "incoming" else "cost",
+            description=f"Payment for invoice #{invoice.invoice_number}" if invoice else (payment.reference or f"Incoming payment #{payment.id}"),
+            source="invoice_payment",
+            linked_invoice_id=payment.related_invoice_id,
+            running_balance=bank_account.current_balance,
+            created_at=payment.created_at,
+        )
+        self.db.add(ledger_tx)
 
         self.db.commit()
         self.db.refresh(payment)

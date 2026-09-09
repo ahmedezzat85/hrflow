@@ -132,14 +132,50 @@ class FinanceBankAccountDB(Base):
     currency = Column(String(10), default="USD", nullable=False)
     opening_balance = Column(Float, default=0.0)
     current_balance = Column(Float, default=0.0)
+    account_type = Column(String(20), default="bank", nullable=False)  # bank | cash
+    country = Column(String(100), default="Egypt", nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     payments = relationship("PaymentDB", back_populates="bank_account")
+    ledger_transactions = relationship(
+        "LedgerTransactionDB",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        order_by="LedgerTransactionDB.date.asc(), LedgerTransactionDB.id.asc()",
+    )
 
 
 # Alias for clean domain referencing
 BankAccountDB = FinanceBankAccountDB
+
+
+class LedgerTransactionDB(Base):
+    __tablename__ = "finance_ledger_transactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
+    date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    amount = Column(Float, nullable=False)
+    direction = Column(String(20), nullable=False)  # in / out
+    currency = Column(String(10), default="USD", nullable=False)
+    category = Column(String(100), default="other", nullable=False)
+    description = Column(String(255), default="", nullable=False)
+    source = Column(String(50), nullable=False, index=True)
+    # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import
+    linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
+    running_balance = Column(Float, default=0.0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    account = relationship("FinanceBankAccountDB", back_populates="ledger_transactions")
+    linked_invoice = relationship("SalesInvoiceDB")
+    linked_bill = relationship("BillDB")
+
+
+# Alias for clean domain referencing
+FinanceLedgerTransactionDB = LedgerTransactionDB
 
 
 class PaymentDB(Base):
