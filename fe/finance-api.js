@@ -19,15 +19,107 @@ const FinanceMockState = {
     { id: 1, name: "Amazon Web Services", category: "Infrastructure", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", notes: "Hosting & compute", is_active: true },
     { id: 2, name: "Slack Technologies", category: "SaaS", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", notes: "Team communication", is_active: true },
   ],
+  invoices: [
+    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
+    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
+  ],
+  payments: [],
 };
 
 const FinanceApi = {
-  getInvoices() {
-    return apiRequest("GET", "/api/finance/invoices");
+  // Invoices
+  async getInvoices(params) {
+    if (_isMock()) {
+      let list = [...FinanceMockState.invoices];
+      if (params && params.status) list = list.filter((i) => i.status === params.status);
+      if (params && params.customer_id) list = list.filter((i) => i.customer_id === parseInt(params.customer_id, 10));
+      if (params && params.search) {
+        const s = params.search.toLowerCase();
+        list = list.filter((i) => i.invoice_number.toLowerCase().includes(s) || (i.customer_name || "").toLowerCase().includes(s));
+      }
+      return list;
+    }
+    let url = "/api/finance/invoices";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
   },
+  async getInvoice(id) {
+    if (_isMock()) {
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
+      if (!inv) throw new Error("Invoice not found");
+      return inv;
+    }
+    return apiRequest("GET", `/api/finance/invoices/${id}`);
+  },
+  async createInvoice(payload) {
+    if (_isMock()) {
+      const customers = FinanceMockState.customers;
+      const cust = customers.find((c) => c.id === parseInt(payload.customer_id, 10));
+      const lines = (payload.lines || []).map((ln, i) => ({
+        id: Date.now() + i, invoice_id: FinanceMockState.invoices.length + 1,
+        ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
+      }));
+      const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+      const newInv = {
+        id: FinanceMockState.invoices.length + 1,
+        ...payload,
+        customer_name: cust ? cust.name : null,
+        subtotal, tax_amount: 0, total: subtotal,
+        created_at: new Date().toISOString(),
+        lines,
+      };
+      FinanceMockState.invoices.push(newInv);
+      return newInv;
+    }
+    return apiRequest("POST", "/api/finance/invoices", payload);
+  },
+  async updateInvoice(id, payload) {
+    if (_isMock()) {
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
+      if (!inv) throw new Error("Invoice not found");
+      Object.assign(inv, payload);
+      if (payload.lines) {
+        inv.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
+        inv.total = inv.subtotal;
+      }
+      return inv;
+    }
+    return apiRequest("PUT", `/api/finance/invoices/${id}`, payload);
+  },
+  async voidInvoice(id) {
+    if (_isMock()) {
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
+      if (!inv) throw new Error("Invoice not found");
+      inv.status = "void";
+      return inv;
+    }
+    return apiRequest("DELETE", `/api/finance/invoices/${id}`);
+  },
+  async getInvoicePayments(invoiceId) {
+    if (_isMock()) return FinanceMockState.payments.filter((p) => p.related_invoice_id === parseInt(invoiceId, 10));
+    return apiRequest("GET", `/api/finance/invoices/${invoiceId}/payments`);
+  },
+  async recordInvoicePayment(invoiceId, payload) {
+    if (_isMock()) {
+      const newPayment = {
+        id: FinanceMockState.payments.length + 1,
+        ...payload,
+        related_invoice_id: parseInt(invoiceId, 10),
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.payments.push(newPayment);
+      return newPayment;
+    }
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);
+  },
+
   getBills() {
     return apiRequest("GET", "/api/finance/bills");
   },
+
   getPayrollRuns() {
     return apiRequest("GET", "/api/finance/payroll/runs");
   },

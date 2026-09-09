@@ -9,11 +9,33 @@ import pytest
 
 def test_finance_stubs_admin_authorized(app_client, admin_cookies):
     """Admin holding system_admin role can access all finance stub routes."""
-    # 1. Invoices
+    # 1. Invoices — now a real endpoint; create a customer + invoice to verify schema.
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "PlaceholderTest Customer"},
+        cookies=admin_cookies,
+    )
+    assert cust_resp.status_code == 201
+    customer_id = cust_resp.json()["id"]
+
+    inv_create_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "STUB-INV-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert inv_create_resp.status_code == 201
+
     inv_res = app_client.get("/api/finance/invoices", cookies=admin_cookies)
     assert inv_res.status_code == 200
     invoices = inv_res.json()
-    assert len(invoices) >= 2
+    assert len(invoices) >= 1
     assert "invoice_number" in invoices[0]
     assert "total" in invoices[0]
     assert "status" in invoices[0]

@@ -7,16 +7,25 @@
               </div>
               <div class="search-box" id="financeInvoiceSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeInvoiceSearch" placeholder="Search invoices...">
+                <input id="financeInvoiceSearch" placeholder="Search invoices..." oninput="filterFinanceInvoices(this.value)">
               </div>
               <div class="search-box" id="financeCustomerSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeCustomerSearch" placeholder="Search customers..." oninput="filterFinanceCustomers(this.value)">
               </div>
+              <!-- Status filter (invoices only) -->
+              <select id="financeInvoiceStatusFilter" class="form-control" style="width: auto; font-size: 0.85rem; padding: 6px 10px;" onchange="loadFinanceInvoices()">
+                <option value="">All Statuses</option>
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="void">Void</option>
+              </select>
             </div>
             <div style="display: flex; gap: 8px;">
-              <button class="btn btn-outline" id="financeAddCustomerBtn" onclick="openAddCustomerModal()"><i class="fa-solid fa-user-plus"></i> Add Customer</button>
-              <button class="btn btn-fill" id="financeNewInvoiceBtn" onclick="showToast('Sales Invoice creation will be available in Phase 4.3', 'info')"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
+              <button class="btn btn-outline" id="financeAddCustomerBtn" onclick="openAddCustomerModal()" style="display:none;"><i class="fa-solid fa-user-plus"></i> Add Customer</button>
+              <button class="btn btn-fill" id="financeNewInvoiceBtn" onclick="openAddInvoiceModal()"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
             </div>
           </div>
 
@@ -40,6 +49,7 @@
             <div class="empty-state" id="financeInvoicesEmpty" style="display: none;">
               <i class="fa-solid fa-file-invoice"></i>
               <p>No sales invoices recorded yet.</p>
+              <button class="btn btn-fill" onclick="openAddInvoiceModal()"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
             </div>
           </div>
 

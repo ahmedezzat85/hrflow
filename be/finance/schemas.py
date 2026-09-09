@@ -107,3 +107,94 @@ class VendorResponse(VendorBase):
     class Config:
         from_attributes = True
 
+
+# ==========================================
+# Sales Invoice Line Schemas
+# ==========================================
+class SalesInvoiceLineBase(BaseModel):
+    description: str = Field(..., min_length=1, max_length=255)
+    quantity: float = Field(1.0, gt=0.0)
+    unit_price: float = Field(0.0, ge=0.0)
+    line_total: float = Field(0.0, ge=0.0)
+
+
+class SalesInvoiceLineCreate(SalesInvoiceLineBase):
+    pass
+
+
+class SalesInvoiceLineResponse(SalesInvoiceLineBase):
+    id: int
+    invoice_id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Sales Invoice Schemas
+# ==========================================
+class SalesInvoiceBase(BaseModel):
+    customer_id: int = Field(..., description="ID of the customer")
+    invoice_number: str = Field(..., min_length=1, max_length=50, description="Unique invoice reference number")
+    issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
+    due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
+    status: str = Field("draft", description="draft|sent|paid|overdue|void")
+    currency: str = Field("USD", min_length=3, max_length=10)
+    notes: Optional[str] = None
+
+
+class SalesInvoiceCreate(SalesInvoiceBase):
+    lines: List[SalesInvoiceLineCreate] = Field(default_factory=list)
+
+
+class SalesInvoiceUpdate(BaseModel):
+    customer_id: Optional[int] = None
+    issue_date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    notes: Optional[str] = None
+    lines: Optional[List[SalesInvoiceLineCreate]] = None
+
+
+class SalesInvoiceResponse(SalesInvoiceBase):
+    id: int
+    subtotal: float
+    tax_amount: float
+    total: float
+    created_at: Optional[datetime] = None
+    customer_name: Optional[str] = None
+    lines: List[SalesInvoiceLineResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Payment Schemas (incoming for invoices)
+# ==========================================
+class PaymentBase(BaseModel):
+    direction: str = Field(..., description="incoming|outgoing")
+    amount: float = Field(..., gt=0.0)
+    currency: str = Field("USD", min_length=3, max_length=10)
+    payment_date: str = Field(..., description="Payment date (YYYY-MM-DD)")
+    bank_account_id: int = Field(..., description="Bank account that received/sent payment")
+    method: str = Field("bank_transfer", description="bank_transfer|cash|card|other")
+    reference: Optional[str] = Field("", max_length=100)
+
+
+class PaymentCreate(PaymentBase):
+    related_invoice_id: Optional[int] = None
+    related_bill_id: Optional[int] = None
+
+
+class PaymentResponse(PaymentBase):
+    id: int
+    related_invoice_id: Optional[int] = None
+    related_bill_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    bank_account_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+

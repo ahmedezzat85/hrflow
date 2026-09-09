@@ -70,13 +70,14 @@ function refreshFinanceDashboard() {
 // 2. Sales Invoices
 // ==========================================
 async function loadFinanceInvoices() {
-  const tbody = document.getElementById("financeInvoicesTableBody");
-  const empty = document.getElementById("financeInvoicesEmpty");
   const bar = document.getElementById("financeInvoicesLoadingBar");
   if (bar) bar.style.display = "block";
 
   try {
-    const items = await FinanceApi.getInvoices();
+    const statusFilter = document.getElementById("financeInvoiceStatusFilter");
+    const params = {};
+    if (statusFilter && statusFilter.value) params.status = statusFilter.value;
+    const items = await FinanceApi.getInvoices(Object.keys(params).length ? params : undefined);
     FinanceState.invoices = items;
     renderFinanceInvoices(items);
   } catch (err) {
@@ -84,6 +85,17 @@ async function loadFinanceInvoices() {
   } finally {
     if (bar) bar.style.display = "none";
   }
+}
+
+function _invoiceStatusBadge(status) {
+  const map = {
+    draft: "badge-pending",
+    sent: "badge-info",
+    paid: "badge-approved",
+    overdue: "badge-rejected",
+    void: "badge-grey",
+  };
+  return map[status] || "badge-pending";
 }
 
 function renderFinanceInvoices(items) {
@@ -103,15 +115,15 @@ function renderFinanceInvoices(items) {
       (inv) => `
     <tr>
       <td><strong>${inv.invoice_number}</strong></td>
-      <td>${inv.customer_name}</td>
+      <td>${inv.customer_name || "--"}</td>
       <td>${inv.issue_date || "--"}</td>
       <td>${inv.due_date || "--"}</td>
       <td><strong>$${Number(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge ${inv.status === "sent" ? "badge-approved" : "badge-pending"}">${inv.status.toUpperCase()}</span></td>
-      <td>
-        <button class="btn btn-sm" onclick="showToast('Invoice ${inv.invoice_number} preview in Phase 4', 'info')">
-          <i class="fa-solid fa-eye"></i> View
-        </button>
+      <td><span class="badge ${_invoiceStatusBadge(inv.status)}">${(inv.status || "--").toUpperCase()}</span></td>
+      <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
+        ${(inv.status === "sent" || inv.status === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
   `
@@ -119,30 +131,264 @@ function renderFinanceInvoices(items) {
     .join("");
 }
 
+function filterFinanceInvoices(query) {
+  const q = (query || "").toLowerCase();
+  const filtered = (FinanceState.invoices || []).filter(
+    (inv) =>
+      inv.invoice_number.toLowerCase().includes(q) ||
+      (inv.customer_name || "").toLowerCase().includes(q)
+  );
+  renderFinanceInvoices(filtered);
+}
+
+// ── Invoice Modal ────────────────────────────────────────────────────────────
+function openAddInvoiceModal() {
+  _populateInvoiceCustomerDropdown();
+  document.getElementById("invoiceModalTitleText").textContent = "New Sales Invoice";
+  document.getElementById("invoiceModalId").value = "";
+  document.getElementById("invoiceNumber").value = "";
+  document.getElementById("invoiceCustomerId").value = "";
+  document.getElementById("invoiceIssueDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("invoiceDueDate").value = "";
+  document.getElementById("invoiceStatus").value = "draft";
+  document.getElementById("invoiceCurrency").value = "USD";
+  document.getElementById("invoiceNotes").value = "";
+  document.getElementById("invoiceLinesBody").innerHTML = "";
+  _updateInvoiceTotals();
+  addInvoiceLine(); // start with one empty line
+  document.getElementById("invoiceModal").style.display = "flex";
+}
+
+async function openEditInvoiceModal(invoiceId) {
+  _populateInvoiceCustomerDropdown();
+  try {
+    const inv = await FinanceApi.getInvoice(invoiceId);
+    document.getElementById("invoiceModalTitleText").textContent = `Edit Invoice ${inv.invoice_number}`;
+    document.getElementById("invoiceModalId").value = inv.id;
+    document.getElementById("invoiceNumber").value = inv.invoice_number;
+    document.getElementById("invoiceCustomerId").value = inv.customer_id;
+    document.getElementById("invoiceIssueDate").value = inv.issue_date || "";
+    document.getElementById("invoiceDueDate").value = inv.due_date || "";
+    document.getElementById("invoiceStatus").value = inv.status || "draft";
+    document.getElementById("invoiceCurrency").value = inv.currency || "USD";
+    document.getElementById("invoiceNotes").value = inv.notes || "";
+
+    // Render existing lines
+    document.getElementById("invoiceLinesBody").innerHTML = "";
+    (inv.lines || []).forEach((ln) => addInvoiceLine(ln));
+    _updateInvoiceTotals();
+    document.getElementById("invoiceModal").style.display = "flex";
+  } catch (err) {
+    showToast("Failed to load invoice: " + (err.message || err), "error");
+  }
+}
+
+function closeInvoiceModal() {
+  document.getElementById("invoiceModal").style.display = "none";
+}
+
+function addInvoiceLine(data) {
+  const tbody = document.getElementById("invoiceLinesBody");
+  const idx = tbody.querySelectorAll("tr").length;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}"
+      oninput="_updateInvoiceTotals()"></td>
+    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001"
+      oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01"
+      oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01"
+      oninput="_updateInvoiceTotals()"></td>
+    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateInvoiceTotals();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
+  `;
+  tbody.appendChild(tr);
+  _updateInvoiceTotals();
+}
+
+function _autoComputeLineTotal(input) {
+  const row = input.closest("tr");
+  const qty = parseFloat(row.querySelector(".inv-qty").value) || 0;
+  const price = parseFloat(row.querySelector(".inv-price").value) || 0;
+  row.querySelector(".inv-total").value = (qty * price).toFixed(2);
+}
+
+function _updateInvoiceTotals() {
+  const rows = document.querySelectorAll("#invoiceLinesBody tr");
+  let subtotal = 0;
+  rows.forEach((r) => {
+    subtotal += parseFloat(r.querySelector(".inv-total")?.value || 0);
+  });
+  const subtotalEl = document.getElementById("invoiceSubtotalDisplay");
+  const totalEl = document.getElementById("invoiceTotalDisplay");
+  if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
+  if (totalEl) totalEl.textContent = subtotal.toFixed(2); // tax_amount = 0 for now
+}
+
+async function _populateInvoiceCustomerDropdown() {
+  const sel = document.getElementById("invoiceCustomerId");
+  if (!sel) return;
+  try {
+    const customers = await FinanceApi.getCustomers({ is_active: true });
+    sel.innerHTML = `<option value="">— Select customer —</option>` +
+      customers.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  } catch (_) { /* keep empty */ }
+}
+
+async function saveInvoiceModal() {
+  const invoiceId = document.getElementById("invoiceModalId").value;
+  const customerId = document.getElementById("invoiceCustomerId").value;
+  const invoiceNumber = document.getElementById("invoiceNumber").value.trim();
+  const issueDate = document.getElementById("invoiceIssueDate").value;
+  const dueDate = document.getElementById("invoiceDueDate").value;
+
+  if (!customerId) { showToast("Please select a customer", "error"); return; }
+  if (!invoiceNumber) { showToast("Invoice number is required", "error"); return; }
+  if (!issueDate || !dueDate) { showToast("Both dates are required", "error"); return; }
+
+  const lines = [];
+  document.querySelectorAll("#invoiceLinesBody tr").forEach((r) => {
+    const desc = r.querySelector("input[type='text']")?.value.trim();
+    const qty = parseFloat(r.querySelector(".inv-qty")?.value) || 1;
+    const price = parseFloat(r.querySelector(".inv-price")?.value) || 0;
+    const total = parseFloat(r.querySelector(".inv-total")?.value) || 0;
+    if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
+  });
+
+  const payload = {
+    customer_id: parseInt(customerId, 10),
+    invoice_number: invoiceNumber,
+    issue_date: issueDate,
+    due_date: dueDate,
+    status: document.getElementById("invoiceStatus").value,
+    currency: document.getElementById("invoiceCurrency").value,
+    notes: document.getElementById("invoiceNotes").value.trim(),
+    lines,
+  };
+
+  const btn = document.getElementById("invoiceModalSaveBtn");
+  if (btn) btn.disabled = true;
+  try {
+    if (invoiceId) {
+      await FinanceApi.updateInvoice(invoiceId, payload);
+      showToast("Invoice updated", "success");
+    } else {
+      await FinanceApi.createInvoice(payload);
+      showToast("Invoice created", "success");
+    }
+    closeInvoiceModal();
+    loadFinanceInvoices();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function confirmVoidInvoice(invoiceId) {
+  if (!confirm("Void this invoice? This cannot be undone.")) return;
+  try {
+    await FinanceApi.voidInvoice(invoiceId);
+    showToast("Invoice voided", "success");
+    loadFinanceInvoices();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+// ── Payment Modal ────────────────────────────────────────────────────────────
+async function openPaymentModal(invoiceId) {
+  const inv = (FinanceState.invoices || []).find((i) => i.id === invoiceId);
+  document.getElementById("paymentInvoiceId").value = invoiceId;
+  const infoEl = document.getElementById("paymentInvoiceInfo");
+  if (infoEl && inv) {
+    infoEl.textContent = `Invoice ${inv.invoice_number} — ${inv.currency} ${Number(inv.total).toLocaleString("en-US", { minimumFractionDigits: 2 })} total`;
+  }
+  document.getElementById("paymentAmount").value = "";
+  document.getElementById("paymentDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("paymentMethod").value = "bank_transfer";
+  document.getElementById("paymentReference").value = "";
+
+  // Populate bank accounts
+  const accSel = document.getElementById("paymentBankAccountId");
+  if (accSel) {
+    try {
+      const accounts = await FinanceApi.getAccounts({ is_active: true });
+      accSel.innerHTML = `<option value="">— Select account —</option>` +
+        accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+    } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
+  }
+
+  document.getElementById("invoicePaymentModal").style.display = "flex";
+}
+
+function closeInvoicePaymentModal() {
+  document.getElementById("invoicePaymentModal").style.display = "none";
+}
+
+async function saveInvoicePayment() {
+  const invoiceId = document.getElementById("paymentInvoiceId").value;
+  const amount = parseFloat(document.getElementById("paymentAmount").value);
+  const paymentDate = document.getElementById("paymentDate").value;
+  const bankAccountId = document.getElementById("paymentBankAccountId").value;
+
+  if (!amount || amount <= 0) { showToast("Enter a valid payment amount", "error"); return; }
+  if (!paymentDate) { showToast("Payment date is required", "error"); return; }
+  if (!bankAccountId) { showToast("Select a bank account", "error"); return; }
+
+  const payload = {
+    direction: "incoming",
+    amount,
+    currency: "USD", // could derive from invoice currency
+    payment_date: paymentDate,
+    bank_account_id: parseInt(bankAccountId, 10),
+    method: document.getElementById("paymentMethod").value,
+    reference: document.getElementById("paymentReference").value.trim(),
+  };
+
+  try {
+    await FinanceApi.recordInvoicePayment(invoiceId, payload);
+    showToast("Payment recorded", "success");
+    closeInvoicePaymentModal();
+    loadFinanceInvoices();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
 // Sub-tab switching for Invoices section
 function switchInvoiceSubTab(subTab) {
   const tabInv = document.getElementById("tabFinanceInvoices");
   const tabCust = document.getElementById("tabFinanceCustomers");
   const boxInv = document.getElementById("financeInvoiceSearchBox");
+  const statusFilter = document.getElementById("financeInvoiceStatusFilter");
   const boxCust = document.getElementById("financeCustomerSearchBox");
   const conInv = document.getElementById("financeInvoicesContainer");
   const conCust = document.getElementById("financeCustomersContainer");
+  const addCustBtn = document.getElementById("financeAddCustomerBtn");
+  const newInvBtn = document.getElementById("financeNewInvoiceBtn");
 
   if (subTab === "customers") {
     if (tabInv) tabInv.classList.remove("active");
     if (tabCust) tabCust.classList.add("active");
     if (boxInv) boxInv.style.display = "none";
+    if (statusFilter) statusFilter.style.display = "none";
     if (boxCust) boxCust.style.display = "block";
     if (conInv) conInv.style.display = "none";
     if (conCust) conCust.style.display = "block";
+    if (addCustBtn) addCustBtn.style.display = "inline-flex";
+    if (newInvBtn) newInvBtn.style.display = "none";
     loadFinanceCustomers();
   } else {
     if (tabInv) tabInv.classList.add("active");
     if (tabCust) tabCust.classList.remove("active");
     if (boxInv) boxInv.style.display = "block";
+    if (statusFilter) statusFilter.style.display = "block";
     if (boxCust) boxCust.style.display = "none";
     if (conInv) conInv.style.display = "block";
     if (conCust) conCust.style.display = "none";
+    if (addCustBtn) addCustBtn.style.display = "none";
+    if (newInvBtn) newInvBtn.style.display = "inline-flex";
     loadFinanceInvoices();
   }
 }
