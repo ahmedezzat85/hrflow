@@ -155,7 +155,7 @@ function openAddInvoiceModal() {
   document.getElementById("invoiceNotes").value = "";
   document.getElementById("invoiceLinesBody").innerHTML = "";
   _updateInvoiceTotals();
-  addInvoiceLine(); // start with one empty line
+  addInvoiceLine();
   document.getElementById("invoiceModal").style.display = "flex";
 }
 
@@ -172,8 +172,6 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceStatus").value = inv.status || "draft";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
     document.getElementById("invoiceNotes").value = inv.notes || "";
-
-    // Render existing lines
     document.getElementById("invoiceLinesBody").innerHTML = "";
     (inv.lines || []).forEach((ln) => addInvoiceLine(ln));
     _updateInvoiceTotals();
@@ -189,17 +187,12 @@ function closeInvoiceModal() {
 
 function addInvoiceLine(data) {
   const tbody = document.getElementById("invoiceLinesBody");
-  const idx = tbody.querySelectorAll("tr").length;
   const tr = document.createElement("tr");
   tr.innerHTML = `
-    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}"
-      oninput="_updateInvoiceTotals()"></td>
-    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001"
-      oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
-    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01"
-      oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
-    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01"
-      oninput="_updateInvoiceTotals()"></td>
+    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}" oninput="_updateInvoiceTotals()"></td>
+    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateInvoiceTotals()"></td>
     <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateInvoiceTotals();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
   `;
   tbody.appendChild(tr);
@@ -222,7 +215,7 @@ function _updateInvoiceTotals() {
   const subtotalEl = document.getElementById("invoiceSubtotalDisplay");
   const totalEl = document.getElementById("invoiceTotalDisplay");
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
-  if (totalEl) totalEl.textContent = subtotal.toFixed(2); // tax_amount = 0 for now
+  if (totalEl) totalEl.textContent = subtotal.toFixed(2);
 }
 
 async function _populateInvoiceCustomerDropdown() {
@@ -230,9 +223,8 @@ async function _populateInvoiceCustomerDropdown() {
   if (!sel) return;
   try {
     const customers = await FinanceApi.getCustomers({ is_active: true });
-    sel.innerHTML = `<option value="">— Select customer —</option>` +
-      customers.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
-  } catch (_) { /* keep empty */ }
+    sel.innerHTML = `<option value="">— Select customer —</option>` + customers.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  } catch (_) {}
 }
 
 async function saveInvoiceModal() {
@@ -296,7 +288,6 @@ async function confirmVoidInvoice(invoiceId) {
   }
 }
 
-// ── Payment Modal ────────────────────────────────────────────────────────────
 async function openPaymentModal(invoiceId) {
   const inv = (FinanceState.invoices || []).find((i) => i.id === invoiceId);
   document.getElementById("paymentInvoiceId").value = invoiceId;
@@ -309,13 +300,11 @@ async function openPaymentModal(invoiceId) {
   document.getElementById("paymentMethod").value = "bank_transfer";
   document.getElementById("paymentReference").value = "";
 
-  // Populate bank accounts
   const accSel = document.getElementById("paymentBankAccountId");
   if (accSel) {
     try {
       const accounts = await FinanceApi.getAccounts({ is_active: true });
-      accSel.innerHTML = `<option value="">— Select account —</option>` +
-        accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+      accSel.innerHTML = `<option value="">— Select account —</option>` + accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
     } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
   }
 
@@ -339,7 +328,7 @@ async function saveInvoicePayment() {
   const payload = {
     direction: "incoming",
     amount,
-    currency: "USD", // could derive from invoice currency
+    currency: "USD",
     payment_date: paymentDate,
     bank_account_id: parseInt(bankAccountId, 10),
     method: document.getElementById("paymentMethod").value,
@@ -356,7 +345,6 @@ async function saveInvoicePayment() {
   }
 }
 
-// Sub-tab switching for Invoices section
 function switchInvoiceSubTab(subTab) {
   const tabInv = document.getElementById("tabFinanceInvoices");
   const tabCust = document.getElementById("tabFinanceCustomers");
@@ -394,11 +382,8 @@ function switchInvoiceSubTab(subTab) {
 }
 
 async function loadFinanceCustomers() {
-  const tbody = document.getElementById("financeCustomersTableBody");
-  const empty = document.getElementById("financeCustomersEmpty");
   const bar = document.getElementById("financeCustomersLoadingBar");
   if (bar) bar.style.display = "block";
-
   try {
     const items = await FinanceApi.getCustomers();
     FinanceState.customers = items || [];
@@ -423,51 +408,22 @@ function renderFinanceCustomers(items) {
   }
   if (empty) empty.style.display = "none";
 
-  tbody.innerHTML = items
-    .map(
-      (c) => `
+  tbody.innerHTML = items.map((c) => `
     <tr>
-      <td>
-        <strong>${c.name}</strong>
-        ${c.notes ? `<div style="font-size:12px;color:var(--text3);">${c.notes}</div>` : ""}
-      </td>
+      <td><strong>${c.name}</strong>${c.notes ? `<div style="font-size:12px;color:var(--text3);">${c.notes}</div>` : ""}</td>
       <td>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "--"}</td>
       <td>${c.contact_phone || "--"}</td>
       <td><code>${c.tax_id || "--"}</code></td>
-      <td>
-        <span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">
-          ${c.is_active ? "ACTIVE" : "INACTIVE"}
-        </span>
-      </td>
-      <td>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})">
-            <i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i>
-          </button>
-        </div>
-      </td>
+      <td><span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})"><i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i></button></div></td>
     </tr>
-  `
-    )
-    .join("");
+  `).join("");
 }
 
 function filterFinanceCustomers(query) {
   const q = (query || "").trim().toLowerCase();
-  if (!q) {
-    renderFinanceCustomers(FinanceState.customers);
-    return;
-  }
-  const filtered = FinanceState.customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(q) ||
-      (c.contact_email && c.contact_email.toLowerCase().includes(q)) ||
-      (c.tax_id && c.tax_id.toLowerCase().includes(q))
-  );
-  renderFinanceCustomers(filtered);
+  if (!q) return renderFinanceCustomers(FinanceState.customers);
+  renderFinanceCustomers(FinanceState.customers.filter((c) => c.name.toLowerCase().includes(q) || (c.contact_email && c.contact_email.toLowerCase().includes(q)) || (c.tax_id && c.tax_id.toLowerCase().includes(q))));
 }
 
 function openAddCustomerModal() {
@@ -487,7 +443,6 @@ function openAddCustomerModal() {
 function openEditCustomerModal(id) {
   const c = FinanceState.customers.find((x) => x.id === id);
   if (!c) return;
-
   document.getElementById("fCustomerId").value = c.id;
   document.getElementById("fCustomerName").value = c.name || "";
   document.getElementById("fCustomerEmail").value = c.contact_email || "";
@@ -508,23 +463,10 @@ async function saveCustomer() {
   const contact_phone = document.getElementById("fCustomerPhone").value.trim();
   const tax_id = document.getElementById("fCustomerTaxId").value.trim();
   const notes = document.getElementById("fCustomerNotes").value.trim();
-
-  if (!name) {
-    showToast("Customer name is required", "error");
-    return;
-  }
-
-  const payload = {
-    name,
-    contact_email: contact_email || null,
-    contact_phone: contact_phone || null,
-    tax_id: tax_id || null,
-    notes: notes || null,
-  };
-
+  if (!name) { showToast("Customer name is required", "error"); return; }
+  const payload = { name, contact_email: contact_email || null, contact_phone: contact_phone || null, tax_id: tax_id || null, notes: notes || null };
   const btn = document.getElementById("customerSaveBtn");
   if (btn) btn.disabled = true;
-
   try {
     if (idVal) {
       await FinanceApi.updateCustomer(parseInt(idVal, 10), payload);
@@ -545,7 +487,6 @@ async function saveCustomer() {
 async function toggleCustomerActive(id, currentlyActive) {
   const action = currentlyActive ? "deactivate" : "activate";
   if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
-
   try {
     if (currentlyActive) {
       await FinanceApi.deleteCustomer(id);
@@ -563,16 +504,32 @@ async function toggleCustomerActive(id, currentlyActive) {
 // ==========================================
 // 3. Vendor Bills
 // ==========================================
+function _billStatusBadge(status) {
+  const map = {
+    unpaid: "badge-pending",
+    paid: "badge-approved",
+    overdue: "badge-rejected",
+    void: "badge-grey",
+  };
+  return map[status] || "badge-pending";
+}
+
 async function loadFinanceBills() {
   const bar = document.getElementById("financeBillsLoadingBar");
   if (bar) bar.style.display = "block";
 
   try {
-    const items = await FinanceApi.getBills();
-    FinanceState.bills = items;
-    renderFinanceBills(items);
+    const statusFilter = document.getElementById("financeBillStatusFilter");
+    const searchInput = document.getElementById("financeBillSearch");
+    const params = {};
+    if (statusFilter && statusFilter.value) params.status = statusFilter.value;
+    if (searchInput && searchInput.value.trim()) params.search = searchInput.value.trim();
+    const items = await FinanceApi.getBills(Object.keys(params).length ? params : undefined);
+    FinanceState.bills = items || [];
+    renderFinanceBills(FinanceState.bills);
   } catch (err) {
     console.error("Failed to load vendor bills:", err);
+    showToast(err.message || "Failed to load bills", "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -590,62 +547,285 @@ function renderFinanceBills(items) {
   }
   if (empty) empty.style.display = "none";
 
-  tbody.innerHTML = items
-    .map(
-      (bill) => `
+  tbody.innerHTML = items.map((bill) => `
     <tr>
       <td><strong>${bill.bill_number}</strong></td>
-      <td>${bill.vendor_name}</td>
+      <td>${bill.vendor_name || "--"}</td>
       <td><span class="badge badge-info">${bill.category || "General"}</span></td>
       <td>${bill.issue_date || "--"}</td>
       <td>${bill.due_date || "--"}</td>
       <td><strong>$${Number(bill.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge ${bill.status === "paid" ? "badge-approved" : "badge-pending"}">${bill.status.toUpperCase()}</span></td>
-      <td>
-        <button class="btn btn-sm" onclick="showToast('Bill ${bill.bill_number} details in Phase 4', 'info')">
-          <i class="fa-solid fa-eye"></i> View
-        </button>
+      <td><span class="badge ${_billStatusBadge(bill.status)}">${(bill.status || "--").toUpperCase()}</span></td>
+      <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
+        ${(bill.status === "unpaid" || bill.status === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(bill.status === "unpaid" || bill.status === "overdue") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
-  `
-    )
-    .join("");
+  `).join("");
 }
 
-// Sub-tab switching for Bills section
+function filterFinanceBills(query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) {
+    loadFinanceBills();
+    return;
+  }
+  const filtered = (FinanceState.bills || []).filter((bill) =>
+    (bill.bill_number || "").toLowerCase().includes(q) ||
+    (bill.vendor_name || "").toLowerCase().includes(q) ||
+    (bill.category || "").toLowerCase().includes(q)
+  );
+  renderFinanceBills(filtered);
+}
+
+async function _populateBillVendorDropdown() {
+  const sel = document.getElementById("billVendorId");
+  if (!sel) return;
+  try {
+    const vendors = await FinanceApi.getVendors({ is_active: true });
+    sel.innerHTML = `<option value="">— Select vendor —</option>` + vendors.map((v) => `<option value="${v.id}">${v.name}</option>`).join("");
+  } catch (_) {}
+}
+
+function openAddBillModal() {
+  _populateBillVendorDropdown();
+  document.getElementById("billModalTitleText").textContent = "New Vendor Bill";
+  document.getElementById("billModalId").value = "";
+  document.getElementById("billVendorId").value = "";
+  document.getElementById("billNumber").value = "";
+  document.getElementById("billCategory").value = "";
+  document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("billDueDate").value = "";
+  document.getElementById("billStatus").value = "unpaid";
+  document.getElementById("billCurrency").value = "USD";
+  document.getElementById("billNotes").value = "";
+  document.getElementById("billLinesBody").innerHTML = "";
+  _updateBillTotals();
+  addBillLine();
+  document.getElementById("billModal").style.display = "flex";
+}
+
+async function openEditBillModal(billId) {
+  _populateBillVendorDropdown();
+  try {
+    const bill = await FinanceApi.getBill(billId);
+    document.getElementById("billModalTitleText").textContent = `Edit Bill ${bill.bill_number}`;
+    document.getElementById("billModalId").value = bill.id;
+    document.getElementById("billVendorId").value = bill.vendor_id;
+    document.getElementById("billNumber").value = bill.bill_number || "";
+    document.getElementById("billCategory").value = bill.category || "";
+    document.getElementById("billIssueDate").value = bill.issue_date || "";
+    document.getElementById("billDueDate").value = bill.due_date || "";
+    document.getElementById("billStatus").value = bill.status || "unpaid";
+    document.getElementById("billCurrency").value = bill.currency || "USD";
+    document.getElementById("billNotes").value = bill.notes || "";
+    document.getElementById("billLinesBody").innerHTML = "";
+    (bill.lines || []).forEach((ln) => addBillLine(ln));
+    if (!bill.lines || !bill.lines.length) addBillLine();
+    _updateBillTotals();
+    document.getElementById("billModal").style.display = "flex";
+  } catch (err) {
+    showToast("Failed to load bill: " + (err.message || err), "error");
+  }
+}
+
+function closeBillModal() {
+  document.getElementById("billModal").style.display = "none";
+}
+
+function addBillLine(data) {
+  const tbody = document.getElementById("billLinesBody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}" oninput="_updateBillTotals()"></td>
+    <td><input type="number" class="form-control bill-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeBillLineTotal(this); _updateBillTotals();"></td>
+    <td><input type="number" class="form-control bill-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeBillLineTotal(this); _updateBillTotals();"></td>
+    <td><input type="number" class="form-control bill-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateBillTotals()"></td>
+    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateBillTotals();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
+  `;
+  tbody.appendChild(tr);
+  _updateBillTotals();
+}
+
+function _autoComputeBillLineTotal(input) {
+  const row = input.closest("tr");
+  const qty = parseFloat(row.querySelector(".bill-qty").value) || 0;
+  const price = parseFloat(row.querySelector(".bill-price").value) || 0;
+  row.querySelector(".bill-total").value = (qty * price).toFixed(2);
+}
+
+function _updateBillTotals() {
+  const rows = document.querySelectorAll("#billLinesBody tr");
+  let subtotal = 0;
+  rows.forEach((r) => {
+    subtotal += parseFloat(r.querySelector(".bill-total")?.value || 0);
+  });
+  const subtotalEl = document.getElementById("billSubtotalDisplay");
+  const totalEl = document.getElementById("billTotalDisplay");
+  if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
+  if (totalEl) totalEl.textContent = subtotal.toFixed(2);
+}
+
+async function saveBillModal() {
+  const billId = document.getElementById("billModalId").value;
+  const vendorId = document.getElementById("billVendorId").value;
+  const billNumber = document.getElementById("billNumber").value.trim();
+  const issueDate = document.getElementById("billIssueDate").value;
+  const dueDate = document.getElementById("billDueDate").value;
+
+  if (!vendorId) { showToast("Please select a vendor", "error"); return; }
+  if (!billNumber) { showToast("Bill number is required", "error"); return; }
+  if (!issueDate || !dueDate) { showToast("Both dates are required", "error"); return; }
+
+  const lines = [];
+  document.querySelectorAll("#billLinesBody tr").forEach((r) => {
+    const desc = r.querySelector("input[type='text']")?.value.trim();
+    const qty = parseFloat(r.querySelector(".bill-qty")?.value) || 1;
+    const price = parseFloat(r.querySelector(".bill-price")?.value) || 0;
+    const total = parseFloat(r.querySelector(".bill-total")?.value) || 0;
+    if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
+  });
+
+  const payload = {
+    vendor_id: parseInt(vendorId, 10),
+    bill_number: billNumber,
+    category: document.getElementById("billCategory").value.trim() || null,
+    issue_date: issueDate,
+    due_date: dueDate,
+    status: document.getElementById("billStatus").value,
+    currency: document.getElementById("billCurrency").value,
+    notes: document.getElementById("billNotes").value.trim(),
+    lines,
+  };
+
+  const btn = document.getElementById("billModalSaveBtn");
+  if (btn) btn.disabled = true;
+  try {
+    if (billId) {
+      await FinanceApi.updateBill(billId, payload);
+      showToast("Bill updated", "success");
+    } else {
+      await FinanceApi.createBill(payload);
+      showToast("Bill created", "success");
+    }
+    closeBillModal();
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function confirmVoidBill(billId) {
+  if (!confirm("Void this bill? This cannot be undone.")) return;
+  try {
+    await FinanceApi.voidBill(billId);
+    showToast("Bill voided", "success");
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+async function openBillPaymentModal(billId) {
+  const bill = (FinanceState.bills || []).find((b) => b.id === billId);
+  document.getElementById("billPaymentBillId").value = billId;
+  const infoEl = document.getElementById("billPaymentBillInfo");
+  if (infoEl && bill) {
+    infoEl.textContent = `Bill ${bill.bill_number} — ${bill.currency} ${Number(bill.total).toLocaleString("en-US", { minimumFractionDigits: 2 })} total`;
+  }
+  document.getElementById("billPaymentAmount").value = "";
+  document.getElementById("billPaymentDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("billPaymentMethod").value = "bank_transfer";
+  document.getElementById("billPaymentReference").value = "";
+
+  const accSel = document.getElementById("billPaymentBankAccountId");
+  if (accSel) {
+    try {
+      const accounts = await FinanceApi.getAccounts({ is_active: true });
+      accSel.innerHTML = `<option value="">— Select account —</option>` + accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+    } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
+  }
+
+  document.getElementById("billPaymentModal").style.display = "flex";
+}
+
+function closeBillPaymentModal() {
+  document.getElementById("billPaymentModal").style.display = "none";
+}
+
+async function saveBillPayment() {
+  const billId = document.getElementById("billPaymentBillId").value;
+  const amount = parseFloat(document.getElementById("billPaymentAmount").value);
+  const paymentDate = document.getElementById("billPaymentDate").value;
+  const bankAccountId = document.getElementById("billPaymentBankAccountId").value;
+  const bill = (FinanceState.bills || []).find((b) => String(b.id) === String(billId));
+
+  if (!amount || amount <= 0) { showToast("Enter a valid payment amount", "error"); return; }
+  if (!paymentDate) { showToast("Payment date is required", "error"); return; }
+  if (!bankAccountId) { showToast("Select a bank account", "error"); return; }
+
+  const payload = {
+    direction: "outgoing",
+    amount,
+    currency: bill?.currency || "USD",
+    payment_date: paymentDate,
+    bank_account_id: parseInt(bankAccountId, 10),
+    method: document.getElementById("billPaymentMethod").value,
+    reference: document.getElementById("billPaymentReference").value.trim(),
+  };
+
+  try {
+    await FinanceApi.recordBillPayment(billId, payload);
+    showToast("Bill payment recorded", "success");
+    closeBillPaymentModal();
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
 function switchBillSubTab(subTab) {
   const tabBill = document.getElementById("tabFinanceBills");
   const tabVend = document.getElementById("tabFinanceVendors");
   const boxBill = document.getElementById("financeBillSearchBox");
+  const statusFilter = document.getElementById("financeBillStatusFilter");
   const boxVend = document.getElementById("financeVendorSearchBox");
   const conBill = document.getElementById("financeBillsContainer");
   const conVend = document.getElementById("financeVendorsContainer");
+  const addVendBtn = document.getElementById("financeAddVendorBtn");
+  const recordBillBtn = document.getElementById("financeRecordBillBtn");
 
   if (subTab === "vendors") {
     if (tabBill) tabBill.classList.remove("active");
     if (tabVend) tabVend.classList.add("active");
     if (boxBill) boxBill.style.display = "none";
+    if (statusFilter) statusFilter.style.display = "none";
     if (boxVend) boxVend.style.display = "block";
     if (conBill) conBill.style.display = "none";
     if (conVend) conVend.style.display = "block";
+    if (addVendBtn) addVendBtn.style.display = "inline-flex";
+    if (recordBillBtn) recordBillBtn.style.display = "none";
     loadFinanceVendors();
   } else {
     if (tabBill) tabBill.classList.add("active");
     if (tabVend) tabVend.classList.remove("active");
     if (boxBill) boxBill.style.display = "block";
+    if (statusFilter) statusFilter.style.display = "block";
     if (boxVend) boxVend.style.display = "none";
     if (conBill) conBill.style.display = "block";
     if (conVend) conVend.style.display = "none";
+    if (addVendBtn) addVendBtn.style.display = "inline-flex";
+    if (recordBillBtn) recordBillBtn.style.display = "inline-flex";
     loadFinanceBills();
   }
 }
 
 async function loadFinanceVendors() {
-  const tbody = document.getElementById("financeVendorsTableBody");
-  const empty = document.getElementById("financeVendorsEmpty");
   const bar = document.getElementById("financeVendorsLoadingBar");
   if (bar) bar.style.display = "block";
-
   try {
     const items = await FinanceApi.getVendors();
     FinanceState.vendors = items || [];
@@ -670,53 +850,23 @@ function renderFinanceVendors(items) {
   }
   if (empty) empty.style.display = "none";
 
-  tbody.innerHTML = items
-    .map(
-      (v) => `
+  tbody.innerHTML = items.map((v) => `
     <tr>
-      <td>
-        <strong>${v.name}</strong>
-        ${v.notes ? `<div style="font-size:12px;color:var(--text3);">${v.notes}</div>` : ""}
-      </td>
+      <td><strong>${v.name}</strong>${v.notes ? `<div style="font-size:12px;color:var(--text3);">${v.notes}</div>` : ""}</td>
       <td><span class="badge badge-info">${v.category || "General"}</span></td>
       <td>${v.contact_email ? `<a href="mailto:${v.contact_email}">${v.contact_email}</a>` : "--"}</td>
       <td>${v.contact_phone || "--"}</td>
       <td><code>${v.tax_id || "--"}</code></td>
-      <td>
-        <span class="badge ${v.is_active ? "badge-approved" : "badge-rejected"}">
-          ${v.is_active ? "ACTIVE" : "INACTIVE"}
-        </span>
-      </td>
-      <td>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})">
-            <i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i>
-          </button>
-        </div>
-      </td>
+      <td><span class="badge ${v.is_active ? "badge-approved" : "badge-rejected"}">${v.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i></button></div></td>
     </tr>
-  `
-    )
-    .join("");
+  `).join("");
 }
 
 function filterFinanceVendors(query) {
   const q = (query || "").trim().toLowerCase();
-  if (!q) {
-    renderFinanceVendors(FinanceState.vendors);
-    return;
-  }
-  const filtered = FinanceState.vendors.filter(
-    (v) =>
-      v.name.toLowerCase().includes(q) ||
-      (v.category && v.category.toLowerCase().includes(q)) ||
-      (v.contact_email && v.contact_email.toLowerCase().includes(q)) ||
-      (v.tax_id && v.tax_id.toLowerCase().includes(q))
-  );
-  renderFinanceVendors(filtered);
+  if (!q) return renderFinanceVendors(FinanceState.vendors);
+  renderFinanceVendors(FinanceState.vendors.filter((v) => v.name.toLowerCase().includes(q) || (v.category && v.category.toLowerCase().includes(q)) || (v.contact_email && v.contact_email.toLowerCase().includes(q)) || (v.tax_id && v.tax_id.toLowerCase().includes(q))));
 }
 
 function openAddVendorModal() {
@@ -737,7 +887,6 @@ function openAddVendorModal() {
 function openEditVendorModal(id) {
   const v = FinanceState.vendors.find((x) => x.id === id);
   if (!v) return;
-
   document.getElementById("fVendorId").value = v.id;
   document.getElementById("fVendorName").value = v.name || "";
   document.getElementById("fVendorCategory").value = v.category || "General";
@@ -760,24 +909,10 @@ async function saveVendor() {
   const contact_phone = document.getElementById("fVendorPhone").value.trim();
   const tax_id = document.getElementById("fVendorTaxId").value.trim();
   const notes = document.getElementById("fVendorNotes").value.trim();
-
-  if (!name) {
-    showToast("Vendor name is required", "error");
-    return;
-  }
-
-  const payload = {
-    name,
-    category: category || "General",
-    contact_email: contact_email || null,
-    contact_phone: contact_phone || null,
-    tax_id: tax_id || null,
-    notes: notes || null,
-  };
-
+  if (!name) { showToast("Vendor name is required", "error"); return; }
+  const payload = { name, category: category || "General", contact_email: contact_email || null, contact_phone: contact_phone || null, tax_id: tax_id || null, notes: notes || null };
   const btn = document.getElementById("vendorSaveBtn");
   if (btn) btn.disabled = true;
-
   try {
     if (idVal) {
       await FinanceApi.updateVendor(parseInt(idVal, 10), payload);
@@ -798,7 +933,6 @@ async function saveVendor() {
 async function toggleVendorActive(id, currentlyActive) {
   const action = currentlyActive ? "deactivate" : "activate";
   if (!confirm(`Are you sure you want to ${action} this vendor?`)) return;
-
   try {
     if (currentlyActive) {
       await FinanceApi.deleteVendor(id);
@@ -983,13 +1117,11 @@ async function saveCompanyBankAccount() {
 
   try {
     if (idVal) {
-      // Edit mode
       const payload = { account_name, bank_name, currency };
       if (account_number) payload.account_number = account_number;
       await FinanceApi.updateAccount(Number(idVal), payload);
       toast("Bank account updated successfully", "fa-solid fa-circle-check");
     } else {
-      // Create mode
       if (!account_number) {
         toast("Please provide an Account Number", "fa-solid fa-circle-exclamation");
         if (saveBtn) saveBtn.disabled = false;
@@ -1144,7 +1276,6 @@ function updateFinanceNavVisibility() {
   const group = document.getElementById("adminFinanceNavGroup");
   if (!group) return;
 
-  // Gate on admin role or finance permission
   const role = SessionInfo.getRole();
   const perms = typeof SessionInfo.getPermissions === "function" ? SessionInfo.getPermissions() : [];
   const hasFinancePerm = perms.some((p) => p.startsWith("finance."));
@@ -1156,9 +1287,7 @@ function updateFinanceNavVisibility() {
   }
 }
 
-// Hook into page navigation
 document.addEventListener("DOMContentLoaded", () => {
-  // Listen for page switch events or clicks
   document.addEventListener("click", (e) => {
     const navItem = e.target.closest("[data-page]");
     if (!navItem) return;
@@ -1181,7 +1310,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Check visibility on load/session change
   updateFinanceNavVisibility();
   window.addEventListener("hrflow:session-changed", updateFinanceNavVisibility);
 });
