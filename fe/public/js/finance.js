@@ -1091,6 +1091,9 @@ function renderFinanceAccounts(items) {
       <td><span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">${acc.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
         <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-fill" onclick="viewAccountLedger(${acc.id})" title="View Continuous Ledger">
+            <i class="fa-solid fa-list-check"></i> Ledger
+          </button>
           <button class="btn btn-sm" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
@@ -1551,6 +1554,416 @@ async function toggleFinancePaymentTypeActive(id, currentActive) {
     await loadFinancePaymentTypes();
   } catch (err) {
     toast(err.message || `Failed to ${action} payment type`, "fa-solid fa-triangle-exclamation");
+  }
+}
+
+// ==========================================
+// 5.3 Continuous Ledger & Petty Spend (Phase 2)
+// ==========================================
+let _currentLedgerAccountId = null;
+let _currentLedgerDirectionFilter = "all";
+let _isPettyLedgerOnly = false;
+
+async function viewAccountLedger(accountId) {
+  _currentLedgerAccountId = accountId;
+  _currentLedgerDirectionFilter = "all";
+  _isPettyLedgerOnly = false;
+
+  const subNav = document.getElementById("financeAccountsSubNav");
+  if (subNav) subNav.style.display = "none";
+
+  const paneAccounts = document.getElementById("financeSubPaneAccounts");
+  const paneCategories = document.getElementById("financeSubPaneCategories");
+  const panePaymentTypes = document.getElementById("financeSubPanePaymentTypes");
+  const paneLedger = document.getElementById("financeSubPaneLedger");
+
+  if (paneAccounts) paneAccounts.style.display = "none";
+  if (paneCategories) paneCategories.style.display = "none";
+  if (panePaymentTypes) panePaymentTypes.style.display = "none";
+  if (paneLedger) paneLedger.style.display = "block";
+
+  // Populate account header details
+  const acc = (FinanceState.accounts || []).find((a) => a.id === accountId);
+  if (acc) {
+    const nameEl = document.getElementById("financeLedgerAccountName");
+    const metaEl = document.getElementById("financeLedgerAccountMeta");
+    const balEl = document.getElementById("financeLedgerCurrentBalance");
+    if (nameEl) nameEl.textContent = `${acc.account_name} — Ledger`;
+    if (metaEl) {
+      const typeLabel = (acc.account_type || "bank").toUpperCase();
+      const institution = acc.bank_name || "Cash Custody";
+      metaEl.textContent = `${typeLabel} · ${institution} · ${acc.currency} · ${acc.account_number}`;
+    }
+    if (balEl) {
+      const symbol = acc.currency === "EGP" ? "E£" : "$";
+      balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+    }
+  }
+
+  // Populate categories and payment types dropdowns in filter
+  await _populateLedgerFilterDropdowns();
+
+  // Reset filter inputs
+  const dateFrom = document.getElementById("financeLedgerDateFrom");
+  const dateTo = document.getElementById("financeLedgerDateTo");
+  const catFilter = document.getElementById("financeLedgerCategoryFilter");
+  const ptFilter = document.getElementById("financeLedgerPaymentTypeFilter");
+  if (dateFrom) dateFrom.value = "";
+  if (dateTo) dateTo.value = "";
+  if (catFilter) catFilter.value = "";
+  if (ptFilter) ptFilter.value = "";
+
+  const dirTabs = document.querySelectorAll("#financeSubPaneLedger .filter-tabs .filter-tab");
+  dirTabs.forEach((t) => t.classList.remove("active"));
+  const allDirBtn = document.querySelector('#financeSubPaneLedger .filter-tabs .filter-tab[data-direction="all"]');
+  if (allDirBtn) allDirBtn.classList.add("active");
+
+  const pettyBtn = document.getElementById("btnTogglePettyLedger");
+  if (pettyBtn) {
+    pettyBtn.classList.remove("btn-fill");
+    pettyBtn.classList.add("btn-sm");
+  }
+
+  await loadAccountTransactions();
+}
+
+function closeAccountLedger() {
+  _currentLedgerAccountId = null;
+  const subNav = document.getElementById("financeAccountsSubNav");
+  if (subNav) subNav.style.display = "flex";
+
+  const paneLedger = document.getElementById("financeSubPaneLedger");
+  const paneAccounts = document.getElementById("financeSubPaneAccounts");
+  if (paneLedger) paneLedger.style.display = "none";
+  if (paneAccounts) paneAccounts.style.display = "block";
+
+  loadFinanceAccounts();
+}
+
+async function _populateLedgerFilterDropdowns() {
+  try {
+    if (!FinanceState.categories || !FinanceState.categories.length) {
+      FinanceState.categories = await FinanceApi.getCategories();
+    }
+    if (!FinanceState.paymentTypes || !FinanceState.paymentTypes.length) {
+      FinanceState.paymentTypes = await FinanceApi.getPaymentTypes();
+    }
+
+    const catSel = document.getElementById("financeLedgerCategoryFilter");
+    if (catSel) {
+      catSel.innerHTML = '<option value="">All Categories</option>' +
+        (FinanceState.categories || [])
+          .map((c) => `<option value="${c.id}">${c.name}${c.is_petty ? " (Petty)" : ""}</option>`)
+          .join("");
+    }
+
+    const ptSel = document.getElementById("financeLedgerPaymentTypeFilter");
+    if (ptSel) {
+      ptSel.innerHTML = '<option value="">All Payment Types</option>' +
+        (FinanceState.paymentTypes || [])
+          .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+          .join("");
+    }
+  } catch (_) {}
+}
+
+async function loadAccountTransactions() {
+  if (!_currentLedgerAccountId) return;
+
+  const bar = document.getElementById("financeLedgerLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    const params = {};
+    const dateFrom = document.getElementById("financeLedgerDateFrom")?.value;
+    const dateTo = document.getElementById("financeLedgerDateTo")?.value;
+    const catId = document.getElementById("financeLedgerCategoryFilter")?.value;
+    const ptId = document.getElementById("financeLedgerPaymentTypeFilter")?.value;
+
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    if (catId) params.category_id = catId;
+    if (ptId) params.payment_type_id = ptId;
+    if (_currentLedgerDirectionFilter && _currentLedgerDirectionFilter !== "all") {
+      params.direction = _currentLedgerDirectionFilter;
+    }
+    if (_isPettyLedgerOnly) {
+      params.is_petty = true;
+    }
+
+    const items = await FinanceApi.getAccountTransactions(_currentLedgerAccountId, params);
+    FinanceState.ledgerTransactions = items;
+    renderAccountTransactions(items);
+
+    // If petty rollup active, load petty summary banner
+    const banner = document.getElementById("financeLedgerPettyBanner");
+    if (_isPettyLedgerOnly) {
+      const summary = await FinanceApi.getAccountPettySummary(_currentLedgerAccountId, {
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      });
+      if (banner) banner.style.display = "block";
+      const totalOutEl = document.getElementById("financeLedgerPettyTotalOut");
+      const countEl = document.getElementById("financeLedgerPettyCount");
+      const breakdownEl = document.getElementById("financeLedgerPettyBreakdown");
+
+      const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
+      const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+
+      if (totalOutEl) totalOutEl.textContent = `${symbol}${Number(summary.total_out || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+      if (countEl) countEl.textContent = summary.transactions ? summary.transactions.length : 0;
+      if (breakdownEl) {
+        const parts = (summary.by_category || []).map((b) => `${b.category_name}: ${symbol}${Number(b.total_out).toLocaleString("en-US", { minimumFractionDigits: 2 })} (${b.count})`);
+        breakdownEl.textContent = parts.length ? parts.join("  |  ") : "No recurring expenses in selected period.";
+      }
+    } else {
+      if (banner) banner.style.display = "none";
+    }
+
+    // Update current balance in header from account fresh state
+    const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
+    if (acc) {
+      const balEl = document.getElementById("financeLedgerCurrentBalance");
+      if (balEl) {
+        const symbol = acc.currency === "EGP" ? "E£" : "$";
+        balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load transactions:", err);
+    toast("Failed to load transactions: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+function filterAccountLedger() {
+  loadAccountTransactions();
+}
+
+function filterAccountLedgerDirection(direction, btn) {
+  _currentLedgerDirectionFilter = direction;
+  const tabs = document.querySelectorAll("#financeSubPaneLedger .filter-tabs .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadAccountTransactions();
+}
+
+function togglePettyLedgerView() {
+  _isPettyLedgerOnly = !_isPettyLedgerOnly;
+  const btn = document.getElementById("btnTogglePettyLedger");
+  if (btn) {
+    if (_isPettyLedgerOnly) {
+      btn.classList.remove("btn-sm");
+      btn.classList.add("btn-fill");
+    } else {
+      btn.classList.remove("btn-fill");
+      btn.classList.add("btn-sm");
+    }
+  }
+  loadAccountTransactions();
+}
+
+function renderAccountTransactions(items) {
+  const tbody = document.getElementById("financeLedgerTableBody");
+  const empty = document.getElementById("financeLedgerEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
+  const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+
+  tbody.innerHTML = items
+    .map((tx) => {
+      const isIn = tx.direction === "in";
+      const inDisplay = isIn ? `<strong style="color:var(--success);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
+      const outDisplay = !isIn ? `<strong style="color:var(--danger);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
+
+      let fxDisplay = "—";
+      if (tx.fx_rate) {
+        const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
+        const eqSym = eqCurr === "EGP" ? "E£" : "$";
+        const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
+        fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
+      }
+
+      const isManual = tx.source === "manual";
+      const actionsHtml = isManual
+        ? `<div style="display:flex;gap:4px;justify-content:center;">
+             <button class="btn btn-sm" onclick="openEditFinanceTransactionModal(${tx.id})" title="Edit Transaction"><i class="fa-solid fa-pen"></i></button>
+             <button class="btn btn-sm btn-danger" onclick="confirmDeleteFinanceTransaction(${tx.id})" title="Void / Delete Transaction"><i class="fa-solid fa-trash"></i></button>
+           </div>`
+        : `<span class="badge badge-info" title="System-generated from ${tx.source}"><i class="fa-solid fa-lock"></i> ${tx.source.replace('_', ' ').toUpperCase()}</span>`;
+
+      return `
+        <tr>
+          <td><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
+          <td><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
+          <td><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td><span style="font-size:12px;">${tx.reference || "—"}</span></td>
+          <td><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
+          <td style="text-align:right;">${inDisplay}</td>
+          <td style="text-align:right;">${outDisplay}</td>
+          <td style="text-align:right;">${fxDisplay}</td>
+          <td style="text-align:right;"><strong>${symbol}${Number(tx.running_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
+          <td style="text-align:center;">${actionsHtml}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function _populateTransactionModalDropdowns() {
+  try {
+    if (!FinanceState.categories || !FinanceState.categories.length) {
+      FinanceState.categories = await FinanceApi.getCategories();
+    }
+    if (!FinanceState.paymentTypes || !FinanceState.paymentTypes.length) {
+      FinanceState.paymentTypes = await FinanceApi.getPaymentTypes();
+    }
+
+    const catSel = document.getElementById("fFinanceTxCategory");
+    if (catSel) {
+      catSel.innerHTML = '<option value="">— Select Category —</option>' +
+        (FinanceState.categories || [])
+          .filter((c) => c.is_active)
+          .map((c) => `<option value="${c.id}">${c.name}${c.is_petty ? " [Petty]" : ""}</option>`)
+          .join("");
+    }
+
+    const ptSel = document.getElementById("fFinanceTxPaymentType");
+    if (ptSel) {
+      ptSel.innerHTML = '<option value="">— Select Payment Type —</option>' +
+        (FinanceState.paymentTypes || [])
+          .filter((p) => p.is_active)
+          .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+          .join("");
+    }
+  } catch (_) {}
+}
+
+async function openAddFinanceTransactionModal() {
+  if (!_currentLedgerAccountId) return;
+  await _populateTransactionModalDropdowns();
+
+  document.getElementById("financeTransactionModalTitle").textContent = "Record Transaction";
+  document.getElementById("fFinanceTxId").value = "";
+  document.getElementById("fFinanceTxAccountId").value = _currentLedgerAccountId;
+  document.getElementById("fFinanceTxDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("fFinanceTxDirection").value = "out";
+  document.getElementById("fFinanceTxAmount").value = "";
+  document.getElementById("fFinanceTxFxRate").value = "";
+  document.getElementById("fFinanceTxCategory").value = "";
+  document.getElementById("fFinanceTxPaymentType").value = "";
+  document.getElementById("fFinanceTxReference").value = "";
+  document.getElementById("fFinanceTxDescription").value = "";
+
+  openModal("financeTransactionModal");
+}
+
+async function openEditFinanceTransactionModal(txId) {
+  const tx = (FinanceState.ledgerTransactions || []).find((t) => t.id === txId);
+  if (!tx) return;
+
+  await _populateTransactionModalDropdowns();
+
+  document.getElementById("financeTransactionModalTitle").textContent = "Edit Transaction";
+  document.getElementById("fFinanceTxId").value = tx.id;
+  document.getElementById("fFinanceTxAccountId").value = tx.account_id;
+  document.getElementById("fFinanceTxDate").value = tx.date;
+  document.getElementById("fFinanceTxDirection").value = tx.direction;
+  document.getElementById("fFinanceTxAmount").value = tx.amount;
+  document.getElementById("fFinanceTxFxRate").value = tx.fx_rate || "";
+  document.getElementById("fFinanceTxCategory").value = tx.category_id || "";
+  document.getElementById("fFinanceTxPaymentType").value = tx.payment_type_id || "";
+  document.getElementById("fFinanceTxReference").value = tx.reference || "";
+  document.getElementById("fFinanceTxDescription").value = tx.description || "";
+
+  openModal("financeTransactionModal");
+}
+
+async function saveFinanceTransaction() {
+  const txId = document.getElementById("fFinanceTxId").value;
+  const accountId = document.getElementById("fFinanceTxAccountId").value || _currentLedgerAccountId;
+  const date = document.getElementById("fFinanceTxDate").value;
+  const direction = document.getElementById("fFinanceTxDirection").value;
+  const amount = parseFloat(document.getElementById("fFinanceTxAmount").value);
+  const fx_rate_val = document.getElementById("fFinanceTxFxRate").value;
+  const fx_rate = fx_rate_val ? parseFloat(fx_rate_val) : null;
+  const category_id_val = document.getElementById("fFinanceTxCategory").value;
+  const category_id = category_id_val ? parseInt(category_id_val, 10) : null;
+  const payment_type_id_val = document.getElementById("fFinanceTxPaymentType").value;
+  const payment_type_id = payment_type_id_val ? parseInt(payment_type_id_val, 10) : null;
+  const reference = document.getElementById("fFinanceTxReference").value.trim();
+  const description = document.getElementById("fFinanceTxDescription").value.trim();
+
+  if (!date) {
+    toast("Please select a transaction date", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (!amount || amount <= 0) {
+    toast("Please enter a valid amount greater than zero", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (!category_id) {
+    toast("Please select a transaction category", "fa-solid fa-circle-exclamation");
+    return;
+  }
+
+  const saveBtn = document.getElementById("financeTxSaveBtn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    if (txId) {
+      const payload = { date, direction, amount, category_id, payment_type_id, reference, description, fx_rate };
+      await FinanceApi.updateTransaction(Number(txId), payload);
+      toast("Transaction updated successfully", "fa-solid fa-circle-check");
+    } else {
+      const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
+      const payload = {
+        date,
+        direction,
+        amount,
+        currency: acc ? acc.currency : "USD",
+        category_id,
+        payment_type_id,
+        reference,
+        description,
+        fx_rate,
+      };
+      await FinanceApi.createAccountTransaction(Number(accountId), payload);
+      toast("Transaction recorded successfully", "fa-solid fa-circle-check");
+    }
+
+    closeModal("financeTransactionModal");
+    // Reload accounts to update cached balances
+    const accounts = await FinanceApi.getAccounts();
+    FinanceState.accounts = accounts;
+    await loadAccountTransactions();
+  } catch (err) {
+    toast(err.message || "Failed to save transaction", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function confirmDeleteFinanceTransaction(txId) {
+  if (!confirm("Are you sure you want to delete this transaction? Running balances will be recalculated automatically.")) return;
+
+  try {
+    await FinanceApi.deleteTransaction(txId);
+    toast("Transaction deleted successfully", "fa-solid fa-circle-check");
+    const accounts = await FinanceApi.getAccounts();
+    FinanceState.accounts = accounts;
+    await loadAccountTransactions();
+  } catch (err) {
+    toast(err.message || "Failed to delete transaction", "fa-solid fa-triangle-exclamation");
   }
 }
 

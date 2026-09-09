@@ -139,6 +139,40 @@ class LedgerTransactionResponse(LedgerTransactionBase):
         from_attributes = True
 
 
+class LedgerTransactionUpdate(BaseModel):
+    date: Optional[str] = Field(None, description="Transaction date (YYYY-MM-DD)")
+    amount: Optional[float] = Field(None, gt=0.0, description="Transaction amount")
+    direction: Optional[str] = Field(None, description="Transaction direction: in or out")
+    currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    category_id: Optional[int] = Field(None, description="FK to TransactionCategory")
+    payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
+    reference: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=255)
+    fx_rate: Optional[float] = None
+
+
+class PettySummaryItem(BaseModel):
+    category_id: int
+    category_name: str
+    count: int
+    total_in: float
+    total_out: float
+    net_amount: float
+
+
+class PettySummaryResponse(BaseModel):
+    account_id: int
+    account_name: str
+    currency: str
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    total_in: float
+    total_out: float
+    net_amount: float
+    by_category: List[PettySummaryItem] = []
+    transactions: List[LedgerTransactionResponse] = []
+
+
 # ==========================================
 # Customer Schemas
 # ==========================================

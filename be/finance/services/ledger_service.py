@@ -180,3 +180,120 @@ class LedgerService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
             )
+
+    def update_manual_transaction(
+        self,
+        tx_id: int,
+        payload: "LedgerTransactionUpdate",
+    ) -> LedgerTransactionResponse:
+        tx = self.repo.get_by_id(tx_id)
+        if not tx:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transaction with ID {tx_id} not found",
+            )
+
+        if tx.source != "manual":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Only manual transactions can be edited directly. Transaction source is '{tx.source}'.",
+            )
+
+        data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
+
+        if "direction" in data and data["direction"] not in ("in", "out"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Transaction direction must be 'in' or 'out'",
+            )
+
+        if "amount" in data and (data["amount"] is None or data["amount"] <= 0):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Transaction amount must be strictly greater than 0",
+            )
+
+        if data.get("category_id") and self.categories_repo:
+            cat = self.categories_repo.get_by_id(data["category_id"])
+            if not cat:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Category with ID {data['category_id']} not found",
+                )
+
+        if data.get("payment_type_id") and self.payment_types_repo:
+            pt = self.payment_types_repo.get_by_id(data["payment_type_id"])
+            if not pt:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Payment type with ID {data['payment_type_id']} not found",
+                )
+
+        try:
+            updated = self.repo.update_transaction(tx_id, data)
+            return self.to_response(updated)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+
+    def delete_manual_transaction(self, tx_id: int) -> dict:
+        tx = self.repo.get_by_id(tx_id)
+        if not tx:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transaction with ID {tx_id} not found",
+            )
+
+        if tx.source != "manual":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Only manual transactions can be deleted. Transaction source is '{tx.source}'.",
+            )
+
+        try:
+            self.repo.delete_transaction(tx_id)
+            return {"message": "Transaction deleted successfully", "id": tx_id}
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+
+    def get_petty_summary(
+        self,
+        account_id: int,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+    ) -> "PettySummaryResponse":
+        if self.accounts_repo:
+            account = self.accounts_repo.get_by_id(account_id)
+            if not account:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Bank account with ID {account_id} not found",
+                )
+
+        from finance.schemas import PettySummaryResponse, PettySummaryItem
+        try:
+            summary = self.repo.get_petty_summary(account_id, date_from, date_to)
+            tx_responses = [self.to_response(t) for t in summary["transactions"]]
+            items = [PettySummaryItem(**item) for item in summary["by_category"]]
+            return PettySummaryResponse(
+                account_id=summary["account_id"],
+                account_name=summary["account_name"],
+                currency=summary["currency"],
+                date_from=summary["date_from"],
+                date_to=summary["date_to"],
+                total_in=summary["total_in"],
+                total_out=summary["total_out"],
+                net_amount=summary["net_amount"],
+                by_category=items,
+                transactions=tx_responses,
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )

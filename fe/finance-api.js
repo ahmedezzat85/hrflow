@@ -521,6 +521,162 @@ const FinanceApi = {
     }
     return apiRequest("DELETE", `/api/finance/payment-types/${id}`);
   },
+
+  // Transactions & Continuous Ledger (Phase 2)
+  async getAccountTransactions(accountId, params) {
+    if (_isMock()) {
+      let list = (FinanceMockState.transactions || []).filter((t) => t.account_id === parseInt(accountId, 10));
+      if (params && params.direction) list = list.filter((t) => t.direction === params.direction);
+      if (params && params.category_id) list = list.filter((t) => t.category_id === parseInt(params.category_id, 10));
+      if (params && params.payment_type_id) list = list.filter((t) => t.payment_type_id === parseInt(params.payment_type_id, 10));
+      if (params && params.date_from) list = list.filter((t) => t.date >= params.date_from);
+      if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
+      if (params && params.is_petty !== undefined) {
+        const pettyCatIds = new Set(FinanceMockState.categories.filter((c) => c.is_petty).map((c) => c.id));
+        const wantPetty = params.is_petty === true || params.is_petty === "true";
+        list = list.filter((t) => pettyCatIds.has(t.category_id) === wantPetty);
+      }
+      return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    }
+    let url = `/api/finance/accounts/${accountId}/transactions`;
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+
+  async createAccountTransaction(accountId, payload) {
+    if (_isMock()) {
+      if (!FinanceMockState.transactions) FinanceMockState.transactions = [];
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      const amount = parseFloat(payload.amount);
+      const direction = payload.direction;
+
+      if (acc) {
+        if (direction === "in") acc.current_balance = round(acc.current_balance + amount, 2);
+        else acc.current_balance = round(acc.current_balance - amount, 2);
+      }
+
+      const cat = FinanceMockState.categories.find((c) => c.id === parseInt(payload.category_id, 10));
+      const pt = FinanceMockState.paymentTypes.find((p) => p.id === parseInt(payload.payment_type_id, 10));
+
+      const newTx = {
+        id: FinanceMockState.transactions.length + 1,
+        account_id: parseInt(accountId, 10),
+        date: payload.date,
+        amount,
+        direction,
+        currency: payload.currency || (acc ? acc.currency : "USD"),
+        category_id: payload.category_id ? parseInt(payload.category_id, 10) : null,
+        payment_type_id: payload.payment_type_id ? parseInt(payload.payment_type_id, 10) : null,
+        category_name: cat ? cat.name : null,
+        payment_type_code: pt ? pt.code : null,
+        payment_type_name: pt ? pt.name : null,
+        reference: payload.reference || "",
+        description: payload.description || "",
+        fx_rate: payload.fx_rate ? parseFloat(payload.fx_rate) : null,
+        fx_equivalent: payload.fx_rate ? round(amount * parseFloat(payload.fx_rate), 2) : null,
+        source: "manual",
+        running_balance: acc ? acc.current_balance : amount,
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.transactions.unshift(newTx);
+      return newTx;
+    }
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload);
+  },
+
+  async getTransaction(id) {
+    if (_isMock()) {
+      const tx = (FinanceMockState.transactions || []).find((t) => t.id === parseInt(id, 10));
+      if (!tx) throw new Error("Transaction not found");
+      return tx;
+    }
+    return apiRequest("GET", `/api/finance/transactions/${id}`);
+  },
+
+  async updateTransaction(id, payload) {
+    if (_isMock()) {
+      const tx = (FinanceMockState.transactions || []).find((t) => t.id === parseInt(id, 10));
+      if (!tx) throw new Error("Transaction not found");
+      if (tx.source !== "manual") throw new Error("Only manual transactions can be edited directly");
+      Object.assign(tx, payload);
+      if (payload.amount) tx.amount = parseFloat(payload.amount);
+      if (payload.category_id) {
+        const cat = FinanceMockState.categories.find((c) => c.id === parseInt(payload.category_id, 10));
+        tx.category_name = cat ? cat.name : null;
+      }
+      if (payload.payment_type_id) {
+        const pt = FinanceMockState.paymentTypes.find((p) => p.id === parseInt(payload.payment_type_id, 10));
+        tx.payment_type_code = pt ? pt.code : null;
+        tx.payment_type_name = pt ? pt.name : null;
+      }
+      return tx;
+    }
+    return apiRequest("PATCH", `/api/finance/transactions/${id}`, payload);
+  },
+
+  async deleteTransaction(id) {
+    if (_isMock()) {
+      const idx = (FinanceMockState.transactions || []).findIndex((t) => t.id === parseInt(id, 10));
+      if (idx === -1) throw new Error("Transaction not found");
+      const tx = FinanceMockState.transactions[idx];
+      if (tx.source !== "manual") throw new Error("Only manual transactions can be deleted");
+      FinanceMockState.transactions.splice(idx, 1);
+      return { message: "Transaction deleted successfully", id: parseInt(id, 10) };
+    }
+    return apiRequest("DELETE", `/api/finance/transactions/${id}`);
+  },
+
+  async getAccountPettySummary(accountId, params) {
+    if (_isMock()) {
+      const txs = await this.getAccountTransactions(accountId, { ...params, is_petty: true });
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      let total_in = 0.0;
+      let total_out = 0.0;
+      const by_cat = {};
+
+      txs.forEach((t) => {
+        if (t.direction === "in") total_in += t.amount;
+        else total_out += t.amount;
+        const catId = t.category_id || 0;
+        if (!by_cat[catId]) {
+          by_cat[catId] = {
+            category_id: catId,
+            category_name: t.category_name || "Uncategorized",
+            count: 0,
+            total_in: 0,
+            total_out: 0,
+            net_amount: 0,
+          };
+        }
+        by_cat[catId].count++;
+        if (t.direction === "in") by_cat[catId].total_in += t.amount;
+        else by_cat[catId].total_out += t.amount;
+        by_cat[catId].net_amount = by_cat[catId].total_in - by_cat[catId].total_out;
+      });
+
+      return {
+        account_id: parseInt(accountId, 10),
+        account_name: acc ? acc.account_name : "Account",
+        currency: acc ? acc.currency : "USD",
+        date_from: params?.date_from || null,
+        date_to: params?.date_to || null,
+        total_in,
+        total_out,
+        net_amount: total_in - total_out,
+        by_category: Object.values(by_cat),
+        transactions: txs,
+      };
+    }
+    let url = `/api/finance/accounts/${accountId}/transactions/petty-summary`;
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
 };
 
 window.FinanceApi = FinanceApi;

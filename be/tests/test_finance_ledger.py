@@ -431,3 +431,244 @@ def test_migration_backfill_logic(db_session):
     # Verify recomputed balance from ledger equals current_balance
     repo = AccountsRepository(db_session)
     assert repo.compute_balance(acc.id) == acc.current_balance
+
+
+def test_manual_transaction_edit_recalculates_running_balances(db_session):
+    """
+    Verifies that editing a manual transaction updates its values and automatically
+    recomputes continuous running balances for all subsequent transactions and the account.
+    """
+    accounts_repo = AccountsRepository(db_session)
+    ledger_repo = LedgerRepository(db_session)
+    ledger_service = LedgerService(ledger_repo, accounts_repo)
+
+    acc = accounts_repo.create({
+        "account_name": "Ledger Test Bank",
+        "bank_name": "CIB",
+        "account_number": "LEDGER-001",
+        "currency": "USD",
+        "opening_balance": 10000.0,
+    })
+
+    # Day 1: +5,000 -> 15,000
+    tx1 = ledger_service.record_manual_transaction(
+        acc.id,
+        LedgerTransactionCreate(
+            date="2026-09-01",
+            amount=5000.0,
+            direction="in",
+            currency="USD",
+            description="Day 1 deposit",
+        ),
+    )
+    # Day 2: -2,000 -> 13,000
+    tx2 = ledger_service.record_manual_transaction(
+        acc.id,
+        LedgerTransactionCreate(
+            date="2026-09-02",
+            amount=2000.0,
+            direction="out",
+            currency="USD",
+            description="Day 2 expense",
+        ),
+    )
+    # Day 3: -1,000 -> 12,000
+    tx3 = ledger_service.record_manual_transaction(
+        acc.id,
+        LedgerTransactionCreate(
+            date="2026-09-03",
+            amount=1000.0,
+            direction="out",
+            currency="USD",
+            description="Day 3 expense",
+        ),
+    )
+
+    db_session.refresh(acc)
+    assert acc.current_balance == 12000.0
+
+    # Edit Day 2 expense: change from 2,000 to 4,000
+    from finance.schemas import LedgerTransactionUpdate
+    updated_tx2 = ledger_service.update_manual_transaction(
+        tx2.id,
+        LedgerTransactionUpdate(amount=4000.0),
+    )
+    assert updated_tx2.amount == 4000.0
+    assert updated_tx2.running_balance == 11000.0  # 10,000 + 5,000 - 4,000 = 11,000
+
+    # Verify Day 3 running balance was recalculated to 10,000
+    refreshed_tx3 = ledger_service.get_transaction(tx3.id)
+    assert refreshed_tx3.running_balance == 10000.0  # 11,000 - 1,000 = 10,000
+
+    # Verify account current_balance was updated to 10,000
+    db_session.refresh(acc)
+    assert acc.current_balance == 10000.0
+
+
+def test_manual_transaction_delete_recalculates_running_balances(db_session):
+    """
+    Verifies that deleting a manual transaction removes it and recalculates continuous running balances.
+    """
+    accounts_repo = AccountsRepository(db_session)
+    ledger_repo = LedgerRepository(db_session)
+    ledger_service = LedgerService(ledger_repo, accounts_repo)
+
+    acc = accounts_repo.create({
+        "account_name": "Delete Test Bank",
+        "bank_name": "Chase",
+        "account_number": "DEL-001",
+        "currency": "USD",
+        "opening_balance": 5000.0,
+    })
+
+    # Day 1: +2,000 -> 7,000
+    tx1 = ledger_service.record_manual_transaction(
+        acc.id,
+        LedgerTransactionCreate(date="2026-09-01", amount=2000.0, direction="in"),
+    )
+    # Day 2: -1,500 -> 5,500
+    tx2 = ledger_service.record_manual_transaction(
+        acc.id,
+        LedgerTransactionCreate(date="2026-09-02", amount=1500.0, direction="out"),
+    )
+    # Day 3: +500 -> 6,000
+    tx3 = ledger_service.record_manual_transaction(
+        acc.id,
+        LedgerTransactionCreate(date="2026-09-03", amount=500.0, direction="in"),
+    )
+
+    db_session.refresh(acc)
+    assert acc.current_balance == 6000.0
+
+    # Delete tx2 (-1,500)
+    res = ledger_service.delete_manual_transaction(tx2.id)
+    assert res["id"] == tx2.id
+
+    # Verify Day 3 running balance is now 5,000 + 2,000 + 500 = 7,500
+    refreshed_tx3 = ledger_service.get_transaction(tx3.id)
+    assert refreshed_tx3.running_balance == 7500.0
+
+    db_session.refresh(acc)
+    assert acc.current_balance == 7500.0
+
+
+def test_non_manual_transaction_edit_delete_rejected(db_session):
+    """
+    Verifies that non-manual transactions (e.g. invoice/bill payment, transfers)
+    cannot be directly edited or deleted via transaction endpoints.
+    """
+    from fastapi import HTTPException
+    accounts_repo = AccountsRepository(db_session)
+    ledger_repo = LedgerRepository(db_session)
+    ledger_service = LedgerService(ledger_repo, accounts_repo)
+
+    acc = accounts_repo.create({
+        "account_name": "Lock Test Bank",
+        "bank_name": "CIB",
+        "account_number": "LOCK-001",
+        "currency": "USD",
+        "opening_balance": 1000.0,
+    })
+
+    # Create non-manual transaction
+    non_manual_tx = ledger_repo.create_transaction(
+        acc.id,
+        {
+            "date": "2026-09-01",
+            "amount": 500.0,
+            "direction": "in",
+            "source": "transfer",
+            "description": "Internal FX transfer leg",
+        },
+    )
+
+    from finance.schemas import LedgerTransactionUpdate
+    with pytest.raises(HTTPException) as exc_edit:
+        ledger_service.update_manual_transaction(
+            non_manual_tx.id,
+            LedgerTransactionUpdate(amount=600.0),
+        )
+    assert exc_edit.value.status_code == 400
+    assert "Only manual transactions can be edited" in exc_edit.value.detail
+
+    with pytest.raises(HTTPException) as exc_del:
+        ledger_service.delete_manual_transaction(non_manual_tx.id)
+    assert exc_del.value.status_code == 400
+    assert "Only manual transactions can be deleted" in exc_del.value.detail
+
+
+def test_petty_summary_rollup(db_session):
+    """
+    Verifies the petty-summary endpoint rollup:
+    Sums and groups transactions for categories flagged is_petty=True.
+    """
+    accounts_repo = AccountsRepository(db_session)
+    ledger_repo = LedgerRepository(db_session)
+    ledger_service = LedgerService(ledger_repo, accounts_repo)
+
+    acc = accounts_repo.create({
+        "account_name": "Petty Cash Box",
+        "bank_name": "Office Safe",
+        "account_number": "SAFE-EGP-1",
+        "currency": "EGP",
+        "opening_balance": 5000.0,
+        "account_type": "cash",
+    })
+
+    cat_transport = TransactionCategoryDB(name="Transportation", kind="cost", is_petty=True)
+    cat_kitchen = TransactionCategoryDB(name="Kitchen Supplies", kind="cost", is_petty=True)
+    cat_rent = TransactionCategoryDB(name="Rent", kind="cost", is_petty=False)
+    db_session.add_all([cat_transport, cat_kitchen, cat_rent])
+    db_session.flush()
+
+    # 2 Transportation costs: 150 + 250 = 400
+    ledger_repo.create_transaction(acc.id, {
+        "date": "2026-09-01",
+        "amount": 150.0,
+        "direction": "out",
+        "category_id": cat_transport.id,
+        "description": "Taxi to client",
+    })
+    ledger_repo.create_transaction(acc.id, {
+        "date": "2026-09-03",
+        "amount": 250.0,
+        "direction": "out",
+        "category_id": cat_transport.id,
+        "description": "Uber airport",
+    })
+
+    # 1 Kitchen cost: 300
+    ledger_repo.create_transaction(acc.id, {
+        "date": "2026-09-02",
+        "amount": 300.0,
+        "direction": "out",
+        "category_id": cat_kitchen.id,
+        "description": "Coffee and milk",
+    })
+
+    # 1 Non-petty cost (Rent: 2000) - should NOT be included in petty summary
+    ledger_repo.create_transaction(acc.id, {
+        "date": "2026-09-01",
+        "amount": 2000.0,
+        "direction": "out",
+        "category_id": cat_rent.id,
+        "description": "Monthly rent",
+    })
+
+    summary = ledger_service.get_petty_summary(acc.id)
+    assert summary.account_id == acc.id
+    assert summary.total_out == 700.0  # 150 + 250 + 300
+    assert summary.net_amount == -700.0
+    assert len(summary.transactions) == 3
+
+    by_cat_dict = {item.category_name: item for item in summary.by_category}
+    assert "Transportation" in by_cat_dict
+    assert by_cat_dict["Transportation"].total_out == 400.0
+    assert by_cat_dict["Transportation"].count == 2
+
+    assert "Kitchen Supplies" in by_cat_dict
+    assert by_cat_dict["Kitchen Supplies"].total_out == 300.0
+    assert by_cat_dict["Kitchen Supplies"].count == 1
+
+    assert "Rent" not in by_cat_dict
+

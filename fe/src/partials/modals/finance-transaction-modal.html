@@ -1,0 +1,64 @@
+  <div class="modal-overlay" id="financeTransactionModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+        <div class="modal-head-text">
+          <h3 id="financeTransactionModalTitle">Record Transaction</h3>
+          <p id="financeTransactionModalSubtitle">Enter a continuous ledger transaction for this account.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('financeTransactionModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fFinanceTxId">
+        <input type="hidden" id="fFinanceTxAccountId">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Transaction Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Date <span class="req">*</span></label>
+              <input type="date" id="fFinanceTxDate">
+            </div>
+            <div class="form-field">
+              <label>Direction <span class="req">*</span></label>
+              <select id="fFinanceTxDirection">
+                <option value="out">Expense / Money Out (-)</option>
+                <option value="in">Income / Deposit (+)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Amount <span class="req">*</span></label>
+              <input type="number" id="fFinanceTxAmount" step="0.01" min="0.01" placeholder="0.00">
+            </div>
+            <div class="form-field">
+              <label>FX Rate <span class="opt">(Optional, daily rate)</span></label>
+              <input type="number" id="fFinanceTxFxRate" step="0.0001" min="0" placeholder="e.g. 48.50">
+            </div>
+            <div class="form-field">
+              <label>Category <span class="req">*</span></label>
+              <select id="fFinanceTxCategory">
+                <option value="">— Select Category —</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Payment Type <span class="req">*</span></label>
+              <select id="fFinanceTxPaymentType">
+                <option value="">— Select Payment Type —</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label>Reference / Cheque # / Doc #</label>
+              <input id="fFinanceTxReference" placeholder="e.g. INV-2026-004, Receipt #102, CHK-8812">
+            </div>
+            <div class="form-field full">
+              <label>Description / Memo</label>
+              <textarea id="fFinanceTxDescription" rows="2" placeholder="e.g. Client lunch, Monthly office supplies, Retainer payment"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('financeTransactionModal')">Cancel</button>
+        <button class="btn btn-fill" id="financeTxSaveBtn" onclick="saveFinanceTransaction()"><i class="fa-solid fa-floppy-disk"></i> Save Transaction</button>
+      </div>
+    </div>
+  </div>
