@@ -372,7 +372,10 @@ function updateFinanceNavVisibility() {
 
   // Gate on admin role or finance permission
   const role = SessionInfo.getRole();
-  if (role === "admin") {
+  const perms = typeof SessionInfo.getPermissions === "function" ? SessionInfo.getPermissions() : [];
+  const hasFinancePerm = perms.some((p) => p.startsWith("finance."));
+
+  if (role === "admin" || role === "system_admin" || hasFinancePerm) {
     group.style.display = "block";
   } else {
     group.style.display = "none";

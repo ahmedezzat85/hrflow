@@ -4,13 +4,15 @@ async function handleLoginSuccess(data){
   document.getElementById('loginErr').style.display = 'none';
   showAppLoader('Signing you in', 'Loading your HR workspace...');
   try{
-    if(data.role === 'admin'){
+    if(data.role === 'admin' || data.role === 'system_admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadAdminData();
     } else {
       currentPortal = 'employee';
       document.getElementById('employee-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadEmployeeData();
     }
   } catch(err){
@@ -170,13 +172,15 @@ async function bootstrapAppFromSession(){
   document.getElementById('loginThemeToggle').style.display = 'none';
   document.getElementById('loginErr').style.display = 'none';
   try{
-    if(session.role === 'admin'){
+    if(session.role === 'admin' || session.role === 'system_admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadAdminData();
     } else {
       currentPortal = 'employee';
       document.getElementById('employee-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadEmployeeData();
     }
   } catch(err){

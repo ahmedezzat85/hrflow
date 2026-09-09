@@ -3,7 +3,7 @@ models.py
 Pydantic request/response models for the HRFlow API.
 """
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 # Allowed values for an employee's employment state (single source of truth
 # shared by EmployeeCreate / EmployeeUpdate).
@@ -29,6 +29,7 @@ class LoginResponse(BaseModel):
     role: str
     employee_id: Optional[int] = None
     name: Optional[str] = None
+    permissions: List[str] = Field(default_factory=list)
 
 
 class EmployeeCreate(BaseModel):
