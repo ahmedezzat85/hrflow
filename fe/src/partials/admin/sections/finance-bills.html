@@ -7,8 +7,15 @@
               </div>
               <div class="search-box" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeBillSearch" placeholder="Search bills...">
+                <input id="financeBillSearch" placeholder="Search bills..." oninput="filterFinanceBills(this.value)">
               </div>
+              <select id="financeBillStatusFilter" class="form-control" style="width: auto; max-width: 160px;" onchange="loadFinanceBills()">
+                <option value="">All statuses</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="void">Void</option>
+              </select>
               <div class="search-box" id="financeVendorSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeVendorSearch" placeholder="Search vendors..." oninput="filterFinanceVendors(this.value)">
@@ -16,7 +23,7 @@
             </div>
             <div style="display: flex; gap: 8px;">
               <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()"><i class="fa-solid fa-plus"></i> Add Vendor</button>
-              <button class="btn btn-fill" id="financeRecordBillBtn" onclick="showToast('Bill recording will be available in Phase 4.4', 'info')"><i class="fa-solid fa-plus"></i> Record Bill</button>
+              <button class="btn btn-fill" id="financeRecordBillBtn" onclick="openAddBillModal()"><i class="fa-solid fa-plus"></i> Record Bill</button>
             </div>
           </div>
 
