@@ -90,7 +90,7 @@ Use this table to track module maturity as implementation proceeds. Update after
 | Phase 0 Housekeeping & Audit | Implemented | 2026-09-09 |
 | RBAC skeleton (Phase 1) | Implemented | 2026-09-09 |
 | Finance placeholders (Phase 2) | Implemented | 2026-09-09 |
-| Finance data model (Phase 3) | Not started | — |
+| Finance data model (Phase 3) | Implemented | 2026-09-09 |
 | Finance CRUD (Phase 4) | Not started | — |
 | Payroll engine (Phase 5) | Not started | — |
 | Reporting layer (Phase 6) | Not started | — |
@@ -117,6 +117,12 @@ Use this table to track module maturity as implementation proceeds. Update after
   - Section partials: created 6 admin section partials (`finance-dashboard.html`, `finance-invoices.html`, `finance-bills.html`, `finance-payroll.html`, `finance-accounts.html`, `finance-subscriptions.html`) and 1 employee partial (`payslips.html`).
   - Build pipeline: updated `fe/vite.config.js` to bundle `finance.js` in script order and distribute `finance-api.js`. Single-file Vite build confirmed working (`fe/dist/index.html`).
   - Verified end-to-end via browser automation and backend placeholder test suite (167 passing tests).
+- **Phase 3 Finance Data Model and Migrations (2026-09-09)**:
+  - Defined 11 SQLAlchemy models in `be/finance/models.py` (`CustomerDB`, `VendorDB`, `SalesInvoiceDB`, `SalesInvoiceLineDB`, `BillDB`, `BillLineDB`, `PaymentDB`, `FinanceBankAccountDB`, `SubscriptionDB`, `PayrollRunDB`, `PayrollLineDB`) mapping cleanly to SQLite and PostgreSQL with `finance_` table prefix.
+  - Created and applied Alembic migration `0004_finance_data_model.py` with performance indexes on statuses, dates, foreign keys, and unique constraint on `invoice_number`.
+  - Maintained cross-domain reference between `finance_payroll_lines.employee_id` and HR's `employees.id`.
+  - Re-exported all models in `be/models_db.py` on `Base.metadata`.
+  - Created unit and integration test suite `be/tests/test_finance_models.py` verifying model instantiation, cascade rules, unique constraints, and foreign key traversals (171 passing tests total).
 
 ## Related Documents
 

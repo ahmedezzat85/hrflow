@@ -35,6 +35,22 @@ class UserDB(Base):
 # Import and re-export RBAC models so they are attached to Base.metadata
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401
 
+# Import and re-export Finance models so they are attached to Base.metadata
+from finance.models import (  # noqa: E402, F401
+    CustomerDB,
+    VendorDB,
+    SalesInvoiceDB,
+    SalesInvoiceLineDB,
+    BillDB,
+    BillLineDB,
+    FinanceBankAccountDB,
+    BankAccountDB,
+    PaymentDB,
+    SubscriptionDB,
+    PayrollRunDB,
+    PayrollLineDB,
+)
+
 
 class EmployeeDB(Base):
     __tablename__ = "employees"
