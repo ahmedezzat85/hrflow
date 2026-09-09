@@ -118,6 +118,7 @@ class LedgerTransactionBase(BaseModel):
     source: str = Field("manual", max_length=50, description="Source")
     linked_invoice_id: Optional[int] = None
     linked_bill_id: Optional[int] = None
+    linked_transfer_id: Optional[int] = None
 
 
 class LedgerTransactionCreate(LedgerTransactionBase):
@@ -394,3 +395,40 @@ class PaymentResponse(PaymentBase):
 
     class Config:
         from_attributes = True
+
+
+# ==========================================
+# Account Transfer Schemas (Phase 3)
+# ==========================================
+class AccountTransferBase(BaseModel):
+    date: str = Field(..., description="Transfer date (YYYY-MM-DD)")
+    from_amount: float = Field(..., gt=0.0, description="Amount debited from source account")
+    from_currency: str = Field("USD", min_length=3, max_length=10)
+    to_amount: Optional[float] = Field(None, gt=0.0, description="Amount credited to target account")
+    to_currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    fx_rate: Optional[float] = Field(None, gt=0.0, description="Exchange rate if currencies differ")
+    transfer_type: str = Field("internal", description="same_bank_fx | internal | external_linked")
+    exchange_reference: Optional[str] = Field(None, max_length=100, description="Exchange/transaction reference")
+    confirmed_leg: str = Field("both", description="both | from_only | to_only")
+    note: Optional[str] = Field("", description="Transfer notes or memo")
+
+
+class AccountTransferCreate(AccountTransferBase):
+    from_account_id: Optional[int] = Field(None, description="Source bank account ID")
+    to_account_id: Optional[int] = Field(None, description="Destination bank account ID")
+
+
+class AccountTransferResponse(AccountTransferBase):
+    id: int
+    from_account_id: Optional[int] = None
+    to_account_id: Optional[int] = None
+    from_account_name: Optional[str] = None
+    to_account_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    outflow_transaction_id: Optional[int] = None
+    inflow_transaction_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+

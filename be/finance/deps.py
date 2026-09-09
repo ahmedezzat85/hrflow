@@ -105,3 +105,9 @@ def get_ledger_service(
     payment_types_repo: PaymentTypesRepository = Depends(get_payment_types_repo),
 ) -> LedgerService:
     return LedgerService(repo, accounts_repo, categories_repo, payment_types_repo)
+
+
+def get_transfers_service(db: Session = Depends(get_db)):
+    from finance.services.transfers_service import TransfersService
+    return TransfersService(db)
+

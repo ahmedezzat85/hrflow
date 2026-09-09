@@ -5,6 +5,10 @@
  * Includes graceful mock-mode fallback when ?mock=admin is in URL.
  */
 const _isMock = () => typeof window !== "undefined" && window.location && window.location.search.includes("mock=");
+function round(val, decimals = 2) {
+  return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+}
+window.round = round;
 
 const FinanceMockState = {
   accounts: [
@@ -48,6 +52,7 @@ const FinanceMockState = {
     { id: 7, name: "Debit Card", code: "DEBIT_CARD", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
     { id: 8, name: "Bank Fees", code: "BANK_FEES", requires_cheque_number: false, requires_bank_fee_flag: true, is_active: true },
   ],
+  transfers: [],
 };
 
 const FinanceApi = {
@@ -677,6 +682,132 @@ const FinanceApi = {
     }
     return apiRequest("GET", url);
   },
+
+  // Transfers (Phase 3)
+  async getTransfers(params) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.transfers || [])];
+      if (params && params.account_id) {
+        const aid = parseInt(params.account_id, 10);
+        list = list.filter((t) => t.from_account_id === aid || t.to_account_id === aid);
+      }
+      if (params && params.transfer_type && params.transfer_type !== "all") {
+        list = list.filter((t) => t.transfer_type === params.transfer_type);
+      }
+      if (params && params.date_from) list = list.filter((t) => t.date >= params.date_from);
+      if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
+      return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    }
+    let url = "/api/finance/transfers";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+
+  async getTransfer(id) {
+    if (_isMock()) {
+      const transfer = (FinanceMockState.transfers || []).find((t) => t.id === parseInt(id, 10));
+      if (!transfer) throw new Error("Transfer not found");
+      return transfer;
+    }
+    return apiRequest("GET", `/api/finance/transfers/${id}`);
+  },
+
+  async createTransfer(payload) {
+    if (_isMock()) {
+      if (!FinanceMockState.transfers) FinanceMockState.transfers = [];
+      if (!FinanceMockState.transactions) FinanceMockState.transactions = [];
+
+      const fromAcc = payload.from_account_id
+        ? FinanceMockState.accounts.find((a) => a.id === parseInt(payload.from_account_id, 10))
+        : null;
+      const toAcc = payload.to_account_id
+        ? FinanceMockState.accounts.find((a) => a.id === parseInt(payload.to_account_id, 10))
+        : null;
+
+      const fromAmount = parseFloat(payload.from_amount);
+      let toAmount = payload.to_amount ? parseFloat(payload.to_amount) : fromAmount;
+      const fxRate = payload.fx_rate ? parseFloat(payload.fx_rate) : null;
+
+      if (payload.transfer_type === "same_bank_fx" && fxRate && !payload.to_amount) {
+        toAmount = round(fromAmount * fxRate, 2);
+      }
+
+      const transferId = FinanceMockState.transfers.length + 1;
+      let outTxId = null;
+      let inTxId = null;
+
+      const postOutflow = payload.transfer_type !== "external_linked" || payload.confirmed_leg !== "to_only";
+      const postInflow = payload.transfer_type !== "external_linked" || payload.confirmed_leg !== "from_only";
+
+      if (postOutflow && fromAcc) {
+        fromAcc.current_balance = round(fromAcc.current_balance - fromAmount, 2);
+        outTxId = FinanceMockState.transactions.length + 1;
+        FinanceMockState.transactions.unshift({
+          id: outTxId,
+          account_id: fromAcc.id,
+          date: payload.date,
+          amount: fromAmount,
+          direction: "out",
+          currency: payload.from_currency || fromAcc.currency,
+          reference: payload.exchange_reference || `Transfer to ${toAcc ? toAcc.account_name : "External"}`,
+          description: payload.note || `Transfer to ${toAcc ? toAcc.account_name : "External"}`,
+          fx_rate: fxRate,
+          source: "transfer",
+          linked_transfer_id: transferId,
+          running_balance: fromAcc.current_balance,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      if (postInflow && toAcc) {
+        toAcc.current_balance = round(toAcc.current_balance + toAmount, 2);
+        inTxId = FinanceMockState.transactions.length + 1;
+        FinanceMockState.transactions.unshift({
+          id: inTxId,
+          account_id: toAcc.id,
+          date: payload.date,
+          amount: toAmount,
+          direction: "in",
+          currency: payload.to_currency || toAcc.currency,
+          reference: payload.exchange_reference || `Transfer from ${fromAcc ? fromAcc.account_name : "External"}`,
+          description: payload.note || `Transfer from ${fromAcc ? fromAcc.account_name : "External"}`,
+          fx_rate: fxRate,
+          source: "transfer",
+          linked_transfer_id: transferId,
+          running_balance: toAcc.current_balance,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      const newTransfer = {
+        id: transferId,
+        from_account_id: fromAcc ? fromAcc.id : null,
+        to_account_id: toAcc ? toAcc.id : null,
+        from_account_name: fromAcc ? fromAcc.account_name : null,
+        to_account_name: toAcc ? toAcc.account_name : null,
+        date: payload.date,
+        from_amount: fromAmount,
+        from_currency: payload.from_currency || (fromAcc ? fromAcc.currency : "USD"),
+        to_amount: toAmount,
+        to_currency: payload.to_currency || (toAcc ? toAcc.currency : "USD"),
+        fx_rate: fxRate,
+        transfer_type: payload.transfer_type,
+        exchange_reference: payload.exchange_reference || null,
+        confirmed_leg: payload.confirmed_leg || "both",
+        note: payload.note || "",
+        outflow_transaction_id: outTxId,
+        inflow_transaction_id: inTxId,
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.transfers.unshift(newTransfer);
+      return newTransfer;
+    }
+    return apiRequest("POST", "/api/finance/transfers", payload);
+  },
 };
 
 window.FinanceApi = FinanceApi;
+

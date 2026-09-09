@@ -1016,21 +1016,26 @@ function switchFinanceAccountsSubTab(tabName, btn) {
   } else {
     const el = document.getElementById(
       tabName === "accounts" ? "subtabFinanceAccounts" :
+      tabName === "transfers" ? "subtabFinanceTransfers" :
       tabName === "categories" ? "subtabFinanceCategories" : "subtabFinancePaymentTypes"
     );
     if (el) el.classList.add("active");
   }
 
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
+  const paneTransfers = document.getElementById("financeSubPaneTransfers");
   const paneCategories = document.getElementById("financeSubPaneCategories");
   const panePaymentTypes = document.getElementById("financeSubPanePaymentTypes");
 
   if (paneAccounts) paneAccounts.style.display = tabName === "accounts" ? "block" : "none";
+  if (paneTransfers) paneTransfers.style.display = tabName === "transfers" ? "block" : "none";
   if (paneCategories) paneCategories.style.display = tabName === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = tabName === "payment_types" ? "block" : "none";
 
   if (tabName === "accounts") {
     loadFinanceAccounts();
+  } else if (tabName === "transfers") {
+    loadFinanceTransfers();
   } else if (tabName === "categories") {
     loadFinanceCategories();
   } else if (tabName === "payment_types") {
@@ -1968,6 +1973,329 @@ async function confirmDeleteFinanceTransaction(txId) {
 }
 
 // ==========================================
+// 5.4 Account Transfers (Phase 3)
+// ==========================================
+let _currentTransferTypeFilter = "all";
+
+async function loadFinanceTransfers() {
+  const bar = document.getElementById("financeTransfersLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    // Populate account filter dropdown if empty
+    const accFilter = document.getElementById("financeTransferAccountFilter");
+    if (accFilter && accFilter.options.length <= 1) {
+      if (!FinanceState.accounts || !FinanceState.accounts.length) {
+        FinanceState.accounts = await FinanceApi.getAccounts();
+      }
+      accFilter.innerHTML = '<option value="">All Accounts</option>' +
+        (FinanceState.accounts || [])
+          .map((a) => `<option value="${a.id}">${a.account_name} (${a.currency})</option>`)
+          .join("");
+    }
+
+    const selectedAcc = accFilter ? accFilter.value : "";
+    const params = {};
+    if (selectedAcc) params.account_id = selectedAcc;
+    if (_currentTransferTypeFilter && _currentTransferTypeFilter !== "all") {
+      params.transfer_type = _currentTransferTypeFilter;
+    }
+
+    const items = await FinanceApi.getTransfers(params);
+    FinanceState.transfers = items;
+    renderFinanceTransfers(items);
+  } catch (err) {
+    console.error("Failed to load transfers:", err);
+    toast("Failed to load transfers: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+function filterFinanceTransfers() {
+  loadFinanceTransfers();
+}
+
+function filterFinanceTransferType(type, btn) {
+  _currentTransferTypeFilter = type;
+  const tabs = document.querySelectorAll("#financeTransferTypeTabs .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadFinanceTransfers();
+}
+
+function renderFinanceTransfers(items) {
+  const tbody = document.getElementById("financeTransfersTableBody");
+  const empty = document.getElementById("financeTransfersEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  tbody.innerHTML = items
+    .map((t) => {
+      let typeBadge = "";
+      if (t.transfer_type === "same_bank_fx") {
+        typeBadge = `<span class="badge" style="background:#e0e7ff; color:#3730a3; font-weight:600;"><i class="fa-solid fa-arrow-right-arrow-left"></i> FX Conversion</span>`;
+      } else if (t.transfer_type === "external_linked") {
+        typeBadge = `<span class="badge" style="background:#fef3c7; color:#92400e; font-weight:600;"><i class="fa-solid fa-globe"></i> External Linked</span>`;
+      } else {
+        typeBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:600;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Internal Move</span>`;
+      }
+
+      const fromSymbol = t.from_currency === "EGP" ? "E£" : "$";
+      const toSymbol = t.to_currency === "EGP" ? "E£" : "$";
+
+      let legsStatus = "";
+      if (t.outflow_transaction_id && t.inflow_transaction_id) {
+        legsStatus = `<span class="badge badge-approved" title="Dual continuous ledger legs created"><i class="fa-solid fa-check-double"></i> Dual Legs</span>`;
+      } else if (t.outflow_transaction_id) {
+        legsStatus = `<span class="badge badge-pending" title="Outflow leg confirmed"><i class="fa-solid fa-arrow-up-right-from-square"></i> Outflow Leg</span>`;
+      } else if (t.inflow_transaction_id) {
+        legsStatus = `<span class="badge badge-pending" title="Inflow leg confirmed"><i class="fa-solid fa-arrow-down-left-and-up-right-to-center"></i> Inflow Leg</span>`;
+      } else {
+        legsStatus = `<span class="badge badge-rejected">Pending</span>`;
+      }
+
+      const fxDisplay = t.fx_rate ? `<code>${t.fx_rate}</code>` : `<span style="color:var(--text3);">1.0</span>`;
+
+      return `
+        <tr>
+          <td><span style="font-family:monospace;font-size:12px;">${t.date}</span></td>
+          <td>${typeBadge}</td>
+          <td><strong>${t.from_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
+          <td style="text-align:right;"><span style="color:var(--danger); font-weight:600;">-${fromSymbol}${Number(t.from_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></td>
+          <td><strong>${t.to_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
+          <td style="text-align:right;"><span style="color:var(--success); font-weight:600;">+${toSymbol}${Number(t.to_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></td>
+          <td style="text-align:right;">${fxDisplay}</td>
+          <td>
+            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--primary);">${t.exchange_reference}</strong><br>` : ""}
+            <span style="font-size:12px; color:var(--text2);">${t.note || "—"}</span>
+          </td>
+          <td style="text-align:center;">${legsStatus}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function openRecordFinanceTransferModal() {
+  if (!FinanceState.accounts || !FinanceState.accounts.length) {
+    FinanceState.accounts = await FinanceApi.getAccounts({ is_active: true });
+  }
+
+  const activeAccounts = (FinanceState.accounts || []).filter((a) => a.is_active !== false);
+
+  const fromSel = document.getElementById("transferFromAccount");
+  const toSel = document.getElementById("transferToAccount");
+
+  const accountOptions = '<option value="">-- Select Account --</option>' +
+    activeAccounts
+      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${a.account_name} (${a.currency} • ${a.currency === "EGP" ? "E£" : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
+      .join("");
+
+  if (fromSel) fromSel.innerHTML = accountOptions;
+  if (toSel) toSel.innerHTML = accountOptions;
+
+  // Defaults
+  document.getElementById("transferDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("transferFromAmount").value = "";
+  document.getElementById("transferToAmount").value = "";
+  document.getElementById("transferFxRate").value = "";
+  document.getElementById("transferExchangeRef").value = "";
+  document.getElementById("transferNote").value = "";
+  document.getElementById("transferFromBalanceHint").textContent = "";
+  document.getElementById("transferToBalanceHint").textContent = "";
+
+  // Reset to Internal Move
+  const internalRadio = document.querySelector('input[name="transferTypeRadio"][value="internal"]');
+  if (internalRadio) internalRadio.checked = true;
+  onTransferTypeChanged("internal");
+
+  openModal("financeTransferModal");
+}
+
+function closeFinanceTransferModal() {
+  closeModal("financeTransferModal");
+}
+
+function onTransferTypeChanged(type) {
+  const fxGroup = document.getElementById("transferFxGroup");
+  const extGroup = document.getElementById("transferExternalGroup");
+
+  if (type === "internal") {
+    if (fxGroup) fxGroup.style.display = "none";
+    if (extGroup) extGroup.style.display = "none";
+    recalcTransferAmounts("from");
+  } else if (type === "same_bank_fx") {
+    if (fxGroup) fxGroup.style.display = "block";
+    if (extGroup) extGroup.style.display = "none";
+  } else if (type === "external_linked") {
+    if (fxGroup) fxGroup.style.display = "block";
+    if (extGroup) extGroup.style.display = "block";
+  }
+}
+
+function onTransferAccountSelected(side) {
+  const fromSel = document.getElementById("transferFromAccount");
+  const toSel = document.getElementById("transferToAccount");
+
+  const fromOpt = fromSel.selectedOptions[0];
+  const toOpt = toSel.selectedOptions[0];
+
+  const fromCur = fromOpt ? fromOpt.getAttribute("data-currency") : "USD";
+  const toCur = toOpt ? toOpt.getAttribute("data-currency") : "USD";
+
+  const fromBal = fromOpt ? fromOpt.getAttribute("data-balance") : null;
+  const toBal = toOpt ? toOpt.getAttribute("data-balance") : null;
+
+  const fromBadge = document.getElementById("transferFromCurrencyBadge");
+  const toBadge = document.getElementById("transferToCurrencyBadge");
+  if (fromBadge && fromCur) fromBadge.textContent = fromCur;
+  if (toBadge && toCur) toBadge.textContent = toCur;
+
+  const fromHint = document.getElementById("transferFromBalanceHint");
+  const toHint = document.getElementById("transferToBalanceHint");
+  if (fromHint && fromBal !== null) fromHint.textContent = `Avail: ${fromCur === "EGP" ? "E£" : "$"}${Number(fromBal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (toHint && toBal !== null) toHint.textContent = `Current: ${toCur === "EGP" ? "E£" : "$"}${Number(toBal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+  // Auto-switch transfer type if both accounts selected
+  if (fromSel.value && toSel.value) {
+    const isSameCur = fromCur === toCur;
+    const currentType = document.querySelector('input[name="transferTypeRadio"]:checked')?.value;
+
+    if (currentType !== "external_linked") {
+      if (!isSameCur) {
+        const fxRadio = document.querySelector('input[name="transferTypeRadio"][value="same_bank_fx"]');
+        if (fxRadio) fxRadio.checked = true;
+        onTransferTypeChanged("same_bank_fx");
+      } else {
+        const internalRadio = document.querySelector('input[name="transferTypeRadio"][value="internal"]');
+        if (internalRadio) internalRadio.checked = true;
+        onTransferTypeChanged("internal");
+      }
+    }
+  }
+
+  recalcTransferAmounts("from");
+}
+
+function recalcTransferAmounts(source) {
+  const type = document.querySelector('input[name="transferTypeRadio"]:checked')?.value || "internal";
+  const fromAmtInput = document.getElementById("transferFromAmount");
+  const toAmtInput = document.getElementById("transferToAmount");
+  const fxRateInput = document.getElementById("transferFxRate");
+
+  const fromAmt = parseFloat(fromAmtInput.value) || 0;
+  const toAmt = parseFloat(toAmtInput.value) || 0;
+  const fxRate = parseFloat(fxRateInput.value) || 0;
+
+  if (type === "internal") {
+    if (source === "from") {
+      toAmtInput.value = fromAmt > 0 ? fromAmt.toFixed(2) : "";
+    } else if (source === "to") {
+      fromAmtInput.value = toAmt > 0 ? toAmt.toFixed(2) : "";
+    }
+    return;
+  }
+
+  // FX or External
+  if (source === "from" || source === "fx") {
+    if (fromAmt > 0 && fxRate > 0) {
+      toAmtInput.value = (fromAmt * fxRate).toFixed(2);
+    }
+  } else if (source === "to") {
+    if (fromAmt > 0 && toAmt > 0) {
+      fxRateInput.value = (toAmt / fromAmt).toFixed(4);
+    }
+  }
+}
+
+async function saveFinanceTransfer() {
+  const date = document.getElementById("transferDate").value;
+  const type = document.querySelector('input[name="transferTypeRadio"]:checked')?.value || "internal";
+  const fromAccountIdVal = document.getElementById("transferFromAccount").value;
+  const toAccountIdVal = document.getElementById("transferToAccount").value;
+  const fromAmount = parseFloat(document.getElementById("transferFromAmount").value);
+  const toAmountVal = document.getElementById("transferToAmount").value;
+  const toAmount = toAmountVal ? parseFloat(toAmountVal) : fromAmount;
+  const fxRateVal = document.getElementById("transferFxRate").value;
+  const fxRate = fxRateVal ? parseFloat(fxRateVal) : null;
+  const exchangeRef = document.getElementById("transferExchangeRef").value.trim();
+  const note = document.getElementById("transferNote").value.trim();
+  const confirmedLeg = document.getElementById("transferConfirmedLeg")?.value || "both";
+
+  if (!date) {
+    toast("Please enter a transfer date", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (!fromAmount || fromAmount <= 0) {
+    toast("Please enter a valid outflow amount greater than 0", "fa-solid fa-circle-exclamation");
+    return;
+  }
+
+  if (type === "internal" || type === "same_bank_fx") {
+    if (!fromAccountIdVal || !toAccountIdVal) {
+      toast("Please select both source and target bank accounts", "fa-solid fa-circle-exclamation");
+      return;
+    }
+    if (fromAccountIdVal === toAccountIdVal) {
+      toast("Source and target bank accounts cannot be the same", "fa-solid fa-circle-exclamation");
+      return;
+    }
+  } else if (type === "external_linked") {
+    if (!fromAccountIdVal && !toAccountIdVal) {
+      toast("Please select at least one owned bank account", "fa-solid fa-circle-exclamation");
+      return;
+    }
+  }
+
+  if (type === "same_bank_fx" && (!fxRate || fxRate <= 0)) {
+    toast("Please provide an exchange rate for FX transfer", "fa-solid fa-circle-exclamation");
+    return;
+  }
+
+  const btn = document.getElementById("btnSaveFinanceTransfer");
+  if (btn) btn.disabled = true;
+
+  const payload = {
+    date,
+    transfer_type: type,
+    from_account_id: fromAccountIdVal ? parseInt(fromAccountIdVal, 10) : null,
+    to_account_id: toAccountIdVal ? parseInt(toAccountIdVal, 10) : null,
+    from_amount: fromAmount,
+    to_amount: toAmount,
+    fx_rate: fxRate,
+    exchange_reference: exchangeRef || null,
+    confirmed_leg: type === "external_linked" ? confirmedLeg : "both",
+    note,
+  };
+
+  try {
+    await FinanceApi.createTransfer(payload);
+    toast("Transfer posted successfully! Continuous ledger legs updated.", "fa-solid fa-circle-check");
+    closeFinanceTransferModal();
+
+    // Reload accounts to update balances across all views
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    if (_currentFinanceSubTab === "transfers") {
+      await loadFinanceTransfers();
+    } else if (_currentFinanceSubTab === "accounts") {
+      renderFinanceAccounts(FinanceState.accounts);
+    }
+  } catch (err) {
+    console.error("Failed to save transfer:", err);
+    toast("Failed to save transfer: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ==========================================
 // 6. Vendor Subscriptions
 // ==========================================
 async function loadFinanceSubscriptions() {
@@ -2109,7 +2437,9 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (targetPage === "a-finance-payroll") {
       loadFinancePayroll();
     } else if (targetPage === "a-finance-accounts") {
-      if (_currentFinanceSubTab === "categories") {
+      if (_currentFinanceSubTab === "transfers") {
+        loadFinanceTransfers();
+      } else if (_currentFinanceSubTab === "categories") {
         loadFinanceCategories();
       } else if (_currentFinanceSubTab === "payment_types") {
         loadFinancePaymentTypes();

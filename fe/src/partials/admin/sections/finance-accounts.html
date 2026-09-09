@@ -3,6 +3,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
             <div class="filter-tabs" id="financeAccountsSubNav">
               <button class="filter-tab active" id="subtabFinanceAccounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
+              <button class="filter-tab" id="subtabFinanceTransfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
               <button class="filter-tab" id="subtabFinanceCategories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
               <button class="filter-tab" id="subtabFinancePaymentTypes" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
             </div>
@@ -21,6 +22,7 @@
                   <button class="filter-tab" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
                   <button class="filter-tab" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
                 </div>
+                <button class="btn btn-outline" onclick="openRecordFinanceTransferModal()"><i class="fa-solid fa-arrow-right-arrow-left"></i> Record Transfer</button>
                 <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()"><i class="fa-solid fa-plus"></i> Add Account</button>
               </div>
             </div>
@@ -225,6 +227,51 @@
               <div class="empty-state" id="financeLedgerEmpty" style="display:none;">
                 <i class="fa-solid fa-money-bill-transfer"></i>
                 <p>No transactions found for this account.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 5: Account Transfers (Phase 3) -->
+          <div id="financeSubPaneTransfers" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</h2>
+                <p class="section-subtitle">Multi-currency same-bank FX conversions, internal moves, and external-linked transfers.</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <select id="financeTransferAccountFilter" class="form-control" style="width:auto;min-width:160px;height:38px;padding:4px 10px;font-size:13px;" onchange="filterFinanceTransfers()">
+                  <option value="">All Accounts</option>
+                </select>
+                <div class="filter-tabs" id="financeTransferTypeTabs">
+                  <button class="filter-tab active" data-type="all" onclick="filterFinanceTransferType('all', this)">All</button>
+                  <button class="filter-tab" data-type="same_bank_fx" onclick="filterFinanceTransferType('same_bank_fx', this)">Same-Bank FX</button>
+                  <button class="filter-tab" data-type="internal" onclick="filterFinanceTransferType('internal', this)">Internal</button>
+                  <button class="filter-tab" data-type="external_linked" onclick="filterFinanceTransferType('external_linked', this)">External</button>
+                </div>
+                <button class="btn btn-fill" onclick="openRecordFinanceTransferModal()"><i class="fa-solid fa-plus"></i> Record Transfer</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-loading-bar" id="financeTransfersLoadingBar"><span></span></div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th style="width:95px;">Date</th>
+                    <th>Type</th>
+                    <th>Source Account</th>
+                    <th style="text-align:right;">Outflow</th>
+                    <th>Destination Account</th>
+                    <th style="text-align:right;">Inflow</th>
+                    <th style="text-align:right;">FX Rate</th>
+                    <th>Reference / Memo</th>
+                    <th style="width:110px; text-align:center;">Legs Status</th>
+                  </tr>
+                </thead>
+                <tbody id="financeTransfersTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="financeTransfersEmpty" style="display:none;">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                <p>No account transfers recorded yet.</p>
               </div>
             </div>
           </div>

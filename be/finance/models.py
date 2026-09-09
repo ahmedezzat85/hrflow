@@ -196,6 +196,7 @@ class LedgerTransactionDB(Base):
     # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
+    linked_transfer_id = Column(Integer, ForeignKey("finance_account_transfers.id", ondelete="SET NULL"), nullable=True, index=True)
     running_balance = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
@@ -205,6 +206,7 @@ class LedgerTransactionDB(Base):
     payment_type = relationship("PaymentTypeDB", back_populates="transactions")
     linked_invoice = relationship("SalesInvoiceDB")
     linked_bill = relationship("BillDB")
+    linked_transfer = relationship("AccountTransferDB", back_populates="ledger_transactions")
 
 
 # Alias for clean domain referencing
@@ -287,3 +289,32 @@ class PayrollLineDB(Base):
 
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
+
+
+class AccountTransferDB(Base):
+    __tablename__ = "finance_account_transfers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    from_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    to_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    from_amount = Column(Float, nullable=False)
+    from_currency = Column(String(10), default="USD", nullable=False)
+    to_amount = Column(Float, nullable=False)
+    to_currency = Column(String(10), default="USD", nullable=False)
+    fx_rate = Column(Float, nullable=True)
+    transfer_type = Column(String(30), default="internal", nullable=False, index=True)  # same_bank_fx | internal | external_linked
+    exchange_reference = Column(String(100), nullable=True, index=True)
+    confirmed_leg = Column(String(20), default="both", nullable=False)  # both | from_only | to_only
+    note = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    from_account = relationship("FinanceBankAccountDB", foreign_keys=[from_account_id])
+    to_account = relationship("FinanceBankAccountDB", foreign_keys=[to_account_id])
+    ledger_transactions = relationship("LedgerTransactionDB", back_populates="linked_transfer")
+
+
+# Alias for clean domain referencing
+FinanceAccountTransferDB = AccountTransferDB
+
