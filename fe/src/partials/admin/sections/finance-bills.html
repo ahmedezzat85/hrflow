@@ -1,12 +1,27 @@
         <section class="page-section" id="a-finance-bills">
-          <div class="toolbar">
-            <div class="search-box">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              <input id="financeBillSearch" placeholder="Search vendor bills by number or vendor...">
+          <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div class="tabs-segmented" style="display: inline-flex;">
+                <button class="tab-pill active" id="tabFinanceBills" onclick="switchBillSubTab('bills')"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
+                <button class="tab-pill" id="tabFinanceVendors" onclick="switchBillSubTab('vendors')"><i class="fa-solid fa-truck-field"></i> Vendors</button>
+              </div>
+              <div class="search-box" id="financeBillSearchBox">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeBillSearch" placeholder="Search bills...">
+              </div>
+              <div class="search-box" id="financeVendorSearchBox" style="display: none;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeVendorSearch" placeholder="Search vendors..." oninput="filterFinanceVendors(this.value)">
+              </div>
             </div>
-            <button class="btn btn-fill" onclick="showToast('Bill recording will be available in Phase 4', 'info')"><i class="fa-solid fa-plus"></i> Record Bill</button>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()"><i class="fa-solid fa-plus"></i> Add Vendor</button>
+              <button class="btn btn-fill" id="financeRecordBillBtn" onclick="showToast('Bill recording will be available in Phase 4.4', 'info')"><i class="fa-solid fa-plus"></i> Record Bill</button>
+            </div>
           </div>
-          <div class="card">
+
+          <!-- 1. Bills Sub-View -->
+          <div class="card" id="financeBillsContainer">
             <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
             <table class="responsive-card-table">
               <thead>
@@ -26,6 +41,29 @@
             <div class="empty-state" id="financeBillsEmpty" style="display: none;">
               <i class="fa-solid fa-receipt"></i>
               <p>No vendor bills recorded yet.</p>
+            </div>
+          </div>
+
+          <!-- 2. Vendors Sub-View -->
+          <div class="card" id="financeVendorsContainer" style="display: none;">
+            <div class="section-loading-bar" id="financeVendorsLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Vendor / Supplier Name</th>
+                  <th>Category</th>
+                  <th>Billing Email</th>
+                  <th>Phone</th>
+                  <th>Tax ID</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeVendorsTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeVendorsEmpty" style="display: none;">
+              <i class="fa-solid fa-truck-field"></i>
+              <p>No vendors registered yet. Click "Add Vendor" to register suppliers.</p>
             </div>
           </div>
         </section>

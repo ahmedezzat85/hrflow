@@ -38,3 +38,72 @@ class BankAccountResponse(BankAccountBase):
 
     class Config:
         from_attributes = True
+
+
+# ==========================================
+# Customer Schemas
+# ==========================================
+class CustomerBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255, description="Customer or company name")
+    contact_email: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=50)
+    tax_id: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+
+
+class CustomerCreate(CustomerBase):
+    pass
+
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    contact_email: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=50)
+    tax_id: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CustomerResponse(CustomerBase):
+    id: int
+    is_active: bool
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Vendor Schemas
+# ==========================================
+class VendorBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255, description="Vendor or supplier name")
+    contact_email: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=50)
+    tax_id: Optional[str] = Field(None, max_length=100)
+    category: Optional[str] = Field("General", max_length=100)
+    notes: Optional[str] = None
+
+
+class VendorCreate(VendorBase):
+    pass
+
+
+class VendorUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    contact_email: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=50)
+    tax_id: Optional[str] = Field(None, max_length=100)
+    category: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class VendorResponse(VendorBase):
+    id: int
+    is_active: bool
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+

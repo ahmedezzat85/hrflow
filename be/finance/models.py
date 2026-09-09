@@ -30,6 +30,7 @@ class CustomerDB(Base):
     contact_phone = Column(String(50), nullable=True)
     tax_id = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     invoices = relationship("SalesInvoiceDB", back_populates="customer")
@@ -45,6 +46,7 @@ class VendorDB(Base):
     tax_id = Column(String(100), nullable=True)
     category = Column(String(100), default="General")
     notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bills = relationship("BillDB", back_populates="vendor")

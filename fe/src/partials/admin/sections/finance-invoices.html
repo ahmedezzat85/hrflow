@@ -1,12 +1,27 @@
         <section class="page-section" id="a-finance-invoices">
-          <div class="toolbar">
-            <div class="search-box">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              <input id="financeInvoiceSearch" placeholder="Search sales invoices by number or customer...">
+          <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div class="tabs-segmented" style="display: inline-flex;">
+                <button class="tab-pill active" id="tabFinanceInvoices" onclick="switchInvoiceSubTab('invoices')"><i class="fa-solid fa-file-invoice"></i> Sales Invoices</button>
+                <button class="tab-pill" id="tabFinanceCustomers" onclick="switchInvoiceSubTab('customers')"><i class="fa-solid fa-users"></i> Customers</button>
+              </div>
+              <div class="search-box" id="financeInvoiceSearchBox">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeInvoiceSearch" placeholder="Search invoices...">
+              </div>
+              <div class="search-box" id="financeCustomerSearchBox" style="display: none;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeCustomerSearch" placeholder="Search customers..." oninput="filterFinanceCustomers(this.value)">
+              </div>
             </div>
-            <button class="btn btn-fill" onclick="showToast('Sales Invoice creation will be available in Phase 4', 'info')"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-outline" id="financeAddCustomerBtn" onclick="openAddCustomerModal()"><i class="fa-solid fa-user-plus"></i> Add Customer</button>
+              <button class="btn btn-fill" id="financeNewInvoiceBtn" onclick="showToast('Sales Invoice creation will be available in Phase 4.3', 'info')"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
+            </div>
           </div>
-          <div class="card">
+
+          <!-- 1. Invoices Sub-View -->
+          <div class="card" id="financeInvoicesContainer">
             <div class="section-loading-bar" id="financeInvoicesLoadingBar"><span></span></div>
             <table class="responsive-card-table">
               <thead>
@@ -25,6 +40,28 @@
             <div class="empty-state" id="financeInvoicesEmpty" style="display: none;">
               <i class="fa-solid fa-file-invoice"></i>
               <p>No sales invoices recorded yet.</p>
+            </div>
+          </div>
+
+          <!-- 2. Customers Sub-View -->
+          <div class="card" id="financeCustomersContainer" style="display: none;">
+            <div class="section-loading-bar" id="financeCustomersLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Customer / Company Name</th>
+                  <th>Billing Email</th>
+                  <th>Phone</th>
+                  <th>Tax ID</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeCustomersTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeCustomersEmpty" style="display: none;">
+              <i class="fa-solid fa-users"></i>
+              <p>No customers recorded yet. Click "Add Customer" to create one.</p>
             </div>
           </div>
         </section>

@@ -26,7 +26,11 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "self.profile.read", "description": "View own employee profile"},
     {"key": "self.payslip.read", "description": "View own salary payment documents and payslips"},
     {"key": "self.requests.write", "description": "Submit vacation, medical, and general requests"},
-    # Finance Domain (Pre-seeded for Phase 2/3)
+    # Finance Domain (Pre-seeded for Phase 2/3/4)
+    {"key": "finance.customer.read", "description": "View customers"},
+    {"key": "finance.customer.write", "description": "Create, update, and manage customers"},
+    {"key": "finance.vendor.read", "description": "View vendors"},
+    {"key": "finance.vendor.write", "description": "Create, update, and manage vendors"},
     {"key": "finance.invoice.read", "description": "View sales invoices"},
     {"key": "finance.invoice.write", "description": "Create, update, and void sales invoices"},
     {"key": "finance.bill.read", "description": "View vendor bills"},

@@ -3,10 +3,29 @@
  * Controller for Finance module sections and employee payslip self-service.
  */
 
+// Global toast wrapper for finance module actions
+if (typeof window.showToast !== "function") {
+  window.showToast = function (msg, type = "success") {
+    if (typeof toast === "function") {
+      const icon =
+        type === "error"
+          ? "fa-solid fa-triangle-exclamation"
+          : type === "info"
+          ? "fa-solid fa-circle-info"
+          : "fa-solid fa-circle-check";
+      toast(msg, icon);
+    } else {
+      console.log(`[Finance Toast ${type}] ${msg}`);
+    }
+  };
+}
+
 const FinanceState = {
   summary: null,
   invoices: [],
+  customers: [],
   bills: [],
+  vendors: [],
   payrollRuns: [],
   accounts: [],
   subscriptions: [],
@@ -100,6 +119,201 @@ function renderFinanceInvoices(items) {
     .join("");
 }
 
+// Sub-tab switching for Invoices section
+function switchInvoiceSubTab(subTab) {
+  const tabInv = document.getElementById("tabFinanceInvoices");
+  const tabCust = document.getElementById("tabFinanceCustomers");
+  const boxInv = document.getElementById("financeInvoiceSearchBox");
+  const boxCust = document.getElementById("financeCustomerSearchBox");
+  const conInv = document.getElementById("financeInvoicesContainer");
+  const conCust = document.getElementById("financeCustomersContainer");
+
+  if (subTab === "customers") {
+    if (tabInv) tabInv.classList.remove("active");
+    if (tabCust) tabCust.classList.add("active");
+    if (boxInv) boxInv.style.display = "none";
+    if (boxCust) boxCust.style.display = "block";
+    if (conInv) conInv.style.display = "none";
+    if (conCust) conCust.style.display = "block";
+    loadFinanceCustomers();
+  } else {
+    if (tabInv) tabInv.classList.add("active");
+    if (tabCust) tabCust.classList.remove("active");
+    if (boxInv) boxInv.style.display = "block";
+    if (boxCust) boxCust.style.display = "none";
+    if (conInv) conInv.style.display = "block";
+    if (conCust) conCust.style.display = "none";
+    loadFinanceInvoices();
+  }
+}
+
+async function loadFinanceCustomers() {
+  const tbody = document.getElementById("financeCustomersTableBody");
+  const empty = document.getElementById("financeCustomersEmpty");
+  const bar = document.getElementById("financeCustomersLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    const items = await FinanceApi.getCustomers();
+    FinanceState.customers = items || [];
+    renderFinanceCustomers(FinanceState.customers);
+  } catch (err) {
+    console.error("Failed to load finance customers:", err);
+    showToast(err.message || "Failed to load customers", "error");
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+function renderFinanceCustomers(items) {
+  const tbody = document.getElementById("financeCustomersTableBody");
+  const empty = document.getElementById("financeCustomersEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  tbody.innerHTML = items
+    .map(
+      (c) => `
+    <tr>
+      <td>
+        <strong>${c.name}</strong>
+        ${c.notes ? `<div style="font-size:12px;color:var(--text3);">${c.notes}</div>` : ""}
+      </td>
+      <td>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "--"}</td>
+      <td>${c.contact_phone || "--"}</td>
+      <td><code>${c.tax_id || "--"}</code></td>
+      <td>
+        <span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">
+          ${c.is_active ? "ACTIVE" : "INACTIVE"}
+        </span>
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})">
+            <i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `
+    )
+    .join("");
+}
+
+function filterFinanceCustomers(query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) {
+    renderFinanceCustomers(FinanceState.customers);
+    return;
+  }
+  const filtered = FinanceState.customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(q) ||
+      (c.contact_email && c.contact_email.toLowerCase().includes(q)) ||
+      (c.tax_id && c.tax_id.toLowerCase().includes(q))
+  );
+  renderFinanceCustomers(filtered);
+}
+
+function openAddCustomerModal() {
+  document.getElementById("fCustomerId").value = "";
+  document.getElementById("fCustomerName").value = "";
+  document.getElementById("fCustomerEmail").value = "";
+  document.getElementById("fCustomerPhone").value = "";
+  document.getElementById("fCustomerTaxId").value = "";
+  document.getElementById("fCustomerNotes").value = "";
+  const title = document.getElementById("customerModalTitle");
+  if (title) title.textContent = "Add Customer";
+  const btn = document.getElementById("customerSaveBtn");
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Customer`;
+  openModal("customerModal");
+}
+
+function openEditCustomerModal(id) {
+  const c = FinanceState.customers.find((x) => x.id === id);
+  if (!c) return;
+
+  document.getElementById("fCustomerId").value = c.id;
+  document.getElementById("fCustomerName").value = c.name || "";
+  document.getElementById("fCustomerEmail").value = c.contact_email || "";
+  document.getElementById("fCustomerPhone").value = c.contact_phone || "";
+  document.getElementById("fCustomerTaxId").value = c.tax_id || "";
+  document.getElementById("fCustomerNotes").value = c.notes || "";
+  const title = document.getElementById("customerModalTitle");
+  if (title) title.textContent = "Edit Customer";
+  const btn = document.getElementById("customerSaveBtn");
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Customer`;
+  openModal("customerModal");
+}
+
+async function saveCustomer() {
+  const idVal = document.getElementById("fCustomerId").value;
+  const name = document.getElementById("fCustomerName").value.trim();
+  const contact_email = document.getElementById("fCustomerEmail").value.trim();
+  const contact_phone = document.getElementById("fCustomerPhone").value.trim();
+  const tax_id = document.getElementById("fCustomerTaxId").value.trim();
+  const notes = document.getElementById("fCustomerNotes").value.trim();
+
+  if (!name) {
+    showToast("Customer name is required", "error");
+    return;
+  }
+
+  const payload = {
+    name,
+    contact_email: contact_email || null,
+    contact_phone: contact_phone || null,
+    tax_id: tax_id || null,
+    notes: notes || null,
+  };
+
+  const btn = document.getElementById("customerSaveBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    if (idVal) {
+      await FinanceApi.updateCustomer(parseInt(idVal, 10), payload);
+      showToast("Customer updated successfully", "success");
+    } else {
+      await FinanceApi.createCustomer(payload);
+      showToast("Customer created successfully", "success");
+    }
+    closeModal("customerModal");
+    loadFinanceCustomers();
+  } catch (err) {
+    showToast(err.message || "Failed to save customer", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function toggleCustomerActive(id, currentlyActive) {
+  const action = currentlyActive ? "deactivate" : "activate";
+  if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
+
+  try {
+    if (currentlyActive) {
+      await FinanceApi.deleteCustomer(id);
+      showToast("Customer deactivated", "success");
+    } else {
+      await FinanceApi.updateCustomer(id, { is_active: true });
+      showToast("Customer reactivated", "success");
+    }
+    loadFinanceCustomers();
+  } catch (err) {
+    showToast(err.message || `Failed to ${action} customer`, "error");
+  }
+}
+
 // ==========================================
 // 3. Vendor Bills
 // ==========================================
@@ -150,6 +364,207 @@ function renderFinanceBills(items) {
   `
     )
     .join("");
+}
+
+// Sub-tab switching for Bills section
+function switchBillSubTab(subTab) {
+  const tabBill = document.getElementById("tabFinanceBills");
+  const tabVend = document.getElementById("tabFinanceVendors");
+  const boxBill = document.getElementById("financeBillSearchBox");
+  const boxVend = document.getElementById("financeVendorSearchBox");
+  const conBill = document.getElementById("financeBillsContainer");
+  const conVend = document.getElementById("financeVendorsContainer");
+
+  if (subTab === "vendors") {
+    if (tabBill) tabBill.classList.remove("active");
+    if (tabVend) tabVend.classList.add("active");
+    if (boxBill) boxBill.style.display = "none";
+    if (boxVend) boxVend.style.display = "block";
+    if (conBill) conBill.style.display = "none";
+    if (conVend) conVend.style.display = "block";
+    loadFinanceVendors();
+  } else {
+    if (tabBill) tabBill.classList.add("active");
+    if (tabVend) tabVend.classList.remove("active");
+    if (boxBill) boxBill.style.display = "block";
+    if (boxVend) boxVend.style.display = "none";
+    if (conBill) conBill.style.display = "block";
+    if (conVend) conVend.style.display = "none";
+    loadFinanceBills();
+  }
+}
+
+async function loadFinanceVendors() {
+  const tbody = document.getElementById("financeVendorsTableBody");
+  const empty = document.getElementById("financeVendorsEmpty");
+  const bar = document.getElementById("financeVendorsLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    const items = await FinanceApi.getVendors();
+    FinanceState.vendors = items || [];
+    renderFinanceVendors(FinanceState.vendors);
+  } catch (err) {
+    console.error("Failed to load finance vendors:", err);
+    showToast(err.message || "Failed to load vendors", "error");
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+function renderFinanceVendors(items) {
+  const tbody = document.getElementById("financeVendorsTableBody");
+  const empty = document.getElementById("financeVendorsEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  tbody.innerHTML = items
+    .map(
+      (v) => `
+    <tr>
+      <td>
+        <strong>${v.name}</strong>
+        ${v.notes ? `<div style="font-size:12px;color:var(--text3);">${v.notes}</div>` : ""}
+      </td>
+      <td><span class="badge badge-info">${v.category || "General"}</span></td>
+      <td>${v.contact_email ? `<a href="mailto:${v.contact_email}">${v.contact_email}</a>` : "--"}</td>
+      <td>${v.contact_phone || "--"}</td>
+      <td><code>${v.tax_id || "--"}</code></td>
+      <td>
+        <span class="badge ${v.is_active ? "badge-approved" : "badge-rejected"}">
+          ${v.is_active ? "ACTIVE" : "INACTIVE"}
+        </span>
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})">
+            <i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `
+    )
+    .join("");
+}
+
+function filterFinanceVendors(query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) {
+    renderFinanceVendors(FinanceState.vendors);
+    return;
+  }
+  const filtered = FinanceState.vendors.filter(
+    (v) =>
+      v.name.toLowerCase().includes(q) ||
+      (v.category && v.category.toLowerCase().includes(q)) ||
+      (v.contact_email && v.contact_email.toLowerCase().includes(q)) ||
+      (v.tax_id && v.tax_id.toLowerCase().includes(q))
+  );
+  renderFinanceVendors(filtered);
+}
+
+function openAddVendorModal() {
+  document.getElementById("fVendorId").value = "";
+  document.getElementById("fVendorName").value = "";
+  document.getElementById("fVendorCategory").value = "General";
+  document.getElementById("fVendorEmail").value = "";
+  document.getElementById("fVendorPhone").value = "";
+  document.getElementById("fVendorTaxId").value = "";
+  document.getElementById("fVendorNotes").value = "";
+  const title = document.getElementById("vendorModalTitle");
+  if (title) title.textContent = "Add Vendor";
+  const btn = document.getElementById("vendorSaveBtn");
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Vendor`;
+  openModal("vendorModal");
+}
+
+function openEditVendorModal(id) {
+  const v = FinanceState.vendors.find((x) => x.id === id);
+  if (!v) return;
+
+  document.getElementById("fVendorId").value = v.id;
+  document.getElementById("fVendorName").value = v.name || "";
+  document.getElementById("fVendorCategory").value = v.category || "General";
+  document.getElementById("fVendorEmail").value = v.contact_email || "";
+  document.getElementById("fVendorPhone").value = v.contact_phone || "";
+  document.getElementById("fVendorTaxId").value = v.tax_id || "";
+  document.getElementById("fVendorNotes").value = v.notes || "";
+  const title = document.getElementById("vendorModalTitle");
+  if (title) title.textContent = "Edit Vendor";
+  const btn = document.getElementById("vendorSaveBtn");
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Vendor`;
+  openModal("vendorModal");
+}
+
+async function saveVendor() {
+  const idVal = document.getElementById("fVendorId").value;
+  const name = document.getElementById("fVendorName").value.trim();
+  const category = document.getElementById("fVendorCategory").value.trim();
+  const contact_email = document.getElementById("fVendorEmail").value.trim();
+  const contact_phone = document.getElementById("fVendorPhone").value.trim();
+  const tax_id = document.getElementById("fVendorTaxId").value.trim();
+  const notes = document.getElementById("fVendorNotes").value.trim();
+
+  if (!name) {
+    showToast("Vendor name is required", "error");
+    return;
+  }
+
+  const payload = {
+    name,
+    category: category || "General",
+    contact_email: contact_email || null,
+    contact_phone: contact_phone || null,
+    tax_id: tax_id || null,
+    notes: notes || null,
+  };
+
+  const btn = document.getElementById("vendorSaveBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    if (idVal) {
+      await FinanceApi.updateVendor(parseInt(idVal, 10), payload);
+      showToast("Vendor updated successfully", "success");
+    } else {
+      await FinanceApi.createVendor(payload);
+      showToast("Vendor created successfully", "success");
+    }
+    closeModal("vendorModal");
+    loadFinanceVendors();
+  } catch (err) {
+    showToast(err.message || "Failed to save vendor", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function toggleVendorActive(id, currentlyActive) {
+  const action = currentlyActive ? "deactivate" : "activate";
+  if (!confirm(`Are you sure you want to ${action} this vendor?`)) return;
+
+  try {
+    if (currentlyActive) {
+      await FinanceApi.deleteVendor(id);
+      showToast("Vendor deactivated", "success");
+    } else {
+      await FinanceApi.updateVendor(id, { is_active: true });
+      showToast("Vendor reactivated", "success");
+    }
+    loadFinanceVendors();
+  } catch (err) {
+    showToast(err.message || `Failed to ${action} vendor`, "error");
+  }
 }
 
 // ==========================================
