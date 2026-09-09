@@ -1,0 +1,31 @@
+        <section class="page-section" id="e-payslips">
+          <div class="toolbar">
+            <div class="section-title-group">
+              <h2 class="section-title"><i class="fa-solid fa-file-invoice-dollar"></i> My Payslips</h2>
+              <p class="section-subtitle">Official records of monthly payroll distributions and compensation breakdown.</p>
+            </div>
+            <button class="btn" onclick="refreshMyPayslips()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+          </div>
+          <div class="card">
+            <div class="section-loading-bar" id="myPayslipsLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Dates</th>
+                  <th>Base Salary</th>
+                  <th>Allowances</th>
+                  <th>Deductions</th>
+                  <th>Net Pay</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="myPayslipsTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="myPayslipsEmpty" style="display: none;">
+              <i class="fa-solid fa-file-invoice-dollar"></i>
+              <p>No payslips generated yet.</p>
+            </div>
+          </div>
+        </section>

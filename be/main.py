@@ -35,6 +35,13 @@ from routers import salary_payment_docs as salary_payment_docs_router
 from routers import employee_bank_accounts as employee_bank_accounts_router
 from routers import export as export_router
 
+from finance.routers import sales_invoices as finance_sales_invoices_router
+from finance.routers import bills as finance_bills_router
+from finance.routers import payroll as finance_payroll_router
+from finance.routers import bank_accounts as finance_bank_accounts_router
+from finance.routers import subscriptions as finance_subscriptions_router
+from finance.routers import reports as finance_reports_router
+
 # Re-exported here so existing code/tests that reach into main.py for
 # these pure-logic helpers (e.g. be/tests/test_salary_logic.py) keep
 # working unmodified after the router split. New code should import
@@ -125,4 +132,12 @@ app.include_router(salary_payment_docs_router.router)
 app.include_router(salary_payment_docs_router.compat_router)
 app.include_router(employee_bank_accounts_router.router)
 app.include_router(export_router.router)
+
+# Finance Module Stubs (Phase 2)
+app.include_router(finance_sales_invoices_router.router)
+app.include_router(finance_bills_router.router)
+app.include_router(finance_payroll_router.router)
+app.include_router(finance_bank_accounts_router.router)
+app.include_router(finance_subscriptions_router.router)
+app.include_router(finance_reports_router.router)
 

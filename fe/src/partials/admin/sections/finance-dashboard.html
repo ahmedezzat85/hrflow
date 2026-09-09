@@ -1,0 +1,50 @@
+        <section class="page-section" id="a-finance-dashboard">
+          <div class="toolbar">
+            <div class="section-title-group">
+              <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> Finance Overview</h2>
+              <p class="section-subtitle">Executive summary of company cash flow, revenue, and operating expenses.</p>
+            </div>
+            <button class="btn" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="fa-solid fa-vault"></i></div>
+              <div class="stat-info">
+                <div class="stat-label">Total Cash Balance</div>
+                <div class="stat-value" id="statFinanceBalance">$245,000.00</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+              <div class="stat-info">
+                <div class="stat-label">Revenue (MTD)</div>
+                <div class="stat-value" id="statFinanceRevenue">$48,200.00</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+              <div class="stat-info">
+                <div class="stat-label">Operating Expenses (MTD)</div>
+                <div class="stat-value" id="statFinanceCost">$31,400.00</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;"><i class="fa-solid fa-scale-balanced"></i></div>
+              <div class="stat-info">
+                <div class="stat-label">Net Operating Margin</div>
+                <div class="stat-value" id="statFinanceNet">$16,800.00</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header-bar">
+              <h3><i class="fa-solid fa-clock-rotate-left"></i> Financial Activity Summary</h3>
+            </div>
+            <div class="empty-state" id="financeDashboardSummaryEmpty" style="padding: 2.5rem 1rem;">
+              <i class="fa-solid fa-chart-pie" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
+              <p>Financial ledger connected. Live chart visualizers will activate in Phase 6.</p>
+            </div>
+          </div>
+        </section>

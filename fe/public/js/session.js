@@ -136,20 +136,24 @@ function initMockEmployeeData(){
 async function bootstrapAppFromSession(){
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('mock') === 'admin') {
+    SessionInfo.set({ role: 'admin', employee_id: 1, name: 'Sarah Connor' });
     hideAppLoader();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('loginThemeToggle').style.display = 'none';
     document.getElementById('admin-app').classList.add('active');
     currentPortal = 'admin';
     initMockAdminData();
+    if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
     return;
   } else if (urlParams.get('mock') === 'employee') {
+    SessionInfo.set({ role: 'employee', employee_id: 2, name: 'John Doe' });
     hideAppLoader();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('loginThemeToggle').style.display = 'none';
     document.getElementById('employee-app').classList.add('active');
     currentPortal = 'employee';
     initMockEmployeeData();
+    if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
     return;
   }
 

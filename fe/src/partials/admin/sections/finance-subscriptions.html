@@ -1,0 +1,31 @@
+        <section class="page-section" id="a-finance-subscriptions">
+          <div class="toolbar">
+            <div class="section-title-group">
+              <h2 class="section-title"><i class="fa-solid fa-repeat"></i> Recurring Subscriptions</h2>
+              <p class="section-subtitle">Vendor services and recurring obligations with automated bill generation.</p>
+            </div>
+            <button class="btn btn-fill" onclick="showToast('Subscription management will be available in Phase 4', 'info')"><i class="fa-solid fa-plus"></i> Add Subscription</button>
+          </div>
+          <div class="card">
+            <div class="section-loading-bar" id="financeSubscriptionsLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Service / Subscription</th>
+                  <th>Vendor</th>
+                  <th>Amount</th>
+                  <th>Billing Cycle</th>
+                  <th>Next Renewal</th>
+                  <th>Auto-Bill</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeSubscriptionsTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeSubscriptionsEmpty" style="display: none;">
+              <i class="fa-solid fa-repeat"></i>
+              <p>No recurring subscriptions configured yet.</p>
+            </div>
+          </div>
+        </section>

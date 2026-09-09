@@ -89,7 +89,7 @@ Use this table to track module maturity as implementation proceeds. Update after
 | HR core (existing) | Implemented | — |
 | Phase 0 Housekeeping & Audit | Implemented | 2026-09-09 |
 | RBAC skeleton (Phase 1) | Implemented | 2026-09-09 |
-| Finance placeholders (Phase 2) | Not started | — |
+| Finance placeholders (Phase 2) | Implemented | 2026-09-09 |
 | Finance data model (Phase 3) | Not started | — |
 | Finance CRUD (Phase 4) | Not started | — |
 | Payroll engine (Phase 5) | Not started | — |
@@ -110,6 +110,13 @@ Use this table to track module maturity as implementation proceeds. Update after
   - Permission resolution and `require_permission` route guard in `be/core/permissions.py`.
   - Proof-of-concept wiring on `POST /api/employees` gated with `require_permission("hr.employee.write")` (`cce60cd`).
   - Test suite `be/tests/test_rbac.py` passing (163 tests total).
+- **Phase 2 Placeholder Architecture (2026-09-09)**:
+  - Backend stubs: created `be/finance/routers/` for `sales_invoices`, `bills`, `payroll`, `bank_accounts`, `subscriptions`, and `reports` registered under `/api/finance/*`, all gated by `require_permission`.
+  - Frontend stubs: created `fe/finance-api.js` client wrapper and `fe/public/js/finance.js` controller.
+  - UI integration: added dynamic `#adminFinanceNavGroup` to Admin sidebar gated on `finance.*` permissions, added "My Payslips" to Employee sidebar gated on `self.payslip.read`.
+  - Section partials: created 6 admin section partials (`finance-dashboard.html`, `finance-invoices.html`, `finance-bills.html`, `finance-payroll.html`, `finance-accounts.html`, `finance-subscriptions.html`) and 1 employee partial (`payslips.html`).
+  - Build pipeline: updated `fe/vite.config.js` to bundle `finance.js` in script order and distribute `finance-api.js`. Single-file Vite build confirmed working (`fe/dist/index.html`).
+  - Verified end-to-end via browser automation and backend placeholder test suite (167 passing tests).
 
 ## Related Documents
 

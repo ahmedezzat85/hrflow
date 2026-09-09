@@ -1,0 +1,31 @@
+        <section class="page-section" id="a-finance-bills">
+          <div class="toolbar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="financeBillSearch" placeholder="Search vendor bills by number or vendor...">
+            </div>
+            <button class="btn btn-fill" onclick="showToast('Bill recording will be available in Phase 4', 'info')"><i class="fa-solid fa-plus"></i> Record Bill</button>
+          </div>
+          <div class="card">
+            <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Bill #</th>
+                  <th>Vendor</th>
+                  <th>Category</th>
+                  <th>Issue Date</th>
+                  <th>Due Date</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeBillsTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeBillsEmpty" style="display: none;">
+              <i class="fa-solid fa-receipt"></i>
+              <p>No vendor bills recorded yet.</p>
+            </div>
+          </div>
+        </section>
