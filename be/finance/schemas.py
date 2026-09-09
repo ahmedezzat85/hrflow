@@ -171,7 +171,71 @@ class SalesInvoiceResponse(SalesInvoiceBase):
 
 
 # ==========================================
-# Payment Schemas (incoming for invoices)
+# Bill Line Schemas (Accounts Payable)
+# ==========================================
+class BillLineBase(BaseModel):
+    description: str = Field(..., min_length=1, max_length=255)
+    quantity: float = Field(1.0, gt=0.0)
+    unit_price: float = Field(0.0, ge=0.0)
+    line_total: float = Field(0.0, ge=0.0)
+
+
+class BillLineCreate(BillLineBase):
+    pass
+
+
+class BillLineResponse(BillLineBase):
+    id: int
+    bill_id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Bill Schemas (Accounts Payable)
+# ==========================================
+class BillBase(BaseModel):
+    vendor_id: int = Field(..., description="ID of the vendor")
+    bill_number: str = Field(..., min_length=1, max_length=50, description="Unique bill reference number")
+    category: Optional[str] = Field("Operating Expense", max_length=100)
+    issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
+    due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
+    status: str = Field("unpaid", description="unpaid|paid|overdue|void")
+    currency: str = Field("USD", min_length=3, max_length=10)
+    notes: Optional[str] = None
+
+
+class BillCreate(BillBase):
+    lines: List[BillLineCreate] = Field(default_factory=list)
+
+
+class BillUpdate(BaseModel):
+    vendor_id: Optional[int] = None
+    category: Optional[str] = Field(None, max_length=100)
+    issue_date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    notes: Optional[str] = None
+    lines: Optional[List[BillLineCreate]] = None
+
+
+class BillResponse(BillBase):
+    id: int
+    subtotal: float
+    tax_amount: float
+    total: float
+    created_at: Optional[datetime] = None
+    vendor_name: Optional[str] = None
+    lines: List[BillLineResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Payment Schemas (incoming for invoices, outgoing for bills)
 # ==========================================
 class PaymentBase(BaseModel):
     direction: str = Field(..., description="incoming|outgoing")
@@ -197,4 +261,3 @@ class PaymentResponse(PaymentBase):
 
     class Config:
         from_attributes = True
-

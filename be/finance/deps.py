@@ -14,6 +14,8 @@ from finance.repositories.vendors_repository import VendorsRepository
 from finance.services.vendors_service import VendorsService
 from finance.repositories.invoices_repository import InvoicesRepository
 from finance.services.invoices_service import InvoicesService
+from finance.repositories.bills_repository import BillsRepository
+from finance.services.bills_service import BillsService
 
 
 def get_accounts_repo(db: Session = Depends(get_db)) -> AccountsRepository:
@@ -54,3 +56,13 @@ def get_invoices_service(
     repo: InvoicesRepository = Depends(get_invoices_repo),
 ) -> InvoicesService:
     return InvoicesService(repo)
+
+
+def get_bills_repo(db: Session = Depends(get_db)) -> BillsRepository:
+    return BillsRepository(db)
+
+
+def get_bills_service(
+    repo: BillsRepository = Depends(get_bills_repo),
+) -> BillsService:
+    return BillsService(repo)
