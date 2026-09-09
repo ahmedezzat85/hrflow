@@ -206,19 +206,34 @@ function renderFinancePayroll(items) {
 // ==========================================
 // 5. Company Bank Accounts
 // ==========================================
+let _currentBankAccountFilter = "all";
+
 async function loadFinanceAccounts() {
   const bar = document.getElementById("financeAccountsLoadingBar");
   if (bar) bar.style.display = "block";
 
   try {
-    const items = await FinanceApi.getAccounts();
+    let params = null;
+    if (_currentBankAccountFilter === "active") params = { is_active: true };
+    else if (_currentBankAccountFilter === "inactive") params = { is_active: false };
+
+    const items = await FinanceApi.getAccounts(params);
     FinanceState.accounts = items;
     renderFinanceAccounts(items);
   } catch (err) {
     console.error("Failed to load bank accounts:", err);
+    toast("Failed to load bank accounts: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   } finally {
     if (bar) bar.style.display = "none";
   }
+}
+
+function filterCompanyBankAccounts(filterType, btn) {
+  _currentBankAccountFilter = filterType;
+  const tabs = document.querySelectorAll("#a-finance-accounts .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadFinanceAccounts();
 }
 
 function renderFinanceAccounts(items) {
@@ -240,18 +255,116 @@ function renderFinanceAccounts(items) {
       <td><strong>${acc.account_name}</strong></td>
       <td>${acc.bank_name}</td>
       <td><code>${acc.account_number}</code></td>
-      <td>${acc.currency}</td>
+      <td><span class="badge badge-info">${acc.currency}</span></td>
       <td><strong>$${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
       <td><span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">${acc.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
-        <button class="btn btn-sm" onclick="showToast('Account ${acc.account_name} ledger view in Phase 4', 'info')">
-          <i class="fa-solid fa-book"></i> Ledger
-        </button>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}">
+            <i class="fa-solid ${acc.is_active ? "fa-power-off" : "fa-check"}"></i>
+          </button>
+        </div>
       </td>
     </tr>
   `
     )
     .join("");
+}
+
+function openAddCompanyBankAccountModal() {
+  document.getElementById("companyBankAccountModalTitle").textContent = "Add Company Bank Account";
+  document.getElementById("fCompanyAccountId").value = "";
+  document.getElementById("fCompanyAccountName").value = "";
+  document.getElementById("fCompanyBankName").value = "";
+  document.getElementById("fCompanyAccountNumber").value = "";
+  document.getElementById("fCompanyCurrency").value = "USD";
+  document.getElementById("fCompanyOpeningBalance").value = "0.00";
+  document.getElementById("fCompanyOpeningBalanceField").style.display = "block";
+  openModal("companyBankAccountModal");
+}
+
+function openEditCompanyBankAccountModal(id) {
+  const acc = (FinanceState.accounts || []).find((a) => a.id === id);
+  if (!acc) return;
+
+  document.getElementById("companyBankAccountModalTitle").textContent = "Edit Company Bank Account";
+  document.getElementById("fCompanyAccountId").value = acc.id;
+  document.getElementById("fCompanyAccountName").value = acc.account_name;
+  document.getElementById("fCompanyBankName").value = acc.bank_name;
+  document.getElementById("fCompanyAccountNumber").value = "";
+  document.getElementById("fCompanyAccountNumber").placeholder = acc.account_number + " (leave blank to keep unchanged)";
+  document.getElementById("fCompanyCurrency").value = acc.currency || "USD";
+  document.getElementById("fCompanyOpeningBalanceField").style.display = "none";
+  openModal("companyBankAccountModal");
+}
+
+async function saveCompanyBankAccount() {
+  const idVal = document.getElementById("fCompanyAccountId").value;
+  const account_name = document.getElementById("fCompanyAccountName").value.trim();
+  const bank_name = document.getElementById("fCompanyBankName").value.trim();
+  const account_number = document.getElementById("fCompanyAccountNumber").value.trim();
+  const currency = document.getElementById("fCompanyCurrency").value;
+
+  if (!account_name) {
+    toast("Please provide an Account Name", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (!bank_name) {
+    toast("Please provide a Bank Name", "fa-solid fa-circle-exclamation");
+    return;
+  }
+
+  const saveBtn = document.getElementById("companyBankAccountSaveBtn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    if (idVal) {
+      // Edit mode
+      const payload = { account_name, bank_name, currency };
+      if (account_number) payload.account_number = account_number;
+      await FinanceApi.updateAccount(Number(idVal), payload);
+      toast("Bank account updated successfully", "fa-solid fa-circle-check");
+    } else {
+      // Create mode
+      if (!account_number) {
+        toast("Please provide an Account Number", "fa-solid fa-circle-exclamation");
+        if (saveBtn) saveBtn.disabled = false;
+        return;
+      }
+      const opening_balance = parseFloat(document.getElementById("fCompanyOpeningBalance").value) || 0.0;
+      const payload = { account_name, bank_name, account_number, currency, opening_balance };
+      await FinanceApi.createAccount(payload);
+      toast("Bank account created successfully", "fa-solid fa-circle-check");
+    }
+
+    closeModal("companyBankAccountModal");
+    await loadFinanceAccounts();
+  } catch (err) {
+    toast(err.message || "Failed to save bank account", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function toggleCompanyBankAccountActive(id, currentActive) {
+  const action = currentActive ? "deactivate" : "reactivate";
+  if (!confirm(`Are you sure you want to ${action} this bank account?`)) return;
+
+  try {
+    if (currentActive) {
+      await FinanceApi.deleteAccount(id);
+      toast("Bank account deactivated", "fa-solid fa-circle-check");
+    } else {
+      await FinanceApi.updateAccount(id, { is_active: true });
+      toast("Bank account reactivated", "fa-solid fa-circle-check");
+    }
+    await loadFinanceAccounts();
+  } catch (err) {
+    toast(err.message || `Failed to ${action} bank account`, "fa-solid fa-triangle-exclamation");
+  }
 }
 
 // ==========================================

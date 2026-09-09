@@ -1,0 +1,50 @@
+  <div class="modal-overlay" id="companyBankAccountModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <div class="modal-head-text">
+          <h3 id="companyBankAccountModalTitle">Add Company Bank Account</h3>
+          <p>Configure corporate accounts for receivables, vendor disbursements, and payroll funding.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('companyBankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fCompanyAccountId">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-landmark"></i> Account Details <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Account Label / Name <span class="req">*</span></label>
+              <input id="fCompanyAccountName" placeholder="e.g. Primary Operating USD">
+            </div>
+            <div class="form-field full">
+              <label>Bank Name <span class="req">*</span></label>
+              <input id="fCompanyBankName" placeholder="e.g. JPMorgan Chase or CIB">
+            </div>
+            <div class="form-field full">
+              <label>Account Number / IBAN <span class="req">*</span></label>
+              <input id="fCompanyAccountNumber" placeholder="e.g. 12345678904821 or EG..." style="font-family:monospace;">
+              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stored securely and masked in reporting tables.</span>
+            </div>
+            <div class="form-field">
+              <label>Currency <span class="req">*</span></label>
+              <select id="fCompanyCurrency">
+                <option value="USD">USD ($)</option>
+                <option value="EGP">EGP (E£)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+              </select>
+            </div>
+            <div class="form-field" id="fCompanyOpeningBalanceField">
+              <label>Opening Balance <span class="req">*</span></label>
+              <input type="number" id="fCompanyOpeningBalance" step="0.01" min="0" value="0.00">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('companyBankAccountModal')">Cancel</button>
+        <button class="btn btn-fill" id="companyBankAccountSaveBtn" onclick="saveCompanyBankAccount()"><i class="fa-solid fa-floppy-disk"></i> Save Account</button>
+      </div>
+    </div>
+  </div>

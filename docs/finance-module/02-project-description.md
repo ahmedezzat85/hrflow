@@ -91,7 +91,7 @@ Use this table to track module maturity as implementation proceeds. Update after
 | RBAC skeleton (Phase 1) | Implemented | 2026-09-09 |
 | Finance placeholders (Phase 2) | Implemented | 2026-09-09 |
 | Finance data model (Phase 3) | Implemented | 2026-09-09 |
-| Finance CRUD (Phase 4) | Not started | — |
+| Finance CRUD (Phase 4) | In progress (4.1 Bank Accounts complete) | 2026-09-09 |
 | Payroll engine (Phase 5) | Not started | — |
 | Reporting layer (Phase 6) | Not started | — |
 | Role expansion (Phase 7) | Not started | — |
@@ -123,6 +123,12 @@ Use this table to track module maturity as implementation proceeds. Update after
   - Maintained cross-domain reference between `finance_payroll_lines.employee_id` and HR's `employees.id`.
   - Re-exported all models in `be/models_db.py` on `Base.metadata`.
   - Created unit and integration test suite `be/tests/test_finance_models.py` verifying model instantiation, cascade rules, unique constraints, and foreign key traversals (171 passing tests total).
+- **Phase 4.1 Company Bank Accounts CRUD (2026-09-09)**:
+  - Backend schemas: `BankAccountBase`, `BankAccountCreate`, `BankAccountUpdate`, `BankAccountResponse` with masked account numbers in `be/finance/schemas.py`.
+  - Repository & Service: `AccountsRepository` and `AccountsService` in `be/finance/repositories/accounts_repository.py` and `be/finance/services/accounts_service.py` with duplicate name detection, balance computation, and soft-delete/deactivation.
+  - Router: Replaced placeholder stub with live CRUD endpoints on `GET`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}` (deactivate) in `be/finance/routers/bank_accounts.py`, gated with `finance.account.read` and `finance.account.write`.
+  - Frontend UI: `#companyBankAccountModal` in `fe/src/partials/modals/company-bank-account-modal.html`, wired in `finance.js` and `finance-api.js` with filter tabs (All, Active, Inactive), create/edit flows, and deactivation toggles.
+  - Test suite: `be/tests/test_finance_bank_accounts.py` covering CRUD, RBAC, soft-delete, and masking; updated `test_finance_placeholders.py` (173 passing tests total). Single-file Vite build updated.
 
 ## Related Documents
 

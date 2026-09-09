@@ -16,8 +16,25 @@ const FinanceApi = {
   getMyPayslips() {
     return apiRequest("GET", "/api/finance/payroll/payslips/my");
   },
-  getAccounts() {
-    return apiRequest("GET", "/api/finance/accounts");
+  getAccounts(params) {
+    let url = "/api/finance/accounts";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  getAccount(id) {
+    return apiRequest("GET", `/api/finance/accounts/${id}`);
+  },
+  createAccount(payload) {
+    return apiRequest("POST", "/api/finance/accounts", payload);
+  },
+  updateAccount(id, payload) {
+    return apiRequest("PUT", `/api/finance/accounts/${id}`, payload);
+  },
+  deleteAccount(id) {
+    return apiRequest("DELETE", `/api/finance/accounts/${id}`);
   },
   getSubscriptions() {
     return apiRequest("GET", "/api/finance/subscriptions");

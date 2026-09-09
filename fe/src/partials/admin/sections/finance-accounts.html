@@ -4,7 +4,14 @@
               <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Company Bank Accounts</h2>
               <p class="section-subtitle">Accounts used for receiving customer payments and disbursing payroll & bills.</p>
             </div>
-            <button class="btn btn-fill" onclick="showToast('Bank Account management will be available in Phase 4', 'info')"><i class="fa-solid fa-plus"></i> Add Account</button>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
+                <button class="filter-tab" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
+                <button class="filter-tab" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
+              </div>
+              <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()"><i class="fa-solid fa-plus"></i> Add Account</button>
+            </div>
           </div>
           <div class="card">
             <div class="section-loading-bar" id="financeAccountsLoadingBar"><span></span></div>

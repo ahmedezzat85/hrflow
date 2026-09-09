@@ -34,11 +34,22 @@ def test_finance_stubs_admin_authorized(app_client, admin_cookies):
     assert "period_label" in runs[0]
     assert "total_net" in runs[0]
 
-    # 4. Bank accounts
+    # 4. Bank accounts (real CRUD as of Phase 4.1)
+    app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Voyance Primary",
+            "bank_name": "Chase",
+            "account_number": "1234567890",
+            "currency": "USD",
+            "current_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    )
     accounts_res = app_client.get("/api/finance/accounts", cookies=admin_cookies)
     assert accounts_res.status_code == 200
     accounts = accounts_res.json()
-    assert len(accounts) >= 2
+    assert len(accounts) >= 1
     assert "account_name" in accounts[0]
     assert "current_balance" in accounts[0]
     # Account numbers must be masked
