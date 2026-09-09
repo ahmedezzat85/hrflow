@@ -16,6 +16,8 @@ import models_db
 from finance.models import (
     FinanceBankAccountDB,
     LedgerTransactionDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
     CustomerDB,
     VendorDB,
     SalesInvoiceDB,
@@ -366,6 +368,14 @@ def test_migration_backfill_logic(db_session):
     acc.current_balance = 12500.0
     db_session.commit()
 
+    # Seed default categories and payment types for backfill
+    cat_rev = TransactionCategoryDB(name="Revenue", kind="revenue")
+    cat_cost = TransactionCategoryDB(name="Other", kind="other")
+    pt_in = PaymentTypeDB(name="Inbound Transfer", code="INBOUND_TRANS")
+    pt_out = PaymentTypeDB(name="Outbound Transfer", code="OUTBOUND_TRANS")
+    db_session.add_all([cat_rev, cat_cost, pt_in, pt_out])
+    db_session.flush()
+
     # Run backfill calculation
     payments = (
         db_session.query(PaymentDB)
@@ -380,12 +390,14 @@ def test_migration_backfill_logic(db_session):
             running_balance += p.amount
             direction = "in"
             source = "invoice_payment"
-            cat = "revenue"
+            cat_id = cat_rev.id
+            pt_id = pt_in.id
         else:
             running_balance -= p.amount
             direction = "out"
             source = "bill_payment"
-            cat = "cost"
+            cat_id = cat_cost.id
+            pt_id = pt_out.id
 
         tx = LedgerTransactionDB(
             account_id=acc.id,
@@ -393,8 +405,10 @@ def test_migration_backfill_logic(db_session):
             amount=p.amount,
             direction=direction,
             currency=p.currency,
-            category=cat,
-            description=p.reference,
+            category_id=cat_id,
+            payment_type_id=pt_id,
+            reference=p.reference or "",
+            description=p.reference or "",
             source=source,
             running_balance=round(running_balance, 4),
             created_by="migration_backfill",

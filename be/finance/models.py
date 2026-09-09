@@ -122,12 +122,40 @@ class BillLineDB(Base):
     bill = relationship("BillDB", back_populates="lines")
 
 
+class TransactionCategoryDB(Base):
+    __tablename__ = "finance_transaction_categories"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    kind = Column(String(20), default="other", nullable=False)  # revenue | cost | transfer | other
+    is_active = Column(Boolean, default=True, nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    is_petty = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    transactions = relationship("LedgerTransactionDB", back_populates="category")
+
+
+class PaymentTypeDB(Base):
+    __tablename__ = "finance_payment_types"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    requires_cheque_number = Column(Boolean, default=False, nullable=False)
+    requires_bank_fee_flag = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    transactions = relationship("LedgerTransactionDB", back_populates="payment_type")
+
+
 class FinanceBankAccountDB(Base):
     __tablename__ = "finance_bank_accounts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_name = Column(String(100), nullable=False)
-    bank_name = Column(String(100), nullable=False)
+    bank_name = Column(String(100), nullable=True)  # Nullable for cash accounts
     account_number = Column(String(100), nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     opening_balance = Column(Float, default=0.0)
@@ -159,8 +187,11 @@ class LedgerTransactionDB(Base):
     amount = Column(Float, nullable=False)
     direction = Column(String(20), nullable=False)  # in / out
     currency = Column(String(10), default="USD", nullable=False)
-    category = Column(String(100), default="other", nullable=False)
+    category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    payment_type_id = Column(Integer, ForeignKey("finance_payment_types.id", ondelete="SET NULL"), nullable=True, index=True)
+    reference = Column(String(255), default="", nullable=False)
     description = Column(String(255), default="", nullable=False)
+    fx_rate = Column(Float, nullable=True)
     source = Column(String(50), nullable=False, index=True)
     # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -170,6 +201,8 @@ class LedgerTransactionDB(Base):
     created_by = Column(String(255), nullable=True)
 
     account = relationship("FinanceBankAccountDB", back_populates="ledger_transactions")
+    category = relationship("TransactionCategoryDB", back_populates="transactions")
+    payment_type = relationship("PaymentTypeDB", back_populates="transactions")
     linked_invoice = relationship("SalesInvoiceDB")
     linked_bill = relationship("BillDB")
 

@@ -7,6 +7,8 @@ from finance.services.vendors_service import VendorsService
 from finance.services.invoices_service import InvoicesService
 from finance.services.bills_service import BillsService
 from finance.services.ledger_service import LedgerService
+from finance.services.categories_service import CategoriesService
+from finance.services.payment_types_service import PaymentTypesService
 
 __all__ = [
     "AccountsService",
@@ -15,4 +17,6 @@ __all__ = [
     "InvoicesService",
     "BillsService",
     "LedgerService",
+    "CategoriesService",
+    "PaymentTypesService",
 ]

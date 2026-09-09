@@ -29,6 +29,25 @@ const FinanceMockState = {
   ],
   payments: [],
   billPayments: [],
+  categories: [
+    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, is_petty: false },
+    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, is_petty: false },
+    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, is_petty: false },
+    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, is_petty: true },
+    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, is_petty: true },
+    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, is_petty: false },
+    { id: 7, name: "Other", kind: "other", is_active: true, sort_order: 99, is_petty: false },
+  ],
+  paymentTypes: [
+    { id: 1, name: "Cash", code: "CASH", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 2, name: "Cash Withdrawal", code: "CASHWITHDRAW", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 3, name: "Cheque", code: "CHK", requires_cheque_number: true, requires_bank_fee_flag: false, is_active: true },
+    { id: 4, name: "Inbound Transfer", code: "INBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 5, name: "Outbound Transfer", code: "OUTBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 6, name: "USD to EGP Conversion", code: "USDTOEGP", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 7, name: "Debit Card", code: "DEBIT_CARD", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 8, name: "Bank Fees", code: "BANK_FEES", requires_cheque_number: false, requires_bank_fee_flag: true, is_active: true },
+  ],
 };
 
 const FinanceApi = {
@@ -387,6 +406,120 @@ const FinanceApi = {
       return vend;
     }
     return apiRequest("DELETE", `/api/finance/vendors/${id}`);
+  },
+
+  // Categories (Phase 0)
+  async getCategories(params) {
+    if (_isMock()) {
+      let list = [...FinanceMockState.categories];
+      if (params && params.kind) list = list.filter((c) => c.kind === params.kind);
+      if (params && params.is_active !== undefined) {
+        list = list.filter((c) => c.is_active === (params.is_active === "true" || params.is_active === true));
+      }
+      return list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    }
+    let url = "/api/finance/categories";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async getCategory(id) {
+    if (_isMock()) {
+      const cat = FinanceMockState.categories.find((c) => c.id === parseInt(id, 10));
+      if (!cat) throw new Error("Category not found");
+      return cat;
+    }
+    return apiRequest("GET", `/api/finance/categories/${id}`);
+  },
+  async createCategory(payload) {
+    if (_isMock()) {
+      const newCat = {
+        id: FinanceMockState.categories.length + 1,
+        ...payload,
+        is_active: payload.is_active !== undefined ? payload.is_active : true,
+        sort_order: payload.sort_order || 0,
+        is_petty: Boolean(payload.is_petty),
+      };
+      FinanceMockState.categories.push(newCat);
+      return newCat;
+    }
+    return apiRequest("POST", "/api/finance/categories", payload);
+  },
+  async updateCategory(id, payload) {
+    if (_isMock()) {
+      const cat = FinanceMockState.categories.find((c) => c.id === parseInt(id, 10));
+      if (!cat) throw new Error("Category not found");
+      Object.assign(cat, payload);
+      return cat;
+    }
+    return apiRequest("PATCH", `/api/finance/categories/${id}`, payload);
+  },
+  async deleteCategory(id) {
+    if (_isMock()) {
+      const cat = FinanceMockState.categories.find((c) => c.id === parseInt(id, 10));
+      if (!cat) throw new Error("Category not found");
+      cat.is_active = false;
+      return cat;
+    }
+    return apiRequest("DELETE", `/api/finance/categories/${id}`);
+  },
+
+  // Payment Types (Phase 0)
+  async getPaymentTypes(params) {
+    if (_isMock()) {
+      let list = [...FinanceMockState.paymentTypes];
+      if (params && params.is_active !== undefined) {
+        list = list.filter((p) => p.is_active === (params.is_active === "true" || params.is_active === true));
+      }
+      return list;
+    }
+    let url = "/api/finance/payment-types";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async getPaymentType(id) {
+    if (_isMock()) {
+      const pt = FinanceMockState.paymentTypes.find((p) => p.id === parseInt(id, 10));
+      if (!pt) throw new Error("Payment type not found");
+      return pt;
+    }
+    return apiRequest("GET", `/api/finance/payment-types/${id}`);
+  },
+  async createPaymentType(payload) {
+    if (_isMock()) {
+      const newPt = {
+        id: FinanceMockState.paymentTypes.length + 1,
+        ...payload,
+        code: payload.code.toUpperCase(),
+        is_active: payload.is_active !== undefined ? payload.is_active : true,
+      };
+      FinanceMockState.paymentTypes.push(newPt);
+      return newPt;
+    }
+    return apiRequest("POST", "/api/finance/payment-types", payload);
+  },
+  async updatePaymentType(id, payload) {
+    if (_isMock()) {
+      const pt = FinanceMockState.paymentTypes.find((p) => p.id === parseInt(id, 10));
+      if (!pt) throw new Error("Payment type not found");
+      Object.assign(pt, payload);
+      return pt;
+    }
+    return apiRequest("PATCH", `/api/finance/payment-types/${id}`, payload);
+  },
+  async deletePaymentType(id) {
+    if (_isMock()) {
+      const pt = FinanceMockState.paymentTypes.find((p) => p.id === parseInt(id, 10));
+      if (!pt) throw new Error("Payment type not found");
+      pt.is_active = false;
+      return pt;
+    }
+    return apiRequest("DELETE", `/api/finance/payment-types/${id}`);
   },
 };
 

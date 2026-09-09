@@ -15,14 +15,25 @@
           <div class="form-grid">
             <div class="form-field full">
               <label>Account Label / Name <span class="req">*</span></label>
-              <input id="fCompanyAccountName" placeholder="e.g. Primary Operating USD">
+              <input id="fCompanyAccountName" placeholder="e.g. Primary Operating USD or Office Safe (EGP)">
             </div>
-            <div class="form-field full">
-              <label>Bank Name <span class="req">*</span></label>
+            <div class="form-field">
+              <label>Account Type <span class="req">*</span></label>
+              <select id="fCompanyAccountType" onchange="onCompanyAccountTypeChange()">
+                <option value="bank">Bank Account</option>
+                <option value="cash">Cash Account / Safe</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Country</label>
+              <input id="fCompanyCountry" placeholder="e.g. EG, US">
+            </div>
+            <div class="form-field full" id="fCompanyBankNameField">
+              <label id="fCompanyBankNameLabel">Bank Name <span class="req">*</span></label>
               <input id="fCompanyBankName" placeholder="e.g. JPMorgan Chase or CIB">
             </div>
             <div class="form-field full">
-              <label>Account Number / IBAN <span class="req">*</span></label>
+              <label id="fCompanyAccountNumberLabel">Account Number / IBAN <span class="req">*</span></label>
               <input id="fCompanyAccountNumber" placeholder="e.g. 12345678904821 or EG..." style="font-family:monospace;">
               <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stored securely and masked in reporting tables.</span>
             </div>

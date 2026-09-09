@@ -43,6 +43,8 @@ from finance.routers import subscriptions as finance_subscriptions_router
 from finance.routers import reports as finance_reports_router
 from finance.routers import customers as finance_customers_router
 from finance.routers import vendors as finance_vendors_router
+from finance.routers import categories as finance_categories_router
+from finance.routers import payment_types as finance_payment_types_router
 
 # Re-exported here so existing code/tests that reach into main.py for
 # these pure-logic helpers (e.g. be/tests/test_salary_logic.py) keep
@@ -144,4 +146,6 @@ app.include_router(finance_subscriptions_router.router)
 app.include_router(finance_reports_router.router)
 app.include_router(finance_customers_router.router)
 app.include_router(finance_vendors_router.router)
+app.include_router(finance_categories_router.router)
+app.include_router(finance_payment_types_router.router)
 

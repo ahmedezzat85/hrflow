@@ -28,6 +28,8 @@ const FinanceState = {
   vendors: [],
   payrollRuns: [],
   accounts: [],
+  categories: [],
+  paymentTypes: [],
   subscriptions: [],
   myPayslips: [],
 };
@@ -999,9 +1001,42 @@ function renderFinancePayroll(items) {
 }
 
 // ==========================================
-// 5. Company Bank Accounts
+// 5. Company Bank & Cash Accounts & Lookups (Phase 0 & 1)
 // ==========================================
+let _currentFinanceSubTab = "accounts";
 let _currentBankAccountFilter = "all";
+
+function switchFinanceAccountsSubTab(tabName, btn) {
+  _currentFinanceSubTab = tabName;
+
+  const tabs = document.querySelectorAll("#financeAccountsSubNav .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) {
+    btn.classList.add("active");
+  } else {
+    const el = document.getElementById(
+      tabName === "accounts" ? "subtabFinanceAccounts" :
+      tabName === "categories" ? "subtabFinanceCategories" : "subtabFinancePaymentTypes"
+    );
+    if (el) el.classList.add("active");
+  }
+
+  const paneAccounts = document.getElementById("financeSubPaneAccounts");
+  const paneCategories = document.getElementById("financeSubPaneCategories");
+  const panePaymentTypes = document.getElementById("financeSubPanePaymentTypes");
+
+  if (paneAccounts) paneAccounts.style.display = tabName === "accounts" ? "block" : "none";
+  if (paneCategories) paneCategories.style.display = tabName === "categories" ? "block" : "none";
+  if (panePaymentTypes) panePaymentTypes.style.display = tabName === "payment_types" ? "block" : "none";
+
+  if (tabName === "accounts") {
+    loadFinanceAccounts();
+  } else if (tabName === "categories") {
+    loadFinanceCategories();
+  } else if (tabName === "payment_types") {
+    loadFinancePaymentTypes();
+  }
+}
 
 async function loadFinanceAccounts() {
   const bar = document.getElementById("financeAccountsLoadingBar");
@@ -1025,7 +1060,7 @@ async function loadFinanceAccounts() {
 
 function filterCompanyBankAccounts(filterType, btn) {
   _currentBankAccountFilter = filterType;
-  const tabs = document.querySelectorAll("#a-finance-accounts .filter-tab");
+  const tabs = document.querySelectorAll("#financeSubPaneAccounts .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinanceAccounts();
@@ -1048,10 +1083,11 @@ function renderFinanceAccounts(items) {
       (acc) => `
     <tr>
       <td><strong>${acc.account_name}</strong></td>
-      <td>${acc.bank_name}</td>
+      <td><span class="badge ${acc.account_type === 'cash' ? 'badge-warning' : 'badge-info'}">${(acc.account_type || 'bank').toUpperCase()}</span></td>
+      <td>${acc.bank_name || '<span style="color:var(--text3); font-style:italic;">Cash Safe</span>'}</td>
       <td><code>${acc.account_number}</code></td>
       <td><span class="badge badge-info">${acc.currency}</span></td>
-      <td><strong>$${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
+      <td><strong>${acc.currency === "EGP" ? "E£" : "$"}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
       <td><span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">${acc.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
         <div style="display:flex;gap:6px;">
@@ -1069,15 +1105,31 @@ function renderFinanceAccounts(items) {
     .join("");
 }
 
+function onCompanyAccountTypeChange() {
+  const type = document.getElementById("fCompanyAccountType")?.value;
+  const bankNameLabel = document.getElementById("fCompanyBankNameLabel");
+  const bankNameInput = document.getElementById("fCompanyBankName");
+  if (type === "cash") {
+    if (bankNameLabel) bankNameLabel.innerHTML = 'Custodian / Location <span class="opt" style="font-size:11px;color:var(--text3);">(optional)</span>';
+    if (bankNameInput) bankNameInput.placeholder = "e.g. Office Safe, Petty Cash Box";
+  } else {
+    if (bankNameLabel) bankNameLabel.innerHTML = 'Bank Name <span class="req">*</span>';
+    if (bankNameInput) bankNameInput.placeholder = "e.g. JPMorgan Chase or CIB";
+  }
+}
+
 function openAddCompanyBankAccountModal() {
-  document.getElementById("companyBankAccountModalTitle").textContent = "Add Company Bank Account";
+  document.getElementById("companyBankAccountModalTitle").textContent = "Add Company Bank / Cash Account";
   document.getElementById("fCompanyAccountId").value = "";
   document.getElementById("fCompanyAccountName").value = "";
+  if (document.getElementById("fCompanyAccountType")) document.getElementById("fCompanyAccountType").value = "bank";
+  if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = "EG";
   document.getElementById("fCompanyBankName").value = "";
   document.getElementById("fCompanyAccountNumber").value = "";
   document.getElementById("fCompanyCurrency").value = "USD";
   document.getElementById("fCompanyOpeningBalance").value = "0.00";
   document.getElementById("fCompanyOpeningBalanceField").style.display = "block";
+  onCompanyAccountTypeChange();
   openModal("companyBankAccountModal");
 }
 
@@ -1085,20 +1137,25 @@ function openEditCompanyBankAccountModal(id) {
   const acc = (FinanceState.accounts || []).find((a) => a.id === id);
   if (!acc) return;
 
-  document.getElementById("companyBankAccountModalTitle").textContent = "Edit Company Bank Account";
+  document.getElementById("companyBankAccountModalTitle").textContent = "Edit Company Account";
   document.getElementById("fCompanyAccountId").value = acc.id;
   document.getElementById("fCompanyAccountName").value = acc.account_name;
-  document.getElementById("fCompanyBankName").value = acc.bank_name;
+  if (document.getElementById("fCompanyAccountType")) document.getElementById("fCompanyAccountType").value = acc.account_type || "bank";
+  if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = acc.country || "";
+  document.getElementById("fCompanyBankName").value = acc.bank_name || "";
   document.getElementById("fCompanyAccountNumber").value = "";
   document.getElementById("fCompanyAccountNumber").placeholder = acc.account_number + " (leave blank to keep unchanged)";
   document.getElementById("fCompanyCurrency").value = acc.currency || "USD";
   document.getElementById("fCompanyOpeningBalanceField").style.display = "none";
+  onCompanyAccountTypeChange();
   openModal("companyBankAccountModal");
 }
 
 async function saveCompanyBankAccount() {
   const idVal = document.getElementById("fCompanyAccountId").value;
   const account_name = document.getElementById("fCompanyAccountName").value.trim();
+  const account_type = document.getElementById("fCompanyAccountType")?.value || "bank";
+  const country = document.getElementById("fCompanyCountry")?.value.trim() || null;
   const bank_name = document.getElementById("fCompanyBankName").value.trim();
   const account_number = document.getElementById("fCompanyAccountNumber").value.trim();
   const currency = document.getElementById("fCompanyCurrency").value;
@@ -1107,8 +1164,8 @@ async function saveCompanyBankAccount() {
     toast("Please provide an Account Name", "fa-solid fa-circle-exclamation");
     return;
   }
-  if (!bank_name) {
-    toast("Please provide a Bank Name", "fa-solid fa-circle-exclamation");
+  if (account_type === "bank" && !bank_name) {
+    toast("Please provide a Bank Name for bank accounts", "fa-solid fa-circle-exclamation");
     return;
   }
 
@@ -1117,26 +1174,36 @@ async function saveCompanyBankAccount() {
 
   try {
     if (idVal) {
-      const payload = { account_name, bank_name, currency };
+      const payload = { account_name, account_type, country, currency };
+      if (bank_name || account_type === "cash") payload.bank_name = bank_name || null;
       if (account_number) payload.account_number = account_number;
       await FinanceApi.updateAccount(Number(idVal), payload);
-      toast("Bank account updated successfully", "fa-solid fa-circle-check");
+      toast("Account updated successfully", "fa-solid fa-circle-check");
     } else {
-      if (!account_number) {
+      if (!account_number && account_type === "bank") {
         toast("Please provide an Account Number", "fa-solid fa-circle-exclamation");
         if (saveBtn) saveBtn.disabled = false;
         return;
       }
+      const finalAccNum = account_number || `CASH-${currency}-${Date.now().toString().slice(-4)}`;
       const opening_balance = parseFloat(document.getElementById("fCompanyOpeningBalance").value) || 0.0;
-      const payload = { account_name, bank_name, account_number, currency, opening_balance };
+      const payload = {
+        account_name,
+        account_type,
+        country,
+        bank_name: bank_name || (account_type === "cash" ? "Cash Account" : null),
+        account_number: finalAccNum,
+        currency,
+        opening_balance,
+      };
       await FinanceApi.createAccount(payload);
-      toast("Bank account created successfully", "fa-solid fa-circle-check");
+      toast("Account created successfully", "fa-solid fa-circle-check");
     }
 
     closeModal("companyBankAccountModal");
     await loadFinanceAccounts();
   } catch (err) {
-    toast(err.message || "Failed to save bank account", "fa-solid fa-triangle-exclamation");
+    toast(err.message || "Failed to save account", "fa-solid fa-triangle-exclamation");
   } finally {
     if (saveBtn) saveBtn.disabled = false;
   }
@@ -1144,19 +1211,346 @@ async function saveCompanyBankAccount() {
 
 async function toggleCompanyBankAccountActive(id, currentActive) {
   const action = currentActive ? "deactivate" : "reactivate";
-  if (!confirm(`Are you sure you want to ${action} this bank account?`)) return;
+  if (!confirm(`Are you sure you want to ${action} this account?`)) return;
 
   try {
     if (currentActive) {
       await FinanceApi.deleteAccount(id);
-      toast("Bank account deactivated", "fa-solid fa-circle-check");
+      toast("Account deactivated", "fa-solid fa-circle-check");
     } else {
       await FinanceApi.updateAccount(id, { is_active: true });
-      toast("Bank account reactivated", "fa-solid fa-circle-check");
+      toast("Account reactivated", "fa-solid fa-circle-check");
     }
     await loadFinanceAccounts();
   } catch (err) {
-    toast(err.message || `Failed to ${action} bank account`, "fa-solid fa-triangle-exclamation");
+    toast(err.message || `Failed to ${action} account`, "fa-solid fa-triangle-exclamation");
+  }
+}
+
+// ==========================================
+// 5.1 Transaction Categories (Phase 0)
+// ==========================================
+let _currentCategoryStatusFilter = "all";
+let _currentCategoryKindFilter = "all";
+
+async function loadFinanceCategories() {
+  const bar = document.getElementById("financeCategoriesLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    let params = {};
+    if (_currentCategoryStatusFilter === "active") params.is_active = true;
+    else if (_currentCategoryStatusFilter === "inactive") params.is_active = false;
+    if (_currentCategoryKindFilter && _currentCategoryKindFilter !== "all") params.kind = _currentCategoryKindFilter;
+
+    const items = await FinanceApi.getCategories(params);
+    FinanceState.categories = items;
+
+    let filtered = items;
+    if (_currentCategoryStatusFilter === "petty") {
+      filtered = items.filter((c) => c.is_petty);
+    }
+    renderFinanceCategories(filtered);
+  } catch (err) {
+    console.error("Failed to load categories:", err);
+    toast("Failed to load categories: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+function filterFinanceCategories(filterType, btn) {
+  _currentCategoryStatusFilter = filterType;
+  const tabs = document.querySelectorAll("#financeSubPaneCategories .filter-tabs .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadFinanceCategories();
+}
+
+function filterFinanceCategoriesByKind(kind) {
+  _currentCategoryKindFilter = kind;
+  loadFinanceCategories();
+}
+
+function _categoryKindBadge(kind) {
+  switch (kind) {
+    case "revenue": return "badge-approved";
+    case "cost": return "badge-rejected";
+    case "transfer": return "badge-info";
+    default: return "badge-pending";
+  }
+}
+
+function renderFinanceCategories(items) {
+  const tbody = document.getElementById("financeCategoriesTableBody");
+  const empty = document.getElementById("financeCategoriesEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  tbody.innerHTML = items
+    .map(
+      (c) => `
+    <tr>
+      <td><span style="color:var(--text3);font-size:12px;">${c.sort_order ?? 0}</span></td>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="badge ${_categoryKindBadge(c.kind)}">${(c.kind || "other").toUpperCase()}</span></td>
+      <td>
+        ${c.is_petty
+          ? '<span class="badge badge-info"><i class="fa-solid fa-receipt"></i> Petty / Recurring</span>'
+          : '<span style="color:var(--text3);font-size:12px;">Standard</span>'
+        }
+      </td>
+      <td><span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" onclick="openEditFinanceCategoryModal(${c.id})" title="Edit Category">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn btn-sm ${c.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleFinanceCategoryActive(${c.id}, ${c.is_active})" title="${c.is_active ? "Deactivate Category" : "Reactivate Category"}">
+            <i class="fa-solid ${c.is_active ? "fa-power-off" : "fa-check"}"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `
+    )
+    .join("");
+}
+
+function openAddFinanceCategoryModal() {
+  document.getElementById("financeCategoryModalTitle").textContent = "Add Transaction Category";
+  document.getElementById("fFinanceCategoryId").value = "";
+  document.getElementById("fFinanceCategoryName").value = "";
+  document.getElementById("fFinanceCategoryKind").value = "cost";
+  document.getElementById("fFinanceCategorySortOrder").value = "0";
+  document.getElementById("fFinanceCategoryIsPetty").checked = false;
+  openModal("financeCategoryModal");
+}
+
+function openEditFinanceCategoryModal(id) {
+  const cat = (FinanceState.categories || []).find((c) => c.id === id);
+  if (!cat) return;
+
+  document.getElementById("financeCategoryModalTitle").textContent = "Edit Transaction Category";
+  document.getElementById("fFinanceCategoryId").value = cat.id;
+  document.getElementById("fFinanceCategoryName").value = cat.name;
+  document.getElementById("fFinanceCategoryKind").value = cat.kind || "cost";
+  document.getElementById("fFinanceCategorySortOrder").value = cat.sort_order ?? 0;
+  document.getElementById("fFinanceCategoryIsPetty").checked = Boolean(cat.is_petty);
+  openModal("financeCategoryModal");
+}
+
+async function saveFinanceCategory() {
+  const idVal = document.getElementById("fFinanceCategoryId").value;
+  const name = document.getElementById("fFinanceCategoryName").value.trim();
+  const kind = document.getElementById("fFinanceCategoryKind").value;
+  const sort_order = parseInt(document.getElementById("fFinanceCategorySortOrder").value, 10) || 0;
+  const is_petty = document.getElementById("fFinanceCategoryIsPetty").checked;
+
+  if (!name) {
+    toast("Please enter a category name", "fa-solid fa-circle-exclamation");
+    return;
+  }
+
+  const saveBtn = document.getElementById("financeCategorySaveBtn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    if (idVal) {
+      await FinanceApi.updateCategory(Number(idVal), { name, kind, sort_order, is_petty });
+      toast("Category updated successfully", "fa-solid fa-circle-check");
+    } else {
+      await FinanceApi.createCategory({ name, kind, sort_order, is_petty, is_active: true });
+      toast("Category created successfully", "fa-solid fa-circle-check");
+    }
+    closeModal("financeCategoryModal");
+    await loadFinanceCategories();
+  } catch (err) {
+    toast(err.message || "Failed to save category", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function toggleFinanceCategoryActive(id, currentActive) {
+  const action = currentActive ? "deactivate" : "reactivate";
+  if (!confirm(`Are you sure you want to ${action} this category? Deactivated categories remain on historical records.`)) return;
+
+  try {
+    if (currentActive) {
+      await FinanceApi.deleteCategory(id);
+      toast("Category deactivated", "fa-solid fa-circle-check");
+    } else {
+      await FinanceApi.updateCategory(id, { is_active: true });
+      toast("Category reactivated", "fa-solid fa-circle-check");
+    }
+    await loadFinanceCategories();
+  } catch (err) {
+    toast(err.message || `Failed to ${action} category`, "fa-solid fa-triangle-exclamation");
+  }
+}
+
+// ==========================================
+// 5.2 Payment Types (Phase 0)
+// ==========================================
+let _currentPaymentTypeStatusFilter = "all";
+
+async function loadFinancePaymentTypes() {
+  const bar = document.getElementById("financePaymentTypesLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    let params = {};
+    if (_currentPaymentTypeStatusFilter === "active") params.is_active = true;
+    else if (_currentPaymentTypeStatusFilter === "inactive") params.is_active = false;
+
+    const items = await FinanceApi.getPaymentTypes(params);
+    FinanceState.paymentTypes = items;
+    renderFinancePaymentTypes(items);
+  } catch (err) {
+    console.error("Failed to load payment types:", err);
+    toast("Failed to load payment types: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+function filterFinancePaymentTypes(filterType, btn) {
+  _currentPaymentTypeStatusFilter = filterType;
+  const tabs = document.querySelectorAll("#financeSubPanePaymentTypes .filter-tabs .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadFinancePaymentTypes();
+}
+
+function renderFinancePaymentTypes(items) {
+  const tbody = document.getElementById("financePaymentTypesTableBody");
+  const empty = document.getElementById("financePaymentTypesEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  tbody.innerHTML = items
+    .map(
+      (pt) => `
+    <tr>
+      <td><strong>${pt.name}</strong></td>
+      <td><code>${pt.code}</code></td>
+      <td>
+        ${pt.requires_cheque_number
+          ? '<span class="badge badge-pending"><i class="fa-solid fa-money-check"></i> Cheque #</span>'
+          : '<span style="color:var(--text3);font-size:12px;">No</span>'
+        }
+      </td>
+      <td>
+        ${pt.requires_bank_fee_flag
+          ? '<span class="badge badge-pending"><i class="fa-solid fa-receipt"></i> Bank Fee</span>'
+          : '<span style="color:var(--text3);font-size:12px;">No</span>'
+        }
+      </td>
+      <td><span class="badge ${pt.is_active ? "badge-approved" : "badge-rejected"}">${pt.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" onclick="openEditFinancePaymentTypeModal(${pt.id})" title="Edit Payment Type">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn btn-sm ${pt.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})" title="${pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type"}">
+            <i class="fa-solid ${pt.is_active ? "fa-power-off" : "fa-check"}"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `
+    )
+    .join("");
+}
+
+function openAddFinancePaymentTypeModal() {
+  document.getElementById("financePaymentTypeModalTitle").textContent = "Add Payment Type";
+  document.getElementById("fFinancePaymentTypeId").value = "";
+  document.getElementById("fFinancePaymentTypeName").value = "";
+  document.getElementById("fFinancePaymentTypeCode").value = "";
+  document.getElementById("fFinancePaymentTypeCode").disabled = false;
+  document.getElementById("fFinancePaymentTypeReqCheque").checked = false;
+  document.getElementById("fFinancePaymentTypeReqBankFee").checked = false;
+  openModal("financePaymentTypeModal");
+}
+
+function openEditFinancePaymentTypeModal(id) {
+  const pt = (FinanceState.paymentTypes || []).find((p) => p.id === id);
+  if (!pt) return;
+
+  document.getElementById("financePaymentTypeModalTitle").textContent = "Edit Payment Type";
+  document.getElementById("fFinancePaymentTypeId").value = pt.id;
+  document.getElementById("fFinancePaymentTypeName").value = pt.name;
+  document.getElementById("fFinancePaymentTypeCode").value = pt.code;
+  document.getElementById("fFinancePaymentTypeReqCheque").checked = Boolean(pt.requires_cheque_number);
+  document.getElementById("fFinancePaymentTypeReqBankFee").checked = Boolean(pt.requires_bank_fee_flag);
+  openModal("financePaymentTypeModal");
+}
+
+async function saveFinancePaymentType() {
+  const idVal = document.getElementById("fFinancePaymentTypeId").value;
+  const name = document.getElementById("fFinancePaymentTypeName").value.trim();
+  const code = document.getElementById("fFinancePaymentTypeCode").value.trim().toUpperCase();
+  const requires_cheque_number = document.getElementById("fFinancePaymentTypeReqCheque").checked;
+  const requires_bank_fee_flag = document.getElementById("fFinancePaymentTypeReqBankFee").checked;
+
+  if (!name) {
+    toast("Please enter a name for the payment type", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (!code) {
+    toast("Please enter a unique machine code", "fa-solid fa-circle-exclamation");
+    return;
+  }
+
+  const saveBtn = document.getElementById("financePaymentTypeSaveBtn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    if (idVal) {
+      await FinanceApi.updatePaymentType(Number(idVal), { name, code, requires_cheque_number, requires_bank_fee_flag });
+      toast("Payment type updated successfully", "fa-solid fa-circle-check");
+    } else {
+      await FinanceApi.createPaymentType({ name, code, requires_cheque_number, requires_bank_fee_flag, is_active: true });
+      toast("Payment type created successfully", "fa-solid fa-circle-check");
+    }
+    closeModal("financePaymentTypeModal");
+    await loadFinancePaymentTypes();
+  } catch (err) {
+    toast(err.message || "Failed to save payment type", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function toggleFinancePaymentTypeActive(id, currentActive) {
+  const action = currentActive ? "deactivate" : "reactivate";
+  if (!confirm(`Are you sure you want to ${action} this payment type? Deactivated types remain on historical records.`)) return;
+
+  try {
+    if (currentActive) {
+      await FinanceApi.deletePaymentType(id);
+      toast("Payment type deactivated", "fa-solid fa-circle-check");
+    } else {
+      await FinanceApi.updatePaymentType(id, { is_active: true });
+      toast("Payment type reactivated", "fa-solid fa-circle-check");
+    }
+    await loadFinancePaymentTypes();
+  } catch (err) {
+    toast(err.message || `Failed to ${action} payment type`, "fa-solid fa-triangle-exclamation");
   }
 }
 
@@ -1302,7 +1696,13 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (targetPage === "a-finance-payroll") {
       loadFinancePayroll();
     } else if (targetPage === "a-finance-accounts") {
-      loadFinanceAccounts();
+      if (_currentFinanceSubTab === "categories") {
+        loadFinanceCategories();
+      } else if (_currentFinanceSubTab === "payment_types") {
+        loadFinancePaymentTypes();
+      } else {
+        loadFinanceAccounts();
+      }
     } else if (targetPage === "a-finance-subscriptions") {
       loadFinanceSubscriptions();
     } else if (targetPage === "e-payslips") {

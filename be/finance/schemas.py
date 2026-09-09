@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 # ==========================================
 class BankAccountBase(BaseModel):
     account_name: str = Field(..., min_length=2, max_length=100, description="Friendly name for the account")
-    bank_name: str = Field(..., min_length=2, max_length=100, description="Financial institution name")
+    bank_name: Optional[str] = Field(None, max_length=100, description="Financial institution name (optional for cash accounts)")
     currency: str = Field("USD", min_length=3, max_length=10, description="ISO Currency code")
     opening_balance: float = Field(0.0, ge=0.0, description="Starting cash balance")
     account_type: str = Field("bank", description="Account type: bank or cash")
@@ -25,7 +25,7 @@ class BankAccountCreate(BankAccountBase):
 
 class BankAccountUpdate(BaseModel):
     account_name: Optional[str] = Field(None, min_length=2, max_length=100)
-    bank_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    bank_name: Optional[str] = Field(None, max_length=100)
     account_number: Optional[str] = Field(None, min_length=4, max_length=50)
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     account_type: Optional[str] = Field(None, description="Account type: bank or cash")
@@ -45,28 +45,93 @@ class BankAccountResponse(BankAccountBase):
 
 
 # ==========================================
-# Ledger Transaction Schemas
+# Category & Payment Type Schemas (Phase 0)
+# ==========================================
+class CategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Category name")
+    kind: str = Field("other", description="Reporting kind: revenue | cost | transfer | other")
+    is_active: bool = Field(True, description="Active status")
+    sort_order: int = Field(0, description="Ordering priority")
+    is_petty: bool = Field(False, description="Flag for compact recurring/petty view")
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    kind: Optional[str] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+    is_petty: Optional[bool] = None
+
+
+class CategoryResponse(CategoryBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentTypeBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Display name")
+    code: str = Field(..., min_length=1, max_length=50, description="Stable machine key e.g. CHK, CASH")
+    requires_cheque_number: bool = Field(False, description="Whether a cheque number is required")
+    requires_bank_fee_flag: bool = Field(False, description="Whether this payment type flags bank fees")
+    is_active: bool = Field(True, description="Active status")
+
+
+class PaymentTypeCreate(PaymentTypeBase):
+    pass
+
+
+class PaymentTypeUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    requires_cheque_number: Optional[bool] = None
+    requires_bank_fee_flag: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class PaymentTypeResponse(PaymentTypeBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Ledger Transaction Schemas (Phase 1 Revision 2)
 # ==========================================
 class LedgerTransactionBase(BaseModel):
     date: str = Field(..., description="Transaction date (YYYY-MM-DD)")
     amount: float = Field(..., gt=0.0, description="Transaction amount")
     direction: str = Field(..., description="Transaction direction: in or out")
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency code")
-    category: str = Field("other", max_length=100, description="Category (revenue, cost, withdrawal, other)")
-    description: str = Field("", max_length=255, description="Description / memo")
-    source: str = Field("manual", max_length=50, description="Source (manual, invoice_payment, bill_payment, transfer, cheque, subscription_charge, statement_import)")
+    category_id: Optional[int] = Field(None, description="FK to TransactionCategory")
+    payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
+    reference: Optional[str] = Field("", max_length=255, description="Reference, e.g. invoice # or note")
+    description: Optional[str] = Field("", max_length=255, description="Description / memo")
+    fx_rate: Optional[float] = Field(None, description="Applied daily exchange rate if applicable")
+    source: str = Field("manual", max_length=50, description="Source")
     linked_invoice_id: Optional[int] = None
     linked_bill_id: Optional[int] = None
 
 
 class LedgerTransactionCreate(LedgerTransactionBase):
-    pass
+    category: Optional[str] = None  # Backwards compatibility string fallback
 
 
 class LedgerTransactionResponse(LedgerTransactionBase):
     id: int
     account_id: int
     running_balance: float
+    category_name: Optional[str] = None
+    payment_type_code: Optional[str] = None
+    payment_type_name: Optional[str] = None
+    fx_equivalent: Optional[float] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
 

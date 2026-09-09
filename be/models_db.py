@@ -39,6 +39,8 @@ from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB 
 from finance.models import (  # noqa: E402, F401
     CustomerDB,
     VendorDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
     SalesInvoiceDB,
     SalesInvoiceLineDB,
     BillDB,

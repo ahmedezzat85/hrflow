@@ -1,37 +1,134 @@
         <section class="page-section" id="a-finance-accounts">
-          <div class="toolbar">
-            <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Company Bank Accounts</h2>
-              <p class="section-subtitle">Accounts used for receiving customer payments and disbursing payroll & bills.</p>
-            </div>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <div class="filter-tabs">
-                <button class="filter-tab active" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
-                <button class="filter-tab" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
-                <button class="filter-tab" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
-              </div>
-              <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()"><i class="fa-solid fa-plus"></i> Add Account</button>
+          <!-- Sub Navigation for Bank Accounts & Lookups -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <div class="filter-tabs" id="financeAccountsSubNav">
+              <button class="filter-tab active" id="subtabFinanceAccounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
+              <button class="filter-tab" id="subtabFinanceCategories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
+              <button class="filter-tab" id="subtabFinancePaymentTypes" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
             </div>
           </div>
-          <div class="card">
-            <div class="section-loading-bar" id="financeAccountsLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>Account Name</th>
-                  <th>Bank Name</th>
-                  <th>Account Number</th>
-                  <th>Currency</th>
-                  <th>Current Balance</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="financeAccountsTableBody"></tbody>
-            </table>
-            <div class="empty-state" id="financeAccountsEmpty" style="display: none;">
-              <i class="fa-solid fa-building-columns"></i>
-              <p>No company bank accounts configured yet.</p>
+
+          <!-- PANE 1: Bank & Cash Accounts -->
+          <div id="financeSubPaneAccounts">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</h2>
+                <p class="section-subtitle">Accounts used for receiving customer payments, disbursements, and cash custody.</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <div class="filter-tabs">
+                  <button class="filter-tab active" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
+                  <button class="filter-tab" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
+                  <button class="filter-tab" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
+                </div>
+                <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()"><i class="fa-solid fa-plus"></i> Add Account</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-loading-bar" id="financeAccountsLoadingBar"><span></span></div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th>Account Name</th>
+                    <th>Type</th>
+                    <th>Bank / Custodian</th>
+                    <th>Account # / IBAN</th>
+                    <th>Currency</th>
+                    <th>Current Balance</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="financeAccountsTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="financeAccountsEmpty" style="display: none;">
+                <i class="fa-solid fa-building-columns"></i>
+                <p>No company bank or cash accounts configured yet.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 2: Transaction Categories -->
+          <div id="financeSubPaneCategories" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-tags"></i> Transaction Categories</h2>
+                <p class="section-subtitle">Extensible taxonomy for ledger entries, cash book classification, and recurring spend rollups.</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <select id="financeCategoryKindFilter" class="form-control" style="width:auto;min-width:140px;height:38px;padding:4px 10px;font-size:13px;" onchange="filterFinanceCategoriesByKind(this.value)">
+                  <option value="all">All Kinds</option>
+                  <option value="cost">Cost / Expense</option>
+                  <option value="revenue">Revenue / Income</option>
+                  <option value="transfer">Transfer</option>
+                  <option value="other">Other</option>
+                </select>
+                <div class="filter-tabs">
+                  <button class="filter-tab active" onclick="filterFinanceCategories('all', this)">All</button>
+                  <button class="filter-tab" onclick="filterFinanceCategories('active', this)">Active</button>
+                  <button class="filter-tab" onclick="filterFinanceCategories('inactive', this)">Inactive</button>
+                  <button class="filter-tab" onclick="filterFinanceCategories('petty', this)">Petty Spend</button>
+                </div>
+                <button class="btn btn-fill" onclick="openAddFinanceCategoryModal()"><i class="fa-solid fa-plus"></i> Add Category</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-loading-bar" id="financeCategoriesLoadingBar"><span></span></div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th style="width:60px;">#</th>
+                    <th>Category Name</th>
+                    <th>Reporting Kind</th>
+                    <th>Petty / Recurring Spend</th>
+                    <th>Status</th>
+                    <th style="width:120px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="financeCategoriesTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="financeCategoriesEmpty" style="display: none;">
+                <i class="fa-solid fa-tags"></i>
+                <p>No transaction categories found.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 3: Payment Types -->
+          <div id="financeSubPanePaymentTypes" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-credit-card"></i> Payment Types</h2>
+                <p class="section-subtitle">Payment methods and rule triggers (cheque registers, bank fee prompts, transfer codes).</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <div class="filter-tabs">
+                  <button class="filter-tab active" onclick="filterFinancePaymentTypes('all', this)">All</button>
+                  <button class="filter-tab" onclick="filterFinancePaymentTypes('active', this)">Active</button>
+                  <button class="filter-tab" onclick="filterFinancePaymentTypes('inactive', this)">Inactive</button>
+                </div>
+                <button class="btn btn-fill" onclick="openAddFinancePaymentTypeModal()"><i class="fa-solid fa-plus"></i> Add Payment Type</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-loading-bar" id="financePaymentTypesLoadingBar"><span></span></div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Machine Code</th>
+                    <th>Requires Cheque #</th>
+                    <th>Requires Bank Fee Flag</th>
+                    <th>Status</th>
+                    <th style="width:120px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="financePaymentTypesTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="financePaymentTypesEmpty" style="display: none;">
+                <i class="fa-solid fa-credit-card"></i>
+                <p>No payment types configured yet.</p>
+              </div>
             </div>
           </div>
         </section>

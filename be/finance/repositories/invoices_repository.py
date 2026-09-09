@@ -19,6 +19,8 @@ from finance.models import (
     FinanceBankAccountDB,
     CustomerDB,
     LedgerTransactionDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
 )
 
 
@@ -231,13 +233,18 @@ class InvoicesRepository:
                     invoice.status = "paid"
 
         # Record corresponding ledger transaction for single source of truth
+        rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
+        inbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "INBOUND_TRANS").first()
+
         ledger_tx = LedgerTransactionDB(
             account_id=bank_account.id,
             date=payment.payment_date,
             amount=payment.amount,
             direction="in" if payment.direction == "incoming" else "out",
             currency=payment.currency,
-            category="revenue" if payment.direction == "incoming" else "cost",
+            category_id=rev_cat.id if rev_cat else None,
+            payment_type_id=inbound_pt.id if inbound_pt else None,
+            reference=invoice.invoice_number if invoice else (payment.reference or ""),
             description=f"Payment for invoice #{invoice.invoice_number}" if invoice else (payment.reference or f"Incoming payment #{payment.id}"),
             source="invoice_payment",
             linked_invoice_id=payment.related_invoice_id,

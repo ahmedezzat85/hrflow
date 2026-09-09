@@ -19,6 +19,8 @@ from finance.models import (
     FinanceBankAccountDB,
     VendorDB,
     LedgerTransactionDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
 )
 
 
@@ -234,13 +236,22 @@ class BillsRepository:
                     bill.status = "paid"
 
         # Record corresponding ledger transaction for single source of truth
+        bill_cat = None
+        if bill and bill.category:
+            bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(bill.category.strip())).first()
+        if not bill_cat:
+            bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
+        outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
+
         ledger_tx = LedgerTransactionDB(
             account_id=bank_account.id,
             date=payment.payment_date,
             amount=payment.amount,
             direction="in" if payment.direction == "incoming" else "out",
             currency=payment.currency,
-            category=bill.category if bill else "cost",
+            category_id=bill_cat.id if bill_cat else None,
+            payment_type_id=outbound_pt.id if outbound_pt else None,
+            reference=bill.bill_number if bill else (payment.reference or ""),
             description=f"Payment for bill #{bill.bill_number}" if bill else (payment.reference or f"Outgoing payment #{payment.id}"),
             source="bill_payment",
             linked_bill_id=payment.related_bill_id,

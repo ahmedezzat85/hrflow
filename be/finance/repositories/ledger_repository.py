@@ -4,7 +4,7 @@ SQLAlchemy-backed repository for the transaction ledger.
 Single source of truth for account transactions and running balances.
 """
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 
 from finance.models import LedgerTransactionDB, FinanceBankAccountDB
@@ -19,20 +19,31 @@ class LedgerRepository:
         account_id: int,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
-        category: Optional[str] = None,
+        category_id: Optional[int] = None,
+        payment_type_id: Optional[int] = None,
         direction: Optional[str] = None,
+        is_petty: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[LedgerTransactionDB]:
-        query = self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.account_id == account_id)
+        query = (
+            self.db.query(LedgerTransactionDB)
+            .options(joinedload(LedgerTransactionDB.category), joinedload(LedgerTransactionDB.payment_type))
+            .filter(LedgerTransactionDB.account_id == account_id)
+        )
         if date_from:
             query = query.filter(LedgerTransactionDB.date >= date_from)
         if date_to:
             query = query.filter(LedgerTransactionDB.date <= date_to)
-        if category:
-            query = query.filter(LedgerTransactionDB.category == category)
+        if category_id is not None:
+            query = query.filter(LedgerTransactionDB.category_id == category_id)
+        if payment_type_id is not None:
+            query = query.filter(LedgerTransactionDB.payment_type_id == payment_type_id)
         if direction:
             query = query.filter(LedgerTransactionDB.direction == direction)
+        if is_petty is not None:
+            from finance.models import TransactionCategoryDB
+            query = query.join(TransactionCategoryDB, isouter=True).filter(TransactionCategoryDB.is_petty == is_petty)
 
         return (
             query.order_by(LedgerTransactionDB.date.desc(), LedgerTransactionDB.id.desc())
@@ -42,7 +53,12 @@ class LedgerRepository:
         )
 
     def get_by_id(self, tx_id: int) -> Optional[LedgerTransactionDB]:
-        return self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.id == tx_id).first()
+        return (
+            self.db.query(LedgerTransactionDB)
+            .options(joinedload(LedgerTransactionDB.category), joinedload(LedgerTransactionDB.payment_type))
+            .filter(LedgerTransactionDB.id == tx_id)
+            .first()
+        )
 
     def create_transaction(
         self,
@@ -76,8 +92,11 @@ class LedgerRepository:
             amount=amount,
             direction=direction,
             currency=data.get("currency", bank_account.currency),
-            category=data.get("category", "other"),
-            description=data.get("description", ""),
+            category_id=data.get("category_id"),
+            payment_type_id=data.get("payment_type_id"),
+            reference=data.get("reference", "") or "",
+            description=data.get("description", "") or "",
+            fx_rate=float(data["fx_rate"]) if data.get("fx_rate") is not None else None,
             source=data.get("source", "manual"),
             linked_invoice_id=data.get("linked_invoice_id"),
             linked_bill_id=data.get("linked_bill_id"),
@@ -86,5 +105,4 @@ class LedgerRepository:
         )
         self.db.add(tx)
         self.db.commit()
-        self.db.refresh(tx)
-        return tx
+        return self.get_by_id(tx.id)

@@ -1,0 +1,45 @@
+  <div class="modal-overlay" id="financePaymentTypeModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-credit-card"></i></div>
+        <div class="modal-head-text">
+          <h3 id="financePaymentTypeModalTitle">Add Payment Type</h3>
+          <p>Configure payment methods and rule triggers (cheque registers, bank fee requirements).</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('financePaymentTypeModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fFinancePaymentTypeId">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sliders"></i> Payment Type Settings <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Name <span class="req">*</span></label>
+              <input id="fFinancePaymentTypeName" placeholder="e.g. Cheque Payment, Cash Withdrawal, Wire Transfer">
+            </div>
+            <div class="form-field full">
+              <label>Code (Machine Key) <span class="req">*</span></label>
+              <input id="fFinancePaymentTypeCode" placeholder="e.g. CHK, CASH, INTTRANS, DEBIT_CARD" style="font-family:monospace;text-transform:uppercase;">
+              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stable identifier used by accounting and automated rules.</span>
+            </div>
+            <div class="form-field full" style="margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:13px;font-weight:500;">
+                <input type="checkbox" id="fFinancePaymentTypeReqCheque" style="width:16px;height:16px;cursor:pointer;">
+                <span><strong>Requires Cheque Number</strong> (prompts cheque number and links into the cheque register)</span>
+              </label>
+            </div>
+            <div class="form-field full">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:13px;font-weight:500;">
+                <input type="checkbox" id="fFinancePaymentTypeReqBankFee" style="width:16px;height:16px;cursor:pointer;">
+                <span><strong>Requires Bank Fee Flag</strong> (prompts for related bank fee transaction)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('financePaymentTypeModal')">Cancel</button>
+        <button class="btn btn-fill" id="financePaymentTypeSaveBtn" onclick="saveFinancePaymentType()"><i class="fa-solid fa-floppy-disk"></i> Save Payment Type</button>
+      </div>
+    </div>
+  </div>

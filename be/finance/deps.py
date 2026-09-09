@@ -18,6 +18,10 @@ from finance.repositories.bills_repository import BillsRepository
 from finance.services.bills_service import BillsService
 from finance.repositories.ledger_repository import LedgerRepository
 from finance.services.ledger_service import LedgerService
+from finance.repositories.categories_repository import CategoriesRepository
+from finance.services.categories_service import CategoriesService
+from finance.repositories.payment_types_repository import PaymentTypesRepository
+from finance.services.payment_types_service import PaymentTypesService
 
 
 def get_accounts_repo(db: Session = Depends(get_db)) -> AccountsRepository:
@@ -70,6 +74,26 @@ def get_bills_service(
     return BillsService(repo)
 
 
+def get_categories_repo(db: Session = Depends(get_db)) -> CategoriesRepository:
+    return CategoriesRepository(db)
+
+
+def get_categories_service(
+    repo: CategoriesRepository = Depends(get_categories_repo),
+) -> CategoriesService:
+    return CategoriesService(repo)
+
+
+def get_payment_types_repo(db: Session = Depends(get_db)) -> PaymentTypesRepository:
+    return PaymentTypesRepository(db)
+
+
+def get_payment_types_service(
+    repo: PaymentTypesRepository = Depends(get_payment_types_repo),
+) -> PaymentTypesService:
+    return PaymentTypesService(repo)
+
+
 def get_ledger_repo(db: Session = Depends(get_db)) -> LedgerRepository:
     return LedgerRepository(db)
 
@@ -77,5 +101,7 @@ def get_ledger_repo(db: Session = Depends(get_db)) -> LedgerRepository:
 def get_ledger_service(
     repo: LedgerRepository = Depends(get_ledger_repo),
     accounts_repo: AccountsRepository = Depends(get_accounts_repo),
+    categories_repo: CategoriesRepository = Depends(get_categories_repo),
+    payment_types_repo: PaymentTypesRepository = Depends(get_payment_types_repo),
 ) -> LedgerService:
-    return LedgerService(repo, accounts_repo)
+    return LedgerService(repo, accounts_repo, categories_repo, payment_types_repo)
