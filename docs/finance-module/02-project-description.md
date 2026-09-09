@@ -87,7 +87,7 @@ Use this table to track module maturity as implementation proceeds. Update after
 | Module | Status | Last updated |
 |---|---|---|
 | HR core (existing) | Implemented | — |
-| Phase 0 Housekeeping & Audit | Implemented | 2026-09-08 |
+| Phase 0 Housekeeping & Audit | Implemented | 2026-09-09 |
 | RBAC skeleton (Phase 1) | Implemented | 2026-09-09 |
 | Finance placeholders (Phase 2) | Not started | — |
 | Finance data model (Phase 3) | Not started | — |
@@ -95,6 +95,21 @@ Use this table to track module maturity as implementation proceeds. Update after
 | Payroll engine (Phase 5) | Not started | — |
 | Reporting layer (Phase 6) | Not started | — |
 | Role expansion (Phase 7) | Not started | — |
+
+### Implementation Changelog & Audit Log
+
+- **Phase 0 Housekeeping & Data-Layer Audit Completion (2026-09-08 / 2026-09-09)**:
+  - Disambiguated legacy HR entities (`employee_bank_accounts` and `salary_payment_docs`), purged all ambiguous shims, and renamed sheet/dual repositories (`0dd4e8c`, `6088317`).
+  - Fully closed out the `sheets_client.py` and data-layer audit (Phase 0 Step 3):
+    - Removed hardcoded default database URL (`f568c89`).
+    - Updated `.env.example` to enforce `STORAGE_ENGINE=sql` as default and purged obsolete references to Google Sheets and dual-write as primary persistence engines (`c88433a`). The system of record is strictly SQLite/PostgreSQL.
+- **Phase 1 Core RBAC Skeleton (2026-09-09)**:
+  - Added SQLAlchemy models in `be/core/rbac_models.py` (`PermissionDB`, `RoleDB`, `RolePermissionDB`, `UserRoleDB`) and `be/core/__init__.py`.
+  - Alembic migration `0003_rbac_skeleton.py` creating tables, indexes, and constraints.
+  - Idempotent seed helper `be/core/rbac_seed.py` seeding `system_admin` (22 permissions), `employee` (`self.*`), and automatic user backfill.
+  - Permission resolution and `require_permission` route guard in `be/core/permissions.py`.
+  - Proof-of-concept wiring on `POST /api/employees` gated with `require_permission("hr.employee.write")` (`cce60cd`).
+  - Test suite `be/tests/test_rbac.py` passing (163 tests total).
 
 ## Related Documents
 
