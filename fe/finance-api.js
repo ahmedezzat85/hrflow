@@ -23,7 +23,12 @@ const FinanceMockState = {
     { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
     { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
   ],
+  bills: [
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", issue_date: "2026-09-01", due_date: "2026-09-30", status: "unpaid", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category: "SaaS", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
+  ],
   payments: [],
+  billPayments: [],
 };
 
 const FinanceApi = {
@@ -116,8 +121,92 @@ const FinanceApi = {
     return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);
   },
 
-  getBills() {
-    return apiRequest("GET", "/api/finance/bills");
+  // Vendor Bills
+  async getBills(params) {
+    if (_isMock()) {
+      let list = [...FinanceMockState.bills];
+      if (params && params.status) list = list.filter((b) => b.status === params.status);
+      if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
+      if (params && params.search) {
+        const s = params.search.toLowerCase();
+        list = list.filter((b) => b.bill_number.toLowerCase().includes(s) || (b.vendor_name || "").toLowerCase().includes(s));
+      }
+      return list;
+    }
+    let url = "/api/finance/bills";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async getBill(id) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      return bill;
+    }
+    return apiRequest("GET", `/api/finance/bills/${id}`);
+  },
+  async createBill(payload) {
+    if (_isMock()) {
+      const vend = FinanceMockState.vendors.find((v) => v.id === parseInt(payload.vendor_id, 10));
+      const lines = (payload.lines || []).map((ln, i) => ({
+        id: Date.now() + i, bill_id: FinanceMockState.bills.length + 1,
+        ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
+      }));
+      const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+      const newBill = {
+        id: FinanceMockState.bills.length + 1,
+        ...payload,
+        vendor_name: vend ? vend.name : null,
+        subtotal, tax_amount: 0, total: subtotal,
+        created_at: new Date().toISOString(),
+        lines,
+      };
+      FinanceMockState.bills.push(newBill);
+      return newBill;
+    }
+    return apiRequest("POST", "/api/finance/bills", payload);
+  },
+  async updateBill(id, payload) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      Object.assign(bill, payload);
+      if (payload.lines) {
+        bill.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
+        bill.total = bill.subtotal;
+      }
+      return bill;
+    }
+    return apiRequest("PUT", `/api/finance/bills/${id}`, payload);
+  },
+  async voidBill(id) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      bill.status = "void";
+      return bill;
+    }
+    return apiRequest("DELETE", `/api/finance/bills/${id}`);
+  },
+  async getBillPayments(billId) {
+    if (_isMock()) return FinanceMockState.billPayments.filter((p) => p.related_bill_id === parseInt(billId, 10));
+    return apiRequest("GET", `/api/finance/bills/${billId}/payments`);
+  },
+  async recordBillPayment(billId, payload) {
+    if (_isMock()) {
+      const newPayment = {
+        id: FinanceMockState.billPayments.length + 1,
+        ...payload,
+        related_bill_id: parseInt(billId, 10),
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.billPayments.push(newPayment);
+      return newPayment;
+    }
+    return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload);
   },
 
   getPayrollRuns() {
