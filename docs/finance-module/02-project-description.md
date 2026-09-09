@@ -88,7 +88,7 @@ Use this table to track module maturity as implementation proceeds. Update after
 |---|---|---|
 | HR core (existing) | Implemented | — |
 | Phase 0 Housekeeping & Audit | Implemented | 2026-09-08 |
-| RBAC skeleton (Phase 1) | Not started | — |
+| RBAC skeleton (Phase 1) | Implemented | 2026-09-09 |
 | Finance placeholders (Phase 2) | Not started | — |
 | Finance data model (Phase 3) | Not started | — |
 | Finance CRUD (Phase 4) | Not started | — |

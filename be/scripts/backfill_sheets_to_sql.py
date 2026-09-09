@@ -367,6 +367,11 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                     entry.details = str(r.get("details") or "")
                     stats["audit_log"] += 1
 
+            if not dry_run and target_domain in ("all", "employees", "users", "rbac"):
+                from core.rbac_seed import seed_rbac
+                rbac_stats = seed_rbac(db)
+                stats["rbac"] = rbac_stats
+
             if dry_run:
                 db.rollback()
     except Exception as exc:

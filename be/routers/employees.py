@@ -18,6 +18,7 @@ from services.uploads import validate_upload_content, safe_content_disposition_f
 from models import EmployeeCreate, EmployeeUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
 from repositories.interfaces import EmployeeRepository, AuditRepository
 from repositories.deps import get_employee_repo, get_audit_repo
+from core.permissions import require_permission
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
@@ -50,7 +51,7 @@ def get_employee(
 @router.post("", status_code=201)
 def create_employee(
     payload: EmployeeCreate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):

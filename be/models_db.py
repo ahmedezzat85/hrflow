@@ -29,6 +29,11 @@ class UserDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     employee = relationship("EmployeeDB", back_populates="user", foreign_keys=[employee_id])
+    user_roles = relationship("UserRoleDB", back_populates="user", cascade="all, delete-orphan")
+
+
+# Import and re-export RBAC models so they are attached to Base.metadata
+from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401
 
 
 class EmployeeDB(Base):
