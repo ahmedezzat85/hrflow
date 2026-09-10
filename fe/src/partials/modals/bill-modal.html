@@ -1,80 +1,78 @@
 <!-- fe/src/partials/modals/bill-modal.html -->
-<div id="billModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="billModalTitle">
-  <div class="modal-box" style="max-width: 780px;">
-    <div class="modal-header">
-      <h3 id="billModalTitle" class="modal-title"><i class="fa-solid fa-receipt"></i> <span id="billModalTitleText">New Vendor Bill</span></h3>
-      <button class="modal-close" onclick="closeBillModal()" aria-label="Close">&times;</button>
+<div id="billModal" class="modal-overlay">
+  <div class="modal modal-v2" style="max-width: 780px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-receipt"></i></div>
+      <div class="modal-head-text">
+        <h3 id="billModalTitleText">New Vendor Bill</h3>
+        <p>Record a bill received from a vendor and track its payment.</p>
+      </div>
+      <button class="modal-close" onclick="closeBillModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billModalId">
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-        <!-- Vendor -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="billVendorId">Vendor <span class="required">*</span></label>
-          <select id="billVendorId" class="form-control" required>
-            <option value="">— Select vendor —</option>
-          </select>
-        </div>
-        <!-- Bill number -->
-        <div class="form-group">
-          <label class="form-label" for="billNumber">Bill # <span class="required">*</span></label>
-          <input type="text" id="billNumber" class="form-control" placeholder="BILL-2026-001" required>
-        </div>
-        <!-- Category -->
-        <div class="form-group">
-          <label class="form-label" for="billCategory">Category</label>
-          <input type="text" id="billCategory" class="form-control" placeholder="e.g. Infrastructure, SaaS">
-        </div>
-        <!-- Status -->
-        <div class="form-group">
-          <label class="form-label" for="billStatus">Status</label>
-          <select id="billStatus" class="form-control">
-            <option value="unpaid">Unpaid</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="void">Void</option>
-          </select>
-        </div>
-        <!-- Issue date -->
-        <div class="form-group">
-          <label class="form-label" for="billIssueDate">Issue Date <span class="required">*</span></label>
-          <input type="date" id="billIssueDate" class="form-control" required>
-        </div>
-        <!-- Due date -->
-        <div class="form-group">
-          <label class="form-label" for="billDueDate">Due Date <span class="required">*</span></label>
-          <input type="date" id="billDueDate" class="form-control" required>
-        </div>
-        <!-- Currency -->
-        <div class="form-group">
-          <label class="form-label" for="billCurrency">Currency</label>
-          <select id="billCurrency" class="form-control">
-            <option value="USD">USD — US Dollar</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="GBP">GBP — British Pound</option>
-            <option value="EGP">EGP — Egyptian Pound</option>
-            <option value="SAR">SAR — Saudi Riyal</option>
-            <option value="AED">AED — UAE Dirham</option>
-          </select>
-        </div>
-        <!-- Notes -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="billNotes">Notes</label>
-          <textarea id="billNotes" class="form-control" rows="2" placeholder="Optional notes for this bill..."></textarea>
+      <div class="form-section">
+        <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Bill Details <span class="line"></span></div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label for="billVendorId">Vendor <span class="req">*</span></label>
+            <select id="billVendorId" required>
+              <option value="">— Select vendor —</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="billNumber">Bill # <span class="req">*</span></label>
+            <input type="text" id="billNumber" placeholder="BILL-2026-001" required>
+          </div>
+          <div class="form-field">
+            <label for="billCategory">Category</label>
+            <input type="text" id="billCategory" placeholder="e.g. Infrastructure, SaaS">
+          </div>
+          <div class="form-field">
+            <label for="billStatus">Status</label>
+            <select id="billStatus">
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="void">Void</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="billIssueDate">Issue Date <span class="req">*</span></label>
+            <input type="date" id="billIssueDate" required>
+          </div>
+          <div class="form-field">
+            <label for="billDueDate">Due Date <span class="req">*</span></label>
+            <input type="date" id="billDueDate" required>
+          </div>
+          <div class="form-field">
+            <label for="billCurrency">Currency</label>
+            <select id="billCurrency">
+              <option value="USD">USD — US Dollar</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option>
+              <option value="EGP">EGP — Egyptian Pound</option>
+              <option value="SAR">SAR — Saudi Riyal</option>
+              <option value="AED">AED — UAE Dirham</option>
+            </select>
+          </div>
+          <div class="form-field full">
+            <label for="billNotes">Notes</label>
+            <textarea id="billNotes" rows="2" placeholder="Optional notes for this bill..."></textarea>
+          </div>
         </div>
       </div>
 
-      <!-- Line Items -->
-      <div style="margin-top: 20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-          <strong style="font-size: 0.95rem;">Line Items</strong>
-          <button type="button" class="btn btn-outline" style="font-size: 0.8rem; padding: 4px 12px;" onclick="addBillLine()">
+      <div class="form-section">
+        <div class="form-section-label"><i class="fa-solid fa-list"></i> Line Items <span class="line"></span></div>
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 10px;">
+          <button type="button" class="btn btn-sm" onclick="addBillLine()">
             <i class="fa-solid fa-plus"></i> Add Line
           </button>
         </div>
-        <table style="width:100%; border-collapse:collapse; font-size: 0.88rem;">
+        <table style="width:100%; border-collapse:collapse; font-size: 13.5px;">
           <thead>
-            <tr style="background: var(--surface-2, rgba(255,255,255,0.06)); text-align: left;">
+            <tr style="background: var(--surface2); text-align: left;">
               <th style="padding: 8px 10px; width: 45%;">Description</th>
               <th style="padding: 8px 10px; width: 15%;">Qty</th>
               <th style="padding: 8px 10px; width: 20%;">Unit Price</th>
@@ -84,14 +82,14 @@
           </thead>
           <tbody id="billLinesBody"></tbody>
         </table>
-        <div style="text-align:right; margin-top: 10px; font-size: 0.95rem;">
+        <div style="text-align:right; margin-top: 10px; font-size: 13.5px;">
           Subtotal: <strong id="billSubtotalDisplay">0.00</strong>
           &nbsp;&nbsp; Total: <strong id="billTotalDisplay">0.00</strong>
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeBillModal()">Cancel</button>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeBillModal()">Cancel</button>
       <button class="btn btn-fill" id="billModalSaveBtn" onclick="saveBillModal()">
         <i class="fa-solid fa-floppy-disk"></i> Save Bill
       </button>
@@ -100,47 +98,51 @@
 </div>
 
 <!-- Payment Modal (record outgoing payment against a bill) -->
-<div id="billPaymentModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="billPaymentModalTitle">
-  <div class="modal-box" style="max-width: 520px;">
-    <div class="modal-header">
-      <h3 id="billPaymentModalTitle" class="modal-title"><i class="fa-solid fa-money-bill-transfer"></i> Record Payment</h3>
-      <button class="modal-close" onclick="closeBillPaymentModal()" aria-label="Close">&times;</button>
+<div id="billPaymentModal" class="modal-overlay">
+  <div class="modal modal-v2" style="max-width: 520px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+      <div class="modal-head-text">
+        <h3>Record Payment</h3>
+        <p>Apply an outgoing payment against this vendor bill.</p>
+      </div>
+      <button class="modal-close" onclick="closeBillPaymentModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billPaymentBillId">
-      <p id="billPaymentBillInfo" style="font-size: 0.9rem; margin-bottom: 16px; opacity: 0.75;"></p>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div class="form-group">
-          <label class="form-label" for="billPaymentAmount">Amount <span class="required">*</span></label>
-          <input type="number" id="billPaymentAmount" class="form-control" placeholder="0.00" min="0.01" step="0.01" required>
+      <p id="billPaymentBillInfo" style="font-size: 13px; color: var(--text2); margin-bottom: 12px;"></p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="billPaymentAmount">Amount <span class="req">*</span></label>
+          <input type="number" id="billPaymentAmount" placeholder="0.00" min="0.01" step="0.01" required>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="billPaymentDate">Payment Date <span class="required">*</span></label>
-          <input type="date" id="billPaymentDate" class="form-control" required>
+        <div class="form-field">
+          <label for="billPaymentDate">Payment Date <span class="req">*</span></label>
+          <input type="date" id="billPaymentDate" required>
         </div>
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="billPaymentBankAccountId">Bank Account <span class="required">*</span></label>
-          <select id="billPaymentBankAccountId" class="form-control" required>
+        <div class="form-field full">
+          <label for="billPaymentBankAccountId">Bank Account <span class="req">*</span></label>
+          <select id="billPaymentBankAccountId" required>
             <option value="">— Select account —</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="billPaymentMethod">Method</label>
-          <select id="billPaymentMethod" class="form-control">
+        <div class="form-field">
+          <label for="billPaymentMethod">Method</label>
+          <select id="billPaymentMethod">
             <option value="bank_transfer">Bank Transfer</option>
             <option value="cash">Cash</option>
             <option value="card">Card</option>
             <option value="other">Other</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="billPaymentReference">Reference</label>
-          <input type="text" id="billPaymentReference" class="form-control" placeholder="Wire ref, check #, etc.">
+        <div class="form-field">
+          <label for="billPaymentReference">Reference</label>
+          <input type="text" id="billPaymentReference" placeholder="Wire ref, check #, etc.">
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeBillPaymentModal()">Cancel</button>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeBillPaymentModal()">Cancel</button>
       <button class="btn btn-fill" onclick="saveBillPayment()">
         <i class="fa-solid fa-circle-check"></i> Record Payment
       </button>

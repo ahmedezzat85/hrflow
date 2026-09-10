@@ -12,6 +12,33 @@
   box-shadow: 0 8px 32px rgba(20, 50, 120, .10);
 }
 
+.section-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-head);
+  color: var(--text);
+}
+
+.section-title i {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: var(--text2);
+  font-weight: 400;
+}
+
 .card-head {
   display: flex;
   align-items: center;
@@ -814,4 +841,3 @@ button:disabled,
     transform: rotate(360deg);
   }
 }
-
