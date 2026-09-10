@@ -41,7 +41,12 @@ class InvoicesRepository:
     def _load_invoice_full(self, invoice_id: int) -> Optional[SalesInvoiceDB]:
         return (
             self.db.query(SalesInvoiceDB)
-            .options(joinedload(SalesInvoiceDB.lines), joinedload(SalesInvoiceDB.customer))
+            .options(
+                joinedload(SalesInvoiceDB.lines),
+                joinedload(SalesInvoiceDB.customer),
+                joinedload(SalesInvoiceDB.expected_bank_account),
+                joinedload(SalesInvoiceDB.payments),
+            )
             .filter(SalesInvoiceDB.id == invoice_id)
             .first()
         )
@@ -59,7 +64,12 @@ class InvoicesRepository:
     ) -> List[SalesInvoiceDB]:
         query = (
             self.db.query(SalesInvoiceDB)
-            .options(joinedload(SalesInvoiceDB.lines), joinedload(SalesInvoiceDB.customer))
+            .options(
+                joinedload(SalesInvoiceDB.lines),
+                joinedload(SalesInvoiceDB.customer),
+                joinedload(SalesInvoiceDB.expected_bank_account),
+                joinedload(SalesInvoiceDB.payments),
+            )
         )
         if status:
             query = query.filter(SalesInvoiceDB.status == status)
@@ -110,6 +120,8 @@ class InvoicesRepository:
             due_date=data["due_date"],
             status=data.get("status", "draft"),
             currency=data.get("currency", "USD"),
+            expected_bank_account_id=data.get("expected_bank_account_id"),
+            revenue_channel=data.get("revenue_channel"),
             notes=data.get("notes", ""),
         )
         self.db.add(invoice)
@@ -153,6 +165,10 @@ class InvoicesRepository:
             invoice.status = data["status"]
         if "currency" in data and data["currency"] is not None:
             invoice.currency = data["currency"]
+        if "expected_bank_account_id" in data:
+            invoice.expected_bank_account_id = data["expected_bank_account_id"]
+        if "revenue_channel" in data:
+            invoice.revenue_channel = data["revenue_channel"]
         if "notes" in data:
             invoice.notes = data["notes"]
 

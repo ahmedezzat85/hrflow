@@ -238,3 +238,140 @@ def test_invoice_rbac_employee_cannot_access(app_client, employee_cookies):
     """Employee role cannot access any invoice endpoint (finance.invoice.read is not in employee permissions)."""
     resp = app_client.get("/api/finance/invoices", cookies=employee_cookies)
     assert resp.status_code == 403
+
+
+def test_invoice_bank_routing_and_discrepancy(app_client, admin_cookies):
+    """Phase 4: Test expected_bank_account_id, revenue_channel, and non-blocking payment discrepancy detection."""
+    # 1. Setup customer
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Routing Test Customer"},
+        cookies=admin_cookies,
+    )
+    assert cust_resp.status_code == 201
+    customer_id = cust_resp.json()["id"]
+
+    # 2. Setup two bank accounts (expected account vs actual account)
+    bank_a_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Primary Operating USD",
+            "bank_name": "Chase Bank",
+            "account_number": "CHASE-1111",
+            "currency": "USD",
+            "opening_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    )
+    assert bank_a_resp.status_code == 201
+    bank_a_id = bank_a_resp.json()["id"]
+
+    bank_b_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Secondary Reserve USD",
+            "bank_name": "Citibank",
+            "account_number": "CITI-2222",
+            "currency": "USD",
+            "opening_balance": 10000.0,
+        },
+        cookies=admin_cookies,
+    )
+    assert bank_b_resp.status_code == 201
+    bank_b_id = bank_b_resp.json()["id"]
+
+    # 3. Invalid channel validation
+    bad_chan_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-ROUTING-BAD",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "revenue_channel": "invalid_channel_name",
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_chan_resp.status_code == 400
+    assert "Invalid revenue_channel" in bad_chan_resp.json()["detail"]
+
+    # 4. Invalid bank account validation (404)
+    bad_bank_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-ROUTING-NOBANK",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "expected_bank_account_id": 999999,
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_bank_resp.status_code == 404
+
+    # 5. Create invoice with expected bank account and intercompany_transfer_us channel
+    inv_payload = {
+        "customer_id": customer_id,
+        "invoice_number": "INV-ROUTING-001",
+        "issue_date": "2026-09-01",
+        "due_date": "2026-09-30",
+        "status": "sent",
+        "currency": "USD",
+        "expected_bank_account_id": bank_a_id,
+        "revenue_channel": "intercompany_transfer_us",
+        "lines": [
+            {"description": "US Consulting Services", "quantity": 1.0, "unit_price": 4000.0, "line_total": 4000.0}
+        ],
+    }
+    create_resp = app_client.post("/api/finance/invoices", json=inv_payload, cookies=admin_cookies)
+    assert create_resp.status_code == 201
+    inv_data = create_resp.json()
+    invoice_id = inv_data["id"]
+    assert inv_data["expected_bank_account_id"] == bank_a_id
+    assert inv_data["expected_bank_account_name"] == "Primary Operating USD"
+    assert inv_data["revenue_channel"] == "intercompany_transfer_us"
+    assert inv_data["has_bank_discrepancy"] is False
+
+    # 6. Record payment to the matching bank account (bank_a) -> no discrepancy
+    pay_a = {
+        "direction": "incoming",
+        "amount": 2000.0,
+        "currency": "USD",
+        "payment_date": "2026-09-10",
+        "bank_account_id": bank_a_id,
+        "method": "bank_transfer",
+    }
+    pay_a_resp = app_client.post(f"/api/finance/invoices/{invoice_id}/payments", json=pay_a, cookies=admin_cookies)
+    assert pay_a_resp.status_code == 201
+    pay_a_data = pay_a_resp.json()
+    assert pay_a_data["account_discrepancy"] is False
+    assert pay_a_data["expected_bank_account_id"] == bank_a_id
+
+    # Verify invoice has no discrepancy
+    inv_check = app_client.get(f"/api/finance/invoices/{invoice_id}", cookies=admin_cookies).json()
+    assert inv_check["has_bank_discrepancy"] is False
+
+    # 7. Record payment to DIFFERENT bank account (bank_b) -> discrepancy flagged, but succeeds!
+    pay_b = {
+        "direction": "incoming",
+        "amount": 2000.0,
+        "currency": "USD",
+        "payment_date": "2026-09-12",
+        "bank_account_id": bank_b_id,
+        "method": "bank_transfer",
+    }
+    pay_b_resp = app_client.post(f"/api/finance/invoices/{invoice_id}/payments", json=pay_b, cookies=admin_cookies)
+    assert pay_b_resp.status_code == 201
+    pay_b_data = pay_b_resp.json()
+    assert pay_b_data["account_discrepancy"] is True
+    assert pay_b_data["bank_account_id"] == bank_b_id
+    assert pay_b_data["expected_bank_account_id"] == bank_a_id
+    assert pay_b_data["expected_bank_account_name"] == "Primary Operating USD"
+
+    # Verify invoice now flags has_bank_discrepancy == True
+    inv_check_2 = app_client.get(f"/api/finance/invoices/{invoice_id}", cookies=admin_cookies).json()
+    assert inv_check_2["has_bank_discrepancy"] is True
+    assert inv_check_2["status"] == "paid"  # Fully paid 2000 + 2000 = 4000
+

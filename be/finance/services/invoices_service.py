@@ -14,17 +14,43 @@ from finance.schemas import (
     PaymentCreate,
     PaymentResponse,
 )
-from finance.models import SalesInvoiceDB, PaymentDB
+from finance.models import SalesInvoiceDB, PaymentDB, FinanceBankAccountDB
 
 
 VALID_INVOICE_STATUSES = {"draft", "sent", "paid", "overdue", "void"}
 VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
+VALID_REVENUE_CHANNELS = {
+    "local_egp",
+    "overseas_usd",
+    "cash",
+    "intercompany_transfer_us",
+    "other",
+}
 
 
 class InvoicesService:
     def __init__(self, repo: InvoicesRepository):
         self.repo = repo
+
+    def _validate_routing_and_channel(self, expected_bank_account_id: Optional[int], revenue_channel: Optional[str]):
+        if revenue_channel and revenue_channel not in VALID_REVENUE_CHANNELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid revenue_channel '{revenue_channel}'. Must be one of: {', '.join(sorted(VALID_REVENUE_CHANNELS))}",
+            )
+        if expected_bank_account_id is not None:
+            bank_acc = self.repo.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == expected_bank_account_id).first()
+            if not bank_acc:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Expected bank account {expected_bank_account_id} not found",
+                )
+            if not bank_acc.is_active:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Expected bank account '{bank_acc.account_name}' is inactive",
+                )
 
     # ------------------------------------------------------------------
     # Serialization helpers
@@ -42,6 +68,18 @@ class InvoicesService:
             for ln in (invoice.lines or [])
         ]
         customer_name = invoice.customer.name if invoice.customer else None
+        expected_acc_name = (
+            invoice.expected_bank_account.account_name
+            if getattr(invoice, "expected_bank_account", None)
+            else None
+        )
+        has_discrepancy = False
+        if invoice.expected_bank_account_id:
+            for p in (invoice.payments or []):
+                if p.bank_account_id and p.bank_account_id != invoice.expected_bank_account_id:
+                    has_discrepancy = True
+                    break
+
         return SalesInvoiceResponse(
             id=invoice.id,
             customer_id=invoice.customer_id,
@@ -51,6 +89,10 @@ class InvoicesService:
             due_date=invoice.due_date,
             status=invoice.status,
             currency=invoice.currency,
+            expected_bank_account_id=invoice.expected_bank_account_id,
+            expected_bank_account_name=expected_acc_name,
+            revenue_channel=invoice.revenue_channel,
+            has_bank_discrepancy=has_discrepancy,
             subtotal=invoice.subtotal,
             tax_amount=invoice.tax_amount,
             total=invoice.total,
@@ -65,6 +107,16 @@ class InvoicesService:
             if payment.bank_account
             else None
         )
+        account_discrepancy = False
+        exp_id = None
+        exp_name = None
+        if payment.sales_invoice and payment.sales_invoice.expected_bank_account_id:
+            exp_id = payment.sales_invoice.expected_bank_account_id
+            if payment.sales_invoice.expected_bank_account:
+                exp_name = payment.sales_invoice.expected_bank_account.account_name
+            if payment.bank_account_id != exp_id:
+                account_discrepancy = True
+
         return PaymentResponse(
             id=payment.id,
             direction=payment.direction,
@@ -75,6 +127,9 @@ class InvoicesService:
             payment_date=payment.payment_date,
             bank_account_id=payment.bank_account_id,
             bank_account_name=bank_name,
+            account_discrepancy=account_discrepancy,
+            expected_bank_account_id=exp_id,
+            expected_bank_account_name=exp_name,
             method=payment.method,
             reference=payment.reference or "",
             created_at=payment.created_at,
@@ -111,6 +166,8 @@ class InvoicesService:
         if payload.status not in VALID_INVOICE_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
 
+        self._validate_routing_and_channel(payload.expected_bank_account_id, payload.revenue_channel)
+
         existing = self.repo.get_by_number(payload.invoice_number)
         if existing:
             raise HTTPException(
@@ -136,6 +193,8 @@ class InvoicesService:
 
         if payload.status and payload.status not in VALID_INVOICE_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
+
+        self._validate_routing_and_channel(payload.expected_bank_account_id, payload.revenue_channel)
 
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
         lines_data = None

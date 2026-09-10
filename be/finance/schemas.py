@@ -274,6 +274,8 @@ class SalesInvoiceBase(BaseModel):
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
     status: str = Field("draft", description="draft|sent|paid|overdue|void")
     currency: str = Field("USD", min_length=3, max_length=10)
+    expected_bank_account_id: Optional[int] = Field(None, description="Expected destination bank or cash account")
+    revenue_channel: Optional[str] = Field(None, description="Revenue channel: local_egp|overseas_usd|cash|intercompany_transfer_us|other")
     notes: Optional[str] = None
 
 
@@ -287,6 +289,8 @@ class SalesInvoiceUpdate(BaseModel):
     due_date: Optional[str] = None
     status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    expected_bank_account_id: Optional[int] = None
+    revenue_channel: Optional[str] = None
     notes: Optional[str] = None
     lines: Optional[List[SalesInvoiceLineCreate]] = None
 
@@ -298,6 +302,8 @@ class SalesInvoiceResponse(SalesInvoiceBase):
     total: float
     created_at: Optional[datetime] = None
     customer_name: Optional[str] = None
+    expected_bank_account_name: Optional[str] = None
+    has_bank_discrepancy: bool = False
     lines: List[SalesInvoiceLineResponse] = []
 
     class Config:
@@ -392,6 +398,9 @@ class PaymentResponse(PaymentBase):
     related_bill_id: Optional[int] = None
     created_at: Optional[datetime] = None
     bank_account_name: Optional[str] = None
+    account_discrepancy: bool = False
+    expected_bank_account_id: Optional[int] = None
+    expected_bank_account_name: Optional[str] = None
 
     class Config:
         from_attributes = True

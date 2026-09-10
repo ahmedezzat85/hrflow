@@ -1,5 +1,5 @@
 <!-- fe/src/partials/modals/invoice-modal.html -->
-<div id="invoiceModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="invoiceModalTitle">
+<div id="invoiceModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="invoiceModalTitle">
   <div class="modal-box" style="max-width: 780px;">
     <div class="modal-header">
       <h3 id="invoiceModalTitle" class="modal-title"><i class="fa-solid fa-file-invoice"></i> <span id="invoiceModalTitleText">New Sales Invoice</span></h3>
@@ -53,6 +53,25 @@
             <option value="AED">AED — UAE Dirham</option>
           </select>
         </div>
+        <!-- Expected Bank Account -->
+        <div class="form-group">
+          <label class="form-label" for="invoiceExpectedBankAccount">Expected Receiving Account</label>
+          <select id="invoiceExpectedBankAccount" class="form-control">
+            <option value="">— Any / Unspecified —</option>
+          </select>
+        </div>
+        <!-- Revenue Channel -->
+        <div class="form-group">
+          <label class="form-label" for="invoiceRevenueChannel">Revenue Channel</label>
+          <select id="invoiceRevenueChannel" class="form-control">
+            <option value="">— Unspecified —</option>
+            <option value="local_egp">Local EGP</option>
+            <option value="overseas_usd">Overseas USD</option>
+            <option value="cash">Cash</option>
+            <option value="intercompany_transfer_us">Intercompany Transfer (US)</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
         <!-- Notes -->
         <div class="form-group" style="grid-column: 1 / -1;">
           <label class="form-label" for="invoiceNotes">Notes</label>
@@ -96,7 +115,7 @@
 </div>
 
 <!-- Payment Modal (record payment against an invoice) -->
-<div id="invoicePaymentModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="invoicePaymentModalTitle">
+<div id="invoicePaymentModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="invoicePaymentModalTitle">
   <div class="modal-box" style="max-width: 520px;">
     <div class="modal-header">
       <h3 id="invoicePaymentModalTitle" class="modal-title"><i class="fa-solid fa-money-bill-transfer"></i> Record Payment</h3>
@@ -104,7 +123,12 @@
     </div>
     <div class="modal-body">
       <input type="hidden" id="paymentInvoiceId">
-      <p id="paymentInvoiceInfo" style="font-size: 0.9rem; margin-bottom: 16px; opacity: 0.75;"></p>
+      <input type="hidden" id="paymentExpectedBankAccountId">
+      <p id="paymentInvoiceInfo" style="font-size: 0.9rem; margin-bottom: 12px; opacity: 0.8;"></p>
+      <div id="paymentDiscrepancyWarning" style="display:none; margin-bottom: 14px; font-size: 0.82rem; padding: 8px 12px; background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.35); border-radius: 6px; color: #eab308;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span><strong>Routing Discrepancy:</strong> Receiving account differs from expected (<span id="paymentExpectedBankName"></span>). Payment will succeed and be marked with a routing discrepancy badge.</span>
+      </div>
       <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
         <div class="form-group">
           <label class="form-label" for="paymentAmount">Amount <span class="required">*</span></label>
@@ -115,8 +139,8 @@
           <input type="date" id="paymentDate" class="form-control" required>
         </div>
         <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="paymentBankAccountId">Bank Account <span class="required">*</span></label>
-          <select id="paymentBankAccountId" class="form-control" required>
+          <label class="form-label" for="paymentBankAccountId">Receiving Bank Account <span class="required">*</span></label>
+          <select id="paymentBankAccountId" class="form-control" onchange="_checkPaymentBankDiscrepancy()" required>
             <option value="">— Select account —</option>
           </select>
         </div>

@@ -24,8 +24,8 @@ const FinanceMockState = {
     { id: 2, name: "Slack Technologies", category: "SaaS", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", notes: "Team communication", is_active: true },
   ],
   invoices: [
-    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
-    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
+    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
+    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
   ],
   bills: [
     { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", issue_date: "2026-09-01", due_date: "2026-09-30", status: "unpaid", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
@@ -44,9 +44,9 @@ const FinanceMockState = {
   ],
   paymentTypes: [
     { id: 1, name: "Cash", code: "CASH", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 2, name: "Cash Withdrawal", code: "CASHWITHDRAW", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 3, name: "Cheque", code: "CHK", requires_cheque_number: true, requires_bank_fee_flag: false, is_active: true },
-    { id: 4, name: "Inbound Transfer", code: "INBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 2, name: "Cheque", code: "CHEQUE", requires_cheque_number: true, requires_bank_fee_flag: false, is_active: true },
+    { id: 3, name: "Incoming Wire / Transfer", code: "INCOMING_WIRE", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 4, name: "Internal Transfer", code: "INTERNAL_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
     { id: 5, name: "Outbound Transfer", code: "OUTBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
     { id: 6, name: "USD to EGP Conversion", code: "USDTOEGP", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
     { id: 7, name: "Debit Card", code: "DEBIT_CARD", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
@@ -87,6 +87,7 @@ const FinanceApi = {
     if (_isMock()) {
       const customers = FinanceMockState.customers;
       const cust = customers.find((c) => c.id === parseInt(payload.customer_id, 10));
+      const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
       const lines = (payload.lines || []).map((ln, i) => ({
         id: Date.now() + i, invoice_id: FinanceMockState.invoices.length + 1,
         ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
@@ -96,6 +97,8 @@ const FinanceApi = {
         id: FinanceMockState.invoices.length + 1,
         ...payload,
         customer_name: cust ? cust.name : null,
+        expected_bank_account_name: bank ? bank.account_name : null,
+        has_bank_discrepancy: false,
         subtotal, tax_amount: 0, total: subtotal,
         created_at: new Date().toISOString(),
         lines,
@@ -110,6 +113,10 @@ const FinanceApi = {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
       if (!inv) throw new Error("Invoice not found");
       Object.assign(inv, payload);
+      if (payload.expected_bank_account_id !== undefined) {
+        const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
+        inv.expected_bank_account_name = bank ? bank.account_name : null;
+      }
       if (payload.lines) {
         inv.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
         inv.total = inv.subtotal;
@@ -133,13 +140,40 @@ const FinanceApi = {
   },
   async recordInvoicePayment(invoiceId, payload) {
     if (_isMock()) {
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
+      let account_discrepancy = false;
+      let exp_id = null;
+      let exp_name = null;
+      const bankId = parseInt(payload.bank_account_id, 10);
+      if (inv && inv.expected_bank_account_id) {
+        exp_id = inv.expected_bank_account_id;
+        exp_name = inv.expected_bank_account_name;
+        if (bankId && bankId !== exp_id) {
+          account_discrepancy = true;
+          inv.has_bank_discrepancy = true;
+        }
+      }
+      const bank = (FinanceMockState.accounts || []).find((b) => b.id === bankId);
       const newPayment = {
         id: FinanceMockState.payments.length + 1,
         ...payload,
+        bank_account_id: bankId,
+        bank_account_name: bank ? bank.account_name : null,
+        account_discrepancy,
+        expected_bank_account_id: exp_id,
+        expected_bank_account_name: exp_name,
         related_invoice_id: parseInt(invoiceId, 10),
         created_at: new Date().toISOString(),
       };
       FinanceMockState.payments.push(newPayment);
+      if (inv) {
+        const totalPaid = FinanceMockState.payments
+          .filter((p) => p.related_invoice_id === inv.id)
+          .reduce((s, p) => s + (p.amount || 0), 0);
+        if (totalPaid >= inv.total) {
+          inv.status = "paid";
+        }
+      }
       return newPayment;
     }
     return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);

@@ -100,6 +100,17 @@ function _invoiceStatusBadge(status) {
   return map[status] || "badge-pending";
 }
 
+function _revenueChannelLabel(channel) {
+  const map = {
+    local_egp: "Local EGP",
+    overseas_usd: "Overseas USD",
+    cash: "Cash",
+    intercompany_transfer_us: "Intercompany (US)",
+    other: "Other",
+  };
+  return map[channel] || channel || "";
+}
+
 function renderFinanceInvoices(items) {
   const tbody = document.getElementById("financeInvoicesTableBody");
   const empty = document.getElementById("financeInvoicesEmpty");
@@ -114,10 +125,24 @@ function renderFinanceInvoices(items) {
 
   tbody.innerHTML = items
     .map(
-      (inv) => `
+      (inv) => {
+        const routeParts = [];
+        if (inv.expected_bank_account_name) {
+          routeParts.push(`<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.82rem;"><i class="fa-solid fa-building-columns" style="opacity:0.6; font-size:0.75rem;"></i> ${inv.expected_bank_account_name}</span>`);
+        }
+        if (inv.revenue_channel) {
+          routeParts.push(`<span class="badge badge-grey" style="font-size:0.72rem;">${_revenueChannelLabel(inv.revenue_channel)}</span>`);
+        }
+        const routeDisplay = routeParts.length ? routeParts.join("<br>") : `<span style="opacity:0.4;">—</span>`;
+        const discrepancyBadge = inv.has_bank_discrepancy
+          ? `<span class="badge" style="background: rgba(234, 179, 8, 0.18); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.72rem; margin-left: 6px;" title="Payment received in different account than expected"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancy</span>`
+          : "";
+
+        return `
     <tr>
-      <td><strong>${inv.invoice_number}</strong></td>
+      <td><strong>${inv.invoice_number}</strong>${discrepancyBadge}</td>
       <td>${inv.customer_name || "--"}</td>
+      <td>${routeDisplay}</td>
       <td>${inv.issue_date || "--"}</td>
       <td>${inv.due_date || "--"}</td>
       <td><strong>$${Number(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
@@ -128,7 +153,8 @@ function renderFinanceInvoices(items) {
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
-  `
+  `;
+      }
     )
     .join("");
 }
@@ -144,8 +170,18 @@ function filterFinanceInvoices(query) {
 }
 
 // ── Invoice Modal ────────────────────────────────────────────────────────────
-function openAddInvoiceModal() {
+async function _populateInvoiceBankDropdown() {
+  const sel = document.getElementById("invoiceExpectedBankAccount");
+  if (!sel) return;
+  try {
+    const accounts = await FinanceApi.getAccounts({ is_active: true });
+    sel.innerHTML = `<option value="">— Any / Unspecified —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency})</option>`).join("");
+  } catch (_) {}
+}
+
+async function openAddInvoiceModal() {
   _populateInvoiceCustomerDropdown();
+  _populateInvoiceBankDropdown();
   document.getElementById("invoiceModalTitleText").textContent = "New Sales Invoice";
   document.getElementById("invoiceModalId").value = "";
   document.getElementById("invoiceNumber").value = "";
@@ -154,15 +190,18 @@ function openAddInvoiceModal() {
   document.getElementById("invoiceDueDate").value = "";
   document.getElementById("invoiceStatus").value = "draft";
   document.getElementById("invoiceCurrency").value = "USD";
+  if (document.getElementById("invoiceExpectedBankAccount")) document.getElementById("invoiceExpectedBankAccount").value = "";
+  if (document.getElementById("invoiceRevenueChannel")) document.getElementById("invoiceRevenueChannel").value = "";
   document.getElementById("invoiceNotes").value = "";
   document.getElementById("invoiceLinesBody").innerHTML = "";
   _updateInvoiceTotals();
   addInvoiceLine();
-  document.getElementById("invoiceModal").style.display = "flex";
+  openModal("invoiceModal");
 }
 
 async function openEditInvoiceModal(invoiceId) {
   _populateInvoiceCustomerDropdown();
+  await _populateInvoiceBankDropdown();
   try {
     const inv = await FinanceApi.getInvoice(invoiceId);
     document.getElementById("invoiceModalTitleText").textContent = `Edit Invoice ${inv.invoice_number}`;
@@ -173,18 +212,24 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceDueDate").value = inv.due_date || "";
     document.getElementById("invoiceStatus").value = inv.status || "draft";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
+    if (document.getElementById("invoiceExpectedBankAccount")) {
+      document.getElementById("invoiceExpectedBankAccount").value = inv.expected_bank_account_id ? String(inv.expected_bank_account_id) : "";
+    }
+    if (document.getElementById("invoiceRevenueChannel")) {
+      document.getElementById("invoiceRevenueChannel").value = inv.revenue_channel || "";
+    }
     document.getElementById("invoiceNotes").value = inv.notes || "";
     document.getElementById("invoiceLinesBody").innerHTML = "";
     (inv.lines || []).forEach((ln) => addInvoiceLine(ln));
     _updateInvoiceTotals();
-    document.getElementById("invoiceModal").style.display = "flex";
+    openModal("invoiceModal");
   } catch (err) {
     showToast("Failed to load invoice: " + (err.message || err), "error");
   }
 }
 
 function closeInvoiceModal() {
-  document.getElementById("invoiceModal").style.display = "none";
+  closeModal("invoiceModal");
 }
 
 function addInvoiceLine(data) {
@@ -249,6 +294,9 @@ async function saveInvoiceModal() {
     if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
   });
 
+  const expBankEl = document.getElementById("invoiceExpectedBankAccount");
+  const revChanEl = document.getElementById("invoiceRevenueChannel");
+
   const payload = {
     customer_id: parseInt(customerId, 10),
     invoice_number: invoiceNumber,
@@ -256,6 +304,8 @@ async function saveInvoiceModal() {
     due_date: dueDate,
     status: document.getElementById("invoiceStatus").value,
     currency: document.getElementById("invoiceCurrency").value,
+    expected_bank_account_id: expBankEl && expBankEl.value ? parseInt(expBankEl.value, 10) : null,
+    revenue_channel: revChanEl && revChanEl.value ? revChanEl.value : null,
     notes: document.getElementById("invoiceNotes").value.trim(),
     lines,
   };
@@ -290,9 +340,29 @@ async function confirmVoidInvoice(invoiceId) {
   }
 }
 
+function _checkPaymentBankDiscrepancy() {
+  const expId = document.getElementById("paymentExpectedBankAccountId")?.value;
+  const selectedId = document.getElementById("paymentBankAccountId")?.value;
+  const warnEl = document.getElementById("paymentDiscrepancyWarning");
+  if (!warnEl) return;
+  if (expId && selectedId && String(expId) !== String(selectedId)) {
+    warnEl.style.display = "block";
+  } else {
+    warnEl.style.display = "none";
+  }
+}
+
 async function openPaymentModal(invoiceId) {
   const inv = (FinanceState.invoices || []).find((i) => i.id === invoiceId);
   document.getElementById("paymentInvoiceId").value = invoiceId;
+  const expBankId = inv ? (inv.expected_bank_account_id || "") : "";
+  const expBankName = inv ? (inv.expected_bank_account_name || "Expected Account") : "Expected Account";
+  
+  const expIdEl = document.getElementById("paymentExpectedBankAccountId");
+  if (expIdEl) expIdEl.value = expBankId;
+  const expNameEl = document.getElementById("paymentExpectedBankName");
+  if (expNameEl) expNameEl.textContent = expBankName;
+
   const infoEl = document.getElementById("paymentInvoiceInfo");
   if (infoEl && inv) {
     infoEl.textContent = `Invoice ${inv.invoice_number} — ${inv.currency} ${Number(inv.total).toLocaleString("en-US", { minimumFractionDigits: 2 })} total`;
@@ -306,15 +376,19 @@ async function openPaymentModal(invoiceId) {
   if (accSel) {
     try {
       const accounts = await FinanceApi.getAccounts({ is_active: true });
-      accSel.innerHTML = `<option value="">— Select account —</option>` + accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+      accSel.innerHTML = `<option value="">— Select account —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+      if (expBankId) {
+        accSel.value = String(expBankId);
+      }
     } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
   }
 
-  document.getElementById("invoicePaymentModal").style.display = "flex";
+  _checkPaymentBankDiscrepancy();
+  openModal("invoicePaymentModal");
 }
 
 function closeInvoicePaymentModal() {
-  document.getElementById("invoicePaymentModal").style.display = "none";
+  closeModal("invoicePaymentModal");
 }
 
 async function saveInvoicePayment() {
@@ -338,8 +412,12 @@ async function saveInvoicePayment() {
   };
 
   try {
-    await FinanceApi.recordInvoicePayment(invoiceId, payload);
-    showToast("Payment recorded", "success");
+    const res = await FinanceApi.recordInvoicePayment(invoiceId, payload);
+    if (res && res.account_discrepancy) {
+      showToast("Payment recorded (Note: Routed to different account than expected)", "warning");
+    } else {
+      showToast("Payment recorded", "success");
+    }
     closeInvoicePaymentModal();
     loadFinanceInvoices();
   } catch (err) {

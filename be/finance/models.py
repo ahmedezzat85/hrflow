@@ -66,10 +66,13 @@ class SalesInvoiceDB(Base):
     subtotal = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
+    expected_bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    revenue_channel = Column(String(50), nullable=True, index=True)  # local_egp | overseas_usd | cash | intercompany_transfer_us | other
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     customer = relationship("CustomerDB", back_populates="invoices")
+    expected_bank_account = relationship("FinanceBankAccountDB", foreign_keys=[expected_bank_account_id])
     lines = relationship("SalesInvoiceLineDB", back_populates="invoice", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="sales_invoice", foreign_keys="PaymentDB.related_invoice_id")
 
