@@ -35,7 +35,7 @@ class AccountsRepository:
     def create(self, data: dict) -> FinanceBankAccountDB:
         account = FinanceBankAccountDB(
             account_name=data["account_name"].strip(),
-            bank_name=data["bank_name"].strip(),
+            bank_name=data["bank_name"].strip() if data.get("bank_name") else None,
             account_number=data["account_number"].strip(),
             currency=data.get("currency", "USD").upper(),
             opening_balance=float(data.get("opening_balance", 0.0)),

@@ -47,6 +47,7 @@ from finance.routers import categories as finance_categories_router
 from finance.routers import payment_types as finance_payment_types_router
 from finance.routers import transactions as finance_transactions_router
 from finance.routers import transfers as finance_transfers_router
+from finance.routers import cheques as finance_cheques_router
 
 
 # Re-exported here so existing code/tests that reach into main.py for
@@ -153,5 +154,6 @@ app.include_router(finance_categories_router.router)
 app.include_router(finance_payment_types_router.router)
 app.include_router(finance_transactions_router.router)
 app.include_router(finance_transfers_router.router)
+app.include_router(finance_cheques_router.router)
 
 

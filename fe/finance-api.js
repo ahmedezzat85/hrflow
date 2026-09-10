@@ -12,8 +12,10 @@ window.round = round;
 
 const FinanceMockState = {
   accounts: [
-    { id: 1, account_name: "Voyance Operating USD", bank_name: "JPMorgan Chase", account_number: "******4821", currency: "USD", opening_balance: 150000.0, current_balance: 150000.0, is_active: true },
-    { id: 2, account_name: "Voyance Treasury Reserve", bank_name: "Silicon Valley Bank", account_number: "******9102", currency: "USD", opening_balance: 500000.0, current_balance: 500000.0, is_active: true },
+    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", currency: "USD", opening_balance: 150000.0, current_balance: 150000.0, is_active: true },
+    { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", currency: "USD", opening_balance: 500000.0, current_balance: 500000.0, is_active: true },
+    { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", currency: "EGP", opening_balance: 450000.0, current_balance: 450000.0, is_active: true },
+    { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", currency: "EGP", opening_balance: 20000.0, current_balance: 20000.0, is_active: true },
   ],
   customers: [
     { id: 1, name: "Apex Health Partners", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", notes: "Enterprise client", is_active: true },
@@ -53,6 +55,43 @@ const FinanceMockState = {
     { id: 8, name: "Bank Fees", code: "BANK_FEES", requires_cheque_number: false, requires_bank_fee_flag: true, is_active: true },
   ],
   transfers: [],
+  cheques: [
+    {
+      id: 1,
+      cheque_number: "001011",
+      account_id: 1,
+      account_name: "Voyance Operating USD",
+      issue_date: "2026-09-02",
+      amount: 4200.0,
+      currency: "USD",
+      payee: "Amazon Web Services",
+      purpose_type: "vendor_payment",
+      linked_bill_id: 1,
+      status: "cleared",
+      clear_date: "2026-09-05",
+      fiscal_year: 2026,
+      notes: "AWS cloud hosting payment",
+      created_at: "2026-09-02T10:00:00",
+    },
+    {
+      id: 2,
+      cheque_number: "001012",
+      account_id: 1,
+      account_name: "Voyance Operating USD",
+      issue_date: "2026-09-06",
+      amount: 15000.0,
+      currency: "USD",
+      payee: "Voyance Health (Cash Drawer)",
+      purpose_type: "cash_withdrawal",
+      destination_cash_account_id: 2,
+      destination_cash_account_name: "Voyance Treasury Reserve",
+      status: "issued",
+      clear_date: null,
+      fiscal_year: 2026,
+      notes: "Petty cash replenishment",
+      created_at: "2026-09-06T11:00:00",
+    },
+  ],
 };
 
 const FinanceApi = {
@@ -585,6 +624,10 @@ const FinanceApi = {
     return apiRequest("GET", url);
   },
 
+  async createTransaction(accountId, payload) {
+    return this.createAccountTransaction(accountId, payload);
+  },
+
   async createAccountTransaction(accountId, payload) {
     if (_isMock()) {
       if (!FinanceMockState.transactions) FinanceMockState.transactions = [];
@@ -616,11 +659,40 @@ const FinanceApi = {
         description: payload.description || "",
         fx_rate: payload.fx_rate ? parseFloat(payload.fx_rate) : null,
         fx_equivalent: payload.fx_rate ? round(amount * parseFloat(payload.fx_rate), 2) : null,
+        destination_cash_account_id: payload.destination_cash_account_id ? parseInt(payload.destination_cash_account_id, 10) : null,
+        cheque_number: payload.cheque_number || null,
         source: "manual",
         running_balance: acc ? acc.current_balance : amount,
         created_at: new Date().toISOString(),
       };
       FinanceMockState.transactions.unshift(newTx);
+
+      if (payload.destination_cash_account_id && direction === "out") {
+        const destCash = FinanceMockState.accounts.find((a) => a.id === parseInt(payload.destination_cash_account_id, 10));
+        if (destCash) {
+          destCash.current_balance = round(destCash.current_balance + amount, 2);
+          const pairedInflow = {
+            id: FinanceMockState.transactions.length + 1,
+            account_id: destCash.id,
+            date: payload.date,
+            amount,
+            direction: "in",
+            currency: destCash.currency,
+            category_id: payload.category_id ? parseInt(payload.category_id, 10) : null,
+            payment_type_id: payload.payment_type_id ? parseInt(payload.payment_type_id, 10) : null,
+            category_name: cat ? cat.name : null,
+            payment_type_code: pt ? pt.code : "CASHWITHDRAW",
+            payment_type_name: pt ? pt.name : "Cash Withdrawal",
+            reference: payload.reference || "",
+            description: `Cash deposit from teller withdrawal (${acc ? acc.account_name : 'Bank'})`,
+            source: "transfer",
+            running_balance: destCash.current_balance,
+            created_at: new Date().toISOString(),
+          };
+          FinanceMockState.transactions.unshift(pairedInflow);
+        }
+      }
+
       return newTx;
     }
     return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload);
@@ -840,6 +912,93 @@ const FinanceApi = {
       return newTransfer;
     }
     return apiRequest("POST", "/api/finance/transfers", payload);
+  },
+
+  // Cheques (Phase 5)
+  async getCheques(params) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.cheques || [])];
+      if (params) {
+        if (params.fiscal_year) list = list.filter((c) => c.fiscal_year === parseInt(params.fiscal_year, 10));
+        if (params.status) list = list.filter((c) => c.status === params.status);
+        if (params.account_id) list = list.filter((c) => c.account_id === parseInt(params.account_id, 10));
+        if (params.payee) list = list.filter((c) => (c.payee || "").toLowerCase().includes(params.payee.toLowerCase()));
+        if (params.search) {
+          const s = params.search.toLowerCase();
+          list = list.filter((c) => (c.cheque_number || "").toLowerCase().includes(s) || (c.payee || "").toLowerCase().includes(s) || (c.notes || "").toLowerCase().includes(s));
+        }
+      }
+      return list;
+    }
+    let url = "/api/finance/cheques";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async getCheque(id) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      return c;
+    }
+    return apiRequest("GET", `/api/finance/cheques/${id}`);
+  },
+  async createCheque(payload) {
+    if (_isMock()) {
+      const bank = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.account_id, 10));
+      const destCash = payload.destination_cash_account_id ? (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.destination_cash_account_id, 10)) : null;
+      const yr = payload.fiscal_year || (payload.issue_date ? parseInt(payload.issue_date.split("-")[0], 10) : new Date().getFullYear());
+      const newCheque = {
+        id: (FinanceMockState.cheques || []).length + 1,
+        ...payload,
+        account_id: parseInt(payload.account_id, 10),
+        account_name: bank ? bank.account_name : null,
+        destination_cash_account_name: destCash ? destCash.account_name : null,
+        status: "issued",
+        clear_date: null,
+        fiscal_year: yr,
+        created_at: new Date().toISOString(),
+      };
+      if (!FinanceMockState.cheques) FinanceMockState.cheques = [];
+      FinanceMockState.cheques.unshift(newCheque);
+
+      // Deduct balance from bank
+      if (bank) bank.current_balance = round(bank.current_balance - Number(payload.amount), 2);
+      if (destCash && payload.purpose_type === "cash_withdrawal") {
+        destCash.current_balance = round(destCash.current_balance + Number(payload.amount), 2);
+      }
+      if (payload.linked_bill_id) {
+        const bill = (FinanceMockState.bills || []).find((b) => b.id === parseInt(payload.linked_bill_id, 10));
+        if (bill) bill.status = "paid";
+      }
+      return newCheque;
+    }
+    return apiRequest("POST", "/api/finance/cheques", payload);
+  },
+  async updateChequeStatus(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      c.status = payload.status;
+      if (payload.status === "cleared") {
+        c.clear_date = payload.clear_date || new Date().toISOString().split("T")[0];
+      } else if (payload.status === "bounced" || payload.status === "voided") {
+        const bank = (FinanceMockState.accounts || []).find((a) => a.id === c.account_id);
+        if (bank) bank.current_balance = round(bank.current_balance + Number(c.amount), 2);
+        if (c.destination_cash_account_id) {
+          const cash = (FinanceMockState.accounts || []).find((a) => a.id === c.destination_cash_account_id);
+          if (cash) cash.current_balance = round(cash.current_balance - Number(c.amount), 2);
+        }
+        if (c.linked_bill_id) {
+          const bill = (FinanceMockState.bills || []).find((b) => b.id === c.linked_bill_id);
+          if (bill) bill.status = "unpaid";
+        }
+      }
+      return c;
+    }
+    return apiRequest("PATCH", `/api/finance/cheques/${id}/status`, payload);
   },
 };
 

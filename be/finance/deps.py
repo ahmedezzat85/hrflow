@@ -111,3 +111,14 @@ def get_transfers_service(db: Session = Depends(get_db)):
     from finance.services.transfers_service import TransfersService
     return TransfersService(db)
 
+
+def get_cheques_repo(db: Session = Depends(get_db)):
+    from finance.repositories.cheques_repository import ChequesRepository
+    return ChequesRepository(db)
+
+
+def get_cheques_service(repo=Depends(get_cheques_repo)):
+    from finance.services.cheques_service import ChequesService
+    return ChequesService(repo)
+
+

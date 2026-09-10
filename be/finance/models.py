@@ -15,6 +15,7 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     Index,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -174,6 +175,12 @@ class FinanceBankAccountDB(Base):
         back_populates="account",
         cascade="all, delete-orphan",
         order_by="LedgerTransactionDB.date.asc(), LedgerTransactionDB.id.asc()",
+        foreign_keys="[LedgerTransactionDB.account_id]",
+    )
+    cheques = relationship(
+        "FinanceChequeDB",
+        back_populates="account",
+        foreign_keys="[FinanceChequeDB.account_id]",
     )
 
 
@@ -194,26 +201,69 @@ class LedgerTransactionDB(Base):
     payment_type_id = Column(Integer, ForeignKey("finance_payment_types.id", ondelete="SET NULL"), nullable=True, index=True)
     reference = Column(String(255), default="", nullable=False)
     description = Column(String(255), default="", nullable=False)
+    cheque_number = Column(String(50), nullable=True, index=True)
     fx_rate = Column(Float, nullable=True)
     source = Column(String(50), nullable=False, index=True)
     # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_transfer_id = Column(Integer, ForeignKey("finance_account_transfers.id", ondelete="SET NULL"), nullable=True, index=True)
+    linked_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True, index=True)
+    destination_cash_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     running_balance = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
 
-    account = relationship("FinanceBankAccountDB", back_populates="ledger_transactions")
+    account = relationship("FinanceBankAccountDB", foreign_keys=[account_id], back_populates="ledger_transactions")
     category = relationship("TransactionCategoryDB", back_populates="transactions")
     payment_type = relationship("PaymentTypeDB", back_populates="transactions")
     linked_invoice = relationship("SalesInvoiceDB")
     linked_bill = relationship("BillDB")
     linked_transfer = relationship("AccountTransferDB", back_populates="ledger_transactions")
+    linked_cheque = relationship("FinanceChequeDB", foreign_keys=[linked_cheque_id], back_populates="ledger_transactions")
+    destination_cash_account = relationship("FinanceBankAccountDB", foreign_keys=[destination_cash_account_id])
 
 
 # Alias for clean domain referencing
 FinanceLedgerTransactionDB = LedgerTransactionDB
+
+
+class FinanceChequeDB(Base):
+    __tablename__ = "finance_cheques"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cheque_number = Column(String(50), nullable=False)
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
+    issue_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), default="USD", nullable=False)
+    payee = Column(String(255), nullable=False, index=True)
+    purpose_type = Column(String(50), default="other", nullable=False, index=True)  # vendor_payment | cash_withdrawal | other
+    destination_cash_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
+    status = Column(String(30), default="issued", nullable=False, index=True)  # issued | cleared | bounced | voided
+    clear_date = Column(String(20), nullable=True)  # YYYY-MM-DD
+    fiscal_year = Column(Integer, nullable=False, index=True)
+    linked_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL", use_alter=True), nullable=True)
+    linked_cash_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL", use_alter=True), nullable=True)
+    notes = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "cheque_number", name="uq_cheque_account_number"),
+    )
+
+    account = relationship("FinanceBankAccountDB", foreign_keys=[account_id], back_populates="cheques")
+    destination_cash_account = relationship("FinanceBankAccountDB", foreign_keys=[destination_cash_account_id])
+    linked_bill = relationship("BillDB")
+    linked_transaction = relationship("LedgerTransactionDB", foreign_keys=[linked_transaction_id], post_update=True)
+    linked_cash_transaction = relationship("LedgerTransactionDB", foreign_keys=[linked_cash_transaction_id], post_update=True)
+    ledger_transactions = relationship("LedgerTransactionDB", foreign_keys="[LedgerTransactionDB.linked_cheque_id]", back_populates="linked_cheque")
+
+
+# Alias for clean domain referencing
+ChequeDB = FinanceChequeDB
 
 
 class PaymentDB(Base):

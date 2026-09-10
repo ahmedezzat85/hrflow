@@ -121,15 +121,43 @@ class LedgerRepository:
             payment_type_id=data.get("payment_type_id"),
             reference=data.get("reference", "") or "",
             description=data.get("description", "") or "",
+            cheque_number=data.get("cheque_number"),
             fx_rate=float(data["fx_rate"]) if data.get("fx_rate") is not None else None,
             source=data.get("source", "manual"),
             linked_invoice_id=data.get("linked_invoice_id"),
             linked_bill_id=data.get("linked_bill_id"),
+            linked_cheque_id=data.get("linked_cheque_id"),
+            destination_cash_account_id=data.get("destination_cash_account_id"),
             running_balance=0.0,
             created_by=created_by or data.get("created_by"),
         )
         self.db.add(tx)
         self.db.flush()
+
+        # Direct teller cash withdrawal: auto-fund destination cash account if specified on an outflow
+        if data.get("destination_cash_account_id") and direction == "out" and not data.get("linked_cheque_id"):
+            dest_cash_id = int(data["destination_cash_account_id"])
+            dest_acc = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == dest_cash_id).first()
+            if dest_acc:
+                cash_inflow = LedgerTransactionDB(
+                    account_id=dest_cash_id,
+                    date=data["date"],
+                    amount=amount,
+                    direction="in",
+                    currency=data.get("currency", dest_acc.currency),
+                    category_id=data.get("category_id"),
+                    payment_type_id=data.get("payment_type_id"),
+                    reference=data.get("reference", "") or "",
+                    description=f"Teller cash withdrawal from {bank_account.account_name}",
+                    fx_rate=float(data["fx_rate"]) if data.get("fx_rate") is not None else None,
+                    source=data.get("source", "manual"),
+                    running_balance=0.0,
+                    created_by=created_by or data.get("created_by"),
+                )
+                self.db.add(cash_inflow)
+                self.db.flush()
+                self.recalculate_account_running_balances(dest_cash_id)
+
         self.recalculate_account_running_balances(account_id)
         return self.get_by_id(tx.id)
 

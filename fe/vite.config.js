@@ -83,7 +83,7 @@ function singleFileDeployBundle() {
         const combined = APP_SCRIPT_ORDER
           .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
           .join('\n;\n');
-        out = out.replace('</body>', `<script>\n${combined}\n</script>\n</body>`);
+        out = out.replace('</body>', () => `<script>\n${combined}\n</script>\n</body>`);
         if (isBuild) {
           out = out
             .replace('src="../config.js"', 'src="./config.js"')

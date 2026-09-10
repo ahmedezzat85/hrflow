@@ -116,9 +116,12 @@ class LedgerTransactionBase(BaseModel):
     description: Optional[str] = Field("", max_length=255, description="Description / memo")
     fx_rate: Optional[float] = Field(None, description="Applied daily exchange rate if applicable")
     source: str = Field("manual", max_length=50, description="Source")
+    cheque_number: Optional[str] = None
     linked_invoice_id: Optional[int] = None
     linked_bill_id: Optional[int] = None
     linked_transfer_id: Optional[int] = None
+    linked_cheque_id: Optional[int] = None
+    destination_cash_account_id: Optional[int] = None
 
 
 class LedgerTransactionCreate(LedgerTransactionBase):
@@ -149,6 +152,8 @@ class LedgerTransactionUpdate(BaseModel):
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
     reference: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=255)
+    cheque_number: Optional[str] = Field(None, max_length=50)
+    destination_cash_account_id: Optional[int] = None
     fx_rate: Optional[float] = None
 
 
@@ -437,6 +442,48 @@ class AccountTransferResponse(AccountTransferBase):
     created_by: Optional[str] = None
     outflow_transaction_id: Optional[int] = None
     inflow_transaction_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Cheque Schemas (Phase 5)
+# ==========================================
+class ChequeBase(BaseModel):
+    cheque_number: str = Field(..., min_length=1, max_length=50, description="Cheque serial number")
+    issue_date: str = Field(..., description="Issue date (YYYY-MM-DD)")
+    amount: float = Field(..., gt=0.0, description="Cheque face amount")
+    currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
+    payee: str = Field(..., min_length=1, max_length=255, description="Payee / Beneficiary")
+    purpose_type: str = Field("other", description="vendor_payment | cash_withdrawal | other")
+    destination_cash_account_id: Optional[int] = Field(None, description="Required for cash_withdrawal")
+    linked_bill_id: Optional[int] = Field(None, description="Optional vendor bill to pay")
+    notes: Optional[str] = Field("", description="Memo or internal notes")
+
+
+class ChequeCreate(ChequeBase):
+    account_id: int = Field(..., description="Bank account from which cheque is drawn")
+    fiscal_year: Optional[int] = Field(None, description="Fiscal year (defaults to issue year)")
+
+
+class ChequeStatusUpdate(BaseModel):
+    status: str = Field(..., description="cleared | bounced | voided")
+    clear_date: Optional[str] = Field(None, description="Date cleared (YYYY-MM-DD)")
+
+
+class ChequeResponse(ChequeBase):
+    id: int
+    account_id: int
+    account_name: Optional[str] = None
+    destination_cash_account_name: Optional[str] = None
+    status: str
+    clear_date: Optional[str] = None
+    fiscal_year: int
+    linked_transaction_id: Optional[int] = None
+    linked_cash_transaction_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
 
     class Config:
         from_attributes = True
