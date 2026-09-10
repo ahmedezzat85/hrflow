@@ -1,9 +1,9 @@
         <section class="page-section" id="a-finance-invoices">
           <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div class="tabs-segmented" style="display: inline-flex;">
-                <button class="tab-pill active" id="tabFinanceInvoices" onclick="switchInvoiceSubTab('invoices')"><i class="fa-solid fa-file-invoice"></i> Sales Invoices</button>
-                <button class="tab-pill" id="tabFinanceCustomers" onclick="switchInvoiceSubTab('customers')"><i class="fa-solid fa-users"></i> Customers</button>
+              <div class="filter-tabs" id="financeInvoiceSubNav">
+                <button class="filter-tab active" id="tabFinanceInvoices" onclick="switchInvoiceSubTab('invoices')"><i class="fa-solid fa-file-invoice"></i> Sales Invoices</button>
+                <button class="filter-tab" id="tabFinanceCustomers" onclick="switchInvoiceSubTab('customers')"><i class="fa-solid fa-users"></i> Customers</button>
               </div>
               <div class="search-box" id="financeInvoiceSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -50,7 +50,6 @@
             <div class="empty-state" id="financeInvoicesEmpty" style="display: none;">
               <i class="fa-solid fa-file-invoice"></i>
               <p>No sales invoices recorded yet.</p>
-              <button class="btn btn-fill" onclick="openAddInvoiceModal()"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
             </div>
           </div>
 

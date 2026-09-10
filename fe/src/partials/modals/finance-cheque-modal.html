@@ -1,100 +1,96 @@
 <!-- fe/src/partials/modals/finance-cheque-modal.html -->
 
 <!-- 1. Issue Cheque Modal -->
-<div id="financeChequeModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="chequeModalTitle">
-  <div class="modal-box" style="max-width: 640px;">
-    <div class="modal-header">
-      <h3 id="chequeModalTitle" class="modal-title"><i class="fa-solid fa-money-check"></i> <span>Issue Cheque</span></h3>
-      <button class="modal-close" onclick="closeIssueChequeModal()" aria-label="Close">&times;</button>
+<div id="financeChequeModal" class="modal-overlay">
+  <div class="modal modal-v2" style="max-width: 640px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-money-check"></i></div>
+      <div class="modal-head-text">
+        <h3>Issue Cheque</h3>
+        <p>Draw a cheque against a bank account for a vendor payment, cash withdrawal, or other disbursement.</p>
+      </div>
+      <button class="modal-close" onclick="closeIssueChequeModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
-        <!-- Bank Account -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="chequeAccountId">Source Bank Account <span class="required">*</span></label>
-          <select id="chequeAccountId" class="form-control" onchange="onChequeAccountSelected()" required>
-            <option value="">— Select bank account —</option>
-          </select>
-        </div>
+      <div class="form-section">
+        <div class="form-grid">
+          <div class="form-field full">
+            <label for="chequeAccountId">Source Bank Account <span class="req">*</span></label>
+            <select id="chequeAccountId" onchange="onChequeAccountSelected()" required>
+              <option value="">— Select bank account —</option>
+            </select>
+          </div>
 
-        <!-- Cheque Number -->
-        <div class="form-group">
-          <label class="form-label" for="chequeNumber">Cheque # <span class="required">*</span></label>
-          <input type="text" id="chequeNumber" class="form-control" placeholder="e.g. 001042" required>
-        </div>
+          <div class="form-field">
+            <label for="chequeNumber">Cheque # <span class="req">*</span></label>
+            <input type="text" id="chequeNumber" placeholder="e.g. 001042" required>
+          </div>
 
-        <!-- Issue Date -->
-        <div class="form-group">
-          <label class="form-label" for="chequeIssueDate">Issue Date <span class="required">*</span></label>
-          <input type="date" id="chequeIssueDate" class="form-control" required>
-        </div>
+          <div class="form-field">
+            <label for="chequeIssueDate">Issue Date <span class="req">*</span></label>
+            <input type="date" id="chequeIssueDate" required>
+          </div>
 
-        <!-- Amount -->
-        <div class="form-group">
-          <label class="form-label" for="chequeAmount">Amount <span class="required">*</span></label>
-          <input type="number" id="chequeAmount" class="form-control" placeholder="0.00" min="0.01" step="0.01" required>
-        </div>
+          <div class="form-field">
+            <label for="chequeAmount">Amount <span class="req">*</span></label>
+            <input type="number" id="chequeAmount" placeholder="0.00" min="0.01" step="0.01" required>
+          </div>
 
-        <!-- Currency -->
-        <div class="form-group">
-          <label class="form-label" for="chequeCurrency">Currency</label>
-          <select id="chequeCurrency" class="form-control">
-            <option value="USD">USD — US Dollar</option>
-            <option value="EGP">EGP — Egyptian Pound</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="GBP">GBP — British Pound</option>
-            <option value="SAR">SAR — Saudi Riyal</option>
-            <option value="AED">AED — UAE Dirham</option>
-          </select>
-        </div>
+          <div class="form-field">
+            <label for="chequeCurrency">Currency</label>
+            <select id="chequeCurrency">
+              <option value="USD">USD — US Dollar</option>
+              <option value="EGP">EGP — Egyptian Pound</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option>
+              <option value="SAR">SAR — Saudi Riyal</option>
+              <option value="AED">AED — UAE Dirham</option>
+            </select>
+          </div>
 
-        <!-- Payee -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="chequePayee">Payee / Beneficiary <span class="required">*</span></label>
-          <input type="text" id="chequePayee" class="form-control" placeholder="Payee name or company" required>
-        </div>
+          <div class="form-field full">
+            <label for="chequePayee">Payee / Beneficiary <span class="req">*</span></label>
+            <input type="text" id="chequePayee" placeholder="Payee name or company" required>
+          </div>
 
-        <!-- Purpose Type -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="chequePurposeType">Purpose Type</label>
-          <select id="chequePurposeType" class="form-control" onchange="onChequePurposeChanged()">
-            <option value="other">Other / General Disbursement</option>
-            <option value="cash_withdrawal">Cash Withdrawal (Replenish Petty Cash)</option>
-            <option value="vendor_payment">Vendor Payment (Pay Vendor Bill)</option>
-          </select>
-        </div>
+          <div class="form-field full">
+            <label for="chequePurposeType">Purpose Type</label>
+            <select id="chequePurposeType" onchange="onChequePurposeChanged()">
+              <option value="other">Other / General Disbursement</option>
+              <option value="cash_withdrawal">Cash Withdrawal (Replenish Petty Cash)</option>
+              <option value="vendor_payment">Vendor Payment (Pay Vendor Bill)</option>
+            </select>
+          </div>
 
-        <!-- Conditional: Destination Cash Account (Visible if purpose is cash_withdrawal) -->
-        <div class="form-group" id="chequeDestCashGroup" style="grid-column: 1 / -1; display: none;">
-          <label class="form-label" for="chequeDestinationCashAccountId">Destination Cash Account <span class="required">*</span></label>
-          <select id="chequeDestinationCashAccountId" class="form-control">
-            <option value="">— Select cash account to fund —</option>
-          </select>
-          <small style="opacity: 0.7; font-size: 0.78rem; margin-top: 4px; display: block;">
-            <i class="fa-solid fa-circle-info"></i> Automatically creates a linked cash inflow transaction into this cash drawer.
-          </small>
-        </div>
+          <div class="form-field full" id="chequeDestCashGroup" style="display: none;">
+            <label for="chequeDestinationCashAccountId">Destination Cash Account <span class="req">*</span></label>
+            <select id="chequeDestinationCashAccountId">
+              <option value="">— Select cash account to fund —</option>
+            </select>
+            <small style="color:var(--text3); font-size: 11.5px; margin-top: 4px; display: block;">
+              <i class="fa-solid fa-circle-info"></i> Automatically creates a linked cash inflow transaction into this cash drawer.
+            </small>
+          </div>
 
-        <!-- Conditional: Linked Bill (Visible if purpose is vendor_payment) -->
-        <div class="form-group" id="chequeLinkedBillGroup" style="grid-column: 1 / -1; display: none;">
-          <label class="form-label" for="chequeLinkedBillId">Linked Vendor Bill</label>
-          <select id="chequeLinkedBillId" class="form-control">
-            <option value="">— Select unpaid bill (optional) —</option>
-          </select>
-          <small style="opacity: 0.7; font-size: 0.78rem; margin-top: 4px; display: block;">
-            <i class="fa-solid fa-circle-info"></i> Marking this cheque as issued will automatically flag the selected bill as paid.
-          </small>
-        </div>
+          <div class="form-field full" id="chequeLinkedBillGroup" style="display: none;">
+            <label for="chequeLinkedBillId">Linked Vendor Bill</label>
+            <select id="chequeLinkedBillId">
+              <option value="">— Select unpaid bill (optional) —</option>
+            </select>
+            <small style="color:var(--text3); font-size: 11.5px; margin-top: 4px; display: block;">
+              <i class="fa-solid fa-circle-info"></i> Marking this cheque as issued will automatically flag the selected bill as paid.
+            </small>
+          </div>
 
-        <!-- Notes -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="chequeNotes">Notes / Memo</label>
-          <textarea id="chequeNotes" class="form-control" rows="2" placeholder="Internal memo, purpose details, or authorization note..."></textarea>
+          <div class="form-field full">
+            <label for="chequeNotes">Notes / Memo</label>
+            <textarea id="chequeNotes" rows="2" placeholder="Internal memo, purpose details, or authorization note..."></textarea>
+          </div>
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeIssueChequeModal()">Cancel</button>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeIssueChequeModal()">Cancel</button>
       <button class="btn btn-fill" id="chequeModalSaveBtn" onclick="saveIssueCheque()">
         <i class="fa-solid fa-stamp"></i> Issue Cheque
       </button>
@@ -103,57 +99,60 @@
 </div>
 
 <!-- 2. Direct Teller Cash Withdrawal Modal (No Cheque #) -->
-<div id="financeWithdrawCashModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="withdrawCashModalTitle">
-  <div class="modal-box" style="max-width: 580px;">
-    <div class="modal-header">
-      <h3 id="withdrawCashModalTitle" class="modal-title"><i class="fa-solid fa-hand-holding-dollar"></i> Direct Teller Cash Withdrawal</h3>
-      <button class="modal-close" onclick="closeWithdrawCashModal()" aria-label="Close">&times;</button>
+<div id="financeWithdrawCashModal" class="modal-overlay">
+  <div class="modal modal-v2" style="max-width: 580px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+      <div class="modal-head-text">
+        <h3>Direct Teller Cash Withdrawal</h3>
+        <p>Record an in-person teller/counter cash withdrawal that directly funds an office cash account without a cheque.</p>
+      </div>
+      <button class="modal-close" onclick="closeWithdrawCashModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <p style="font-size: 0.85rem; opacity: 0.75; margin-bottom: 14px;">
-        Record an in-person teller/counter cash withdrawal from a bank account that directly funds an office cash account without a cheque.
-      </p>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
-        <div class="form-group">
-          <label class="form-label" for="withdrawSourceAccountId">Source Bank Account <span class="required">*</span></label>
-          <select id="withdrawSourceAccountId" class="form-control" onchange="onWithdrawSourceAccountSelected()" required>
-            <option value="">— Select bank —</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="withdrawDestCashAccountId">Destination Cash Account <span class="required">*</span></label>
-          <select id="withdrawDestCashAccountId" class="form-control" required>
-            <option value="">— Select cash drawer —</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="withdrawAmount">Amount <span class="required">*</span></label>
-          <input type="number" id="withdrawAmount" class="form-control" placeholder="0.00" min="0.01" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="withdrawDate">Withdrawal Date <span class="required">*</span></label>
-          <input type="date" id="withdrawDate" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="withdrawReference">Slip / Receipt Ref</label>
-          <input type="text" id="withdrawReference" class="form-control" placeholder="Counter slip #">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="withdrawCurrency">Currency</label>
-          <select id="withdrawCurrency" class="form-control">
-            <option value="EGP">EGP — Egyptian Pound</option>
-            <option value="USD">USD — US Dollar</option>
-            <option value="EUR">EUR — Euro</option>
-          </select>
-        </div>
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="withdrawDescription">Memo / Notes</label>
-          <input type="text" id="withdrawDescription" class="form-control" placeholder="e.g. Counter withdrawal for petty cash replenishment">
+      <div class="form-section">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="withdrawSourceAccountId">Source Bank Account <span class="req">*</span></label>
+            <select id="withdrawSourceAccountId" onchange="onWithdrawSourceAccountSelected()" required>
+              <option value="">— Select bank —</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="withdrawDestCashAccountId">Destination Cash Account <span class="req">*</span></label>
+            <select id="withdrawDestCashAccountId" required>
+              <option value="">— Select cash drawer —</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="withdrawAmount">Amount <span class="req">*</span></label>
+            <input type="number" id="withdrawAmount" placeholder="0.00" min="0.01" step="0.01" required>
+          </div>
+          <div class="form-field">
+            <label for="withdrawDate">Withdrawal Date <span class="req">*</span></label>
+            <input type="date" id="withdrawDate" required>
+          </div>
+          <div class="form-field">
+            <label for="withdrawReference">Slip / Receipt Ref</label>
+            <input type="text" id="withdrawReference" placeholder="Counter slip #">
+          </div>
+          <div class="form-field">
+            <label for="withdrawCurrency">Currency</label>
+            <select id="withdrawCurrency">
+              <option value="EGP">EGP — Egyptian Pound</option>
+              <option value="USD">USD — US Dollar</option>
+              <option value="EUR">EUR — Euro</option>
+            </select>
+          </div>
+          <div class="form-field full">
+            <label for="withdrawDescription">Memo / Notes</label>
+            <input type="text" id="withdrawDescription" placeholder="e.g. Counter withdrawal for petty cash replenishment">
+          </div>
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeWithdrawCashModal()">Cancel</button>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeWithdrawCashModal()">Cancel</button>
       <button class="btn btn-fill" id="withdrawCashSaveBtn" onclick="saveWithdrawCash()">
         <i class="fa-solid fa-circle-check"></i> Record Withdrawal
       </button>

@@ -1,95 +1,92 @@
 <!-- fe/src/partials/modals/invoice-modal.html -->
-<div id="invoiceModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="invoiceModalTitle">
-  <div class="modal-box" style="max-width: 780px;">
-    <div class="modal-header">
-      <h3 id="invoiceModalTitle" class="modal-title"><i class="fa-solid fa-file-invoice"></i> <span id="invoiceModalTitleText">New Sales Invoice</span></h3>
-      <button class="modal-close" onclick="closeInvoiceModal()" aria-label="Close">&times;</button>
+<div id="invoiceModal" class="modal-overlay">
+  <div class="modal modal-v2" style="max-width: 780px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-file-invoice"></i></div>
+      <div class="modal-head-text">
+        <h3 id="invoiceModalTitleText">New Sales Invoice</h3>
+        <p>Bill a customer and track expected payment routing.</p>
+      </div>
+      <button class="modal-close" onclick="closeInvoiceModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="invoiceModalId">
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-        <!-- Customer -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="invoiceCustomerId">Customer <span class="required">*</span></label>
-          <select id="invoiceCustomerId" class="form-control" required>
-            <option value="">— Select customer —</option>
-          </select>
-        </div>
-        <!-- Invoice number -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceNumber">Invoice # <span class="required">*</span></label>
-          <input type="text" id="invoiceNumber" class="form-control" placeholder="INV-2026-001" required>
-        </div>
-        <!-- Status -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceStatus">Status</label>
-          <select id="invoiceStatus" class="form-control">
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="void">Void</option>
-          </select>
-        </div>
-        <!-- Issue date -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceIssueDate">Issue Date <span class="required">*</span></label>
-          <input type="date" id="invoiceIssueDate" class="form-control" required>
-        </div>
-        <!-- Due date -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceDueDate">Due Date <span class="required">*</span></label>
-          <input type="date" id="invoiceDueDate" class="form-control" required>
-        </div>
-        <!-- Currency -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceCurrency">Currency</label>
-          <select id="invoiceCurrency" class="form-control">
-            <option value="USD">USD — US Dollar</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="GBP">GBP — British Pound</option>
-            <option value="EGP">EGP — Egyptian Pound</option>
-            <option value="SAR">SAR — Saudi Riyal</option>
-            <option value="AED">AED — UAE Dirham</option>
-          </select>
-        </div>
-        <!-- Expected Bank Account -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceExpectedBankAccount">Expected Receiving Account</label>
-          <select id="invoiceExpectedBankAccount" class="form-control">
-            <option value="">— Any / Unspecified —</option>
-          </select>
-        </div>
-        <!-- Revenue Channel -->
-        <div class="form-group">
-          <label class="form-label" for="invoiceRevenueChannel">Revenue Channel</label>
-          <select id="invoiceRevenueChannel" class="form-control">
-            <option value="">— Unspecified —</option>
-            <option value="local_egp">Local EGP</option>
-            <option value="overseas_usd">Overseas USD</option>
-            <option value="cash">Cash</option>
-            <option value="intercompany_transfer_us">Intercompany Transfer (US)</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <!-- Notes -->
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="invoiceNotes">Notes</label>
-          <textarea id="invoiceNotes" class="form-control" rows="2" placeholder="Optional notes for this invoice..."></textarea>
+      <div class="form-section">
+        <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Invoice Details <span class="line"></span></div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label for="invoiceCustomerId">Customer <span class="req">*</span></label>
+            <select id="invoiceCustomerId" required>
+              <option value="">— Select customer —</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="invoiceNumber">Invoice # <span class="req">*</span></label>
+            <input type="text" id="invoiceNumber" placeholder="INV-2026-001" required>
+          </div>
+          <div class="form-field">
+            <label for="invoiceStatus">Status</label>
+            <select id="invoiceStatus">
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="void">Void</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="invoiceIssueDate">Issue Date <span class="req">*</span></label>
+            <input type="date" id="invoiceIssueDate" required>
+          </div>
+          <div class="form-field">
+            <label for="invoiceDueDate">Due Date <span class="req">*</span></label>
+            <input type="date" id="invoiceDueDate" required>
+          </div>
+          <div class="form-field">
+            <label for="invoiceCurrency">Currency</label>
+            <select id="invoiceCurrency">
+              <option value="USD">USD — US Dollar</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option>
+              <option value="EGP">EGP — Egyptian Pound</option>
+              <option value="SAR">SAR — Saudi Riyal</option>
+              <option value="AED">AED — UAE Dirham</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="invoiceExpectedBankAccount">Expected Receiving Account</label>
+            <select id="invoiceExpectedBankAccount">
+              <option value="">— Any / Unspecified —</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="invoiceRevenueChannel">Revenue Channel</label>
+            <select id="invoiceRevenueChannel">
+              <option value="">— Unspecified —</option>
+              <option value="local_egp">Local EGP</option>
+              <option value="overseas_usd">Overseas USD</option>
+              <option value="cash">Cash</option>
+              <option value="intercompany_transfer_us">Intercompany Transfer (US)</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-field full">
+            <label for="invoiceNotes">Notes</label>
+            <textarea id="invoiceNotes" rows="2" placeholder="Optional notes for this invoice..."></textarea>
+          </div>
         </div>
       </div>
 
-      <!-- Line Items -->
-      <div style="margin-top: 20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-          <strong style="font-size: 0.95rem;">Line Items</strong>
-          <button type="button" class="btn btn-outline" style="font-size: 0.8rem; padding: 4px 12px;" onclick="addInvoiceLine()">
+      <div class="form-section">
+        <div class="form-section-label"><i class="fa-solid fa-list"></i> Line Items <span class="line"></span></div>
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 10px;">
+          <button type="button" class="btn btn-sm" onclick="addInvoiceLine()">
             <i class="fa-solid fa-plus"></i> Add Line
           </button>
         </div>
-        <table style="width:100%; border-collapse:collapse; font-size: 0.88rem;">
+        <table style="width:100%; border-collapse:collapse; font-size: 13.5px;">
           <thead>
-            <tr style="background: var(--surface-2, rgba(255,255,255,0.06)); text-align: left;">
+            <tr style="background: var(--surface2); text-align: left;">
               <th style="padding: 8px 10px; width: 45%;">Description</th>
               <th style="padding: 8px 10px; width: 15%;">Qty</th>
               <th style="padding: 8px 10px; width: 20%;">Unit Price</th>
@@ -99,14 +96,14 @@
           </thead>
           <tbody id="invoiceLinesBody"></tbody>
         </table>
-        <div style="text-align:right; margin-top: 10px; font-size: 0.95rem;">
+        <div style="text-align:right; margin-top: 10px; font-size: 13.5px;">
           Subtotal: <strong id="invoiceSubtotalDisplay">0.00</strong>
           &nbsp;&nbsp; Total: <strong id="invoiceTotalDisplay">0.00</strong>
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeInvoiceModal()">Cancel</button>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeInvoiceModal()">Cancel</button>
       <button class="btn btn-fill" id="invoiceModalSaveBtn" onclick="saveInvoiceModal()">
         <i class="fa-solid fa-floppy-disk"></i> Save Invoice
       </button>
@@ -115,52 +112,56 @@
 </div>
 
 <!-- Payment Modal (record payment against an invoice) -->
-<div id="invoicePaymentModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="invoicePaymentModalTitle">
-  <div class="modal-box" style="max-width: 520px;">
-    <div class="modal-header">
-      <h3 id="invoicePaymentModalTitle" class="modal-title"><i class="fa-solid fa-money-bill-transfer"></i> Record Payment</h3>
-      <button class="modal-close" onclick="closeInvoicePaymentModal()" aria-label="Close">&times;</button>
+<div id="invoicePaymentModal" class="modal-overlay">
+  <div class="modal modal-v2" style="max-width: 520px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+      <div class="modal-head-text">
+        <h3>Record Payment</h3>
+        <p>Apply an incoming payment against this invoice.</p>
+      </div>
+      <button class="modal-close" onclick="closeInvoicePaymentModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="paymentInvoiceId">
       <input type="hidden" id="paymentExpectedBankAccountId">
-      <p id="paymentInvoiceInfo" style="font-size: 0.9rem; margin-bottom: 12px; opacity: 0.8;"></p>
-      <div id="paymentDiscrepancyWarning" style="display:none; margin-bottom: 14px; font-size: 0.82rem; padding: 8px 12px; background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.35); border-radius: 6px; color: #eab308;">
+      <p id="paymentInvoiceInfo" style="font-size: 13px; color: var(--text2); margin-bottom: 12px;"></p>
+      <div id="paymentDiscrepancyWarning" style="display:none; margin-bottom: 14px; font-size: 12.5px; padding: 8px 12px; background: var(--warning-soft); border: 1px solid var(--warning); border-radius: var(--radius-sm); color: var(--warning);">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span><strong>Routing Discrepancy:</strong> Receiving account differs from expected (<span id="paymentExpectedBankName"></span>). Payment will succeed and be marked with a routing discrepancy badge.</span>
       </div>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div class="form-group">
-          <label class="form-label" for="paymentAmount">Amount <span class="required">*</span></label>
-          <input type="number" id="paymentAmount" class="form-control" placeholder="0.00" min="0.01" step="0.01" required>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="paymentAmount">Amount <span class="req">*</span></label>
+          <input type="number" id="paymentAmount" placeholder="0.00" min="0.01" step="0.01" required>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="paymentDate">Payment Date <span class="required">*</span></label>
-          <input type="date" id="paymentDate" class="form-control" required>
+        <div class="form-field">
+          <label for="paymentDate">Payment Date <span class="req">*</span></label>
+          <input type="date" id="paymentDate" required>
         </div>
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label class="form-label" for="paymentBankAccountId">Receiving Bank Account <span class="required">*</span></label>
-          <select id="paymentBankAccountId" class="form-control" onchange="_checkPaymentBankDiscrepancy()" required>
+        <div class="form-field full">
+          <label for="paymentBankAccountId">Receiving Bank Account <span class="req">*</span></label>
+          <select id="paymentBankAccountId" onchange="_checkPaymentBankDiscrepancy()" required>
             <option value="">— Select account —</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="paymentMethod">Method</label>
-          <select id="paymentMethod" class="form-control">
+        <div class="form-field">
+          <label for="paymentMethod">Method</label>
+          <select id="paymentMethod">
             <option value="bank_transfer">Bank Transfer</option>
             <option value="cash">Cash</option>
             <option value="card">Card</option>
             <option value="other">Other</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="paymentReference">Reference</label>
-          <input type="text" id="paymentReference" class="form-control" placeholder="Wire ref, check #, etc.">
+        <div class="form-field">
+          <label for="paymentReference">Reference</label>
+          <input type="text" id="paymentReference" placeholder="Wire ref, check #, etc.">
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeInvoicePaymentModal()">Cancel</button>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeInvoicePaymentModal()">Cancel</button>
       <button class="btn btn-fill" onclick="saveInvoicePayment()">
         <i class="fa-solid fa-circle-check"></i> Record Payment
       </button>
