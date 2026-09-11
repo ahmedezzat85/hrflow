@@ -132,3 +132,14 @@ def get_subscriptions_service(repo=Depends(get_subscriptions_repo)):
     return SubscriptionsService(repo)
 
 
+def get_statements_repo(db: Session = Depends(get_db)):
+    from finance.repositories.statements_repository import StatementsRepository
+    return StatementsRepository(db)
+
+
+def get_statements_service(repo=Depends(get_statements_repo)):
+    from finance.services.statements_service import StatementsService
+    return StatementsService(repo)
+
+
+

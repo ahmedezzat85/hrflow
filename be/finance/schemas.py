@@ -570,3 +570,90 @@ class SubscriptionChargeResponse(SubscriptionChargeBase):
     class Config:
         from_attributes = True
 
+
+# ==========================================
+# Bank Statement Import & Reconciliation Schemas (Phase 7)
+# ==========================================
+class CSVColumnMapping(BaseModel):
+    date_col: Optional[str] = None
+    description_col: Optional[str] = None
+    debit_col: Optional[str] = None
+    credit_col: Optional[str] = None
+    amount_col: Optional[str] = None
+    reference_col: Optional[str] = None
+
+
+class StatementImportBase(BaseModel):
+    account_id: int = Field(..., description="Target bank account ID")
+    period_month: str = Field(..., description="Statement period month (YYYY-MM)")
+    file_type: str = Field("csv", description="csv | pdf")
+
+
+class StatementImportCreate(StatementImportBase):
+    pass
+
+
+class StatementImportResponse(StatementImportBase):
+    id: int
+    account_name: Optional[str] = None
+    status: str
+    uploaded_file_ref: str
+    total_lines_count: int = 0
+    matched_lines_count: int = 0
+    reconciled_at: Optional[datetime] = None
+    reconciled_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    attachments: List[FinanceAttachmentResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class SuggestedMatch(BaseModel):
+    transaction_id: Optional[int] = None
+    cheque_id: Optional[int] = None
+    match_type: str = "probable_transaction"  # exact_transaction | probable_transaction | cheque
+    score: float = 0.0
+    date: str
+    amount: float
+    direction: str
+    description: str
+    reference: Optional[str] = ""
+    reason: str = ""
+
+
+class StatementLineBase(BaseModel):
+    import_id: int
+    raw_date: str
+    raw_amount: float
+    direction: str
+    raw_description: str
+    raw_reference: Optional[str] = ""
+    status: str = "unmatched"
+    notes: Optional[str] = ""
+
+
+class StatementLineResponse(StatementLineBase):
+    id: int
+    matched_transaction_id: Optional[int] = None
+    matched_cheque_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    suggested_matches: List[SuggestedMatch] = []
+
+    class Config:
+        from_attributes = True
+
+
+class StatementLineResolveRequest(BaseModel):
+    action: str = Field(..., description="match | create | ignore")
+    matched_transaction_id: Optional[int] = Field(None, description="Existing ledger transaction ID to link")
+    matched_cheque_id: Optional[int] = Field(None, description="Existing cheque ID to link & auto-clear")
+    # Fields required when action == 'create'
+    category_id: Optional[int] = Field(None, description="Category ID when auto-creating transaction")
+    payment_type_id: Optional[int] = Field(None, description="Payment Type ID when auto-creating transaction")
+    description: Optional[str] = Field(None, description="Custom description for created transaction")
+    reference: Optional[str] = Field(None, description="Reference for created transaction")
+    notes: Optional[str] = Field(None, description="Resolution notes")
+
+

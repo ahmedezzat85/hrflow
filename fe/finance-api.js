@@ -100,6 +100,81 @@ const FinanceMockState = {
     { id: 1, subscription_id: 1, subscription_name: "AWS Cloud Infrastructure", vendor_name: "Amazon Web Services", billing_date: "2026-09-01", amount: 4200.0, currency: "USD", linked_transaction_id: null, note: "Monthly cloud compute charges", created_at: "2026-09-01T08:00:00", attachments: [] },
     { id: 2, subscription_id: 2, subscription_name: "Slack Business+", vendor_name: "Slack Technologies", billing_date: "2026-09-03", amount: 320.0, currency: "USD", linked_transaction_id: null, note: "40 user licenses renewal", created_at: "2026-09-03T09:00:00", attachments: [] },
   ],
+  statementImports: [
+    {
+      id: 1,
+      account_id: 1,
+      account_name: "Voyance Operating USD",
+      period_month: "2026-09",
+      file_type: "csv",
+      status: "needs_review",
+      uploaded_file_ref: "uploads/finance_attachments/stmt_sept_sample.csv",
+      total_lines_count: 3,
+      matched_lines_count: 1,
+      reconciled_at: null,
+      reconciled_by: null,
+      created_at: "2026-09-10T10:00:00",
+      created_by: "admin@hrflow.test",
+      attachments: [{ id: 1, file_name: "chase_sept_statement.csv", file_size: 4210, storage_ref: "uploads/..." }]
+    }
+  ],
+  statementLines: [
+    {
+      id: 1,
+      import_id: 1,
+      raw_date: "2026-09-02",
+      raw_amount: 4200.0,
+      direction: "out",
+      raw_description: "AMAZON WEB SERVICES AWS.AMAZON.CO WA",
+      raw_reference: "AWS-BILL-01",
+      status: "matched",
+      notes: "Auto-matched with Bill BILL-2026-001 payment",
+      matched_transaction_id: 1,
+      matched_cheque_id: null,
+      suggested_matches: []
+    },
+    {
+      id: 2,
+      import_id: 1,
+      raw_date: "2026-09-08",
+      raw_amount: 12500.0,
+      direction: "in",
+      raw_description: "INWARD WIRE APEX HEALTH PARTNERS",
+      raw_reference: "WIRE-INV-001",
+      status: "unmatched",
+      notes: "",
+      matched_transaction_id: null,
+      matched_cheque_id: null,
+      suggested_matches: [
+        {
+          transaction_id: 1,
+          cheque_id: null,
+          match_type: "exact_transaction",
+          score: 0.95,
+          date: "2026-09-08",
+          amount: 12500.0,
+          direction: "in",
+          description: "Customer Invoice Settlement INV-2026-001",
+          reference: "INV-2026-001",
+          reason: "Exact amount match, date proximity"
+        }
+      ]
+    },
+    {
+      id: 3,
+      import_id: 1,
+      raw_date: "2026-09-15",
+      raw_amount: 15.0,
+      direction: "out",
+      raw_description: "MONTHLY SERVICE FEE CHASE BANK",
+      raw_reference: "FEE-0926",
+      status: "unmatched",
+      notes: "",
+      matched_transaction_id: null,
+      matched_cheque_id: null,
+      suggested_matches: []
+    }
+  ],
 };
 
 const FinanceApi = {
@@ -1146,6 +1221,165 @@ const FinanceApi = {
       return res.json();
     }
     return apiRequest("POST", `/api/finance/subscriptions/${subscriptionId}/charges`, data);
+  },
+
+  // ==========================================
+  // Bank Statement Imports & Reconciliation (Phase 7)
+  // ==========================================
+  async listAccountStatements(accountId, periodMonth) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.statementImports || [])];
+      if (accountId) list = list.filter((i) => i.account_id === parseInt(accountId, 10));
+      if (periodMonth) list = list.filter((i) => i.period_month === periodMonth);
+      return list;
+    }
+    const params = [];
+    if (periodMonth) params.push(`period_month=${encodeURIComponent(periodMonth)}`);
+    const qs = params.length ? `?${params.join("&")}` : "";
+    return apiRequest("GET", `/api/finance/accounts/${accountId}/statements${qs}`);
+  },
+
+  async uploadStatement(accountId, formData) {
+    if (_isMock()) {
+      const periodMonth = formData.get ? formData.get("period_month") : "2026-09";
+      const fileObj = formData.get ? formData.get("file") : null;
+      const fileName = fileObj && fileObj.name ? fileObj.name : "statement.csv";
+      const ext = fileName.split(".").pop().toLowerCase();
+      const fileType = ext === "pdf" ? "pdf" : "csv";
+
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
+      const newImport = {
+        id: (FinanceMockState.statementImports || []).length + 1,
+        account_id: parseInt(accountId, 10),
+        account_name: acc ? acc.account_name : "Bank Account",
+        period_month: periodMonth,
+        file_type: fileType,
+        status: "needs_review",
+        uploaded_file_ref: `uploads/finance_attachments/${fileName}`,
+        total_lines_count: 2,
+        matched_lines_count: 0,
+        reconciled_at: null,
+        reconciled_by: null,
+        created_at: new Date().toISOString(),
+        created_by: "admin@hrflow.test",
+        attachments: [{ id: Date.now(), file_name: fileName, file_size: 2048, storage_ref: `uploads/${fileName}` }]
+      };
+
+      if (!FinanceMockState.statementImports) FinanceMockState.statementImports = [];
+      FinanceMockState.statementImports.unshift(newImport);
+
+      // Create mock lines for the uploaded statement
+      const newLines = [
+        {
+          id: (FinanceMockState.statementLines || []).length + 1,
+          import_id: newImport.id,
+          raw_date: `${periodMonth}-05`,
+          raw_amount: 1500.0,
+          direction: "out",
+          raw_description: "DIRECT DISBURSEMENT WIRE",
+          raw_reference: "WIRE-990",
+          status: "unmatched",
+          notes: "",
+          matched_transaction_id: null,
+          matched_cheque_id: null,
+          suggested_matches: []
+        },
+        {
+          id: (FinanceMockState.statementLines || []).length + 2,
+          import_id: newImport.id,
+          raw_date: `${periodMonth}-10`,
+          raw_amount: 3200.0,
+          direction: "in",
+          raw_description: "CLIENT SETTLEMENT DIRECT DEPOSIT",
+          raw_reference: "DEP-112",
+          status: "unmatched",
+          notes: "",
+          matched_transaction_id: null,
+          matched_cheque_id: null,
+          suggested_matches: []
+        }
+      ];
+      if (!FinanceMockState.statementLines) FinanceMockState.statementLines = [];
+      FinanceMockState.statementLines.push(...newLines);
+
+      return newImport;
+    }
+
+    const res = await fetch(`/api/finance/accounts/${accountId}/statements`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Upload failed with status ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getStatement(statementId) {
+    if (_isMock()) {
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
+      if (!imp) throw new Error("Statement import not found");
+      return imp;
+    }
+    return apiRequest("GET", `/api/finance/statements/${statementId}`);
+  },
+
+  async getStatementLines(statementId) {
+    if (_isMock()) {
+      return (FinanceMockState.statementLines || []).filter((l) => l.import_id === parseInt(statementId, 10));
+    }
+    return apiRequest("GET", `/api/finance/statements/${statementId}/lines`);
+  },
+
+  async resolveStatementLine(statementId, lineId, payload) {
+    if (_isMock()) {
+      const line = (FinanceMockState.statementLines || []).find((l) => l.id === parseInt(lineId, 10));
+      if (!line) throw new Error("Statement line not found");
+
+      if (payload.action === "match") {
+        line.status = "matched";
+        line.matched_transaction_id = payload.matched_transaction_id || null;
+        line.matched_cheque_id = payload.matched_cheque_id || null;
+        if (payload.matched_cheque_id) {
+          const chq = (FinanceMockState.cheques || []).find((c) => c.id === parseInt(payload.matched_cheque_id, 10));
+          if (chq) {
+            chq.status = "cleared";
+            chq.clear_date = line.raw_date;
+          }
+        }
+      } else if (payload.action === "create") {
+        line.status = "created";
+        line.matched_transaction_id = Date.now();
+      } else if (payload.action === "ignore") {
+        line.status = "ignored";
+      }
+      if (payload.notes) line.notes = payload.notes;
+
+      // Update import matched count
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
+      if (imp) {
+        const resolvedCount = (FinanceMockState.statementLines || []).filter(
+          (l) => l.import_id === imp.id && ["matched", "created", "ignored"].includes(l.status)
+        ).length;
+        imp.matched_lines_count = resolvedCount;
+      }
+      return line;
+    }
+    return apiRequest("POST", `/api/finance/statements/${statementId}/lines/${lineId}/resolve`, payload);
+  },
+
+  async reconcileStatement(statementId) {
+    if (_isMock()) {
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
+      if (!imp) throw new Error("Statement import not found");
+      imp.status = "reconciled";
+      imp.reconciled_at = new Date().toISOString();
+      imp.reconciled_by = "admin@hrflow.test";
+      return imp;
+    }
+    return apiRequest("POST", `/api/finance/statements/${statementId}/reconcile`);
   },
 };
 

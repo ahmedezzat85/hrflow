@@ -2,11 +2,12 @@
           <!-- Sub Navigation for Bank Accounts & Lookups -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
             <div class="filter-tabs" id="financeAccountsSubNav">
-              <button class="filter-tab active" id="subtabFinanceAccounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
-              <button class="filter-tab" id="subtabFinanceCheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
-              <button class="filter-tab" id="subtabFinanceTransfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
-              <button class="filter-tab" id="subtabFinanceCategories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
-              <button class="filter-tab" id="subtabFinancePaymentTypes" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
+              <button class="filter-tab active" id="subtabFinanceAccounts" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
+              <button class="filter-tab" id="subtabFinanceStatements" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
+              <button class="filter-tab" id="subtabFinanceCheques" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
+              <button class="filter-tab" id="subtabFinanceTransfers" data-account-tab="transfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
+              <button class="filter-tab" id="subtabFinanceCategories" data-account-tab="categories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
+              <button class="filter-tab" id="subtabFinancePaymentTypes" data-account-tab="payment_types" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
             </div>
           </div>
 
@@ -328,6 +329,52 @@
                 <i class="fa-solid fa-money-check"></i>
                 <p>No cheques recorded for the selected filters.</p>
                 <button class="btn btn-fill" onclick="openIssueChequeModal()"><i class="fa-solid fa-plus"></i> Issue Cheque</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 6: Bank Statement Imports & Reconciliation -->
+          <div id="financeSubPaneStatements" style="display:none;">
+            <div id="accountTabStatements">
+              <div class="toolbar">
+                <div class="section-title-group">
+                  <h2 class="section-title"><i class="fa-solid fa-file-invoice"></i> Bank Statement Imports &amp; Reconciliation</h2>
+                  <p class="section-subtitle">Ingest monthly bank statements (CSV &amp; PDF), match against continuous ledger entries and issued cheques, and close monthly periods.</p>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                  <div class="search-box" style="width:240px;">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input id="financeStatementSearch" placeholder="Search statements / accounts..." oninput="filterFinanceStatements()">
+                  </div>
+                  <select id="financeStatementAccountFilter" class="form-control" style="width:auto;min-width:180px;height:38px;padding:4px 10px;font-size:13px;" onchange="loadFinanceStatements()">
+                    <option value="">All Bank Accounts</option>
+                  </select>
+                  <input type="month" id="financeStatementMonthFilter" class="form-control" style="width:auto;height:38px;padding:4px 10px;font-size:13px;" onchange="loadFinanceStatements()">
+                  <button class="btn btn-fill" id="btnUploadStatement" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
+                </div>
+              </div>
+              <div class="card">
+                <div class="section-loading-bar" id="financeStatementsLoadingBar"><span></span></div>
+                <table class="responsive-card-table" id="statementImportsTable">
+                  <thead>
+                    <tr>
+                      <th style="width:100px;">Period</th>
+                      <th>Bank Account</th>
+                      <th style="width:80px;text-align:center;">Format</th>
+                      <th style="width:110px;text-align:center;">Total Lines</th>
+                      <th style="width:120px;text-align:center;">Resolved</th>
+                      <th style="width:110px;text-align:center;">Status</th>
+                      <th style="width:130px;">Uploaded At</th>
+                      <th style="width:160px;text-align:center;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="statementImportsTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="financeStatementsEmpty" style="display:none;">
+                  <i class="fa-solid fa-file-invoice"></i>
+                  <p>No bank statements imported yet for this period.</p>
+                  <button class="btn btn-fill" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
+                </div>
               </div>
             </div>
           </div>

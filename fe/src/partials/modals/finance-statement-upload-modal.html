@@ -1,0 +1,81 @@
+<!-- fe/src/partials/modals/finance-statement-upload-modal.html -->
+
+<div id="financeStatementUploadModal" class="modal-overlay">
+  <div class="modal modal-v2 modal-v2-box" style="max-width: 620px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-file-arrow-up"></i></div>
+      <div class="modal-head-text">
+        <h3>Upload Bank Statement</h3>
+        <p>Import official bank statements in CSV or PDF format for automated parsing and review-driven reconciliation.</p>
+      </div>
+      <button class="modal-close" data-modal-dismiss onclick="closeUploadStatementModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="financeStatementUploadForm" onsubmit="handleStatementUploadSubmit(event)">
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="stmtUploadAccountId">Target Bank Account <span class="req">*</span></label>
+              <select id="stmtUploadAccountId" required>
+                <option value="">— Select company bank account —</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="stmtUploadPeriodMonth">Statement Month <span class="req">*</span></label>
+              <input type="month" id="stmtUploadPeriodMonth" required>
+            </div>
+
+            <div class="form-field">
+              <label for="stmtUploadFileType">File Format</label>
+              <select id="stmtUploadFileType" onchange="onStatementFileTypeChange()">
+                <option value="csv" selected>CSV (Spreadsheet export)</option>
+                <option value="pdf">PDF (Electronic Bank Statement)</option>
+              </select>
+            </div>
+
+            <div class="form-field full">
+              <label for="stmtUploadFile">Statement File (.csv, .pdf) <span class="req">*</span></label>
+              <input type="file" id="stmtUploadFile" accept=".csv,.pdf" required style="padding: 8px 12px;">
+              <small style="color:var(--text-muted);font-size:11px;margin-top:4px;display:block;">
+                CSV auto-detects Date, Description, Debit/Withdrawal, and Credit/Deposit. PDFs are parsed via best-effort text extraction.
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional CSV Column Mapper Section -->
+        <div id="stmtCsvMappingSection" style="margin-top:12px;border:1px solid var(--border-color);border-radius:8px;padding:12px;background:var(--bg-card-subtle, rgba(0,0,0,0.02));">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleCsvMappingFields()">
+            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);"><i class="fa-solid fa-sliders"></i> Custom Column Mapping (Optional)</span>
+            <i class="fa-solid fa-chevron-down" id="stmtCsvMappingChevron" style="font-size:11px;transition:transform 0.2s;"></i>
+          </div>
+          <div id="stmtCsvMappingFields" style="display:none;margin-top:12px;">
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="form-field">
+                <label style="font-size:11px;">Date Column Name</label>
+                <input type="text" id="mapDateCol" placeholder="e.g. Booking Date" style="font-size:12px;">
+              </div>
+              <div class="form-field">
+                <label style="font-size:11px;">Description Column Name</label>
+                <input type="text" id="mapDescCol" placeholder="e.g. Narrative" style="font-size:12px;">
+              </div>
+              <div class="form-field">
+                <label style="font-size:11px;">Debit / Outflow Column</label>
+                <input type="text" id="mapDebitCol" placeholder="e.g. Paid Out" style="font-size:12px;">
+              </div>
+              <div class="form-field">
+                <label style="font-size:11px;">Credit / Inflow Column</label>
+                <input type="text" id="mapCreditCol" placeholder="e.g. Paid In" style="font-size:12px;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-modal-dismiss onclick="closeUploadStatementModal()">Cancel</button>
+        <button type="submit" class="btn btn-fill" id="btnSubmitStatementUpload"><i class="fa-solid fa-upload"></i> Upload &amp; Parse</button>
+      </div>
+    </form>
+  </div>
+</div>

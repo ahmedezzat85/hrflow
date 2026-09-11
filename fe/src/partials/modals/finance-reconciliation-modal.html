@@ -1,0 +1,125 @@
+<!-- fe/src/partials/modals/finance-reconciliation-modal.html -->
+
+<div id="financeReconciliationModal" class="modal-overlay">
+  <div class="modal modal-v2 modal-v2-box" style="max-width: 1040px; width: 95vw; max-height: 90vh; display:flex; flex-direction:column;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+      <div class="modal-head-text">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h3 style="margin:0;">Statement Reconciliation</h3>
+          <span class="status-badge" id="reconcileSummaryPeriod">2026-09</span>
+          <span class="status-badge status-primary" id="reconcileSummaryAccount">Account</span>
+          <span class="status-badge status-info" id="reconcileSummaryProgress">0 / 0 Resolved</span>
+          <span class="status-badge" id="reconcileSummaryStatus">Needs Review</span>
+        </div>
+        <p style="margin:4px 0 0 0;">Review imported bank lines against recorded ledger transactions and issued cheques to balance the monthly cash book.</p>
+      </div>
+      <button class="modal-close" data-modal-dismiss onclick="closeReconciliationModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Filter tabs -->
+    <div style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:var(--bg-card);">
+      <div class="filter-tabs" id="reconcileLineFilterTabs">
+        <button class="filter-tab active" data-filter="all" onclick="filterReconciliationLines('all', this)">All Lines</button>
+        <button class="filter-tab" data-filter="unmatched" onclick="filterReconciliationLines('unmatched', this)">Unmatched</button>
+        <button class="filter-tab" data-filter="matched" onclick="filterReconciliationLines('matched', this)">Matched / Created</button>
+        <button class="filter-tab" data-filter="ignored" onclick="filterReconciliationLines('ignored', this)">Ignored</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);" id="reconcileFilterCount">
+        Showing all statement lines
+      </div>
+    </div>
+
+    <!-- Scrollable lines table -->
+    <div class="modal-body" style="padding: 0; overflow-y: auto; flex:1;">
+      <div class="section-loading-bar" id="reconcileLoadingBar"><span></span></div>
+      <table class="responsive-card-table" id="reconciliationLinesTable" style="margin:0;border:none;">
+        <thead>
+          <tr>
+            <th style="width:95px;">Date</th>
+            <th>Description / Ref</th>
+            <th style="width:110px;text-align:right;">Amount</th>
+            <th style="width:100px;text-align:center;">Status</th>
+            <th style="width:320px;">Suggested App Match</th>
+            <th style="width:160px;text-align:center;">Resolution</th>
+          </tr>
+        </thead>
+        <tbody id="reconciliationLinesBody">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+      <div class="empty-state" id="reconcileEmptyState" style="display:none;padding:40px 20px;">
+        <i class="fa-solid fa-check-circle" style="color:var(--color-success);font-size:32px;"></i>
+        <p>No statement lines match the selected filter.</p>
+      </div>
+    </div>
+
+    <!-- Modal Footer with Reconcile Button -->
+    <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);border-top:1px solid var(--border-color);">
+      <div id="reconciliationFooterNote" style="font-size:12px;color:var(--text-muted);">
+        All statement lines must be matched, auto-created, or ignored to close this statement period.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button type="button" class="btn btn-outline" data-modal-dismiss onclick="closeReconciliationModal()">Close</button>
+        <button type="button" class="btn btn-fill btn-success" id="btnFinalizeReconciliation" onclick="finalizeStatementReconciliation()">
+          <i class="fa-solid fa-lock"></i> Reconcile &amp; Close Period
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mini Dialog: Create Ledger Entry from Statement Line -->
+<div id="reconcileCreateEntryModal" class="modal-overlay" style="z-index: 1050;">
+  <div class="modal modal-v2 modal-v2-box" style="max-width: 480px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-plus"></i></div>
+      <div class="modal-head-text">
+        <h3>Create Ledger Transaction</h3>
+        <p>Post this bank statement line to the continuous ledger.</p>
+      </div>
+      <button class="modal-close" onclick="closeReconcileCreateEntryModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="reconcileCreateEntryForm" onsubmit="handleReconcileCreateEntrySubmit(event)">
+      <input type="hidden" id="reconcileLineId">
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Date</label>
+              <input type="text" id="reconcileLineDate" readonly style="background:var(--bg-card-subtle);">
+            </div>
+            <div class="form-field">
+              <label>Amount &amp; Direction</label>
+              <input type="text" id="reconcileLineAmount" readonly style="background:var(--bg-card-subtle);">
+            </div>
+            <div class="form-field full">
+              <label for="reconcileEntryDesc">Transaction Description <span class="req">*</span></label>
+              <input type="text" id="reconcileEntryDesc" required>
+            </div>
+            <div class="form-field">
+              <label for="reconcileEntryCategory">Category</label>
+              <select id="reconcileEntryCategory">
+                <option value="">— Select Category —</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="reconcileEntryPaymentType">Payment Type</label>
+              <select id="reconcileEntryPaymentType">
+                <option value="">— Select Payment Type —</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label for="reconcileEntryRef">Reference</label>
+              <input type="text" id="reconcileEntryRef" placeholder="e.g. WIRE-REF, CHK, FEE">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" onclick="closeReconcileCreateEntryModal()">Cancel</button>
+        <button type="submit" class="btn btn-fill"><i class="fa-solid fa-check"></i> Create &amp; Link Entry</button>
+      </div>
+    </form>
+  </div>
+</div>

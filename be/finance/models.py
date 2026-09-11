@@ -322,12 +322,59 @@ class SubscriptionChargeDB(Base):
     attachments = relationship("FinanceAttachmentDB", back_populates="subscription_charge", cascade="all, delete-orphan")
 
 
+class BankStatementImportDB(Base):
+    __tablename__ = "finance_statement_imports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
+    period_month = Column(String(10), nullable=False, index=True)  # YYYY-MM
+    file_type = Column(String(10), default="csv", nullable=False)  # csv | pdf
+    status = Column(String(20), default="needs_review", nullable=False, index=True)  # parsing | needs_review | reconciled
+    uploaded_file_ref = Column(String(500), default="", nullable=False)
+    total_lines_count = Column(Integer, default=0, nullable=False)
+    matched_lines_count = Column(Integer, default=0, nullable=False)
+    reconciled_at = Column(DateTime, nullable=True)
+    reconciled_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    account = relationship("FinanceBankAccountDB")
+    lines = relationship("StatementLineDB", back_populates="statement_import", cascade="all, delete-orphan")
+    attachments = relationship("FinanceAttachmentDB", back_populates="statement_import", cascade="all, delete-orphan")
+
+
+class StatementLineDB(Base):
+    __tablename__ = "finance_statement_lines"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    import_id = Column(Integer, ForeignKey("finance_statement_imports.id", ondelete="CASCADE"), nullable=False, index=True)
+    raw_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    raw_amount = Column(Float, nullable=False)
+    direction = Column(String(10), default="out", nullable=False)  # in | out
+    raw_description = Column(String(500), default="", nullable=False)
+    raw_reference = Column(String(100), default="", nullable=True)
+    matched_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True, index=True)
+    matched_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL"), nullable=True, index=True)
+    status = Column(String(20), default="unmatched", nullable=False, index=True)  # unmatched | matched | created | ignored
+    notes = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    statement_import = relationship("BankStatementImportDB", back_populates="lines")
+    matched_transaction = relationship("LedgerTransactionDB")
+    matched_cheque = relationship("FinanceChequeDB")
+
+
+# Aliases for statement models
+FinanceBankStatementImportDB = BankStatementImportDB
+FinanceStatementLineDB = StatementLineDB
+
+
 class FinanceAttachmentDB(Base):
     __tablename__ = "finance_attachments"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     subscription_charge_id = Column(Integer, ForeignKey("finance_subscription_charges.id", ondelete="CASCADE"), nullable=True, index=True)
-    statement_import_id = Column(Integer, nullable=True)
+    statement_import_id = Column(Integer, ForeignKey("finance_statement_imports.id", ondelete="CASCADE"), nullable=True, index=True)
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="CASCADE"), nullable=True, index=True)
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
@@ -337,6 +384,7 @@ class FinanceAttachmentDB(Base):
     uploaded_by = Column(String(255), nullable=True)
 
     subscription_charge = relationship("SubscriptionChargeDB", back_populates="attachments")
+    statement_import = relationship("BankStatementImportDB", back_populates="attachments")
     ledger_transaction = relationship("LedgerTransactionDB")
 
 
