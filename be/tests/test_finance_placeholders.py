@@ -100,11 +100,27 @@ def test_finance_stubs_admin_authorized(app_client, admin_cookies):
     # Account numbers must be masked
     assert "******" in accounts[0]["account_number"]
 
-    # 5. Subscriptions
+    # 5. Subscriptions (real CRUD as of Phase 6)
+    sub_create_resp = app_client.post(
+        "/api/finance/subscriptions",
+        json={
+            "vendor_id": vendor_id,
+            "name": "GitHub Enterprise",
+            "amount": 210.0,
+            "currency": "USD",
+            "billing_cycle": "monthly",
+            "next_renewal_date": "2026-10-01",
+            "auto_generate_bill": True,
+            "is_active": True,
+        },
+        cookies=admin_cookies,
+    )
+    assert sub_create_resp.status_code == 201
+
     subs_res = app_client.get("/api/finance/subscriptions", cookies=admin_cookies)
     assert subs_res.status_code == 200
     subs = subs_res.json()
-    assert len(subs) >= 2
+    assert len(subs) >= 1
     assert "billing_cycle" in subs[0]
     assert "auto_generate_bill" in subs[0]
 

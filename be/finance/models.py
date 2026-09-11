@@ -301,6 +301,44 @@ class SubscriptionDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="subscriptions")
+    charges = relationship("SubscriptionChargeDB", back_populates="subscription", cascade="all, delete-orphan")
+
+
+class SubscriptionChargeDB(Base):
+    __tablename__ = "finance_subscription_charges"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    subscription_id = Column(Integer, ForeignKey("finance_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
+    billing_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), default="USD", nullable=False)
+    linked_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True, index=True)
+    note = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    subscription = relationship("SubscriptionDB", back_populates="charges")
+    linked_transaction = relationship("LedgerTransactionDB")
+    attachments = relationship("FinanceAttachmentDB", back_populates="subscription_charge", cascade="all, delete-orphan")
+
+
+class FinanceAttachmentDB(Base):
+    __tablename__ = "finance_attachments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    subscription_charge_id = Column(Integer, ForeignKey("finance_subscription_charges.id", ondelete="CASCADE"), nullable=True, index=True)
+    statement_import_id = Column(Integer, nullable=True)
+    ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="CASCADE"), nullable=True, index=True)
+    file_name = Column(String(255), nullable=False)
+    file_size = Column(Integer, default=0, nullable=False)
+    mime_type = Column(String(100), default="application/octet-stream", nullable=False)
+    storage_ref = Column(String(500), nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_by = Column(String(255), nullable=True)
+
+    subscription_charge = relationship("SubscriptionChargeDB", back_populates="attachments")
+    ledger_transaction = relationship("LedgerTransactionDB")
+
 
 
 class PayrollRunDB(Base):

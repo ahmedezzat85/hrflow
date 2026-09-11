@@ -350,6 +350,89 @@ button:disabled,
   box-shadow: var(--shadow);
 }
 
+/* Filter Selects & Toolbar Dropdowns */
+.filter-select,
+.toolbar select,
+select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  height: 38px;
+  padding: 0 34px 0 13px !important;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text);
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  outline: none;
+  transition: var(--trans);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+[data-theme="dark"] .filter-select,
+[data-theme="dark"] .toolbar select,
+[data-theme="dark"] select.form-control {
+  background-color: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.filter-select:hover,
+.toolbar select:hover,
+select.form-control:hover {
+  border-color: var(--accent);
+}
+
+.filter-select:focus,
+.toolbar select:focus,
+select.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.filter-select option,
+.toolbar select option,
+select.form-control option {
+  background-color: var(--surface);
+  color: var(--text);
+  padding: 8px 12px;
+}
+
+/* General form control inputs */
+.form-control {
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  outline: none;
+  transition: var(--trans);
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .form-control {
+  background-color: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 .progress-bar {
   height: 7px;
   border-radius: 6px;

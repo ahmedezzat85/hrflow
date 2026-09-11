@@ -49,6 +49,8 @@ coverage.xml
 *.py.cover
 .hypothesis/
 .pytest_cache/
+test-results/
+playwright-report/
 cover/
 
 # Translations
@@ -246,5 +248,9 @@ node_modules/
 storage/
 /be/storage/
 /storage/
+uploads/
+/be/uploads/
+*.timestamp-*.mjs
+
 
 

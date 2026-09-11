@@ -92,6 +92,14 @@ const FinanceMockState = {
       created_at: "2026-09-06T11:00:00",
     },
   ],
+  subscriptions: [
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", name: "AWS Cloud Infrastructure", amount: 4200.0, currency: "USD", billing_cycle: "monthly", next_renewal_date: "2026-10-01", auto_generate_bill: true, is_active: true, charges_count: 1, last_charge_date: "2026-09-01", last_charge_amount: 4200.0 },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", name: "Slack Business+", amount: 320.0, currency: "USD", billing_cycle: "monthly", next_renewal_date: "2026-09-20", auto_generate_bill: true, is_active: true, charges_count: 1, last_charge_date: "2026-09-03", last_charge_amount: 320.0 },
+  ],
+  subscriptionCharges: [
+    { id: 1, subscription_id: 1, subscription_name: "AWS Cloud Infrastructure", vendor_name: "Amazon Web Services", billing_date: "2026-09-01", amount: 4200.0, currency: "USD", linked_transaction_id: null, note: "Monthly cloud compute charges", created_at: "2026-09-01T08:00:00", attachments: [] },
+    { id: 2, subscription_id: 2, subscription_name: "Slack Business+", vendor_name: "Slack Technologies", billing_date: "2026-09-03", amount: 320.0, currency: "USD", linked_transaction_id: null, note: "40 user licenses renewal", created_at: "2026-09-03T09:00:00", attachments: [] },
+  ],
 };
 
 const FinanceApi = {
@@ -999,6 +1007,145 @@ const FinanceApi = {
       return c;
     }
     return apiRequest("PATCH", `/api/finance/cheques/${id}/status`, payload);
+  },
+
+  // Subscriptions & Charges (Phase 6)
+  async getSubscriptions(params) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.subscriptions || [])];
+      if (params && params.is_active !== undefined) {
+        const act = String(params.is_active) === "true";
+        list = list.filter((s) => s.is_active === act);
+      }
+      if (params && params.vendor_id) {
+        list = list.filter((s) => s.vendor_id === parseInt(params.vendor_id, 10));
+      }
+      return list;
+    }
+    const q = new URLSearchParams(params || {}).toString();
+    return apiRequest("GET", `/api/finance/subscriptions${q ? `?${q}` : ""}`);
+  },
+  async getSubscription(id) {
+    if (_isMock()) {
+      const s = (FinanceMockState.subscriptions || []).find((item) => item.id === parseInt(id, 10));
+      if (!s) throw new Error("Subscription not found");
+      return s;
+    }
+    return apiRequest("GET", `/api/finance/subscriptions/${id}`);
+  },
+  async createSubscription(payload) {
+    if (_isMock()) {
+      const vendor = (FinanceMockState.vendors || []).find((v) => v.id === parseInt(payload.vendor_id, 10));
+      const newSub = {
+        id: (FinanceMockState.subscriptions || []).length + 1,
+        vendor_id: parseInt(payload.vendor_id, 10),
+        vendor_name: vendor ? vendor.name : "Custom Vendor",
+        name: payload.name,
+        amount: Number(payload.amount),
+        currency: (payload.currency || "USD").toUpperCase(),
+        billing_cycle: payload.billing_cycle || "monthly",
+        next_renewal_date: payload.next_renewal_date,
+        auto_generate_bill: payload.auto_generate_bill !== undefined ? Boolean(payload.auto_generate_bill) : true,
+        is_active: true,
+        charges_count: 0,
+        last_charge_date: null,
+        last_charge_amount: null,
+        created_at: new Date().toISOString(),
+      };
+      if (!FinanceMockState.subscriptions) FinanceMockState.subscriptions = [];
+      FinanceMockState.subscriptions.push(newSub);
+      return newSub;
+    }
+    return apiRequest("POST", "/api/finance/subscriptions", payload);
+  },
+  async updateSubscription(id, payload) {
+    if (_isMock()) {
+      const s = (FinanceMockState.subscriptions || []).find((item) => item.id === parseInt(id, 10));
+      if (!s) throw new Error("Subscription not found");
+      Object.assign(s, payload);
+      return s;
+    }
+    return apiRequest("PATCH", `/api/finance/subscriptions/${id}`, payload);
+  },
+  async getSubscriptionCharges(subscriptionId) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.subscriptionCharges || [])];
+      if (subscriptionId) {
+        list = list.filter((c) => c.subscription_id === parseInt(subscriptionId, 10));
+      }
+      return list;
+    }
+    const url = subscriptionId ? `/api/finance/subscriptions/${subscriptionId}/charges` : "/api/finance/subscriptions";
+    return apiRequest("GET", url);
+  },
+  async logSubscriptionCharge(subscriptionId, data) {
+    if (_isMock()) {
+      const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === parseInt(subscriptionId, 10));
+      const amount = Number(data instanceof FormData ? data.get("amount") : data.amount);
+      const billingDate = (data instanceof FormData ? data.get("billing_date") : data.billing_date) || new Date().toISOString().split("T")[0];
+      const currency = (data instanceof FormData ? data.get("currency") : data.currency) || (sub ? sub.currency : "USD");
+      const note = (data instanceof FormData ? data.get("note") : data.note) || "";
+      const bankId = (data instanceof FormData ? data.get("bank_account_id") : data.bank_account_id);
+      
+      const attachments = [];
+      if (data instanceof FormData && data.get("file")) {
+        const fileObj = data.get("file");
+        if (fileObj && fileObj.name) {
+          attachments.push({
+            id: Date.now(),
+            file_name: fileObj.name,
+            file_size: fileObj.size || 1024,
+            mime_type: fileObj.type || "application/pdf",
+            storage_ref: "/mock-storage/" + fileObj.name,
+            uploaded_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      const newCharge = {
+        id: (FinanceMockState.subscriptionCharges || []).length + 1,
+        subscription_id: parseInt(subscriptionId, 10),
+        subscription_name: sub ? sub.name : "Subscription",
+        vendor_name: sub ? sub.vendor_name : "Vendor",
+        billing_date: billingDate,
+        amount,
+        currency,
+        linked_transaction_id: bankId ? Date.now() : null,
+        note,
+        created_at: new Date().toISOString(),
+        attachments,
+      };
+
+      if (!FinanceMockState.subscriptionCharges) FinanceMockState.subscriptionCharges = [];
+      FinanceMockState.subscriptionCharges.unshift(newCharge);
+
+      if (sub) {
+        sub.charges_count = (sub.charges_count || 0) + 1;
+        sub.last_charge_date = billingDate;
+        sub.last_charge_amount = amount;
+      }
+
+      if (bankId) {
+        const bank = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(bankId, 10));
+        if (bank) bank.current_balance = round(bank.current_balance - amount, 2);
+      }
+
+      return newCharge;
+    }
+
+    if (data instanceof FormData) {
+      const res = await fetch(`/api/finance/subscriptions/${subscriptionId}/charges`, {
+        method: "POST",
+        body: data,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Request failed with status ${res.status}`);
+      }
+      return res.json();
+    }
+    return apiRequest("POST", `/api/finance/subscriptions/${subscriptionId}/charges`, data);
   },
 };
 

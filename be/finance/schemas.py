@@ -488,3 +488,85 @@ class ChequeResponse(ChequeBase):
     class Config:
         from_attributes = True
 
+
+# ==========================================
+# Subscription & Attachment Schemas (Phase 6)
+# ==========================================
+class FinanceAttachmentResponse(BaseModel):
+    id: int
+    subscription_charge_id: Optional[int] = None
+    statement_import_id: Optional[int] = None
+    ledger_transaction_id: Optional[int] = None
+    file_name: str
+    file_size: int = 0
+    mime_type: str = "application/octet-stream"
+    storage_ref: str
+    uploaded_at: Optional[datetime] = None
+    uploaded_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SubscriptionBase(BaseModel):
+    vendor_id: int = Field(..., description="ID of the vendor providing the service")
+    name: str = Field(..., min_length=1, max_length=255, description="Service name / subscription")
+    amount: float = Field(..., ge=0.0, description="Base recurring amount or estimated usage")
+    currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
+    billing_cycle: str = Field("monthly", description="monthly | quarterly | yearly")
+    next_renewal_date: str = Field(..., description="Next renewal / billing date (YYYY-MM-DD)")
+    auto_generate_bill: bool = Field(True, description="Whether to auto-generate vendor bills")
+    is_active: bool = Field(True, description="Whether subscription is currently active")
+
+
+class SubscriptionCreate(SubscriptionBase):
+    pass
+
+
+class SubscriptionUpdate(BaseModel):
+    vendor_id: Optional[int] = None
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    billing_cycle: Optional[str] = None
+    next_renewal_date: Optional[str] = None
+    auto_generate_bill: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class SubscriptionResponse(SubscriptionBase):
+    id: int
+    vendor_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    charges_count: int = 0
+    last_charge_date: Optional[str] = None
+    last_charge_amount: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SubscriptionChargeBase(BaseModel):
+    subscription_id: int = Field(..., description="ID of subscription being charged")
+    billing_date: str = Field(..., description="Date of charge (YYYY-MM-DD)")
+    amount: float = Field(..., gt=0.0, description="Actual amount charged")
+    currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
+    note: Optional[str] = Field("", description="Usage notes or invoice memo")
+
+
+class SubscriptionChargeCreate(SubscriptionChargeBase):
+    bank_account_id: Optional[int] = Field(None, description="Optional bank account to record payment outflow")
+
+
+class SubscriptionChargeResponse(SubscriptionChargeBase):
+    id: int
+    subscription_name: Optional[str] = None
+    vendor_name: Optional[str] = None
+    linked_transaction_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    attachments: List[FinanceAttachmentResponse] = []
+
+    class Config:
+        from_attributes = True
+

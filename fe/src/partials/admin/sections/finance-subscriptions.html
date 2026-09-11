@@ -2,10 +2,22 @@
           <div class="toolbar">
             <div class="section-title-group">
               <h2 class="section-title"><i class="fa-solid fa-repeat"></i> Recurring Subscriptions</h2>
-              <p class="section-subtitle">Vendor services and recurring obligations with automated bill generation.</p>
+              <p class="section-subtitle">Vendor cloud/SaaS tools, recurring obligations, variable charges, and private file receipts.</p>
             </div>
-            <button class="btn btn-fill" onclick="showToast('Subscription management will be available in Phase 4', 'info')"><i class="fa-solid fa-plus"></i> Add Subscription</button>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeSubSearch" placeholder="Search subscriptions..." oninput="filterFinanceSubscriptions(this.value)">
+              </div>
+              <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="active" onclick="filterFinanceSubscriptionsStatus('active', this)">Active</button>
+                <button class="filter-tab" data-filter="all" onclick="filterFinanceSubscriptionsStatus('all', this)">All</button>
+                <button class="filter-tab" data-filter="inactive" onclick="filterFinanceSubscriptionsStatus('inactive', this)">Inactive</button>
+              </div>
+              <button class="btn btn-fill" id="financeAddSubscriptionBtn" onclick="openAddSubscriptionModal()"><i class="fa-solid fa-plus"></i> Add Subscription</button>
+            </div>
           </div>
+
           <div class="card">
             <div class="section-loading-bar" id="financeSubscriptionsLoadingBar"><span></span></div>
             <table class="responsive-card-table">
@@ -13,10 +25,11 @@
                 <tr>
                   <th>Service / Subscription</th>
                   <th>Vendor</th>
-                  <th>Amount</th>
+                  <th>Base Rate</th>
                   <th>Billing Cycle</th>
                   <th>Next Renewal</th>
                   <th>Auto-Bill</th>
+                  <th>Charge History</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -25,7 +38,176 @@
             </table>
             <div class="empty-state" id="financeSubscriptionsEmpty" style="display: none;">
               <i class="fa-solid fa-repeat"></i>
-              <p>No recurring subscriptions configured yet.</p>
+              <p>No recurring subscriptions found.</p>
+            </div>
+          </div>
+
+          <!-- Add / Edit Subscription Modal -->
+          <div id="subscriptionModal" class="modal-overlay">
+            <div class="modal modal-v2" style="max-width: 680px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-repeat"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="subModalTitle">New Subscription</h3>
+                  <p>Configure recurring software, infrastructure, or vendor service.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('subscriptionModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="subId">
+                <div class="form-section">
+                  <div class="form-section-label"><i class="fa-solid fa-layer-group"></i> Subscription Details <span class="line"></span></div>
+                  <div class="form-grid">
+                    <div class="form-field full">
+                      <label for="subName">Service / Subscription Name <span class="req">*</span></label>
+                      <input type="text" id="subName" placeholder="e.g. AWS Cloud Compute, Slack Business" required>
+                    </div>
+                    <div class="form-field full">
+                      <label for="subVendorId">Vendor / Supplier <span class="req">*</span></label>
+                      <select id="subVendorId" class="filter-select" required>
+                        <option value="">— Select vendor —</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subAmount">Estimated / Base Amount <span class="req">*</span></label>
+                      <input type="number" id="subAmount" step="0.01" min="0" placeholder="0.00" required>
+                    </div>
+                    <div class="form-field">
+                      <label for="subCurrency">Currency</label>
+                      <select id="subCurrency" class="filter-select">
+                        <option value="USD">USD ($)</option>
+                        <option value="EGP">EGP (E£)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subBillingCycle">Billing Cycle</label>
+                      <select id="subBillingCycle" class="filter-select">
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subNextRenewal">Next Renewal Date <span class="req">*</span></label>
+                      <input type="date" id="subNextRenewal" required>
+                    </div>
+                    <div class="form-field full">
+                      <div class="toggle-row">
+                        <div>
+                          <div class="t-label">Auto-generate Vendor Bill</div>
+                          <div class="t-sub">Automatically queue an accounts payable bill on each renewal date</div>
+                        </div>
+                        <label class="switch">
+                          <input type="checkbox" id="subAutoBill" checked>
+                          <span class="slider"></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('subscriptionModal')">Cancel</button>
+                <button type="button" class="btn btn-fill" id="btnSaveSubscription" onclick="saveSubscription()"><i class="fa-solid fa-check"></i> Save Subscription</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log Subscription Charge Modal -->
+          <div id="subscriptionChargeModal" class="modal-overlay">
+            <div class="modal modal-v2" style="max-width: 640px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-credit-card"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="chargeModalTitle">Log Subscription Charge</h3>
+                  <p id="chargeModalSub">Record an actual charge or usage-based invoice with receipt files.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('subscriptionChargeModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="chargeSubId">
+                <div class="form-section">
+                  <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Charge Details <span class="line"></span></div>
+                  <div class="form-grid">
+                    <div class="form-field">
+                      <label for="chargeAmount">Charged Amount <span class="req">*</span></label>
+                      <input type="number" id="chargeAmount" step="0.01" min="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="form-field">
+                      <label for="chargeCurrency">Currency</label>
+                      <select id="chargeCurrency" class="filter-select">
+                        <option value="USD">USD ($)</option>
+                        <option value="EGP">EGP (E£)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="chargeDate">Billing Date <span class="req">*</span></label>
+                      <input type="date" id="chargeDate" required>
+                    </div>
+                    <div class="form-field">
+                      <label for="chargeBankAccountId">Paid From Account <span class="opt">(Optional)</span></label>
+                      <select id="chargeBankAccountId" class="filter-select">
+                        <option value="">— Don't record ledger outflow —</option>
+                      </select>
+                    </div>
+                    <div class="form-field full">
+                      <label for="chargeFile">Receipt / Invoice File <span class="opt">(Private Accounting Storage)</span></label>
+                      <input type="file" id="chargeFile" class="form-control" accept=".pdf,.png,.jpg,.jpeg,.csv">
+                    </div>
+                    <div class="form-field full">
+                      <label for="chargeNote">Memo / Usage Notes</label>
+                      <input type="text" id="chargeNote" placeholder="e.g. Extra compute overage, 40 seats renewal">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('subscriptionChargeModal')">Cancel</button>
+                <button type="button" class="btn btn-fill" id="btnSaveSubscriptionCharge" onclick="saveSubscriptionCharge()"><i class="fa-solid fa-file-arrow-up"></i> Log Charge</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subscription Charge History Modal -->
+          <div id="subscriptionHistoryModal" class="modal-overlay">
+            <div class="modal modal-v2" style="max-width: 780px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="subHistoryTitle">Subscription Charge History</h3>
+                  <p id="subHistorySubtitle">All recorded charges, ledger links, and invoice attachments.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('subscriptionHistoryModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+                  <div id="subHistorySummary" style="font-weight:600; font-size:14px; color:var(--text2);"></div>
+                  <button class="btn btn-sm btn-fill" onclick="openLogChargeFromHistory()"><i class="fa-solid fa-plus"></i> New Charge</button>
+                </div>
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Note / Memo</th>
+                      <th>Ledger Status</th>
+                      <th>Attachment</th>
+                    </tr>
+                  </thead>
+                  <tbody id="subHistoryTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="subHistoryEmpty" style="display: none; padding:2rem 1rem;">
+                  <i class="fa-solid fa-receipt"></i>
+                  <p>No charges logged for this subscription yet.</p>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('subscriptionHistoryModal')">Close</button>
+              </div>
             </div>
           </div>
         </section>

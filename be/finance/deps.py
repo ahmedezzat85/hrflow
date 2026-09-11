@@ -122,3 +122,13 @@ def get_cheques_service(repo=Depends(get_cheques_repo)):
     return ChequesService(repo)
 
 
+def get_subscriptions_repo(db: Session = Depends(get_db)):
+    from finance.repositories.subscriptions_repository import SubscriptionsRepository
+    return SubscriptionsRepository(db)
+
+
+def get_subscriptions_service(repo=Depends(get_subscriptions_repo)):
+    from finance.services.subscriptions_service import SubscriptionsService
+    return SubscriptionsService(repo)
+
+

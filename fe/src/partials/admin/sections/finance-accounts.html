@@ -60,7 +60,7 @@
                 <p class="section-subtitle">Extensible taxonomy for ledger entries, cash book classification, and recurring spend rollups.</p>
               </div>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <select id="financeCategoryKindFilter" class="form-control" style="width:auto;min-width:140px;height:38px;padding:4px 10px;font-size:13px;" onchange="filterFinanceCategoriesByKind(this.value)">
+                <select id="financeCategoryKindFilter" class="form-control filter-select" style="min-width:140px;" onchange="filterFinanceCategoriesByKind(this.value)">
                   <option value="all">All Kinds</option>
                   <option value="cost">Cost / Expense</option>
                   <option value="revenue">Revenue / Income</option>
@@ -186,10 +186,10 @@
                   <input type="date" id="financeLedgerDateFrom" class="form-control" style="width:auto; height:34px; font-size:12px;" onchange="filterAccountLedger()" title="From Date">
                   <span style="color:var(--text3); font-size:12px;">to</span>
                   <input type="date" id="financeLedgerDateTo" class="form-control" style="width:auto; height:34px; font-size:12px;" onchange="filterAccountLedger()" title="To Date">
-                  <select id="financeLedgerCategoryFilter" class="form-control" style="width:auto; min-width:130px; height:34px; font-size:12px;" onchange="filterAccountLedger()">
+                  <select id="financeLedgerCategoryFilter" class="form-control filter-select" style="min-width:130px;" onchange="filterAccountLedger()">
                     <option value="">All Categories</option>
                   </select>
-                  <select id="financeLedgerPaymentTypeFilter" class="form-control" style="width:auto; min-width:130px; height:34px; font-size:12px;" onchange="filterAccountLedger()">
+                  <select id="financeLedgerPaymentTypeFilter" class="form-control filter-select" style="min-width:130px;" onchange="filterAccountLedger()">
                     <option value="">All Payment Types</option>
                   </select>
                 </div>

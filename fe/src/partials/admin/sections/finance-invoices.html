@@ -14,7 +14,7 @@
                 <input id="financeCustomerSearch" placeholder="Search customers..." oninput="filterFinanceCustomers(this.value)">
               </div>
               <!-- Status filter (invoices only) -->
-              <select id="financeInvoiceStatusFilter" class="form-control" style="width: auto; font-size: 0.85rem; padding: 6px 10px;" onchange="loadFinanceInvoices()">
+              <select id="financeInvoiceStatusFilter" class="form-control filter-select" onchange="loadFinanceInvoices()">
                 <option value="">All Statuses</option>
                 <option value="draft">Draft</option>
                 <option value="sent">Sent</option>

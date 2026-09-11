@@ -9,8 +9,8 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeBillSearch" placeholder="Search bills..." oninput="filterFinanceBills(this.value)">
               </div>
-              <select id="financeBillStatusFilter" class="form-control" style="width: auto; max-width: 160px;" onchange="loadFinanceBills()">
-                <option value="">All statuses</option>
+              <select id="financeBillStatusFilter" class="form-control filter-select" onchange="loadFinanceBills()">
+                <option value="">All Statuses</option>
                 <option value="unpaid">Unpaid</option>
                 <option value="paid">Paid</option>
                 <option value="overdue">Overdue</option>
