@@ -1,6 +1,6 @@
 # Bank Accounts, Ledger & Cheques — Feature Backlog
 
-Status: Planned (Revision 2 — informed by real cash book and revenue sheets)
+Status: Completed (Phases 0–8 Fully Implemented & Tested)
 Owner: Finance module
 Related: `docs/finance-module/02-project-description.md`
 Companion doc: `docs/finance-module/03-bank-accounts-ledger-implementation-plan.md`

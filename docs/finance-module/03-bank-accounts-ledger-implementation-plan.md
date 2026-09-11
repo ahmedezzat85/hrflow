@@ -1,6 +1,6 @@
 # Bank Accounts, Ledger & Cheques — Phased Implementation Plan
 
-Status: Planned (Revision 2 — informed by real cash book and revenue sheets)
+Status: Completed (Phases 0–8 Fully Implemented & Tested)
 Owner: Finance module
 Related: `docs/finance-module/01-implementation-plan.md`, `docs/finance-module/02-project-description.md`
 Companion doc: `docs/finance-module/04-bank-accounts-ledger-backlog.md` (feature backlog / requirements)
