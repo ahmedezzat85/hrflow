@@ -142,4 +142,10 @@ def get_statements_service(repo=Depends(get_statements_repo)):
     return StatementsService(repo)
 
 
+def get_reports_service(db: Session = Depends(get_db)):
+    from finance.services.reports_service import ReportsService
+    return ReportsService(db)
+
+
+
 

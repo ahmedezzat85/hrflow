@@ -1381,7 +1381,214 @@ const FinanceApi = {
     }
     return apiRequest("POST", `/api/finance/statements/${statementId}/reconcile`);
   },
+
+  // ==========================================
+  // 10. Financial Reports & Excel Export (Phase 8)
+  // ==========================================
+  async getCategorySummaryReport(params = {}) {
+    if (_isMock()) {
+      return {
+        date_from: params.date_from || "2026-09-01",
+        date_to: params.date_to || "2026-09-30",
+        currency: params.currency || null,
+        total_spent: 42500.0,
+        categories: [
+          { category_id: 2, category_name: "Salaries", kind: "cost", transaction_count: 8, total_amount: 28000.0, percentage: 65.88 },
+          { category_id: 1, category_name: "Hosting Cloud Infrastructure", kind: "cost", transaction_count: 4, total_amount: 6200.0, percentage: 14.59 },
+          { category_id: 6, category_name: "Rent & Facilities", kind: "cost", transaction_count: 1, total_amount: 4500.0, percentage: 10.59 },
+          { category_id: 3, category_name: "Medical Insurance", kind: "cost", transaction_count: 3, total_amount: 2500.0, percentage: 5.88 },
+          { category_id: 4, category_name: "Kitchen Supplies", kind: "cost", transaction_count: 6, total_amount: 1300.0, percentage: 3.06 },
+        ],
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/category-summary${qs ? "?" + qs : ""}`);
+  },
+
+  async getCategoryMatrixReport(params = {}) {
+    const yr = params.year || 2026;
+    const grp = params.period_group || "month";
+    if (_isMock()) {
+      const isQuarter = grp === "quarter";
+      return {
+        year: yr,
+        period_group: grp,
+        currency: params.currency || null,
+        period_labels: isQuarter ? ["Q1", "Q2", "Q3", "Q4"] : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        year_total: 382400.0,
+        period_totals: isQuarter
+          ? { Q1: 92000.0, Q2: 96500.0, Q3: 98400.0, Q4: 95500.0 }
+          : { Jan: 30000.0, Feb: 31000.0, Mar: 31000.0, Apr: 32000.0, May: 32000.0, Jun: 32500.0, Jul: 32500.0, Aug: 33000.0, Sep: 32900.0, Oct: 31500.0, Nov: 32000.0, Dec: 32000.0 },
+        rows: [
+          {
+            category_id: 2,
+            category_name: "Salaries",
+            periods: isQuarter
+              ? { Q1: 60000.0, Q2: 63000.0, Q3: 65000.0, Q4: 63000.0 }
+              : { Jan: 20000.0, Feb: 20000.0, Mar: 20000.0, Apr: 21000.0, May: 21000.0, Jun: 21000.0, Jul: 21500.0, Aug: 21500.0, Sep: 22000.0, Oct: 21000.0, Nov: 21000.0, Dec: 21000.0 },
+            total: 251000.0,
+            percentage: 65.64,
+          },
+          {
+            category_id: 1,
+            category_name: "Hosting Cloud Infrastructure",
+            periods: isQuarter
+              ? { Q1: 15000.0, Q2: 16000.0, Q3: 16500.0, Q4: 16000.0 }
+              : { Jan: 5000.0, Feb: 5000.0, Mar: 5000.0, Apr: 5200.0, May: 5300.0, Jun: 5500.0, Jul: 5400.0, Aug: 5500.0, Sep: 5600.0, Oct: 5300.0, Nov: 5300.0, Dec: 5400.0 },
+            total: 63500.0,
+            percentage: 16.61,
+          },
+          {
+            category_id: 6,
+            category_name: "Rent & Facilities",
+            periods: isQuarter
+              ? { Q1: 13500.0, Q2: 13500.0, Q3: 13500.0, Q4: 13500.0 }
+              : { Jan: 4500.0, Feb: 4500.0, Mar: 4500.0, Apr: 4500.0, May: 4500.0, Jun: 4500.0, Jul: 4500.0, Aug: 4500.0, Sep: 4500.0, Oct: 4500.0, Nov: 4500.0, Dec: 4500.0 },
+            total: 54000.0,
+            percentage: 14.12,
+          },
+        ],
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/category-by-period-matrix${qs ? "?" + qs : ""}`);
+  },
+
+  async getBalancesReport(params = {}) {
+    if (_isMock()) {
+      return {
+        as_of_date: params.as_of_date || new Date().toISOString().slice(0, 10),
+        accounts: (FinanceMockState.accounts || []).map((a) => ({
+          account_id: a.id,
+          account_name: a.account_name,
+          bank_name: a.bank_name || "—",
+          account_number: a.account_number,
+          currency: a.currency,
+          account_type: a.account_type,
+          country: a.country || "Egypt",
+          opening_balance: a.opening_balance,
+          balance_as_of_date: a.current_balance,
+        })),
+        currency_totals: {
+          USD: 650000.0,
+          EGP: 470000.0,
+        },
+        country_totals: {
+          Egypt: { EGP: 470000.0 },
+          "United States": { USD: 650000.0 },
+        },
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/balances${qs ? "?" + qs : ""}`);
+  },
+
+  async getTransactionsReport(params = {}) {
+    if (_isMock()) {
+      return {
+        date_from: params.date_from || "2026-09-01",
+        date_to: params.date_to || "2026-09-30",
+        count: 4,
+        total_inflows: 20900.0,
+        total_outflows: 4520.0,
+        net_change: 16380.0,
+        transactions: [
+          {
+            id: 1,
+            date: "2026-09-01",
+            account_name: "Voyance Operating USD",
+            direction: "in",
+            amount: 12500.0,
+            currency: "USD",
+            category_name: "Revenue",
+            payment_type_name: "Incoming Wire",
+            reference: "INV-2026-001",
+            description: "Apex Health payment",
+            cheque_number: "",
+            running_balance: 162500.0,
+          },
+          {
+            id: 2,
+            date: "2026-09-02",
+            account_name: "Voyance Operating USD",
+            direction: "out",
+            amount: 4200.0,
+            currency: "USD",
+            category_name: "Hosting Cloud Infrastructure",
+            payment_type_name: "Cheque",
+            reference: "BILL-2026-001",
+            description: "AWS cloud hosting payment",
+            cheque_number: "001011",
+            running_balance: 158300.0,
+          },
+          {
+            id: 3,
+            date: "2026-09-03",
+            account_name: "Voyance Operating USD",
+            direction: "out",
+            amount: 320.0,
+            currency: "USD",
+            category_name: "SaaS",
+            payment_type_name: "Debit Card",
+            reference: "BILL-2026-002",
+            description: "Slack monthly renewal",
+            cheque_number: "",
+            running_balance: 157980.0,
+          },
+          {
+            id: 4,
+            date: "2026-09-05",
+            account_name: "Voyance Treasury Reserve",
+            direction: "in",
+            amount: 8400.0,
+            currency: "USD",
+            category_name: "Revenue",
+            payment_type_name: "Internal Transfer",
+            reference: "INV-2026-002",
+            description: "BioCare Diagnostics SaaS",
+            cheque_number: "",
+            running_balance: 508400.0,
+          },
+        ],
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/transactions${qs ? "?" + qs : ""}`);
+  },
+
+  async getChequesReport(params = {}) {
+    if (_isMock()) {
+      const fy = params.fiscal_year || 2026;
+      const list = FinanceMockState.cheques || [];
+      const totalAmt = list.reduce((acc, c) => acc + Number(c.amount || 0), 0);
+      const cleared = list.filter((c) => c.status === "cleared");
+      const issued = list.filter((c) => c.status === "issued");
+      return {
+        fiscal_year: fy,
+        summary: {
+          total_count: list.length,
+          total_amount: totalAmt,
+          by_status: {
+            issued: { count: issued.length, amount: issued.reduce((acc, c) => acc + Number(c.amount || 0), 0) },
+            cleared: { count: cleared.length, amount: cleared.reduce((acc, c) => acc + Number(c.amount || 0), 0) },
+            bounced: { count: 0, amount: 0.0 },
+            voided: { count: 0, amount: 0.0 },
+          },
+        },
+        cheques: list,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/cheques${qs ? "?" + qs : ""}`);
+  },
+
+  downloadExcelUrl(endpoint, params = {}) {
+    const p = { ...params, format: "xlsx" };
+    const qs = new URLSearchParams(p).toString();
+    return `${API_BASE_URL}${endpoint}?${qs}`;
+  },
 };
 
 window.FinanceApi = FinanceApi;
+
 

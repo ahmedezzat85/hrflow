@@ -132,6 +132,7 @@ const titles = {
   'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
   'a-finance-accounts':['Company Bank Accounts','Manage company treasury and operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
+  'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],
