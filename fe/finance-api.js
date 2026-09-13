@@ -268,6 +268,15 @@ const FinanceApi = {
     }
     return apiRequest("PUT", `/api/finance/invoices/${id}`, payload);
   },
+  async sendInvoice(id) {
+    if (_isMock()) {
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
+      if (!inv) throw new Error("Invoice not found");
+      inv.status = "sent";
+      return inv;
+    }
+    return apiRequest("POST", `/api/finance/invoices/${id}/send`);
+  },
   async voidInvoice(id, reason = null) {
     if (_isMock()) {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));

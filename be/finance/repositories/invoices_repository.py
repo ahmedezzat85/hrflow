@@ -193,6 +193,8 @@ class InvoicesRepository:
 
         if "customer_id" in data and data["customer_id"] is not None:
             invoice.customer_id = data["customer_id"]
+        if "invoice_number" in data and data["invoice_number"] is not None:
+            invoice.invoice_number = data["invoice_number"].strip()
         if "issue_date" in data and data["issue_date"] is not None:
             invoice.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:

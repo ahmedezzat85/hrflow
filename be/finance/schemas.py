@@ -290,6 +290,7 @@ class SalesInvoiceCreate(SalesInvoiceBase):
 
 class SalesInvoiceUpdate(BaseModel):
     customer_id: Optional[int] = None
+    invoice_number: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     status: Optional[str] = None

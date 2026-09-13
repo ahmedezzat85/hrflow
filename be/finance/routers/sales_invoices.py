@@ -96,6 +96,16 @@ def update_sales_invoice(
     return service.update_invoice(invoice_id, payload)
 
 
+@router.post("/{invoice_id}/send", response_model=SalesInvoiceResponse)
+def send_sales_invoice(
+    invoice_id: int,
+    current_user: dict = Depends(require_permission("finance.invoice.write")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    """Transition an invoice to sent/issued status."""
+    return service.send_invoice(invoice_id)
+
+
 @router.delete("/{invoice_id}", response_model=SalesInvoiceResponse)
 def void_sales_invoice(
     invoice_id: int,

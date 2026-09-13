@@ -255,6 +255,18 @@ class InvoicesService:
         if payload.status not in VALID_INVOICE_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
 
+        if payload.status in ("paid", "overdue"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot manually set status to '{payload.status}'. Status is derived by payment records and due dates.",
+            )
+
+        if payload.issue_date and payload.due_date and payload.due_date < payload.issue_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Due date cannot precede issue date.",
+            )
+
         self._validate_routing_and_channel(payload.expected_bank_account_id, payload.revenue_channel)
 
         existing = self.repo.get_by_number(payload.invoice_number)
@@ -283,6 +295,36 @@ class InvoicesService:
         if payload.status and payload.status not in VALID_INVOICE_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
 
+        if payload.status in ("paid", "overdue"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot manually set status to '{payload.status}'. Status is derived by payment records and due dates.",
+            )
+
+        effective_issue = payload.issue_date or invoice.issue_date
+        effective_due = payload.due_date or invoice.due_date
+        if effective_issue and effective_due and effective_due < effective_issue:
+            raise HTTPException(
+                status_code=400,
+                detail="Due date cannot precede issue date.",
+            )
+
+        if payload.invoice_number and payload.invoice_number.strip() != invoice.invoice_number:
+            if invoice.status in ("sent", "paid"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invoice number is immutable once issued. Void and recreate if a numbering correction is required.",
+                )
+            existing = self.repo.get_by_number(payload.invoice_number.strip())
+            if existing and existing.id != invoice_id:
+                raise HTTPException(status_code=400, detail=f"Invoice number '{payload.invoice_number}' already in use")
+
+        if invoice.status in ("paid", "void") and payload.lines is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot modify line items of an invoice in '{invoice.status}' status.",
+            )
+
         self._validate_routing_and_channel(payload.expected_bank_account_id, payload.revenue_channel)
 
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
@@ -294,6 +336,16 @@ class InvoicesService:
             ]
 
         updated = self.repo.update(invoice_id, data, lines_data)
+        return self._invoice_to_response(updated)
+
+    def send_invoice(self, invoice_id: int) -> SalesInvoiceResponse:
+        invoice = self.repo.get_by_id(invoice_id)
+        if not invoice:
+            raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
+        if invoice.status == "void":
+            raise HTTPException(status_code=400, detail="Cannot send a voided invoice")
+
+        updated = self.repo.update(invoice_id, {"status": "sent"})
         return self._invoice_to_response(updated)
 
     def void_invoice(self, invoice_id: int, reason: Optional[str] = None) -> SalesInvoiceResponse:

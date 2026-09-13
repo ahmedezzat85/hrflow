@@ -510,3 +510,136 @@ def test_invoice_work_queue_and_derived_status(app_client, admin_cookies):
     assert "INV-QUEUE-OVERDUE" in od_numbers
     assert "INV-QUEUE-DRAFT" not in od_numbers
 
+
+def test_invoice_editor_lifecycle_and_validation(app_client, admin_cookies):
+    """
+    Story 3.2 validations:
+    - Creator cannot manually set status to 'paid' or 'overdue' on create/update.
+    - Due date cannot precede issue date.
+    - Invoice number is immutable once issued (sent/paid).
+    - Line items cannot be modified on paid or void invoices.
+    - POST /{invoice_id}/send transitions a draft invoice to 'sent'.
+    """
+    # 1. Customer setup
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Lifecycle Customer"},
+        cookies=admin_cookies,
+    )
+    customer_id = cust_resp.json()["id"]
+
+    # 2. Rejection of manual status='paid' or 'overdue' on create
+    bad_paid = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "paid",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_paid.status_code == 400
+    assert "Cannot manually set status to 'paid'" in bad_paid.json()["detail"]
+
+    bad_overdue = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "overdue",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_overdue.status_code == 400
+    assert "Cannot manually set status to 'overdue'" in bad_overdue.json()["detail"]
+
+    # 3. Due date precedes issue date rejection on create
+    bad_date = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-30",
+            "due_date": "2026-09-01",
+            "status": "draft",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_date.status_code == 400
+    assert "Due date cannot precede issue date" in bad_date.json()["detail"]
+
+    # 4. Create valid draft invoice
+    draft_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "lines": [{"description": "Initial service", "quantity": 1.0, "unit_price": 1000.0, "line_total": 1000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    assert draft_resp.status_code == 201
+    inv_id = draft_resp.json()["id"]
+
+    # 5. Reject manual status='paid' on update
+    up_bad_paid = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"status": "paid"},
+        cookies=admin_cookies,
+    )
+    assert up_bad_paid.status_code == 400
+
+    # 6. Reject invalid due date on update
+    up_bad_date = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"due_date": "2026-08-01"},
+        cookies=admin_cookies,
+    )
+    assert up_bad_date.status_code == 400
+
+    # 7. Draft invoice number CAN be edited before issue
+    up_num = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"invoice_number": "INV-LIFE-001-REV"},
+        cookies=admin_cookies,
+    )
+    assert up_num.status_code == 200
+    assert up_num.json()["invoice_number"] == "INV-LIFE-001-REV"
+
+    # 8. Send invoice via POST /{invoice_id}/send
+    send_resp = app_client.post(
+        f"/api/finance/invoices/{inv_id}/send",
+        cookies=admin_cookies,
+    )
+    assert send_resp.status_code == 200
+    assert send_resp.json()["status"] == "sent"
+
+    # 9. Invoice number is now IMMUTABLE
+    imm_resp = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"invoice_number": "INV-LIFE-002"},
+        cookies=admin_cookies,
+    )
+    assert imm_resp.status_code == 400
+    assert "immutable once issued" in imm_resp.json()["detail"]
+
+    # 10. Void invoice and verify line modification rejection
+    app_client.delete(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies)
+    void_line_resp = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"lines": [{"description": "New", "quantity": 1.0, "unit_price": 500.0, "line_total": 500.0}]},
+        cookies=admin_cookies,
+    )
+    assert void_line_resp.status_code == 400
+
+

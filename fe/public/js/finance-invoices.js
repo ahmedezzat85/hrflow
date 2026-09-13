@@ -229,6 +229,7 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
+        ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve & Send Invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
         ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
@@ -256,13 +257,109 @@ async function _populateInvoiceBankDropdown() {
   } catch (_) {}
 }
 
+let _invoiceDraftAutoSaveBound = false;
+function _ensureInvoiceDraftAutoSave() {
+  if (_invoiceDraftAutoSaveBound) return;
+  const modal = document.getElementById("invoiceModal");
+  if (!modal) return;
+  const handler = () => _saveInvoiceDraftToStorage();
+  modal.addEventListener("input", handler);
+  modal.addEventListener("change", handler);
+  _invoiceDraftAutoSaveBound = true;
+}
+
+function _saveInvoiceDraftToStorage() {
+  const modalId = document.getElementById("invoiceModalId")?.value;
+  if (modalId) return; // Only auto-save newly drafted invoices
+
+  const customerId = document.getElementById("invoiceCustomerId")?.value || "";
+  const invoiceNumber = document.getElementById("invoiceNumber")?.value || "";
+  const issueDate = document.getElementById("invoiceIssueDate")?.value || "";
+  const dueDate = document.getElementById("invoiceDueDate")?.value || "";
+  const status = document.getElementById("invoiceStatus")?.value || "draft";
+  const currency = document.getElementById("invoiceCurrency")?.value || "USD";
+  const expectedBank = document.getElementById("invoiceExpectedBankAccount")?.value || "";
+  const revenueChannel = document.getElementById("invoiceRevenueChannel")?.value || "";
+  const notes = document.getElementById("invoiceNotes")?.value || "";
+
+  const lines = [];
+  document.querySelectorAll("#invoiceLinesBody tr").forEach((r) => {
+    const desc = r.querySelector("input[type='text']")?.value || "";
+    const qty = parseFloat(r.querySelector(".inv-qty")?.value) || 1;
+    const price = parseFloat(r.querySelector(".inv-price")?.value) || 0;
+    const total = parseFloat(r.querySelector(".inv-total")?.value) || (qty * price);
+    if (desc || price > 0) {
+      lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
+    }
+  });
+
+  if (customerId || invoiceNumber || notes || lines.length > 0) {
+    try {
+      localStorage.setItem(
+        "hrflow_invoice_draft",
+        JSON.stringify({ customerId, invoiceNumber, issueDate, dueDate, status, currency, expectedBank, revenueChannel, notes, lines })
+      );
+    } catch (_) {}
+  }
+}
+
+function resumeInvoiceDraft() {
+  try {
+    const raw = localStorage.getItem("hrflow_invoice_draft");
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.customerId) document.getElementById("invoiceCustomerId").value = d.customerId;
+    if (d.invoiceNumber) document.getElementById("invoiceNumber").value = d.invoiceNumber;
+    if (d.issueDate) document.getElementById("invoiceIssueDate").value = d.issueDate;
+    if (d.dueDate) document.getElementById("invoiceDueDate").value = d.dueDate;
+    if (d.status) document.getElementById("invoiceStatus").value = d.status;
+    if (d.currency) document.getElementById("invoiceCurrency").value = d.currency;
+    if (d.expectedBank && document.getElementById("invoiceExpectedBankAccount")) {
+      document.getElementById("invoiceExpectedBankAccount").value = d.expectedBank;
+    }
+    if (d.revenueChannel && document.getElementById("invoiceRevenueChannel")) {
+      document.getElementById("invoiceRevenueChannel").value = d.revenueChannel;
+    }
+    if (d.notes) document.getElementById("invoiceNotes").value = d.notes;
+
+    if (Array.isArray(d.lines) && d.lines.length > 0) {
+      document.getElementById("invoiceLinesBody").innerHTML = "";
+      d.lines.forEach((ln) => addInvoiceLine(ln));
+    }
+    _updateInvoiceTotals();
+    const banner = document.getElementById("invoiceDraftResumeBanner");
+    if (banner) banner.style.display = "none";
+    showToast("Draft resumed successfully", "info");
+  } catch (_) {}
+}
+
+function discardInvoiceDraft() {
+  try {
+    localStorage.removeItem("hrflow_invoice_draft");
+  } catch (_) {}
+  const banner = document.getElementById("invoiceDraftResumeBanner");
+  if (banner) banner.style.display = "none";
+  showToast("Draft discarded", "info");
+}
+
 async function openAddInvoiceModal() {
   FinanceForm.clearErrors("invoiceModal");
   _populateInvoiceCustomerDropdown();
   _populateInvoiceBankDropdown();
+  _ensureInvoiceDraftAutoSave();
+
   document.getElementById("invoiceModalTitleText").textContent = "New Sales Invoice";
   document.getElementById("invoiceModalId").value = "";
-  document.getElementById("invoiceNumber").value = "";
+
+  const invNumEl = document.getElementById("invoiceNumber");
+  if (invNumEl) {
+    invNumEl.value = "";
+    invNumEl.readOnly = false;
+    invNumEl.style.backgroundColor = "";
+  }
+  const lockNote = document.getElementById("invoiceNumberImmutableNote");
+  if (lockNote) lockNote.style.display = "none";
+
   document.getElementById("invoiceCustomerId").value = "";
   document.getElementById("invoiceIssueDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("invoiceDueDate").value = "";
@@ -274,6 +371,15 @@ async function openAddInvoiceModal() {
   document.getElementById("invoiceLinesBody").innerHTML = "";
   _updateInvoiceTotals();
   addInvoiceLine();
+
+  const savedDraft = localStorage.getItem("hrflow_invoice_draft");
+  const banner = document.getElementById("invoiceDraftResumeBanner");
+  if (savedDraft && banner) {
+    banner.style.display = "flex";
+  } else if (banner) {
+    banner.style.display = "none";
+  }
+
   openModal("invoiceModal");
 }
 
@@ -281,15 +387,30 @@ async function openEditInvoiceModal(invoiceId) {
   FinanceForm.clearErrors("invoiceModal");
   _populateInvoiceCustomerDropdown();
   await _populateInvoiceBankDropdown();
+  _ensureInvoiceDraftAutoSave();
+
+  const banner = document.getElementById("invoiceDraftResumeBanner");
+  if (banner) banner.style.display = "none";
+
   try {
     const inv = await FinanceApi.getInvoice(invoiceId);
     document.getElementById("invoiceModalTitleText").textContent = `Edit Invoice ${inv.invoice_number}`;
     document.getElementById("invoiceModalId").value = inv.id;
-    document.getElementById("invoiceNumber").value = inv.invoice_number;
+
+    const isIssued = inv.status === "sent" || inv.status === "paid";
+    const invNumEl = document.getElementById("invoiceNumber");
+    if (invNumEl) {
+      invNumEl.value = inv.invoice_number;
+      invNumEl.readOnly = isIssued;
+      invNumEl.style.backgroundColor = isIssued ? "var(--surface2, #f1f5f9)" : "";
+    }
+    const lockNote = document.getElementById("invoiceNumberImmutableNote");
+    if (lockNote) lockNote.style.display = isIssued ? "block" : "none";
+
     document.getElementById("invoiceCustomerId").value = inv.customer_id;
     document.getElementById("invoiceIssueDate").value = inv.issue_date || "";
     document.getElementById("invoiceDueDate").value = inv.due_date || "";
-    document.getElementById("invoiceStatus").value = inv.status || "draft";
+    document.getElementById("invoiceStatus").value = inv.status === "draft" ? "draft" : "sent";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
     if (document.getElementById("invoiceExpectedBankAccount")) {
       document.getElementById("invoiceExpectedBankAccount").value = inv.expected_bank_account_id ? String(inv.expected_bank_account_id) : "";
@@ -353,7 +474,12 @@ async function _populateInvoiceCustomerDropdown() {
   } catch (_) {}
 }
 
-async function saveInvoiceModal() {
+async function saveInvoiceModal(targetStatus) {
+  if (targetStatus) {
+    const stEl = document.getElementById("invoiceStatus");
+    if (stEl) stEl.value = targetStatus;
+  }
+
   const invoiceId = document.getElementById("invoiceModalId").value;
   const customerId = document.getElementById("invoiceCustomerId").value;
   const invoiceNumber = document.getElementById("invoiceNumber").value.trim();
@@ -368,12 +494,18 @@ async function saveInvoiceModal() {
   ]);
   if (!isValid) return;
 
+  if (issueDate && dueDate && dueDate < issueDate) {
+    FinanceForm.showFieldError("invoiceDueDate", "Due date cannot precede issue date");
+    showToast("Due date cannot precede issue date", "error");
+    return;
+  }
+
   const lines = [];
   document.querySelectorAll("#invoiceLinesBody tr").forEach((r) => {
     const desc = r.querySelector("input[type='text']")?.value.trim();
     const qty = parseFloat(r.querySelector(".inv-qty")?.value) || 1;
     const price = parseFloat(r.querySelector(".inv-price")?.value) || 0;
-    const total = parseFloat(r.querySelector(".inv-total")?.value) || 0;
+    const total = parseFloat(r.querySelector(".inv-total")?.value) || (qty * price);
     if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
   });
 
@@ -394,14 +526,18 @@ async function saveInvoiceModal() {
   };
 
   const btn = document.getElementById("invoiceModalSaveBtn");
+  const draftBtn = document.getElementById("invoiceSaveDraftBtn");
   if (btn) btn.disabled = true;
+  if (draftBtn) draftBtn.disabled = true;
+
   try {
     if (invoiceId) {
       await FinanceApi.updateInvoice(invoiceId, payload);
       showToast("Invoice updated", "success");
     } else {
       await FinanceApi.createInvoice(payload);
-      showToast("Invoice created", "success");
+      showToast(payload.status === "sent" ? "Invoice created and issued" : "Invoice draft saved", "success");
+      try { localStorage.removeItem("hrflow_invoice_draft"); } catch (_) {}
     }
     closeInvoiceModal();
     loadFinanceInvoices();
@@ -409,6 +545,17 @@ async function saveInvoiceModal() {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
   } finally {
     if (btn) btn.disabled = false;
+    if (draftBtn) draftBtn.disabled = false;
+  }
+}
+
+async function sendInvoiceAction(invoiceId) {
+  try {
+    await FinanceApi.sendInvoice(invoiceId);
+    showToast("Invoice issued successfully", "success");
+    loadFinanceInvoices();
+  } catch (err) {
+    showToast("Failed to send invoice: " + (err.message || err), "error");
   }
 }
 
