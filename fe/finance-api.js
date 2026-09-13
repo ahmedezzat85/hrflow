@@ -1212,11 +1212,20 @@ const FinanceApi = {
     }
 
     if (data instanceof FormData) {
-      const res = await fetch(`/api/finance/subscriptions/${subscriptionId}/charges`, {
-        method: "POST",
-        body: data,
-        credentials: "include",
-      });
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}/api/finance/subscriptions/${subscriptionId}/charges`, {
+          method: "POST",
+          body: data,
+          credentials: "include",
+        });
+      } catch (networkErr) {
+        throw new Error("Network error - is the backend server running?");
+      }
+      if (res.status === 401) {
+        if (typeof forceSessionExpiredLogout === "function") forceSessionExpiredLogout();
+        throw new Error("Session expired. Please sign in again.");
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || `Request failed with status ${res.status}`);
@@ -1308,11 +1317,20 @@ const FinanceApi = {
       return newImport;
     }
 
-    const res = await fetch(`/api/finance/accounts/${accountId}/statements`, {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
+    let res;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/finance/accounts/${accountId}/statements`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+    } catch (networkErr) {
+      throw new Error("Network error - is the backend server running?");
+    }
+    if (res.status === 401) {
+      if (typeof forceSessionExpiredLogout === "function") forceSessionExpiredLogout();
+      throw new Error("Session expired. Please sign in again.");
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `Upload failed with status ${res.status}`);

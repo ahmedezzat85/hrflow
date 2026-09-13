@@ -107,6 +107,7 @@ class StatementsService:
         file_type = "pdf" if ext == "pdf" else "csv"
 
         # Save to private uploads/finance_attachments/
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         unique_name = f"stmt_{uuid.uuid4().hex[:12]}_{filename}"
         disk_path = os.path.join(UPLOAD_DIR, unique_name)
         with open(disk_path, "wb") as f:
