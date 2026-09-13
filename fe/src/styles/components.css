@@ -966,3 +966,38 @@ select.form-control option {
   color: var(--text2, #64748b);
   border: 1px solid var(--border, #e2e8f0);
 }
+
+/* Financial table and money semantics (Story 0.2) */
+.cell-money,
+th.cell-money,
+td.cell-money,
+.text-right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+.money-negative {
+  color: var(--danger, #ef4444);
+}
+
+.money-positive {
+  color: var(--success, #10b981);
+}
+
+.money-zero {
+  color: var(--text3, #94a3b8);
+}
+
+.status-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-weight: 600;
+}

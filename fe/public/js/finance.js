@@ -35,6 +35,233 @@ const FinanceState = {
 };
 
 // ==========================================
+// Shared Money, Date, and Status Semantics (Story 0.2)
+// ==========================================
+const FinanceFormat = {
+  formatMoney(amount, currency = "USD", options = {}) {
+    const rawNum = Number(amount);
+    const num = isNaN(rawNum) ? 0 : rawNum;
+    const isNegative = num < 0;
+    const absNum = Math.abs(num);
+    const decimals = options.decimals !== undefined ? options.decimals : 2;
+    const formattedAbs = absNum.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+
+    const curr = (currency || "USD").toUpperCase().trim();
+    const showSign = !!options.showSign;
+    const accounting = !!options.accounting;
+
+    let symbol = "";
+    let suffix = "";
+    let prefix = "";
+
+    if (curr === "USD") {
+      symbol = "$";
+      suffix = " USD";
+    } else if (curr === "EGP") {
+      prefix = "EGP ";
+    } else if (curr === "EUR") {
+      symbol = "€";
+      suffix = " EUR";
+    } else if (curr === "GBP") {
+      symbol = "£";
+      suffix = " GBP";
+    } else {
+      prefix = `${curr} `;
+    }
+
+    let signStr = "";
+    if (isNegative) {
+      signStr = "-";
+    } else if (showSign && num > 0) {
+      signStr = "+";
+    }
+
+    if (accounting && isNegative) {
+      return `(${prefix || symbol}${formattedAbs}${suffix})`;
+    }
+
+    if (prefix) {
+      return `${signStr}${prefix}${formattedAbs}`;
+    }
+
+    return `${signStr}${symbol}${formattedAbs}${suffix}`;
+  },
+
+  renderMoneyHtml(amount, currency = "USD", options = {}) {
+    const rawNum = Number(amount);
+    const num = isNaN(rawNum) ? 0 : rawNum;
+    const formatted = this.formatMoney(num, currency, options);
+    const isNegative = num < 0;
+    const isPositive = num > 0;
+    const curr = (currency || "USD").toUpperCase().trim();
+
+    let stateClass = "money-zero";
+    let signWord = "";
+    if (isNegative) {
+      stateClass = "money-negative";
+      signWord = "negative ";
+    } else if (isPositive) {
+      stateClass = "money-positive";
+      if (options.showSign) signWord = "positive ";
+    }
+
+    const currencyWords = {
+      USD: "US Dollars",
+      EGP: "Egyptian Pounds",
+      EUR: "Euros",
+      GBP: "British Pounds",
+    };
+    const currName = currencyWords[curr] || curr;
+    const decimals = options.decimals !== undefined ? options.decimals : 2;
+    const accessibleLabel = `${signWord}${Math.abs(num).toFixed(decimals)} ${currName}`;
+
+    return `<span class="money ${stateClass} ${options.extraClass || ""}" aria-label="${accessibleLabel}" role="text">${formatted}</span>`;
+  },
+
+  formatFinanceDate(dateVal, options = {}) {
+    if (!dateVal) return "—";
+    const str = String(dateVal).trim();
+    if (!str || str === "--" || str === "—") return "—";
+
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return str;
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const datePart = `${year}-${month}-${day}`;
+
+    const hasTime = str.includes("T") || (str.includes(" ") && str.includes(":"));
+    if (options.includeTime || (hasTime && options.includeTime !== false)) {
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+      let tz = "UTC";
+      try {
+        const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(d);
+        const tzPart = parts.find((p) => p.type === "timeZoneName");
+        if (tzPart && tzPart.value) tz = tzPart.value;
+      } catch (_) {}
+
+      return `${datePart} ${hours}:${minutes} (${tz})`;
+    }
+
+    return datePart;
+  },
+
+  getDerivedInvoiceStatus(inv) {
+    if (!inv) return "draft";
+    const rawStatus = (inv.status || "draft").toLowerCase().trim();
+    if (rawStatus === "void" || rawStatus === "cancelled") return "void";
+    if (rawStatus === "paid") return "paid";
+
+    if (inv.due_date) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (inv.due_date < todayStr) {
+        return "overdue";
+      }
+    }
+    return rawStatus;
+  },
+
+  getDerivedBillStatus(bill) {
+    if (!bill) return "unpaid";
+    const rawStatus = (bill.status || "unpaid").toLowerCase().trim();
+    if (rawStatus === "void" || rawStatus === "cancelled") return "void";
+    if (rawStatus === "paid") return "paid";
+
+    if (bill.due_date) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (bill.due_date < todayStr) {
+        return "overdue";
+      }
+    }
+    return rawStatus;
+  },
+
+  STATUS_MAP: {
+    invoice: {
+      draft: { label: "Draft", badgeClass: "badge-pending", icon: "fa-solid fa-file-pen" },
+      sent: { label: "Sent", badgeClass: "badge-info", icon: "fa-solid fa-paper-plane" },
+      partially_paid: { label: "Partially Paid", badgeClass: "badge-warning", icon: "fa-solid fa-circle-half-stroke" },
+      paid: { label: "Paid", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      overdue: { label: "Overdue", badgeClass: "badge-rejected", icon: "fa-solid fa-circle-exclamation" },
+      void: { label: "Void", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    bill: {
+      unpaid: { label: "Unpaid", badgeClass: "badge-pending", icon: "fa-solid fa-clock" },
+      partially_paid: { label: "Partially Paid", badgeClass: "badge-warning", icon: "fa-solid fa-circle-half-stroke" },
+      paid: { label: "Paid", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      overdue: { label: "Overdue", badgeClass: "badge-rejected", icon: "fa-solid fa-circle-exclamation" },
+      void: { label: "Void", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    transfer: {
+      completed: { label: "Completed", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      pending: { label: "Pending", badgeClass: "badge-pending", icon: "fa-solid fa-clock" },
+      cancelled: { label: "Cancelled", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    cheque: {
+      issued: { label: "Issued", badgeClass: "badge-pending", icon: "fa-solid fa-clock" },
+      cleared: { label: "Cleared", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      bounced: { label: "Bounced", badgeClass: "badge-rejected", icon: "fa-solid fa-triangle-exclamation" },
+      voided: { label: "Voided", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    statement: {
+      imported: { label: "Imported", badgeClass: "badge-info", icon: "fa-solid fa-file-import" },
+      partially_reconciled: { label: "Partial", badgeClass: "badge-warning", icon: "fa-solid fa-circle-half-stroke" },
+      reconciled: { label: "Reconciled", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+    },
+    subscription: {
+      active: { label: "Active", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      paused: { label: "Paused", badgeClass: "badge-warning", icon: "fa-solid fa-circle-pause" },
+      cancelled: { label: "Cancelled", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+      inactive: { label: "Inactive", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    account: {
+      active: { label: "Active", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      inactive: { label: "Inactive", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    customer: {
+      active: { label: "Active", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      inactive: { label: "Inactive", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    vendor: {
+      active: { label: "Active", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      inactive: { label: "Inactive", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+    payroll: {
+      draft: { label: "Draft", badgeClass: "badge-pending", icon: "fa-solid fa-file-pen" },
+      approved: { label: "Approved", badgeClass: "badge-info", icon: "fa-solid fa-clipboard-check" },
+      paid: { label: "Paid", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
+      cancelled: { label: "Cancelled", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+    },
+  },
+
+  formatStatusBadge(entityType, status, options = {}) {
+    const norm = (status || "").toLowerCase().trim();
+    const entityMap = this.STATUS_MAP[entityType] || {};
+    const item = entityMap[norm] || {
+      label: (status || "Unknown").toUpperCase(),
+      badgeClass: "badge-grey",
+      icon: "fa-solid fa-circle-info",
+    };
+    const label = options.customLabel || item.label;
+    return `<span class="badge ${item.badgeClass} status-badge-wrap" role="status" aria-label="Status: ${label}"><i class="${item.icon}" aria-hidden="true"></i> ${label}</span>`;
+  },
+};
+
+// Global aliases for convenience
+window.FinanceFormat = FinanceFormat;
+window.formatMoney = FinanceFormat.formatMoney.bind(FinanceFormat);
+window.renderMoneyHtml = FinanceFormat.renderMoneyHtml.bind(FinanceFormat);
+window.formatFinanceDate = FinanceFormat.formatFinanceDate.bind(FinanceFormat);
+window.formatStatusBadge = FinanceFormat.formatStatusBadge.bind(FinanceFormat);
+window.getDerivedInvoiceStatus = FinanceFormat.getDerivedInvoiceStatus.bind(FinanceFormat);
+window.getDerivedBillStatus = FinanceFormat.getDerivedBillStatus.bind(FinanceFormat);
+
+// ==========================================
 // 1. Dashboard Overview
 // ==========================================
 const FinanceDashboardState = {
@@ -138,8 +365,7 @@ function renderFinanceDashboard(summary) {
   const netEl = document.getElementById("statFinanceNet");
 
   const currency = summary.currency || summary.base_currency || "USD";
-  const currPrefix = currency === "EGP" ? "E£" : "$";
-  const fmt = (n) => `${currPrefix}${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (n) => FinanceFormat.formatMoney(n, currency);
 
   if (balanceEl) balanceEl.textContent = fmt(summary.balance);
   if (revEl) revEl.textContent = fmt(summary.revenue_mtd);
@@ -184,14 +410,8 @@ async function loadFinanceInvoices() {
 }
 
 function _invoiceStatusBadge(status) {
-  const map = {
-    draft: "badge-pending",
-    sent: "badge-info",
-    paid: "badge-approved",
-    overdue: "badge-rejected",
-    void: "badge-grey",
-  };
-  return map[status] || "badge-pending";
+  const norm = (status || "").toLowerCase();
+  return (FinanceFormat.STATUS_MAP.invoice[norm]?.badgeClass) || "badge-pending";
 }
 
 function _revenueChannelLabel(channel) {
@@ -232,18 +452,19 @@ function renderFinanceInvoices(items) {
           ? `<span class="badge" style="background: rgba(234, 179, 8, 0.18); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.72rem; margin-left: 6px;" title="Payment received in different account than expected"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancy</span>`
           : "";
 
+        const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
         return `
     <tr>
       <td><strong>${inv.invoice_number}</strong>${discrepancyBadge}</td>
-      <td>${inv.customer_name || "--"}</td>
+      <td>${inv.customer_name || "—"}</td>
       <td>${routeDisplay}</td>
-      <td>${inv.issue_date || "--"}</td>
-      <td>${inv.due_date || "--"}</td>
-      <td><strong>$${Number(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge ${_invoiceStatusBadge(inv.status)}">${(inv.status || "--").toUpperCase()}</span></td>
+      <td>${FinanceFormat.formatFinanceDate(inv.issue_date)}</td>
+      <td>${FinanceFormat.formatFinanceDate(inv.due_date)}</td>
+      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")}</strong></td>
+      <td>${FinanceFormat.formatStatusBadge("invoice", derivedStatus)}</td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(inv.status === "sent" || inv.status === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "sent" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
@@ -585,10 +806,10 @@ function renderFinanceCustomers(items) {
   tbody.innerHTML = items.map((c) => `
     <tr>
       <td><strong>${c.name}</strong>${c.notes ? `<div style="font-size:12px;color:var(--text3);">${c.notes}</div>` : ""}</td>
-      <td>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "--"}</td>
-      <td>${c.contact_phone || "--"}</td>
-      <td><code>${c.tax_id || "--"}</code></td>
-      <td><span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "—"}</td>
+      <td>${c.contact_phone || "—"}</td>
+      <td><code>${c.tax_id || "—"}</code></td>
+      <td>${FinanceFormat.formatStatusBadge("customer", c.is_active ? "active" : "inactive")}</td>
       <td><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})"><i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i></button></div></td>
     </tr>
   `).join("");
@@ -679,13 +900,8 @@ async function toggleCustomerActive(id, currentlyActive) {
 // 3. Vendor Bills
 // ==========================================
 function _billStatusBadge(status) {
-  const map = {
-    unpaid: "badge-pending",
-    paid: "badge-approved",
-    overdue: "badge-rejected",
-    void: "badge-grey",
-  };
-  return map[status] || "badge-pending";
+  const norm = (status || "").toLowerCase();
+  return (FinanceFormat.STATUS_MAP.bill[norm]?.badgeClass) || "badge-pending";
 }
 
 async function loadFinanceBills() {
@@ -721,22 +937,25 @@ function renderFinanceBills(items) {
   }
   if (empty) empty.style.display = "none";
 
-  tbody.innerHTML = items.map((bill) => `
+  tbody.innerHTML = items.map((bill) => {
+    const derivedStatus = FinanceFormat.getDerivedBillStatus(bill);
+    return `
     <tr>
       <td><strong>${bill.bill_number}</strong></td>
-      <td>${bill.vendor_name || "--"}</td>
+      <td>${bill.vendor_name || "—"}</td>
       <td><span class="badge badge-info">${bill.category || "General"}</span></td>
-      <td>${bill.issue_date || "--"}</td>
-      <td>${bill.due_date || "--"}</td>
-      <td><strong>$${Number(bill.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge ${_billStatusBadge(bill.status)}">${(bill.status || "--").toUpperCase()}</span></td>
+      <td>${FinanceFormat.formatFinanceDate(bill.issue_date)}</td>
+      <td>${FinanceFormat.formatFinanceDate(bill.due_date)}</td>
+      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
+      <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}</td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(bill.status === "unpaid" || bill.status === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${(bill.status === "unpaid" || bill.status === "overdue") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function filterFinanceBills(query) {
@@ -1028,10 +1247,10 @@ function renderFinanceVendors(items) {
     <tr>
       <td><strong>${v.name}</strong>${v.notes ? `<div style="font-size:12px;color:var(--text3);">${v.notes}</div>` : ""}</td>
       <td><span class="badge badge-info">${v.category || "General"}</span></td>
-      <td>${v.contact_email ? `<a href="mailto:${v.contact_email}">${v.contact_email}</a>` : "--"}</td>
-      <td>${v.contact_phone || "--"}</td>
-      <td><code>${v.tax_id || "--"}</code></td>
-      <td><span class="badge ${v.is_active ? "badge-approved" : "badge-rejected"}">${v.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td>${v.contact_email ? `<a href="mailto:${v.contact_email}">${v.contact_email}</a>` : "—"}</td>
+      <td>${v.contact_phone || "—"}</td>
+      <td><code>${v.tax_id || "—"}</code></td>
+      <td>${FinanceFormat.formatStatusBadge("vendor", v.is_active ? "active" : "inactive")}</td>
       <td><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i></button></div></td>
     </tr>
   `).join("");
@@ -1274,8 +1493,8 @@ function renderFinanceAccounts(items) {
       <td>${acc.bank_name || '<span style="color:var(--text3); font-style:italic;">Cash Safe</span>'}</td>
       <td><code>${acc.account_number}</code></td>
       <td><span class="badge badge-info">${acc.currency}</span></td>
-      <td><strong>${acc.currency === "EGP" ? "E£" : "$"}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">${acc.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(acc.current_balance, acc.currency)}</strong></td>
+      <td>${FinanceFormat.formatStatusBadge("account", acc.is_active ? "active" : "inactive")}</td>
       <td>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm btn-fill" onclick="viewAccountLedger(${acc.id})" title="View Continuous Ledger">
@@ -2251,12 +2470,12 @@ function renderFinanceTransfers(items) {
 
       return `
         <tr>
-          <td><span style="font-family:monospace;font-size:12px;">${t.date}</span></td>
+          <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(t.date)}</span></td>
           <td>${typeBadge}</td>
           <td><strong>${t.from_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
-          <td style="text-align:right;"><span style="color:var(--danger); font-weight:600;">-${fromSymbol}${Number(t.from_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></td>
+          <td class="cell-money">${FinanceFormat.renderMoneyHtml(-Math.abs(t.from_amount || 0), t.from_currency, { extraClass: "money-negative" })}</td>
           <td><strong>${t.to_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
-          <td style="text-align:right;"><span style="color:var(--success); font-weight:600;">+${toSymbol}${Number(t.to_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></td>
+          <td class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
           <td style="text-align:right;">${fxDisplay}</td>
           <td>
             ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--primary);">${t.exchange_reference}</strong><br>` : ""}
@@ -2588,13 +2807,13 @@ function renderFinanceCheques(items) {
       return `
         <tr>
           <td><strong style="font-family:monospace;font-size:13px;"><i class="fa-solid fa-money-check"></i> ${c.cheque_number}</strong></td>
-          <td><span style="font-family:monospace;font-size:12px;">${c.issue_date}</span></td>
+          <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.issue_date)}</span></td>
           <td><strong>${c.account_name || '—'}</strong></td>
           <td><strong>${c.payee}</strong></td>
           <td>${purposeBadge}</td>
-          <td style="text-align:right;"><span style="color:var(--danger); font-weight:600;">${amtStr}</span></td>
-          <td style="text-align:center;">${statusBadge}</td>
-          <td><span style="font-family:monospace;font-size:12px;">${c.clear_date || '—'}</span></td>
+          <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(-Math.abs(c.amount || 0), c.currency || "USD")}</strong></td>
+          <td style="text-align:center;">${FinanceFormat.formatStatusBadge("cheque", c.status)}</td>
+          <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.clear_date)}</span></td>
           <td style="text-align:center;">${actionsHtml}</td>
         </tr>
       `;
@@ -2939,11 +3158,11 @@ function renderFinanceSubscriptions(items) {
     <tr>
       <td><strong>${sub.name}</strong></td>
       <td>${sub.vendor_name}</td>
-      <td><strong>$${Number(sub.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
+      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(sub.amount, sub.currency || "USD")}</strong></td>
       <td><span class="badge badge-info">${sub.billing_cycle}</span></td>
-      <td>${sub.next_renewal_date || "--"}</td>
+      <td>${FinanceFormat.formatFinanceDate(sub.next_renewal_date)}</td>
       <td>${sub.auto_generate_bill ? '<i class="fa-solid fa-check text-success"></i> Auto' : "Manual"}</td>
-      <td><span class="badge ${sub.is_active ? "badge-approved" : "badge-rejected"}">${sub.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td>${FinanceFormat.formatStatusBadge("subscription", sub.is_active ? "active" : "inactive")}</td>
       <td>
         <button class="btn btn-sm" onclick="showToast('Subscription ${sub.name} edit in Phase 4', 'info')">
           <i class="fa-solid fa-pen"></i> Edit
@@ -2990,12 +3209,12 @@ function renderMyPayslips(items) {
       (ps) => `
     <tr>
       <td><strong>${ps.period_label}</strong></td>
-      <td>${ps.period_start} to ${ps.period_end}</td>
-      <td>$${Number(ps.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-      <td>$${Number(ps.allowances_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-      <td>$${Number(ps.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-      <td><strong>$${Number(ps.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge badge-approved">PAID</span></td>
+      <td>${FinanceFormat.formatFinanceDate(ps.period_start)} to ${FinanceFormat.formatFinanceDate(ps.period_end)}</td>
+      <td class="cell-money">${FinanceFormat.renderMoneyHtml(ps.base_salary, ps.currency || "USD")}</td>
+      <td class="cell-money">${FinanceFormat.renderMoneyHtml(ps.allowances_total, ps.currency || "USD")}</td>
+      <td class="cell-money">${FinanceFormat.renderMoneyHtml(ps.deductions_total, ps.currency || "USD")}</td>
+      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(ps.net_pay, ps.currency || "USD")}</strong></td>
+      <td>${FinanceFormat.formatStatusBadge("payroll", "paid")}</td>
       <td>
         <button class="btn btn-sm" onclick="showToast('PDF Payslip download will be available in Phase 5', 'info')">
           <i class="fa-solid fa-file-pdf"></i> Download PDF
@@ -3079,10 +3298,8 @@ function renderFinanceSubscriptionsTable() {
 
   tbody.innerHTML = items
     .map((s) => {
-      const currSymbol = s.currency === "EGP" ? "E£" : s.currency === "EUR" ? "€" : "$";
-      const amountStr = `${currSymbol}${Number(s.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
       const lastChargeInfo = s.last_charge_amount
-        ? `<div style="font-size:11.5px; color:var(--text3); margin-top:3px;"><i class="fa-solid fa-receipt"></i> Last: ${currSymbol}${Number(s.last_charge_amount).toLocaleString("en-US", { minimumFractionDigits: 2 })} (${s.last_charge_date || "--"})</div>`
+        ? `<div style="font-size:11.5px; color:var(--text3); margin-top:3px;"><i class="fa-solid fa-receipt"></i> Last: ${FinanceFormat.formatMoney(s.last_charge_amount, s.currency || "USD")} (${FinanceFormat.formatFinanceDate(s.last_charge_date)})</div>`
         : "";
 
       return `
@@ -3091,9 +3308,9 @@ function renderFinanceSubscriptionsTable() {
           <div style="font-weight:700; font-size:13.5px;">${s.name}</div>
         </td>
         <td>${s.vendor_name || '<span style="opacity:0.5;">--</span>'}</td>
-        <td><strong>${amountStr}</strong></td>
+        <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(s.amount, s.currency || "USD")}</strong></td>
         <td><span class="badge badge-grey">${(s.billing_cycle || "monthly").toUpperCase()}</span></td>
-        <td>${s.next_renewal_date || '<span style="opacity:0.5;">--</span>'}</td>
+        <td>${FinanceFormat.formatFinanceDate(s.next_renewal_date)}</td>
         <td>
           ${s.auto_generate_bill
             ? '<span class="badge badge-approved" style="font-size:11px;"><i class="fa-solid fa-bolt"></i> Auto-Bill</span>'
@@ -3104,9 +3321,7 @@ function renderFinanceSubscriptionsTable() {
           ${lastChargeInfo}
         </td>
         <td>
-          ${s.is_active
-            ? '<span class="badge badge-approved">ACTIVE</span>'
-            : '<span class="badge badge-grey">INACTIVE</span>'}
+          ${FinanceFormat.formatStatusBadge("subscription", s.is_active ? "active" : "inactive")}
         </td>
         <td>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -4263,8 +4478,8 @@ async function loadReportCategorySummary() {
     const empty = document.getElementById("reportCatSumEmpty");
 
     const total = Number(report.total_spent || 0);
-    const currSymbol = currency ? (currency === "USD" ? "$" : currency + " ") : "$";
-    if (totSpentEl) totSpentEl.textContent = `${currSymbol}${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const reportCurr = currency || report.currency || "USD";
+    if (totSpentEl) totSpentEl.textContent = FinanceFormat.formatMoney(total, reportCurr);
     if (catCountEl) catCountEl.textContent = (report.categories || []).length;
 
     if (!tbody) return;
@@ -4285,7 +4500,7 @@ async function loadReportCategorySummary() {
         <td><strong>${cat.category_name}</strong></td>
         <td><span class="badge ${cat.kind === 'cost' ? 'badge-danger' : 'badge-neutral'}">${(cat.kind || 'cost').toUpperCase()}</span></td>
         <td style="text-align:center;">${cat.transaction_count || 0}</td>
-        <td style="text-align:right; font-weight:600;">${currSymbol}${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.renderMoneyHtml(amt, reportCurr)}</td>
         <td>
           <div style="display:flex; align-items:center; gap:10px;">
             <div style="flex:1; height:8px; background:var(--border-color, #E2E8F0); border-radius:4px; overflow:hidden;">
@@ -4373,11 +4588,11 @@ async function loadReportMatrix() {
       let rowHtml = `<td><strong>${row.category_name}</strong></td>`;
       labels.forEach((lbl) => {
         const val = Number((row.periods && row.periods[lbl]) || 0);
-        rowHtml += `<td style="text-align:right; font-variant-numeric:tabular-nums;">${val > 0 ? val.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : "—"}</td>`;
+        rowHtml += `<td class="cell-money" style="text-align:right; font-variant-numeric:tabular-nums;">${val > 0 ? FinanceFormat.formatMoney(val, report.currency || "USD", { decimals: 0 }) : "—"}</td>`;
       });
       const tot = Number(row.total || 0);
       const pct = Number(row.percentage || 0);
-      rowHtml += `<td style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">$${tot.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>`;
+      rowHtml += `<td class="cell-money" style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">${FinanceFormat.renderMoneyHtml(tot, report.currency || "USD", { decimals: 0 })}</td>`;
       rowHtml += `<td style="text-align:right; color:var(--text-muted); font-size:0.85rem;">${pct.toFixed(1)}%</td>`;
       tr.innerHTML = rowHtml;
       tbody.appendChild(tr);
@@ -4390,10 +4605,10 @@ async function loadReportMatrix() {
     let footHtml = `<td>Total Spend</td>`;
     labels.forEach((lbl) => {
       const tot = Number((report.period_totals && report.period_totals[lbl]) || 0);
-      footHtml += `<td style="text-align:right; font-variant-numeric:tabular-nums;">$${tot.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>`;
+      footHtml += `<td class="cell-money" style="text-align:right; font-variant-numeric:tabular-nums;">${FinanceFormat.formatMoney(tot, report.currency || "USD", { decimals: 0 })}</td>`;
     });
     const yrTot = Number(report.year_total || 0);
-    footHtml += `<td style="text-align:right; font-variant-numeric:tabular-nums; color:#EF4444;">$${yrTot.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>`;
+    footHtml += `<td class="cell-money" style="text-align:right; font-variant-numeric:tabular-nums; color:#EF4444;">${FinanceFormat.renderMoneyHtml(yrTot, report.currency || "USD", { decimals: 0 })}</td>`;
     footHtml += `<td style="text-align:right;">100.0%</td>`;
     trFoot.innerHTML = footHtml;
     tfoot.appendChild(trFoot);
@@ -4437,9 +4652,9 @@ async function loadReportBalances() {
         card.innerHTML = `
           <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total ${curr} Liquidity</div>
           <div style="font-size:1.4rem; font-weight:700; color:var(--text-main); margin-top:4px;">
-            ${curr === "USD" ? "$" : curr + " "}${cVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${FinanceFormat.formatMoney(cVal, curr)}
           </div>
-          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">As of ${report.as_of_date}</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">As of ${FinanceFormat.formatFinanceDate(report.as_of_date)}</div>
         `;
         cardsContainer.appendChild(card);
       });
@@ -4468,9 +4683,9 @@ async function loadReportBalances() {
         <td><code style="font-size:0.85rem;">${acc.account_number}</code></td>
         <td>${acc.country || "—"}</td>
         <td><strong>${acc.currency}</strong></td>
-        <td style="text-align:right; color:var(--text-muted);">${op.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        <td style="text-align:right; font-weight:700; font-size:1rem; color:${bal < 0 ? '#EF4444' : 'var(--text-main)'};">
-          ${bal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <td class="cell-money" style="text-align:right; color:var(--text-muted);">${FinanceFormat.renderMoneyHtml(op, acc.currency)}</td>
+        <td class="cell-money" style="text-align:right; font-weight:700; font-size:1rem;">
+          ${FinanceFormat.renderMoneyHtml(bal, acc.currency)}
         </td>
       `;
       tbody.appendChild(tr);
@@ -4531,10 +4746,10 @@ async function loadReportTransactions() {
     const outflows = Number(report.total_outflows || 0);
     const net = Number(report.net_change || 0);
 
-    if (inEl) inEl.textContent = `+$${inflows.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (outEl) outEl.textContent = `-$${outflows.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (inEl) inEl.textContent = FinanceFormat.formatMoney(inflows, "USD", { showSign: true });
+    if (outEl) outEl.textContent = FinanceFormat.formatMoney(-outflows, "USD");
     if (netEl) {
-      netEl.textContent = `${net >= 0 ? "+" : ""}$${net.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      netEl.textContent = FinanceFormat.formatMoney(net, "USD", { showSign: true });
       netEl.style.color = net >= 0 ? "#10B981" : "#EF4444";
     }
 
@@ -4554,7 +4769,7 @@ async function loadReportTransactions() {
       const run = Number(tx.running_balance || 0);
 
       tr.innerHTML = `
-        <td style="font-variant-numeric:tabular-nums;">${tx.date}</td>
+        <td style="font-variant-numeric:tabular-nums;">${FinanceFormat.formatFinanceDate(tx.date)}</td>
         <td><strong>${tx.account_name}</strong></td>
         <td>
           <span class="badge ${isIn ? 'badge-success' : 'badge-danger'}">
@@ -4568,11 +4783,11 @@ async function loadReportTransactions() {
           ${tx.description ? `<div style="font-size:0.75rem; color:var(--text-muted);">${tx.description}</div>` : ""}
           ${tx.cheque_number ? `<div style="font-size:0.75rem; color:#6366F1;"><i class="fa-solid fa-money-check"></i> Chq #${tx.cheque_number}</div>` : ""}
         </td>
-        <td style="text-align:right; font-weight:700; color:${isIn ? '#10B981' : '#EF4444'}; font-variant-numeric:tabular-nums;">
-          ${isIn ? "+" : "-"}${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <td class="cell-money" style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">
+          ${FinanceFormat.renderMoneyHtml(isIn ? amt : -amt, tx.currency || "USD", { showSign: true })}
         </td>
-        <td style="text-align:right; color:var(--text-muted); font-variant-numeric:tabular-nums;">
-          ${run.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <td class="cell-money" style="text-align:right; color:var(--text-muted); font-variant-numeric:tabular-nums;">
+          ${FinanceFormat.renderMoneyHtml(run, tx.currency || "USD")}
         </td>
       `;
       tbody.appendChild(tr);
@@ -4634,20 +4849,20 @@ async function loadReportCheques() {
     const bncAmtEl = document.getElementById("reportChequesBouncedVoidedAmount");
 
     if (totCntEl) totCntEl.textContent = s.total_count || 0;
-    if (totAmtEl) totAmtEl.textContent = `$${Number(s.total_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (totAmtEl) totAmtEl.textContent = FinanceFormat.formatMoney(s.total_amount, "USD");
 
     const iss = bySt.issued || { count: 0, amount: 0 };
     if (issCntEl) issCntEl.textContent = iss.count;
-    if (issAmtEl) issAmtEl.textContent = `$${Number(iss.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (issAmtEl) issAmtEl.textContent = FinanceFormat.formatMoney(iss.amount, "USD");
 
     const clr = bySt.cleared || { count: 0, amount: 0 };
     if (clrCntEl) clrCntEl.textContent = clr.count;
-    if (clrAmtEl) clrAmtEl.textContent = `$${Number(clr.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (clrAmtEl) clrAmtEl.textContent = FinanceFormat.formatMoney(clr.amount, "USD");
 
     const bnc = Number(bySt.bounced?.count || 0) + Number(bySt.voided?.count || 0);
     const bncAmt = Number(bySt.bounced?.amount || 0) + Number(bySt.voided?.amount || 0);
     if (bncCntEl) bncCntEl.textContent = bnc;
-    if (bncAmtEl) bncAmtEl.textContent = `$${bncAmt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (bncAmtEl) bncAmtEl.textContent = FinanceFormat.formatMoney(bncAmt, "USD");
 
     const tbody = document.getElementById("reportChequesTableBody");
     const empty = document.getElementById("reportChequesEmpty");
@@ -4664,18 +4879,16 @@ async function loadReportCheques() {
     report.cheques.forEach((chk) => {
       const tr = document.createElement("tr");
       const amt = Number(chk.amount || 0);
-      const stClass =
-        chk.status === "cleared" ? "badge-success" : chk.status === "issued" ? "badge-warning" : "badge-danger";
 
       tr.innerHTML = `
         <td><strong><i class="fa-solid fa-money-check"></i> ${chk.cheque_number}</strong></td>
-        <td>${chk.issue_date}</td>
-        <td>${chk.clear_date || "—"}</td>
+        <td>${FinanceFormat.formatFinanceDate(chk.issue_date)}</td>
+        <td>${FinanceFormat.formatFinanceDate(chk.clear_date)}</td>
         <td>${chk.account_name}</td>
         <td><strong>${chk.payee}</strong></td>
         <td><span style="font-size:0.85rem; color:var(--text-muted);">${(chk.purpose_type || 'other').replace('_', ' ')}</span></td>
-        <td style="text-align:right; font-weight:700;">${chk.currency} ${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        <td><span class="badge ${stClass}">${chk.status.toUpperCase()}</span></td>
+        <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.renderMoneyHtml(amt, chk.currency || "USD")}</td>
+        <td>${FinanceFormat.formatStatusBadge("cheque", chk.status)}</td>
         <td style="font-size:0.85rem; color:var(--text-muted);">${chk.notes || "—"}</td>
       `;
       tbody.appendChild(tr);

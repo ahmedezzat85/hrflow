@@ -62,7 +62,7 @@
                     <th>Category</th>
                     <th>Classification</th>
                     <th style="text-align:center;">Transactions</th>
-                    <th style="text-align:right;">Total Spent</th>
+                    <th class="cell-money" style="text-align:right;">Total Spent</th>
                     <th style="width:280px;">% of Total Spend</th>
                   </tr>
                 </thead>
@@ -99,26 +99,24 @@
               </div>
             </div>
 
-            <div class="card" style="overflow-x:auto;">
+            <div class="card">
               <div class="section-loading-bar" id="reportMatrixLoadingBar" style="display:none;"><span></span></div>
-              <table class="responsive-card-table" id="reportMatrixTable" style="min-width:980px;">
-                <thead id="reportMatrixTableHead"></thead>
-                <tbody id="reportMatrixTableBody"></tbody>
-                <tfoot id="reportMatrixTableFoot"></tfoot>
-              </table>
-              <div class="empty-state" id="reportMatrixEmpty" style="display:none;">
-                <i class="fa-solid fa-table-cells"></i>
-                <p>No annual spend data recorded for the selected year.</p>
+              <div style="overflow-x:auto;">
+                <table class="responsive-card-table" id="reportMatrixTable" style="min-width:760px;">
+                  <thead id="reportMatrixTableHead"></thead>
+                  <tbody id="reportMatrixTableBody"></tbody>
+                  <tfoot id="reportMatrixTableFoot"></tfoot>
+                </table>
               </div>
             </div>
           </div>
 
-          <!-- PANE 3: Point-in-Time Balances -->
+          <!-- PANE 3: Point-in-Time Account Balances -->
           <div id="reportPaneBalances" style="display:none;">
             <div class="toolbar">
               <div class="section-title-group">
                 <h2 class="section-title"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</h2>
-                <p class="section-subtitle">Account ledger balances evaluated as of a specific date, excluding subsequent transactions.</p>
+                <p class="section-subtitle">Historical snapshot of opening and ending balances across bank and cash safe accounts as of a target date.</p>
               </div>
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <div style="display:flex; gap:6px; align-items:center;">
@@ -140,11 +138,11 @@
                     <th>Account Name</th>
                     <th>Type</th>
                     <th>Bank / Custodian</th>
-                    <th>Account # / IBAN</th>
+                    <th>Account #</th>
                     <th>Country</th>
                     <th>Currency</th>
-                    <th style="text-align:right;">Opening Balance</th>
-                    <th style="text-align:right;">Balance as of Date</th>
+                    <th class="cell-money" style="text-align:right;">Opening Balance</th>
+                    <th class="cell-money" style="text-align:right;">Balance as of Date</th>
                   </tr>
                 </thead>
                 <tbody id="reportBalancesTableBody"></tbody>
@@ -152,20 +150,20 @@
             </div>
           </div>
 
-          <!-- PANE 4: Transaction Ledger Report -->
+          <!-- PANE 4: Filterable Transaction Activity Report -->
           <div id="reportPaneTransactions" style="display:none;">
             <div class="toolbar">
               <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Transaction Ledger Report</h2>
-                <p class="section-subtitle">Arbitrary-range financial ledger with multi-criteria filtering and running balance tracking.</p>
+                <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Transaction Activity Report</h2>
+                <p class="section-subtitle">Comprehensive journal of debits, credits, transfers, and cheque movements across all ledger accounts.</p>
               </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <button class="btn btn-outline" onclick="exportTransactionsExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
               </div>
             </div>
 
             <!-- Advanced Filter Strip -->
-            <div class="card" style="padding:14px; margin-bottom:16px;">
+            <div class="card" style="padding:12px 16px; margin-bottom:14px; background:var(--bg2);">
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <div style="display:flex; gap:6px; align-items:center;">
                   <span style="font-size:0.85rem; color:var(--text-muted);">Dates:</span>
@@ -195,15 +193,15 @@
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
               <div class="card" style="padding:14px; border-left:4px solid #10B981;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Inflows</div>
-                <div id="reportTxTotalInflows" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                <div id="reportTxTotalInflows" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00 USD</div>
               </div>
               <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows</div>
-                <div id="reportTxTotalOutflows" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00</div>
+                <div id="reportTxTotalOutflows" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00 USD</div>
               </div>
               <div class="card" style="padding:14px; border-left:4px solid #3B82F6;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Cash Change</div>
-                <div id="reportTxNetChange" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                <div id="reportTxNetChange" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">$0.00 USD</div>
               </div>
             </div>
 
@@ -218,8 +216,8 @@
                     <th>Category</th>
                     <th>Payment Type</th>
                     <th>Reference &amp; Memo</th>
-                    <th style="text-align:right;">Amount</th>
-                    <th style="text-align:right;">Running Balance</th>
+                    <th class="cell-money" style="text-align:right;">Amount</th>
+                    <th class="cell-money" style="text-align:right;">Running Balance</th>
                   </tr>
                 </thead>
                 <tbody id="reportTransactionsTableBody"></tbody>
@@ -263,22 +261,22 @@
               <div class="card" style="padding:14px; border-left:4px solid #6366F1;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Cheques</div>
                 <div id="reportChequesTotalCount" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">0</div>
-                <div id="reportChequesTotalAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+                <div id="reportChequesTotalAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
               </div>
               <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Issued (Pending)</div>
                 <div id="reportChequesIssuedCount" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">0</div>
-                <div id="reportChequesIssuedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+                <div id="reportChequesIssuedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
               </div>
               <div class="card" style="padding:14px; border-left:4px solid #10B981;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cleared</div>
                 <div id="reportChequesClearedCount" style="font-size:1.3rem; font-weight:700; color:#10B981;">0</div>
-                <div id="reportChequesClearedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+                <div id="reportChequesClearedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
               </div>
               <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Bounced / Voided</div>
                 <div id="reportChequesBouncedVoidedCount" style="font-size:1.3rem; font-weight:700; color:#EF4444;">0</div>
-                <div id="reportChequesBouncedVoidedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+                <div id="reportChequesBouncedVoidedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
               </div>
             </div>
 
@@ -293,7 +291,7 @@
                     <th>Bank Account</th>
                     <th>Payee</th>
                     <th>Purpose</th>
-                    <th style="text-align:right;">Amount</th>
+                    <th class="cell-money" style="text-align:right;">Amount</th>
                     <th>Status</th>
                     <th>Notes</th>
                   </tr>
