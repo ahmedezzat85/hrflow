@@ -842,32 +842,134 @@ function renderFinanceCustomers(items) {
   }
   if (empty) empty.style.display = "none";
 
-  tbody.innerHTML = items.map((c) => `
-    <tr>
-      <td><strong>${c.name}</strong>${c.notes ? `<div style="font-size:12px;color:var(--text3);">${c.notes}</div>` : ""}</td>
-      <td>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "—"}</td>
-      <td>${c.contact_phone || "—"}</td>
-      <td><code>${c.tax_id || "—"}</code></td>
-      <td>${FinanceFormat.formatStatusBadge("customer", c.is_active ? "active" : "inactive")}</td>
-      <td><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})"><i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i></button></div></td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = items.map((c) => {
+    const termsBadge = `<span class="badge badge-grey">Net ${c.payment_terms_days !== undefined && c.payment_terms_days !== null ? c.payment_terms_days : 30}</span>`;
+    const taxHtml = c.tax_id ? `<div style="margin-top:2px;"><code style="font-size:11px;">${c.tax_id}</code></div>` : "";
+    const contactHtml = `
+      <div>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "—"}</div>
+      ${c.contact_phone ? `<div style="font-size:11px; color:var(--text3);">${c.contact_phone}</div>` : ""}
+    `;
+    const receivablesSummary = `
+      <button type="button" class="btn btn-xs btn-ghost" onclick="openCustomer360Drawer(${c.id})" title="View complete 360 overview & invoices">
+        <i class="fa-solid fa-chart-pie" style="color:var(--primary, #3b82f6);"></i> View 360
+      </button>
+    `;
+
+    return `
+      <tr data-customer-id="${c.id}">
+        <td>
+          <a href="javascript:void(0)" class="table-entity-link" onclick="openCustomer360Drawer(${c.id})" style="font-weight:600; text-decoration:underline;">${c.name}</a>
+          ${c.notes ? `<div style="font-size:11px;color:var(--text3); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.notes}</div>` : ""}
+        </td>
+        <td><span style="font-size:12px; color:var(--text2);">${c.legal_name || "—"}</span></td>
+        <td>${contactHtml}</td>
+        <td>${termsBadge}${taxHtml}</td>
+        <td>${receivablesSummary}</td>
+        <td>${FinanceFormat.formatStatusBadge("customer", c.is_active ? "active" : "inactive")}</td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm btn-icon" title="View Customer 360 Profile" onclick="openCustomer360Drawer(${c.id})" aria-label="Customer 360">
+              <i class="fa-solid fa-address-card"></i>
+            </button>
+            <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})" aria-label="Edit Customer">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
+              <i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
+
+function openCustomer360Drawer(customerId) {
+  const drawer = window.FinanceDrawer || window.FinanceDetailDrawer;
+  if (drawer && drawer.open) {
+    drawer.open("customer", customerId);
+  }
+}
+window.openCustomer360Drawer = openCustomer360Drawer;
+
+let _customerDuplicateDebounce = null;
+async function onCustomerFieldInput() {
+  clearTimeout(_customerDuplicateDebounce);
+  _customerDuplicateDebounce = setTimeout(async () => {
+    const banner = document.getElementById("customerDuplicateBanner");
+    const bannerText = document.getElementById("customerDuplicateText");
+    if (!banner) return;
+
+    const idVal = document.getElementById("fCustomerId")?.value;
+    const name = document.getElementById("fCustomerName")?.value.trim() || "";
+    const legal_name = document.getElementById("fCustomerLegalName")?.value.trim() || "";
+    const contact_email = document.getElementById("fCustomerEmail")?.value.trim() || "";
+    const tax_id = document.getElementById("fCustomerTaxId")?.value.trim() || "";
+
+    if (!name && !legal_name && !contact_email && !tax_id) {
+      banner.style.display = "none";
+      return;
+    }
+
+    try {
+      const res = await FinanceApi.checkDuplicateCustomers({
+        name,
+        legal_name,
+        contact_email,
+        tax_id,
+        exclude_id: idVal ? parseInt(idVal, 10) : undefined,
+      });
+      const candidates = Array.isArray(res) ? res : ((res && res.candidates) || []);
+      if (candidates.length > 0) {
+        const top = candidates[0];
+        banner.style.display = "block";
+        if (bannerText) {
+          const fld = top.matched_field || top.matching_field || "identity";
+          const val = top[fld] || top.name;
+          bannerText.innerHTML = `Existing customer <strong>"${top.name}"</strong> matches on <em>${fld}</em> (${val}).`;
+        }
+      } else {
+        banner.style.display = "none";
+      }
+    } catch (err) {
+      console.warn("Failed duplicate check:", err);
+    }
+  }, 250);
+}
+window.onCustomerFieldInput = onCustomerFieldInput;
 
 function filterFinanceCustomers(query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return renderFinanceCustomers(FinanceState.customers);
-  renderFinanceCustomers(FinanceState.customers.filter((c) => c.name.toLowerCase().includes(q) || (c.contact_email && c.contact_email.toLowerCase().includes(q)) || (c.tax_id && c.tax_id.toLowerCase().includes(q))));
+  renderFinanceCustomers(
+    FinanceState.customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.legal_name && c.legal_name.toLowerCase().includes(q)) ||
+        (c.contact_email && c.contact_email.toLowerCase().includes(q)) ||
+        (c.tax_id && c.tax_id.toLowerCase().includes(q))
+    )
+  );
 }
 
 function openAddCustomerModal() {
   FinanceForm.clearErrors("customerModal");
   document.getElementById("fCustomerId").value = "";
   document.getElementById("fCustomerName").value = "";
+  if (document.getElementById("fCustomerLegalName")) document.getElementById("fCustomerLegalName").value = "";
   document.getElementById("fCustomerEmail").value = "";
   document.getElementById("fCustomerPhone").value = "";
   document.getElementById("fCustomerTaxId").value = "";
+  if (document.getElementById("fCustomerTerms")) document.getElementById("fCustomerTerms").value = "30";
+  if (document.getElementById("fCustomerCurrency")) document.getElementById("fCustomerCurrency").value = "USD";
+  if (document.getElementById("fCustomerCountry")) document.getElementById("fCustomerCountry").value = "Egypt";
+  if (document.getElementById("fCustomerOwner")) document.getElementById("fCustomerOwner").value = "";
+  if (document.getElementById("fCustomerAddress")) document.getElementById("fCustomerAddress").value = "";
   document.getElementById("fCustomerNotes").value = "";
+
+  const banner = document.getElementById("customerDuplicateBanner");
+  if (banner) banner.style.display = "none";
+
   const title = document.getElementById("customerModalTitle");
   if (title) title.textContent = "Add Customer";
   const btn = document.getElementById("customerSaveBtn");
@@ -881,10 +983,20 @@ function openEditCustomerModal(id) {
   if (!c) return;
   document.getElementById("fCustomerId").value = c.id;
   document.getElementById("fCustomerName").value = c.name || "";
+  if (document.getElementById("fCustomerLegalName")) document.getElementById("fCustomerLegalName").value = c.legal_name || "";
   document.getElementById("fCustomerEmail").value = c.contact_email || "";
   document.getElementById("fCustomerPhone").value = c.contact_phone || "";
   document.getElementById("fCustomerTaxId").value = c.tax_id || "";
+  if (document.getElementById("fCustomerTerms")) document.getElementById("fCustomerTerms").value = c.payment_terms_days !== undefined && c.payment_terms_days !== null ? c.payment_terms_days : 30;
+  if (document.getElementById("fCustomerCurrency")) document.getElementById("fCustomerCurrency").value = c.default_currency || "USD";
+  if (document.getElementById("fCustomerCountry")) document.getElementById("fCustomerCountry").value = c.country || "Egypt";
+  if (document.getElementById("fCustomerOwner")) document.getElementById("fCustomerOwner").value = c.owner || "";
+  if (document.getElementById("fCustomerAddress")) document.getElementById("fCustomerAddress").value = c.billing_address || "";
   document.getElementById("fCustomerNotes").value = c.notes || "";
+
+  const banner = document.getElementById("customerDuplicateBanner");
+  if (banner) banner.style.display = "none";
+
   const title = document.getElementById("customerModalTitle");
   if (title) title.textContent = "Edit Customer";
   const btn = document.getElementById("customerSaveBtn");
@@ -895,15 +1007,36 @@ function openEditCustomerModal(id) {
 async function saveCustomer() {
   const idVal = document.getElementById("fCustomerId").value;
   const name = document.getElementById("fCustomerName").value.trim();
+  const legal_name = document.getElementById("fCustomerLegalName") ? document.getElementById("fCustomerLegalName").value.trim() : "";
   const contact_email = document.getElementById("fCustomerEmail").value.trim();
   const contact_phone = document.getElementById("fCustomerPhone").value.trim();
   const tax_id = document.getElementById("fCustomerTaxId").value.trim();
+  const terms = document.getElementById("fCustomerTerms") ? document.getElementById("fCustomerTerms").value : "30";
+  const currency = document.getElementById("fCustomerCurrency") ? document.getElementById("fCustomerCurrency").value : "USD";
+  const country = document.getElementById("fCustomerCountry") ? document.getElementById("fCustomerCountry").value.trim() : "Egypt";
+  const owner = document.getElementById("fCustomerOwner") ? document.getElementById("fCustomerOwner").value.trim() : "";
+  const address = document.getElementById("fCustomerAddress") ? document.getElementById("fCustomerAddress").value.trim() : "";
   const notes = document.getElementById("fCustomerNotes").value.trim();
+
   const isValid = FinanceForm.validateRequiredFields("customerModal", [
     { id: "fCustomerName", label: "Company / Customer Name" }
   ]);
   if (!isValid) return;
-  const payload = { name, contact_email: contact_email || null, contact_phone: contact_phone || null, tax_id: tax_id || null, notes: notes || null };
+
+  const payload = {
+    name,
+    legal_name: legal_name || null,
+    contact_email: contact_email || null,
+    contact_phone: contact_phone || null,
+    tax_id: tax_id || null,
+    payment_terms_days: terms ? parseInt(terms, 10) : 30,
+    default_currency: currency || "USD",
+    country: country || "Egypt",
+    owner: owner || null,
+    billing_address: address || null,
+    notes: notes || null,
+  };
+
   const btn = document.getElementById("customerSaveBtn");
   if (btn) btn.disabled = true;
   try {
@@ -916,6 +1049,9 @@ async function saveCustomer() {
     }
     closeModal("customerModal");
     loadFinanceCustomers();
+    if (typeof _populateInvoiceCustomerDropdown === "function") {
+      _populateInvoiceCustomerDropdown();
+    }
   } catch (err) {
     showToast(err.message || "Failed to save customer", "error");
   } finally {
@@ -949,8 +1085,11 @@ async function toggleCustomerActive(id, currentlyActive) {
       showToast("Customer reactivated", "success");
     }
     loadFinanceCustomers();
+    if (typeof _populateInvoiceCustomerDropdown === "function") {
+      _populateInvoiceCustomerDropdown();
+    }
   } catch (err) {
-    showToast(err.message || `Failed to ${action} customer`, "error");
+    showToast(err.message || "Failed to update customer status", "error");
   }
 }
 
@@ -979,4 +1118,6 @@ window.openAddCustomerModal = openAddCustomerModal;
 window.openEditCustomerModal = openEditCustomerModal;
 window.saveCustomer = saveCustomer;
 window.toggleCustomerActive = toggleCustomerActive;
+window.openCustomer360Drawer = openCustomer360Drawer;
+window.onCustomerFieldInput = onCustomerFieldInput;
 

@@ -127,3 +127,137 @@ def test_customers_vendors_rbac(app_client, employee_cookies):
     # Unauthenticated
     assert app_client.get("/api/finance/customers").status_code == 401
     assert app_client.get("/api/finance/vendors").status_code == 401
+
+
+def test_customer_360_and_duplicate_matching(app_client, admin_cookies):
+    """Customer 360 profile returns receivables summary, aging, timeline, and duplicate candidates."""
+    # 1. Create a customer with rich profile attributes
+    payload = {
+        "name": "Pinnacle Care Inc",
+        "legal_name": "Pinnacle Healthcare Corporation",
+        "contact_email": "billing@pinnaclecare.com",
+        "contact_phone": "+1 555-0188",
+        "tax_id": "US-9911-2233",
+        "billing_address": "123 Care Way, Suite 400",
+        "country": "Egypt",
+        "default_currency": "USD",
+        "payment_terms_days": 45,
+        "owner": "Sarah Connor",
+        "notes": "Key enterprise account",
+    }
+    create_resp = app_client.post("/api/finance/customers", json=payload, cookies=admin_cookies)
+    assert create_resp.status_code == 201
+    cust_id = create_resp.json()["id"]
+
+    # 2. Test duplicate candidate detection
+    # Normalized name without 'Inc'
+    dup_check = app_client.post(
+        "/api/finance/customers/check-duplicate",
+        json={"name": "Pinnacle Care"},
+        cookies=admin_cookies,
+    )
+    assert dup_check.status_code == 200
+    candidates = dup_check.json()
+    assert len(candidates) >= 1
+    assert candidates[0]["id"] == cust_id
+    assert candidates[0]["matched_field"] == "name"
+
+    # Normalized tax ID without dashes
+    dup_tax = app_client.post(
+        "/api/finance/customers/check-duplicate",
+        json={"tax_id": "us99112233"},
+        cookies=admin_cookies,
+    )
+    assert dup_tax.status_code == 200
+    assert len(dup_tax.json()) >= 1
+    assert dup_tax.json()[0]["id"] == cust_id
+
+    # Self-exclusion
+    dup_excl = app_client.post(
+        "/api/finance/customers/check-duplicate",
+        json={"name": "Pinnacle Care Inc", "exclude_id": cust_id},
+        cookies=admin_cookies,
+    )
+    assert dup_excl.status_code == 200
+    assert not any(c["id"] == cust_id for c in dup_excl.json())
+
+    # 3. Create a receiving bank account for invoices
+    bank_resp = app_client.post(
+        "/api/finance/accounts",
+        json={"account_name": "Operating Cust USD", "currency": "USD", "opening_balance": 10000.0, "account_number": "ACC-CUST-360"},
+        cookies=admin_cookies,
+    )
+    bank_id = bank_resp.json()["id"]
+
+    # 4. Create Invoices for customer:
+    # Inv 1: $10,000 overdue
+    inv1_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": cust_id,
+            "invoice_number": f"INV-C360-001-{cust_id}",
+            "issue_date": "2026-08-01",
+            "due_date": "2026-08-15",
+            "currency": "USD",
+            "expected_bank_account_id": bank_id,
+            "lines": [{"description": "Medical Imaging PACS", "quantity": 1, "unit_price": 10000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    assert inv1_resp.status_code == 201
+
+    # Inv 2: $5,000 sent, then paid in full
+    inv2_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": cust_id,
+            "invoice_number": f"INV-C360-002-{cust_id}",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "currency": "USD",
+            "expected_bank_account_id": bank_id,
+            "lines": [{"description": "Cloud Archival", "quantity": 1, "unit_price": 5000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    assert inv2_resp.status_code == 201
+    inv2_id = inv2_resp.json()["id"]
+
+    # Issue Inv 2 so it can receive payments
+    send_resp = app_client.post(f"/api/finance/invoices/{inv2_id}/send", cookies=admin_cookies)
+    assert send_resp.status_code == 200
+
+    # Record payment of $5,000 on Inv 2
+    pay_resp = app_client.post(
+        f"/api/finance/invoices/{inv2_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 5000.0,
+            "currency": "USD",
+            "payment_date": "2026-09-10",
+            "bank_account_id": bank_id,
+            "method": "bank_transfer",
+            "reference": f"WIRE-C360-{cust_id}",
+        },
+        cookies=admin_cookies,
+    )
+    assert pay_resp.status_code == 201
+
+    # 5. Fetch Customer 360 Summary
+    summary_resp = app_client.get(f"/api/finance/customers/{cust_id}/360", cookies=admin_cookies)
+    assert summary_resp.status_code == 200
+    s360 = summary_resp.json()
+
+    assert s360["customer"]["id"] == cust_id
+    assert s360["customer"]["legal_name"] == "Pinnacle Healthcare Corporation"
+    assert s360["customer"]["payment_terms_days"] == 45
+    assert s360["total_invoiced"] == 15000.0
+    assert s360["total_paid"] == 5000.0
+    assert s360["outstanding_balance"] == 10000.0
+    assert s360["overdue_balance"] == 10000.0
+    assert s360["open_invoices_count"] == 1
+    assert s360["overdue_invoices_count"] == 1
+    assert s360["average_days_to_pay"] == 9.0  # 2026-09-10 minus 2026-09-01
+    assert len(s360["invoices"]) == 2
+    assert len(s360["timeline"]) >= 3
+

@@ -596,6 +596,113 @@ def get_entity_activity(
             timeline=timeline,
         )
 
+    elif norm_type in ("customer", "customers"):
+        cust = db.query(CustomerDB).filter(CustomerDB.id == entity_id).first()
+        if not cust:
+            raise HTTPException(status_code=404, detail=f"Customer #{entity_id} not found")
+
+        total_invoiced = 0.0
+        total_paid = 0.0
+        outstanding_balance = 0.0
+        overdue_balance = 0.0
+        today = datetime.utcnow().date()
+        related = []
+        timeline = []
+
+        for inv in (cust.invoices or []):
+            is_void = (inv.status or "").lower() == "void"
+            valid_payments = [p for p in (inv.payments or []) if not getattr(p, "is_reversed", False)]
+            inv_paid = sum(p.amount for p in valid_payments)
+            inv_balance = max(0.0, float(inv.total) - inv_paid) if not is_void else 0.0
+
+            due_dt = None
+            if inv.due_date:
+                try:
+                    due_dt = datetime.strptime(str(inv.due_date)[:10], "%Y-%m-%d").date()
+                except Exception:
+                    pass
+
+            is_overdue = False
+            if not is_void and inv_balance > 0.001 and due_dt and due_dt < today:
+                is_overdue = True
+
+            derived_status = "void" if is_void else ("paid" if inv_balance <= 0.001 and float(inv.total) > 0 else ("overdue" if is_overdue else (inv.status or "sent")))
+
+            if not is_void:
+                total_invoiced += float(inv.total)
+                total_paid += inv_paid
+                outstanding_balance += inv_balance
+                if is_overdue:
+                    overdue_balance += inv_balance
+
+            related.append(RelatedRecordItem(
+                entity_type="invoice",
+                entity_id=inv.id,
+                title=f"Invoice {inv.invoice_number}",
+                badge=derived_status.capitalize(),
+                amount=float(inv.total),
+                currency=inv.currency,
+                date=str(inv.issue_date) if inv.issue_date else None,
+            ))
+
+            iss_date_str = str(inv.issue_date) if inv.issue_date else (inv.created_at.strftime("%Y-%m-%d") if inv.created_at else str(today))
+            timeline.append(TimelineEvent(
+                id=f"inv-{inv.id}-created",
+                timestamp=f"{iss_date_str} 09:00:00",
+                event="invoice_issued",
+                plain_text=f"Invoice {inv.invoice_number} issued for {inv.currency} {float(inv.total):,.2f}",
+                actor="finance@voyance.health",
+                state_transition={"from_state": "draft", "to_state": derived_status},
+            ))
+
+            for p in valid_payments:
+                p_date_str = str(p.payment_date) if p.payment_date else str(today)
+                timeline.append(TimelineEvent(
+                    id=f"pmt-{p.id}-received",
+                    timestamp=f"{p_date_str} 14:00:00",
+                    event="payment_received",
+                    plain_text=f"Payment of {p.currency} {float(p.amount):,.2f} recorded (Ref: {p.reference or 'N/A'})",
+                    actor="finance@voyance.health",
+                    state_transition={"from_state": "sent", "to_state": "paid" if inv_balance <= 0.001 else "partially_paid"},
+                ))
+
+        timeline.sort(key=lambda e: e.timestamp, reverse=True)
+
+        attributes = [
+            EntitySummaryAttribute(label="Legal Name", value=cust.legal_name or "—"),
+            EntitySummaryAttribute(label="Contact Email", value=cust.contact_email or "—"),
+            EntitySummaryAttribute(label="Contact Phone", value=cust.contact_phone or "—"),
+            EntitySummaryAttribute(label="Tax ID", value=_mask_sensitive(cust.tax_id, is_admin) or "—"),
+            EntitySummaryAttribute(label="Payment Terms", value=f"{cust.payment_terms_days or 30} days"),
+            EntitySummaryAttribute(label="Default Currency", value=cust.default_currency or "USD"),
+            EntitySummaryAttribute(label="Country", value=cust.country or "Egypt"),
+            EntitySummaryAttribute(label="Total Invoiced", value=f"{total_invoiced:,.2f} {cust.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Total Paid", value=f"{total_paid:,.2f} {cust.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Outstanding Balance", value=f"{outstanding_balance:,.2f} {cust.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Overdue Balance", value=f"{overdue_balance:,.2f} {cust.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Account Owner", value=cust.owner or "—"),
+        ]
+
+        summary = EntitySummary(
+            amount=outstanding_balance,
+            currency=cust.default_currency or "USD",
+            counterparty=cust.legal_name or cust.name,
+            attributes=attributes,
+            notes=cust.notes,
+            sensitive_masked=(not is_admin and bool(cust.tax_id)),
+        )
+
+        return EntityActivityResponse(
+            entity_type="customer",
+            entity_id=cust.id,
+            title=f"Customer: {cust.name}",
+            status="active" if cust.is_active else "inactive",
+            summary=summary,
+            related_records=related,
+            attachments=[],
+            timeline=timeline,
+        )
+
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

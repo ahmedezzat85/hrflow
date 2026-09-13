@@ -23,12 +23,12 @@ const FinanceMockState = {
     { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", currency: "EGP", opening_balance: 20000.0, current_balance: 20000.0, is_active: true },
   ],
   customers: [
-    { id: 1, name: "Apex Health Partners", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", notes: "Enterprise client", is_active: true },
-    { id: 2, name: "BioCare Diagnostics", contact_email: "ap@biocare.org", contact_phone: "+1 555-0144", tax_id: "US-33441199", notes: "Monthly billing", is_active: true },
-    { id: 3, name: "CareFirst Health", contact_email: "ap@carefirst.org", contact_phone: "+1 555-0199", tax_id: "US-77889900", notes: "Overdue account", is_active: true },
-    { id: 4, name: "Delta Medical", contact_email: "finance@deltamed.com", contact_phone: "+1 555-0177", tax_id: "US-55443322", notes: "Consulting client", is_active: true },
-    { id: 5, name: "Echo Clinics", contact_email: "billing@echoclinics.com", contact_phone: "+1 555-0155", tax_id: "US-11223344", notes: "Clinical partner", is_active: true },
-    { id: 6, name: "Frontier Labs", contact_email: "info@frontierlabs.com", contact_phone: "+1 555-0111", tax_id: "US-99887766", notes: "Research lab", is_active: true },
+    { id: 1, name: "Apex Health Partners", legal_name: "Apex Healthcare Systems LLC", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", billing_address: "100 Medical Center Blvd", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Enterprise client", is_active: true },
+    { id: 2, name: "BioCare Diagnostics", legal_name: "BioCare International Inc", contact_email: "ap@biocare.org", contact_phone: "+1 555-0144", tax_id: "US-33441199", billing_address: "450 Lab Parkway", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Monthly billing", is_active: true },
+    { id: 3, name: "CareFirst Health", legal_name: "CareFirst Regional Health Corp", contact_email: "ap@carefirst.org", contact_phone: "+1 555-0199", tax_id: "US-77889900", billing_address: "770 Care Ave", country: "United States", default_currency: "USD", payment_terms_days: 15, owner: "Sarah Connor", notes: "Overdue account", is_active: true },
+    { id: 4, name: "Delta Medical", legal_name: "Delta Medical Equipment Ltd", contact_email: "finance@deltamed.com", contact_phone: "+1 555-0177", tax_id: "US-55443322", billing_address: "12 Nile St, Maadi", country: "Egypt", default_currency: "USD", payment_terms_days: 45, owner: "Sarah Connor", notes: "Consulting client", is_active: true },
+    { id: 5, name: "Echo Clinics", legal_name: "Echo Clinics Network SAE", contact_email: "billing@echoclinics.com", contact_phone: "+1 555-0155", tax_id: "EG-11223344", billing_address: "5 Tahrir Sq, Cairo", country: "Egypt", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Clinical partner", is_active: true },
+    { id: 6, name: "Frontier Labs", legal_name: "Frontier Diagnostics Research", contact_email: "info@frontierlabs.com", contact_phone: "+1 555-0111", tax_id: "US-99887766", billing_address: "88 Science Park", country: "United States", default_currency: "USD", payment_terms_days: 60, owner: "Sarah Connor", notes: "Research lab", is_active: true },
   ],
   vendors: [
     { id: 1, name: "Amazon Web Services", category: "Infrastructure", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", notes: "Hosting & compute", is_active: true },
@@ -1189,6 +1189,144 @@ const FinanceApi = {
       return cust;
     }
     return apiRequest("DELETE", `/api/finance/customers/${id}`);
+  },
+  async checkDuplicateCustomers(payload) {
+    if (_isMock()) {
+      const cleanStr = (v) => {
+        if (!v) return "";
+        let s = String(v).toLowerCase().trim();
+        const sfxs = [/\binc\b/g, /\bllc\b/g, /\bcorp\b/g, /\bcorporation\b/g, /\bltd\b/g, /\blimited\b/g, /\bco\b/g, /\bpartners\b/g];
+        sfxs.forEach((rx) => { s = s.replace(rx, ""); });
+        return s.replace(/[^a-z0-9]/g, "");
+      };
+      const cleanTax = (v) => (!v ? "" : String(v).toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const normName = cleanStr(payload.name);
+      const normLegal = cleanStr(payload.legal_name);
+      const normTax = cleanTax(payload.tax_id);
+      const normEmail = (payload.contact_email || "").toLowerCase().trim();
+
+      const candidates = [];
+      const seen = new Set();
+      for (const c of FinanceMockState.customers) {
+        if (payload.exclude_id && c.id === parseInt(payload.exclude_id, 10)) continue;
+        const cName = cleanStr(c.name);
+        const cLegal = cleanStr(c.legal_name);
+        const cTax = cleanTax(c.tax_id);
+        const cEmail = (c.contact_email || "").toLowerCase().trim();
+
+        let matched_field = null;
+        if (normName && (normName === cName || (cLegal && normName === cLegal))) matched_field = "name";
+        else if (normLegal && ((cLegal && normLegal === cLegal) || normLegal === cName)) matched_field = "legal_name";
+        else if (normTax && cTax && normTax === cTax) matched_field = "tax_id";
+        else if (normEmail && cEmail && normEmail === cEmail) matched_field = "contact_email";
+
+        if (matched_field && !seen.has(c.id)) {
+          seen.add(c.id);
+          candidates.push({
+            id: c.id,
+            name: c.name,
+            legal_name: c.legal_name,
+            tax_id: c.tax_id,
+            contact_email: c.contact_email,
+            matched_field,
+            is_active: c.is_active,
+          });
+        }
+      }
+      return { candidates };
+    }
+    return apiRequest("POST", "/api/finance/customers/check-duplicate", payload);
+  },
+  async getCustomer360(id) {
+    if (_isMock()) {
+      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
+      if (!cust) throw new Error("Customer not found");
+
+      const invoices = (FinanceMockState.invoices || []).filter((i) => i.customer_id === cust.id);
+      let total_invoiced = 0.0;
+      let total_paid = 0.0;
+      let outstanding_balance = 0.0;
+      let overdue_balance = 0.0;
+      let open_invoices_count = 0;
+      let overdue_invoices_count = 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const daysToPay = [];
+      const invList = [];
+      const timeline = [];
+
+      for (const inv of invoices) {
+        const isVoid = inv.status === "void";
+        const payments = (FinanceMockState.payments || []).filter((p) => p.related_invoice_id === inv.id && !p.is_reversed);
+        const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+        const bal = isVoid ? 0 : Math.max(0, (inv.total || 0) - paid);
+        const isOverdue = !isVoid && bal > 0.001 && inv.due_date && inv.due_date < today;
+
+        if (!isVoid) {
+          total_invoiced += (inv.total || 0);
+          total_paid += paid;
+          outstanding_balance += bal;
+          if (isOverdue) {
+            overdue_balance += bal;
+            overdue_invoices_count++;
+          }
+          if (bal > 0.001) open_invoices_count++;
+          if (bal <= 0.001 && paid > 0 && payments.length > 0) {
+            const lastP = payments[payments.length - 1];
+            if (lastP.payment_date && inv.issue_date) {
+              const diff = Math.round((new Date(lastP.payment_date) - new Date(inv.issue_date)) / (86400000));
+              if (diff >= 0) daysToPay.push(diff);
+            }
+          }
+        }
+
+        const derivedStatus = isVoid ? "void" : (bal <= 0.001 && inv.total > 0 ? "paid" : (isOverdue ? "overdue" : (inv.status || "sent")));
+        invList.push({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          issue_date: inv.issue_date,
+          due_date: inv.due_date,
+          currency: inv.currency || "USD",
+          total: inv.total,
+          amount_paid: paid,
+          balance: bal,
+          status: derivedStatus,
+          is_overdue: isOverdue,
+        });
+
+        timeline.push({
+          event_type: "invoice_created",
+          date: inv.issue_date || inv.created_at,
+          description: `Invoice ${inv.invoice_number} created for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+          invoice_id: inv.id,
+        });
+
+        for (const p of payments) {
+          timeline.push({
+            event_type: "payment_received",
+            date: p.payment_date || p.created_at,
+            description: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
+            invoice_id: inv.id,
+          });
+        }
+      }
+
+      timeline.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      const avgDays = daysToPay.length > 0 ? Math.round((daysToPay.reduce((s, d) => s + d, 0) / daysToPay.length) * 10) / 10 : null;
+
+      return {
+        customer: cust,
+        total_invoiced,
+        total_paid,
+        outstanding_balance,
+        overdue_balance,
+        open_invoices_count,
+        overdue_invoices_count,
+        average_days_to_pay: avgDays,
+        invoices: invList,
+        timeline,
+      };
+    }
+    return apiRequest("GET", `/api/finance/customers/${id}/360`);
   },
 
   // Vendors
@@ -2384,6 +2522,112 @@ const FinanceApi = {
               state_transition: { from_state: "draft", to_state: "sent" },
             },
           ],
+        };
+      } else if (norm === "customer") {
+        const cust = (FinanceMockState.customers || []).find((c) => c.id === id) || {
+          id, name: "Customer", is_active: true
+        };
+        const invoices = (FinanceMockState.invoices || []).filter((i) => i.customer_id === cust.id);
+        let total_invoiced = 0.0;
+        let total_paid = 0.0;
+        let outstanding_balance = 0.0;
+        let overdue_balance = 0.0;
+        const today = new Date().toISOString().slice(0, 10);
+        const daysToPay = [];
+        const related = [];
+        const timeline = [];
+
+        for (const inv of invoices) {
+          const isVoid = inv.status === "void";
+          const payments = (FinanceMockState.payments || []).filter((p) => p.related_invoice_id === inv.id && !p.is_reversed);
+          const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+          const bal = isVoid ? 0 : Math.max(0, (inv.total || 0) - paid);
+          const isOverdue = !isVoid && bal > 0.001 && inv.due_date && inv.due_date < today;
+
+          if (!isVoid) {
+            total_invoiced += (inv.total || 0);
+            total_paid += paid;
+            outstanding_balance += bal;
+            if (isOverdue) overdue_balance += bal;
+            if (bal <= 0.001 && paid > 0 && payments.length > 0) {
+              const lastP = payments[payments.length - 1];
+              if (lastP.payment_date && inv.issue_date) {
+                const diff = Math.round((new Date(lastP.payment_date) - new Date(inv.issue_date)) / (86400000));
+                if (diff >= 0) daysToPay.push(diff);
+              }
+            }
+          }
+
+          const derivedStatus = isVoid ? "void" : (bal <= 0.001 && inv.total > 0 ? "paid" : (isOverdue ? "overdue" : (inv.status || "sent")));
+          related.push({
+            entity_type: "invoice",
+            entity_id: inv.id,
+            title: `Invoice ${inv.invoice_number}`,
+            badge: derivedStatus.toUpperCase(),
+            amount: inv.total,
+            currency: inv.currency || "USD",
+            date: inv.issue_date,
+          });
+
+          timeline.push({
+            id: `inv-${inv.id}-created`,
+            timestamp: `${inv.issue_date || today} 09:00:00`,
+            event: "invoice_issued",
+            plain_text: `Invoice ${inv.invoice_number} issued for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+            actor: "finance@voyance.health",
+            state_transition: { from_state: "draft", to_state: derivedStatus },
+          });
+
+          for (const p of payments) {
+            timeline.push({
+              id: `pmt-${p.id}-received`,
+              timestamp: `${p.payment_date || today} 14:00:00`,
+              event: "payment_received",
+              plain_text: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
+              actor: "finance@voyance.health",
+              state_transition: { from_state: "sent", to_state: "paid" },
+            });
+          }
+        }
+
+        const avgDays = daysToPay.length > 0 ? Math.round((daysToPay.reduce((s, d) => s + d, 0) / daysToPay.length) * 10) / 10 : null;
+
+        const attrs = [
+          { label: "Legal Name", value: cust.legal_name || "—" },
+          { label: "Contact Email", value: cust.contact_email || "—" },
+          { label: "Contact Phone", value: cust.contact_phone || "—" },
+          { label: "Tax ID", value: cust.tax_id || "—" },
+          { label: "Payment Terms", value: `${cust.payment_terms_days || 30} days` },
+          { label: "Default Currency", value: cust.default_currency || "USD" },
+          { label: "Country", value: cust.country || "Egypt" },
+          { label: "Total Invoiced", value: `$${total_invoiced.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${cust.default_currency || "USD"}` },
+          { label: "Total Paid", value: `$${total_paid.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${cust.default_currency || "USD"}` },
+          { label: "Outstanding Balance", value: `$${outstanding_balance.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${cust.default_currency || "USD"}` },
+          { label: "Overdue Balance", value: `$${overdue_balance.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${cust.default_currency || "USD"}` },
+          { label: "Avg Days to Pay", value: avgDays ? `${avgDays} days` : "—" },
+          { label: "Account Owner", value: cust.owner || "—" },
+        ];
+
+        return {
+          entity_type: "customer",
+          entity_id: cust.id,
+          title: `Customer: ${cust.name}`,
+          status: cust.is_active ? "active" : "inactive",
+          summary: {
+            reference: cust.name,
+            counterparty: cust.legal_name || cust.name,
+            amount: outstanding_balance,
+            currency: cust.default_currency || "USD",
+            date: cust.created_at,
+            due_date: null,
+            status: cust.is_active ? "active" : "inactive",
+            notes: cust.notes || "",
+            sensitive_masked: false,
+            attributes: attrs,
+          },
+          related_records: related,
+          attachments: [],
+          timeline,
         };
       } else if (norm === "bill") {
         const bill = (FinanceMockState.bills || []).find((b) => b.id === id) || {

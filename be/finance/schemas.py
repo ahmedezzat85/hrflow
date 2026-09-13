@@ -183,10 +183,16 @@ class PettySummaryResponse(BaseModel):
 # Customer Schemas
 # ==========================================
 class CustomerBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="Customer or company name")
+    name: str = Field(..., min_length=1, max_length=255, description="Customer or company display name")
+    legal_name: Optional[str] = Field(None, max_length=255, description="Registered legal name")
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    billing_address: Optional[str] = None
+    country: Optional[str] = Field("Egypt", max_length=100)
+    default_currency: Optional[str] = Field("USD", max_length=10)
+    payment_terms_days: Optional[int] = Field(30, ge=0)
+    owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
 
 
@@ -196,9 +202,15 @@ class CustomerCreate(CustomerBase):
 
 class CustomerUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    legal_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    billing_address: Optional[str] = None
+    country: Optional[str] = Field(None, max_length=100)
+    default_currency: Optional[str] = Field(None, max_length=10)
+    payment_terms_days: Optional[int] = Field(None, ge=0)
+    owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -210,6 +222,37 @@ class CustomerResponse(CustomerBase):
 
     class Config:
         from_attributes = True
+
+
+class CustomerDuplicateCheckRequest(BaseModel):
+    name: Optional[str] = None
+    legal_name: Optional[str] = None
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    exclude_id: Optional[int] = None
+
+
+class CustomerDuplicateCandidate(BaseModel):
+    id: int
+    name: str
+    legal_name: Optional[str] = None
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    matched_field: str
+    is_active: bool
+
+
+class Customer360Summary(BaseModel):
+    customer: CustomerResponse
+    total_invoiced: float = 0.0
+    total_paid: float = 0.0
+    outstanding_balance: float = 0.0
+    overdue_balance: float = 0.0
+    open_invoices_count: int = 0
+    overdue_invoices_count: int = 0
+    average_days_to_pay: Optional[float] = None
+    invoices: List[dict] = []
+    timeline: List[dict] = []
 
 
 # ==========================================
