@@ -4,13 +4,15 @@ Financial Reporting & Excel Export Router.
 All endpoints are gated with RBAC permission 'finance.report.read'.
 Supports dual-format responses: default JSON (for UI tables) and XLSX (for Excel download).
 """
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Set
 from datetime import datetime
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, Path
 
-from core.permissions import require_permission
-from finance.deps import get_reports_service
+from core.permissions import require_permission, get_current_user_permissions
+from finance.deps import get_reports_service, get_attention_service
 from finance.services.reports_service import ReportsService
+from finance.services.attention_service import AttentionQueueService
+from finance.schemas import AttentionQueueResponse, AttentionReviewRequest
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
     export_category_summary_xlsx,
@@ -40,6 +42,62 @@ def get_finance_summary(
         basis=basis,
         currency=currency,
     )
+
+
+@router.get("/attention-queue", response_model=AttentionQueueResponse)
+def get_attention_queue(
+    severity: str = Query("all", description="Filter by severity: all, urgent, warning, info"),
+    item_type: str = Query("all", description="Filter by type: all, overdue_receivable, bill_due, pending_approval, unreconciled_statement, negative_cash, bounced_cheque"),
+    owner: Optional[str] = Query(None, description="Filter by owner or counterparty contact"),
+    search: Optional[str] = Query(None, description="Keyword search in title, counterparty, and description"),
+    include_reviewed: bool = Query(False, description="Whether to include previously reviewed/resolved items"),
+    limit: int = Query(50, ge=1, le=200, description="Max items to return"),
+    service: AttentionQueueService = Depends(get_attention_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+    user_permissions: Set[str] = Depends(get_current_user_permissions),
+):
+    """
+    Consolidated Needs-Attention queue for the finance overview dashboard (Story 2.2).
+    Aggregates exceptions across authorized finance domains with deterministic priority rules.
+    """
+    return service.get_attention_queue(
+        current_user=current_user,
+        user_permissions=user_permissions,
+        severity=severity,
+        item_type=item_type,
+        owner=owner,
+        search=search,
+        include_reviewed=include_reviewed,
+        limit=limit,
+    )
+
+
+@router.post("/attention-queue/{item_key:path}/review")
+def review_attention_item(
+    item_key: str = Path(..., description="Deduplication key of the attention item"),
+    payload: Optional[AttentionReviewRequest] = None,
+    service: AttentionQueueService = Depends(get_attention_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Marks an attention queue item as reviewed or resolved so it disappears on refresh.
+    """
+    status = payload.status if payload else "reviewed"
+    notes = payload.notes if payload else ""
+    user_email = current_user.get("email") or "finance.operator"
+    record = service.review_item(
+        item_key=item_key,
+        status=status,
+        reviewed_by=user_email,
+        notes=notes,
+    )
+    return {
+        "success": True,
+        "deduplication_key": record.deduplication_key,
+        "status": record.status,
+        "reviewed_by": record.reviewed_by,
+        "reviewed_at": record.reviewed_at.isoformat() if record.reviewed_at else None,
+    }
 
 
 @router.get("/transactions")

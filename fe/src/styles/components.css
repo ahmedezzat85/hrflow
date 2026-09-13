@@ -1491,4 +1491,127 @@ th[data-sort][aria-sort="descending"] .sort-icon {
   outline: none;
 }
 
+/* Story 2.2: Needs-Attention Queue */
+.finance-attention-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.finance-attention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  background: var(--surface, #ffffff);
+  transition: background 0.15s ease, opacity 0.2s ease;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.finance-attention-row:hover {
+  background: var(--surface2, #f8fafc);
+}
+
+.finance-attention-row.reviewed {
+  opacity: 0.5;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.finance-attention-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex: 1 1 340px;
+}
+
+.finance-attention-badge-col {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.finance-attention-info {
+  flex: 1;
+}
+
+.finance-attention-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1e293b);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.finance-attention-desc {
+  font-size: 12.5px;
+  color: var(--text2, #475569);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.finance-attention-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+}
+
+.due-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.due-chip.overdue {
+  background: var(--danger-soft, rgba(239, 68, 68, 0.1));
+  color: var(--danger, #dc2626);
+}
+
+.due-chip.due_today {
+  background: var(--warning-soft, rgba(245, 158, 11, 0.1));
+  color: var(--warning, #d97706);
+}
+
+.due-chip.due_soon {
+  background: var(--info-soft, rgba(59, 130, 246, 0.1));
+  color: var(--info, #2563eb);
+}
+
+.due-chip.immediate {
+  background: var(--danger-soft, rgba(239, 68, 68, 0.15));
+  color: var(--danger, #b91c1c);
+  font-weight: 600;
+}
+
+.due-chip.pending_review,
+.due-chip.needs_reconciliation {
+  background: var(--accent-soft, rgba(147, 51, 234, 0.1));
+  color: var(--accent, #7c3aed);
+}
+
+.amount-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+  background: var(--surface2, #f1f5f9);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.finance-attention-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 

@@ -457,3 +457,19 @@ class AccountTransferDB(Base):
 # Alias for clean domain referencing
 FinanceAccountTransferDB = AccountTransferDB
 
+
+class FinanceAttentionReviewDB(Base):
+    __tablename__ = "finance_attention_reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    deduplication_key = Column(String(150), unique=True, nullable=False, index=True)
+    item_type = Column(String(50), nullable=False, index=True)
+    status = Column(String(30), default="reviewed", nullable=False, index=True)  # reviewed | resolved | dismissed
+    reviewed_by = Column(String(255), nullable=True)
+    reviewed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    notes = Column(Text, default="", nullable=False)
+
+
+# Alias for clean domain referencing
+AttentionReviewDB = FinanceAttentionReviewDB
+

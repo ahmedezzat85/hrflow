@@ -157,6 +157,75 @@
             </div>
           </div>
 
+          <!-- Story 2.2: Needs-Attention Queue -->
+          <div class="card" id="financeAttentionQueueCard" style="margin-top: 1.5rem;">
+            <div class="card-head" style="padding: 16px 20px; border-bottom: 1px solid var(--border, #e2e8f0); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-list-check" style="color: var(--primary, #3b82f6);"></i> Needs Attention
+                </h3>
+                <span class="badge" id="badgeAttentionTotalCount" style="background: var(--surface2, #f1f5f9); color: var(--text, #1e293b); font-size: 11.5px; font-weight: 600;">0 items</span>
+                <span class="badge badge-danger" id="badgeAttentionUrgentCount" style="display: none; font-size: 11.5px; font-weight: 600;" aria-label="Urgent items count">
+                  <i class="fa-solid fa-circle-exclamation"></i> <span id="textAttentionUrgentCount">0 Urgent</span>
+                </span>
+                <span class="badge badge-warning" id="badgeAttentionWarningCount" style="display: none; font-size: 11.5px; font-weight: 600;" aria-label="Warning items count">
+                  <i class="fa-solid fa-triangle-exclamation"></i> <span id="textAttentionWarningCount">0 Warning</span>
+                </span>
+              </div>
+
+              <!-- Controls: Severity, Type, Search, Refresh -->
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <select id="filterAttentionSeverity" class="form-input form-input-sm" style="width: auto; min-width: 120px; font-size: 12.5px;" onchange="onAttentionFilterChanged()" aria-label="Filter by severity">
+                  <option value="all" selected>All Severities</option>
+                  <option value="urgent">Urgent only</option>
+                  <option value="warning">Warning only</option>
+                  <option value="info">Info only</option>
+                </select>
+
+                <select id="filterAttentionType" class="form-input form-input-sm" style="width: auto; min-width: 140px; font-size: 12.5px;" onchange="onAttentionFilterChanged()" aria-label="Filter by item type">
+                  <option value="all" selected>All Categories</option>
+                  <option value="overdue_receivable">Overdue Invoices</option>
+                  <option value="bill_due">Bills Due & Overdue</option>
+                  <option value="negative_cash">Overdraft / Negative Cash</option>
+                  <option value="pending_approval">Pending Approvals</option>
+                  <option value="unreconciled_statement">Unreconciled Statements</option>
+                  <option value="bounced_cheque">Bounced Cheques</option>
+                </select>
+
+                <div style="position: relative; display: inline-block;">
+                  <input type="text" id="inputAttentionSearch" class="form-input form-input-sm" placeholder="Search exceptions..." style="width: 160px; font-size: 12.5px; padding-left: 26px;" oninput="onAttentionSearchInput(event)" aria-label="Search exceptions">
+                  <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text3, #94a3b8); pointer-events: none;"></i>
+                </div>
+
+                <button class="btn btn-sm btn-outline" id="btnRefreshAttentionQueue" onclick="loadFinanceAttentionQueue()" title="Refresh attention queue">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Queue Items List Container -->
+            <div id="financeAttentionQueueBody" style="padding: 0;">
+              <!-- Loading Skeleton -->
+              <div id="financeAttentionQueueSkeleton" style="display: none; padding: 20px;">
+                <div class="finance-skeleton" style="height: 52px; margin-bottom: 10px; border-radius: 6px;"></div>
+                <div class="finance-skeleton" style="height: 52px; margin-bottom: 10px; border-radius: 6px;"></div>
+                <div class="finance-skeleton" style="height: 52px; border-radius: 6px;"></div>
+              </div>
+
+              <!-- List of Items -->
+              <div id="financeAttentionQueueList" class="finance-attention-list"></div>
+
+              <!-- Empty State -->
+              <div id="financeAttentionQueueEmpty" class="empty-state" style="display: none; padding: 3rem 1.5rem; text-align: center;">
+                <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--success-soft, rgba(34, 197, 94, 0.1)); display: inline-flex; align-items: center; justify-content: center; color: var(--success, #16a34a); font-size: 24px; margin-bottom: 12px;">
+                  <i class="fa-solid fa-check-double"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 15px; color: var(--text, #1e293b);">No Attention Required</h4>
+                <p style="margin: 0; font-size: 13px; color: var(--text3, #64748b);">All invoices, bills, accounts, and bank reconciliations are currently up to date.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="card" style="margin-top: 1.5rem;">
             <div class="card-head">
               <div>

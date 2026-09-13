@@ -711,4 +711,48 @@ class EntityActivityResponse(BaseModel):
     timeline: List[TimelineEvent] = []
 
 
+# ==========================================
+# Needs-Attention Queue Schemas (Story 2.2)
+# ==========================================
+class AttentionItem(BaseModel):
+    id: str = Field(..., description="Unique item identifier, e.g. rec-inv-12")
+    deduplication_key: str = Field(..., description="Deterministic key e.g. invoice:12:overdue")
+    type: str = Field(..., description="overdue_receivable | bill_due | pending_approval | unreconciled_statement | negative_cash | bounced_cheque")
+    severity: str = Field(..., description="urgent | warning | info")
+    severity_label: str = Field(..., description="User-friendly text label: Urgent | Warning | Info")
+    title: str = Field(..., description="Short title describing the exception")
+    description: str = Field(..., description="Human-readable explanation of required action")
+    counterparty: Optional[str] = Field(None, description="Customer name, vendor name, or institution")
+    amount: Optional[float] = Field(None, description="Outstanding or impacted monetary amount")
+    currency: Optional[str] = Field(None, description="Currency code, e.g. USD, EGP")
+    due_date: Optional[str] = Field(None, description="Due date YYYY-MM-DD or relevant event date")
+    due_state: str = Field(..., description="overdue | due_today | due_soon | immediate | pending_review | needs_reconciliation | bounced")
+    due_state_label: str = Field(..., description="Accessible text, e.g. 'Overdue by 12 days', 'Due today', 'Action Required'")
+    owner: Optional[str] = Field(None, description="Assignee or responsible contact")
+    target_route: str = Field(..., description="UI navigation route e.g. a-finance-invoices")
+    target_id: Optional[int] = Field(None, description="ID of primary record")
+    target_filter: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Filter parameters for deep linking")
+    permission: str = Field(..., description="Required RBAC permission to view this item")
+    priority_score: int = Field(0, description="Computed priority score for deterministic sorting")
+    can_resolve: bool = Field(True, description="Whether operator can open/resolve this item")
+    can_mark_reviewed: bool = Field(True, description="Whether operator can mark as reviewed")
+    is_reviewed: bool = Field(False, description="Whether item has been marked reviewed")
+    created_at: Optional[str] = Field(None, description="Timestamp when entity was created")
+
+
+class AttentionQueueResponse(BaseModel):
+    total_count: int
+    urgent_count: int
+    warning_count: int
+    info_count: int
+    total_amount_by_currency: Dict[str, float]
+    items: List[AttentionItem]
+    generated_at: str
+
+
+class AttentionReviewRequest(BaseModel):
+    status: str = Field("reviewed", pattern="^(reviewed|resolved|dismissed)$")
+    notes: Optional[str] = Field("", max_length=500)
+
+
 

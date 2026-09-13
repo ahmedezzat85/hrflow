@@ -180,6 +180,7 @@ const FinanceMockState = {
       suggested_matches: []
     }
   ],
+  attentionReviewed: new Set(),
 };
 
 const FinanceApi = {
@@ -546,6 +547,202 @@ const FinanceApi = {
   },
   async getDashboardSummary(params = {}) {
     return this.getFinanceSummary(params);
+  },
+
+  async getAttentionQueue(params = {}) {
+    if (_isMock()) {
+      const severity = (params.severity || "all").toLowerCase();
+      const itemType = (params.item_type || params.type || "all").toLowerCase();
+      const search = (params.search || "").toLowerCase();
+      const includeReviewed = params.include_reviewed === true || params.include_reviewed === "true";
+
+      const reviewedSet = FinanceMockState.attentionReviewed || new Set();
+
+      const allMockItems = [
+        {
+          id: "rec-inv-1",
+          deduplication_key: "invoice:1:overdue",
+          type: "overdue_receivable",
+          severity: "urgent",
+          severity_label: "Urgent",
+          title: "Overdue Invoice: INV-2026-001",
+          description: "Invoice INV-2026-001 to Apex Health Partners is overdue by 13 days. Outstanding balance: $12,500.00 USD.",
+          counterparty: "Apex Health Partners",
+          amount: 12500.0,
+          currency: "USD",
+          due_date: "2026-09-01",
+          due_state: "overdue",
+          due_state_label: "Overdue by 13d",
+          owner: "billing@apexhealth.com",
+          target_route: "a-finance-invoices",
+          target_id: 1,
+          target_filter: { status: "overdue", invoice_id: 1 },
+          permission: "finance.invoice.read",
+          priority_score: 95,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("invoice:1:overdue"),
+          created_at: "2026-09-01T08:00:00",
+        },
+        {
+          id: "bill-1",
+          deduplication_key: "bill:1:due",
+          type: "bill_due",
+          severity: "urgent",
+          severity_label: "Urgent",
+          title: "Overdue Bill: BILL-2026-001",
+          description: "Bill BILL-2026-001 from Amazon Web Services is overdue by 5 days. Payable balance: $4,200.00 USD.",
+          counterparty: "Amazon Web Services",
+          amount: 4200.0,
+          currency: "USD",
+          due_date: "2026-09-08",
+          due_state: "overdue",
+          due_state_label: "Overdue by 5d",
+          owner: "aws-receivables@amazon.com",
+          target_route: "a-finance-bills",
+          target_id: 1,
+          target_filter: { bill_id: 1 },
+          permission: "finance.bill.read",
+          priority_score: 88,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("bill:1:due"),
+          created_at: "2026-09-01T08:00:00",
+        },
+        {
+          id: "cash-acc-4",
+          deduplication_key: "account:4:negative_balance",
+          type: "negative_cash",
+          severity: "urgent",
+          severity_label: "Urgent",
+          title: "Negative Balance: Cairo Office Petty Cash Drawer",
+          description: "Petty cash drawer has an overdraft balance of 2,500.00 EGP. Replenishment transfer required.",
+          counterparty: "Cairo Office Petty Cash",
+          amount: 2500.0,
+          currency: "EGP",
+          due_date: "2026-09-13",
+          due_state: "immediate",
+          due_state_label: "Action Required (Overdraft)",
+          owner: null,
+          target_route: "a-finance-accounts",
+          target_id: 4,
+          target_filter: { is_active: "true" },
+          permission: "finance.account.read",
+          priority_score: 110,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("account:4:negative_balance"),
+          created_at: "2026-09-10T12:00:00",
+        },
+        {
+          id: "transfer-1",
+          deduplication_key: "transfer:1:incomplete",
+          type: "pending_approval",
+          severity: "warning",
+          severity_label: "Warning",
+          title: "Incomplete Transfer #1",
+          description: "Transfer of $50,000.00 USD from Voyance Operating USD to Voyance Treasury Reserve has confirmed leg 'from_only'. Second leg requires confirmation.",
+          counterparty: "Voyance Operating USD → Treasury Reserve",
+          amount: 50000.0,
+          currency: "USD",
+          due_date: "2026-09-12",
+          due_state: "pending_review",
+          due_state_label: "Pending Second Leg",
+          owner: "finance.admin@example.com",
+          target_route: "a-finance-transfers",
+          target_id: 1,
+          target_filter: { transfer_id: 1 },
+          permission: "finance.transfer.read",
+          priority_score: 75,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("transfer:1:incomplete"),
+          created_at: "2026-09-12T15:30:00",
+        },
+        {
+          id: "stmt-1",
+          deduplication_key: "statement:1:unmatched",
+          type: "unreconciled_statement",
+          severity: "warning",
+          severity_label: "Warning",
+          title: "Unreconciled Statement: JPMorgan Chase (2026-08)",
+          description: "Statement import for 2026-08 contains 3 unmatched statement lines requiring ledger matching.",
+          counterparty: "JPMorgan Chase",
+          amount: 3850.0,
+          currency: "USD",
+          due_date: "2026-09-01",
+          due_state: "needs_reconciliation",
+          due_state_label: "3 Unmatched Lines",
+          owner: null,
+          target_route: "a-finance-statements",
+          target_id: 1,
+          target_filter: { import_id: 1 },
+          permission: "finance.statement.read",
+          priority_score: 65,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("statement:1:unmatched"),
+          created_at: "2026-09-01T14:00:00",
+        },
+      ];
+
+      let filtered = allMockItems.filter((it) => {
+        if (!includeReviewed && it.is_reviewed) return false;
+        if (severity !== "all" && it.severity !== severity) return false;
+        if (itemType !== "all" && it.type !== itemType) return false;
+        if (search) {
+          const s = search.toLowerCase();
+          const match =
+            it.title.toLowerCase().includes(s) ||
+            it.description.toLowerCase().includes(s) ||
+            (it.counterparty && it.counterparty.toLowerCase().includes(s));
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => b.priority_score - a.priority_score);
+
+      const urgentCount = filtered.filter((i) => i.severity === "urgent").length;
+      const warningCount = filtered.filter((i) => i.severity === "warning").length;
+      const infoCount = filtered.filter((i) => i.severity === "info").length;
+
+      const currencyTotals = {};
+      filtered.forEach((it) => {
+        if (it.amount && it.currency) {
+          currencyTotals[it.currency] = round((currencyTotals[it.currency] || 0) + it.amount, 2);
+        }
+      });
+
+      return {
+        total_count: filtered.length,
+        urgent_count: urgentCount,
+        warning_count: warningCount,
+        info_count: infoCount,
+        total_amount_by_currency: currencyTotals,
+        items: filtered,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
+    let url = "/api/finance/reports/attention-queue";
+    if (params && Object.keys(params).length > 0) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+
+  async reviewAttentionItem(itemKey, payload = {}) {
+    if (_isMock()) {
+      if (!FinanceMockState.attentionReviewed) {
+        FinanceMockState.attentionReviewed = new Set();
+      }
+      FinanceMockState.attentionReviewed.add(itemKey);
+      return { success: true, deduplication_key: itemKey, status: payload.status || "reviewed" };
+    }
+    const encodedKey = encodeURIComponent(itemKey);
+    return apiRequest("POST", `/api/finance/reports/attention-queue/${encodedKey}/review`, payload);
   },
 
   // Bank Accounts

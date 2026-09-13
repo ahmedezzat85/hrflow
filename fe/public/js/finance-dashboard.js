@@ -114,6 +114,7 @@ async function loadFinanceDashboard(options = {}) {
     }
 
     renderFinanceDashboard(summary, ctx);
+    await loadFinanceAttentionQueue();
     if (isRefresh) {
       showToast("Finance dashboard refreshed", "success");
     }
@@ -298,6 +299,208 @@ function refreshFinanceDashboard() {
   return loadFinanceDashboard({ isRefresh: true });
 }
 
+let _attentionSearchTimer = null;
+
+async function loadFinanceAttentionQueue() {
+  const listEl = document.getElementById("financeAttentionQueueList");
+  const emptyEl = document.getElementById("financeAttentionQueueEmpty");
+  const skelEl = document.getElementById("financeAttentionQueueSkeleton");
+  const btnRefresh = document.getElementById("btnRefreshAttentionQueue");
+
+  const sevSelect = document.getElementById("filterAttentionSeverity");
+  const typeSelect = document.getElementById("filterAttentionType");
+  const searchInput = document.getElementById("inputAttentionSearch");
+
+  const severity = sevSelect ? sevSelect.value : "all";
+  const item_type = typeSelect ? typeSelect.value : "all";
+  const search = searchInput ? searchInput.value.trim() : "";
+
+  if (skelEl) skelEl.style.display = "block";
+  if (listEl) listEl.style.display = "none";
+  if (emptyEl) emptyEl.style.display = "none";
+  if (btnRefresh) btnRefresh.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+  try {
+    const data = await FinanceApi.getAttentionQueue({ severity, item_type, search });
+    FinanceDashboardState.attentionQueue = data;
+    renderFinanceAttentionQueue(data);
+  } catch (err) {
+    console.error("Failed to load attention queue:", err);
+    if (listEl) {
+      listEl.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: var(--danger, #ef4444);">
+          <i class="fa-solid fa-triangle-exclamation"></i> Unable to load attention items.
+          <button class="btn btn-sm btn-outline" onclick="loadFinanceAttentionQueue()" style="margin-left: 8px;">Retry</button>
+        </div>
+      `;
+      listEl.style.display = "block";
+    }
+  } finally {
+    if (skelEl) skelEl.style.display = "none";
+    if (btnRefresh) btnRefresh.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
+  }
+}
+
+function _escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function renderFinanceAttentionQueue(data) {
+  const listEl = document.getElementById("financeAttentionQueueList");
+  const emptyEl = document.getElementById("financeAttentionQueueEmpty");
+
+  const totalBadge = document.getElementById("badgeAttentionTotalCount");
+  const urgentBadge = document.getElementById("badgeAttentionUrgentCount");
+  const urgentText = document.getElementById("textAttentionUrgentCount");
+  const warningBadge = document.getElementById("badgeAttentionWarningCount");
+  const warningText = document.getElementById("textAttentionWarningCount");
+
+  const totalCount = data?.total_count || 0;
+  const urgentCount = data?.urgent_count || 0;
+  const warningCount = data?.warning_count || 0;
+
+  if (totalBadge) totalBadge.textContent = `${totalCount} ${totalCount === 1 ? 'item' : 'items'}`;
+  if (urgentBadge) {
+    urgentBadge.style.display = urgentCount > 0 ? "inline-flex" : "none";
+    if (urgentText) urgentText.textContent = `${urgentCount} Urgent`;
+  }
+  if (warningBadge) {
+    warningBadge.style.display = warningCount > 0 ? "inline-flex" : "none";
+    if (warningText) warningText.textContent = `${warningCount} Warning`;
+  }
+
+  const items = data?.items || [];
+  if (items.length === 0) {
+    if (listEl) listEl.style.display = "none";
+    if (emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = "none";
+  if (listEl) {
+    listEl.style.display = "flex";
+    listEl.innerHTML = items.map((it) => {
+      const sevClass = it.severity === "urgent" ? "badge-danger" : (it.severity === "warning" ? "badge-warning" : "badge-info");
+      const sevIcon = it.severity === "urgent" ? "fa-circle-exclamation" : (it.severity === "warning" ? "fa-triangle-exclamation" : "fa-circle-info");
+      const dueChipClass = it.due_state || "due_soon";
+      let dueIcon = "fa-clock";
+      if (it.due_state === "overdue") dueIcon = "fa-calendar-xmark";
+      else if (it.due_state === "due_today") dueIcon = "fa-calendar-day";
+      else if (it.due_state === "immediate") dueIcon = "fa-triangle-exclamation";
+      else if (it.due_state === "pending_review") dueIcon = "fa-hourglass-half";
+      else if (it.due_state === "needs_reconciliation") dueIcon = "fa-code-compare";
+
+      const amountFormatted = it.amount !== null && it.amount !== undefined
+        ? (typeof FinanceFormat !== "undefined" ? FinanceFormat.formatMoney(it.amount, it.currency || "USD") : `$${Number(it.amount).toFixed(2)}`)
+        : null;
+      const targetFilterStr = it.target_filter ? encodeURIComponent(JSON.stringify(it.target_filter)) : "";
+
+      return `
+        <div class="finance-attention-row ${it.is_reviewed ? 'reviewed' : ''}" data-key="${_escapeHtml(it.deduplication_key)}" data-id="${_escapeHtml(it.id)}" data-type="${_escapeHtml(it.type)}" data-severity="${_escapeHtml(it.severity)}">
+          <div class="finance-attention-main">
+            <div class="finance-attention-badge-col">
+              <span class="badge ${sevClass}" aria-label="Severity: ${_escapeHtml(it.severity_label)}">
+                <i class="fa-solid ${sevIcon}"></i> ${_escapeHtml(it.severity_label)}
+              </span>
+            </div>
+            <div class="finance-attention-info">
+              <div class="finance-attention-title">
+                <strong>${_escapeHtml(it.title)}</strong>
+                ${it.counterparty ? `<span class="badge" style="font-size:11px;background:var(--surface2);color:var(--text2);">${_escapeHtml(it.counterparty)}</span>` : ""}
+              </div>
+              <div class="finance-attention-desc">${_escapeHtml(it.description)}</div>
+              <div class="finance-attention-meta">
+                <span class="due-chip ${dueChipClass}" aria-label="Due status: ${_escapeHtml(it.due_state_label)}">
+                  <i class="fa-solid ${dueIcon}"></i> ${_escapeHtml(it.due_state_label)}
+                </span>
+                ${amountFormatted ? `
+                  <span class="amount-chip">
+                    <i class="fa-solid fa-coins"></i> ${amountFormatted}
+                  </span>
+                ` : ""}
+                ${it.due_date ? `<span style="color:var(--text3);"><i class="fa-regular fa-calendar"></i> ${_escapeHtml(it.due_date)}</span>` : ""}
+              </div>
+            </div>
+          </div>
+          <div class="finance-attention-actions">
+            <button type="button" class="btn btn-sm btn-primary btn-attention-resolve" onclick="openAttentionItem('${_escapeHtml(it.target_route)}', ${it.target_id || 'null'}, '${targetFilterStr}')">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Resolve
+            </button>
+            <button type="button" class="btn btn-sm btn-outline btn-attention-review" onclick="markAttentionItemReviewed('${_escapeHtml(it.deduplication_key)}')" title="Mark as reviewed">
+              <i class="fa-solid fa-check"></i> Reviewed
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+function onAttentionFilterChanged() {
+  loadFinanceAttentionQueue();
+}
+
+function onAttentionSearchInput(event) {
+  clearTimeout(_attentionSearchTimer);
+  _attentionSearchTimer = setTimeout(() => {
+    loadFinanceAttentionQueue();
+  }, 250);
+}
+
+async function markAttentionItemReviewed(itemKey) {
+  try {
+    const res = await FinanceApi.reviewAttentionItem(itemKey, { status: "reviewed" });
+    showToast("Item marked as reviewed", "success");
+    loadFinanceAttentionQueue();
+  } catch (err) {
+    console.error("Failed to mark reviewed:", err);
+    showToast("Failed to mark item reviewed: " + (err.message || "Unknown error"), "error");
+  }
+}
+
+function openAttentionItem(targetRoute, targetId, targetFilterEncoded) {
+  let target = targetRoute;
+  if (target && !target.startsWith("a-")) {
+    target = `a-${target}`;
+  }
+
+  // Parse filter if provided
+  let filter = {};
+  if (targetFilterEncoded) {
+    try {
+      filter = JSON.parse(decodeURIComponent(targetFilterEncoded));
+    } catch (e) {}
+  }
+
+  // Navigate to target section
+  if (typeof window.showSection === "function") {
+    window.showSection(target, "admin");
+  }
+
+  // Domain loader triggers
+  if (target === "a-finance-invoices") {
+    if (typeof loadFinanceInvoices === "function") loadFinanceInvoices();
+  } else if (target === "a-finance-bills") {
+    if (typeof loadFinanceBills === "function") loadFinanceBills();
+  } else if (target === "a-finance-accounts") {
+    if (typeof loadFinanceAccounts === "function") loadFinanceAccounts();
+  } else if (target === "a-finance-transfers") {
+    if (typeof loadFinanceTransfers === "function") loadFinanceTransfers();
+  } else if (target === "a-finance-cheques") {
+    if (typeof loadFinanceCheques === "function") loadFinanceCheques();
+  } else if (target === "a-finance-statements") {
+    if (typeof loadFinanceStatements === "function") loadFinanceStatements();
+  } else if (target === "a-finance-payroll") {
+    if (typeof loadFinancePayroll === "function") loadFinancePayroll();
+  }
+}
+
 // Window exports for Finance Dashboard
 window.FinanceDashboardState = FinanceDashboardState;
 window.loadFinanceDashboard = loadFinanceDashboard;
@@ -306,3 +509,9 @@ window.onFinanceContextChanged = onFinanceContextChanged;
 window.resetFinanceContext = resetFinanceContext;
 window.drilldownFinanceKPI = drilldownFinanceKPI;
 window.showKpiDefinition = showKpiDefinition;
+window.loadFinanceAttentionQueue = loadFinanceAttentionQueue;
+window.renderFinanceAttentionQueue = renderFinanceAttentionQueue;
+window.onAttentionFilterChanged = onAttentionFilterChanged;
+window.onAttentionSearchInput = onAttentionSearchInput;
+window.openAttentionItem = openAttentionItem;
+window.markAttentionItemReviewed = markAttentionItemReviewed;

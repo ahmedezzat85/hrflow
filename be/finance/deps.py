@@ -148,6 +148,11 @@ def get_reports_service(db: Session = Depends(get_db)):
     return ReportsService(db)
 
 
+def get_attention_service(db: Session = Depends(get_db)):
+    from finance.services.attention_service import AttentionQueueService
+    return AttentionQueueService(db)
+
+
 def get_idempotency_service():
     from finance.services.idempotency import idempotency_service
     return idempotency_service
