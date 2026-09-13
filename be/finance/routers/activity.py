@@ -74,12 +74,51 @@ def get_entity_activity(
         cust_name = inv.customer.name if inv.customer else "—"
         cust_tax_id = inv.customer.tax_id if inv.customer else ""
 
+        paid_sum = sum(p.amount for p in (inv.payments or []) if p.amount and (p.direction == "incoming" or not p.direction))
+        paid_sum = round(paid_sum, 2)
+        balance = max(0.0, round(inv.total - paid_sum, 2))
+        today = datetime.utcnow().date()
+        is_overdue = False
+        days_overdue = 0
+        if inv.due_date:
+            try:
+                due_dt = datetime.strptime(inv.due_date, "%Y-%m-%d").date()
+                if due_dt < today and balance > 0 and inv.status != "void":
+                    is_overdue = True
+                    days_overdue = (today - due_dt).days
+            except Exception:
+                pass
+
+        if balance <= 0 and inv.status != "void":
+            derived_status = "paid"
+            next_action = "Completed (Paid in Full)"
+        elif inv.status == "void":
+            derived_status = "void"
+            next_action = "Archived (Voided)"
+        elif inv.status == "draft":
+            derived_status = "draft"
+            next_action = "Review & Send to Customer"
+        elif is_overdue:
+            derived_status = "overdue"
+            next_action = f"Send Payment Reminder ({days_overdue}d overdue)"
+        elif paid_sum > 0:
+            derived_status = "sent"
+            next_action = "Collect Remaining Balance"
+        else:
+            derived_status = inv.status
+            next_action = "Awaiting Due Date / Payment"
+
         attributes = [
             EntitySummaryAttribute(label="Subtotal", value=f"{inv.subtotal:,.2f} {inv.currency}"),
             EntitySummaryAttribute(label="Tax Amount", value=f"{inv.tax_amount:,.2f} {inv.currency}"),
+            EntitySummaryAttribute(label="Amount Paid", value=f"{paid_sum:,.2f} {inv.currency}"),
+            EntitySummaryAttribute(label="Outstanding Balance", value=f"{balance:,.2f} {inv.currency}"),
+            EntitySummaryAttribute(label="Next Action", value=next_action),
             EntitySummaryAttribute(label="Revenue Channel", value=inv.revenue_channel or "—"),
             EntitySummaryAttribute(label="Expected Account", value=acc_name),
         ]
+        if is_overdue:
+            attributes.insert(4, EntitySummaryAttribute(label="Overdue State", value=f"{days_overdue} days overdue"))
         if cust_tax_id:
             attributes.append(EntitySummaryAttribute(label="Customer Tax ID", value=_mask_sensitive(cust_tax_id, is_admin)))
 
@@ -90,7 +129,7 @@ def get_entity_activity(
             currency=inv.currency,
             date=inv.issue_date,
             due_date=inv.due_date,
-            status=inv.status,
+            status=derived_status,
             notes=inv.notes or "",
             sensitive_masked=not is_admin,
             attributes=attributes,

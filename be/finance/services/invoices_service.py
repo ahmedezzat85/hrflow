@@ -17,7 +17,9 @@ from finance.schemas import (
 from finance.models import SalesInvoiceDB, PaymentDB, FinanceBankAccountDB
 
 
-VALID_INVOICE_STATUSES = {"draft", "sent", "paid", "overdue", "void"}
+from datetime import datetime, date
+
+VALID_INVOICE_STATUSES = {"draft", "sent", "paid", "overdue", "void", "open", "awaiting_payment", "all"}
 VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
 VALID_REVENUE_CHANNELS = {
@@ -68,6 +70,7 @@ class InvoicesService:
             for ln in (invoice.lines or [])
         ]
         customer_name = invoice.customer.name if invoice.customer else None
+        customer_email = invoice.customer.contact_email if invoice.customer else None
         expected_acc_name = (
             invoice.expected_bank_account.account_name
             if getattr(invoice, "expected_bank_account", None)
@@ -80,14 +83,62 @@ class InvoicesService:
                     has_discrepancy = True
                     break
 
+        today = datetime.utcnow().date()
+        paid_sum = 0.0
+        for p in (invoice.payments or []):
+            if (p.amount or 0) > 0 and (p.direction == "incoming" or not p.direction):
+                paid_sum += p.amount
+        paid_sum = round(paid_sum, 2)
+        total = round(invoice.total or 0.0, 2)
+        balance = max(0.0, round(total - paid_sum, 2))
+
+        # Dynamic overdue calculation
+        due_dt = None
+        is_overdue = False
+        days_overdue = 0
+        if invoice.due_date:
+            try:
+                due_dt = datetime.strptime(invoice.due_date, "%Y-%m-%d").date()
+                if due_dt < today and balance > 0 and invoice.status != "void":
+                    is_overdue = True
+                    days_overdue = (today - due_dt).days
+            except Exception:
+                pass
+
+        if balance <= 0 and invoice.status != "void":
+            payment_status = "paid"
+            derived_status = "paid"
+        elif paid_sum > 0:
+            payment_status = "partially_paid"
+            derived_status = "overdue" if is_overdue else "sent"
+        else:
+            payment_status = "unpaid"
+            derived_status = "overdue" if is_overdue else invoice.status
+
+        if invoice.status == "void":
+            derived_status = "void"
+            next_action = "Archived (Voided)"
+        elif invoice.status == "draft":
+            derived_status = "draft"
+            next_action = "Review & Send to Customer"
+        elif balance <= 0:
+            next_action = "Completed (Paid in Full)"
+        elif is_overdue:
+            next_action = f"Send Payment Reminder ({days_overdue}d overdue)"
+        elif payment_status == "partially_paid":
+            next_action = "Collect Remaining Balance"
+        else:
+            next_action = "Awaiting Due Date / Payment"
+
         return SalesInvoiceResponse(
             id=invoice.id,
             customer_id=invoice.customer_id,
             customer_name=customer_name,
+            customer_email=customer_email,
             invoice_number=invoice.invoice_number,
             issue_date=invoice.issue_date,
             due_date=invoice.due_date,
-            status=invoice.status,
+            status=derived_status,
             currency=invoice.currency,
             expected_bank_account_id=invoice.expected_bank_account_id,
             expected_bank_account_name=expected_acc_name,
@@ -96,6 +147,12 @@ class InvoicesService:
             subtotal=invoice.subtotal,
             tax_amount=invoice.tax_amount,
             total=invoice.total,
+            amount_paid=paid_sum,
+            balance=balance,
+            is_overdue=is_overdue,
+            days_overdue=days_overdue,
+            payment_status=payment_status,
+            next_action=next_action,
             notes=invoice.notes,
             created_at=invoice.created_at,
             lines=lines,
@@ -143,18 +200,50 @@ class InvoicesService:
         status: Optional[str] = None,
         customer_id: Optional[int] = None,
         search: Optional[str] = None,
+        currency: Optional[str] = None,
+        revenue_channel: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        due_date_from: Optional[str] = None,
+        due_date_to: Optional[str] = None,
+        payment_state: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[SalesInvoiceResponse]:
-        if status and status not in VALID_INVOICE_STATUSES:
+        if status and status.lower() not in VALID_INVOICE_STATUSES:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid status '{status}'. Must be one of: {', '.join(VALID_INVOICE_STATUSES)}",
+                detail=f"Invalid status '{status}'. Must be one of: {', '.join(sorted(VALID_INVOICE_STATUSES))}",
             )
         invoices = self.repo.list_all(
-            status=status, customer_id=customer_id, search=search, limit=limit, offset=offset
+            status=status,
+            customer_id=customer_id,
+            search=search,
+            currency=currency,
+            revenue_channel=revenue_channel,
+            date_from=date_from,
+            date_to=date_to,
+            due_date_from=due_date_from,
+            due_date_to=due_date_to,
+            limit=limit,
+            offset=offset,
         )
-        return [self._invoice_to_response(inv) for inv in invoices]
+        responses = [self._invoice_to_response(inv) for inv in invoices]
+        if status:
+            st = status.lower().strip()
+            if st == "overdue":
+                responses = [r for r in responses if r.status == "overdue" or r.is_overdue]
+            elif st == "awaiting_payment":
+                responses = [r for r in responses if r.status in ("sent", "awaiting_payment") and not r.is_overdue and r.balance > 0]
+            elif st == "open":
+                responses = [r for r in responses if r.status not in ("paid", "void")]
+            elif st == "paid":
+                responses = [r for r in responses if r.status == "paid" or r.balance <= 0]
+
+        if payment_state and payment_state != "all":
+            ps = payment_state.lower().strip()
+            responses = [r for r in responses if r.payment_status == ps]
+        return responses
 
     def get_invoice(self, invoice_id: int) -> SalesInvoiceResponse:
         invoice = self.repo.get_by_id(invoice_id)

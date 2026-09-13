@@ -31,8 +31,12 @@ const FinanceMockState = {
     { id: 2, name: "Slack Technologies", category: "SaaS", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", notes: "Team communication", is_active: true },
   ],
   invoices: [
-    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
-    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
+    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, amount_paid: 0.0, balance: 12500.0, is_overdue: false, days_overdue: 0, next_action: "Awaiting Due Date / Payment", notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
+    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, amount_paid: 0.0, balance: 8400.0, is_overdue: false, days_overdue: 0, next_action: "Review & Send to Customer", notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
+    { id: 3, customer_id: 3, customer_name: "CareFirst Health", invoice_number: "INV-2026-003", issue_date: "2026-08-01", due_date: "2026-08-15", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 10000.0, tax_amount: 0.0, total: 10000.0, amount_paid: 0.0, balance: 10000.0, is_overdue: true, days_overdue: 29, next_action: "Send Payment Reminder (29d overdue)", notes: "Prior cycle maintenance", created_at: "2026-08-01T08:00:00", lines: [{ id: 3, invoice_id: 3, description: "System Maintenance", quantity: 1, unit_price: 10000.0, line_total: 10000.0 }] },
+    { id: 4, customer_id: 4, customer_name: "Delta Medical", invoice_number: "INV-2026-004", issue_date: "2026-09-02", due_date: "2026-09-25", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 11000.0, tax_amount: 0.0, total: 11000.0, amount_paid: 4000.0, balance: 7000.0, is_overdue: false, days_overdue: 0, next_action: "Collect Remaining Balance", notes: "Consulting Retainer Q3", created_at: "2026-09-02T09:00:00", lines: [{ id: 4, invoice_id: 4, description: "Consulting Hours", quantity: 10, unit_price: 1100.0, line_total: 11000.0 }] },
+    { id: 5, customer_id: 5, customer_name: "Echo Clinics", invoice_number: "INV-2026-005", issue_date: "2026-08-10", due_date: "2026-09-10", status: "paid", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 20000.0, tax_amount: 0.0, total: 20000.0, amount_paid: 20000.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Completed (Paid in Full)", notes: "Setup & Onboarding", created_at: "2026-08-10T10:00:00", lines: [{ id: 5, invoice_id: 5, description: "Setup Fee", quantity: 1, unit_price: 20000.0, line_total: 20000.0 }] },
+    { id: 6, customer_id: 6, customer_name: "Frontier Labs", invoice_number: "INV-2026-006", issue_date: "2026-08-20", due_date: "2026-09-20", status: "void", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "other", has_bank_discrepancy: false, subtotal: 25000.0, tax_amount: 0.0, total: 25000.0, amount_paid: 0.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Archived (Voided)", notes: "Canceled service request", created_at: "2026-08-20T11:00:00", lines: [{ id: 6, invoice_id: 6, description: "Canceled item", quantity: 1, unit_price: 25000.0, line_total: 25000.0 }] },
   ],
   bills: [
     { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", issue_date: "2026-09-01", due_date: "2026-09-30", status: "unpaid", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
@@ -188,7 +192,18 @@ const FinanceApi = {
   async getInvoices(params) {
     if (_isMock()) {
       let list = [...FinanceMockState.invoices];
-      if (params && params.status) list = list.filter((i) => i.status === params.status);
+      if (params && params.status) {
+        const st = params.status.toLowerCase().trim();
+        if (st === "open") {
+          list = list.filter((i) => i.status !== "paid" && i.status !== "void");
+        } else if (st === "awaiting_payment") {
+          list = list.filter((i) => (i.status === "sent" || i.status === "awaiting_payment") && !i.is_overdue && (i.balance === undefined || i.balance > 0));
+        } else if (st === "overdue") {
+          list = list.filter((i) => i.status === "overdue" || i.is_overdue);
+        } else if (st !== "all") {
+          list = list.filter((i) => i.status === st);
+        }
+      }
       if (params && params.customer_id) list = list.filter((i) => i.customer_id === parseInt(params.customer_id, 10));
       if (params && params.search) {
         const s = params.search.toLowerCase();
@@ -2209,11 +2224,28 @@ const FinanceApi = {
           notes: "PACS Integration",
         };
         const cust = (FinanceMockState.customers || []).find((c) => c.id === inv.customer_id) || { name: inv.customer_name || "Apex Health Partners", tax_id: "US-88992211" };
+        const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.status === "paid" ? inv.total : 0.0);
+        const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
+        const isOverdue = inv.is_overdue || inv.status === "overdue";
+        const nextAction = inv.next_action || (inv.status === "draft" ? "Review & Send to Customer" : (balance <= 0 ? "Completed (Paid in Full)" : (isOverdue ? "Send Payment Reminder" : "Awaiting Due Date / Payment")));
+        const attrs = [
+          { label: "Subtotal", value: `${(inv.subtotal || inv.total).toLocaleString()} ${inv.currency || "USD"}` },
+          { label: "Amount Paid", value: `${amountPaid.toLocaleString()} ${inv.currency || "USD"}` },
+          { label: "Outstanding Balance", value: `${balance.toLocaleString()} ${inv.currency || "USD"}` },
+          { label: "Next Action", value: nextAction },
+          { label: "Due Date", value: inv.due_date || "—" },
+          { label: "Revenue Channel", value: inv.revenue_channel || "Overseas USD" },
+          { label: "Customer Tax ID", value: cust.tax_id || "US-88992211" },
+        ];
+        if (isOverdue && inv.days_overdue) {
+          attrs.splice(4, 0, { label: "Overdue State", value: `${inv.days_overdue} days overdue` });
+        }
+
         return {
           entity_type: "invoice",
           entity_id: inv.id,
           title: `Invoice ${inv.invoice_number}`,
-          status: inv.status || "draft",
+          status: isOverdue ? "overdue" : (balance <= 0 && inv.status !== "void" ? "paid" : inv.status || "draft"),
           summary: {
             reference: inv.invoice_number,
             counterparty: inv.customer_name || cust.name,
@@ -2221,15 +2253,10 @@ const FinanceApi = {
             currency: inv.currency || "USD",
             date: inv.issue_date,
             due_date: inv.due_date,
-            status: inv.status,
+            status: isOverdue ? "overdue" : (balance <= 0 && inv.status !== "void" ? "paid" : inv.status || "draft"),
             notes: inv.notes || "",
             sensitive_masked: false,
-            attributes: [
-              { label: "Subtotal", value: `${(inv.subtotal || inv.total).toLocaleString()} ${inv.currency || "USD"}` },
-              { label: "Due Date", value: inv.due_date || "—" },
-              { label: "Revenue Channel", value: inv.revenue_channel || "Overseas USD" },
-              { label: "Customer Tax ID", value: cust.tax_id || "US-88992211" },
-            ],
+            attributes: attrs,
           },
           related_records: [
             {

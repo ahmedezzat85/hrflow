@@ -25,17 +25,35 @@ router = APIRouter(prefix="/api/finance/invoices", tags=["Finance - Sales Invoic
 
 @router.get("", response_model=List[SalesInvoiceResponse])
 def list_sales_invoices(
-    status: Optional[str] = Query(None, description="Filter by status: draft|sent|paid|overdue|void"),
+    status: Optional[str] = Query(None, description="Filter by status: open|draft|sent|awaiting_payment|paid|overdue|void|all"),
     customer_id: Optional[int] = Query(None, description="Filter by customer ID"),
     search: Optional[str] = Query(None, description="Search by invoice number or customer name"),
+    currency: Optional[str] = Query(None, description="Filter by currency: USD, EGP, all"),
+    revenue_channel: Optional[str] = Query(None, description="Filter by revenue channel"),
+    date_from: Optional[str] = Query(None, description="Issue date from (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Issue date to (YYYY-MM-DD)"),
+    due_date_from: Optional[str] = Query(None, description="Due date from (YYYY-MM-DD)"),
+    due_date_to: Optional[str] = Query(None, description="Due date to (YYYY-MM-DD)"),
+    payment_state: Optional[str] = Query(None, description="Filter by payment state: unpaid|partially_paid|paid|all"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_permission("finance.invoice.read")),
     service: InvoicesService = Depends(get_invoices_service),
 ):
-    """List sales invoices with optional status, customer, and search filters."""
+    """List sales invoices with status, work queue, and date filters."""
     return service.list_invoices(
-        status=status, customer_id=customer_id, search=search, limit=limit, offset=offset
+        status=status,
+        customer_id=customer_id,
+        search=search,
+        currency=currency,
+        revenue_channel=revenue_channel,
+        date_from=date_from,
+        date_to=date_to,
+        due_date_from=due_date_from,
+        due_date_to=due_date_to,
+        payment_state=payment_state,
+        limit=limit,
+        offset=offset,
     )
 
 

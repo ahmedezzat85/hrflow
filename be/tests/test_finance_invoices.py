@@ -375,3 +375,138 @@ def test_invoice_bank_routing_and_discrepancy(app_client, admin_cookies):
     assert inv_check_2["has_bank_discrepancy"] is True
     assert inv_check_2["status"] == "paid"  # Fully paid 2000 + 2000 = 4000
 
+
+def test_invoice_work_queue_and_derived_status(app_client, admin_cookies):
+    """Phase 3 Story 3.1: Work queue filters, balance derivation, overdue calculation, and next action."""
+    # 1. Setup customer and bank account
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Queue Test Customer"},
+        cookies=admin_cookies,
+    )
+    customer_id = cust_resp.json()["id"]
+
+    acc_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Queue USD Bank",
+            "bank_name": "Chase Bank",
+            "account_number": "CHASE-9999",
+            "currency": "USD",
+            "opening_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    )
+    account_id = acc_resp.json()["id"]
+
+    # 2. Create a Draft invoice
+    draft_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-DRAFT",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "currency": "USD",
+            "lines": [{"description": "Draft item", "quantity": 1.0, "unit_price": 1000.0, "line_total": 1000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    draft_data = draft_resp.json()
+    assert draft_data["status"] == "draft"
+    assert draft_data["balance"] == 1000.0
+    assert draft_data["amount_paid"] == 0.0
+    assert draft_data["payment_status"] == "unpaid"
+    assert "Send" in draft_data["next_action"]
+
+    # 3. Create an Overdue invoice (due_date in past, status='sent')
+    overdue_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-OVERDUE",
+            "issue_date": "2026-08-01",
+            "due_date": "2026-08-15",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Overdue item", "quantity": 1.0, "unit_price": 2500.0, "line_total": 2500.0}],
+        },
+        cookies=admin_cookies,
+    )
+    overdue_data = overdue_resp.json()
+    assert overdue_data["is_overdue"] is True
+    assert overdue_data["status"] == "overdue"
+    assert overdue_data["days_overdue"] > 0
+    assert overdue_data["balance"] == 2500.0
+    assert "overdue" in overdue_data["next_action"].lower()
+
+    # 4. Create a Paid invoice
+    paid_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-PAID",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Paid item", "quantity": 1.0, "unit_price": 3000.0, "line_total": 3000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    paid_id = paid_resp.json()["id"]
+    # Pay in full
+    app_client.post(
+        f"/api/finance/invoices/{paid_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 3000.0,
+            "currency": "USD",
+            "payment_date": "2026-09-05",
+            "bank_account_id": account_id,
+        },
+        cookies=admin_cookies,
+    )
+    paid_data = app_client.get(f"/api/finance/invoices/{paid_id}", cookies=admin_cookies).json()
+    assert paid_data["status"] == "paid"
+    assert paid_data["balance"] == 0.0
+    assert paid_data["amount_paid"] == 3000.0
+    assert paid_data["payment_status"] == "paid"
+
+    # 5. Create a Void invoice
+    void_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-VOID",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    void_id = void_resp.json()["id"]
+    app_client.delete(f"/api/finance/invoices/{void_id}", cookies=admin_cookies)
+
+    # 6. Test default 'open' filter: excludes Paid and Void
+    open_list = app_client.get("/api/finance/invoices?status=open", cookies=admin_cookies).json()
+    open_numbers = [inv["invoice_number"] for inv in open_list]
+    assert "INV-QUEUE-DRAFT" in open_numbers
+    assert "INV-QUEUE-OVERDUE" in open_numbers
+    assert "INV-QUEUE-PAID" not in open_numbers
+    assert "INV-QUEUE-VOID" not in open_numbers
+
+    # 7. Test status=paid filter
+    paid_list = app_client.get("/api/finance/invoices?status=paid", cookies=admin_cookies).json()
+    paid_numbers = [inv["invoice_number"] for inv in paid_list]
+    assert "INV-QUEUE-PAID" in paid_numbers
+    assert "INV-QUEUE-DRAFT" not in paid_numbers
+
+    # 8. Test status=overdue filter
+    od_list = app_client.get("/api/finance/invoices?status=overdue", cookies=admin_cookies).json()
+    od_numbers = [inv["invoice_number"] for inv in od_list]
+    assert "INV-QUEUE-OVERDUE" in od_numbers
+    assert "INV-QUEUE-DRAFT" not in od_numbers
+

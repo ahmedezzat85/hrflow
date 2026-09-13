@@ -2,6 +2,39 @@
 // 2. Sales Invoices
 // ==========================================
 let _invoiceTableInitialized = false;
+let _currentInvoiceWorkQueue = "open";
+
+function setInvoiceWorkQueue(queue) {
+  _currentInvoiceWorkQueue = queue;
+  const statusFilter = document.getElementById("financeInvoiceStatusFilter");
+  if (statusFilter) {
+    statusFilter.value = queue;
+  }
+  _updateInvoiceWorkQueueTabsUi(queue);
+  const state = FinanceTable.getState("finance_invoices");
+  state.page = 1;
+  FinanceTable.saveState("finance_invoices", state);
+  loadFinanceInvoices();
+}
+
+function onInvoiceStatusFilterChange(status) {
+  _currentInvoiceWorkQueue = status || "all";
+  _updateInvoiceWorkQueueTabsUi(_currentInvoiceWorkQueue);
+  const state = FinanceTable.getState("finance_invoices");
+  state.page = 1;
+  FinanceTable.saveState("finance_invoices", state);
+  loadFinanceInvoices();
+}
+
+function _updateInvoiceWorkQueueTabsUi(activeQueue) {
+  const tabs = document.querySelectorAll("#financeInvoiceWorkQueueTabs .filter-tab");
+  tabs.forEach((tab) => {
+    const isMatch = tab.dataset.queue === activeQueue || (!tab.dataset.queue && activeQueue === "open");
+    tab.classList.toggle("active", isMatch);
+    tab.setAttribute("aria-selected", isMatch ? "true" : "false");
+    tab.setAttribute("tabindex", isMatch ? "0" : "-1");
+  });
+}
 
 async function loadFinanceInvoices() {
   const bar = document.getElementById("financeInvoicesLoadingBar");
@@ -15,15 +48,23 @@ async function loadFinanceInvoices() {
     if (!_invoiceTableInitialized) {
       if (cachedState.filters?.status && statusFilter) {
         statusFilter.value = cachedState.filters.status;
+        _currentInvoiceWorkQueue = cachedState.filters.status;
+      } else if (statusFilter) {
+        statusFilter.value = "open";
+        _currentInvoiceWorkQueue = "open";
       }
       if (cachedState.filters?.search && searchInput) {
         searchInput.value = cachedState.filters.search;
       }
+      _updateInvoiceWorkQueueTabsUi(_currentInvoiceWorkQueue);
       _invoiceTableInitialized = true;
     }
 
     const params = {};
-    if (statusFilter && statusFilter.value) params.status = statusFilter.value;
+    const effectiveStatus = (statusFilter && statusFilter.value) ? statusFilter.value : _currentInvoiceWorkQueue;
+    if (effectiveStatus && effectiveStatus !== "all") {
+      params.status = effectiveStatus;
+    }
     const items = await FinanceApi.getInvoices(Object.keys(params).length ? params : undefined);
     FinanceState.invoices = items || [];
     applyAndRenderInvoices();
@@ -161,22 +202,36 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
           : "";
 
         const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
+        const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0);
+        const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
+        const isOverdue = inv.is_overdue || derivedStatus === "overdue";
+        const daysOverdue = inv.days_overdue || 0;
+        const overdueBadge = isOverdue && daysOverdue > 0
+          ? `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:4px;" title="${daysOverdue} days overdue">${daysOverdue}d overdue</span>`
+          : "";
+        const dueDateDisplay = `${FinanceFormat.formatFinanceDate(inv.due_date)}${overdueBadge}`;
+        const nextActionDisplay = inv.next_action
+          ? `<span class="finance-next-action-hint" style="font-size:0.78rem; color:var(--text2); display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-arrow-right-long" style="opacity:0.6; font-size:0.7rem;"></i> ${FinanceFormat.escapeHtml(inv.next_action)}</span>`
+          : `<span style="opacity:0.4;">—</span>`;
+
         return `
     <tr data-record-id="${inv.id}">
       <td><strong>${inv.invoice_number}</strong>${discrepancyBadge}</td>
       <td>${inv.customer_name || "—"}</td>
       <td>${routeDisplay}</td>
       <td>${FinanceFormat.formatFinanceDate(inv.issue_date)}</td>
-      <td>${FinanceFormat.formatFinanceDate(inv.due_date)}</td>
+      <td>${dueDateDisplay}</td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")}</strong></td>
+      <td class="cell-money">${FinanceFormat.renderMoneyHtml(amountPaid, inv.currency || "USD")}</td>
+      <td class="cell-money" style="${balance > 0 ? 'font-weight:700; color:var(--text);' : 'opacity:0.6;'}">${FinanceFormat.renderMoneyHtml(balance, inv.currency || "USD")}</td>
       <td>${FinanceFormat.formatStatusBadge("invoice", derivedStatus)}</td>
+      <td>${nextActionDisplay}</td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(derivedStatus === "sent" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
-
     </tr>
   `;
       }
@@ -666,6 +721,8 @@ async function toggleCustomerActive(id, currentlyActive) {
 
 // Window exports for Sales Invoices & Customers
 window.loadFinanceInvoices = loadFinanceInvoices;
+window.setInvoiceWorkQueue = setInvoiceWorkQueue;
+window.onInvoiceStatusFilterChange = onInvoiceStatusFilterChange;
 window.filterFinanceInvoices = filterFinanceInvoices;
 window.openAddInvoiceModal = openAddInvoiceModal;
 window.openEditInvoiceModal = openEditInvoiceModal;

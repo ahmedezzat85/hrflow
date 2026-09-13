@@ -305,8 +305,15 @@ class SalesInvoiceResponse(SalesInvoiceBase):
     subtotal: float
     tax_amount: float
     total: float
+    amount_paid: float = 0.0
+    balance: float = 0.0
+    is_overdue: bool = False
+    days_overdue: int = 0
+    payment_status: str = "unpaid"  # unpaid | partially_paid | paid
+    next_action: Optional[str] = None
     created_at: Optional[datetime] = None
     customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
     expected_bank_account_name: Optional[str] = None
     has_bank_discrepancy: bool = False
     lines: List[SalesInvoiceLineResponse] = []

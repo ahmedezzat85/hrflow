@@ -166,7 +166,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Verify Total header has cell-money
-    const invTotalHeader = page.locator('#financeInvoicesContainer th.cell-money');
+    const invTotalHeader = page.locator('#financeInvoicesContainer th.cell-money').first();
     await expect(invTotalHeader).toBeVisible();
     await expect(invTotalHeader).toContainText('Total');
 

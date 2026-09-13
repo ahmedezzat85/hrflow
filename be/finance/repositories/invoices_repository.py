@@ -8,6 +8,7 @@ Conventions (matches Phase 4.1 / 4.2 pattern):
  - No hard deletes — invoices are voided, not deleted.
  - Balance adjustment on Payment is done here so it stays atomic with the Payment insert.
 """
+from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
@@ -59,6 +60,12 @@ class InvoicesRepository:
         status: Optional[str] = None,
         customer_id: Optional[int] = None,
         search: Optional[str] = None,
+        currency: Optional[str] = None,
+        revenue_channel: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        due_date_from: Optional[str] = None,
+        due_date_to: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[SalesInvoiceDB]:
@@ -72,9 +79,38 @@ class InvoicesRepository:
             )
         )
         if status:
-            query = query.filter(SalesInvoiceDB.status == status)
+            st = status.lower().strip()
+            if st == "open":
+                query = query.filter(~SalesInvoiceDB.status.in_(["paid", "void"]))
+            elif st == "awaiting_payment":
+                query = query.filter(SalesInvoiceDB.status == "sent")
+            elif st == "overdue":
+                today_str = datetime.utcnow().strftime("%Y-%m-%d")
+                query = query.filter(
+                    ~SalesInvoiceDB.status.in_(["paid", "void"]),
+                    or_(
+                        SalesInvoiceDB.status == "overdue",
+                        SalesInvoiceDB.due_date < today_str,
+                    ),
+                )
+            elif st != "all":
+                query = query.filter(SalesInvoiceDB.status == st)
+
         if customer_id is not None:
             query = query.filter(SalesInvoiceDB.customer_id == customer_id)
+        if currency and currency.upper() != "ALL":
+            query = query.filter(SalesInvoiceDB.currency == currency.upper())
+        if revenue_channel and revenue_channel != "all":
+            query = query.filter(SalesInvoiceDB.revenue_channel == revenue_channel)
+        if date_from:
+            query = query.filter(SalesInvoiceDB.issue_date >= date_from)
+        if date_to:
+            query = query.filter(SalesInvoiceDB.issue_date <= date_to)
+        if due_date_from:
+            query = query.filter(SalesInvoiceDB.due_date >= due_date_from)
+        if due_date_to:
+            query = query.filter(SalesInvoiceDB.due_date <= due_date_to)
+
         if search:
             s = f"%{search.strip()}%"
             query = query.join(CustomerDB, isouter=True).filter(
