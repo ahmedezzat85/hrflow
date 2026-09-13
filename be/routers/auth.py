@@ -4,7 +4,9 @@ Authentication endpoints: Google Sign-In, session check, logout. Moved
 from main.py during the router-decomposition refactor - pure structural
 move, no behavior change.
 """
+from typing import Set
 from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.orm import Session
 
 from config import Config
 from logging_config import get_logger
@@ -12,6 +14,9 @@ from auth import login_with_google, get_current_user
 from models import GoogleLoginRequest, LoginResponse
 from repositories.interfaces import UserRepository
 from repositories.deps import get_user_repo
+from db import get_db
+from core.permissions import get_current_user_permissions, get_user_permissions
+from models_db import UserDB
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -34,7 +39,12 @@ def _clear_session_cookie(response: Response):
 
 
 @router.post("/google", response_model=LoginResponse)
-def api_google_login(payload: GoogleLoginRequest, response: Response, user_repo: UserRepository = Depends(get_user_repo)):
+def api_google_login(
+    payload: GoogleLoginRequest,
+    response: Response,
+    user_repo: UserRepository = Depends(get_user_repo),
+    db: Session = Depends(get_db),
+):
     logger.info("Google login attempt received")
     try:
         result = login_with_google(payload.credential, user_repo=user_repo)
@@ -48,15 +58,35 @@ def api_google_login(payload: GoogleLoginRequest, response: Response, user_repo:
         )
     logger.info("Google login successful: role=%s, employee_id=%s", result.get("role"), result.get("employee_id"))
     _set_session_cookie(response, result["token"])
-    return LoginResponse(role=result["role"], employee_id=result.get("employee_id"), name=result.get("name"))
+
+    perms = set()
+    try:
+        email = result.get("email")
+        if email:
+            u = db.query(UserDB).filter(UserDB.email.ilike(email.strip())).first()
+            if u:
+                perms = get_user_permissions(u.id, db)
+    except Exception as e:
+        logger.warning("Failed resolving user permissions on login: %s", e)
+
+    return LoginResponse(
+        role=result["role"],
+        employee_id=result.get("employee_id"),
+        name=result.get("name"),
+        permissions=sorted(list(perms)),
+    )
 
 
 @router.get("/me", response_model=LoginResponse)
-def api_get_current_session(current_user: dict = Depends(get_current_user)):
+def api_get_current_session(
+    current_user: dict = Depends(get_current_user),
+    perms: Set[str] = Depends(get_current_user_permissions),
+):
     return LoginResponse(
         role=current_user["role"],
         employee_id=current_user.get("employee_id"),
         name=current_user.get("name"),
+        permissions=sorted(list(perms)),
     )
 
 

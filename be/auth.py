@@ -83,7 +83,7 @@ def login_with_google(credential: str, user_repo=None):
     if not user:
         return None
     token = create_session_token(user["email"], user["role"], user.get("employee_id"), name)
-    return {"token": token, "role": user["role"], "employee_id": user.get("employee_id"), "name": name}
+    return {"token": token, "role": user["role"], "employee_id": user.get("employee_id"), "name": name, "email": user["email"]}
 
 
 def get_current_user(request: Request) -> dict:

@@ -1,0 +1,309 @@
+        <section class="page-section" id="a-finance-reports">
+          <!-- Reports Sub Navigation -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <div class="filter-tabs" id="financeReportsSubNav">
+              <button class="filter-tab active" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
+              <button class="filter-tab" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
+              <button class="filter-tab" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
+              <button class="filter-tab" data-report-tab="transactions" onclick="switchFinanceReportsTab('transactions', this)"><i class="fa-solid fa-list-check"></i> Transaction Ledger</button>
+              <button class="filter-tab" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
+            </div>
+          </div>
+
+          <!-- PANE 1: Category Spend Rollup (SPENT Block) -->
+          <div id="reportPaneCategorySummary">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</h2>
+                <p class="section-subtitle">Monthly expense aggregation and budget percentage allocation mirroring the SPENT block.</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <input type="date" id="reportCatSumDateFrom" class="form-input" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCategorySummary()">
+                  <span style="color:var(--text-muted); font-size:0.85rem;">to</span>
+                  <input type="date" id="reportCatSumDateTo" class="form-input" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCategorySummary()">
+                </div>
+                <select id="reportCatSumCurrency" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCategorySummary()">
+                  <option value="">All Currencies</option>
+                  <option value="USD">USD</option>
+                  <option value="EGP">EGP</option>
+                </select>
+                <button class="btn btn-outline" onclick="exportCategorySummaryExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+              </div>
+            </div>
+
+            <!-- KPI Banner -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+              <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="fa-solid fa-money-bill-transfer"></i>
+                </div>
+                <div>
+                  <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows (Spent)</div>
+                  <div id="reportCatSumTotalSpent" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                </div>
+              </div>
+              <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                <div style="width:42px; height:42px; border-radius:10px; background:rgba(59,130,246,0.12); color:#3B82F6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="fa-solid fa-tags"></i>
+                </div>
+                <div>
+                  <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Active Cost Categories</div>
+                  <div id="reportCatSumCategoryCount" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">0</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-loading-bar" id="reportCatSumLoadingBar" style="display:none;"><span></span></div>
+              <table class="responsive-card-table" id="reportCategorySummaryTable">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Classification</th>
+                    <th style="text-align:center;">Transactions</th>
+                    <th style="text-align:right;">Total Spent</th>
+                    <th style="width:280px;">% of Total Spend</th>
+                  </tr>
+                </thead>
+                <tbody id="reportCategorySummaryTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="reportCatSumEmpty" style="display:none;">
+                <i class="fa-solid fa-chart-pie"></i>
+                <p>No expense transactions recorded in this date range.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 2: Annual Category × Period Matrix -->
+          <div id="reportPaneMatrix" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</h2>
+                <p class="section-subtitle">Comprehensive cross-tabulation of category expenses across months or quarters with row totals.</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <label for="reportMatrixYear" style="font-size:0.85rem; color:var(--text-muted);">Year:</label>
+                  <select id="reportMatrixYear" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportMatrix()">
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                  </select>
+                </div>
+                <div class="filter-tabs" id="reportMatrixPeriodTabs">
+                  <button class="filter-tab active" data-period-group="month" onclick="setMatrixPeriodGroup('month', this)">Monthly</button>
+                  <button class="filter-tab" data-period-group="quarter" onclick="setMatrixPeriodGroup('quarter', this)">Quarterly</button>
+                </div>
+                <button class="btn btn-outline" onclick="exportMatrixExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+              </div>
+            </div>
+
+            <div class="card" style="overflow-x:auto;">
+              <div class="section-loading-bar" id="reportMatrixLoadingBar" style="display:none;"><span></span></div>
+              <table class="responsive-card-table" id="reportMatrixTable" style="min-width:980px;">
+                <thead id="reportMatrixTableHead"></thead>
+                <tbody id="reportMatrixTableBody"></tbody>
+                <tfoot id="reportMatrixTableFoot"></tfoot>
+              </table>
+              <div class="empty-state" id="reportMatrixEmpty" style="display:none;">
+                <i class="fa-solid fa-table-cells"></i>
+                <p>No annual spend data recorded for the selected year.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 3: Point-in-Time Balances -->
+          <div id="reportPaneBalances" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</h2>
+                <p class="section-subtitle">Account ledger balances evaluated as of a specific date, excluding subsequent transactions.</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <label for="reportBalancesAsOfDate" style="font-size:0.85rem; color:var(--text-muted);">As of Date:</label>
+                  <input type="date" id="reportBalancesAsOfDate" class="form-input" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportBalances()">
+                </div>
+                <button class="btn btn-outline" onclick="exportBalancesExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+              </div>
+            </div>
+
+            <!-- Currency summary cards -->
+            <div id="reportBalancesCurrencyCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:16px;"></div>
+
+            <div class="card">
+              <div class="section-loading-bar" id="reportBalancesLoadingBar" style="display:none;"><span></span></div>
+              <table class="responsive-card-table" id="reportBalancesTable">
+                <thead>
+                  <tr>
+                    <th>Account Name</th>
+                    <th>Type</th>
+                    <th>Bank / Custodian</th>
+                    <th>Account # / IBAN</th>
+                    <th>Country</th>
+                    <th>Currency</th>
+                    <th style="text-align:right;">Opening Balance</th>
+                    <th style="text-align:right;">Balance as of Date</th>
+                  </tr>
+                </thead>
+                <tbody id="reportBalancesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- PANE 4: Transaction Ledger Report -->
+          <div id="reportPaneTransactions" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Transaction Ledger Report</h2>
+                <p class="section-subtitle">Arbitrary-range financial ledger with multi-criteria filtering and running balance tracking.</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <button class="btn btn-outline" onclick="exportTransactionsExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+              </div>
+            </div>
+
+            <!-- Advanced Filter Strip -->
+            <div class="card" style="padding:14px; margin-bottom:16px;">
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <span style="font-size:0.85rem; color:var(--text-muted);">Dates:</span>
+                  <input type="date" id="reportTxDateFrom" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                  <span style="color:var(--text-muted); font-size:0.85rem;">–</span>
+                  <input type="date" id="reportTxDateTo" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                </div>
+                <select id="reportTxAccount" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                  <option value="">All Accounts</option>
+                </select>
+                <select id="reportTxCategory" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                  <option value="">All Categories</option>
+                </select>
+                <select id="reportTxDirection" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                  <option value="">All Directions</option>
+                  <option value="in">Inflow (+)</option>
+                  <option value="out">Outflow (-)</option>
+                </select>
+                <div class="search-box" style="max-width:240px;">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input id="reportTxSearch" placeholder="Search reference, memo..." oninput="debounceReportTxSearch()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Inflows / Outflows / Net Change KPI cards -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+              <div class="card" style="padding:14px; border-left:4px solid #10B981;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Inflows</div>
+                <div id="reportTxTotalInflows" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+              </div>
+              <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows</div>
+                <div id="reportTxTotalOutflows" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00</div>
+              </div>
+              <div class="card" style="padding:14px; border-left:4px solid #3B82F6;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Cash Change</div>
+                <div id="reportTxNetChange" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">$0.00</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-loading-bar" id="reportTxLoadingBar" style="display:none;"><span></span></div>
+              <table class="responsive-card-table" id="reportTransactionsTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Account</th>
+                    <th>Direction</th>
+                    <th>Category</th>
+                    <th>Payment Type</th>
+                    <th>Reference &amp; Memo</th>
+                    <th style="text-align:right;">Amount</th>
+                    <th style="text-align:right;">Running Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="reportTransactionsTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="reportTxEmpty" style="display:none;">
+                <i class="fa-solid fa-list-check"></i>
+                <p>No transactions match the selected filters.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 5: Cheque Register Report -->
+          <div id="reportPaneCheques" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-money-check"></i> Cheque Register Report</h2>
+                <p class="section-subtitle">Fiscal year summary of issued, cleared, and voided company cheques with status totals.</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <label for="reportChequesFiscalYear" style="font-size:0.85rem; color:var(--text-muted);">Fiscal Year:</label>
+                  <select id="reportChequesFiscalYear" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportCheques()">
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                  </select>
+                </div>
+                <select id="reportChequesStatus" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportCheques()">
+                  <option value="">All Statuses</option>
+                  <option value="issued">Issued</option>
+                  <option value="cleared">Cleared</option>
+                  <option value="bounced">Bounced</option>
+                  <option value="voided">Voided</option>
+                </select>
+                <button class="btn btn-outline" onclick="exportChequesExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+              </div>
+            </div>
+
+            <!-- Status Breakdown Summary Cards -->
+            <div id="reportChequesStatusCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+              <div class="card" style="padding:14px; border-left:4px solid #6366F1;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Cheques</div>
+                <div id="reportChequesTotalCount" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">0</div>
+                <div id="reportChequesTotalAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+              </div>
+              <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Issued (Pending)</div>
+                <div id="reportChequesIssuedCount" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">0</div>
+                <div id="reportChequesIssuedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+              </div>
+              <div class="card" style="padding:14px; border-left:4px solid #10B981;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cleared</div>
+                <div id="reportChequesClearedCount" style="font-size:1.3rem; font-weight:700; color:#10B981;">0</div>
+                <div id="reportChequesClearedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+              </div>
+              <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Bounced / Voided</div>
+                <div id="reportChequesBouncedVoidedCount" style="font-size:1.3rem; font-weight:700; color:#EF4444;">0</div>
+                <div id="reportChequesBouncedVoidedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-loading-bar" id="reportChequesLoadingBar" style="display:none;"><span></span></div>
+              <table class="responsive-card-table" id="reportChequesTable">
+                <thead>
+                  <tr>
+                    <th>Cheque #</th>
+                    <th>Issue Date</th>
+                    <th>Clear Date</th>
+                    <th>Bank Account</th>
+                    <th>Payee</th>
+                    <th>Purpose</th>
+                    <th style="text-align:right;">Amount</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="reportChequesTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="reportChequesEmpty" style="display:none;">
+                <i class="fa-solid fa-money-check"></i>
+                <p>No cheques recorded for this fiscal year.</p>
+              </div>
+            </div>
+          </div>
+        </section>

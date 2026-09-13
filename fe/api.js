@@ -11,19 +11,26 @@ const SessionInfo = {
   _role: null,
   _employeeId: null,
   _name: null,
+  _permissions: [],
   set(data) {
     this._role = data.role ?? null;
     this._employeeId = data.employee_id ?? null;
     this._name = data.name ?? null;
+    this._permissions = Array.isArray(data.permissions) ? data.permissions : [];
+    window.dispatchEvent(new CustomEvent("hrflow:session-changed", { detail: data }));
   },
   clear() {
     this._role = null;
     this._employeeId = null;
     this._name = null;
+    this._permissions = [];
+    window.dispatchEvent(new CustomEvent("hrflow:session-changed", { detail: null }));
   },
   getRole() { return this._role; },
   getEmployeeId() { return this._employeeId; },
   getName() { return this._name; },
+  getPermissions() { return this._permissions; },
+  hasPermission(key) { return this._permissions.includes(key); },
   isKnown() { return this._role !== null; },
 };
 

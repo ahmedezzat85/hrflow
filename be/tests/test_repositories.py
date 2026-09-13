@@ -18,12 +18,12 @@ from repositories.interfaces import (
 )
 from repositories.sheets.employees import SheetsEmployeeRepository
 from repositories.sheets.salary import SheetsSalaryRepository
-from repositories.sheets.bank import SheetsBankRepository
+from repositories.sheets.employee_bank_accounts import SheetsBankRepository
 from repositories.sheets.documents import SheetsCompanyDocumentRepository
 from repositories.sheets.insurance import SheetsInsuranceRepository
 from repositories.sheets.requests import SheetsRequestRepository
 from repositories.sheets.vacations import SheetsVacationRepository
-from repositories.sheets.invoices import SheetsInvoiceRepository
+from repositories.sheets.salary_payment_docs import SheetsInvoiceRepository
 from repositories.sheets.audit import SheetsAuditRepository
 from repositories.sheets.auth import SheetsUserRepository
 from repositories.deps import (

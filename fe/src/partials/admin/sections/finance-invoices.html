@@ -1,0 +1,77 @@
+        <section class="page-section" id="a-finance-invoices">
+          <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div class="filter-tabs" id="financeInvoiceSubNav">
+                <button class="filter-tab active" id="tabFinanceInvoices" onclick="switchInvoiceSubTab('invoices')"><i class="fa-solid fa-file-invoice"></i> Sales Invoices</button>
+                <button class="filter-tab" id="tabFinanceCustomers" onclick="switchInvoiceSubTab('customers')"><i class="fa-solid fa-users"></i> Customers</button>
+              </div>
+              <div class="search-box" id="financeInvoiceSearchBox">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeInvoiceSearch" placeholder="Search invoices..." oninput="filterFinanceInvoices(this.value)">
+              </div>
+              <div class="search-box" id="financeCustomerSearchBox" style="display: none;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeCustomerSearch" placeholder="Search customers..." oninput="filterFinanceCustomers(this.value)">
+              </div>
+              <!-- Status filter (invoices only) -->
+              <select id="financeInvoiceStatusFilter" class="form-control filter-select" onchange="loadFinanceInvoices()">
+                <option value="">All Statuses</option>
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="void">Void</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-outline" id="financeAddCustomerBtn" onclick="openAddCustomerModal()" style="display:none;"><i class="fa-solid fa-user-plus"></i> Add Customer</button>
+              <button class="btn btn-fill" id="financeNewInvoiceBtn" onclick="openAddInvoiceModal()"><i class="fa-solid fa-plus"></i> New Sales Invoice</button>
+            </div>
+          </div>
+
+          <!-- 1. Invoices Sub-View -->
+          <div class="card" id="financeInvoicesContainer">
+            <div class="section-loading-bar" id="financeInvoicesLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Customer</th>
+                  <th>Route / Channel</th>
+                  <th>Issue Date</th>
+                  <th>Due Date</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeInvoicesTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeInvoicesEmpty" style="display: none;">
+              <i class="fa-solid fa-file-invoice"></i>
+              <p>No sales invoices recorded yet.</p>
+            </div>
+          </div>
+
+          <!-- 2. Customers Sub-View -->
+          <div class="card" id="financeCustomersContainer" style="display: none;">
+            <div class="section-loading-bar" id="financeCustomersLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Customer / Company Name</th>
+                  <th>Billing Email</th>
+                  <th>Phone</th>
+                  <th>Tax ID</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeCustomersTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeCustomersEmpty" style="display: none;">
+              <i class="fa-solid fa-users"></i>
+              <p>No customers recorded yet. Click "Add Customer" to create one.</p>
+            </div>
+          </div>
+        </section>

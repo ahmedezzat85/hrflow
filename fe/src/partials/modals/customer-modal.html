@@ -1,0 +1,44 @@
+  <div class="modal-overlay" id="customerModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-users"></i></div>
+        <div class="modal-head-text">
+          <h3 id="customerModalTitle">Add Customer</h3>
+          <p>Register client organizations for sales billing and invoice generation.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('customerModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fCustomerId">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Customer Information <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Company / Customer Name <span class="req">*</span></label>
+              <input id="fCustomerName" placeholder="e.g. Apex Health Partners">
+            </div>
+            <div class="form-field">
+              <label>Billing Email</label>
+              <input id="fCustomerEmail" type="email" placeholder="e.g. billing@apexhealth.com">
+            </div>
+            <div class="form-field">
+              <label>Phone</label>
+              <input id="fCustomerPhone" placeholder="e.g. +1 555-0120">
+            </div>
+            <div class="form-field full">
+              <label>Tax Identification / VAT Number</label>
+              <input id="fCustomerTaxId" placeholder="e.g. US-88992211 or EG-44021">
+            </div>
+            <div class="form-field full">
+              <label>Notes</label>
+              <textarea id="fCustomerNotes" rows="2" placeholder="Payment terms, special instructions, or contract notes..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('customerModal')">Cancel</button>
+        <button class="btn btn-fill" id="customerSaveBtn" onclick="saveCustomer()"><i class="fa-solid fa-floppy-disk"></i> Save Customer</button>
+      </div>
+    </div>
+  </div>

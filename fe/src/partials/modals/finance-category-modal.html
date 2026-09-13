@@ -1,0 +1,47 @@
+  <div class="modal-overlay" id="financeCategoryModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-tags"></i></div>
+        <div class="modal-head-text">
+          <h3 id="financeCategoryModalTitle">Add Transaction Category</h3>
+          <p>Configure categories for ledger classification, cash book reporting, and recurring spend tracking.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('financeCategoryModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fFinanceCategoryId">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-sliders"></i> Category Settings <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Category Name <span class="req">*</span></label>
+              <input id="fFinanceCategoryName" placeholder="e.g. Legal & Accountant, Internet, Salaries">
+            </div>
+            <div class="form-field">
+              <label>Reporting Kind <span class="req">*</span></label>
+              <select id="fFinanceCategoryKind">
+                <option value="cost">Cost / Expense</option>
+                <option value="revenue">Revenue / Income</option>
+                <option value="transfer">Transfer</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Sort Order</label>
+              <input type="number" id="fFinanceCategorySortOrder" value="0" min="0" placeholder="0">
+            </div>
+            <div class="form-field full" style="margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:13px;font-weight:500;">
+                <input type="checkbox" id="fFinanceCategoryIsPetty" style="width:16px;height:16px;cursor:pointer;">
+                <span><strong>Petty / Recurring Spend</strong> (enables compact recurring view and quick-entry rollups, e.g. Transportation or Kitchen)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('financeCategoryModal')">Cancel</button>
+        <button class="btn btn-fill" id="financeCategorySaveBtn" onclick="saveFinanceCategory()"><i class="fa-solid fa-floppy-disk"></i> Save Category</button>
+      </div>
+    </div>
+  </div>

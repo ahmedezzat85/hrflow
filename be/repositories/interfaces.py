@@ -64,7 +64,7 @@ class SalaryRepository(Protocol):
 
 
 @runtime_checkable
-class BankRepository(Protocol):
+class EmployeeBankAccountRepository(Protocol):
     def get_by_employee_id(self, employee_id: Union[int, str], reveal: bool = False) -> Dict[str, Any]:
         ...
 
@@ -77,6 +77,9 @@ class BankRepository(Protocol):
         actor_email: str,
     ) -> Tuple[str, Optional[int]]:
         ...
+
+# Backward compatibility alias
+BankRepository = EmployeeBankAccountRepository
 
 
 @runtime_checkable
@@ -167,7 +170,7 @@ class VacationRepository(Protocol):
 
 
 @runtime_checkable
-class InvoiceRepository(Protocol):
+class SalaryPaymentDocRepository(Protocol):
     def list_all(
         self,
         employee_id: Optional[Union[int, str]] = None,
@@ -193,6 +196,9 @@ class InvoiceRepository(Protocol):
 
     def update(self, invoice_id: Union[int, str], updates: Dict[str, Any]) -> bool:
         ...
+
+# Backward compatibility alias
+InvoiceRepository = SalaryPaymentDocRepository
 
 
 @runtime_checkable

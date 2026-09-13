@@ -1,0 +1,30 @@
+        <section class="page-section" id="a-finance-payroll">
+          <div class="toolbar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="financePayrollSearch" placeholder="Search payroll runs by period...">
+            </div>
+            <button class="btn btn-fill" onclick="showToast('Payroll engine execution will be available in Phase 5', 'info')"><i class="fa-solid fa-play"></i> Run Payroll</button>
+          </div>
+          <div class="card">
+            <div class="section-loading-bar" id="financePayrollLoadingBar"><span></span></div>
+            <table class="responsive-card-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Dates</th>
+                  <th>Gross Total</th>
+                  <th>Net Pay</th>
+                  <th>Employer Cost</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financePayrollTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financePayrollEmpty" style="display: none;">
+              <i class="fa-solid fa-money-check-dollar"></i>
+              <p>No payroll runs executed yet.</p>
+            </div>
+          </div>
+        </section>

@@ -1,0 +1,55 @@
+  <div class="modal-overlay" id="vendorModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-truck-field"></i></div>
+        <div class="modal-head-text">
+          <h3 id="vendorModalTitle">Add Vendor</h3>
+          <p>Register suppliers, software subscriptions, and service contractors for accounts payable.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('vendorModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fVendorId">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-store"></i> Vendor Profile <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Vendor / Supplier Name <span class="req">*</span></label>
+              <input id="fVendorName" placeholder="e.g. Amazon Web Services or Slack Technologies">
+            </div>
+            <div class="form-field">
+              <label>Category</label>
+              <select id="fVendorCategory">
+                <option value="General">General</option>
+                <option value="Infrastructure">Infrastructure / Cloud</option>
+                <option value="SaaS">Software & SaaS</option>
+                <option value="Consulting">Consulting & Professional Services</option>
+                <option value="Legal">Legal & Accounting</option>
+                <option value="Office">Office & Facilities</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Tax ID / Commercial Register</label>
+              <input id="fVendorTaxId" placeholder="e.g. VAT-1294819">
+            </div>
+            <div class="form-field">
+              <label>Billing Email</label>
+              <input id="fVendorEmail" type="email" placeholder="e.g. billing@vendor.com">
+            </div>
+            <div class="form-field">
+              <label>Phone</label>
+              <input id="fVendorPhone" placeholder="e.g. +1 800-555-0199">
+            </div>
+            <div class="form-field full">
+              <label>Notes</label>
+              <textarea id="fVendorNotes" rows="2" placeholder="Payment terms (Net 30), contract IDs, contact notes..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('vendorModal')">Cancel</button>
+        <button class="btn btn-fill" id="vendorSaveBtn" onclick="saveVendor()"><i class="fa-solid fa-floppy-disk"></i> Save Vendor</button>
+      </div>
+    </div>
+  </div>

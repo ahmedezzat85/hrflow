@@ -1,0 +1,48 @@
+"""
+be/repositories/dual/employee_bank_accounts.py
+DualWriteBankRepository
+"""
+from typing import Dict, Any, Union, Tuple, Optional
+from logging_config import get_logger
+
+from repositories.interfaces import BankRepository, EmployeeBankAccountRepository
+from repositories.sheets.employee_bank_accounts import SheetsBankRepository
+from repositories.sql.employee_bank_accounts import SqlBankRepository
+
+logger = get_logger("dual_write")
+
+
+class DualWriteBankRepository:
+    def __init__(self, primary: Optional[BankRepository] = None, shadow: Optional[BankRepository] = None):
+        self.primary = primary or SqlBankRepository()
+        self.shadow = shadow or SheetsBankRepository()
+
+    def get_by_employee_id(self, employee_id: Union[int, str], reveal: bool = False) -> Dict[str, Any]:
+        return self.primary.get_by_employee_id(employee_id, reveal=reveal)
+
+    def upsert(
+        self,
+        employee_id: Union[int, str],
+        bank_name: str,
+        iban: str,
+        swift_code: str,
+        actor_email: str,
+    ) -> Tuple[str, Optional[int]]:
+        action, record_id = self.primary.upsert(
+            employee_id=employee_id,
+            bank_name=bank_name,
+            iban=iban,
+            swift_code=swift_code,
+            actor_email=actor_email,
+        )
+        try:
+            self.shadow.upsert(
+                employee_id=employee_id,
+                bank_name=bank_name,
+                iban=iban,
+                swift_code=swift_code,
+                actor_email=actor_email,
+            )
+        except Exception:
+            logger.exception("Dual-write shadow upsert bank account failed for employee_id=%s", employee_id)
+        return action, record_id

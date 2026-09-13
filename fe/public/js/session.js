@@ -4,13 +4,15 @@ async function handleLoginSuccess(data){
   document.getElementById('loginErr').style.display = 'none';
   showAppLoader('Signing you in', 'Loading your HR workspace...');
   try{
-    if(data.role === 'admin'){
+    if(data.role === 'admin' || data.role === 'system_admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadAdminData();
     } else {
       currentPortal = 'employee';
       document.getElementById('employee-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadEmployeeData();
     }
   } catch(err){
@@ -136,20 +138,24 @@ function initMockEmployeeData(){
 async function bootstrapAppFromSession(){
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('mock') === 'admin') {
+    SessionInfo.set({ role: 'admin', employee_id: 1, name: 'Sarah Connor' });
     hideAppLoader();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('loginThemeToggle').style.display = 'none';
     document.getElementById('admin-app').classList.add('active');
     currentPortal = 'admin';
     initMockAdminData();
+    if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
     return;
   } else if (urlParams.get('mock') === 'employee') {
+    SessionInfo.set({ role: 'employee', employee_id: 2, name: 'John Doe' });
     hideAppLoader();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('loginThemeToggle').style.display = 'none';
     document.getElementById('employee-app').classList.add('active');
     currentPortal = 'employee';
     initMockEmployeeData();
+    if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
     return;
   }
 
@@ -166,13 +172,15 @@ async function bootstrapAppFromSession(){
   document.getElementById('loginThemeToggle').style.display = 'none';
   document.getElementById('loginErr').style.display = 'none';
   try{
-    if(session.role === 'admin'){
+    if(session.role === 'admin' || session.role === 'system_admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadAdminData();
     } else {
       currentPortal = 'employee';
       document.getElementById('employee-app').classList.add('active');
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadEmployeeData();
     }
   } catch(err){

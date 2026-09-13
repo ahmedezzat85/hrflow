@@ -29,6 +29,31 @@ class UserDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     employee = relationship("EmployeeDB", back_populates="user", foreign_keys=[employee_id])
+    user_roles = relationship("UserRoleDB", back_populates="user", cascade="all, delete-orphan")
+
+
+# Import and re-export RBAC models so they are attached to Base.metadata
+from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401
+
+# Import and re-export Finance models so they are attached to Base.metadata
+from finance.models import (  # noqa: E402, F401
+    CustomerDB,
+    VendorDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
+    SalesInvoiceDB,
+    SalesInvoiceLineDB,
+    BillDB,
+    BillLineDB,
+    FinanceBankAccountDB,
+    BankAccountDB,
+    LedgerTransactionDB,
+    FinanceLedgerTransactionDB,
+    PaymentDB,
+    SubscriptionDB,
+    PayrollRunDB,
+    PayrollLineDB,
+)
 
 
 class EmployeeDB(Base):
@@ -63,7 +88,11 @@ class EmployeeDB(Base):
     claims = relationship("InsuranceClaimDB", back_populates="employee", cascade="all, delete-orphan")
     requests = relationship("RequestDB", back_populates="employee", cascade="all, delete-orphan")
     vacations = relationship("VacationHistoryDB", back_populates="employee", cascade="all, delete-orphan")
-    invoices = relationship("InvoiceDB", back_populates="employee", cascade="all, delete-orphan")
+    salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
+
+    @property
+    def invoices(self):
+        return self.salary_payment_docs
 
 
 class SalaryHistoryDB(Base):
@@ -204,8 +233,8 @@ class VacationHistoryDB(Base):
     employee = relationship("EmployeeDB", back_populates="vacations")
 
 
-class InvoiceDB(Base):
-    __tablename__ = "invoices"
+class SalaryPaymentDocDB(Base):
+    __tablename__ = "salary_payment_docs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -225,11 +254,14 @@ class InvoiceDB(Base):
     generated_by = Column(String(255), default="")
     created_at = Column(String(50), default="")
 
-    employee = relationship("EmployeeDB", back_populates="invoices")
+    employee = relationship("EmployeeDB", back_populates="salary_payment_docs")
 
     __table_args__ = (
-        Index("ix_invoices_emp_period", "employee_id", "payment_year", "payment_month"),
+        Index("ix_salary_payment_docs_emp_period", "employee_id", "payment_year", "payment_month"),
     )
+
+# Backward compatibility alias
+InvoiceDB = SalaryPaymentDocDB
 
 
 class AuditLogDB(Base):

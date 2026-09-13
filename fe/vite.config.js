@@ -20,6 +20,7 @@ const APP_SCRIPT_ORDER = [
   'dochub.js',
   'charts.js',
   'export.js',
+  'finance.js',
   'app.js',
 ];
 
@@ -33,6 +34,7 @@ const APP_SCRIPT_ORDER = [
 // file is Voyance-health-logo.png) on the way into dist/.
 const DEPLOY_SIBLING_FILES = [
   { src: 'api.js', dest: 'api.js' },
+  { src: 'finance-api.js', dest: 'finance-api.js' },
   { src: 'config.js', dest: 'config.js' },
   { src: 'Voyance-health-logo.png', dest: 'voyance-health-logo.png' },
   { src: 'voyance-logo-v.png', dest: 'voyance-logo-v.png' },
@@ -81,11 +83,12 @@ function singleFileDeployBundle() {
         const combined = APP_SCRIPT_ORDER
           .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
           .join('\n;\n');
-        out = out.replace('</body>', `<script>\n${combined}\n</script>\n</body>`);
+        out = out.replace('</body>', () => `<script>\n${combined}\n</script>\n</body>`);
         if (isBuild) {
           out = out
             .replace('src="../config.js"', 'src="./config.js"')
-            .replace('src="../api.js"', 'src="./api.js"');
+            .replace('src="../api.js"', 'src="./api.js"')
+            .replace('src="../finance-api.js"', 'src="./finance-api.js"');
         }
         return out;
       },
