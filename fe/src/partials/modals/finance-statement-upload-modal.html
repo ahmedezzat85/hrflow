@@ -16,14 +16,49 @@
           <div class="form-grid">
             <div class="form-field full">
               <label for="stmtUploadAccountId">Target Bank Account <span class="req">*</span></label>
-              <select id="stmtUploadAccountId" required>
+              <select id="stmtUploadAccountId" required class="form-control">
                 <option value="">— Select company bank account —</option>
               </select>
             </div>
 
-            <div class="form-field">
-              <label for="stmtUploadPeriodMonth">Statement Month <span class="req">*</span></label>
-              <input type="month" id="stmtUploadPeriodMonth" required>
+            <div class="form-field full">
+              <label>Statement Period (Month &amp; Year) <span class="req">*</span></label>
+              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:flex-end;">
+                <div>
+                  <label for="stmtUploadMonth" style="display:block; font-size:11px; color:var(--text3); margin-bottom:4px; font-weight:500;">Select Month</label>
+                  <select id="stmtUploadMonth" class="form-control" onchange="syncStatementUploadPeriod('select')" style="width:100%;">
+                    <option value="01">01 - January</option>
+                    <option value="02">02 - February</option>
+                    <option value="03">03 - March</option>
+                    <option value="04">04 - April</option>
+                    <option value="05">05 - May</option>
+                    <option value="06">06 - June</option>
+                    <option value="07">07 - July</option>
+                    <option value="08">08 - August</option>
+                    <option value="09">09 - September</option>
+                    <option value="10">10 - October</option>
+                    <option value="11">11 - November</option>
+                    <option value="12">12 - December</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="stmtUploadYear" style="display:block; font-size:11px; color:var(--text3); margin-bottom:4px; font-weight:500;">Select Year</label>
+                  <select id="stmtUploadYear" class="form-control" onchange="syncStatementUploadPeriod('select')" style="width:100%;">
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                    <option value="2029">2029</option>
+                    <option value="2030">2030</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="stmtUploadPeriodMonth" style="display:block; font-size:11px; color:var(--text3); margin-bottom:4px; font-weight:500;">Period (YYYY-MM)</label>
+                  <input type="month" id="stmtUploadPeriodMonth" class="form-control" required onchange="syncStatementUploadPeriod('input')" style="width:100%;">
+                </div>
+              </div>
             </div>
 
             <div class="form-field">

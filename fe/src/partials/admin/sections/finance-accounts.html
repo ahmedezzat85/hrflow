@@ -349,7 +349,31 @@
                   <select id="financeStatementAccountFilter" class="form-control" style="width:auto;min-width:180px;height:38px;padding:4px 10px;font-size:13px;" onchange="loadFinanceStatements()">
                     <option value="">All Bank Accounts</option>
                   </select>
-                  <input type="month" id="financeStatementMonthFilter" class="form-control" style="width:auto;height:38px;padding:4px 10px;font-size:13px;" onchange="loadFinanceStatements()">
+                  <select id="financeStatementMonthFilterSelect" class="form-control" style="width:auto;height:38px;padding:4px 10px;font-size:13px;" onchange="onStatementFilterSelectChange()">
+                    <option value="">All Months</option>
+                    <option value="01">01 - Jan</option>
+                    <option value="02">02 - Feb</option>
+                    <option value="03">03 - Mar</option>
+                    <option value="04">04 - Apr</option>
+                    <option value="05">05 - May</option>
+                    <option value="06">06 - Jun</option>
+                    <option value="07">07 - Jul</option>
+                    <option value="08">08 - Aug</option>
+                    <option value="09">09 - Sep</option>
+                    <option value="10">10 - Oct</option>
+                    <option value="11">11 - Nov</option>
+                    <option value="12">12 - Dec</option>
+                  </select>
+                  <select id="financeStatementYearFilterSelect" class="form-control" style="width:auto;height:38px;padding:4px 10px;font-size:13px;" onchange="onStatementFilterSelectChange()">
+                    <option value="">All Years</option>
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                  </select>
+                  <input type="month" id="financeStatementMonthFilter" class="form-control" style="width:auto;height:38px;padding:4px 10px;font-size:13px;display:none;" onchange="loadFinanceStatements()">
                   <button class="btn btn-fill" id="btnUploadStatement" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
                 </div>
               </div>

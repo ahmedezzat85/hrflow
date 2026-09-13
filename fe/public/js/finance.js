@@ -3331,20 +3331,35 @@ async function loadFinanceStatements() {
   try {
     const accFilter = document.getElementById("financeStatementAccountFilter");
     const monthFilter = document.getElementById("financeStatementMonthFilter");
+    const monthSelect = document.getElementById("financeStatementMonthFilterSelect");
+    const yearSelect = document.getElementById("financeStatementYearFilterSelect");
+
     const accountId = accFilter ? accFilter.value : "";
-    const periodMonth = monthFilter ? monthFilter.value : "";
+    let periodMonth = "";
+    if (monthFilter && monthFilter.value) {
+      periodMonth = monthFilter.value;
+    } else if (monthSelect && yearSelect && yearSelect.value && monthSelect.value) {
+      periodMonth = `${yearSelect.value}-${monthSelect.value}`;
+    }
 
     // Populate bank account dropdown if empty
     if (accFilter && accFilter.options.length <= 1) {
       try {
-        const accounts = await FinanceApi.listAccounts();
+        let accounts = [];
+        if (typeof FinanceApi.listAccounts === "function") {
+          accounts = await FinanceApi.listAccounts();
+        } else if (typeof FinanceApi.getAccounts === "function") {
+          accounts = await FinanceApi.getAccounts();
+        } else if (FinanceState && FinanceState.accounts) {
+          accounts = FinanceState.accounts;
+        }
         const currentVal = accFilter.value;
         accFilter.innerHTML = '<option value="">All Bank Accounts</option>';
         accounts.forEach((a) => {
-          if (a.is_active && a.account_type === "bank") {
+          if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
             const opt = document.createElement("option");
             opt.value = a.id;
-            opt.textContent = `${a.account_name} (${a.currency})`;
+            opt.textContent = `${a.account_name} (${a.currency || "USD"})`;
             accFilter.appendChild(opt);
           }
         });
@@ -3361,6 +3376,46 @@ async function loadFinanceStatements() {
     showToast(err.message || "Failed to load bank statements", "error");
   } finally {
     if (bar) bar.style.display = "none";
+  }
+}
+
+function onStatementFilterSelectChange() {
+  const monthSelect = document.getElementById("financeStatementMonthFilterSelect");
+  const yearSelect = document.getElementById("financeStatementYearFilterSelect");
+  const monthFilter = document.getElementById("financeStatementMonthFilter");
+
+  if (!monthFilter) return;
+
+  const m = monthSelect ? monthSelect.value : "";
+  const y = yearSelect ? yearSelect.value : "";
+
+  if (y && m) {
+    monthFilter.value = `${y}-${m}`;
+  } else if (y && !m) {
+    monthFilter.value = `${y}`;
+  } else if (!y && m) {
+    const currentYear = new Date().getFullYear();
+    monthFilter.value = `${currentYear}-${m}`;
+    if (yearSelect) yearSelect.value = String(currentYear);
+  } else {
+    monthFilter.value = "";
+  }
+  loadFinanceStatements();
+}
+
+function onStatementFilterChange(source) {
+  if (source === "select") {
+    onStatementFilterSelectChange();
+  } else {
+    const monthFilter = document.getElementById("financeStatementMonthFilter");
+    const monthSelect = document.getElementById("financeStatementMonthFilterSelect");
+    const yearSelect = document.getElementById("financeStatementYearFilterSelect");
+    if (monthFilter && monthFilter.value && monthFilter.value.includes("-")) {
+      const parts = monthFilter.value.split("-");
+      if (yearSelect) yearSelect.value = parts[0];
+      if (monthSelect) monthSelect.value = parts[1];
+    }
+    loadFinanceStatements();
   }
 }
 
@@ -3426,17 +3481,46 @@ function renderFinanceStatementsTable(statements) {
   });
 }
 
+function syncStatementUploadPeriod(source) {
+  const monthSel = document.getElementById("stmtUploadMonth");
+  const yearSel = document.getElementById("stmtUploadYear");
+  const periodInput = document.getElementById("stmtUploadPeriodMonth");
+  if (!periodInput) return;
+
+  if (source === "select") {
+    const y = yearSel && yearSel.value ? yearSel.value : new Date().getFullYear();
+    const m = monthSel && monthSel.value ? monthSel.value : String(new Date().getMonth() + 1).padStart(2, "0");
+    periodInput.value = `${y}-${m}`;
+  } else {
+    if (periodInput.value && periodInput.value.includes("-")) {
+      const parts = periodInput.value.split("-");
+      if (yearSel && parts[0]) yearSel.value = parts[0];
+      if (monthSel && parts[1]) monthSel.value = parts[1];
+    }
+  }
+}
+
 async function openUploadStatementModal(presetAccountId) {
+  const form = document.getElementById("financeStatementUploadForm");
+  if (form) form.reset();
+
   const select = document.getElementById("stmtUploadAccountId");
   if (select) {
     try {
-      const accounts = await FinanceApi.listAccounts();
+      let accounts = [];
+      if (typeof FinanceApi.listAccounts === "function") {
+        accounts = await FinanceApi.listAccounts();
+      } else if (typeof FinanceApi.getAccounts === "function") {
+        accounts = await FinanceApi.getAccounts();
+      } else if (FinanceState && FinanceState.accounts) {
+        accounts = FinanceState.accounts;
+      }
       select.innerHTML = '<option value="">— Select company bank account —</option>';
       accounts.forEach((a) => {
-        if (a.is_active && a.account_type === "bank") {
+        if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
           const opt = document.createElement("option");
           opt.value = a.id;
-          opt.textContent = `${a.account_name} (${a.currency}) — ${a.bank_name || ''}`;
+          opt.textContent = `${a.account_name} (${a.currency || "USD"}) — ${a.bank_name || "Bank"}`;
           if (presetAccountId && String(a.id) === String(presetAccountId)) {
             opt.selected = true;
           }
@@ -3448,20 +3532,35 @@ async function openUploadStatementModal(presetAccountId) {
       }
     } catch (e) {
       console.warn("Could not load accounts", e);
+      if (FinanceState && FinanceState.accounts) {
+        select.innerHTML = '<option value="">— Select company bank account —</option>';
+        FinanceState.accounts.forEach((a) => {
+          if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
+            const opt = document.createElement("option");
+            opt.value = a.id;
+            opt.textContent = `${a.account_name} (${a.currency || "USD"}) — ${a.bank_name || "Bank"}`;
+            select.appendChild(opt);
+          }
+        });
+        if (presetAccountId) select.value = String(presetAccountId);
+      }
     }
   }
 
-  // Pre-fill current month YYYY-MM
+  // Pre-fill current month YYYY-MM and sync selects
+  const now = new Date();
+  const y = String(now.getFullYear());
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+
+  const monthSel = document.getElementById("stmtUploadMonth");
+  const yearSel = document.getElementById("stmtUploadYear");
+  if (monthSel) monthSel.value = m;
+  if (yearSel) yearSel.value = y;
+
   const periodInput = document.getElementById("stmtUploadPeriodMonth");
-  if (periodInput && !periodInput.value) {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
+  if (periodInput) {
     periodInput.value = `${y}-${m}`;
   }
-
-  const form = document.getElementById("financeStatementUploadForm");
-  if (form) form.reset();
 
   const mappingFields = document.getElementById("stmtCsvMappingFields");
   if (mappingFields) mappingFields.style.display = "none";
@@ -3938,6 +4037,9 @@ window.openCreateEntryForLine = openCreateEntryForLine;
 window.closeReconcileCreateEntryModal = closeReconcileCreateEntryModal;
 window.handleReconcileCreateEntrySubmit = handleReconcileCreateEntrySubmit;
 window.finalizeStatementReconciliation = finalizeStatementReconciliation;
+window.syncStatementUploadPeriod = syncStatementUploadPeriod;
+window.onStatementFilterSelectChange = onStatementFilterSelectChange;
+window.onStatementFilterChange = onStatementFilterChange;
 
 // ==========================================
 // 10. Financial Reports & Excel Export (Phase 8)

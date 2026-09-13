@@ -418,6 +418,9 @@ const FinanceApi = {
     }
     return apiRequest("GET", url);
   },
+  async listAccounts(params) {
+    return this.getAccounts(params);
+  },
   async getAccount(id) {
     if (_isMock()) {
       const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));

@@ -79,6 +79,20 @@ def list_account_statements(
 
 
 @router.get(
+    "/statements",
+    response_model=List[StatementImportResponse],
+    dependencies=[Depends(require_permission("finance.account.read"))],
+)
+def list_all_statements(
+    account_id: Optional[int] = Query(None, description="Optional filter by account ID"),
+    period_month: Optional[str] = Query(None, description="Filter by statement month YYYY-MM"),
+    statements_service: StatementsService = Depends(get_statements_service),
+):
+    """List statement imports across all accounts or filtered by account."""
+    return statements_service.list_statements(account_id=account_id, period_month=period_month)
+
+
+@router.get(
     "/statements/{statement_id}",
     response_model=StatementImportResponse,
     dependencies=[Depends(require_permission("finance.account.read"))],
