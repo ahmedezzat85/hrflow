@@ -43,15 +43,17 @@ const FinanceMockState = {
     { id: 6, customer_id: 6, customer_name: "Frontier Labs", invoice_number: "INV-2026-006", issue_date: "2026-08-20", due_date: "2026-09-20", status: "void", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "other", has_bank_discrepancy: false, subtotal: 25000.0, tax_amount: 0.0, total: 25000.0, amount_paid: 0.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Archived (Voided)", notes: "Canceled service request", created_at: "2026-08-20T11:00:00", lines: [{ id: 6, invoice_id: 6, description: "Canceled item", quantity: 1, unit_price: 25000.0, line_total: 25000.0 }] },
   ],
   bills: [
-    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
-    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
-    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
-    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
-    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
-    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
+    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
+    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
+    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
+    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
   ],
   payments: [],
-  billPayments: [],
+  billPayments: [
+    { id: 1, related_bill_id: 2, amount: 320.0, currency: "USD", payment_date: "2026-09-04", bank_account_id: 1, method: "bank_transfer", reference: "ACH-SLACK-01", is_reversed: false, created_at: "2026-09-04T10:00:00" },
+  ],
   categories: [
     { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, is_petty: false },
     { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, is_petty: false },
@@ -600,18 +602,123 @@ const FinanceApi = {
     if (_isMock()) return FinanceMockState.billPayments.filter((p) => p.related_bill_id === parseInt(billId, 10));
     return apiRequest("GET", `/api/finance/bills/${billId}/payments`);
   },
+  async approveBill(id, payload) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      const decision = payload.decision || "approve";
+      const approverEmail = payload.approver_email || "admin@voyance.health";
+      if (bill.created_by && bill.created_by.toLowerCase() === approverEmail.toLowerCase()) {
+        throw new Error("Segregation of duties: Creator cannot approve their own bill.");
+      }
+      if (payload.approver_limit !== undefined && payload.approver_limit !== null && bill.total > payload.approver_limit) {
+        throw new Error(`Bill total ($${bill.total.toFixed(2)}) exceeds approver authorization limit ($${payload.approver_limit.toFixed(2)}). Escalation required.`);
+      }
+      if (decision === "approve") {
+        bill.requires_approval = true;
+        bill.approval_status = "approved";
+        bill.approved_by = approverEmail;
+        bill.approved_at = new Date().toISOString();
+        bill.approval_comment = payload.comment || null;
+        if (bill.status === "needs_approval") {
+          bill.status = "ready_to_pay";
+        }
+      } else if (decision === "reject") {
+        bill.requires_approval = true;
+        bill.approval_status = "rejected";
+        bill.approved_by = approverEmail;
+        bill.approved_at = new Date().toISOString();
+        bill.approval_comment = payload.comment || null;
+        bill.status = "exceptions";
+      }
+      return bill;
+    }
+    return apiRequest("POST", `/api/finance/bills/${id}/approve`, payload);
+  },
+  async scheduleBill(id, payload) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      if (bill.requires_approval && bill.approval_status !== "approved") {
+        throw new Error("Bill must be approved before scheduling payment.");
+      }
+      bill.scheduled_payment_date = payload.scheduled_payment_date;
+      if (payload.notes) {
+        bill.notes = `${bill.notes || ""}\n[Scheduled notes: ${payload.notes}]`.trim();
+      }
+      if (bill.status !== "paid" && bill.status !== "partially_paid") {
+        bill.status = "scheduled";
+      }
+      return bill;
+    }
+    return apiRequest("POST", `/api/finance/bills/${id}/schedule`, payload);
+  },
   async recordBillPayment(billId, payload) {
     if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
+      if (!bill) throw new Error("Bill not found");
+      if (bill.status === "void") throw new Error("Cannot pay a void bill");
+      if (bill.requires_approval && bill.approval_status !== "approved") {
+        throw new Error("Bill requires approval before payment can be recorded.");
+      }
+      const existingPayments = (FinanceMockState.billPayments || []).filter(
+        (p) => p.related_bill_id === bill.id && !p.is_reversed
+      );
+      const paidSoFar = existingPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const remaining = round(bill.total - paidSoFar, 2);
+      const pAmt = parseFloat(payload.amount);
+      if (pAmt > remaining + 0.01) {
+        throw new Error(`Payment amount ($${pAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
+      }
       const newPayment = {
         id: FinanceMockState.billPayments.length + 1,
         ...payload,
+        amount: pAmt,
         related_bill_id: parseInt(billId, 10),
+        is_reversed: false,
         created_at: new Date().toISOString(),
       };
       FinanceMockState.billPayments.push(newPayment);
+      bill.amount_paid = round(paidSoFar + pAmt, 2);
+      if (bill.amount_paid >= bill.total - 0.01) {
+        bill.status = "paid";
+      } else if (["ready_to_pay", "scheduled", "partially_paid", "unpaid"].includes(bill.status)) {
+        bill.status = "partially_paid";
+      }
       return newPayment;
     }
     return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload);
+  },
+  async reverseBillPayment(billId, paymentId, payload) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
+      if (!bill) throw new Error("Bill not found");
+      const payment = (FinanceMockState.billPayments || []).find(
+        (p) => p.id === parseInt(paymentId, 10) && p.related_bill_id === bill.id
+      );
+      if (!payment) throw new Error("Payment not found");
+      if (payment.is_reversed) throw new Error("Payment has already been reversed");
+      payment.is_reversed = true;
+      payment.reversed_at = new Date().toISOString();
+      payment.reversed_by = "admin@voyance.health";
+      payment.reversal_reason = (payload.reason || "").trim();
+
+      const remainingPayments = (FinanceMockState.billPayments || []).filter(
+        (p) => p.related_bill_id === bill.id && !p.is_reversed
+      );
+      const remainingPaid = remainingPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      bill.amount_paid = round(remainingPaid, 2);
+      if (bill.amount_paid <= 0.001) {
+        bill.amount_paid = 0.0;
+        bill.status = bill.scheduled_payment_date ? "scheduled" : "ready_to_pay";
+      } else if (bill.amount_paid < bill.total - 0.01) {
+        bill.status = "partially_paid";
+      } else {
+        bill.status = "paid";
+      }
+      return payment;
+    }
+    return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload);
   },
 
   getPayrollRuns() {
@@ -2765,6 +2872,86 @@ const FinanceApi = {
           category: "Infrastructure",
         };
         const vendor = (FinanceMockState.vendors || []).find((v) => v.id === bill.vendor_id) || { name: bill.vendor_name || "Amazon Web Services", tax_id: "VAT-1294819" };
+        const payments = (FinanceMockState.billPayments || []).filter((p) => p.related_bill_id === bill.id);
+        const activePayments = payments.filter((p) => !p.is_reversed);
+        const paidSoFar = activePayments.reduce((s, p) => s + (p.amount || 0), 0);
+        const remaining = Math.max(0, (bill.total || 0) - paidSoFar);
+
+        const timeline = [
+          {
+            id: `bill-${bill.id}-created`,
+            timestamp: bill.created_at || `${bill.issue_date} 08:00:00`,
+            event: "created",
+            plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
+            actor: bill.created_by || "ap@voyance.health",
+            state_transition: { from_state: null, to_state: bill.status || "unpaid" },
+          },
+        ];
+
+        if (bill.approved_at) {
+          timeline.push({
+            id: `bill-${bill.id}-approved`,
+            timestamp: bill.approved_at,
+            event: "approved",
+            plain_text: `Bill approval recorded: ${bill.approval_status} by ${bill.approved_by || "manager"}${bill.approval_comment ? ` ("${bill.approval_comment}")` : ""}`,
+            actor: bill.approved_by || "manager",
+            state_transition: { from_state: "needs_approval", to_state: bill.approval_status === "approved" ? "ready_to_pay" : "exceptions" },
+          });
+        }
+
+        if (bill.scheduled_payment_date) {
+          timeline.push({
+            id: `bill-${bill.id}-scheduled`,
+            timestamp: bill.created_at || `${bill.issue_date} 10:00:00`,
+            event: "scheduled",
+            plain_text: `Payment scheduled for ${bill.scheduled_payment_date}`,
+            actor: "finance@voyance.health",
+            state_transition: { from_state: "ready_to_pay", to_state: "scheduled" },
+          });
+        }
+
+        for (const p of payments) {
+          timeline.push({
+            id: `bill-pay-${p.id}`,
+            timestamp: `${p.payment_date || bill.issue_date} 12:00:00`,
+            event: "payment",
+            plain_text: `Payment of ${p.amount.toLocaleString()} ${p.currency || "USD"} recorded (Ref: ${p.reference || "N/A"})`,
+            actor: "ap@voyance.health",
+            state_transition: { from_state: "ready_to_pay", to_state: "partially_paid" },
+          });
+          if (p.is_reversed) {
+            timeline.push({
+              id: `bill-rev-${p.id}`,
+              timestamp: p.reversed_at || new Date().toISOString(),
+              event: "reversal",
+              plain_text: `Payment #${p.id} reversed: ${p.reversal_reason || "Voided by user"}`,
+              actor: p.reversed_by || "admin@voyance.health",
+              state_transition: { from_state: "paid", to_state: "ready_to_pay" },
+            });
+          }
+        }
+
+        const related = [
+          {
+            entity_type: "vendor",
+            entity_id: vendor.id || 1,
+            title: vendor.name,
+            badge: "Vendor Payables",
+            amount: null,
+            currency: null,
+            date: null,
+          },
+          ...payments.map((p) => ({
+            entity_type: "payment",
+            entity_id: p.id,
+            title: `Payment #${p.id} (${p.method || "transfer"})` + (p.is_reversed ? " [REVERSED]" : ""),
+            badge: p.is_reversed ? "REVERSED" : "PAID",
+            amount: p.amount,
+            currency: p.currency || bill.currency || "USD",
+            date: p.payment_date,
+          })),
+        ];
+
         return {
           entity_type: "bill",
           entity_id: bill.id,
@@ -2783,30 +2970,16 @@ const FinanceApi = {
             attributes: [
               { label: "Category", value: bill.category || "General" },
               { label: "Subtotal", value: `${(bill.subtotal || bill.total).toLocaleString()} ${bill.currency || "USD"}` },
+              { label: "Amount Paid", value: `${paidSoFar.toLocaleString()} ${bill.currency || "USD"}` },
+              { label: "Remaining Balance", value: `${remaining.toLocaleString()} ${bill.currency || "USD"}` },
+              { label: "Approval Status", value: bill.approval_status ? bill.approval_status.toUpperCase() : (bill.requires_approval ? "PENDING" : "NOT REQUIRED") },
+              { label: "Approved By", value: bill.approved_by || "—" },
+              { label: "Scheduled Date", value: bill.scheduled_payment_date || "—" },
               { label: "Due Date", value: bill.due_date || "—" },
               { label: "Vendor Tax ID", value: vendor.tax_id || "VAT-1294819" },
             ],
           },
-          related_records: [
-            {
-              entity_type: "vendor",
-              entity_id: vendor.id || 1,
-              title: vendor.name,
-              badge: "Vendor Payables",
-              amount: null,
-              currency: null,
-              date: null,
-            },
-            {
-              entity_type: "transaction",
-              entity_id: 2,
-              title: "Outflow Entry TXN-0002",
-              badge: "Ledger Outflow",
-              amount: bill.total,
-              currency: bill.currency || "USD",
-              date: bill.issue_date,
-            },
-          ],
+          related_records: related,
           attachments: [
             {
               id: 2,
@@ -2818,16 +2991,7 @@ const FinanceApi = {
               uploaded_by: "ap@voyancemed.com",
             },
           ],
-          timeline: [
-            {
-              id: `bill-${bill.id}-created`,
-              timestamp: bill.created_at || `${bill.issue_date} 08:00:00`,
-              event: "created",
-              plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
-              actor: "ap@voyancemed.com",
-              state_transition: { from_state: null, to_state: "unpaid" },
-            },
-          ],
+          timeline,
         };
       } else if (norm === "transaction") {
         return {

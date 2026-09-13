@@ -123,6 +123,14 @@ class BillDB(Base):
     is_reviewed = Column(Boolean, default=True, nullable=False)
     is_duplicate_override = Column(Boolean, default=False, nullable=False)
     duplicate_override_reason = Column(Text, nullable=True)
+    created_by = Column(String(255), nullable=True)
+    requires_approval = Column(Boolean, default=False, nullable=False)
+    approval_status = Column(String(20), nullable=True)  # pending | approved | rejected
+    approved_by = Column(String(255), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    approval_comment = Column(Text, nullable=True)
+    scheduled_payment_date = Column(String(20), nullable=True)
+    amount_paid = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="bills")
@@ -297,6 +305,9 @@ class PaymentDB(Base):
     method = Column(String(50), default="bank_transfer")  # bank_transfer/cash/card/other
     reference = Column(String(100), default="")
     is_reversed = Column(Boolean, default=False, nullable=False)
+    reversed_at = Column(DateTime, nullable=True)
+    reversed_by = Column(String(255), nullable=True)
+    reversal_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     sales_invoice = relationship("SalesInvoiceDB", back_populates="payments", foreign_keys=[related_invoice_id])

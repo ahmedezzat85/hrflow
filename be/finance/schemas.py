@@ -411,6 +411,14 @@ class BillBase(BaseModel):
     is_reviewed: Optional[bool] = True
     is_duplicate_override: Optional[bool] = False
     duplicate_override_reason: Optional[str] = None
+    created_by: Optional[str] = None
+    requires_approval: Optional[bool] = False
+    approval_status: Optional[str] = None  # pending | approved | rejected
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_comment: Optional[str] = None
+    scheduled_payment_date: Optional[str] = None
+    amount_paid: float = 0.0
 
 
 class BillCreate(BillBase):
@@ -437,6 +445,14 @@ class BillUpdate(BaseModel):
     is_reviewed: Optional[bool] = None
     is_duplicate_override: Optional[bool] = None
     duplicate_override_reason: Optional[str] = None
+    created_by: Optional[str] = None
+    requires_approval: Optional[bool] = None
+    approval_status: Optional[str] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_comment: Optional[str] = None
+    scheduled_payment_date: Optional[str] = None
+    amount_paid: Optional[float] = None
     lines: Optional[List[BillLineCreate]] = None
 
 
@@ -445,12 +461,30 @@ class BillResponse(BillBase):
     subtotal: float
     tax_amount: float
     total: float
+    remaining_balance: float = 0.0
     created_at: Optional[datetime] = None
     vendor_name: Optional[str] = None
     lines: List[BillLineResponse] = []
 
     class Config:
         from_attributes = True
+
+
+class BillApprovalRequest(BaseModel):
+    decision: str = Field(..., description="approve | reject")
+    comment: Optional[str] = Field(None, max_length=500, description="Optional comment, required on rejection")
+    approver_limit: Optional[float] = Field(None, description="Optional maximum approval authority for the approver")
+
+
+class BillScheduleRequest(BaseModel):
+    scheduled_payment_date: str = Field(..., description="Scheduled payment date (YYYY-MM-DD)")
+    payment_method: Optional[str] = Field("bank_transfer")
+    bank_account_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class PaymentReversalRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500, description="Reason for reversing payment")
 
 
 class BillDuplicateCheckRequest(BaseModel):
@@ -517,6 +551,9 @@ class PaymentResponse(PaymentBase):
     expected_bank_account_id: Optional[int] = None
     expected_bank_account_name: Optional[str] = None
     is_reversed: bool = False
+    reversed_at: Optional[datetime] = None
+    reversed_by: Optional[str] = None
+    reversal_reason: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -235,7 +235,9 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay") && bill.is_reviewed ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "needs_approval" || (bill.requires_approval && bill.approval_status !== "approved")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
+        ${((derivedStatus === "ready_to_pay" || derivedStatus === "unpaid") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved")) ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "partially_paid" || derivedStatus === "scheduled") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved") ? `<button class="btn btn-sm btn-fill btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "inbox" || derivedStatus === "needs_coding" || derivedStatus === "needs_approval") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
@@ -697,11 +699,38 @@ async function openBillPaymentModal(billId) {
   FinanceForm.clearErrors("billPaymentModal");
   const bill = (FinanceState.bills || []).find((b) => b.id === billId);
   document.getElementById("billPaymentBillId").value = billId;
+
+  let paidSoFar = bill && bill.amount_paid != null ? bill.amount_paid : 0;
+  try {
+    const existingPayments = await FinanceApi.getBillPayments(billId);
+    if (existingPayments && existingPayments.length) {
+      paidSoFar = existingPayments.filter((p) => !p.is_reversed).reduce((s, p) => s + (p.amount || 0), 0);
+    }
+  } catch (_) {}
+
+  const total = bill ? bill.total : 0;
+  const remaining = Math.max(0, round(total - paidSoFar, 2));
+
+  const totalEl = document.getElementById("billPaymentTotalDisplay");
+  const paidEl = document.getElementById("billPaymentPaidDisplay");
+  const remEl = document.getElementById("billPaymentRemainingDisplay");
+  const curr = bill?.currency || "USD";
+
+  if (totalEl) totalEl.textContent = `${curr} ${Number(total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (paidEl) paidEl.textContent = `${curr} ${Number(paidSoFar).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (remEl) remEl.textContent = `${curr} ${Number(remaining).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   const infoEl = document.getElementById("billPaymentBillInfo");
   if (infoEl && bill) {
-    infoEl.textContent = `Bill ${bill.bill_number} — ${bill.currency} ${Number(bill.total).toLocaleString("en-US", { minimumFractionDigits: 2 })} total`;
+    infoEl.textContent = `Bill ${bill.bill_number} (${bill.vendor_name || "Vendor"}) — ${curr} ${Number(remaining).toLocaleString("en-US", { minimumFractionDigits: 2 })} remaining to pay`;
   }
-  document.getElementById("billPaymentAmount").value = "";
+
+  const amtInput = document.getElementById("billPaymentAmount");
+  if (amtInput) {
+    amtInput.value = remaining > 0 ? remaining.toFixed(2) : "";
+    amtInput.max = remaining.toFixed(2);
+  }
+
   document.getElementById("billPaymentDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("billPaymentMethod").value = "bank_transfer";
   document.getElementById("billPaymentReference").value = "";
@@ -735,6 +764,16 @@ async function saveBillPayment() {
   ]);
   if (!isValid) return;
 
+  // Enforce overpayment validation
+  if (bill) {
+    const paidSoFar = bill.amount_paid != null ? bill.amount_paid : 0;
+    const remaining = round(bill.total - paidSoFar, 2);
+    if (amount > remaining + 0.01) {
+      showToast(`Payment amount ($${amount.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`, "error");
+      return;
+    }
+  }
+
   const payload = {
     direction: "outgoing",
     amount,
@@ -747,11 +786,175 @@ async function saveBillPayment() {
 
   try {
     await FinanceApi.recordBillPayment(billId, payload);
-    showToast("Bill payment recorded", "success");
+    showToast("Bill payment recorded successfully", "success");
     closeBillPaymentModal();
     loadFinanceBills();
   } catch (err) {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+function openBillApprovalModal(billId) {
+  FinanceForm.clearErrors("billApprovalModal");
+  const bill = (FinanceState.bills || []).find((b) => b.id === billId);
+  if (!bill) return;
+
+  document.getElementById("billApprovalBillId").value = billId;
+  const numEl = document.getElementById("billApprovalBillNumber");
+  const vendEl = document.getElementById("billApprovalVendor");
+  const amtEl = document.getElementById("billApprovalAmount");
+  const deptEl = document.getElementById("billApprovalDepartment");
+  const createdEl = document.getElementById("billApprovalCreatedBy");
+
+  if (numEl) numEl.textContent = bill.bill_number;
+  if (vendEl) vendEl.textContent = bill.vendor_name || "Vendor";
+  if (amtEl) amtEl.textContent = `${bill.currency || "USD"} ${Number(bill.total).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (deptEl) deptEl.textContent = bill.department || "General";
+  if (createdEl) createdEl.textContent = bill.created_by || "System";
+
+  // Check maker-checker segregation of duties
+  const currentUserEmail = (window.currentUser && window.currentUser.email) || (typeof Api !== "undefined" && Api.getCurrentUser && Api.getCurrentUser()?.email) || "";
+  const warningBanner = document.getElementById("billApprovalSelfWarningBanner");
+  const creatorSpan = document.getElementById("billApprovalCreatorEmail");
+  const submitBtn = document.getElementById("billApprovalSubmitBtn");
+
+  const isSelf = currentUserEmail && bill.created_by && currentUserEmail.toLowerCase() === bill.created_by.toLowerCase();
+  if (warningBanner) {
+    if (isSelf) {
+      warningBanner.style.display = "block";
+      if (creatorSpan) creatorSpan.textContent = bill.created_by;
+      if (submitBtn) submitBtn.disabled = true;
+    } else {
+      warningBanner.style.display = "none";
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  }
+
+  document.getElementById("billApprovalDecision").value = "approve";
+  document.getElementById("billApproverLimit").value = "50000";
+  document.getElementById("billApprovalComment").value = "";
+  onBillApprovalDecisionChange();
+
+  openModal("billApprovalModal");
+}
+
+function closeBillApprovalModal() {
+  closeModal("billApprovalModal");
+}
+
+function onBillApprovalDecisionChange() {
+  const dec = document.getElementById("billApprovalDecision")?.value;
+  const reqSpan = document.getElementById("billApprovalCommentReq");
+  const limitField = document.getElementById("billApproverLimitField");
+  const submitBtn = document.getElementById("billApprovalSubmitBtn");
+
+  if (dec === "reject") {
+    if (reqSpan) reqSpan.style.display = "inline";
+    if (limitField) limitField.style.opacity = "0.5";
+    if (submitBtn) {
+      submitBtn.className = "btn btn-fill btn-danger";
+      submitBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Reject Bill';
+    }
+  } else {
+    if (reqSpan) reqSpan.style.display = "none";
+    if (limitField) limitField.style.opacity = "1";
+    if (submitBtn) {
+      submitBtn.className = "btn btn-fill btn-warning";
+      submitBtn.innerHTML = '<i class="fa-solid fa-stamp"></i> Submit Approval';
+    }
+  }
+}
+
+async function saveBillApproval() {
+  const billId = document.getElementById("billApprovalBillId").value;
+  const decision = document.getElementById("billApprovalDecision").value;
+  const limitVal = document.getElementById("billApproverLimit").value;
+  const comment = document.getElementById("billApprovalComment").value.trim();
+
+  if (decision === "reject" && !comment) {
+    showToast("A comment explaining the rejection reason is required.", "error");
+    return;
+  }
+
+  const payload = {
+    decision,
+    comment: comment || null,
+    approver_limit: limitVal ? parseFloat(limitVal) : undefined,
+  };
+
+  try {
+    await FinanceApi.approveBill(billId, payload);
+    showToast(decision === "approve" ? "Bill approved and moved to Ready to Pay" : "Bill rejected and moved to Exceptions", "success");
+    closeBillApprovalModal();
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+function openScheduleBillModal(billId) {
+  FinanceForm.clearErrors("billScheduleModal");
+  const bill = (FinanceState.bills || []).find((b) => b.id === billId);
+  if (!bill) return;
+
+  document.getElementById("billScheduleBillId").value = billId;
+  const numEl = document.getElementById("billScheduleBillNumber");
+  const vendEl = document.getElementById("billScheduleVendor");
+  const amtEl = document.getElementById("billScheduleAmount");
+
+  if (numEl) numEl.textContent = bill.bill_number;
+  if (vendEl) vendEl.textContent = bill.vendor_name || "Vendor";
+  if (amtEl) amtEl.textContent = `${bill.currency || "USD"} ${Number(bill.total).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+  const today = new Date();
+  today.setDate(today.getDate() + 7);
+  document.getElementById("billScheduledPaymentDate").value = bill.due_date || today.toISOString().split("T")[0];
+  document.getElementById("billScheduleNotes").value = "";
+
+  openModal("billScheduleModal");
+}
+
+function closeBillScheduleModal() {
+  closeModal("billScheduleModal");
+}
+
+async function saveBillSchedule() {
+  const billId = document.getElementById("billScheduleBillId").value;
+  const schedDate = document.getElementById("billScheduledPaymentDate").value;
+  const notes = document.getElementById("billScheduleNotes").value.trim();
+
+  if (!schedDate) {
+    showToast("Scheduled payment date is required.", "error");
+    return;
+  }
+
+  try {
+    await FinanceApi.scheduleBill(billId, {
+      scheduled_payment_date: schedDate,
+      notes: notes || null,
+    });
+    showToast("Bill successfully scheduled for payment", "success");
+    closeBillScheduleModal();
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+async function confirmReverseBillPayment(billId, paymentId, amount) {
+  const reason = prompt(`Enter reason for reversing payment #${paymentId} ($${Number(amount || 0).toFixed(2)}):`);
+  if (!reason || !reason.trim()) {
+    return;
+  }
+  try {
+    await FinanceApi.reverseBillPayment(billId, paymentId, { reason: reason.trim() });
+    showToast("Payment reversed and bank balance restored", "success");
+    if (typeof FinanceDrawer !== "undefined" && FinanceDrawer.isOpen()) {
+      FinanceDrawer.load("bill", billId);
+    }
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Failed to reverse payment: " + (err.message || JSON.stringify(err)), "error");
   }
 }
 
@@ -969,6 +1172,14 @@ window.confirmVoidBill = confirmVoidBill;
 window.openBillPaymentModal = openBillPaymentModal;
 window.closeBillPaymentModal = closeBillPaymentModal;
 window.saveBillPayment = saveBillPayment;
+window.openBillApprovalModal = openBillApprovalModal;
+window.closeBillApprovalModal = closeBillApprovalModal;
+window.onBillApprovalDecisionChange = onBillApprovalDecisionChange;
+window.saveBillApproval = saveBillApproval;
+window.openScheduleBillModal = openScheduleBillModal;
+window.closeBillScheduleModal = closeBillScheduleModal;
+window.saveBillSchedule = saveBillSchedule;
+window.confirmReverseBillPayment = confirmReverseBillPayment;
 window.switchBillSubTab = switchBillSubTab;
 window.loadFinanceVendors = loadFinanceVendors;
 window.filterFinanceVendors = filterFinanceVendors;

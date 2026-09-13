@@ -1247,8 +1247,9 @@ const FinanceDrawer = {
                 ${rec.date ? `<span style="font-size:0.78rem; color:var(--text3);">${FinanceFormat.formatFinanceDate(rec.date)}</span>` : ""}
               </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
               ${rec.amount !== null && rec.amount !== undefined ? `<div style="font-weight:700; font-size:0.95rem; font-variant-numeric:tabular-nums;">${FinanceFormat.renderMoneyHtml(rec.amount, rec.currency || "USD")}</div>` : ""}
+              ${rec.entity_type === "payment" && !rec.is_reversed && this.current?.entityType === "bill" ? `<button class="btn btn-sm btn-danger btn-reverse-payment" onclick="event.stopPropagation(); confirmReverseBillPayment(${this.current.entityId}, ${rec.entity_id}, ${rec.amount})" style="font-size:0.75rem; padding: 2px 7px;" title="Reverse Payment"><i class="fa-solid fa-rotate-left"></i> Reverse</button>` : ""}
               <i class="fa-solid fa-chevron-right" style="font-size:0.8rem; color:var(--text3);"></i>
             </div>
           </div>

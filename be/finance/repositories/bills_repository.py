@@ -8,6 +8,7 @@ Conventions (matches Phase 4.3 InvoicesRepository pattern):
  - No hard deletes — bills are voided, not deleted.
  - Balance adjustment on Payment is done here so it stays atomic with the Payment insert.
 """
+from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
@@ -236,6 +237,14 @@ class BillsRepository:
             is_reviewed=data.get("is_reviewed", True),
             is_duplicate_override=data.get("is_duplicate_override", False),
             duplicate_override_reason=data.get("duplicate_override_reason"),
+            created_by=data.get("created_by"),
+            requires_approval=data.get("requires_approval", False),
+            approval_status=data.get("approval_status"),
+            approved_by=data.get("approved_by"),
+            approved_at=data.get("approved_at"),
+            approval_comment=data.get("approval_comment"),
+            scheduled_payment_date=data.get("scheduled_payment_date"),
+            amount_paid=data.get("amount_paid", 0.0),
         )
         self.db.add(bill)
         self.db.flush()  # obtain bill.id before inserting lines
@@ -258,6 +267,14 @@ class BillsRepository:
         bill.subtotal = subtotal
         bill.tax_amount = tax_amount
         bill.total = total
+
+        # Flag for approval if explicitly marked or placed in needs_approval queue
+        if bill.requires_approval or bill.status == "needs_approval":
+            bill.requires_approval = True
+            if not bill.approval_status:
+                bill.approval_status = "pending"
+            if bill.status in ("ready_to_pay", "unpaid") and bill.approval_status != "approved":
+                bill.status = "needs_approval"
 
         self.db.commit()
         return self._load_bill_full(bill.id)
@@ -306,11 +323,28 @@ class BillsRepository:
             bill.is_duplicate_override = data["is_duplicate_override"]
         if "duplicate_override_reason" in data:
             bill.duplicate_override_reason = data["duplicate_override_reason"]
+        if "created_by" in data:
+            bill.created_by = data["created_by"]
+        if "requires_approval" in data and data["requires_approval"] is not None:
+            bill.requires_approval = data["requires_approval"]
+        if "approval_status" in data:
+            bill.approval_status = data["approval_status"]
+        if "approved_by" in data:
+            bill.approved_by = data["approved_by"]
+        if "approved_at" in data:
+            bill.approved_at = data["approved_at"]
+        if "approval_comment" in data:
+            bill.approval_comment = data["approval_comment"]
+        if "scheduled_payment_date" in data:
+            bill.scheduled_payment_date = data["scheduled_payment_date"]
+        if "amount_paid" in data and data["amount_paid"] is not None:
+            bill.amount_paid = data["amount_paid"]
 
         if lines_data is not None:
             # Replace all lines
             self.db.query(BillLineDB).filter(BillLineDB.bill_id == bill_id).delete()
-            db_lines = []
+            self.db.flush()
+            new_lines = []
             for ln in lines_data:
                 line_total = ln.get("line_total") or round(ln.get("quantity", 1.0) * ln.get("unit_price", 0.0), 4)
                 db_line = BillLineDB(
@@ -321,9 +355,9 @@ class BillsRepository:
                     line_total=line_total,
                 )
                 self.db.add(db_line)
-                db_lines.append(db_line)
+                new_lines.append(db_line)
             self.db.flush()
-            subtotal, tax_amount, total = self._compute_totals(db_lines)
+            subtotal, tax_amount, total = self._compute_totals(new_lines)
             bill.subtotal = subtotal
             bill.tax_amount = tax_amount
             bill.total = total
@@ -342,7 +376,8 @@ class BillsRepository:
         """
         Record an outgoing payment against a bill.
         Adjusts the bank account's current_balance atomically (-amount for outgoing).
-        After a full payment, marks the bill as 'paid' if the payment covers it.
+        Enforces that payment cannot exceed remaining balance.
+        Marks bill as 'paid' once fully settled, or 'partially_paid'.
         """
         bank_account = (
             self.db.query(FinanceBankAccountDB)
@@ -351,6 +386,25 @@ class BillsRepository:
         )
         if not bank_account:
             raise ValueError(f"Bank account {data['bank_account_id']} not found")
+
+        bill = None
+        if data.get("related_bill_id"):
+            bill = self.db.query(BillDB).filter(
+                BillDB.id == data["related_bill_id"]
+            ).first()
+            if not bill:
+                raise ValueError(f"Bill {data['related_bill_id']} not found")
+
+            # Check remaining balance (exclude reversed payments)
+            existing_payments = [p for p in self.list_payments(bill.id) if not p.is_reversed]
+            paid_so_far = sum(p.amount for p in existing_payments)
+            remaining = round(bill.total - paid_so_far, 2)
+            payment_amount = float(data["amount"])
+
+            if payment_amount > remaining + 0.01:
+                raise ValueError(
+                    f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f})."
+                )
 
         payment = PaymentDB(
             direction=data.get("direction", "outgoing"),
@@ -362,6 +416,7 @@ class BillsRepository:
             bank_account_id=data["bank_account_id"],
             method=data.get("method", "bank_transfer"),
             reference=data.get("reference", ""),
+            is_reversed=False,
         )
         self.db.add(payment)
 
@@ -371,17 +426,15 @@ class BillsRepository:
         else:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
 
-        # Auto-mark bill as paid if this payment covers remaining total
-        bill = None
-        if data.get("related_bill_id"):
-            bill = self.db.query(BillDB).filter(
-                BillDB.id == data["related_bill_id"]
-            ).first()
-            if bill and bill.status not in ("void", "paid"):
-                existing_payments = self.list_payments(bill.id)
-                paid_so_far = sum(p.amount for p in existing_payments)
-                if paid_so_far + payment.amount >= bill.total:
-                    bill.status = "paid"
+        # Update bill status & amount_paid
+        if bill and bill.status != "void":
+            existing_payments = [p for p in self.list_payments(bill.id) if not p.is_reversed]
+            paid_so_far = sum(p.amount for p in existing_payments) + payment.amount
+            bill.amount_paid = round(paid_so_far, 2)
+            if bill.amount_paid >= bill.total - 0.01:
+                bill.status = "paid"
+            elif bill.status in ("ready_to_pay", "scheduled", "partially_paid"):
+                bill.status = "partially_paid"
 
         # Record corresponding ledger transaction for single source of truth
         bill_cat = None
@@ -407,6 +460,85 @@ class BillsRepository:
             created_at=payment.created_at,
         )
         self.db.add(ledger_tx)
+
+        self.db.commit()
+        self.db.refresh(payment)
+        return payment
+
+    def reverse_payment(
+        self, bill_id: int, payment_id: int, reason: str, reversed_by: Optional[str] = None
+    ) -> PaymentDB:
+        """
+        Atomically reverse a recorded bill payment.
+        Restores the bank account balance, creates a reversal ledger entry,
+        marks the payment as reversed, and recalculates the bill status.
+        """
+        payment = (
+            self.db.query(PaymentDB)
+            .filter(PaymentDB.id == payment_id, PaymentDB.related_bill_id == bill_id)
+            .first()
+        )
+        if not payment:
+            raise ValueError(f"Payment {payment_id} not found for bill {bill_id}")
+        if payment.is_reversed:
+            raise ValueError(f"Payment {payment_id} has already been reversed")
+
+        bank_account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == payment.bank_account_id)
+            .first()
+        )
+        if not bank_account:
+            raise ValueError(f"Bank account {payment.bank_account_id} not found")
+
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            raise ValueError(f"Bill {bill_id} not found")
+
+        # 1. Reverse balance on bank account
+        if payment.direction == "outgoing":
+            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
+        else:
+            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
+
+        # 2. Mark payment as reversed
+        payment.is_reversed = True
+        payment.reversed_at = datetime.utcnow()
+        payment.reversed_by = reversed_by
+        payment.reversal_reason = reason.strip()
+
+        # 3. Add reversal ledger entry
+        ledger_tx = LedgerTransactionDB(
+            account_id=bank_account.id,
+            date=datetime.utcnow().strftime("%Y-%m-%d"),
+            amount=payment.amount,
+            direction="in" if payment.direction == "outgoing" else "out",
+            currency=payment.currency,
+            reference=payment.reference or f"REV-PAY-{payment.id}",
+            description=f"Reversal of payment #{payment.id}: {reason.strip()}",
+            source="bill_payment_reversal",
+            linked_bill_id=bill_id,
+            running_balance=bank_account.current_balance,
+        )
+        self.db.add(ledger_tx)
+
+        # 4. Recalculate bill status and amount_paid
+        remaining_payments = [
+            p for p in self.list_payments(bill_id) if not p.is_reversed and p.id != payment.id
+        ]
+        paid_remaining = sum(p.amount for p in remaining_payments)
+        bill.amount_paid = round(paid_remaining, 2)
+
+        if bill.amount_paid <= 0.001:
+            bill.amount_paid = 0.0
+            if bill.scheduled_payment_date:
+                bill.status = "scheduled"
+            else:
+                bill.status = "ready_to_pay"
+        elif bill.amount_paid < bill.total - 0.01:
+            bill.status = "partially_paid"
+        else:
+            bill.status = "paid"
 
         self.db.commit()
         self.db.refresh(payment)

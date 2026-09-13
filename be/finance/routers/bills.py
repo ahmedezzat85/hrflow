@@ -16,8 +16,11 @@ from finance.schemas import (
     BillDuplicateCheckRequest,
     BillDuplicateCheckResponse,
     BillQueueCountsResponse,
+    BillApprovalRequest,
+    BillScheduleRequest,
     PaymentCreate,
     PaymentResponse,
+    PaymentReversalRequest,
 )
 from finance.services.bills_service import BillsService
 from finance.deps import get_bills_service, get_idempotency_key, get_idempotency_service
@@ -87,8 +90,35 @@ def create_vendor_bill(
         idempotency_key=idempotency_key,
         user_email=user_email,
         endpoint_path="/api/finance/bills:create",
-        operation_fn=lambda: service.create_bill(payload),
+        operation_fn=lambda: service.create_bill(payload, current_user=current_user),
     )
+
+
+@router.post("/{bill_id}/approve", response_model=BillResponse)
+def approve_vendor_bill(
+    bill_id: int,
+    payload: BillApprovalRequest,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Approve or reject a vendor bill.
+    Enforces segregation of duties (no self-approval) and approver authorization limits.
+    """
+    return service.approve_bill(bill_id, payload, current_user=current_user)
+
+
+@router.post("/{bill_id}/schedule", response_model=BillResponse)
+def schedule_vendor_bill(
+    bill_id: int,
+    payload: BillScheduleRequest,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Schedule an approved vendor bill for future payment.
+    """
+    return service.schedule_bill(bill_id, payload)
 
 
 @router.put("/{bill_id}", response_model=BillResponse)
@@ -149,4 +179,27 @@ def record_bill_payment(
         user_email=user_email,
         endpoint_path=f"/api/finance/bills:{bill_id}:payments",
         operation_fn=lambda: service.record_payment(bill_id, payload),
+    )
+
+
+@router.post(
+    "/{bill_id}/payments/{payment_id}/reverse",
+    response_model=PaymentResponse,
+)
+def reverse_bill_payment(
+    bill_id: int,
+    payment_id: int,
+    payload: PaymentReversalRequest,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Atomically reverse a recorded bill payment.
+    Restores the bank account balance and creates a corresponding reversal ledger entry.
+    """
+    return service.reverse_payment(
+        bill_id=bill_id,
+        payment_id=payment_id,
+        req=payload,
+        current_user=current_user,
     )
