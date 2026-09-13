@@ -26,24 +26,20 @@ XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 @router.get("/summary", response_model=Dict[str, Any])
 def get_finance_summary(
+    entity: Optional[str] = Query("all", description="Company / Entity filter (e.g. 'all', 'Voyance Health', 'Voyance US')"),
+    period: str = Query("MTD", description="Period filter: MTD, QTD, YTD, all"),
+    basis: str = Query("cash", pattern="^(cash|accrual)$", description="Accounting basis: cash or accrual"),
+    currency: str = Query("USD", description="Currency filter: USD, EGP, all"),
+    service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
-    """KPI metric summary for executive finance dashboard."""
-    now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    return {
-        "balance": 245000.0,
-        "revenue_mtd": 48200.0,
-        "cost_mtd": 31400.0,
-        "net_mtd": 16800.0,
-        "currency": "USD",
-        "base_currency": "USD",
-        "period": "MTD",
-        "data_scope": "all_accounts",
-        "open_invoices_count": 2,
-        "unpaid_bills_count": 1,
-        "active_subscriptions_count": 2,
-        "generated_at": now_iso,
-    }
+    """KPI metric summary for executive finance dashboard with contextual scoping and metadata."""
+    return service.get_finance_summary(
+        entity=entity,
+        period=period,
+        basis=basis,
+        currency=currency,
+    )
 
 
 @router.get("/transactions")

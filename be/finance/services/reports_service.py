@@ -14,12 +14,271 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
     FinanceChequeDB,
+    SalesInvoiceDB,
+    BillDB,
+    SubscriptionDB,
 )
 
 
 class ReportsService:
     def __init__(self, db: Session):
         self.db = db
+
+    # ------------------------------------------------------------------
+    # 0. Executive Finance Summary & Trustworthy KPIs
+    # ------------------------------------------------------------------
+    def get_finance_summary(
+        self,
+        entity: Optional[str] = "all",
+        period: str = "MTD",
+        basis: str = "cash",
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        period_norm = (period or "MTD").upper()
+        basis_norm = (basis or "cash").lower()
+        curr_norm = (currency or "USD").upper()
+        entity_norm = (entity or "all").strip()
+
+        if period_norm == "MTD":
+            start_date = today.replace(day=1).strftime("%Y-%m-%d")
+        elif period_norm == "QTD":
+            q_month = ((today.month - 1) // 3) * 3 + 1
+            start_date = today.replace(month=q_month, day=1).strftime("%Y-%m-%d")
+        elif period_norm == "YTD":
+            start_date = today.replace(month=1, day=1).strftime("%Y-%m-%d")
+        elif period_norm == "ALL":
+            start_date = None
+        else:
+            start_date = today.replace(day=1).strftime("%Y-%m-%d")
+
+        end_date = today.strftime("%Y-%m-%d") if start_date else None
+
+        # 1. Total Cash Balance (Book Cash)
+        acc_q = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True)
+        if curr_norm != "ALL":
+            acc_q = acc_q.filter(FinanceBankAccountDB.currency == curr_norm)
+        if entity_norm.lower() != "all":
+            pat = f"%{entity_norm}%"
+            acc_q = acc_q.filter(
+                or_(
+                    FinanceBankAccountDB.account_name.ilike(pat),
+                    FinanceBankAccountDB.country.ilike(pat),
+                    FinanceBankAccountDB.bank_name.ilike(pat),
+                )
+            )
+        accounts = acc_q.all()
+        total_cash = round(sum(float(a.current_balance or 0.0) for a in accounts), 2)
+
+        # 2. Revenue & Operating Spend
+        if basis_norm == "accrual":
+            inv_q = self.db.query(SalesInvoiceDB).filter(
+                SalesInvoiceDB.status != "void",
+                SalesInvoiceDB.status != "draft",
+            )
+            if start_date:
+                inv_q = inv_q.filter(SalesInvoiceDB.issue_date >= start_date)
+            if end_date:
+                inv_q = inv_q.filter(SalesInvoiceDB.issue_date <= end_date)
+            if curr_norm != "ALL":
+                inv_q = inv_q.filter(SalesInvoiceDB.currency == curr_norm)
+            invoices = inv_q.all()
+            revenue = round(sum(float(i.total or 0.0) for i in invoices), 2)
+
+            bill_q = self.db.query(BillDB).filter(BillDB.status != "void")
+            if start_date:
+                bill_q = bill_q.filter(BillDB.issue_date >= start_date)
+            if end_date:
+                bill_q = bill_q.filter(BillDB.issue_date <= end_date)
+            if curr_norm != "ALL":
+                bill_q = bill_q.filter(BillDB.currency == curr_norm)
+            bills = bill_q.all()
+            operating_spend = round(sum(float(b.total or 0.0) for b in bills), 2)
+        else:
+            # Cash basis: ledger transactions
+            tx_q = (
+                self.db.query(LedgerTransactionDB)
+                .join(FinanceBankAccountDB, LedgerTransactionDB.account_id == FinanceBankAccountDB.id)
+                .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
+            )
+            if start_date:
+                tx_q = tx_q.filter(LedgerTransactionDB.date >= start_date)
+            if end_date:
+                tx_q = tx_q.filter(LedgerTransactionDB.date <= end_date)
+            if curr_norm != "ALL":
+                tx_q = tx_q.filter(LedgerTransactionDB.currency == curr_norm)
+            if entity_norm.lower() != "all":
+                pat = f"%{entity_norm}%"
+                tx_q = tx_q.filter(
+                    or_(
+                        FinanceBankAccountDB.account_name.ilike(pat),
+                        FinanceBankAccountDB.country.ilike(pat),
+                        FinanceBankAccountDB.bank_name.ilike(pat),
+                    )
+                )
+
+            # Exclude internal transfers
+            tx_q = tx_q.filter(
+                LedgerTransactionDB.source != "transfer",
+                or_(TransactionCategoryDB.kind == None, TransactionCategoryDB.kind != "transfer"),
+            )
+            all_txs = tx_q.all()
+
+            revenue = round(
+                sum(
+                    float(t.amount or 0.0)
+                    for t in all_txs
+                    if t.direction == "in"
+                    and (
+                        (t.category and t.category.kind == "revenue")
+                        or t.linked_invoice_id
+                        or not t.category
+                        or t.category.kind != "cost"
+                    )
+                ),
+                2,
+            )
+            operating_spend = round(
+                sum(
+                    float(t.amount or 0.0)
+                    for t in all_txs
+                    if t.direction == "out"
+                    and (
+                        (t.category and t.category.kind == "cost")
+                        or t.linked_bill_id
+                        or t.source in ("bill_payment", "subscription_charge", "cheque")
+                        or not t.category
+                        or t.category.kind != "revenue"
+                    )
+                ),
+                2,
+            )
+
+        net_result = round(revenue - operating_spend, 2)
+        if revenue > 0:
+            margin_pct = round((net_result / revenue) * 100, 1)
+            margin_valid = True
+        else:
+            margin_pct = None
+            margin_valid = False
+
+        open_inv_count = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.status.in_(["sent", "draft", "overdue", "partially_paid"])).count()
+        unpaid_bills_count = self.db.query(BillDB).filter(BillDB.status.in_(["unpaid", "overdue", "partially_paid"])).count()
+        active_sub_count = self.db.query(SubscriptionDB).filter(SubscriptionDB.is_active == True).count()
+
+        now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        conversion_policy = (
+            "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
+            if curr_norm == "ALL"
+            else f"Filtered strictly to {curr_norm} accounts and transactions (1:1 single currency)."
+        )
+
+        display_currency = curr_norm if curr_norm != "ALL" else "USD"
+
+        kpis = {
+            "total_cash": {
+                "id": "statFinanceBalance",
+                "value": total_cash,
+                "currency": display_currency,
+                "label": "Total Cash Balance",
+                "period": "Current (Real-time)",
+                "definition": "Consolidated book cash balance across all active bank and cash accounts matching scope.",
+                "formula": "SUM(finance_bank_accounts.current_balance WHERE is_active=True)",
+                "source_coverage": f"{len(accounts)} active bank & cash accounts",
+                "drilldown_section": "finance-accounts",
+                "drilldown_filter": {"is_active": "true"},
+            },
+            "revenue": {
+                "id": "statFinanceRevenue",
+                "value": revenue,
+                "currency": display_currency,
+                "label": f"Revenue ({period_norm})",
+                "period": period_norm,
+                "definition": (
+                    "Actual cash inflows received and categorized as revenue"
+                    if basis_norm == "cash"
+                    else "Recognized revenue from all non-void sales invoices issued in period"
+                ),
+                "formula": (
+                    "SUM(ledger_inflows WHERE source!='transfer' AND kind!='transfer')"
+                    if basis_norm == "cash"
+                    else "SUM(sales_invoices.total WHERE status NOT IN ('void', 'draft'))"
+                ),
+                "source_coverage": "Bank & cash ledger transactions" if basis_norm == "cash" else "Sales invoices register",
+                "drilldown_section": "finance-transactions" if basis_norm == "cash" else "finance-invoices",
+                "drilldown_filter": {"direction": "in"} if basis_norm == "cash" else {"status": "all"},
+            },
+            "operating_spend": {
+                "id": "statFinanceCost",
+                "value": operating_spend,
+                "currency": display_currency,
+                "label": f"Operating Expenses ({period_norm})",
+                "period": period_norm,
+                "definition": (
+                    "Actual cash outflows paid for expenses, bills, and charges"
+                    if basis_norm == "cash"
+                    else "Recognized costs from all non-void vendor bills issued in period"
+                ),
+                "formula": (
+                    "SUM(ledger_outflows WHERE source!='transfer' AND kind!='transfer')"
+                    if basis_norm == "cash"
+                    else "SUM(bills.total WHERE status!='void')"
+                ),
+                "source_coverage": "Bank & cash ledger transactions" if basis_norm == "cash" else "Vendor bills register",
+                "drilldown_section": "finance-transactions" if basis_norm == "cash" else "finance-bills",
+                "drilldown_filter": {"direction": "out"} if basis_norm == "cash" else {"status": "all"},
+            },
+            "net_result": {
+                "id": "statFinanceNet",
+                "value": net_result,
+                "currency": display_currency,
+                "label": f"Net Operating Result ({period_norm})",
+                "period": period_norm,
+                "definition": "Net operating difference: Revenue minus Operating Expenses for the period.",
+                "formula": "Revenue - Operating Expenses",
+                "source_coverage": "Ledger operating delta" if basis_norm == "cash" else "Invoices minus Bills",
+                "drilldown_section": "finance-reports",
+                "drilldown_filter": {},
+            },
+            "operating_margin": {
+                "id": "statFinanceMargin",
+                "value": margin_pct,
+                "is_valid": margin_valid,
+                "unit": "%",
+                "label": f"Operating Margin ({period_norm})",
+                "period": period_norm,
+                "definition": (
+                    "Operating profitability percentage: (Net Result / Revenue) * 100. Only valid when Revenue > 0."
+                    if margin_valid
+                    else "Margin is undefined or invalid because Revenue is zero or negative."
+                ),
+                "formula": "(Net Operating Result / Revenue) * 100",
+                "source_coverage": "Derived from Revenue and Spend",
+                "drilldown_section": "finance-reports",
+                "drilldown_filter": {},
+            },
+        }
+
+        return {
+            "balance": total_cash,
+            "revenue_mtd": revenue,
+            "cost_mtd": operating_spend,
+            "net_mtd": net_result,
+            "margin_pct": margin_pct,
+            "margin_valid": margin_valid,
+            "currency": display_currency,
+            "base_currency": display_currency,
+            "period": period_norm,
+            "basis": basis_norm,
+            "entity": entity_norm,
+            "conversion_policy": conversion_policy,
+            "data_scope": f"{entity_norm}_{curr_norm.lower()}",
+            "open_invoices_count": open_inv_count,
+            "unpaid_bills_count": unpaid_bills_count,
+            "active_subscriptions_count": active_sub_count,
+            "generated_at": now_iso,
+            "kpis": kpis,
+        }
 
     # ------------------------------------------------------------------
     # 1. Transactions Ledger Report

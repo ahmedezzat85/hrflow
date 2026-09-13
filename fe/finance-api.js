@@ -407,27 +407,145 @@ const FinanceApi = {
   getSubscriptions() {
     return apiRequest("GET", "/api/finance/subscriptions");
   },
-  async getFinanceSummary() {
+  async getFinanceSummary(params = {}) {
     if (_isMock()) {
+      const period = (params.period || "MTD").toUpperCase();
+      const basis = (params.basis || "cash").toLowerCase();
+      const currency = (params.currency || "USD").toUpperCase();
+      const entity = (params.entity || "all").toLowerCase();
+
+      let accounts = [...(FinanceMockState.accounts || [])];
+      if (currency !== "ALL") {
+        accounts = accounts.filter((a) => (a.currency || "USD").toUpperCase() === currency);
+      }
+
+      let balance = 245000.0;
+      if (currency === "EGP") {
+        balance = 470000.0;
+      } else if (currency === "ALL") {
+        balance = 715000.0;
+      }
+
+      let revenue = 0;
+      let cost = 0;
+
+      if (basis === "accrual") {
+        let invs = [...(FinanceMockState.invoices || [])].filter((i) => i.status !== "void" && i.status !== "draft");
+        if (currency !== "ALL") invs = invs.filter((i) => (i.currency || "USD").toUpperCase() === currency);
+        revenue = invs.reduce((acc, i) => acc + (i.total || 0), 0) || 30000.0;
+
+        let bills = [...(FinanceMockState.bills || [])].filter((b) => b.status !== "void");
+        if (currency !== "ALL") bills = bills.filter((b) => (b.currency || "USD").toUpperCase() === currency);
+        cost = bills.reduce((acc, b) => acc + (b.total || 0), 0) || 10000.0;
+      } else {
+        if (currency === "EGP") {
+          revenue = 0.0;
+          cost = 0.0;
+        } else {
+          revenue = 48200.0;
+          cost = 31400.0;
+        }
+      }
+
+      const net = Math.round((revenue - cost) * 100) / 100;
+      const marginValid = revenue > 0;
+      const marginPct = marginValid ? Math.round((net / revenue) * 1000) / 10 : null;
+      const displayCurrency = currency !== "ALL" ? currency : "USD";
+
       return {
-        balance: 245000.0,
-        revenue_mtd: 48200.0,
-        cost_mtd: 31400.0,
-        net_mtd: 16800.0,
-        currency: "USD",
-        base_currency: "USD",
-        period: "MTD",
-        data_scope: "all_accounts",
+        balance: balance || 245000.0,
+        revenue_mtd: revenue,
+        cost_mtd: cost,
+        net_mtd: net,
+        margin_pct: marginPct,
+        margin_valid: marginValid,
+        currency: displayCurrency,
+        base_currency: displayCurrency,
+        period: period,
+        basis: basis,
+        entity: entity,
+        conversion_policy: currency === "ALL"
+          ? "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
+          : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
+        data_scope: `${entity}_${currency.toLowerCase()}`,
         open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,
         unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => b.status === "unpaid").length,
         active_subscriptions_count: (FinanceMockState.subscriptions || []).filter((s) => s.is_active).length,
         generated_at: new Date().toISOString(),
+        kpis: {
+          total_cash: {
+            id: "statFinanceBalance",
+            value: balance || 245000.0,
+            currency: displayCurrency,
+            label: "Total Cash Balance",
+            period: "Current (Real-time)",
+            definition: "Consolidated book cash balance across all active bank and cash accounts matching scope.",
+            formula: "SUM(finance_bank_accounts.current_balance WHERE is_active=True)",
+            source_coverage: `${accounts.length} active bank & cash accounts`,
+            drilldown_section: "finance-accounts",
+            drilldown_filter: { is_active: "true" },
+          },
+          revenue: {
+            id: "statFinanceRevenue",
+            value: revenue,
+            currency: displayCurrency,
+            label: `Revenue (${period})`,
+            period: period,
+            definition: basis === "cash" ? "Actual cash inflows received and categorized as revenue" : "Recognized revenue from all non-void sales invoices issued in period",
+            formula: basis === "cash" ? "SUM(ledger_inflows WHERE source!='transfer')" : "SUM(sales_invoices.total WHERE status NOT IN ('void', 'draft'))",
+            source_coverage: basis === "cash" ? "Bank & cash ledger transactions" : "Sales invoices register",
+            drilldown_section: basis === "cash" ? "finance-transactions" : "finance-invoices",
+            drilldown_filter: basis === "cash" ? { direction: "in" } : { status: "all" },
+          },
+          operating_spend: {
+            id: "statFinanceCost",
+            value: cost,
+            currency: displayCurrency,
+            label: `Operating Expenses (${period})`,
+            period: period,
+            definition: basis === "cash" ? "Actual cash outflows paid for expenses, bills, and charges" : "Recognized costs from all non-void vendor bills issued in period",
+            formula: basis === "cash" ? "SUM(ledger_outflows WHERE source!='transfer')" : "SUM(bills.total WHERE status!='void')",
+            source_coverage: basis === "cash" ? "Bank & cash ledger transactions" : "Vendor bills register",
+            drilldown_section: basis === "cash" ? "finance-transactions" : "finance-bills",
+            drilldown_filter: basis === "cash" ? { direction: "out" } : { status: "all" },
+          },
+          net_result: {
+            id: "statFinanceNet",
+            value: net,
+            currency: displayCurrency,
+            label: `Net Operating Result (${period})`,
+            period: period,
+            definition: "Net operating difference: Revenue minus Operating Expenses for the period.",
+            formula: "Revenue - Operating Expenses",
+            source_coverage: basis === "cash" ? "Ledger operating delta" : "Invoices minus Bills",
+            drilldown_section: "finance-reports",
+            drilldown_filter: {},
+          },
+          operating_margin: {
+            id: "statFinanceMargin",
+            value: marginPct,
+            is_valid: marginValid,
+            unit: "%",
+            label: `Operating Margin (${period})`,
+            period: period,
+            definition: marginValid ? "Operating profitability percentage: (Net Result / Revenue) * 100." : "Margin is undefined when Revenue is zero or negative.",
+            formula: "(Net Operating Result / Revenue) * 100",
+            source_coverage: "Derived from Revenue and Spend",
+            drilldown_section: "finance-reports",
+            drilldown_filter: {},
+          },
+        },
       };
     }
-    return apiRequest("GET", "/api/finance/reports/summary");
+    let url = "/api/finance/reports/summary";
+    if (params && Object.keys(params).length > 0) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
   },
-  async getDashboardSummary() {
-    return this.getFinanceSummary();
+  async getDashboardSummary(params = {}) {
+    return this.getFinanceSummary(params);
   },
 
   // Bank Accounts
