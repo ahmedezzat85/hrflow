@@ -154,3 +154,26 @@ def record_invoice_payment(
         endpoint_path=f"/api/finance/invoices:{invoice_id}:payments",
         operation_fn=lambda: service.record_payment(invoice_id, payload),
     )
+
+
+@router.post("/{invoice_id}/payments/{payment_id}/reverse", response_model=PaymentResponse)
+def reverse_invoice_payment(
+    invoice_id: int,
+    payment_id: int,
+    reason: Optional[str] = Query(None, description="Reason for reversal"),
+    current_user: dict = Depends(require_permission("finance.invoice.write")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    """Reverse a previously recorded payment against an invoice."""
+    return service.reverse_payment(invoice_id, payment_id, reason=reason)
+
+
+@router.post("/{invoice_id}/remind")
+def send_invoice_reminder(
+    invoice_id: int,
+    current_user: dict = Depends(require_permission("finance.invoice.write")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    """Send payment reminder to customer for an overdue/awaiting payment invoice."""
+    return service.send_reminder(invoice_id)
+

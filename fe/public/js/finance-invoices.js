@@ -230,6 +230,7 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
         <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve & Send Invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
+        ${(derivedStatus === "overdue" || derivedStatus === "sent") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
         ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
@@ -603,17 +604,25 @@ async function openPaymentModal(invoiceId) {
   document.getElementById("paymentInvoiceId").value = invoiceId;
   const expBankId = inv ? (inv.expected_bank_account_id || "") : "";
   const expBankName = inv ? (inv.expected_bank_account_name || "Expected Account") : "Expected Account";
-  
+
   const expIdEl = document.getElementById("paymentExpectedBankAccountId");
   if (expIdEl) expIdEl.value = expBankId;
   const expNameEl = document.getElementById("paymentExpectedBankName");
   if (expNameEl) expNameEl.textContent = expBankName;
 
+  const derivedStatus = inv ? FinanceFormat.getDerivedInvoiceStatus(inv) : "";
+  const amountPaid = inv ? (inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0)) : 0.0;
+  const balance = inv ? (inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid)) : 0.0;
+
   const infoEl = document.getElementById("paymentInvoiceInfo");
   if (infoEl && inv) {
-    infoEl.textContent = `Invoice ${inv.invoice_number} — ${inv.currency} ${Number(inv.total).toLocaleString("en-US", { minimumFractionDigits: 2 })} total`;
+    infoEl.innerHTML = `Invoice <strong>${inv.invoice_number}</strong> &middot; Total: ${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")} &middot; Remaining Balance: <strong id="paymentRemainingBalanceDisplay">${FinanceFormat.renderMoneyHtml(balance, inv.currency || "USD")}</strong>`;
   }
-  document.getElementById("paymentAmount").value = "";
+  const amtInput = document.getElementById("paymentAmount");
+  if (amtInput) {
+    amtInput.value = balance > 0 ? balance.toFixed(2) : "";
+    amtInput.max = balance > 0 ? String(balance) : "";
+  }
   document.getElementById("paymentDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("paymentMethod").value = "bank_transfer";
   document.getElementById("paymentReference").value = "";
@@ -650,10 +659,22 @@ async function saveInvoicePayment() {
   ]);
   if (!isValid) return;
 
+  const inv = (FinanceState.invoices || []).find((i) => i.id === parseInt(invoiceId, 10));
+  if (inv) {
+    const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
+    const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0);
+    const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
+    if (amount > balance + 0.001) {
+      FinanceForm.showFieldError("paymentAmount", `Payment amount cannot exceed remaining balance (${balance.toFixed(2)})`);
+      showToast(`Payment amount exceeds remaining balance (${balance.toFixed(2)})`, "error");
+      return;
+    }
+  }
+
   const payload = {
     direction: "incoming",
     amount,
-    currency: "USD",
+    currency: (inv && inv.currency) || "USD",
     payment_date: paymentDate,
     bank_account_id: parseInt(bankAccountId, 10),
     method: document.getElementById("paymentMethod").value,
@@ -665,12 +686,80 @@ async function saveInvoicePayment() {
     if (res && res.account_discrepancy) {
       showToast("Payment recorded (Note: Routed to different account than expected)", "warning");
     } else {
-      showToast("Payment recorded", "success");
+      showToast("Payment recorded successfully", "success");
     }
     closeInvoicePaymentModal();
     loadFinanceInvoices();
   } catch (err) {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+async function sendInvoiceReminderAction(invoiceId) {
+  const inv = (FinanceState.invoices || []).find((i) => i.id === parseInt(invoiceId, 10));
+  if (!inv) return;
+  let email = (inv.customer_email || "").trim();
+  if (!email && inv.customer_id) {
+    let cust = (FinanceState.customers || []).find((c) => c.id === inv.customer_id);
+    if (!cust) {
+      try {
+        cust = await FinanceApi.getCustomer(inv.customer_id);
+      } catch (_) {}
+    }
+    if (cust && cust.contact_email) {
+      email = cust.contact_email.trim();
+    }
+  }
+  if (!email) {
+    await FinanceCommand.confirmAction({
+      title: "Cannot Send Reminder",
+      summary: `<strong>${inv.invoice_number}</strong> · ${inv.customer_name || "Customer"}`,
+      consequence: "This customer has no contact email address on file. Please edit the customer profile and add a billing email before sending reminders.",
+      actionLabel: "Understood",
+      actionClass: "btn btn-fill",
+      requireReason: false,
+      severity: "warning",
+    });
+    return;
+  }
+
+  const res = await FinanceCommand.confirmAction({
+    title: "Send Payment Reminder",
+    summary: `<strong>${inv.invoice_number}</strong> · ${inv.customer_name || "Customer"} · Recipient: <strong>${email}</strong>`,
+    consequence: "An overdue payment reminder and collection instructions will be dispatched to the customer's email.",
+    actionLabel: "Send Reminder",
+    actionClass: "btn btn-fill",
+    requireReason: false,
+    severity: "info",
+  });
+  if (!res.confirmed) return;
+
+  try {
+    const resp = await FinanceApi.sendInvoiceReminder(invoiceId);
+    showToast(resp.message || "Reminder sent successfully", "success");
+  } catch (err) {
+    showToast("Failed to send reminder: " + (err.message || err), "error");
+  }
+}
+
+async function reversePaymentAction(invoiceId, paymentId) {
+  const res = await FinanceCommand.confirmAction({
+    title: "Reverse Payment",
+    summary: `Payment #${paymentId} against Invoice #${invoiceId}`,
+    consequence: "Reversing this payment will restore the outstanding balance on the invoice, debit the bank account balance, and create an audit log and reversing ledger entry.",
+    actionLabel: "Reverse Payment",
+    actionClass: "btn btn-danger",
+    requireReason: true,
+    severity: "danger",
+  });
+  if (!res.confirmed) return;
+
+  try {
+    await FinanceApi.reverseInvoicePayment(invoiceId, paymentId, res.reason);
+    showToast("Payment reversed successfully", "success");
+    loadFinanceInvoices();
+  } catch (err) {
+    showToast("Failed to reverse payment: " + (err.message || err), "error");
   }
 }
 
@@ -880,6 +969,9 @@ window.confirmVoidInvoice = confirmVoidInvoice;
 window.openPaymentModal = openPaymentModal;
 window.closeInvoicePaymentModal = closeInvoicePaymentModal;
 window.saveInvoicePayment = saveInvoicePayment;
+window.sendInvoiceAction = sendInvoiceAction;
+window.sendInvoiceReminderAction = sendInvoiceReminderAction;
+window.reversePaymentAction = reversePaymentAction;
 window.switchInvoiceSubTab = switchInvoiceSubTab;
 window.loadFinanceCustomers = loadFinanceCustomers;
 window.filterFinanceCustomers = filterFinanceCustomers;
@@ -887,3 +979,4 @@ window.openAddCustomerModal = openAddCustomerModal;
 window.openEditCustomerModal = openEditCustomerModal;
 window.saveCustomer = saveCustomer;
 window.toggleCustomerActive = toggleCustomerActive;
+

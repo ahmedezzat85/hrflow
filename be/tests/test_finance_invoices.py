@@ -643,3 +643,180 @@ def test_invoice_editor_lifecycle_and_validation(app_client, admin_cookies):
     assert void_line_resp.status_code == 400
 
 
+def test_collections_and_payment_recording(app_client, admin_cookies):
+    """
+    Story 3.3 validations:
+    - Partial payment updates balance and payment state atomically.
+    - Overpayment is prevented by default.
+    - Duplicate payment references trigger rejection.
+    - Reversing a payment restores the correct outstanding balance and status.
+    - Reminder actions explain missing/invalid email address blocking issue.
+    """
+    # 1. Customer with NO email
+    no_email_cust = app_client.post(
+        "/api/finance/customers",
+        json={"name": "No Email Customer", "contact_email": ""},
+        cookies=admin_cookies,
+    ).json()
+
+    # 2. Customer with valid email
+    email_cust = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Remind Customer", "contact_email": "billing@remindcorp.test"},
+        cookies=admin_cookies,
+    ).json()
+
+    # 3. Bank Account
+    bank = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Collections Checking",
+            "bank_name": "Test Bank",
+            "account_number": "COL-987654321",
+            "currency": "USD",
+            "opening_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    ).json()
+    bank_id = bank["id"]
+
+    # 4. Create an invoice for $1,000 for no-email customer
+    inv_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": no_email_cust["id"],
+            "invoice_number": "INV-COL-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-10",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Service A", "quantity": 1.0, "unit_price": 1000.0, "line_total": 1000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    assert inv_resp.status_code == 201
+    inv_id = inv_resp.json()["id"]
+
+    # 5. Reminder fails with blocking explanation if customer has no email
+    remind_fail = app_client.post(f"/api/finance/invoices/{inv_id}/remind", cookies=admin_cookies)
+    assert remind_fail.status_code == 400
+    assert "no contact email address on file" in remind_fail.json()["detail"]
+
+    # 6. Record partial payment of $400
+    pay1 = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 400.0,
+            "currency": "USD",
+            "payment_date": "2026-09-05",
+            "bank_account_id": bank_id,
+            "reference": "CHK-COL-001",
+        },
+        cookies=admin_cookies,
+    )
+    assert pay1.status_code == 201
+    pay1_id = pay1.json()["id"]
+
+    # Verify atomic update of balance and status
+    inv_after_pay1 = app_client.get(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies).json()
+    assert inv_after_pay1["amount_paid"] == 400.0
+    assert inv_after_pay1["balance"] == 600.0
+    assert inv_after_pay1["payment_status"] == "partially_paid"
+    assert inv_after_pay1["status"] in ("sent", "overdue")
+
+    # 7. Overpayment prevention: trying to pay $700 when balance is $600
+    overpay = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 700.0,
+            "currency": "USD",
+            "payment_date": "2026-09-06",
+            "bank_account_id": bank_id,
+            "reference": "CHK-OVERPAY",
+        },
+        cookies=admin_cookies,
+    )
+    assert overpay.status_code == 400
+    assert "exceeds remaining balance" in overpay.json()["detail"]
+
+    # 8. Duplicate reference check: trying to reuse "CHK-COL-001"
+    dup_ref = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 200.0,
+            "currency": "USD",
+            "payment_date": "2026-09-06",
+            "bank_account_id": bank_id,
+            "reference": "CHK-COL-001",
+        },
+        cookies=admin_cookies,
+    )
+    assert dup_ref.status_code == 400
+    assert "Duplicate payment reference" in dup_ref.json()["detail"]
+
+    # 9. Complete payment: pay remaining $600 with new reference
+    pay2 = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 600.0,
+            "currency": "USD",
+            "payment_date": "2026-09-07",
+            "bank_account_id": bank_id,
+            "reference": "CHK-COL-002",
+        },
+        cookies=admin_cookies,
+    )
+    assert pay2.status_code == 201
+    pay2_id = pay2.json()["id"]
+
+    inv_paid = app_client.get(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies).json()
+    assert inv_paid["balance"] == 0.0
+    assert inv_paid["amount_paid"] == 1000.0
+    assert inv_paid["payment_status"] == "paid"
+
+    # 10. Reverse the $600 payment: verify balance and status restored
+    rev_resp = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments/{pay2_id}/reverse?reason=Bounced%20cheque",
+        cookies=admin_cookies,
+    )
+    assert rev_resp.status_code == 200
+    assert rev_resp.json()["is_reversed"] is True
+
+    inv_after_rev = app_client.get(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies).json()
+    assert inv_after_rev["amount_paid"] == 400.0
+    assert inv_after_rev["balance"] == 600.0
+    assert inv_after_rev["payment_status"] == "partially_paid"
+
+    # Cannot reverse the same payment twice
+    rev_again = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments/{pay2_id}/reverse",
+        cookies=admin_cookies,
+    )
+    assert rev_again.status_code == 400
+
+    # 11. Create invoice with customer who HAS an email and verify reminder dispatch
+    email_inv = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": email_cust["id"],
+            "invoice_number": "INV-COL-REMIND",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-05",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Service B", "quantity": 1.0, "unit_price": 500.0, "line_total": 500.0}],
+        },
+        cookies=admin_cookies,
+    ).json()
+
+    remind_ok = app_client.post(f"/api/finance/invoices/{email_inv['id']}/remind", cookies=admin_cookies)
+    assert remind_ok.status_code == 200
+    assert remind_ok.json()["success"] is True
+    assert remind_ok.json()["recipient"] == "billing@remindcorp.test"
+
+
+

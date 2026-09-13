@@ -275,6 +275,10 @@ window.getDerivedBillStatus = FinanceFormat.getDerivedBillStatus.bind(FinanceFor
 // Accessible Dialog and Form Foundation (Story 0.3)
 // ==========================================
 const FinanceForm = {
+  showFieldError(inputOrId, message) {
+    this.setFieldError(inputOrId, message);
+  },
+
   setFieldError(inputOrId, message) {
     const input = typeof inputOrId === "string" ? document.getElementById(inputOrId) : inputOrId;
     if (!input) return;

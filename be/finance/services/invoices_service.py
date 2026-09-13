@@ -86,6 +86,8 @@ class InvoicesService:
         today = datetime.utcnow().date()
         paid_sum = 0.0
         for p in (invoice.payments or []):
+            if getattr(p, "is_reversed", False):
+                continue
             if (p.amount or 0) > 0 and (p.direction == "incoming" or not p.direction):
                 paid_sum += p.amount
         paid_sum = round(paid_sum, 2)
@@ -189,6 +191,7 @@ class InvoicesService:
             expected_bank_account_name=exp_name,
             method=payment.method,
             reference=payment.reference or "",
+            is_reversed=getattr(payment, "is_reversed", False),
             created_at=payment.created_at,
         )
 
@@ -395,6 +398,43 @@ class InvoicesService:
         try:
             payment = self.repo.record_payment(data)
         except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
 
         return self._payment_to_response(payment)
+
+    def reverse_payment(self, invoice_id: int, payment_id: int, reason: Optional[str] = None) -> PaymentResponse:
+        invoice = self.repo.get_by_id(invoice_id)
+        if not invoice:
+            raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
+
+        try:
+            reversed_payment = self.repo.reverse_payment(payment_id, reason=reason)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        return self._payment_to_response(reversed_payment)
+
+    def send_reminder(self, invoice_id: int) -> dict:
+        invoice = self.repo.get_by_id(invoice_id)
+        if not invoice:
+            raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
+        if invoice.status in ("paid", "void"):
+            raise HTTPException(status_code=400, detail=f"Cannot send reminder for an invoice in '{invoice.status}' status")
+
+        customer = invoice.customer
+        email = customer.contact_email if customer else None
+        if not email or not email.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Customer has no contact email address on file. Please add an email address to the customer record before sending reminders.",
+            )
+
+        resp = self._invoice_to_response(invoice)
+        return {
+            "success": True,
+            "message": f"Payment reminder successfully dispatched to {email.strip()}",
+            "recipient": email.strip(),
+            "invoice_number": invoice.invoice_number,
+            "balance": resp.balance,
+            "days_overdue": resp.days_overdue,
+        }

@@ -279,6 +279,7 @@ class PaymentDB(Base):
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
     method = Column(String(50), default="bank_transfer")  # bank_transfer/cash/card/other
     reference = Column(String(100), default="")
+    is_reversed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     sales_invoice = relationship("SalesInvoiceDB", back_populates="payments", foreign_keys=[related_invoice_id])

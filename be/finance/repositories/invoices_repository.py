@@ -255,6 +255,30 @@ class InvoicesRepository:
         if not bank_account:
             raise ValueError(f"Bank account {data['bank_account_id']} not found")
 
+        ref = (data.get("reference") or "").strip()
+        if ref:
+            dup = (
+                self.db.query(PaymentDB)
+                .filter(PaymentDB.reference == ref, PaymentDB.is_reversed == False)
+                .first()
+            )
+            if dup:
+                raise ValueError(f"Duplicate payment reference '{ref}' detected. Please review.")
+
+        invoice = None
+        if data.get("related_invoice_id"):
+            invoice = (
+                self.db.query(SalesInvoiceDB)
+                .filter(SalesInvoiceDB.id == data["related_invoice_id"])
+                .first()
+            )
+            if invoice:
+                existing_payments = self.list_payments(invoice.id)
+                paid_so_far = sum(p.amount for p in existing_payments if not p.is_reversed)
+                remaining = max(0.0, round(invoice.total - paid_so_far, 2))
+                if data["amount"] > remaining + 0.001:
+                    raise ValueError(f"Payment amount ({data['amount']}) exceeds remaining balance ({remaining}). Overpayment is prevented.")
+
         payment = PaymentDB(
             direction=data.get("direction", "incoming"),
             related_invoice_id=data.get("related_invoice_id"),
@@ -264,7 +288,8 @@ class InvoicesRepository:
             payment_date=data["payment_date"],
             bank_account_id=data["bank_account_id"],
             method=data.get("method", "bank_transfer"),
-            reference=data.get("reference", ""),
+            reference=ref,
+            is_reversed=False,
         )
         self.db.add(payment)
 
@@ -275,16 +300,11 @@ class InvoicesRepository:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
 
         # Auto-mark invoice as paid if this payment covers remaining total
-        invoice = None
-        if data.get("related_invoice_id"):
-            invoice = self.db.query(SalesInvoiceDB).filter(
-                SalesInvoiceDB.id == data["related_invoice_id"]
-            ).first()
-            if invoice and invoice.status not in ("void", "paid"):
-                existing_payments = self.list_payments(invoice.id)
-                paid_so_far = sum(p.amount for p in existing_payments)
-                if paid_so_far + payment.amount >= invoice.total:
-                    invoice.status = "paid"
+        if invoice and invoice.status not in ("void", "paid"):
+            existing_payments = self.list_payments(invoice.id)
+            paid_so_far = sum(p.amount for p in existing_payments if not p.is_reversed)
+            if paid_so_far + payment.amount >= invoice.total:
+                invoice.status = "paid"
 
         # Record corresponding ledger transaction for single source of truth
         rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
@@ -304,6 +324,64 @@ class InvoicesRepository:
             linked_invoice_id=payment.related_invoice_id,
             running_balance=bank_account.current_balance,
             created_at=payment.created_at,
+        )
+        self.db.add(ledger_tx)
+
+        self.db.commit()
+        self.db.refresh(payment)
+        return payment
+
+    def reverse_payment(self, payment_id: int, reason: Optional[str] = None) -> PaymentDB:
+        payment = self.db.query(PaymentDB).filter(PaymentDB.id == payment_id).first()
+        if not payment:
+            raise ValueError(f"Payment {payment_id} not found")
+        if payment.is_reversed:
+            raise ValueError(f"Payment {payment_id} has already been reversed")
+
+        bank_account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == payment.bank_account_id)
+            .first()
+        )
+        if not bank_account:
+            raise ValueError(f"Bank account {payment.bank_account_id} not found")
+
+        payment.is_reversed = True
+
+        # Reverse bank balance: incoming was credited, so now debit
+        if payment.direction == "incoming":
+            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
+        else:
+            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
+
+        # If related to an invoice, restore invoice status if unpaid balance exists
+        if payment.related_invoice_id:
+            invoice = (
+                self.db.query(SalesInvoiceDB)
+                .filter(SalesInvoiceDB.id == payment.related_invoice_id)
+                .first()
+            )
+            if invoice and invoice.status != "void":
+                existing_payments = self.list_payments(invoice.id)
+                active_paid = sum(p.amount for p in existing_payments if not p.is_reversed)
+                if active_paid < invoice.total:
+                    invoice.status = "sent"
+
+        # Create reversing ledger transaction
+        rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
+        ledger_tx = LedgerTransactionDB(
+            account_id=bank_account.id,
+            date=datetime.utcnow().strftime("%Y-%m-%d"),
+            amount=payment.amount,
+            direction="out" if payment.direction == "incoming" else "in",
+            currency=payment.currency,
+            category_id=rev_cat.id if rev_cat else None,
+            reference=f"REV-{payment.reference or payment.id}",
+            description=f"Reversal of payment #{payment.id}" + (f": {reason.strip()}" if reason else ""),
+            source="payment_reversal",
+            linked_invoice_id=payment.related_invoice_id,
+            running_balance=bank_account.current_balance,
+            created_at=datetime.utcnow(),
         )
         self.db.add(ledger_tx)
 

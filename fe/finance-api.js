@@ -25,6 +25,10 @@ const FinanceMockState = {
   customers: [
     { id: 1, name: "Apex Health Partners", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", notes: "Enterprise client", is_active: true },
     { id: 2, name: "BioCare Diagnostics", contact_email: "ap@biocare.org", contact_phone: "+1 555-0144", tax_id: "US-33441199", notes: "Monthly billing", is_active: true },
+    { id: 3, name: "CareFirst Health", contact_email: "ap@carefirst.org", contact_phone: "+1 555-0199", tax_id: "US-77889900", notes: "Overdue account", is_active: true },
+    { id: 4, name: "Delta Medical", contact_email: "finance@deltamed.com", contact_phone: "+1 555-0177", tax_id: "US-55443322", notes: "Consulting client", is_active: true },
+    { id: 5, name: "Echo Clinics", contact_email: "billing@echoclinics.com", contact_phone: "+1 555-0155", tax_id: "US-11223344", notes: "Clinical partner", is_active: true },
+    { id: 6, name: "Frontier Labs", contact_email: "info@frontierlabs.com", contact_phone: "+1 555-0111", tax_id: "US-99887766", notes: "Research lab", is_active: true },
   ],
   vendors: [
     { id: 1, name: "Amazon Web Services", category: "Infrastructure", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", notes: "Hosting & compute", is_active: true },
@@ -299,6 +303,25 @@ const FinanceApi = {
       let exp_id = null;
       let exp_name = null;
       const bankId = parseInt(payload.bank_account_id, 10);
+
+      // Duplicate reference check
+      if (payload.reference && payload.reference.trim()) {
+        const refTrim = payload.reference.trim();
+        const dup = FinanceMockState.payments.find((p) => p.reference === refTrim && !p.is_reversed);
+        if (dup) throw new Error(`Duplicate payment reference '${refTrim}' detected. Please review.`);
+      }
+
+      // Overpayment check
+      if (inv) {
+        const currentPaid = FinanceMockState.payments
+          .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
+          .reduce((s, p) => s + (p.amount || 0), 0);
+        const remaining = Math.max(0, (inv.total || 0) - currentPaid);
+        if (payload.amount > remaining + 0.001) {
+          throw new Error(`Payment amount (${payload.amount}) exceeds remaining balance (${remaining}). Overpayment is prevented.`);
+        }
+      }
+
       if (inv && inv.expected_bank_account_id) {
         exp_id = inv.expected_bank_account_id;
         exp_name = inv.expected_bank_account_name;
@@ -317,13 +340,16 @@ const FinanceApi = {
         expected_bank_account_id: exp_id,
         expected_bank_account_name: exp_name,
         related_invoice_id: parseInt(invoiceId, 10),
+        is_reversed: false,
         created_at: new Date().toISOString(),
       };
       FinanceMockState.payments.push(newPayment);
       if (inv) {
         const totalPaid = FinanceMockState.payments
-          .filter((p) => p.related_invoice_id === inv.id)
+          .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
           .reduce((s, p) => s + (p.amount || 0), 0);
+        inv.amount_paid = totalPaid;
+        inv.balance = Math.max(0, inv.total - totalPaid);
         if (totalPaid >= inv.total) {
           inv.status = "paid";
         }
@@ -331,6 +357,48 @@ const FinanceApi = {
       return newPayment;
     }
     return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);
+  },
+  async reverseInvoicePayment(invoiceId, paymentId, reason = null) {
+    if (_isMock()) {
+      const payment = FinanceMockState.payments.find((p) => p.id === parseInt(paymentId, 10));
+      if (!payment) throw new Error("Payment not found");
+      if (payment.is_reversed) throw new Error("Payment already reversed");
+      payment.is_reversed = true;
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
+      if (inv) {
+        const totalPaid = FinanceMockState.payments
+          .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
+          .reduce((s, p) => s + (p.amount || 0), 0);
+        inv.amount_paid = totalPaid;
+        inv.balance = Math.max(0, inv.total - totalPaid);
+        if (inv.status === "paid" && totalPaid < inv.total) {
+          inv.status = "sent";
+        }
+      }
+      return payment;
+    }
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
+  },
+  async sendInvoiceReminder(invoiceId) {
+    if (_isMock()) {
+      const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
+      if (!inv) throw new Error("Invoice not found");
+      if (inv.status === "paid" || inv.status === "void") {
+        throw new Error(`Cannot send reminder for an invoice in '${inv.status}' status`);
+      }
+      const cust = (FinanceMockState.customers || []).find((c) => c.id === inv.customer_id);
+      const email = (cust && cust.contact_email) || inv.customer_email || "";
+      if (!email.trim()) {
+        throw new Error("Customer has no contact email address on file. Please add an email address to the customer record before sending reminders.");
+      }
+      return {
+        success: true,
+        message: `Payment reminder successfully dispatched to ${email.trim()}`,
+        recipient: email.trim(),
+        invoice_number: inv.invoice_number,
+      };
+    }
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/remind`);
   },
 
   // Vendor Bills

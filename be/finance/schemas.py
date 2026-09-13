@@ -414,6 +414,7 @@ class PaymentResponse(PaymentBase):
     account_discrepancy: bool = False
     expected_bank_account_id: Optional[int] = None
     expected_bank_account_name: Optional[str] = None
+    is_reversed: bool = False
 
     class Config:
         from_attributes = True
