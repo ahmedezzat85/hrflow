@@ -651,3 +651,306 @@ const FinanceCommand = {
   },
 };
 window.FinanceCommand = FinanceCommand;
+
+// ============================================================================
+// FinanceTable — Shared list/table shell, pagination, sorting, density (Story 1.2)
+// ============================================================================
+const FinanceTable = {
+  DENSITY_KEY: "hrflow_finance_table_density",
+  VALID_DENSITIES: ["compact", "regular", "spacious"],
+
+  getDensity() {
+    try {
+      const val = localStorage.getItem(this.DENSITY_KEY);
+      if (this.VALID_DENSITIES.includes(val)) return val;
+    } catch (e) {}
+    return "regular";
+  },
+
+  setDensity(density) {
+    if (!this.VALID_DENSITIES.includes(density)) density = "regular";
+    try {
+      localStorage.setItem(this.DENSITY_KEY, density);
+    } catch (e) {}
+
+    // Apply class to all tables/containers
+    const tables = document.querySelectorAll(".responsive-card-table, .finance-table");
+    tables.forEach((t) => {
+      t.classList.remove("density-compact", "density-regular", "density-spacious");
+      t.classList.add(`density-${density}`);
+    });
+
+    // Update density toggle buttons
+    const btns = document.querySelectorAll(".density-btn");
+    btns.forEach((btn) => {
+      const isCurrent = btn.dataset.density === density;
+      btn.classList.toggle("active", isCurrent);
+      btn.setAttribute("aria-pressed", isCurrent ? "true" : "false");
+    });
+
+    window.dispatchEvent(new CustomEvent("finance:density-changed", { detail: { density } }));
+  },
+
+  renderDensityControl(containerId) {
+    const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
+    if (!container) return;
+
+    const current = this.getDensity();
+    container.innerHTML = `
+      <div class="density-toggle-group" role="group" aria-label="Table density">
+        <button type="button" class="density-btn ${current === 'compact' ? 'active' : ''}" data-density="compact" aria-pressed="${current === 'compact'}" title="Compact view">
+          <i class="fa-solid fa-align-justify"></i> Compact
+        </button>
+        <button type="button" class="density-btn ${current === 'regular' ? 'active' : ''}" data-density="regular" aria-pressed="${current === 'regular'}" title="Regular view">
+          <i class="fa-solid fa-bars"></i> Regular
+        </button>
+        <button type="button" class="density-btn ${current === 'spacious' ? 'active' : ''}" data-density="spacious" aria-pressed="${current === 'spacious'}" title="Spacious view">
+          <i class="fa-solid fa-grip-lines"></i> Spacious
+        </button>
+      </div>
+    `;
+
+    container.querySelectorAll(".density-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.setDensity(btn.dataset.density);
+      });
+    });
+  },
+
+  initAllTablesDensity() {
+    this.setDensity(this.getDensity());
+  },
+
+  // State caching per table ID
+  getStateKey(tableId) {
+    return `hrflow_table_state_${tableId}`;
+  },
+
+  getState(tableId) {
+    try {
+      const raw = sessionStorage.getItem(this.getStateKey(tableId));
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return {
+      page: 1,
+      pageSize: 10,
+      sortBy: null,
+      sortDir: "asc",
+      filters: {},
+    };
+  },
+
+  saveState(tableId, state) {
+    try {
+      sessionStorage.setItem(this.getStateKey(tableId), JSON.stringify(state));
+    } catch (e) {}
+  },
+
+  clearState(tableId) {
+    try {
+      sessionStorage.removeItem(this.getStateKey(tableId));
+    } catch (e) {}
+  },
+
+  // Sorting
+  sortItems(items, sortBy, sortDir = "asc") {
+    if (!sortBy || !items || !items.length) return [...(items || [])];
+    const dir = sortDir === "desc" ? -1 : 1;
+    return [...items].sort((a, b) => {
+      let valA = a[sortBy];
+      let valB = b[sortBy];
+      if (valA === undefined || valA === null) valA = "";
+      if (valB === undefined || valB === null) valB = "";
+
+      // Number comparison
+      if (typeof valA === "number" && typeof valB === "number") {
+        return (valA - valB) * dir;
+      }
+      // Date or string comparison
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      return strA.localeCompare(strB) * dir;
+    });
+  },
+
+  bindSortHeaders(tableOrId, onSortChange, currentSort = {}) {
+    const table = typeof tableOrId === "string" ? document.getElementById(tableOrId) : tableOrId;
+    if (!table) return;
+
+    const headers = table.querySelectorAll("th[data-sort]");
+    headers.forEach((th) => {
+      const col = th.dataset.sort;
+      th.setAttribute("role", "columnheader");
+      th.setAttribute("tabindex", "0");
+
+      const isActive = currentSort.sortBy === col;
+      const dir = isActive ? currentSort.sortDir : "none";
+      th.setAttribute("aria-sort", dir === "none" ? "none" : dir === "asc" ? "ascending" : "descending");
+
+      let icon = th.querySelector(".sort-icon");
+      if (!icon) {
+        icon = document.createElement("i");
+        icon.className = "sort-icon fa-solid fa-sort";
+        th.appendChild(icon);
+      }
+      if (isActive) {
+        icon.className = `sort-icon fa-solid fa-sort-${currentSort.sortDir === "desc" ? "down" : "up"}`;
+      } else {
+        icon.className = "sort-icon fa-solid fa-sort";
+      }
+
+      const handler = () => {
+        let newDir = "asc";
+        if (currentSort.sortBy === col) {
+          newDir = currentSort.sortDir === "asc" ? "desc" : "asc";
+        }
+        if (typeof onSortChange === "function") {
+          onSortChange(col, newDir);
+        }
+      };
+
+      th.onclick = handler;
+      th.onkeydown = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handler();
+        }
+      };
+    });
+  },
+
+  // Pagination helper
+  paginate(items, page = 1, pageSize = 10) {
+    const total = items ? items.length : 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const curPage = Math.max(1, Math.min(page, totalPages));
+    const offset = (curPage - 1) * pageSize;
+    const pagedItems = (items || []).slice(offset, offset + pageSize);
+    const startRecord = total === 0 ? 0 : offset + 1;
+    const endRecord = Math.min(offset + pageSize, total);
+
+    return {
+      items: pagedItems,
+      total,
+      page: curPage,
+      pageSize,
+      totalPages,
+      startRecord,
+      endRecord,
+    };
+  },
+
+  renderPagination(containerId, meta, onPageChange, onPageSizeChange) {
+    const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
+    if (!container) return;
+
+    if (!meta || meta.total === 0) {
+      container.innerHTML = "";
+      container.style.display = "none";
+      return;
+    }
+    container.style.display = "flex";
+
+    const { page, totalPages, total, startRecord, endRecord, pageSize } = meta;
+
+    container.className = "pagination-bar";
+    container.innerHTML = `
+      <div class="pagination-summary">
+        Showing <strong>${startRecord}</strong>–<strong>${endRecord}</strong> of <strong>${total}</strong> records
+      </div>
+      <div class="pagination-controls">
+        <label for="${container.id}_sizeSelect" class="sr-only" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0;">Page Size</label>
+        <select id="${container.id}_sizeSelect" class="pagination-size-select" aria-label="Records per page">
+          <option value="10" ${pageSize === 10 ? "selected" : ""}>10 / page</option>
+          <option value="25" ${pageSize === 25 ? "selected" : ""}>25 / page</option>
+          <option value="50" ${pageSize === 50 ? "selected" : ""}>50 / page</option>
+          <option value="100" ${pageSize === 100 ? "selected" : ""}>100 / page</option>
+        </select>
+        <button type="button" class="pagination-btn" data-page="1" ${page <= 1 ? "disabled" : ""} aria-label="First page" title="First page">
+          <i class="fa-solid fa-angles-left"></i>
+        </button>
+        <button type="button" class="pagination-btn" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="Previous page" title="Previous page">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span style="font-size:0.85rem; font-weight:600; padding:0 6px;">Page ${page} of ${totalPages}</span>
+        <button type="button" class="pagination-btn" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""} aria-label="Next page" title="Next page">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <button type="button" class="pagination-btn" data-page="${totalPages}" ${page >= totalPages ? "disabled" : ""} aria-label="Last page" title="Last page">
+          <i class="fa-solid fa-angles-right"></i>
+        </button>
+      </div>
+    `;
+
+    const sizeSelect = container.querySelector(".pagination-size-select");
+    if (sizeSelect && typeof onPageSizeChange === "function") {
+      sizeSelect.onchange = (e) => {
+        onPageSizeChange(parseInt(e.target.value, 10));
+      };
+    }
+
+    container.querySelectorAll("button[data-page]").forEach((btn) => {
+      btn.onclick = () => {
+        const targetPage = parseInt(btn.dataset.page, 10);
+        if (targetPage >= 1 && targetPage <= totalPages && typeof onPageChange === "function") {
+          onPageChange(targetPage);
+        }
+      };
+    });
+  },
+
+  // Filter chips
+  renderFilterChips(containerId, filters = {}, onRemove, onClearAll) {
+    const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
+    if (!container) return;
+
+    const entries = Object.entries(filters).filter(([_, val]) => val !== undefined && val !== null && String(val).trim() !== "");
+    if (!entries.length) {
+      container.innerHTML = "";
+      container.style.display = "none";
+      return;
+    }
+
+    container.style.display = "flex";
+    container.className = "filter-chips-bar";
+    container.setAttribute("role", "region");
+    container.setAttribute("aria-label", "Active filters");
+
+    const chipsHtml = entries
+      .map(([key, val]) => {
+        const formattedKey = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        return `
+        <span class="filter-chip" role="status">
+          <span>${formattedKey}: <strong>${val}</strong></span>
+          <button type="button" class="filter-chip-remove" data-filter-key="${key}" aria-label="Remove ${formattedKey} filter">&times;</button>
+        </span>
+      `;
+      })
+      .join("");
+
+    container.innerHTML = `
+      <span style="font-weight:600; color:var(--text2); display:inline-flex; align-items:center; gap:4px;">
+        <i class="fa-solid fa-filter"></i> Filters:
+      </span>
+      ${chipsHtml}
+      <button type="button" class="btn-clear-filters" id="${container.id}_clearAll" aria-label="Clear all filters">Clear all</button>
+    `;
+
+    container.querySelectorAll(".filter-chip-remove").forEach((btn) => {
+      btn.onclick = () => {
+        if (typeof onRemove === "function") {
+          onRemove(btn.dataset.filterKey);
+        }
+      };
+    });
+
+    const clearBtn = container.querySelector(".btn-clear-filters");
+    if (clearBtn && typeof onClearAll === "function") {
+      clearBtn.onclick = () => {
+        onClearAll();
+      };
+    }
+  },
+};
+window.FinanceTable = FinanceTable;
+

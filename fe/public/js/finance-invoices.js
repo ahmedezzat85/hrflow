@@ -1,22 +1,118 @@
 // ==========================================
 // 2. Sales Invoices
 // ==========================================
+let _invoiceTableInitialized = false;
+
 async function loadFinanceInvoices() {
   const bar = document.getElementById("financeInvoicesLoadingBar");
   if (bar) bar.style.display = "block";
 
   try {
+    const cachedState = FinanceTable.getState("finance_invoices");
     const statusFilter = document.getElementById("financeInvoiceStatusFilter");
+    const searchInput = document.getElementById("financeInvoiceSearch");
+
+    if (!_invoiceTableInitialized) {
+      if (cachedState.filters?.status && statusFilter) {
+        statusFilter.value = cachedState.filters.status;
+      }
+      if (cachedState.filters?.search && searchInput) {
+        searchInput.value = cachedState.filters.search;
+      }
+      _invoiceTableInitialized = true;
+    }
+
     const params = {};
     if (statusFilter && statusFilter.value) params.status = statusFilter.value;
     const items = await FinanceApi.getInvoices(Object.keys(params).length ? params : undefined);
-    FinanceState.invoices = items;
-    renderFinanceInvoices(items);
+    FinanceState.invoices = items || [];
+    applyAndRenderInvoices();
   } catch (err) {
     console.error("Failed to load finance invoices:", err);
   } finally {
     if (bar) bar.style.display = "none";
   }
+}
+
+function applyAndRenderInvoices() {
+  const state = FinanceTable.getState("finance_invoices");
+  const statusFilter = document.getElementById("financeInvoiceStatusFilter");
+  const searchInput = document.getElementById("financeInvoiceSearch");
+
+  const currentStatus = statusFilter ? statusFilter.value : "";
+  const currentSearch = searchInput ? searchInput.value.trim() : "";
+
+  state.filters = {
+    ...(currentStatus ? { status: currentStatus } : {}),
+    ...(currentSearch ? { search: currentSearch } : {}),
+  };
+
+  let items = FinanceState.invoices || [];
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    items = items.filter(
+      (inv) =>
+        (inv.invoice_number && inv.invoice_number.toLowerCase().includes(q)) ||
+        (inv.customer_name && inv.customer_name.toLowerCase().includes(q))
+    );
+  }
+
+  if (state.sortBy) {
+    items = FinanceTable.sortItems(items, state.sortBy, state.sortDir);
+  }
+
+  const meta = FinanceTable.paginate(items, state.page, state.pageSize);
+  state.page = meta.page;
+  state.pageSize = meta.pageSize;
+  FinanceTable.saveState("finance_invoices", state);
+
+  renderFinanceInvoices(meta.items, items.length);
+
+  FinanceTable.renderDensityControl("financeInvoiceDensityControl");
+
+  FinanceTable.bindSortHeaders("financeInvoicesTable", (col, dir) => {
+    state.sortBy = col;
+    state.sortDir = dir;
+    FinanceTable.saveState("finance_invoices", state);
+    applyAndRenderInvoices();
+  }, { sortBy: state.sortBy, sortDir: state.sortDir });
+
+  FinanceTable.renderFilterChips(
+    "financeInvoiceFilterChips",
+    state.filters,
+    (removedKey) => {
+      if (removedKey === "status" && statusFilter) {
+        statusFilter.value = "";
+        loadFinanceInvoices();
+      } else if (removedKey === "search" && searchInput) {
+        searchInput.value = "";
+        applyAndRenderInvoices();
+      }
+    },
+    () => {
+      if (statusFilter) statusFilter.value = "";
+      if (searchInput) searchInput.value = "";
+      loadFinanceInvoices();
+    }
+  );
+
+  FinanceTable.renderPagination(
+    "financeInvoicesPagination",
+    meta,
+    (newPage) => {
+      state.page = newPage;
+      FinanceTable.saveState("finance_invoices", state);
+      applyAndRenderInvoices();
+    },
+    (newSize) => {
+      state.pageSize = newSize;
+      state.page = 1;
+      FinanceTable.saveState("finance_invoices", state);
+      applyAndRenderInvoices();
+    }
+  );
+
+  FinanceTable.initAllTablesDensity();
 }
 
 function _invoiceStatusBadge(status) {
@@ -35,14 +131,16 @@ function _revenueChannelLabel(channel) {
   return map[channel] || channel || "";
 }
 
-function renderFinanceInvoices(items) {
+function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) {
   const tbody = document.getElementById("financeInvoicesTableBody");
   const empty = document.getElementById("financeInvoicesEmpty");
+  const pagination = document.getElementById("financeInvoicesPagination");
   if (!tbody) return;
 
   if (!items || items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (pagination && totalFiltered === 0) pagination.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
@@ -64,7 +162,7 @@ function renderFinanceInvoices(items) {
 
         const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
         return `
-    <tr>
+    <tr data-record-id="${inv.id}">
       <td><strong>${inv.invoice_number}</strong>${discrepancyBadge}</td>
       <td>${inv.customer_name || "—"}</td>
       <td>${routeDisplay}</td>
@@ -85,13 +183,10 @@ function renderFinanceInvoices(items) {
 }
 
 function filterFinanceInvoices(query) {
-  const q = (query || "").toLowerCase();
-  const filtered = (FinanceState.invoices || []).filter(
-    (inv) =>
-      inv.invoice_number.toLowerCase().includes(q) ||
-      (inv.customer_name || "").toLowerCase().includes(q)
-  );
-  renderFinanceInvoices(filtered);
+  const state = FinanceTable.getState("finance_invoices");
+  state.page = 1;
+  FinanceTable.saveState("finance_invoices", state);
+  applyAndRenderInvoices();
 }
 
 // ── Invoice Modal ────────────────────────────────────────────────────────────

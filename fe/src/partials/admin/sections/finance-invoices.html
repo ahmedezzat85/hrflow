@@ -22,6 +22,7 @@
                 <option value="overdue">Overdue</option>
                 <option value="void">Void</option>
               </select>
+              <div id="financeInvoiceDensityControl"></div>
             </div>
             <div style="display: flex; gap: 8px;">
               <button class="btn btn-outline" id="financeAddCustomerBtn" onclick="openAddCustomerModal()" style="display:none;"><i class="fa-solid fa-user-plus"></i> Add Customer</button>
@@ -32,16 +33,17 @@
           <!-- 1. Invoices Sub-View -->
           <div class="card" id="financeInvoicesContainer">
             <div class="section-loading-bar" id="financeInvoicesLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
+            <div id="financeInvoiceFilterChips" style="display: none;"></div>
+            <table class="responsive-card-table" id="financeInvoicesTable">
               <thead>
                 <tr>
-                  <th>Invoice #</th>
-                  <th>Customer</th>
+                  <th data-sort="invoice_number">Invoice #</th>
+                  <th data-sort="customer_name">Customer</th>
                   <th>Route / Channel</th>
-                  <th>Issue Date</th>
-                  <th>Due Date</th>
-                  <th class="cell-money">Total</th>
-                  <th>Status</th>
+                  <th data-sort="issue_date">Issue Date</th>
+                  <th data-sort="due_date">Due Date</th>
+                  <th class="cell-money" data-sort="total">Total</th>
+                  <th data-sort="status">Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -51,19 +53,21 @@
               <i class="fa-solid fa-file-invoice"></i>
               <p>No sales invoices recorded yet.</p>
             </div>
+            <div id="financeInvoicesPagination" class="pagination-bar" style="display: none;"></div>
           </div>
 
           <!-- 2. Customers Sub-View -->
           <div class="card" id="financeCustomersContainer" style="display: none;">
             <div class="section-loading-bar" id="financeCustomersLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
+            <div id="financeCustomerFilterChips" style="display: none;"></div>
+            <table class="responsive-card-table" id="financeCustomersTable">
               <thead>
                 <tr>
-                  <th>Customer / Company Name</th>
-                  <th>Billing Email</th>
-                  <th>Phone</th>
-                  <th>Tax ID</th>
-                  <th>Status</th>
+                  <th data-sort="name">Customer / Company Name</th>
+                  <th data-sort="email">Billing Email</th>
+                  <th data-sort="phone">Phone</th>
+                  <th data-sort="tax_id">Tax ID</th>
+                  <th data-sort="status">Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -73,5 +77,6 @@
               <i class="fa-solid fa-users"></i>
               <p>No customers recorded yet. Click "Add Customer" to create one.</p>
             </div>
+            <div id="financeCustomersPagination" class="pagination-bar" style="display: none;"></div>
           </div>
         </section>

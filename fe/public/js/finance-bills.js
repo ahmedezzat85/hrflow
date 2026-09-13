@@ -6,19 +6,32 @@ function _billStatusBadge(status) {
   return (FinanceFormat.STATUS_MAP.bill[norm]?.badgeClass) || "badge-pending";
 }
 
+let _billTableInitialized = false;
+
 async function loadFinanceBills() {
   const bar = document.getElementById("financeBillsLoadingBar");
   if (bar) bar.style.display = "block";
 
   try {
+    const cachedState = FinanceTable.getState("finance_bills");
     const statusFilter = document.getElementById("financeBillStatusFilter");
     const searchInput = document.getElementById("financeBillSearch");
+
+    if (!_billTableInitialized) {
+      if (cachedState.filters?.status && statusFilter) {
+        statusFilter.value = cachedState.filters.status;
+      }
+      if (cachedState.filters?.search && searchInput) {
+        searchInput.value = cachedState.filters.search;
+      }
+      _billTableInitialized = true;
+    }
+
     const params = {};
     if (statusFilter && statusFilter.value) params.status = statusFilter.value;
-    if (searchInput && searchInput.value.trim()) params.search = searchInput.value.trim();
     const items = await FinanceApi.getBills(Object.keys(params).length ? params : undefined);
     FinanceState.bills = items || [];
-    renderFinanceBills(FinanceState.bills);
+    applyAndRenderBills();
   } catch (err) {
     console.error("Failed to load vendor bills:", err);
     showToast(err.message || "Failed to load bills", "error");
@@ -27,14 +40,97 @@ async function loadFinanceBills() {
   }
 }
 
-function renderFinanceBills(items) {
+function applyAndRenderBills() {
+  const state = FinanceTable.getState("finance_bills");
+  const statusFilter = document.getElementById("financeBillStatusFilter");
+  const searchInput = document.getElementById("financeBillSearch");
+
+  const currentStatus = statusFilter ? statusFilter.value : "";
+  const currentSearch = searchInput ? searchInput.value.trim() : "";
+
+  state.filters = {
+    ...(currentStatus ? { status: currentStatus } : {}),
+    ...(currentSearch ? { search: currentSearch } : {}),
+  };
+
+  let items = FinanceState.bills || [];
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    items = items.filter((bill) =>
+      (bill.bill_number && bill.bill_number.toLowerCase().includes(q)) ||
+      (bill.vendor_name && bill.vendor_name.toLowerCase().includes(q)) ||
+      (bill.category && bill.category.toLowerCase().includes(q))
+    );
+  }
+
+  if (state.sortBy) {
+    items = FinanceTable.sortItems(items, state.sortBy, state.sortDir);
+  }
+
+  const meta = FinanceTable.paginate(items, state.page, state.pageSize);
+  state.page = meta.page;
+  state.pageSize = meta.pageSize;
+  FinanceTable.saveState("finance_bills", state);
+
+  renderFinanceBills(meta.items, items.length);
+
+  FinanceTable.renderDensityControl("financeBillDensityControl");
+
+  FinanceTable.bindSortHeaders("financeBillsTable", (col, dir) => {
+    state.sortBy = col;
+    state.sortDir = dir;
+    FinanceTable.saveState("finance_bills", state);
+    applyAndRenderBills();
+  }, { sortBy: state.sortBy, sortDir: state.sortDir });
+
+  FinanceTable.renderFilterChips(
+    "financeBillFilterChips",
+    state.filters,
+    (removedKey) => {
+      if (removedKey === "status" && statusFilter) {
+        statusFilter.value = "";
+        loadFinanceBills();
+      } else if (removedKey === "search" && searchInput) {
+        searchInput.value = "";
+        applyAndRenderBills();
+      }
+    },
+    () => {
+      if (statusFilter) statusFilter.value = "";
+      if (searchInput) searchInput.value = "";
+      loadFinanceBills();
+    }
+  );
+
+  FinanceTable.renderPagination(
+    "financeBillsPagination",
+    meta,
+    (newPage) => {
+      state.page = newPage;
+      FinanceTable.saveState("finance_bills", state);
+      applyAndRenderBills();
+    },
+    (newSize) => {
+      state.pageSize = newSize;
+      state.page = 1;
+      FinanceTable.saveState("finance_bills", state);
+      applyAndRenderBills();
+    }
+  );
+
+  FinanceTable.initAllTablesDensity();
+}
+
+function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
   const tbody = document.getElementById("financeBillsTableBody");
   const empty = document.getElementById("financeBillsEmpty");
+  const pagination = document.getElementById("financeBillsPagination");
   if (!tbody) return;
 
   if (!items || items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (pagination && totalFiltered === 0) pagination.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
@@ -42,7 +138,7 @@ function renderFinanceBills(items) {
   tbody.innerHTML = items.map((bill) => {
     const derivedStatus = FinanceFormat.getDerivedBillStatus(bill);
     return `
-    <tr>
+    <tr data-record-id="${bill.id}">
       <td><strong>${bill.bill_number}</strong></td>
       <td>${bill.vendor_name || "—"}</td>
       <td><span class="badge badge-info">${bill.category || "General"}</span></td>
@@ -61,17 +157,10 @@ function renderFinanceBills(items) {
 }
 
 function filterFinanceBills(query) {
-  const q = (query || "").trim().toLowerCase();
-  if (!q) {
-    loadFinanceBills();
-    return;
-  }
-  const filtered = (FinanceState.bills || []).filter((bill) =>
-    (bill.bill_number || "").toLowerCase().includes(q) ||
-    (bill.vendor_name || "").toLowerCase().includes(q) ||
-    (bill.category || "").toLowerCase().includes(q)
-  );
-  renderFinanceBills(filtered);
+  const state = FinanceTable.getState("finance_bills");
+  state.page = 1;
+  FinanceTable.saveState("finance_bills", state);
+  applyAndRenderBills();
 }
 
 async function _populateBillVendorDropdown() {
