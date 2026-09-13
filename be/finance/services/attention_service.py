@@ -448,6 +448,94 @@ class AttentionQueueService:
                 )
 
         # ----------------------------------------------------
+        # Domain 8: Subscriptions & Recurring Spend (Story 4.4)
+        # ----------------------------------------------------
+        can_subscriptions = is_admin or "finance.subscription.read" in user_permissions
+        if can_subscriptions:
+            from finance.models import SubscriptionDB
+            from datetime import timedelta
+            active_subs = (
+                self.db.query(SubscriptionDB)
+                .filter(SubscriptionDB.is_active == True)
+                .all()
+            )
+            for sub in active_subs:
+                # 1. Renewal deadline approaching
+                if sub.next_renewal_date:
+                    try:
+                        ren_dt = datetime.strptime(sub.next_renewal_date, "%Y-%m-%d").date()
+                        notice_days = sub.notice_period_days if sub.notice_period_days is not None else 30
+                        notice_dt = ren_dt - timedelta(days=notice_days)
+                        if today >= notice_dt:
+                            key = f"subscription:{sub.id}:renewal_due"
+                            is_rev = key in reviewed_dict
+                            if include_reviewed or not is_rev:
+                                days_left = (ren_dt - today).days
+                                sev = "urgent" if days_left <= 7 else "warning"
+                                raw_items.append(
+                                    AttentionItem(
+                                        id=f"sub-ren-{sub.id}",
+                                        deduplication_key=key,
+                                        type="subscription_renewal",
+                                        severity=sev,
+                                        severity_label="Urgent" if sev == "urgent" else "Warning",
+                                        title=f"Renewal Notice: {sub.name}",
+                                        description=f"Subscription '{sub.name}' renews on {sub.next_renewal_date} ({days_left} days left). Notice deadline {notice_dt.strftime('%Y-%m-%d')} reached.",
+                                        counterparty=sub.vendor.name if sub.vendor else "Vendor",
+                                        amount=sub.amount,
+                                        currency=sub.currency,
+                                        due_date=sub.next_renewal_date,
+                                        due_state="overdue" if days_left < 0 else "due_soon",
+                                        due_state_label=f"Renews in {days_left}d",
+                                        owner=sub.owner,
+                                        target_route="a-finance-subscriptions",
+                                        target_id=sub.id,
+                                        target_filter={"subscription_id": sub.id},
+                                        permission="finance.subscription.read",
+                                        priority_score=80 if sev == "urgent" else 60,
+                                        can_resolve=True,
+                                        can_mark_reviewed=True,
+                                        is_reviewed=is_rev,
+                                        created_at=sub.created_at.isoformat() if sub.created_at else None,
+                                    )
+                                )
+                    except Exception:
+                        pass
+
+                # 2. Missing owner alert
+                if not sub.owner:
+                    key = f"subscription:{sub.id}:missing_owner"
+                    is_rev = key in reviewed_dict
+                    if include_reviewed or not is_rev:
+                        raw_items.append(
+                            AttentionItem(
+                                id=f"sub-owner-{sub.id}",
+                                deduplication_key=key,
+                                type="subscription_governance",
+                                severity="info",
+                                severity_label="Info",
+                                title=f"Missing Owner: {sub.name}",
+                                description=f"Subscription '{sub.name}' does not have an assigned DRI/owner.",
+                                counterparty=sub.vendor.name if sub.vendor else "Vendor",
+                                amount=sub.amount,
+                                currency=sub.currency,
+                                due_date=today_str,
+                                due_state="immediate",
+                                due_state_label="Unassigned",
+                                owner=None,
+                                target_route="a-finance-subscriptions",
+                                target_id=sub.id,
+                                target_filter={"subscription_id": sub.id},
+                                permission="finance.subscription.read",
+                                priority_score=40,
+                                can_resolve=True,
+                                can_mark_reviewed=True,
+                                is_reviewed=is_rev,
+                                created_at=sub.created_at.isoformat() if sub.created_at else None,
+                            )
+                        )
+
+        # ----------------------------------------------------
         # Filtering & Deterministic Priority Ordering
         # ----------------------------------------------------
         filtered: List[AttentionItem] = []

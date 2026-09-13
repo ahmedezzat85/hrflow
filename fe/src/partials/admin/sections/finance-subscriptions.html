@@ -93,6 +93,36 @@
                       <label for="subNextRenewal">Next Renewal Date <span class="req">*</span></label>
                       <input type="date" id="subNextRenewal" required>
                     </div>
+                    <div class="form-field">
+                      <label for="subOwner">Contract Owner / DRI</label>
+                      <input type="text" id="subOwner" placeholder="e.g. Sarah Connor, Tech Lead">
+                    </div>
+                    <div class="form-field">
+                      <label for="subDepartment">Department</label>
+                      <select id="subDepartment" class="filter-select">
+                        <option value="Engineering">Engineering</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Clinical">Clinical</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Finance">Finance</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subNoticeDays">Notice Period (Days)</label>
+                      <input type="number" id="subNoticeDays" value="30" min="0" placeholder="30">
+                    </div>
+                    <div class="form-field">
+                      <label for="subSeats">Seats / Licenses</label>
+                      <input type="number" id="subSeats" min="1" placeholder="e.g. 40">
+                    </div>
+                    <div class="form-field">
+                      <label for="subContractStart">Contract Start Date</label>
+                      <input type="date" id="subContractStart">
+                    </div>
+                    <div class="form-field">
+                      <label for="subContractEnd">Contract End Date</label>
+                      <input type="date" id="subContractEnd">
+                    </div>
                     <div class="form-field full">
                       <div class="toggle-row">
                         <div>
@@ -100,7 +130,7 @@
                           <div class="t-sub">Automatically queue an accounts payable bill on each renewal date</div>
                         </div>
                         <label class="switch">
-                          <input type="checkbox" id="subAutoBill" checked>
+                          <input type="checkbox" id="subAutoBill">
                           <span class="slider"></span>
                         </label>
                       </div>
@@ -133,7 +163,7 @@
                   <div class="form-grid">
                     <div class="form-field">
                       <label for="chargeAmount">Charged Amount <span class="req">*</span></label>
-                      <input type="number" id="chargeAmount" step="0.01" min="0.01" placeholder="0.00" required>
+                      <input type="number" id="chargeAmount" step="0.01" min="0.01" placeholder="0.00" required oninput="onChargeAmountInput()">
                     </div>
                     <div class="form-field">
                       <label for="chargeCurrency">Currency</label>
@@ -153,6 +183,25 @@
                       <select id="chargeBankAccountId" class="filter-select">
                         <option value="">— Don't record ledger outflow —</option>
                       </select>
+                    </div>
+                    <div class="form-field full">
+                      <div class="toggle-row">
+                        <div>
+                          <div class="t-label">Link or Create Payable Bill</div>
+                          <div class="t-sub">Automatically records a matched Vendor Bill in AP queue</div>
+                        </div>
+                        <label class="switch">
+                          <input type="checkbox" id="chargeCreateBill" checked>
+                          <span class="slider"></span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="form-field full" id="chargeVarianceGroup" style="display:none;">
+                      <div class="alert alert-warning" style="margin-bottom:8px; padding:8px 12px; font-size:0.85rem;" id="chargeVarianceAlert">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Amount differs from base expected rate.
+                      </div>
+                      <label for="chargeVarianceReason">Variance Explanation</label>
+                      <input type="text" id="chargeVarianceReason" placeholder="e.g. Extra compute overage, addition of 5 seats">
                     </div>
                     <div class="form-field full">
                       <label for="chargeFile">Receipt / Invoice File <span class="opt">(Private Accounting Storage)</span></label>

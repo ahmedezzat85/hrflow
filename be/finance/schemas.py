@@ -780,7 +780,15 @@ class SubscriptionBase(BaseModel):
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
     billing_cycle: str = Field("monthly", description="monthly | quarterly | yearly")
     next_renewal_date: str = Field(..., description="Next renewal / billing date (YYYY-MM-DD)")
-    auto_generate_bill: bool = Field(True, description="Whether to auto-generate vendor bills")
+    contract_start_date: Optional[str] = Field(None, description="Contract start date (YYYY-MM-DD)")
+    contract_end_date: Optional[str] = Field(None, description="Contract end date (YYYY-MM-DD)")
+    notice_period_days: Optional[int] = Field(30, ge=0, description="Notice period for renewal/cancellation in days")
+    owner: Optional[str] = Field(None, max_length=255, description="Owner / DRI for this tool or contract")
+    department: Optional[str] = Field(None, max_length=100, description="Department (Engineering, Operations, etc.)")
+    payment_method: Optional[str] = Field("card", description="Payment method: card | bank_transfer | other")
+    payment_account_id: Optional[int] = Field(None, description="Linked bank/card account for charges")
+    seats_count: Optional[int] = Field(None, ge=0, description="Allocated user seats / licenses count")
+    auto_generate_bill: bool = Field(False, description="Whether to auto-generate vendor bills on renewal")
     is_active: bool = Field(True, description="Whether subscription is currently active")
 
 
@@ -795,6 +803,14 @@ class SubscriptionUpdate(BaseModel):
     currency: Optional[str] = None
     billing_cycle: Optional[str] = None
     next_renewal_date: Optional[str] = None
+    contract_start_date: Optional[str] = None
+    contract_end_date: Optional[str] = None
+    notice_period_days: Optional[int] = None
+    owner: Optional[str] = None
+    department: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_account_id: Optional[int] = None
+    seats_count: Optional[int] = None
     auto_generate_bill: Optional[bool] = None
     is_active: Optional[bool] = None
 
@@ -802,6 +818,9 @@ class SubscriptionUpdate(BaseModel):
 class SubscriptionResponse(SubscriptionBase):
     id: int
     vendor_name: Optional[str] = None
+    monthly_equivalent_amount: float = 0.0
+    notice_deadline_date: Optional[str] = None
+    is_renewal_imminent: bool = False
     created_at: Optional[datetime] = None
     charges_count: int = 0
     last_charge_date: Optional[str] = None
@@ -816,6 +835,8 @@ class SubscriptionChargeBase(BaseModel):
     billing_date: str = Field(..., description="Date of charge (YYYY-MM-DD)")
     amount: float = Field(..., gt=0.0, description="Actual amount charged")
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
+    create_bill: bool = Field(False, description="Whether to also create a matched vendor bill")
+    variance_reason: Optional[str] = Field(None, description="Explanation if charged amount differs from base expected rate")
     note: Optional[str] = Field("", description="Usage notes or invoice memo")
 
 
@@ -828,6 +849,9 @@ class SubscriptionChargeResponse(SubscriptionChargeBase):
     subscription_name: Optional[str] = None
     vendor_name: Optional[str] = None
     linked_transaction_id: Optional[int] = None
+    linked_bill_id: Optional[int] = None
+    variance_amount: float = 0.0
+    variance_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
     attachments: List[FinanceAttachmentResponse] = []

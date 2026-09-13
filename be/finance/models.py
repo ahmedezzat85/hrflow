@@ -360,11 +360,21 @@ class SubscriptionDB(Base):
     currency = Column(String(10), default="USD", nullable=False)
     billing_cycle = Column(String(20), default="monthly")  # monthly/quarterly/yearly
     next_renewal_date = Column(String(20), nullable=False)
-    auto_generate_bill = Column(Boolean, default=True)
+    contract_start_date = Column(String(20), nullable=True)
+    contract_end_date = Column(String(20), nullable=True)
+    notice_period_days = Column(Integer, default=30, nullable=False)
+    owner = Column(String(255), nullable=True)
+    department = Column(String(100), nullable=True)
+    payment_method = Column(String(50), default="card", nullable=True)
+    payment_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    seats_count = Column(Integer, nullable=True)
+    monthly_equivalent_amount = Column(Float, nullable=True)
+    auto_generate_bill = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="subscriptions")
+    payment_account = relationship("FinanceBankAccountDB")
     charges = relationship("SubscriptionChargeDB", back_populates="subscription", cascade="all, delete-orphan")
 
 
@@ -377,12 +387,16 @@ class SubscriptionChargeDB(Base):
     amount = Column(Float, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     linked_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True, index=True)
+    linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
+    variance_amount = Column(Float, default=0.0, nullable=False)
+    variance_reason = Column(String(255), nullable=True)
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
 
     subscription = relationship("SubscriptionDB", back_populates="charges")
     linked_transaction = relationship("LedgerTransactionDB")
+    linked_bill = relationship("BillDB")
     attachments = relationship("FinanceAttachmentDB", back_populates="subscription_charge", cascade="all, delete-orphan")
 
 

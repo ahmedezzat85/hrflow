@@ -53,7 +53,11 @@ class SubscriptionsService:
             billing_date=charge.billing_date,
             amount=charge.amount,
             currency=charge.currency,
+            create_bill=bool(charge.linked_bill_id),
             linked_transaction_id=charge.linked_transaction_id,
+            linked_bill_id=charge.linked_bill_id,
+            variance_amount=charge.variance_amount or 0.0,
+            variance_reason=charge.variance_reason,
             note=charge.note or "",
             created_at=charge.created_at,
             created_by=charge.created_by,
@@ -61,12 +65,27 @@ class SubscriptionsService:
         )
 
     def _sub_to_response(self, sub: SubscriptionDB) -> SubscriptionResponse:
+        from datetime import datetime, timedelta
         vendor_name = sub.vendor.name if sub.vendor else None
         charges = sub.charges or []
         last_charge = None
         if charges:
             sorted_charges = sorted(charges, key=lambda c: c.billing_date, reverse=True)
             last_charge = sorted_charges[0]
+
+        # Calculate notice deadline date
+        notice_deadline_str = None
+        is_renewal_imminent = False
+        try:
+            renewal_dt = datetime.strptime(sub.next_renewal_date, "%Y-%m-%d").date()
+            notice_days = sub.notice_period_days if sub.notice_period_days is not None else 30
+            notice_dt = renewal_dt - timedelta(days=notice_days)
+            notice_deadline_str = notice_dt.strftime("%Y-%m-%d")
+            today = datetime.utcnow().date()
+            if today >= notice_dt and today <= renewal_dt:
+                is_renewal_imminent = True
+        except Exception:
+            pass
 
         return SubscriptionResponse(
             id=sub.id,
@@ -77,6 +96,17 @@ class SubscriptionsService:
             currency=sub.currency,
             billing_cycle=sub.billing_cycle,
             next_renewal_date=sub.next_renewal_date,
+            contract_start_date=sub.contract_start_date,
+            contract_end_date=sub.contract_end_date,
+            notice_period_days=sub.notice_period_days,
+            owner=sub.owner,
+            department=sub.department,
+            payment_method=sub.payment_method,
+            payment_account_id=sub.payment_account_id,
+            seats_count=sub.seats_count,
+            monthly_equivalent_amount=sub.monthly_equivalent_amount or round(sub.amount / 12.0 if sub.billing_cycle == 'yearly' else sub.amount, 2),
+            notice_deadline_date=notice_deadline_str,
+            is_renewal_imminent=is_renewal_imminent,
             auto_generate_bill=sub.auto_generate_bill,
             is_active=sub.is_active,
             created_at=sub.created_at,
