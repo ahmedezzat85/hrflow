@@ -149,7 +149,7 @@ class BillsService:
         updated = self.repo.update(bill_id, data, lines_data)
         return self._bill_to_response(updated)
 
-    def void_bill(self, bill_id: int) -> BillResponse:
+    def void_bill(self, bill_id: int, reason: Optional[str] = None) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
@@ -157,6 +157,11 @@ class BillsService:
             raise HTTPException(status_code=400, detail="Bill is already voided")
         if bill.status == "paid":
             raise HTTPException(status_code=400, detail="Cannot void a paid bill. Record a vendor credit instead.")
+
+        if reason and reason.strip():
+            existing_notes = bill.notes or ""
+            updated_notes = f"{existing_notes}\n[Void reason: {reason.strip()}]".strip()
+            self.repo.update(bill_id, {"notes": updated_notes})
 
         voided = self.repo.void_bill(bill_id)
         return self._bill_to_response(voided)

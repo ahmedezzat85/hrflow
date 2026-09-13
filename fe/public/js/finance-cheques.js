@@ -123,14 +123,34 @@ async function updateChequeStatusAction(chequeId, newStatus) {
   let clearDate = null;
   if (newStatus === "cleared") {
     clearDate = new Date().toISOString().split("T")[0];
-  } else if (newStatus === "bounced") {
-    if (!confirm("Are you sure you want to mark this cheque as Bounced? Any linked continuous ledger transactions will be automatically reversed and balances restored.")) {
-      return;
-    }
+  }
+  const chq = (FinanceState.cheques || []).find((c) => c.id === parseInt(chequeId, 10));
+  const chqSummary = chq
+    ? `<strong>Cheque #${chq.cheque_number}</strong> · ${chq.payee} · ${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}`
+    : `Cheque #${chequeId}`;
+
+  if (newStatus === "bounced") {
+    const res = await FinanceCommand.confirmAction({
+      title: "Mark Cheque as Bounced",
+      summary: chqSummary,
+      consequence: "Marking this cheque as Bounced will automatically generate continuous ledger reversal entries and restore account balances.",
+      actionLabel: "Confirm Bounced",
+      actionClass: "btn btn-danger",
+      requireReason: true,
+      severity: "danger",
+    });
+    if (!res.confirmed) return;
   } else if (newStatus === "voided") {
-    if (!confirm("Are you sure you want to void this cheque? Any linked continuous ledger transactions will be automatically reversed and balances restored.")) {
-      return;
-    }
+    const res = await FinanceCommand.confirmAction({
+      title: "Void Cheque",
+      summary: chqSummary,
+      consequence: "Voiding will permanently void this cheque. Any linked continuous ledger transactions will be automatically reversed and balances restored.",
+      actionLabel: "Void Cheque",
+      actionClass: "btn btn-danger",
+      requireReason: true,
+      severity: "danger",
+    });
+    if (!res.confirmed) return;
   }
 
   try {

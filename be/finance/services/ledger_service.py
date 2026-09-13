@@ -242,7 +242,7 @@ class LedgerService:
                 detail=str(e),
             )
 
-    def delete_manual_transaction(self, tx_id: int) -> dict:
+    def delete_manual_transaction(self, tx_id: int, reason: Optional[str] = None) -> dict:
         tx = self.repo.get_by_id(tx_id)
         if not tx:
             raise HTTPException(
@@ -256,9 +256,15 @@ class LedgerService:
                 detail=f"Only manual transactions can be deleted. Transaction source is '{tx.source}'.",
             )
 
+        if getattr(tx, "linked_invoice_id", None) or getattr(tx, "linked_bill_id", None) or getattr(tx, "linked_transfer_id", None) or getattr(tx, "linked_cheque_id", None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete transaction {tx_id}: it is linked to a posted financial document.",
+            )
+
         try:
             self.repo.delete_transaction(tx_id)
-            return {"message": "Transaction deleted successfully", "id": tx_id}
+            return {"message": "Transaction deleted successfully", "id": tx_id, "reason": reason or ""}
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

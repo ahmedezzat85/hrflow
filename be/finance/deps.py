@@ -2,7 +2,8 @@
 be/finance/deps.py
 Dependency injection providers for Finance repositories and services.
 """
-from fastapi import Depends
+from typing import Optional
+from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -145,6 +146,17 @@ def get_statements_service(repo=Depends(get_statements_repo)):
 def get_reports_service(db: Session = Depends(get_db)):
     from finance.services.reports_service import ReportsService
     return ReportsService(db)
+
+
+def get_idempotency_service():
+    from finance.services.idempotency import idempotency_service
+    return idempotency_service
+
+
+def get_idempotency_key(
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+) -> Optional[str]:
+    return idempotency_key
 
 
 

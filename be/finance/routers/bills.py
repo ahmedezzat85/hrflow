@@ -17,7 +17,8 @@ from finance.schemas import (
     PaymentResponse,
 )
 from finance.services.bills_service import BillsService
-from finance.deps import get_bills_service
+from finance.deps import get_bills_service, get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/bills", tags=["Finance - Vendor Bills"])
 
@@ -53,9 +54,17 @@ def create_vendor_bill(
     payload: BillCreate,
     current_user: dict = Depends(require_permission("finance.bill.write")),
     service: BillsService = Depends(get_bills_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Create a new vendor bill with optional line items."""
-    return service.create_bill(payload)
+    user_email = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path="/api/finance/bills:create",
+        operation_fn=lambda: service.create_bill(payload),
+    )
 
 
 @router.put("/{bill_id}", response_model=BillResponse)
@@ -72,11 +81,12 @@ def update_vendor_bill(
 @router.delete("/{bill_id}", response_model=BillResponse)
 def void_vendor_bill(
     bill_id: int,
+    reason: Optional[str] = Query(None, description="Reason for voiding the bill"),
     current_user: dict = Depends(require_permission("finance.bill.write")),
     service: BillsService = Depends(get_bills_service),
 ):
     """Void a bill (irreversible soft-delete via status change)."""
-    return service.void_bill(bill_id)
+    return service.void_bill(bill_id, reason=reason)
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────
@@ -101,10 +111,18 @@ def record_bill_payment(
     payload: PaymentCreate,
     current_user: dict = Depends(require_permission("finance.bill.write")),
     service: BillsService = Depends(get_bills_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Record an outgoing payment against a vendor bill.
     Automatically adjusts the bank account balance and marks the bill
     as 'paid' once total payments >= bill total.
     """
-    return service.record_payment(bill_id, payload)
+    user_email = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path=f"/api/finance/bills:{bill_id}:payments",
+        operation_fn=lambda: service.record_payment(bill_id, payload),
+    )

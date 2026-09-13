@@ -17,7 +17,8 @@ from finance.schemas import (
     PaymentResponse,
 )
 from finance.services.invoices_service import InvoicesService
-from finance.deps import get_invoices_service
+from finance.deps import get_invoices_service, get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/invoices", tags=["Finance - Sales Invoices"])
 
@@ -53,9 +54,17 @@ def create_sales_invoice(
     payload: SalesInvoiceCreate,
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Create a new sales invoice with optional line items."""
-    return service.create_invoice(payload)
+    user_email = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path="/api/finance/invoices:create",
+        operation_fn=lambda: service.create_invoice(payload),
+    )
 
 
 @router.put("/{invoice_id}", response_model=SalesInvoiceResponse)
@@ -72,11 +81,12 @@ def update_sales_invoice(
 @router.delete("/{invoice_id}", response_model=SalesInvoiceResponse)
 def void_sales_invoice(
     invoice_id: int,
+    reason: Optional[str] = Query(None, description="Reason for voiding the invoice"),
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
 ):
     """Void an invoice (irreversible soft-delete via status change)."""
-    return service.void_invoice(invoice_id)
+    return service.void_invoice(invoice_id, reason=reason)
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────
@@ -101,10 +111,18 @@ def record_invoice_payment(
     payload: PaymentCreate,
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Record an incoming payment against a sales invoice.
     Automatically adjusts the bank account balance and marks the invoice
     as 'paid' once total payments >= invoice total.
     """
-    return service.record_payment(invoice_id, payload)
+    user_email = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path=f"/api/finance/invoices:{invoice_id}:payments",
+        operation_fn=lambda: service.record_payment(invoice_id, payload),
+    )

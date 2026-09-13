@@ -261,10 +261,25 @@ async function saveInvoiceModal() {
 }
 
 async function confirmVoidInvoice(invoiceId) {
-  if (!confirm("Void this invoice? This cannot be undone.")) return;
+  const inv = (FinanceState.invoices || []).find((i) => i.id === parseInt(invoiceId, 10));
+  const invSummary = inv
+    ? `<strong>${inv.invoice_number}</strong> · ${inv.customer_name || "Customer"} · ${FinanceFormat.renderMoneyHtml(inv.total || 0, inv.currency || "USD")}`
+    : `Invoice #${invoiceId}`;
+
+  const result = await FinanceCommand.confirmAction({
+    title: "Void Sales Invoice",
+    summary: invSummary,
+    consequence: "Voiding will mark this invoice as void and cancel pending receivables. This cannot be undone.",
+    actionLabel: "Void Invoice",
+    actionClass: "btn btn-danger",
+    requireReason: true,
+    severity: "danger",
+  });
+  if (!result.confirmed) return;
+
   try {
-    await FinanceApi.voidInvoice(invoiceId);
-    showToast("Invoice voided", "success");
+    await FinanceApi.voidInvoice(invoiceId, result.reason);
+    showToast("Invoice voided successfully", "success");
     loadFinanceInvoices();
   } catch (err) {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
@@ -521,8 +536,22 @@ async function saveCustomer() {
 }
 
 async function toggleCustomerActive(id, currentlyActive) {
+  const cust = (FinanceState.customers || []).find((c) => c.id === parseInt(id, 10));
   const action = currentlyActive ? "deactivate" : "activate";
-  if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
+
+  const result = await FinanceCommand.confirmAction({
+    title: `${currentlyActive ? "Deactivate" : "Reactivate"} Customer`,
+    summary: cust ? `<strong>${cust.name}</strong>` : `Customer #${id}`,
+    consequence: currentlyActive
+      ? "Deactivating will hide this customer from new invoice selectors. Existing invoices are preserved."
+      : "Reactivating will make this customer selectable again on invoices.",
+    actionLabel: currentlyActive ? "Deactivate Customer" : "Reactivate Customer",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    requireReason: false,
+    severity: currentlyActive ? "warning" : "info",
+  });
+  if (!result.confirmed) return;
+
   try {
     if (currentlyActive) {
       await FinanceApi.deleteCustomer(id);

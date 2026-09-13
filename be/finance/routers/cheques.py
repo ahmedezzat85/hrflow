@@ -16,7 +16,8 @@ from finance.schemas import (
     ChequeResponse,
 )
 from finance.services.cheques_service import ChequesService
-from finance.deps import get_cheques_service
+from finance.deps import get_cheques_service, get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/cheques", tags=["Finance - Cheques"])
 
@@ -60,10 +61,17 @@ def issue_cheque(
     payload: ChequeCreate,
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: ChequesService = Depends(get_cheques_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Issues a new cheque, generating continuous ledger transactions and updating balances."""
-    user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    return service.issue_cheque(payload, created_by=user_email)
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path="/api/finance/cheques:issue",
+        operation_fn=lambda: service.issue_cheque(payload, created_by=user_email),
+    )
 
 
 @router.patch("/{cheque_id}/status", response_model=ChequeResponse)
@@ -72,6 +80,14 @@ def update_cheque_status(
     payload: ChequeStatusUpdate,
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: ChequesService = Depends(get_cheques_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Updates cheque status (cleared, bounced, voided), performing ledger reversals if bounced or voided."""
-    return service.update_cheque_status(cheque_id, payload)
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path=f"/api/finance/cheques:{cheque_id}:status:{payload.status}",
+        operation_fn=lambda: service.update_cheque_status(cheque_id, payload),
+    )

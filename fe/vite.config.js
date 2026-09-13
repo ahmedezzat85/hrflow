@@ -104,6 +104,25 @@ function singleFileDeployBundle() {
         return out;
       },
     },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url || '').split('?')[0].replace(/^\//, '');
+        const match = DEPLOY_SIBLING_FILES.find((f) => f.dest.toLowerCase() === url.toLowerCase());
+        if (match) {
+          const filePath = resolve(__dirname, match.src);
+          if (existsSync(filePath)) {
+            if (url.endsWith('.js')) {
+              res.setHeader('Content-Type', 'application/javascript');
+            } else if (url.endsWith('.png')) {
+              res.setHeader('Content-Type', 'image/png');
+            }
+            res.end(readFileSync(filePath));
+            return;
+          }
+        }
+        next();
+      });
+    },
     handleHotUpdate({ file, server }) {
       if (file.endsWith('.html')) {
         server.ws.send({

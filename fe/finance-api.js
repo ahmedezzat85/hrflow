@@ -10,6 +10,11 @@ function round(val, decimals = 2) {
 }
 window.round = round;
 
+function _getIdempHeaders(explicitKey = null) {
+  const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+  return key ? { "Idempotency-Key": key } : {};
+}
+
 const FinanceMockState = {
   accounts: [
     { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", currency: "USD", opening_balance: 150000.0, current_balance: 150000.0, is_active: true },
@@ -247,14 +252,16 @@ const FinanceApi = {
     }
     return apiRequest("PUT", `/api/finance/invoices/${id}`, payload);
   },
-  async voidInvoice(id) {
+  async voidInvoice(id, reason = null) {
     if (_isMock()) {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
       if (!inv) throw new Error("Invoice not found");
       inv.status = "void";
+      if (reason) inv.notes = `${inv.notes || ""}\n[Void reason: ${reason}]`.trim();
       return inv;
     }
-    return apiRequest("DELETE", `/api/finance/invoices/${id}`);
+    const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+    return apiRequest("DELETE", `/api/finance/invoices/${id}${q}`, null, true, _getIdempHeaders());
   },
   async getInvoicePayments(invoiceId) {
     if (_isMock()) return FinanceMockState.payments.filter((p) => p.related_invoice_id === parseInt(invoiceId, 10));
@@ -362,14 +369,16 @@ const FinanceApi = {
     }
     return apiRequest("PUT", `/api/finance/bills/${id}`, payload);
   },
-  async voidBill(id) {
+  async voidBill(id, reason = null) {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
       bill.status = "void";
+      if (reason) bill.notes = `${bill.notes || ""}\n[Void reason: ${reason}]`.trim();
       return bill;
     }
-    return apiRequest("DELETE", `/api/finance/bills/${id}`);
+    const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+    return apiRequest("DELETE", `/api/finance/bills/${id}${q}`, null, true, _getIdempHeaders());
   },
   async getBillPayments(billId) {
     if (_isMock()) return FinanceMockState.billPayments.filter((p) => p.related_bill_id === parseInt(billId, 10));
@@ -830,16 +839,17 @@ const FinanceApi = {
     return apiRequest("PATCH", `/api/finance/transactions/${id}`, payload);
   },
 
-  async deleteTransaction(id) {
+  async deleteTransaction(id, reason = null) {
     if (_isMock()) {
       const idx = (FinanceMockState.transactions || []).findIndex((t) => t.id === parseInt(id, 10));
       if (idx === -1) throw new Error("Transaction not found");
       const tx = FinanceMockState.transactions[idx];
       if (tx.source !== "manual") throw new Error("Only manual transactions can be deleted");
       FinanceMockState.transactions.splice(idx, 1);
-      return { message: "Transaction deleted successfully", id: parseInt(id, 10) };
+      return { message: "Transaction deleted successfully", id: parseInt(id, 10), reason: reason || "" };
     }
-    return apiRequest("DELETE", `/api/finance/transactions/${id}`);
+    const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+    return apiRequest("DELETE", `/api/finance/transactions/${id}${q}`, null, true, _getIdempHeaders());
   },
 
   async getAccountPettySummary(accountId, params) {

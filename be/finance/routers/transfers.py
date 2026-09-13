@@ -15,7 +15,8 @@ from finance.schemas import (
     AccountTransferResponse,
 )
 from finance.services.transfers_service import TransfersService
-from finance.deps import get_transfers_service
+from finance.deps import get_transfers_service, get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/transfers", tags=["Finance - Transfers"])
 
@@ -59,6 +60,8 @@ def create_transfer(
     payload: AccountTransferCreate,
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: TransfersService = Depends(get_transfers_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Creates an account transfer:
@@ -66,5 +69,10 @@ def create_transfer(
     - External-linked transfers create the confirmed leg, linking via exchange_reference.
     - Automatically updates running balances for all affected accounts.
     """
-    created_by = current_user.get("email") or current_user.get("sub")
-    return service.create_transfer(payload, created_by=created_by)
+    created_by = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=created_by,
+        endpoint_path="/api/finance/transfers:create",
+        operation_fn=lambda: service.create_transfer(payload, created_by=created_by),
+    )

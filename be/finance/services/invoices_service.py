@@ -207,7 +207,7 @@ class InvoicesService:
         updated = self.repo.update(invoice_id, data, lines_data)
         return self._invoice_to_response(updated)
 
-    def void_invoice(self, invoice_id: int) -> SalesInvoiceResponse:
+    def void_invoice(self, invoice_id: int, reason: Optional[str] = None) -> SalesInvoiceResponse:
         invoice = self.repo.get_by_id(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
@@ -215,6 +215,11 @@ class InvoicesService:
             raise HTTPException(status_code=400, detail="Invoice is already voided")
         if invoice.status == "paid":
             raise HTTPException(status_code=400, detail="Cannot void a paid invoice. Issue a credit note instead.")
+
+        if reason and reason.strip():
+            existing_notes = invoice.notes or ""
+            updated_notes = f"{existing_notes}\n[Void reason: {reason.strip()}]".strip()
+            self.repo.update(invoice_id, {"notes": updated_notes})
 
         voided = self.repo.void_invoice(invoice_id)
         return self._invoice_to_response(voided)

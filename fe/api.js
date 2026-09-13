@@ -56,8 +56,8 @@ function forceSessionExpiredLogout() {
   }
 }
 
-async function apiRequest(method, path, body = null, auth = true) {
-  const headers = { "Content-Type": "application/json" };
+async function apiRequest(method, path, body = null, auth = true, extraHeaders = {}) {
+  const headers = { "Content-Type": "application/json", ...(extraHeaders || {}) };
   const opts = { method, headers, credentials: "include" };
   if (body !== null) opts.body = JSON.stringify(body);
 

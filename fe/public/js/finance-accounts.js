@@ -252,8 +252,21 @@ async function saveCompanyBankAccount() {
 }
 
 async function toggleCompanyBankAccountActive(id, currentActive) {
+  const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(id, 10));
   const action = currentActive ? "deactivate" : "reactivate";
-  if (!confirm(`Are you sure you want to ${action} this account?`)) return;
+
+  const result = await FinanceCommand.confirmAction({
+    title: `${currentActive ? "Deactivate" : "Reactivate"} Bank Account`,
+    summary: acc ? `<strong>${acc.account_name}</strong> · ${acc.currency} · Balance: ${FinanceFormat.renderMoneyHtml(acc.current_balance || 0, acc.currency)}` : `Account #${id}`,
+    consequence: currentActive
+      ? "Deactivating this account will prevent new payments, cheques, or transfers from using it. Existing transaction history remains intact."
+      : "Reactivating will restore this account to active payment and ledger selections.",
+    actionLabel: currentActive ? "Deactivate Account" : "Reactivate Account",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    requireReason: false,
+    severity: currentActive ? "warning" : "info",
+  });
+  if (!result.confirmed) return;
 
   try {
     if (currentActive) {
@@ -423,8 +436,21 @@ async function saveFinanceCategory() {
 }
 
 async function toggleFinanceCategoryActive(id, currentActive) {
+  const cat = (FinanceState.categories || []).find((c) => c.id === parseInt(id, 10));
   const action = currentActive ? "deactivate" : "reactivate";
-  if (!confirm(`Are you sure you want to ${action} this category? Deactivated categories remain on historical records.`)) return;
+
+  const result = await FinanceCommand.confirmAction({
+    title: `${currentActive ? "Deactivate" : "Reactivate"} Category`,
+    summary: cat ? `<strong>${cat.name}</strong> (${cat.kind})` : `Category #${id}`,
+    consequence: currentActive
+      ? "Deactivating this category will hide it from new transaction forms. Deactivated categories remain on historical records."
+      : "Reactivating will make this category available again for new transactions.",
+    actionLabel: currentActive ? "Deactivate Category" : "Reactivate Category",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    requireReason: false,
+    severity: currentActive ? "warning" : "info",
+  });
+  if (!result.confirmed) return;
 
   try {
     if (currentActive) {
@@ -580,8 +606,21 @@ async function saveFinancePaymentType() {
 }
 
 async function toggleFinancePaymentTypeActive(id, currentActive) {
+  const pt = (FinanceState.paymentTypes || []).find((p) => p.id === parseInt(id, 10));
   const action = currentActive ? "deactivate" : "reactivate";
-  if (!confirm(`Are you sure you want to ${action} this payment type? Deactivated types remain on historical records.`)) return;
+
+  const result = await FinanceCommand.confirmAction({
+    title: `${currentActive ? "Deactivate" : "Reactivate"} Payment Type`,
+    summary: pt ? `<strong>${pt.name}</strong> (${pt.code})` : `Payment Type #${id}`,
+    consequence: currentActive
+      ? "Deactivating this payment type will hide it from new transaction forms. Historical records are preserved."
+      : "Reactivating will restore this payment type to active form dropdowns.",
+    actionLabel: currentActive ? "Deactivate Payment Type" : "Reactivate Payment Type",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    requireReason: false,
+    severity: currentActive ? "warning" : "info",
+  });
+  if (!result.confirmed) return;
 
   try {
     if (currentActive) {
@@ -994,10 +1033,19 @@ async function saveFinanceTransaction() {
 }
 
 async function confirmDeleteFinanceTransaction(txId) {
-  if (!confirm("Are you sure you want to delete this transaction? Running balances will be recalculated automatically.")) return;
+  const result = await FinanceCommand.confirmAction({
+    title: "Delete Ledger Transaction",
+    summary: `Transaction #${txId}`,
+    consequence: "Deleting this transaction will permanently remove it and recalculate running balances for all subsequent transactions.",
+    actionLabel: "Delete Transaction",
+    actionClass: "btn btn-danger",
+    requireReason: true,
+    severity: "danger",
+  });
+  if (!result.confirmed) return;
 
   try {
-    await FinanceApi.deleteTransaction(txId);
+    await FinanceApi.deleteTransaction(txId, result.reason);
     toast("Transaction deleted successfully", "fa-solid fa-circle-check");
     const accounts = await FinanceApi.getAccounts();
     FinanceState.accounts = accounts;

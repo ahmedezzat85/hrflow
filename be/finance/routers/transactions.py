@@ -6,7 +6,8 @@ Gated by RBAC permissions:
 - finance.account.read (get)
 - finance.account.write (update, delete)
 """
-from fastapi import APIRouter, Depends, status
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, status
 
 from core.permissions import require_permission
 from finance.schemas import (
@@ -46,6 +47,7 @@ def update_manual_transaction(
 @router.delete("/{transaction_id}")
 def delete_manual_transaction(
     transaction_id: int,
+    reason: Optional[str] = Query(None, description="Reason for deleting the transaction"),
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: LedgerService = Depends(get_ledger_service),
 ):
@@ -53,4 +55,4 @@ def delete_manual_transaction(
     Deletes/voids a manual ledger transaction and recomputes continuous running balances.
     Only manual-source transactions can be deleted.
     """
-    return service.delete_manual_transaction(transaction_id)
+    return service.delete_manual_transaction(transaction_id, reason=reason)

@@ -490,4 +490,164 @@ if (document.readyState === "loading") {
   setupFinanceAccessibility();
 }
 window.setupFinanceAccessibility = setupFinanceAccessibility;
+// ==========================================
+// Safe Financial Command Framework (Story 0.4)
+// ==========================================
+const FinanceCommand = {
+  _resolveConfirm: null,
+  _invokingElement: null,
 
+  confirmAction(options = {}) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById("financeConfirmModal");
+      if (!modal) {
+        const ok = confirm(options.consequence || "Confirm this action?");
+        let r = "";
+        if (ok && options.requireReason) {
+          r = prompt("Reason for this action:") || "";
+        }
+        return resolve({ confirmed: ok, reason: r });
+      }
+
+      this._invokingElement = document.activeElement;
+      this._resolveConfirm = resolve;
+
+      const titleEl = document.getElementById("financeConfirmTitle");
+      if (titleEl) titleEl.textContent = options.title || "Confirm Action";
+
+      const iconEl = document.getElementById("financeConfirmIcon");
+      if (iconEl) {
+        const iconClass = options.icon || (options.severity === "warning" ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-exclamation");
+        const iconColor = options.severity === "warning" ? "var(--warning, #f59e0b)" : "var(--danger, #ef4444)";
+        iconEl.innerHTML = `<i class="${iconClass}"></i>`;
+        iconEl.style.color = iconColor;
+      }
+
+      const summaryEl = document.getElementById("financeConfirmTargetSummary");
+      if (summaryEl) {
+        if (options.summary) {
+          summaryEl.innerHTML = options.summary;
+          summaryEl.style.display = "block";
+        } else {
+          summaryEl.style.display = "none";
+        }
+      }
+
+      const descEl = document.getElementById("financeConfirmDescription");
+      if (descEl) descEl.textContent = options.consequence || "Are you sure you want to proceed?";
+
+      const reasonGroup = document.getElementById("financeConfirmReasonGroup");
+      const reasonInput = document.getElementById("financeConfirmReason");
+      if (reasonInput) {
+        reasonInput.value = "";
+        FinanceForm.clearFieldError(reasonInput);
+      }
+      if (reasonGroup) {
+        reasonGroup.style.display = options.requireReason ? "flex" : "none";
+      }
+
+      const submitBtn = document.getElementById("financeConfirmSubmitBtn");
+      if (submitBtn) {
+        submitBtn.textContent = options.actionLabel || "Confirm";
+        submitBtn.className = options.actionClass || "btn btn-danger";
+      }
+
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          document.removeEventListener("keydown", onKeyDown);
+          this.handleConfirmCancel();
+        }
+      };
+      this._escapeHandler = onKeyDown;
+      document.addEventListener("keydown", onKeyDown);
+
+      openModal("financeConfirmModal");
+      if (options.requireReason && reasonInput) {
+        setTimeout(() => reasonInput.focus(), 50);
+      } else if (submitBtn) {
+        setTimeout(() => submitBtn.focus(), 50);
+      }
+    });
+  },
+
+  handleConfirmSubmit() {
+    const modal = document.getElementById("financeConfirmModal");
+    const reasonGroup = document.getElementById("financeConfirmReasonGroup");
+    const reasonInput = document.getElementById("financeConfirmReason");
+    const isReasonRequired = reasonGroup && reasonGroup.style.display !== "none";
+
+    let reason = reasonInput ? reasonInput.value.trim() : "";
+    if (isReasonRequired && !reason) {
+      const errEl = document.getElementById("financeConfirmReason_error");
+      if (errEl) {
+        errEl.textContent = "A reason is required to execute this action.";
+        errEl.style.display = "block";
+      }
+      FinanceForm.setFieldError("financeConfirmReason", "A reason is required to execute this action.");
+      return;
+    }
+
+    if (this._escapeHandler) {
+      document.removeEventListener("keydown", this._escapeHandler);
+      this._escapeHandler = null;
+    }
+
+    closeModal("financeConfirmModal");
+    if (this._invokingElement && typeof this._invokingElement.focus === "function") {
+      this._invokingElement.focus();
+    }
+    if (this._resolveConfirm) {
+      const resolver = this._resolveConfirm;
+      this._resolveConfirm = null;
+      resolver({ confirmed: true, reason });
+    }
+  },
+
+  handleConfirmCancel() {
+    if (this._escapeHandler) {
+      document.removeEventListener("keydown", this._escapeHandler);
+      this._escapeHandler = null;
+    }
+
+    const errEl = document.getElementById("financeConfirmReason_error");
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.style.display = "none";
+    }
+
+    closeModal("financeConfirmModal");
+    if (this._invokingElement && typeof this._invokingElement.focus === "function") {
+      this._invokingElement.focus();
+    }
+    if (this._resolveConfirm) {
+      const resolver = this._resolveConfirm;
+      this._resolveConfirm = null;
+      resolver({ confirmed: false, reason: "" });
+    }
+  },
+
+  generateIdempotencyKey() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return "idemp-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
+  },
+
+  lockSubmitButton(buttonOrId) {
+    const btn = typeof buttonOrId === "string" ? document.getElementById(buttonOrId) : buttonOrId;
+    if (!btn) return () => {};
+    if (btn.disabled) return null; // Already locked!
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+    return function unlock() {
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+      btn.innerHTML = originalHtml;
+    };
+  },
+};
+window.FinanceCommand = FinanceCommand;

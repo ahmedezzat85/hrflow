@@ -220,10 +220,25 @@ async function saveBillModal() {
 }
 
 async function confirmVoidBill(billId) {
-  if (!confirm("Void this bill? This cannot be undone.")) return;
+  const bill = (FinanceState.bills || []).find((b) => b.id === parseInt(billId, 10));
+  const billSummary = bill
+    ? `<strong>${bill.bill_number}</strong> · ${bill.vendor_name || "Vendor"} · ${FinanceFormat.renderMoneyHtml(bill.total || 0, bill.currency || "USD")}`
+    : `Bill #${billId}`;
+
+  const result = await FinanceCommand.confirmAction({
+    title: "Void Vendor Bill",
+    summary: billSummary,
+    consequence: "Voiding will mark this bill as void and cancel all pending payables. This cannot be undone.",
+    actionLabel: "Void Bill",
+    actionClass: "btn btn-danger",
+    requireReason: true,
+    severity: "danger",
+  });
+  if (!result.confirmed) return;
+
   try {
-    await FinanceApi.voidBill(billId);
-    showToast("Bill voided", "success");
+    await FinanceApi.voidBill(billId, result.reason);
+    showToast("Bill voided successfully", "success");
     loadFinanceBills();
   } catch (err) {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
@@ -457,8 +472,22 @@ async function saveVendor() {
 }
 
 async function toggleVendorActive(id, currentlyActive) {
+  const vendor = (FinanceState.vendors || []).find((v) => v.id === parseInt(id, 10));
   const action = currentlyActive ? "deactivate" : "activate";
-  if (!confirm(`Are you sure you want to ${action} this vendor?`)) return;
+
+  const result = await FinanceCommand.confirmAction({
+    title: `${currentlyActive ? "Deactivate" : "Reactivate"} Vendor`,
+    summary: vendor ? `<strong>${vendor.name}</strong>` : `Vendor #${id}`,
+    consequence: currentlyActive
+      ? "Deactivating will hide this vendor from new bill entry. Existing bills and history are preserved."
+      : "Reactivating will restore this vendor to active billing lists.",
+    actionLabel: currentlyActive ? "Deactivate Vendor" : "Reactivate Vendor",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    requireReason: false,
+    severity: currentlyActive ? "warning" : "info",
+  });
+  if (!result.confirmed) return;
+
   try {
     if (currentlyActive) {
       await FinanceApi.deleteVendor(id);
