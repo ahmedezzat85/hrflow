@@ -1187,6 +1187,10 @@ function renderFinanceAccounts(items) {
           <button class="btn btn-sm btn-fill" onclick="viewAccountLedger(${acc.id})" title="View Continuous Ledger">
             <i class="fa-solid fa-list-check"></i> Ledger
           </button>
+          ${acc.account_type !== 'cash' ? `
+          <button class="btn btn-sm" onclick="openUploadStatementModal(${acc.id})" title="Upload Statement">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </button>` : ''}
           <button class="btn btn-sm" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
@@ -3422,7 +3426,7 @@ function renderFinanceStatementsTable(statements) {
   });
 }
 
-async function openUploadStatementModal() {
+async function openUploadStatementModal(presetAccountId) {
   const select = document.getElementById("stmtUploadAccountId");
   if (select) {
     try {
@@ -3433,9 +3437,15 @@ async function openUploadStatementModal() {
           const opt = document.createElement("option");
           opt.value = a.id;
           opt.textContent = `${a.account_name} (${a.currency}) — ${a.bank_name || ''}`;
+          if (presetAccountId && String(a.id) === String(presetAccountId)) {
+            opt.selected = true;
+          }
           select.appendChild(opt);
         }
       });
+      if (presetAccountId) {
+        select.value = String(presetAccountId);
+      }
     } catch (e) {
       console.warn("Could not load accounts", e);
     }
