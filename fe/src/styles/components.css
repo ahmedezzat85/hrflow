@@ -924,3 +924,45 @@ select.form-control option {
     transform: rotate(360deg);
   }
 }
+
+/* Financial state & skeleton utilities */
+.finance-skeleton {
+  display: inline-block;
+  min-width: 90px;
+  height: 1.15em;
+  background: linear-gradient(90deg, var(--surface2, #f1f5f9) 25%, var(--border, #e2e8f0) 50%, var(--surface2, #f1f5f9) 75%);
+  background-size: 200% 100%;
+  animation: financeSkeletonLoading 1.5s infinite;
+  border-radius: 4px;
+  vertical-align: middle;
+  color: transparent !important;
+  user-select: none;
+}
+
+@keyframes financeSkeletonLoading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.finance-inline-error {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--danger, #ef4444);
+  border-radius: var(--radius, 10px);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.finance-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: var(--surface2, #f8fafc);
+  color: var(--text2, #64748b);
+  border: 1px solid var(--border, #e2e8f0);
+}

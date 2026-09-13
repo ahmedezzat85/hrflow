@@ -398,7 +398,23 @@ const FinanceApi = {
   getSubscriptions() {
     return apiRequest("GET", "/api/finance/subscriptions");
   },
-  getFinanceSummary() {
+  async getFinanceSummary() {
+    if (_isMock()) {
+      return {
+        balance: 245000.0,
+        revenue_mtd: 48200.0,
+        cost_mtd: 31400.0,
+        net_mtd: 16800.0,
+        currency: "USD",
+        base_currency: "USD",
+        period: "MTD",
+        data_scope: "all_accounts",
+        open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,
+        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => b.status === "unpaid").length,
+        active_subscriptions_count: (FinanceMockState.subscriptions || []).filter((s) => s.is_active).length,
+        generated_at: new Date().toISOString(),
+      };
+    }
     return apiRequest("GET", "/api/finance/reports/summary");
   },
 
