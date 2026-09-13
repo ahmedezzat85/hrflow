@@ -43,8 +43,12 @@ const FinanceMockState = {
     { id: 6, customer_id: 6, customer_name: "Frontier Labs", invoice_number: "INV-2026-006", issue_date: "2026-08-20", due_date: "2026-09-20", status: "void", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "other", has_bank_discrepancy: false, subtotal: 25000.0, tax_amount: 0.0, total: 25000.0, amount_paid: 0.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Archived (Voided)", notes: "Canceled service request", created_at: "2026-08-20T11:00:00", lines: [{ id: 6, invoice_id: 6, description: "Canceled item", quantity: 1, unit_price: 25000.0, line_total: 25000.0 }] },
   ],
   bills: [
-    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", issue_date: "2026-09-01", due_date: "2026-09-30", status: "unpaid", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
-    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category: "SaaS", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
+    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
+    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
+    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
+    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
   ],
   payments: [],
   billPayments: [],
@@ -405,11 +409,23 @@ const FinanceApi = {
   async getBills(params) {
     if (_isMock()) {
       let list = [...FinanceMockState.bills];
-      if (params && params.status) list = list.filter((b) => b.status === params.status);
+      if (params && params.queue) {
+        const q = params.queue.toLowerCase().trim();
+        if (q === "inbox") list = list.filter((b) => b.status === "inbox");
+        else if (q === "needs_coding") list = list.filter((b) => b.status === "needs_coding");
+        else if (q === "needs_approval") list = list.filter((b) => b.status === "needs_approval");
+        else if (q === "ready_to_pay") list = list.filter((b) => b.status === "ready_to_pay" || b.status === "unpaid");
+        else if (q === "scheduled") list = list.filter((b) => b.status === "scheduled");
+        else if (q === "paid") list = list.filter((b) => b.status === "paid");
+        else if (q === "exceptions") list = list.filter((b) => b.status === "exceptions");
+        else if (q === "all") list = list.filter((b) => b.status !== "void");
+      } else if (params && params.status) {
+        list = list.filter((b) => b.status === params.status);
+      }
       if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
       if (params && params.search) {
         const s = params.search.toLowerCase();
-        list = list.filter((b) => b.bill_number.toLowerCase().includes(s) || (b.vendor_name || "").toLowerCase().includes(s));
+        list = list.filter((b) => (b.bill_number && b.bill_number.toLowerCase().includes(s)) || (b.vendor_name || "").toLowerCase().includes(s) || (b.department || "").toLowerCase().includes(s));
       }
       return list;
     }
@@ -419,6 +435,81 @@ const FinanceApi = {
       if (qs) url += `?${qs}`;
     }
     return apiRequest("GET", url);
+  },
+  async getBillQueueCounts(params) {
+    if (_isMock()) {
+      let list = FinanceMockState.bills || [];
+      if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
+      const counts = {
+        inbox: 0,
+        needs_coding: 0,
+        needs_approval: 0,
+        ready_to_pay: 0,
+        scheduled: 0,
+        paid: 0,
+        exceptions: 0,
+        all: 0,
+      };
+      for (const b of list) {
+        if (b.status === "void") continue;
+        counts.all++;
+        const st = (b.status || "").toLowerCase();
+        if (st in counts) counts[st]++;
+        else if (st === "unpaid") counts.ready_to_pay++;
+      }
+      return counts;
+    }
+    let url = "/api/finance/bills/queue-counts";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async checkDuplicateBills(payload) {
+    if (_isMock()) {
+      const candidates = [];
+      const cleanNum = (v) => (!v ? "" : String(v).toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const normNum = cleanNum(payload.bill_number);
+      const targetVend = payload.vendor_id ? parseInt(payload.vendor_id, 10) : null;
+      const targetTotal = payload.total !== undefined && payload.total !== null ? parseFloat(payload.total) : null;
+
+      for (const b of FinanceMockState.bills) {
+        if (payload.exclude_id && b.id === parseInt(payload.exclude_id, 10)) continue;
+        if (b.status === "void") continue;
+
+        let matched_field = null;
+        let matching_val = "";
+
+        if (payload.file_fingerprint && b.file_fingerprint && payload.file_fingerprint === b.file_fingerprint) {
+          matched_field = "file_fingerprint";
+          matching_val = payload.file_fingerprint.slice(0, 16) + "...";
+        } else if (targetVend && b.vendor_id === targetVend && normNum && normNum === cleanNum(b.bill_number)) {
+          matched_field = "bill_number";
+          matching_val = b.bill_number;
+        } else if (targetVend && b.vendor_id === targetVend && targetTotal !== null && Math.abs((b.total || 0) - targetTotal) < 0.01 && payload.issue_date && b.issue_date === payload.issue_date) {
+          matched_field = "amount_and_date";
+          matching_val = `$${b.total.toFixed(2)} on ${b.issue_date}`;
+        }
+
+        if (matched_field) {
+          candidates.push({
+            id: b.id,
+            bill_number: b.bill_number,
+            vendor_id: b.vendor_id,
+            vendor_name: b.vendor_name,
+            issue_date: b.issue_date,
+            total: b.total,
+            status: b.status,
+            matched_field,
+            matching_value: matching_val,
+            match_reason: matched_field === "bill_number" ? "Same bill number for vendor" : (matched_field === "file_fingerprint" ? "Exact file content match" : "Same vendor, total, and issue date"),
+          });
+        }
+      }
+      return { has_duplicate: candidates.length > 0, candidates };
+    }
+    return apiRequest("POST", "/api/finance/bills/check-duplicate", payload);
   },
   async getBill(id) {
     if (_isMock()) {
@@ -436,9 +527,34 @@ const FinanceApi = {
         ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+
+      // Check duplicate
+      const dupRes = await this.checkDuplicateBills({
+        vendor_id: payload.vendor_id,
+        bill_number: payload.bill_number,
+        issue_date: payload.issue_date,
+        total: subtotal,
+        file_fingerprint: payload.file_fingerprint,
+      });
+      const candidates = dupRes?.candidates || [];
+      if (candidates.length > 0 && !payload.is_duplicate_override) {
+        throw new Error(`Potential duplicate bill detected (${candidates[0].matched_field}: ${candidates[0].matching_value}). Authorized override required.`);
+      }
+      if (payload.is_duplicate_override && !payload.duplicate_override_reason?.trim()) {
+        throw new Error("A valid reason is required when overriding a duplicate bill detection.");
+      }
+
+      let st = payload.status || "inbox";
+      let isRev = payload.is_reviewed !== undefined ? !!payload.is_reviewed : true;
+      if (!isRev && (st === "ready_to_pay" || st === "paid")) {
+        throw new Error("Unreviewed bills cannot be marked Ready to Pay or Paid.");
+      }
+
       const newBill = {
         id: FinanceMockState.bills.length + 1,
         ...payload,
+        status: st,
+        is_reviewed: isRev,
         vendor_name: vend ? vend.name : null,
         subtotal, tax_amount: 0, total: subtotal,
         created_at: new Date().toISOString(),
@@ -453,6 +569,13 @@ const FinanceApi = {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
+
+      const targetStatus = payload.status || bill.status;
+      const isRev = payload.is_reviewed !== undefined ? payload.is_reviewed : bill.is_reviewed;
+      if ((targetStatus === "ready_to_pay" || targetStatus === "paid") && !isRev) {
+        throw new Error("Uploaded bills must be reviewed and coded before moving to ready_to_pay or paid status.");
+      }
+
       Object.assign(bill, payload);
       if (payload.lines) {
         bill.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);

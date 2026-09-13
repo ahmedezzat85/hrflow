@@ -13,6 +13,9 @@ from finance.schemas import (
     BillCreate,
     BillUpdate,
     BillResponse,
+    BillDuplicateCheckRequest,
+    BillDuplicateCheckResponse,
+    BillQueueCountsResponse,
     PaymentCreate,
     PaymentResponse,
 )
@@ -23,19 +26,40 @@ from finance.services.idempotency import IdempotencyService
 router = APIRouter(prefix="/api/finance/bills", tags=["Finance - Vendor Bills"])
 
 
+@router.get("/queue-counts", response_model=BillQueueCountsResponse)
+def get_bill_queue_counts(
+    vendor_id: Optional[int] = Query(None, description="Optional vendor filter"),
+    current_user: dict = Depends(require_permission("finance.bill.read")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Return counts for each AP Inbox queue tab."""
+    return service.get_queue_counts(vendor_id=vendor_id)
+
+
+@router.post("/check-duplicate", response_model=BillDuplicateCheckResponse)
+def check_bill_duplicate(
+    payload: BillDuplicateCheckRequest,
+    current_user: dict = Depends(require_permission("finance.bill.read")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Check for duplicate bill candidates based on vendor, bill number, amount, or file fingerprint."""
+    return service.check_duplicates(payload)
+
+
 @router.get("", response_model=List[BillResponse])
 def list_vendor_bills(
-    status: Optional[str] = Query(None, description="Filter by status: unpaid|paid|overdue|void"),
+    status: Optional[str] = Query(None, description="Filter by status: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void"),
+    queue: Optional[str] = Query(None, description="AP Inbox work queue: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|all"),
     vendor_id: Optional[int] = Query(None, description="Filter by vendor ID"),
-    search: Optional[str] = Query(None, description="Search by bill number or vendor name"),
+    search: Optional[str] = Query(None, description="Search by bill number, vendor name, or department"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_permission("finance.bill.read")),
     service: BillsService = Depends(get_bills_service),
 ):
-    """List vendor bills with optional status, vendor, and search filters."""
+    """List vendor bills with optional queue, status, vendor, and search filters."""
     return service.list_bills(
-        status=status, vendor_id=vendor_id, search=search, limit=limit, offset=offset
+        status=status, queue=queue, vendor_id=vendor_id, search=search, limit=limit, offset=offset
     )
 
 

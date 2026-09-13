@@ -11,13 +11,28 @@ from finance.schemas import (
     BillUpdate,
     BillResponse,
     BillLineResponse,
+    BillDuplicateCheckRequest,
+    BillDuplicateCheckResponse,
+    BillDuplicateCandidate,
+    BillQueueCountsResponse,
     PaymentCreate,
     PaymentResponse,
 )
 from finance.models import BillDB, PaymentDB
 
 
-VALID_BILL_STATUSES = {"unpaid", "paid", "overdue", "void"}
+VALID_BILL_STATUSES = {
+    "inbox",
+    "needs_coding",
+    "needs_approval",
+    "ready_to_pay",
+    "scheduled",
+    "paid",
+    "exceptions",
+    "void",
+    "unpaid",
+    "overdue",
+}
 VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
 
@@ -56,6 +71,17 @@ class BillsService:
             tax_amount=bill.tax_amount,
             total=bill.total,
             notes=bill.notes,
+            capture_source=bill.capture_source or "manual",
+            extraction_confidence=bill.extraction_confidence,
+            missing_fields=bill.missing_fields,
+            department=bill.department,
+            legal_entity=bill.legal_entity or "Voyance Health Inc",
+            attachment_url=bill.attachment_url,
+            attachment_name=bill.attachment_name,
+            file_fingerprint=bill.file_fingerprint,
+            is_reviewed=bill.is_reviewed,
+            is_duplicate_override=bill.is_duplicate_override,
+            duplicate_override_reason=bill.duplicate_override_reason,
             created_at=bill.created_at,
             lines=lines,
         )
@@ -82,11 +108,12 @@ class BillsService:
         )
 
     # ------------------------------------------------------------------
-    # Bill CRUD
+    # Bill CRUD & AP Inbox
     # ------------------------------------------------------------------
     def list_bills(
         self,
         status: Optional[str] = None,
+        queue: Optional[str] = None,
         vendor_id: Optional[int] = None,
         search: Optional[str] = None,
         limit: int = 50,
@@ -98,9 +125,25 @@ class BillsService:
                 detail=f"Invalid status '{status}'. Must be one of: {', '.join(VALID_BILL_STATUSES)}",
             )
         bills = self.repo.list_all(
-            status=status, vendor_id=vendor_id, search=search, limit=limit, offset=offset
+            status=status, queue=queue, vendor_id=vendor_id, search=search, limit=limit, offset=offset
         )
         return [self._bill_to_response(b) for b in bills]
+
+    def get_queue_counts(self, vendor_id: Optional[int] = None) -> BillQueueCountsResponse:
+        counts = self.repo.get_queue_counts(vendor_id=vendor_id)
+        return BillQueueCountsResponse(**counts)
+
+    def check_duplicates(self, req: BillDuplicateCheckRequest) -> BillDuplicateCheckResponse:
+        raw_candidates = self.repo.find_duplicate_candidates(
+            vendor_id=req.vendor_id,
+            bill_number=req.bill_number,
+            issue_date=req.issue_date,
+            total=req.total,
+            file_fingerprint=req.file_fingerprint,
+            exclude_id=req.exclude_id,
+        )
+        candidates = [BillDuplicateCandidate(**c) for c in raw_candidates]
+        return BillDuplicateCheckResponse(candidates=candidates)
 
     def get_bill(self, bill_id: int) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
@@ -113,13 +156,48 @@ class BillsService:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
 
         existing = self.repo.get_by_number(payload.bill_number)
-        if existing:
+        if existing and not payload.is_duplicate_override:
             raise HTTPException(
                 status_code=400,
                 detail=f"Bill number '{payload.bill_number}' is already in use",
             )
 
+        # Duplicate detection check
+        calc_total = sum(
+            ln.line_total if ln.line_total else (ln.quantity * ln.unit_price)
+            for ln in payload.lines
+        )
+        duplicates = self.repo.find_duplicate_candidates(
+            vendor_id=payload.vendor_id,
+            bill_number=payload.bill_number,
+            issue_date=payload.issue_date,
+            total=calc_total,
+            file_fingerprint=payload.file_fingerprint,
+        )
+        if duplicates and not payload.is_duplicate_override:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Potential duplicate bill detected ({duplicates[0]['matched_field']}: {duplicates[0]['matching_value']}). Authorized override required.",
+            )
+
+        if payload.is_duplicate_override and not (payload.duplicate_override_reason and payload.duplicate_override_reason.strip()):
+            raise HTTPException(
+                status_code=400,
+                detail="A valid reason is required when overriding a duplicate bill detection.",
+            )
+
+        # AC 1: Uploaded bills do not become payable until required fields are reviewed
+        initial_status = payload.status
+        is_rev = payload.is_reviewed if payload.is_reviewed is not None else True
+        if payload.capture_source in ("upload", "ocr"):
+            is_rev = False
+            if initial_status in ("ready_to_pay", "paid"):
+                initial_status = "inbox"
+
         data = payload.model_dump(exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines"})
+        data["status"] = initial_status
+        data["is_reviewed"] = is_rev
+
         lines_data = [
             (ln.model_dump() if hasattr(ln, "model_dump") else ln.dict())
             for ln in payload.lines
@@ -137,6 +215,15 @@ class BillsService:
 
         if payload.status and payload.status not in VALID_BILL_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
+
+        # AC 1: Uploaded/unreviewed bills cannot move directly to ready_to_pay or paid without being reviewed
+        target_status = payload.status or bill.status
+        is_rev = payload.is_reviewed if payload.is_reviewed is not None else bill.is_reviewed
+        if target_status in ("ready_to_pay", "paid") and not is_rev:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded bills must be reviewed and coded before moving to ready_to_pay or paid status.",
+            )
 
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
         lines_data = None

@@ -179,12 +179,15 @@ const FinanceFormat = {
   getDerivedBillStatus(bill) {
     if (!bill) return "unpaid";
     const rawStatus = (bill.status || "unpaid").toLowerCase().trim();
+    if (["inbox", "needs_coding", "needs_approval", "exceptions"].includes(rawStatus)) {
+      return rawStatus;
+    }
     if (rawStatus === "void" || rawStatus === "cancelled") return "void";
     if (rawStatus === "paid") return "paid";
 
     if (bill.due_date) {
       const todayStr = new Date().toISOString().slice(0, 10);
-      if (bill.due_date < todayStr) {
+      if (bill.due_date < todayStr && rawStatus !== "scheduled") {
         return "overdue";
       }
     }
@@ -201,10 +204,16 @@ const FinanceFormat = {
       void: { label: "Void", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
     },
     bill: {
+      inbox: { label: "Inbox", badgeClass: "badge-indigo", icon: "fa-solid fa-inbox" },
+      needs_coding: { label: "Needs Coding", badgeClass: "badge-warning", icon: "fa-solid fa-tags" },
+      needs_approval: { label: "Needs Approval", badgeClass: "badge-info", icon: "fa-solid fa-user-check" },
+      ready_to_pay: { label: "Ready to Pay", badgeClass: "badge-primary", icon: "fa-solid fa-money-check-dollar" },
+      scheduled: { label: "Scheduled", badgeClass: "badge-secondary", icon: "fa-solid fa-calendar-check" },
       unpaid: { label: "Unpaid", badgeClass: "badge-pending", icon: "fa-solid fa-clock" },
       partially_paid: { label: "Partially Paid", badgeClass: "badge-warning", icon: "fa-solid fa-circle-half-stroke" },
       paid: { label: "Paid", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
       overdue: { label: "Overdue", badgeClass: "badge-rejected", icon: "fa-solid fa-circle-exclamation" },
+      exceptions: { label: "Exception", badgeClass: "badge-danger", icon: "fa-solid fa-triangle-exclamation" },
       void: { label: "Void", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
     },
     transfer: {

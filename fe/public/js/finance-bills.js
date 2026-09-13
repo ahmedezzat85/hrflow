@@ -8,6 +8,60 @@ function _billStatusBadge(status) {
 
 let _billTableInitialized = false;
 
+function setBillWorkQueue(queue) {
+  const state = FinanceTable.getState("finance_bills");
+  state.queue = queue || "all";
+  state.page = 1;
+  FinanceTable.saveState("finance_bills", state);
+
+  _updateBillQueueTabs(state.queue);
+  loadFinanceBills();
+}
+
+function _updateBillQueueTabs(activeQueue) {
+  const queueMap = {
+    all: "tabBillQueueAll",
+    inbox: "tabBillQueueInbox",
+    needs_coding: "tabBillQueueCoding",
+    needs_approval: "tabBillQueueApproval",
+    ready_to_pay: "tabBillQueueReady",
+    scheduled: "tabBillQueueScheduled",
+    paid: "tabBillQueuePaid",
+    exceptions: "tabBillQueueExceptions",
+  };
+  const current = activeQueue || "all";
+  Object.entries(queueMap).forEach(([q, tabId]) => {
+    const tabEl = document.getElementById(tabId);
+    if (!tabEl) return;
+    const isActive = q === current;
+    tabEl.classList.toggle("active", isActive);
+    tabEl.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
+async function loadFinanceBillQueueCounts() {
+  try {
+    const counts = await FinanceApi.getBillQueueCounts();
+    if (!counts) return;
+    const badgeMap = {
+      badgeBillQueueAll: counts.all ?? 0,
+      badgeBillQueueInbox: counts.inbox ?? 0,
+      badgeBillQueueCoding: counts.needs_coding ?? 0,
+      badgeBillQueueApproval: counts.needs_approval ?? 0,
+      badgeBillQueueReady: counts.ready_to_pay ?? 0,
+      badgeBillQueueScheduled: counts.scheduled ?? 0,
+      badgeBillQueuePaid: counts.paid ?? 0,
+      badgeBillQueueExceptions: counts.exceptions ?? 0,
+    };
+    Object.entries(badgeMap).forEach(([id, count]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = count;
+    });
+  } catch (err) {
+    console.warn("Failed to load bill queue counts:", err);
+  }
+}
+
 async function loadFinanceBills() {
   const bar = document.getElementById("financeBillsLoadingBar");
   if (bar) bar.style.display = "block";
@@ -26,10 +80,16 @@ async function loadFinanceBills() {
       }
       _billTableInitialized = true;
     }
+    _updateBillQueueTabs(cachedState.queue || "all");
 
     const params = {};
     if (statusFilter && statusFilter.value) params.status = statusFilter.value;
-    const items = await FinanceApi.getBills(Object.keys(params).length ? params : undefined);
+    if (cachedState.queue && cachedState.queue !== "all") params.queue = cachedState.queue;
+
+    const [items] = await Promise.all([
+      FinanceApi.getBills(Object.keys(params).length ? params : undefined),
+      loadFinanceBillQueueCounts(),
+    ]);
     FinanceState.bills = items || [];
     applyAndRenderBills();
   } catch (err) {
@@ -59,7 +119,8 @@ function applyAndRenderBills() {
     items = items.filter((bill) =>
       (bill.bill_number && bill.bill_number.toLowerCase().includes(q)) ||
       (bill.vendor_name && bill.vendor_name.toLowerCase().includes(q)) ||
-      (bill.category && bill.category.toLowerCase().includes(q))
+      (bill.category && bill.category.toLowerCase().includes(q)) ||
+      (bill.department && bill.department.toLowerCase().includes(q))
     );
   }
 
@@ -137,22 +198,46 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
   tbody.innerHTML = items.map((bill) => {
     const derivedStatus = FinanceFormat.getDerivedBillStatus(bill);
+    const hasConfidence = bill.extraction_confidence != null;
+    const confidencePct = hasConfidence ? Math.round(bill.extraction_confidence * 100) : null;
+    const confidenceBadgeClass = hasConfidence && confidencePct < 80 ? "badge-warning" : "badge-info";
+
     return `
     <tr data-record-id="${bill.id}">
       <td><strong>${bill.bill_number}</strong></td>
       <td>${bill.vendor_name || "—"}</td>
-      <td><span class="badge badge-info">${bill.category || "General"}</span></td>
+      <td>
+        <span class="badge badge-info">${bill.category || "General"}</span>
+        ${bill.department ? `<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${bill.department}</div>` : ""}
+      </td>
       <td>${FinanceFormat.formatFinanceDate(bill.issue_date)}</td>
       <td>${FinanceFormat.formatFinanceDate(bill.due_date)}</td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}</td>
+      <td>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <div style="display:flex; gap:4px; align-items:center;">
+            ${bill.capture_source === "upload"
+              ? `<span class="badge badge-secondary" title="Uploaded Scan / File"><i class="fa-solid fa-file-arrow-up"></i> Upload</span>`
+              : `<span class="badge badge-grey" title="Manual Entry"><i class="fa-solid fa-keyboard"></i> Manual</span>`}
+            ${hasConfidence ? `<span class="badge ${confidenceBadgeClass}" title="Extraction confidence: ${confidencePct}%">${confidencePct}%</span>` : ""}
+          </div>
+          <div style="display:flex; gap:4px; align-items:center;">
+            ${bill.is_reviewed
+              ? `<span class="badge badge-approved" style="font-size:10px;"><i class="fa-solid fa-check"></i> Reviewed</span>`
+              : `<span class="badge badge-warning" style="font-size:10px;" title="Review Required"><i class="fa-solid fa-triangle-exclamation"></i> Unreviewed</span>`}
+            ${bill.is_duplicate_override
+              ? `<span class="badge badge-rejected" style="font-size:10px;" title="Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}"><i class="fa-solid fa-flag"></i> Dup Override</span>`
+              : ""}
+          </div>
+        </div>
+      </td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay") && bill.is_reviewed ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "inbox" || derivedStatus === "needs_coding" || derivedStatus === "needs_approval") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
-
     </tr>
   `;
   }).join("");
@@ -174,44 +259,284 @@ async function _populateBillVendorDropdown() {
   } catch (_) {}
 }
 
-function openAddBillModal() {
+function _resetBillCaptureSection() {
+  const fileInput = document.getElementById("billFileInput");
+  const fileAttached = document.getElementById("billFileAttachedInfo");
+  const fileName = document.getElementById("billAttachedFileName");
+  const confidenceBadge = document.getElementById("billExtractionConfidenceBadge");
+  const dupBanner = document.getElementById("billDuplicateBanner");
+  const dupCheckbox = document.getElementById("billDuplicateOverrideCheckbox");
+  const dupReasonGroup = document.getElementById("billDuplicateOverrideReasonGroup");
+  const dupReason = document.getElementById("billDuplicateOverrideReason");
+  const missingAlert = document.getElementById("billMissingFieldsAlert");
+
+  if (fileInput) fileInput.value = "";
+  if (fileAttached) fileAttached.style.display = "none";
+  if (fileName) fileName.textContent = "";
+  if (confidenceBadge) confidenceBadge.style.display = "none";
+  if (dupBanner) dupBanner.style.display = "none";
+  if (dupCheckbox) dupCheckbox.checked = false;
+  if (dupReasonGroup) dupReasonGroup.style.display = "none";
+  if (dupReason) dupReason.value = "";
+  if (missingAlert) missingAlert.style.display = "none";
+}
+
+function _checkBillMissingFields() {
+  const alertEl = document.getElementById("billMissingFieldsAlert");
+  const textEl = document.getElementById("billMissingFieldsText");
+  if (!alertEl || !textEl) return;
+
+  const dept = document.getElementById("billDepartment")?.value;
+  const cat = document.getElementById("billCategory")?.value.trim();
+  const missing = [];
+  if (!dept) missing.push("Department");
+  if (!cat) missing.push("Category");
+
+  if (missing.length > 0) {
+    textEl.textContent = `Missing required coding: ${missing.join(", ")}. Bill cannot be marked Ready to Pay or Paid until coded.`;
+    alertEl.style.display = "block";
+  } else {
+    alertEl.style.display = "none";
+  }
+}
+
+let _duplicateCheckTimer = null;
+function onBillFieldInput() {
+  _checkBillMissingFields();
+
+  if (_duplicateCheckTimer) clearTimeout(_duplicateCheckTimer);
+  _duplicateCheckTimer = setTimeout(async () => {
+    const vendorId = document.getElementById("billVendorId")?.value;
+    const billNumber = document.getElementById("billNumber")?.value.trim();
+    const issueDate = document.getElementById("billIssueDate")?.value;
+    const totalStr = document.getElementById("billTotalDisplay")?.textContent || "0";
+    const total = parseFloat(totalStr) || 0;
+    const fingerprint = document.getElementById("billFileFingerprint")?.value || "";
+    const excludeIdVal = document.getElementById("billModalId")?.value;
+    const excludeId = excludeIdVal ? parseInt(excludeIdVal, 10) : undefined;
+
+    const banner = document.getElementById("billDuplicateBanner");
+    const textEl = document.getElementById("billDuplicateText");
+    if (!banner) return;
+
+    if (!vendorId && !billNumber && !fingerprint) {
+      banner.style.display = "none";
+      return;
+    }
+
+    try {
+      const res = await FinanceApi.checkDuplicateBills({
+        vendor_id: vendorId ? parseInt(vendorId, 10) : undefined,
+        bill_number: billNumber || undefined,
+        issue_date: issueDate || undefined,
+        total: total > 0 ? total : undefined,
+        file_fingerprint: fingerprint || undefined,
+        exclude_id: excludeId,
+      });
+
+      if (res && res.has_duplicate && res.candidates && res.candidates.length > 0) {
+        const match = res.candidates[0];
+        if (textEl) {
+          textEl.textContent = `Matches existing bill #${match.bill_number || match.id} (${match.vendor_name || "Vendor"}, $${Number(match.total || 0).toFixed(2)}) — Reason: ${match.match_reason}.`;
+        }
+        banner.style.display = "block";
+      } else {
+        banner.style.display = "none";
+      }
+    } catch (err) {
+      console.warn("Duplicate check error:", err);
+    }
+  }, 250);
+}
+
+function toggleBillDuplicateOverrideReason(checked) {
+  const group = document.getElementById("billDuplicateOverrideReasonGroup");
+  if (group) group.style.display = checked ? "block" : "none";
+}
+
+async function handleBillFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const fileInfo = document.getElementById("billFileAttachedInfo");
+  const fileNameSpan = document.getElementById("billAttachedFileName");
+  const confidenceBadge = document.getElementById("billExtractionConfidenceBadge");
+
+  if (fileNameSpan) fileNameSpan.textContent = file.name;
+  if (fileInfo) fileInfo.style.display = "block";
+
+  // Simulate OCR extraction with high confidence by default (94%), or low if filename hints low
+  const isLow = file.name.toLowerCase().includes("blur") || file.name.toLowerCase().includes("low");
+  const confidence = isLow ? 0.68 : 0.94;
+  if (confidenceBadge) {
+    confidenceBadge.style.display = "inline-block";
+    confidenceBadge.textContent = `Confidence: ${(confidence * 100).toFixed(0)}%`;
+    confidenceBadge.className = confidence < 0.8 ? "badge badge-warning" : "badge badge-info";
+  }
+
+  document.getElementById("billCaptureSource").value = "upload";
+  document.getElementById("billFileFingerprint").value = `fp_${file.size}_${file.name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12)}`;
+
+  // AC 1: Uploaded bills start unreviewed
+  const reviewedCheckbox = document.getElementById("billIsReviewed");
+  if (reviewedCheckbox) reviewedCheckbox.checked = false;
+
+  // Set status to inbox or needs_coding
+  const statusEl = document.getElementById("billStatus");
+  if (statusEl) statusEl.value = isLow ? "inbox" : "needs_coding";
+
+  // Prefill OCR extracted values if fields are empty
+  const numInput = document.getElementById("billNumber");
+  if (!numInput.value) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    numInput.value = `INV-OCR-${randomSuffix}`;
+  }
+
+  const vendorSel = document.getElementById("billVendorId");
+  if (vendorSel && (!vendorSel.value || vendorSel.value === "")) {
+    if (vendorSel.options.length > 1) {
+      vendorSel.selectedIndex = 1;
+    }
+  }
+
+  const issueDateInput = document.getElementById("billIssueDate");
+  if (!issueDateInput.value) {
+    issueDateInput.value = new Date().toISOString().split("T")[0];
+  }
+
+  const dueDateInput = document.getElementById("billDueDate");
+  if (!dueDateInput.value) {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    dueDateInput.value = d.toISOString().split("T")[0];
+  }
+
+  // Populate sample extracted line item
+  const tbody = document.getElementById("billLinesBody");
+  if (tbody && tbody.children.length === 0) {
+    addBillLine({ description: "Extracted: Cloud Infrastructure & Services", quantity: 1, unit_price: 1250.00, line_total: 1250.00 });
+  } else if (tbody && tbody.children.length === 1) {
+    const desc = tbody.querySelector("input[type='text']");
+    if (desc && !desc.value) {
+      tbody.innerHTML = "";
+      addBillLine({ description: "Extracted: Cloud Infrastructure & Services", quantity: 1, unit_price: 1250.00, line_total: 1250.00 });
+    }
+  }
+  _updateBillTotals();
+
+  // Check missing fields (dept & cat)
+  _checkBillMissingFields();
+
+  // Trigger duplicate check
+  onBillFieldInput();
+}
+
+function openCaptureBillModal() {
   FinanceForm.clearErrors("billModal");
+  _resetBillCaptureSection();
   _populateBillVendorDropdown();
-  document.getElementById("billModalTitleText").textContent = "New Vendor Bill";
+
+  document.getElementById("billModalTitleText").textContent = "Upload & Capture Vendor Bill";
   document.getElementById("billModalId").value = "";
+  document.getElementById("billCaptureSource").value = "upload";
+  document.getElementById("billFileFingerprint").value = "";
   document.getElementById("billVendorId").value = "";
   document.getElementById("billNumber").value = "";
+  document.getElementById("billDepartment").value = "";
   document.getElementById("billCategory").value = "";
+  document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("billDueDate").value = "";
-  document.getElementById("billStatus").value = "unpaid";
+  document.getElementById("billStatus").value = "inbox";
   document.getElementById("billCurrency").value = "USD";
   document.getElementById("billNotes").value = "";
+  document.getElementById("billIsReviewed").checked = false;
   document.getElementById("billLinesBody").innerHTML = "";
+
+  _updateBillTotals();
+  _checkBillMissingFields();
+  openModal("billModal");
+}
+
+function openAddBillModal() {
+  FinanceForm.clearErrors("billModal");
+  _resetBillCaptureSection();
+  _populateBillVendorDropdown();
+
+  document.getElementById("billModalTitleText").textContent = "New Vendor Bill";
+  document.getElementById("billModalId").value = "";
+  document.getElementById("billCaptureSource").value = "manual";
+  document.getElementById("billFileFingerprint").value = "";
+  document.getElementById("billVendorId").value = "";
+  document.getElementById("billNumber").value = "";
+  document.getElementById("billDepartment").value = "";
+  document.getElementById("billCategory").value = "";
+  document.getElementById("billLegalEntity").value = "Voyance Health Inc";
+  document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("billDueDate").value = "";
+  document.getElementById("billStatus").value = "needs_coding";
+  document.getElementById("billCurrency").value = "USD";
+  document.getElementById("billNotes").value = "";
+  document.getElementById("billIsReviewed").checked = true;
+  document.getElementById("billLinesBody").innerHTML = "";
+
   _updateBillTotals();
   addBillLine();
+  _checkBillMissingFields();
   openModal("billModal");
 }
 
 async function openEditBillModal(billId) {
   FinanceForm.clearErrors("billModal");
+  _resetBillCaptureSection();
   _populateBillVendorDropdown();
+
   try {
     const bill = await FinanceApi.getBill(billId);
     document.getElementById("billModalTitleText").textContent = `Edit Bill ${bill.bill_number}`;
     document.getElementById("billModalId").value = bill.id;
-    document.getElementById("billVendorId").value = bill.vendor_id;
+    document.getElementById("billCaptureSource").value = bill.capture_source || "manual";
+    document.getElementById("billFileFingerprint").value = bill.file_fingerprint || "";
+    document.getElementById("billVendorId").value = bill.vendor_id || "";
     document.getElementById("billNumber").value = bill.bill_number || "";
+    document.getElementById("billDepartment").value = bill.department || "";
     document.getElementById("billCategory").value = bill.category || "";
+    document.getElementById("billLegalEntity").value = bill.legal_entity || "Voyance Health Inc";
     document.getElementById("billIssueDate").value = bill.issue_date || "";
     document.getElementById("billDueDate").value = bill.due_date || "";
-    document.getElementById("billStatus").value = bill.status || "unpaid";
+    document.getElementById("billStatus").value = bill.status || "inbox";
     document.getElementById("billCurrency").value = bill.currency || "USD";
     document.getElementById("billNotes").value = bill.notes || "";
+    document.getElementById("billIsReviewed").checked = !!bill.is_reviewed;
+
+    if (bill.attachment_name) {
+      const fileInfo = document.getElementById("billFileAttachedInfo");
+      const fileNameSpan = document.getElementById("billAttachedFileName");
+      const confidenceBadge = document.getElementById("billExtractionConfidenceBadge");
+      if (fileNameSpan) fileNameSpan.textContent = bill.attachment_name;
+      if (fileInfo) fileInfo.style.display = "block";
+      if (confidenceBadge && bill.extraction_confidence != null) {
+        confidenceBadge.style.display = "inline-block";
+        const pct = Math.round(bill.extraction_confidence * 100);
+        confidenceBadge.textContent = `Confidence: ${pct}%`;
+        confidenceBadge.className = pct < 80 ? "badge badge-warning" : "badge badge-info";
+      }
+    }
+
+    if (bill.is_duplicate_override) {
+      const dupCheckbox = document.getElementById("billDuplicateOverrideCheckbox");
+      const dupReasonGroup = document.getElementById("billDuplicateOverrideReasonGroup");
+      const dupReason = document.getElementById("billDuplicateOverrideReason");
+      if (dupCheckbox) dupCheckbox.checked = true;
+      if (dupReasonGroup) dupReasonGroup.style.display = "block";
+      if (dupReason) dupReason.value = bill.duplicate_override_reason || "";
+    }
+
     document.getElementById("billLinesBody").innerHTML = "";
     (bill.lines || []).forEach((ln) => addBillLine(ln));
     if (!bill.lines || !bill.lines.length) addBillLine();
     _updateBillTotals();
+    _checkBillMissingFields();
     openModal("billModal");
   } catch (err) {
     showToast("Failed to load bill: " + (err.message || err), "error");
@@ -226,11 +551,11 @@ function addBillLine(data) {
   const tbody = document.getElementById("billLinesBody");
   const tr = document.createElement("tr");
   tr.innerHTML = `
-    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}" oninput="_updateBillTotals()"></td>
-    <td><input type="number" class="form-control bill-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeBillLineTotal(this); _updateBillTotals();"></td>
-    <td><input type="number" class="form-control bill-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeBillLineTotal(this); _updateBillTotals();"></td>
-    <td><input type="number" class="form-control bill-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateBillTotals()"></td>
-    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateBillTotals();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
+    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}" oninput="_updateBillTotals(); onBillFieldInput();"></td>
+    <td><input type="number" class="form-control bill-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeBillLineTotal(this); _updateBillTotals(); onBillFieldInput();"></td>
+    <td><input type="number" class="form-control bill-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeBillLineTotal(this); _updateBillTotals(); onBillFieldInput();"></td>
+    <td><input type="number" class="form-control bill-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateBillTotals(); onBillFieldInput();"></td>
+    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateBillTotals(); onBillFieldInput();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
   `;
   tbody.appendChild(tr);
   _updateBillTotals();
@@ -261,6 +586,8 @@ async function saveBillModal() {
   const billNumber = document.getElementById("billNumber").value.trim();
   const issueDate = document.getElementById("billIssueDate").value;
   const dueDate = document.getElementById("billDueDate").value;
+  const status = document.getElementById("billStatus").value;
+  const isReviewed = document.getElementById("billIsReviewed").checked;
 
   const isValid = FinanceForm.validateRequiredFields("billModal", [
     { id: "billVendorId", label: "Vendor" },
@@ -269,6 +596,28 @@ async function saveBillModal() {
     { id: "billDueDate", label: "Due Date" },
   ]);
   if (!isValid) return;
+
+  // AC 1: Uploaded/unreviewed bills cannot move directly to ready_to_pay or paid
+  if ((status === "ready_to_pay" || status === "paid") && !isReviewed) {
+    showToast("Unreviewed bills cannot be marked Ready to Pay or Paid. Please check 'Mark verified and reviewed' first.", "warning");
+    return;
+  }
+
+  // AC 3: Duplicate detection check
+  const dupBanner = document.getElementById("billDuplicateBanner");
+  const dupVisible = dupBanner && dupBanner.style.display !== "none";
+  const dupOverride = document.getElementById("billDuplicateOverrideCheckbox").checked;
+  const dupReason = document.getElementById("billDuplicateOverrideReason").value.trim();
+
+  if (dupVisible && !dupOverride) {
+    showToast("Potential duplicate detected. Request an authorized override with reason to proceed.", "warning");
+    return;
+  }
+  if (dupVisible && dupOverride && !dupReason) {
+    showToast("Please provide an override reason for the duplicate bill.", "warning");
+    document.getElementById("billDuplicateOverrideReason").focus();
+    return;
+  }
 
   const lines = [];
   document.querySelectorAll("#billLinesBody tr").forEach((r) => {
@@ -282,12 +631,20 @@ async function saveBillModal() {
   const payload = {
     vendor_id: parseInt(vendorId, 10),
     bill_number: billNumber,
+    department: document.getElementById("billDepartment").value || null,
+    legal_entity: document.getElementById("billLegalEntity").value || "Voyance Health Inc",
     category: document.getElementById("billCategory").value.trim() || null,
     issue_date: issueDate,
     due_date: dueDate,
-    status: document.getElementById("billStatus").value,
+    status: status,
     currency: document.getElementById("billCurrency").value,
     notes: document.getElementById("billNotes").value.trim(),
+    capture_source: document.getElementById("billCaptureSource").value || "manual",
+    file_fingerprint: document.getElementById("billFileFingerprint").value || null,
+    attachment_name: document.getElementById("billAttachedFileName")?.textContent || null,
+    is_reviewed: isReviewed,
+    is_duplicate_override: dupOverride,
+    duplicate_override_reason: dupOverride ? dupReason : null,
     lines,
   };
 
@@ -597,6 +954,12 @@ async function toggleVendorActive(id, currentlyActive) {
 // Window exports for Vendor Bills & Vendors
 window.loadFinanceBills = loadFinanceBills;
 window.filterFinanceBills = filterFinanceBills;
+window.setBillWorkQueue = setBillWorkQueue;
+window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
+window.openCaptureBillModal = openCaptureBillModal;
+window.handleBillFileSelected = handleBillFileSelected;
+window.onBillFieldInput = onBillFieldInput;
+window.toggleBillDuplicateOverrideReason = toggleBillDuplicateOverrideReason;
 window.openAddBillModal = openAddBillModal;
 window.openEditBillModal = openEditBillModal;
 window.closeBillModal = closeBillModal;

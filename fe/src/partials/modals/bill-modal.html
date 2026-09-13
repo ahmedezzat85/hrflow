@@ -11,35 +11,103 @@
     </div>
     <div class="modal-body">
       <input type="hidden" id="billModalId">
+      <input type="hidden" id="billCaptureSource" value="manual">
+      <input type="hidden" id="billFileFingerprint">
+
+      <!-- 1. Document Upload & Extraction Dropzone -->
+      <div class="form-section" id="billCaptureSection" style="margin-bottom: 14px;">
+        <div class="form-section-label"><i class="fa-solid fa-file-arrow-up"></i> Document Capture & OCR <span class="line"></span></div>
+        <div id="billDropzone" style="border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; background: var(--surface2, rgba(0,0,0,0.02)); cursor: pointer; transition: all 0.2s ease;" onclick="document.getElementById('billFileInput').click()">
+          <input type="file" id="billFileInput" accept="application/pdf,image/*" style="display: none;" onclick="event.stopPropagation()" onchange="handleBillFileSelected(event)">
+          <div style="font-size: 1.8rem; color: var(--primary, #3b82f6); margin-bottom: 6px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div style="font-weight: 600; font-size: 0.92rem;">Drop vendor invoice PDF or click to browse</div>
+          <div style="font-size: 0.78rem; color: var(--text3); margin-top: 3px;">Supports multi-page PDFs, scans, and images (Max 15MB)</div>
+          <div id="billFileAttachedInfo" style="display:none; margin-top:10px; font-size:0.85rem; font-weight:600; color:var(--success, #10b981);">
+            <i class="fa-solid fa-circle-check"></i> <span id="billAttachedFileName">document.pdf</span>
+            <span id="billExtractionConfidenceBadge" class="badge badge-info" style="margin-left: 8px;">Confidence: 94%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Duplicate Detection Warning Banner -->
+      <div id="billDuplicateBanner" class="alert alert-warning" style="display:none; margin-bottom: 14px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--warning-border, #f59e0b); background: var(--warning-bg, rgba(245,158,11,0.1));" role="status">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning, #f59e0b); margin-top:2px;"></i>
+          <div style="flex:1;">
+            <div style="font-weight:700;">Potential Duplicate Bill Detected</div>
+            <div id="billDuplicateText" style="color:var(--text2); margin-top:2px; font-size: 0.85rem;">A bill from this supplier with matching details already exists.</div>
+            <div style="margin-top: 8px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:600; cursor:pointer;">
+                <input type="checkbox" id="billDuplicateOverrideCheckbox" onchange="toggleBillDuplicateOverrideReason(this.checked)">
+                Request authorized override for legitimate recurring / secondary charge
+              </label>
+              <div id="billDuplicateOverrideReasonGroup" style="display:none; margin-top:6px;">
+                <input type="text" id="billDuplicateOverrideReason" class="form-control" placeholder="Required override reason for financial audit..." style="font-size:0.85rem;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Missing Fields / Needs Coding Alert -->
+      <div id="billMissingFieldsAlert" class="alert alert-info" style="display:none; margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--primary); background: rgba(59,130,246,0.08);" role="alert">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-circle-info" style="color:var(--primary);"></i>
+          <div style="font-size:0.85rem;"><span style="font-weight:700;">Review Required:</span> <span id="billMissingFieldsText">This bill requires categorization and department coding before payment.</span></div>
+        </div>
+      </div>
+
       <div class="form-section">
-        <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Bill Details <span class="line"></span></div>
+        <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Bill Details & Coding <span class="line"></span></div>
         <div class="form-grid">
           <div class="form-field full">
-            <label for="billVendorId">Vendor <span class="req">*</span></label>
-            <select id="billVendorId" required>
+            <label for="billVendorId">Vendor / Supplier <span class="req">*</span></label>
+            <select id="billVendorId" required onchange="onBillFieldInput()">
               <option value="">— Select vendor —</option>
             </select>
           </div>
           <div class="form-field">
             <label for="billNumber">Bill # <span class="req">*</span></label>
-            <input type="text" id="billNumber" placeholder="BILL-2026-001" required>
+            <input type="text" id="billNumber" placeholder="BILL-2026-001" required oninput="onBillFieldInput()">
           </div>
           <div class="form-field">
-            <label for="billCategory">Category</label>
-            <input type="text" id="billCategory" placeholder="e.g. Infrastructure, SaaS">
+            <label for="billLegalEntity">Legal Entity</label>
+            <select id="billLegalEntity">
+              <option value="Voyance Health Inc" selected>Voyance Health Inc (US)</option>
+              <option value="Voyance Egypt LLC">Voyance Egypt LLC (EG)</option>
+            </select>
           </div>
           <div class="form-field">
-            <label for="billStatus">Status</label>
+            <label for="billDepartment">Department / Cost Center</label>
+            <select id="billDepartment" onchange="onBillFieldInput()">
+              <option value="">— Select Department —</option>
+              <option value="Engineering">Engineering & Product</option>
+              <option value="Operations">Operations & Facilities</option>
+              <option value="Clinical">Clinical & Medical</option>
+              <option value="Marketing">Growth & Marketing</option>
+              <option value="Finance">Finance & Legal</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="billCategory">Expense Category</label>
+            <input type="text" id="billCategory" placeholder="e.g. Infrastructure, SaaS, Hosting" oninput="onBillFieldInput()">
+          </div>
+          <div class="form-field">
+            <label for="billStatus">Work Queue & Status</label>
             <select id="billStatus">
-              <option value="unpaid">Unpaid</option>
+              <option value="inbox">Inbox (Unreviewed)</option>
+              <option value="needs_coding">Needs Coding</option>
+              <option value="needs_approval">Needs Approval</option>
+              <option value="ready_to_pay">Ready to Pay</option>
+              <option value="scheduled">Scheduled</option>
               <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
+              <option value="exceptions">Exceptions</option>
               <option value="void">Void</option>
             </select>
           </div>
           <div class="form-field">
             <label for="billIssueDate">Issue Date <span class="req">*</span></label>
-            <input type="date" id="billIssueDate" required>
+            <input type="date" id="billIssueDate" required onchange="onBillFieldInput()">
           </div>
           <div class="form-field">
             <label for="billDueDate">Due Date <span class="req">*</span></label>
@@ -56,9 +124,15 @@
               <option value="AED">AED — UAE Dirham</option>
             </select>
           </div>
+          <div class="form-field full" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:600;">
+              <input type="checkbox" id="billIsReviewed" checked>
+              <span id="billIsReviewedLabel">Mark verified and reviewed (required before scheduling or payment)</span>
+            </label>
+          </div>
           <div class="form-field full">
             <label for="billNotes">Notes</label>
-            <textarea id="billNotes" rows="2" placeholder="Optional notes for this bill..."></textarea>
+            <textarea id="billNotes" rows="2" placeholder="Optional notes, PO reference, or internal comments..."></textarea>
           </div>
         </div>
       </div>

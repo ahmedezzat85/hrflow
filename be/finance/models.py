@@ -106,12 +106,23 @@ class BillDB(Base):
     category = Column(String(100), default="Operating Expense")
     issue_date = Column(String(20), nullable=False)
     due_date = Column(String(20), nullable=False)
-    status = Column(String(30), default="unpaid", nullable=False, index=True)  # unpaid/paid/overdue/void
+    status = Column(String(30), default="unpaid", nullable=False, index=True)  # inbox | needs_coding | needs_approval | ready_to_pay | scheduled | paid | exceptions | void
     currency = Column(String(10), default="USD", nullable=False)
     subtotal = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
+    capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr
+    extraction_confidence = Column(Float, nullable=True)
+    missing_fields = Column(Text, nullable=True)
+    department = Column(String(100), nullable=True)
+    legal_entity = Column(String(100), default="Voyance Health Inc", nullable=True)
+    attachment_url = Column(String(500), nullable=True)
+    attachment_name = Column(String(255), nullable=True)
+    file_fingerprint = Column(String(128), nullable=True, index=True)
+    is_reviewed = Column(Boolean, default=True, nullable=False)
+    is_duplicate_override = Column(Boolean, default=False, nullable=False)
+    duplicate_override_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="bills")

@@ -397,9 +397,20 @@ class BillBase(BaseModel):
     category: Optional[str] = Field("Operating Expense", max_length=100)
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    status: str = Field("unpaid", description="unpaid|paid|overdue|void")
+    status: str = Field("unpaid", description="inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void|unpaid")
     currency: str = Field("USD", min_length=3, max_length=10)
     notes: Optional[str] = None
+    capture_source: Optional[str] = Field("manual", max_length=20)
+    extraction_confidence: Optional[float] = None
+    missing_fields: Optional[str] = None
+    department: Optional[str] = Field(None, max_length=100)
+    legal_entity: Optional[str] = Field("Voyance Health Inc", max_length=100)
+    attachment_url: Optional[str] = None
+    attachment_name: Optional[str] = None
+    file_fingerprint: Optional[str] = None
+    is_reviewed: Optional[bool] = True
+    is_duplicate_override: Optional[bool] = False
+    duplicate_override_reason: Optional[str] = None
 
 
 class BillCreate(BillBase):
@@ -408,12 +419,24 @@ class BillCreate(BillBase):
 
 class BillUpdate(BaseModel):
     vendor_id: Optional[int] = None
+    bill_number: Optional[str] = Field(None, max_length=50)
     category: Optional[str] = Field(None, max_length=100)
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     notes: Optional[str] = None
+    capture_source: Optional[str] = None
+    extraction_confidence: Optional[float] = None
+    missing_fields: Optional[str] = None
+    department: Optional[str] = None
+    legal_entity: Optional[str] = None
+    attachment_url: Optional[str] = None
+    attachment_name: Optional[str] = None
+    file_fingerprint: Optional[str] = None
+    is_reviewed: Optional[bool] = None
+    is_duplicate_override: Optional[bool] = None
+    duplicate_override_reason: Optional[str] = None
     lines: Optional[List[BillLineCreate]] = None
 
 
@@ -428,6 +451,42 @@ class BillResponse(BillBase):
 
     class Config:
         from_attributes = True
+
+
+class BillDuplicateCheckRequest(BaseModel):
+    vendor_id: Optional[int] = None
+    bill_number: Optional[str] = None
+    issue_date: Optional[str] = None
+    total: Optional[float] = None
+    file_fingerprint: Optional[str] = None
+    exclude_id: Optional[int] = None
+
+
+class BillDuplicateCandidate(BaseModel):
+    id: int
+    bill_number: str
+    vendor_id: int
+    vendor_name: Optional[str] = None
+    issue_date: str
+    total: float
+    status: str
+    matched_field: str
+    matching_value: str
+
+
+class BillDuplicateCheckResponse(BaseModel):
+    candidates: List[BillDuplicateCandidate] = []
+
+
+class BillQueueCountsResponse(BaseModel):
+    inbox: int = 0
+    needs_coding: int = 0
+    needs_approval: int = 0
+    ready_to_pay: int = 0
+    scheduled: int = 0
+    paid: int = 0
+    exceptions: int = 0
+    all: int = 0
 
 
 # ==========================================
