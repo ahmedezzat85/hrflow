@@ -20,7 +20,18 @@ const APP_SCRIPT_ORDER = [
   'dochub.js',
   'charts.js',
   'export.js',
-  'finance.js',
+  // Modular finance domains
+  'finance-core.js',
+  'finance-dashboard.js',
+  'finance-invoices.js',
+  'finance-bills.js',
+  'finance-payroll.js',
+  'finance-accounts.js',
+  'finance-cheques.js',
+  'finance-statements.js',
+  'finance-subscriptions.js',
+  'finance-reports.js',
+  'finance-nav.js',
   'app.js',
 ];
 
