@@ -147,10 +147,12 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}</td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${(derivedStatus === "unpaid" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(derivedStatus === "unpaid" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
+
     </tr>
   `;
   }).join("");

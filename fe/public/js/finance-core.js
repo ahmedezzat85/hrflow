@@ -954,3 +954,352 @@ const FinanceTable = {
 };
 window.FinanceTable = FinanceTable;
 
+// ============================================================================
+// FinanceDrawer — Shared detail drawer, timeline, related records (Story 1.3)
+// ============================================================================
+const FinanceDrawer = {
+  current: null,
+  _historyPushed: false,
+  _initialized: false,
+
+  init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    // Listen to close button
+    const closeBtn = document.getElementById("financeDetailDrawerCloseBtn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.close());
+    }
+
+    // Backdrop click
+    const overlay = document.getElementById("financeDetailDrawerOverlay");
+    if (overlay) {
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) this.close();
+      });
+    }
+
+    // Keyboard Escape & focus trap
+    document.addEventListener("keydown", (e) => {
+      if (!this.isOpen()) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        this.close();
+      } else if (e.key === "Tab") {
+        this.trapFocus(e);
+      }
+    });
+
+    // Tab switching inside drawer
+    const tablist = document.getElementById("financeDrawerTablist");
+    if (tablist) {
+      initAccessibleTablist(tablist);
+      tablist.querySelectorAll(".filter-tab[data-drawer-tab]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          this.switchTab(tab.dataset.drawerTab);
+        });
+      });
+    }
+
+    // Browser history / popstate integration
+    window.addEventListener("popstate", (e) => {
+      if (e.state && e.state.financeDrawer) {
+        const { entityType, entityId } = e.state.financeDrawer;
+        this.open(entityType, entityId, null, false);
+      } else if (this.isOpen()) {
+        this.close(false);
+      }
+    });
+
+    // Check initial URL hash for deep-linked drawer
+    if (window.location.hash && window.location.hash.startsWith("#detail=")) {
+      const match = window.location.hash.match(/#detail=([a-zA-Z_]+):(\d+)/);
+      if (match) {
+        setTimeout(() => this.open(match[1], parseInt(match[2], 10), null, false), 150);
+      }
+    }
+  },
+
+  isOpen() {
+    const overlay = document.getElementById("financeDetailDrawerOverlay");
+    return overlay && overlay.style.display !== "none";
+  },
+
+  trapFocus(e) {
+    const drawer = document.getElementById("financeDetailDrawer");
+    if (!drawer) return;
+    const focusable = drawer.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  },
+
+  switchTab(tabName) {
+    const panels = {
+      summary: document.getElementById("financeDrawerSummaryPanel"),
+      timeline: document.getElementById("financeDrawerTimelinePanel"),
+      related: document.getElementById("financeDrawerRelatedPanel"),
+      attachments: document.getElementById("financeDrawerAttachmentsPanel"),
+    };
+
+    Object.entries(panels).forEach(([key, panel]) => {
+      if (panel) {
+        const active = key === tabName;
+        panel.style.display = active ? "block" : "none";
+        panel.classList.toggle("active", active);
+      }
+    });
+
+    const tabs = document.querySelectorAll("#financeDrawerTablist .filter-tab");
+    tabs.forEach((tab) => {
+      const isSelected = tab.dataset.drawerTab === tabName;
+      tab.classList.toggle("active", isSelected);
+      tab.setAttribute("aria-selected", isSelected ? "true" : "false");
+      tab.setAttribute("tabindex", isSelected ? "0" : "-1");
+    });
+  },
+
+  async open(entityType, entityId, triggerEl = null, pushHistory = true) {
+    this.init();
+    const overlay = document.getElementById("financeDetailDrawerOverlay");
+    const drawer = document.getElementById("financeDetailDrawer");
+    if (!overlay || !drawer) return;
+
+    this.current = {
+      entityType,
+      entityId,
+      triggerEl: triggerEl || document.activeElement,
+    };
+
+    overlay.style.display = "flex";
+    document.body.classList.add("modal-open");
+
+    // History push state
+    if (pushHistory) {
+      const hash = `#detail=${entityType}:${entityId}`;
+      if (window.location.hash !== hash) {
+        history.pushState({ financeDrawer: { entityType, entityId } }, "", window.location.pathname + window.location.search + hash);
+        this._historyPushed = true;
+      }
+    }
+
+    this.switchTab("summary");
+
+    // Initial focus into drawer
+    const closeBtn = document.getElementById("financeDetailDrawerCloseBtn");
+    if (closeBtn) {
+      setTimeout(() => closeBtn.focus(), 50);
+    }
+
+    await this.load(entityType, entityId);
+  },
+
+  async load(entityType, entityId) {
+    const loading = document.getElementById("financeDrawerLoading");
+    if (loading) loading.style.display = "block";
+
+    try {
+      const data = await FinanceApi.getEntityActivity(entityType, entityId);
+      this.render(data);
+    } catch (err) {
+      console.error("Failed to load entity activity:", err);
+      const titleEl = document.getElementById("financeDetailDrawerTitle");
+      if (titleEl) titleEl.textContent = "Error loading record";
+      const body = document.getElementById("financeDrawerSummaryPanel");
+      if (body) {
+        body.innerHTML = `<div class="empty-state"><i class="fa-solid fa-circle-exclamation" style="color:var(--danger);"></i><p>Failed to load record detail: ${err.message || err}</p></div>`;
+      }
+    } finally {
+      if (loading) loading.style.display = "none";
+    }
+  },
+
+  render(data) {
+    if (!data) return;
+
+    // Header badge & title
+    const badgeEl = document.getElementById("financeDetailDrawerBadge");
+    if (badgeEl) badgeEl.textContent = (data.entity_type || "Record").replace(/_/g, " ").toUpperCase();
+
+    const titleEl = document.getElementById("financeDetailDrawerTitle");
+    if (titleEl) titleEl.textContent = data.title || "Detail";
+
+    const statusEl = document.getElementById("financeDetailDrawerStatusBadge");
+    if (statusEl) {
+      statusEl.innerHTML = FinanceFormat.formatStatusBadge(data.entity_type, data.status);
+    }
+
+    const maskedEl = document.getElementById("financeDetailDrawerMaskedBadge");
+    if (maskedEl) {
+      maskedEl.style.display = data.summary?.sensitive_masked ? "inline-flex" : "none";
+    }
+
+    // 1. Summary Panel
+    const amtEl = document.getElementById("financeDrawerAmountDisplay");
+    if (amtEl) {
+      amtEl.innerHTML = data.summary?.amount !== undefined && data.summary?.amount !== null
+        ? FinanceFormat.renderMoneyHtml(data.summary.amount, data.summary.currency || "USD")
+        : "—";
+    }
+
+    const cpEl = document.getElementById("financeDrawerCounterpartyDisplay");
+    if (cpEl) cpEl.textContent = data.summary?.counterparty || "—";
+
+    const attrsList = document.getElementById("financeDrawerAttributesList");
+    if (attrsList) {
+      const attrs = data.summary?.attributes || [];
+      attrsList.innerHTML = attrs.map((a) => `
+        <div class="drawer-attr-item">
+          <div class="drawer-attr-label">${a.label}</div>
+          <div class="drawer-attr-value">${a.value}</div>
+        </div>
+      `).join("");
+    }
+
+    const notesSec = document.getElementById("financeDrawerNotesSection");
+    const notesDisp = document.getElementById("financeDrawerNotesDisplay");
+    if (notesSec && notesDisp) {
+      if (data.summary?.notes) {
+        notesDisp.textContent = data.summary.notes;
+        notesSec.style.display = "block";
+      } else {
+        notesSec.style.display = "none";
+      }
+    }
+
+    // 2. Timeline Panel
+    const timelineList = document.getElementById("financeDrawerTimelineList");
+    if (timelineList) {
+      const events = data.timeline || [];
+      if (!events.length) {
+        timelineList.innerHTML = getEmptyStateHtml("No activity events recorded yet.", "fa-solid fa-clock-rotate-left");
+      } else {
+        timelineList.innerHTML = events.map((evt) => {
+          let transitionHtml = "";
+          if (evt.state_transition && (evt.state_transition.from_state || evt.state_transition.to_state)) {
+            transitionHtml = `
+              <div class="timeline-transition">
+                ${evt.state_transition.from_state ? `<span class="badge badge-grey">${evt.state_transition.from_state}</span> <i class="fa-solid fa-arrow-right" style="font-size:0.7rem; opacity:0.6;"></i>` : ""}
+                <span class="badge badge-info">${evt.state_transition.to_state}</span>
+              </div>
+            `;
+          }
+          return `
+            <div class="timeline-item">
+              <span class="timeline-icon"></span>
+              <div class="timeline-header">
+                <span class="timeline-actor"><i class="fa-regular fa-user" style="opacity:0.6; margin-right:4px;"></i>${evt.actor || "System"}</span>
+                <span class="timeline-time">${FinanceFormat.formatFinanceDate(evt.timestamp, true)}</span>
+              </div>
+              <div class="timeline-text">${evt.plain_text}</div>
+              ${transitionHtml}
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // 3. Related Records Panel
+    const relatedList = document.getElementById("financeDrawerRelatedList");
+    if (relatedList) {
+      const records = data.related_records || [];
+      if (!records.length) {
+        relatedList.innerHTML = getEmptyStateHtml("No linked financial records found.", "fa-solid fa-link");
+      } else {
+        relatedList.innerHTML = records.map((rec) => `
+          <div class="related-record-card" role="button" tabindex="0" data-rel-type="${rec.entity_type}" data-rel-id="${rec.entity_id}" aria-label="Open related ${rec.title}">
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="font-weight:700; font-size:0.92rem; color:var(--text);">${rec.title}</div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="badge badge-grey" style="font-size:0.72rem;">${rec.badge || rec.entity_type}</span>
+                ${rec.date ? `<span style="font-size:0.78rem; color:var(--text3);">${FinanceFormat.formatFinanceDate(rec.date)}</span>` : ""}
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              ${rec.amount !== null && rec.amount !== undefined ? `<div style="font-weight:700; font-size:0.95rem; font-variant-numeric:tabular-nums;">${FinanceFormat.renderMoneyHtml(rec.amount, rec.currency || "USD")}</div>` : ""}
+              <i class="fa-solid fa-chevron-right" style="font-size:0.8rem; color:var(--text3);"></i>
+            </div>
+          </div>
+        `).join("");
+
+        relatedList.querySelectorAll(".related-record-card").forEach((card) => {
+          const handler = () => {
+            const relType = card.dataset.relType;
+            const relId = parseInt(card.dataset.relId, 10);
+            this.open(relType, relId, card);
+          };
+          card.onclick = handler;
+          card.onkeydown = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handler();
+            }
+          };
+        });
+      }
+    }
+
+    // 4. Attachments Panel
+    const attachList = document.getElementById("financeDrawerAttachmentsList");
+    if (attachList) {
+      const attachments = data.attachments || [];
+      if (!attachments.length) {
+        attachList.innerHTML = getEmptyStateHtml("No documents attached to this record.", "fa-solid fa-paperclip");
+      } else {
+        attachList.innerHTML = attachments.map((att) => `
+          <div class="related-record-card" style="cursor:default;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <i class="fa-solid fa-file-pdf" style="font-size:1.4rem; color:var(--danger, #ef4444);"></i>
+              <div>
+                <div style="font-weight:600; font-size:0.88rem; color:var(--text);">${att.file_name}</div>
+                <div style="font-size:0.75rem; color:var(--text3);">${(att.file_size / 1024).toFixed(1)} KB • Uploaded ${att.uploaded_at ? FinanceFormat.formatFinanceDate(att.uploaded_at) : "recently"}</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline" onclick="showToast('Document preview loaded', 'info')">
+              <i class="fa-solid fa-eye"></i> Preview
+            </button>
+          </div>
+        `).join("");
+      }
+    }
+  },
+
+  close(updateHistory = true) {
+    const overlay = document.getElementById("financeDetailDrawerOverlay");
+    if (overlay) overlay.style.display = "none";
+    document.body.classList.remove("modal-open");
+
+    // Focus restoration to origin invoking element
+    if (this.current && this.current.triggerEl && typeof this.current.triggerEl.focus === "function") {
+      try {
+        this.current.triggerEl.focus();
+      } catch (_) {}
+    }
+
+    if (updateHistory && window.location.hash && window.location.hash.startsWith("#detail=")) {
+      history.pushState(null, "", window.location.pathname + window.location.search);
+    }
+
+    this.current = null;
+  }
+};
+window.FinanceDrawer = FinanceDrawer;
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => FinanceDrawer.init());
+  } else {
+    FinanceDrawer.init();
+  }
+}
+
+

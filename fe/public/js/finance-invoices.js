@@ -171,10 +171,12 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")}</strong></td>
       <td>${FinanceFormat.formatStatusBadge("invoice", derivedStatus)}</td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${(derivedStatus === "sent" || derivedStatus === "overdue") ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
+
     </tr>
   `;
       }

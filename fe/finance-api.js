@@ -1637,8 +1637,225 @@ const FinanceApi = {
     const qs = new URLSearchParams(p).toString();
     return `${API_BASE_URL}${endpoint}?${qs}`;
   },
+
+  async getEntityActivity(entityType, entityId) {
+    const norm = (entityType || "").toLowerCase().replace(/s$/, "");
+    const id = parseInt(entityId, 10);
+    if (_isMock()) {
+      if (norm === "invoice") {
+        const inv = (FinanceMockState.invoices || []).find((i) => i.id === id) || {
+          id,
+          invoice_number: `INV-2026-${id}`,
+          customer_name: "Apex Health Partners",
+          total: 12500.0,
+          currency: "USD",
+          status: "sent",
+          issue_date: "2026-09-01",
+          due_date: "2026-09-30",
+          notes: "PACS Integration",
+        };
+        const cust = (FinanceMockState.customers || []).find((c) => c.id === inv.customer_id) || { name: inv.customer_name || "Apex Health Partners", tax_id: "US-88992211" };
+        return {
+          entity_type: "invoice",
+          entity_id: inv.id,
+          title: `Invoice ${inv.invoice_number}`,
+          status: inv.status || "draft",
+          summary: {
+            reference: inv.invoice_number,
+            counterparty: inv.customer_name || cust.name,
+            amount: inv.total,
+            currency: inv.currency || "USD",
+            date: inv.issue_date,
+            due_date: inv.due_date,
+            status: inv.status,
+            notes: inv.notes || "",
+            sensitive_masked: false,
+            attributes: [
+              { label: "Subtotal", value: `${(inv.subtotal || inv.total).toLocaleString()} ${inv.currency || "USD"}` },
+              { label: "Due Date", value: inv.due_date || "—" },
+              { label: "Revenue Channel", value: inv.revenue_channel || "Overseas USD" },
+              { label: "Customer Tax ID", value: cust.tax_id || "US-88992211" },
+            ],
+          },
+          related_records: [
+            {
+              entity_type: "customer",
+              entity_id: cust.id || 1,
+              title: cust.name,
+              badge: "Customer Account",
+              amount: null,
+              currency: null,
+              date: null,
+            },
+            {
+              entity_type: "transaction",
+              entity_id: 1,
+              title: "Payment Inflow TXN-0001",
+              badge: "Ledger Entry",
+              amount: inv.total,
+              currency: inv.currency || "USD",
+              date: inv.issue_date,
+            },
+          ],
+          attachments: [
+            {
+              id: 1,
+              file_name: `${inv.invoice_number}_document.pdf`,
+              file_size: 245760,
+              mime_type: "application/pdf",
+              storage_ref: "gdrive://invoices/inv.pdf",
+              uploaded_at: inv.created_at || "2026-09-01T08:00:00Z",
+              uploaded_by: "billing@voyancemed.com",
+            },
+          ],
+          timeline: [
+            {
+              id: `inv-${inv.id}-created`,
+              timestamp: inv.created_at || `${inv.issue_date} 08:00:00`,
+              event: "created",
+              plain_text: `Invoice ${inv.invoice_number} created with total ${(inv.total || 0).toLocaleString()} ${inv.currency || "USD"}`,
+              actor: "admin@voyancemed.com",
+              state_transition: { from_state: null, to_state: "draft" },
+            },
+            {
+              id: `inv-${inv.id}-sent`,
+              timestamp: `${inv.issue_date} 09:30:00`,
+              event: "sent",
+              plain_text: `Invoice ${inv.invoice_number} issued and sent to ${inv.customer_name}`,
+              actor: "billing@voyancemed.com",
+              state_transition: { from_state: "draft", to_state: "sent" },
+            },
+          ],
+        };
+      } else if (norm === "bill") {
+        const bill = (FinanceMockState.bills || []).find((b) => b.id === id) || {
+          id,
+          bill_number: `BILL-2026-${id}`,
+          vendor_name: "Amazon Web Services",
+          total: 4200.0,
+          currency: "USD",
+          status: "unpaid",
+          issue_date: "2026-09-01",
+          due_date: "2026-09-30",
+          category: "Infrastructure",
+        };
+        const vendor = (FinanceMockState.vendors || []).find((v) => v.id === bill.vendor_id) || { name: bill.vendor_name || "Amazon Web Services", tax_id: "VAT-1294819" };
+        return {
+          entity_type: "bill",
+          entity_id: bill.id,
+          title: `Bill ${bill.bill_number}`,
+          status: bill.status || "unpaid",
+          summary: {
+            reference: bill.bill_number,
+            counterparty: bill.vendor_name || vendor.name,
+            amount: bill.total,
+            currency: bill.currency || "USD",
+            date: bill.issue_date,
+            due_date: bill.due_date,
+            status: bill.status,
+            notes: bill.notes || "",
+            sensitive_masked: false,
+            attributes: [
+              { label: "Category", value: bill.category || "General" },
+              { label: "Subtotal", value: `${(bill.subtotal || bill.total).toLocaleString()} ${bill.currency || "USD"}` },
+              { label: "Due Date", value: bill.due_date || "—" },
+              { label: "Vendor Tax ID", value: vendor.tax_id || "VAT-1294819" },
+            ],
+          },
+          related_records: [
+            {
+              entity_type: "vendor",
+              entity_id: vendor.id || 1,
+              title: vendor.name,
+              badge: "Vendor Payables",
+              amount: null,
+              currency: null,
+              date: null,
+            },
+            {
+              entity_type: "transaction",
+              entity_id: 2,
+              title: "Outflow Entry TXN-0002",
+              badge: "Ledger Outflow",
+              amount: bill.total,
+              currency: bill.currency || "USD",
+              date: bill.issue_date,
+            },
+          ],
+          attachments: [
+            {
+              id: 2,
+              file_name: `${bill.bill_number}_receipt.pdf`,
+              file_size: 154800,
+              mime_type: "application/pdf",
+              storage_ref: "gdrive://bills/bill.pdf",
+              uploaded_at: bill.created_at || "2026-09-01T08:00:00Z",
+              uploaded_by: "ap@voyancemed.com",
+            },
+          ],
+          timeline: [
+            {
+              id: `bill-${bill.id}-created`,
+              timestamp: bill.created_at || `${bill.issue_date} 08:00:00`,
+              event: "created",
+              plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
+              actor: "ap@voyancemed.com",
+              state_transition: { from_state: null, to_state: "unpaid" },
+            },
+          ],
+        };
+      } else if (norm === "transaction") {
+        return {
+          entity_type: "transaction",
+          entity_id: id,
+          title: `Transaction TXN-${String(id).padStart(4, "0")}`,
+          status: "settled",
+          summary: {
+            reference: `TXN-${String(id).padStart(4, "0")}`,
+            counterparty: "Voyance Operating USD",
+            amount: 12500.0,
+            currency: "USD",
+            date: "2026-09-01",
+            status: "settled",
+            notes: "Apex Health Partners Q3 Payment",
+            sensitive_masked: false,
+            attributes: [
+              { label: "Direction", value: "Inflow" },
+              { label: "Account", value: "Voyance Operating USD" },
+              { label: "Category", value: "Revenue" },
+              { label: "Running Balance", value: "$162,500.00" },
+            ],
+          },
+          related_records: [
+            {
+              entity_type: "invoice",
+              entity_id: 1,
+              title: "Invoice INV-2026-001",
+              badge: "Settled Invoice",
+              amount: 12500.0,
+              currency: "USD",
+              date: "2026-09-01",
+            },
+          ],
+          attachments: [],
+          timeline: [
+            {
+              id: `tx-${id}-posted`,
+              timestamp: "2026-09-01 10:00:00",
+              event: "posted",
+              plain_text: `Transaction TXN-${String(id).padStart(4, "0")} posted: Inflow of $12,500.00 into Voyance Operating USD`,
+              actor: "system@hrflow.internal",
+              state_transition: { from_state: null, to_state: "settled" },
+            },
+          ],
+        };
+      }
+    }
+    return apiRequest("GET", `/api/finance/activity/${norm}/${id}`);
+  },
 };
 
 window.FinanceApi = FinanceApi;
+
 
 

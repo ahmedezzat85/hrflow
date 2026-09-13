@@ -3,7 +3,7 @@ be/finance/schemas.py
 Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -655,5 +655,60 @@ class StatementLineResolveRequest(BaseModel):
     description: Optional[str] = Field(None, description="Custom description for created transaction")
     reference: Optional[str] = Field(None, description="Reference for created transaction")
     notes: Optional[str] = Field(None, description="Resolution notes")
+
+
+# ==========================================
+# Entity Detail & Activity Timeline (Story 1.3)
+# ==========================================
+class TimelineEvent(BaseModel):
+    id: str
+    timestamp: str
+    event: str
+    plain_text: str
+    actor: str = ""
+    state_transition: Optional[Dict[str, Optional[str]]] = None
+    before_after: Optional[Dict[str, Any]] = None
+    linked_record: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = ""
+
+
+class EntitySummaryAttribute(BaseModel):
+    label: str
+    value: str
+
+
+class EntitySummary(BaseModel):
+    reference: str
+    counterparty: Optional[str] = ""
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = ""
+    sensitive_masked: bool = False
+    attributes: List[EntitySummaryAttribute] = []
+
+
+class RelatedRecordItem(BaseModel):
+    entity_type: str
+    entity_id: int
+    title: str
+    badge: Optional[str] = ""
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    date: Optional[str] = None
+
+
+class EntityActivityResponse(BaseModel):
+    entity_type: str
+    entity_id: int
+    title: str
+    status: str
+    summary: EntitySummary
+    related_records: List[RelatedRecordItem] = []
+    attachments: List[FinanceAttachmentResponse] = []
+    timeline: List[TimelineEvent] = []
+
 
 
