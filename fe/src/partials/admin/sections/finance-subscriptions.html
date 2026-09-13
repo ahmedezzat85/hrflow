@@ -44,14 +44,14 @@
 
           <!-- Add / Edit Subscription Modal -->
           <div id="subscriptionModal" class="modal-overlay">
-            <div class="modal modal-v2" style="max-width: 680px;">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="subModalTitle" style="max-width: 680px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-repeat"></i></div>
                 <div class="modal-head-text">
                   <h3 id="subModalTitle">New Subscription</h3>
                   <p>Configure recurring software, infrastructure, or vendor service.</p>
                 </div>
-                <button class="modal-close" onclick="closeModal('subscriptionModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="modal-close" onclick="closeModal('subscriptionModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
               </div>
               <div class="modal-body">
                 <input type="hidden" id="subId">
@@ -117,14 +117,14 @@
 
           <!-- Log Subscription Charge Modal -->
           <div id="subscriptionChargeModal" class="modal-overlay">
-            <div class="modal modal-v2" style="max-width: 640px;">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chargeModalTitle" style="max-width: 640px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-credit-card"></i></div>
                 <div class="modal-head-text">
                   <h3 id="chargeModalTitle">Log Subscription Charge</h3>
                   <p id="chargeModalSub">Record an actual charge or usage-based invoice with receipt files.</p>
                 </div>
-                <button class="modal-close" onclick="closeModal('subscriptionChargeModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="modal-close" onclick="closeModal('subscriptionChargeModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
               </div>
               <div class="modal-body">
                 <input type="hidden" id="chargeSubId">
@@ -174,14 +174,14 @@
 
           <!-- Subscription Charge History Modal -->
           <div id="subscriptionHistoryModal" class="modal-overlay">
-            <div class="modal modal-v2" style="max-width: 780px;">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="subHistoryTitle" style="max-width: 780px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
                 <div class="modal-head-text">
                   <h3 id="subHistoryTitle">Subscription Charge History</h3>
                   <p id="subHistorySubtitle">All recorded charges, ledger links, and invoice attachments.</p>
                 </div>
-                <button class="modal-close" onclick="closeModal('subscriptionHistoryModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="modal-close" onclick="closeModal('subscriptionHistoryModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
               </div>
               <div class="modal-body">
                 <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">

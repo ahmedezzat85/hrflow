@@ -1,15 +1,15 @@
         <section class="page-section" id="a-finance-bills">
           <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div class="filter-tabs" id="financeBillSubNav">
-                <button class="filter-tab active" id="tabFinanceBills" onclick="switchBillSubTab('bills')"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
-                <button class="filter-tab" id="tabFinanceVendors" onclick="switchBillSubTab('vendors')"><i class="fa-solid fa-truck-field"></i> Vendors</button>
+              <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Vendor bills sub navigation">
+                <button class="filter-tab active" id="tabFinanceBills" role="tab" aria-selected="true" tabindex="0" onclick="switchBillSubTab('bills')"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
+                <button class="filter-tab" id="tabFinanceVendors" role="tab" aria-selected="false" tabindex="-1" onclick="switchBillSubTab('vendors')"><i class="fa-solid fa-truck-field"></i> Vendors</button>
               </div>
               <div class="search-box" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeBillSearch" placeholder="Search bills..." oninput="filterFinanceBills(this.value)">
+                <input id="financeBillSearch" placeholder="Search bills..." aria-label="Search bills" oninput="filterFinanceBills(this.value)">
               </div>
-              <select id="financeBillStatusFilter" class="form-control filter-select" onchange="loadFinanceBills()">
+              <select id="financeBillStatusFilter" class="form-control filter-select" aria-label="Filter bills by status" onchange="loadFinanceBills()">
                 <option value="">All Statuses</option>
                 <option value="unpaid">Unpaid</option>
                 <option value="paid">Paid</option>
@@ -18,7 +18,7 @@
               </select>
               <div class="search-box" id="financeVendorSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeVendorSearch" placeholder="Search vendors..." oninput="filterFinanceVendors(this.value)">
+                <input id="financeVendorSearch" placeholder="Search vendors..." aria-label="Search vendors" oninput="filterFinanceVendors(this.value)">
               </div>
             </div>
             <div style="display: flex; gap: 8px;">

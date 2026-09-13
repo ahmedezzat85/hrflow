@@ -1,13 +1,13 @@
 <!-- fe/src/partials/modals/bill-modal.html -->
 <div id="billModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 780px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billModalTitleText" style="max-width: 780px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-receipt"></i></div>
       <div class="modal-head-text">
         <h3 id="billModalTitleText">New Vendor Bill</h3>
         <p>Record a bill received from a vendor and track its payment.</p>
       </div>
-      <button class="modal-close" onclick="closeBillModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeBillModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billModalId">
@@ -99,14 +99,14 @@
 
 <!-- Payment Modal (record outgoing payment against a bill) -->
 <div id="billPaymentModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 520px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billPaymentTitleText" style="max-width: 520px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
       <div class="modal-head-text">
-        <h3>Record Payment</h3>
+        <h3 id="billPaymentTitleText">Record Payment</h3>
         <p>Apply an outgoing payment against this vendor bill.</p>
       </div>
-      <button class="modal-close" onclick="closeBillPaymentModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeBillPaymentModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billPaymentBillId">

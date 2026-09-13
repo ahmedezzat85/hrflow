@@ -1,12 +1,12 @@
         <section class="page-section" id="a-finance-reports">
           <!-- Reports Sub Navigation -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-            <div class="filter-tabs" id="financeReportsSubNav">
-              <button class="filter-tab active" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
-              <button class="filter-tab" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
-              <button class="filter-tab" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
-              <button class="filter-tab" data-report-tab="transactions" onclick="switchFinanceReportsTab('transactions', this)"><i class="fa-solid fa-list-check"></i> Transaction Ledger</button>
-              <button class="filter-tab" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
+            <div class="filter-tabs" id="financeReportsSubNav" role="tablist" aria-label="Financial reports sub navigation">
+              <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
+              <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
+              <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
+              <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="transactions" onclick="switchFinanceReportsTab('transactions', this)"><i class="fa-solid fa-list-check"></i> Transaction Ledger</button>
+              <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
             </div>
           </div>
 

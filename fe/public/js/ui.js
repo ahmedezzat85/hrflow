@@ -188,8 +188,184 @@ function statusPill(status){
   const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
 }
-function openModal(id){ const el = document.getElementById(id); if (el) el.classList.add('active'); }
-function closeModal(id){ const el = document.getElementById(id); if (el) el.classList.remove('active'); }
+/**
+ * Accessible Modal Controller (Story 0.3)
+ * Manages modal stack, focus traps, scroll locks, keyboard Escape,
+ * accessible ARIA attributes, and focus restoration to the invoking element.
+ */
+const ModalController = {
+  _stack: [],
+  _initialized: false,
+
+  init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    // Keyboard navigation: Escape key closes top modal, Tab traps focus
+    document.addEventListener('keydown', (e) => this.handleKeydown(e), true);
+
+    // Global backdrop click listener
+    document.addEventListener('click', (e) => {
+      if (this._stack.length === 0) return;
+      const top = this._stack[this._stack.length - 1];
+      if (e.target === top.overlay) {
+        this.close(top.id);
+      }
+    });
+  },
+
+  open(modalId, triggerEl = null) {
+    this.init();
+    const el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+    if (!el) return null;
+
+    // Save invoking element for focus restoration upon close
+    const invoker = triggerEl || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+
+    // Find inner dialog container
+    const dialog = el.querySelector('.modal') || el;
+
+    // Ensure dialog semantics
+    if (!dialog.getAttribute('role')) dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+
+    // Ensure accessible name if not already defined
+    if (!dialog.getAttribute('aria-label') && !dialog.getAttribute('aria-labelledby')) {
+      const heading = el.querySelector('.modal-head h3, .modal-head [id*="Title"], h3, h2');
+      if (heading) {
+        if (!heading.id) heading.id = 'modal_title_' + (el.id || Math.random().toString(36).substr(2, 6));
+        dialog.setAttribute('aria-labelledby', heading.id);
+      } else {
+        dialog.setAttribute('aria-label', el.id || 'Dialog');
+      }
+    }
+
+    // Show modal and apply scroll lock
+    el.classList.add('active');
+    el.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    // Remove existing instance if reopened
+    const existingIdx = this._stack.findIndex(entry => entry.id === el.id);
+    if (existingIdx !== -1) {
+      this._stack.splice(existingIdx, 1);
+    }
+
+    const entry = { id: el.id, overlay: el, dialog, invoker };
+    this._stack.push(entry);
+
+    // Set initial focus into modal
+    setTimeout(() => {
+      const autoFocusEl = dialog.querySelector('[autofocus], [data-autofocus]');
+      if (autoFocusEl && typeof autoFocusEl.focus === 'function') {
+        autoFocusEl.focus();
+        return;
+      }
+
+      const firstInput = dialog.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+      if (firstInput && typeof firstInput.focus === 'function') {
+        firstInput.focus();
+        return;
+      }
+
+      const focusable = this.getFocusableElements(dialog);
+      if (focusable.length > 0) {
+        const nonClose = focusable.find(btn => !btn.classList.contains('modal-close'));
+        if (nonClose) nonClose.focus();
+        else focusable[0].focus();
+      } else {
+        dialog.setAttribute('tabindex', '-1');
+        dialog.focus();
+      }
+    }, 45);
+
+    window.dispatchEvent(new CustomEvent('hrflow:modal-opened', { detail: { modalId: el.id, dialog } }));
+    return entry;
+  },
+
+  close(modalId) {
+    let entry = null;
+    if (modalId) {
+      const idx = this._stack.findIndex(e => e.id === modalId || e.overlay === modalId);
+      if (idx !== -1) {
+        entry = this._stack.splice(idx, 1)[0];
+      }
+    } else {
+      entry = this._stack.pop();
+    }
+
+    const el = entry ? entry.overlay : (typeof modalId === 'string' ? document.getElementById(modalId) : modalId);
+    if (!el) return;
+
+    el.classList.remove('active');
+    el.style.display = 'none';
+
+    // Clear any active field errors or summaries in this modal
+    if (window.FinanceForm && typeof window.FinanceForm.clearErrors === 'function') {
+      window.FinanceForm.clearErrors(el);
+    }
+
+    // If no more open modals, restore body scroll
+    if (this._stack.length === 0) {
+      document.body.classList.remove('modal-open');
+    }
+
+    // Restore focus to invoker
+    if (entry && entry.invoker && typeof entry.invoker.focus === 'function' && document.contains(entry.invoker)) {
+      try {
+        entry.invoker.focus();
+      } catch (_) {}
+    }
+
+    window.dispatchEvent(new CustomEvent('hrflow:modal-closed', { detail: { modalId: el.id } }));
+  },
+
+  getFocusableElements(container) {
+    if (!container) return [];
+    const selector = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    return Array.from(container.querySelectorAll(selector)).filter(el => {
+      return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
+    });
+  },
+
+  handleKeydown(e) {
+    if (this._stack.length === 0) return;
+    const current = this._stack[this._stack.length - 1];
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.close(current.id);
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusable = this.getFocusableElements(current.dialog);
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first || !current.dialog.contains(document.activeElement)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last || !current.dialog.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  }
+};
+
+function openModal(id, triggerEl){ ModalController.open(id, triggerEl); }
+function closeModal(id){ ModalController.close(id); }
+window.ModalController = ModalController;
+ModalController.init();
 function readFileAsDataUrl(file){ return new Promise((resolve, reject)=>{ const reader = new FileReader(); reader.onload = ()=>resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
 
 function setButtonLoading(buttonEl, isLoading, loadingText = 'Saving…') {

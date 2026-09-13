@@ -1,13 +1,13 @@
 <!-- fe/src/partials/modals/invoice-modal.html -->
 <div id="invoiceModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 780px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="invoiceModalTitleText" style="max-width: 780px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-file-invoice"></i></div>
       <div class="modal-head-text">
         <h3 id="invoiceModalTitleText">New Sales Invoice</h3>
         <p>Bill a customer and track expected payment routing.</p>
       </div>
-      <button class="modal-close" onclick="closeInvoiceModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeInvoiceModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="invoiceModalId">
@@ -113,14 +113,14 @@
 
 <!-- Payment Modal (record payment against an invoice) -->
 <div id="invoicePaymentModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 520px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="invoicePaymentTitleText" style="max-width: 520px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
       <div class="modal-head-text">
-        <h3>Record Payment</h3>
+        <h3 id="invoicePaymentTitleText">Record Payment</h3>
         <p>Apply an incoming payment against this invoice.</p>
       </div>
-      <button class="modal-close" onclick="closeInvoicePaymentModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeInvoicePaymentModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="paymentInvoiceId">

@@ -262,6 +262,219 @@ window.getDerivedInvoiceStatus = FinanceFormat.getDerivedInvoiceStatus.bind(Fina
 window.getDerivedBillStatus = FinanceFormat.getDerivedBillStatus.bind(FinanceFormat);
 
 // ==========================================
+// Accessible Dialog and Form Foundation (Story 0.3)
+// ==========================================
+const FinanceForm = {
+  setFieldError(inputOrId, message) {
+    const input = typeof inputOrId === "string" ? document.getElementById(inputOrId) : inputOrId;
+    if (!input) return;
+
+    input.classList.add("is-invalid");
+    input.setAttribute("aria-invalid", "true");
+
+    const fieldWrap = input.closest(".form-field") || input.parentElement;
+    const errorId = (input.id || "field_" + Math.random().toString(36).substr(2, 6)) + "-error";
+
+    let errEl = fieldWrap ? fieldWrap.querySelector(".field-error-msg") : document.getElementById(errorId);
+    if (!errEl) {
+      errEl = document.createElement("div");
+      errEl.className = "field-error-msg";
+      errEl.id = errorId;
+      errEl.setAttribute("role", "alert");
+      if (fieldWrap) {
+        fieldWrap.appendChild(errEl);
+      } else {
+        input.insertAdjacentElement("afterend", errEl);
+      }
+    }
+    errEl.innerHTML = `<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span>${message}</span>`;
+    errEl.style.display = "flex";
+
+    // Update aria-describedby without losing existing descriptions
+    const current = input.getAttribute("aria-describedby") || "";
+    const tokens = current.split(/\s+/).filter(Boolean);
+    if (!tokens.includes(errorId)) {
+      tokens.push(errorId);
+      input.setAttribute("aria-describedby", tokens.join(" "));
+    }
+  },
+
+  clearFieldError(inputOrId) {
+    const input = typeof inputOrId === "string" ? document.getElementById(inputOrId) : inputOrId;
+    if (!input) return;
+
+    input.classList.remove("is-invalid");
+    input.removeAttribute("aria-invalid");
+
+    const errorId = input.id ? `${input.id}-error` : null;
+    const fieldWrap = input.closest(".form-field") || input.parentElement;
+    const errEl = fieldWrap ? fieldWrap.querySelector(".field-error-msg") : (errorId ? document.getElementById(errorId) : null);
+    if (errEl) errEl.remove();
+
+    if (errorId && input.hasAttribute("aria-describedby")) {
+      const remaining = (input.getAttribute("aria-describedby") || "")
+        .split(/\s+/)
+        .filter((tok) => tok && tok !== errorId);
+      if (remaining.length > 0) {
+        input.setAttribute("aria-describedby", remaining.join(" "));
+      } else {
+        input.removeAttribute("aria-describedby");
+      }
+    }
+  },
+
+  clearErrors(containerOrId) {
+    const container = typeof containerOrId === "string" ? document.getElementById(containerOrId) : containerOrId;
+    if (!container) return;
+
+    // Remove summary banners
+    const summaries = container.querySelectorAll(".form-error-summary");
+    summaries.forEach((s) => s.remove());
+
+    // Remove is-invalid classes and aria-invalid
+    container.querySelectorAll(".is-invalid").forEach((el) => {
+      el.classList.remove("is-invalid");
+      el.removeAttribute("aria-invalid");
+    });
+
+    // Remove field error messages
+    container.querySelectorAll(".field-error-msg").forEach((el) => el.remove());
+
+    // Clean up aria-describedby references
+    container.querySelectorAll("[aria-describedby]").forEach((el) => {
+      const remaining = (el.getAttribute("aria-describedby") || "")
+        .split(/\s+/)
+        .filter((tok) => tok && !tok.endsWith("-error"));
+      if (remaining.length > 0) {
+        el.setAttribute("aria-describedby", remaining.join(" "));
+      } else {
+        el.removeAttribute("aria-describedby");
+      }
+    });
+  },
+
+  showErrorSummary(containerOrId, errors) {
+    // errors: array of { fieldId: string, message: string }
+    const container = typeof containerOrId === "string" ? document.getElementById(containerOrId) : containerOrId;
+    if (!container || !errors || errors.length === 0) return;
+
+    this.clearErrors(container);
+
+    // Set inline field errors
+    errors.forEach((err) => {
+      if (err.fieldId) {
+        this.setFieldError(err.fieldId, err.message);
+      }
+    });
+
+    // Build accessible error summary banner
+    const summary = document.createElement("div");
+    summary.className = "form-error-summary";
+    summary.setAttribute("role", "alert");
+    summary.setAttribute("aria-live", "assertive");
+    summary.setAttribute("tabindex", "-1");
+
+    const count = errors.length;
+    const titleText = count === 1 ? "There is 1 problem with your submission:" : `There are ${count} problems with your submission:`;
+
+    let listHtml = '<ul class="form-error-summary-list">';
+    errors.forEach((err) => {
+      if (err.fieldId) {
+        listHtml += `<li><a href="#${err.fieldId}" onclick="event.preventDefault(); const target = document.getElementById('${err.fieldId}'); if(target){ target.focus(); if(target.scrollIntoView) target.scrollIntoView({behavior:'smooth', block:'center'}); }">${err.message}</a></li>`;
+      } else {
+        listHtml += `<li>${err.message}</li>`;
+      }
+    });
+    listHtml += "</ul>";
+
+    summary.innerHTML = `
+      <div class="form-error-summary-head">
+        <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+        <strong>${titleText}</strong>
+      </div>
+      ${listHtml}
+    `;
+
+    const targetBody = container.querySelector(".modal-body") || container;
+    targetBody.insertAdjacentElement("afterbegin", summary);
+
+    // Focus summary container so screen readers announce it immediately
+    setTimeout(() => {
+      if (typeof summary.focus === "function") summary.focus();
+    }, 50);
+  },
+
+  validateRequiredFields(containerOrId, requiredRules) {
+    const container = typeof containerOrId === "string" ? document.getElementById(containerOrId) : containerOrId;
+    const errors = [];
+
+    requiredRules.forEach((rule) => {
+      const el = document.getElementById(rule.id);
+      const val = el ? (el.value || "").trim() : "";
+      const isValid = rule.check ? rule.check(val, el) : Boolean(val);
+      if (!isValid) {
+        errors.push({
+          fieldId: rule.id,
+          message: rule.message || `${rule.label || "This field"} is required.`,
+        });
+      }
+    });
+
+    if (errors.length > 0) {
+      this.showErrorSummary(container, errors);
+      return false;
+    }
+
+    this.clearErrors(container);
+    return true;
+  }
+};
+
+window.FinanceForm = FinanceForm;
+
+function initAccessibleTablist(containerOrId) {
+  const container = typeof containerOrId === "string" ? document.getElementById(containerOrId) : containerOrId;
+  if (!container) return;
+
+  if (!container.getAttribute("role")) container.setAttribute("role", "tablist");
+  const tabs = Array.from(container.querySelectorAll(".filter-tab, [data-tab], button"));
+
+  tabs.forEach((tab, index) => {
+    tab.setAttribute("role", "tab");
+    const isActive = tab.classList.contains("active");
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    tab.setAttribute("tabindex", isActive ? "0" : "-1");
+
+    tab.addEventListener("keydown", (e) => {
+      let targetIndex = -1;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        targetIndex = (index + 1) % tabs.length;
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        targetIndex = (index - 1 + tabs.length) % tabs.length;
+      } else if (e.key === "Home") {
+        targetIndex = 0;
+      } else if (e.key === "End") {
+        targetIndex = tabs.length - 1;
+      }
+
+      if (targetIndex !== -1) {
+        e.preventDefault();
+        const targetTab = tabs[targetIndex];
+        tabs.forEach((t) => {
+          t.setAttribute("aria-selected", "false");
+          t.setAttribute("tabindex", "-1");
+        });
+        targetTab.setAttribute("aria-selected", "true");
+        targetTab.setAttribute("tabindex", "0");
+        targetTab.focus();
+        targetTab.click();
+      }
+    });
+  });
+}
+window.initAccessibleTablist = initAccessibleTablist;
+
+// ==========================================
 // 1. Dashboard Overview
 // ==========================================
 const FinanceDashboardState = {
@@ -495,6 +708,7 @@ async function _populateInvoiceBankDropdown() {
 }
 
 async function openAddInvoiceModal() {
+  FinanceForm.clearErrors("invoiceModal");
   _populateInvoiceCustomerDropdown();
   _populateInvoiceBankDropdown();
   document.getElementById("invoiceModalTitleText").textContent = "New Sales Invoice";
@@ -515,6 +729,7 @@ async function openAddInvoiceModal() {
 }
 
 async function openEditInvoiceModal(invoiceId) {
+  FinanceForm.clearErrors("invoiceModal");
   _populateInvoiceCustomerDropdown();
   await _populateInvoiceBankDropdown();
   try {
@@ -596,9 +811,13 @@ async function saveInvoiceModal() {
   const issueDate = document.getElementById("invoiceIssueDate").value;
   const dueDate = document.getElementById("invoiceDueDate").value;
 
-  if (!customerId) { showToast("Please select a customer", "error"); return; }
-  if (!invoiceNumber) { showToast("Invoice number is required", "error"); return; }
-  if (!issueDate || !dueDate) { showToast("Both dates are required", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("invoiceModal", [
+    { id: "invoiceCustomerId", label: "Customer" },
+    { id: "invoiceNumber", label: "Invoice Number" },
+    { id: "invoiceIssueDate", label: "Issue Date" },
+    { id: "invoiceDueDate", label: "Due Date" },
+  ]);
+  if (!isValid) return;
 
   const lines = [];
   document.querySelectorAll("#invoiceLinesBody tr").forEach((r) => {
@@ -668,6 +887,7 @@ function _checkPaymentBankDiscrepancy() {
 }
 
 async function openPaymentModal(invoiceId) {
+  FinanceForm.clearErrors("invoicePaymentModal");
   const inv = (FinanceState.invoices || []).find((i) => i.id === invoiceId);
   document.getElementById("paymentInvoiceId").value = invoiceId;
   const expBankId = inv ? (inv.expected_bank_account_id || "") : "";
@@ -712,9 +932,12 @@ async function saveInvoicePayment() {
   const paymentDate = document.getElementById("paymentDate").value;
   const bankAccountId = document.getElementById("paymentBankAccountId").value;
 
-  if (!amount || amount <= 0) { showToast("Enter a valid payment amount", "error"); return; }
-  if (!paymentDate) { showToast("Payment date is required", "error"); return; }
-  if (!bankAccountId) { showToast("Select a bank account", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("invoicePaymentModal", [
+    { id: "paymentBankAccountId", label: "Bank Account" },
+    { id: "paymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
+    { id: "paymentDate", label: "Payment Date" },
+  ]);
+  if (!isValid) return;
 
   const payload = {
     direction: "incoming",
@@ -752,8 +975,16 @@ function switchInvoiceSubTab(subTab) {
   const newInvBtn = document.getElementById("financeNewInvoiceBtn");
 
   if (subTab === "customers") {
-    if (tabInv) tabInv.classList.remove("active");
-    if (tabCust) tabCust.classList.add("active");
+    if (tabInv) {
+      tabInv.classList.remove("active");
+      tabInv.setAttribute("aria-selected", "false");
+      tabInv.setAttribute("tabindex", "-1");
+    }
+    if (tabCust) {
+      tabCust.classList.add("active");
+      tabCust.setAttribute("aria-selected", "true");
+      tabCust.setAttribute("tabindex", "0");
+    }
     if (boxInv) boxInv.style.display = "none";
     if (statusFilter) statusFilter.style.display = "none";
     if (boxCust) boxCust.style.display = "block";
@@ -763,8 +994,16 @@ function switchInvoiceSubTab(subTab) {
     if (newInvBtn) newInvBtn.style.display = "none";
     loadFinanceCustomers();
   } else {
-    if (tabInv) tabInv.classList.add("active");
-    if (tabCust) tabCust.classList.remove("active");
+    if (tabInv) {
+      tabInv.classList.add("active");
+      tabInv.setAttribute("aria-selected", "true");
+      tabInv.setAttribute("tabindex", "0");
+    }
+    if (tabCust) {
+      tabCust.classList.remove("active");
+      tabCust.setAttribute("aria-selected", "false");
+      tabCust.setAttribute("tabindex", "-1");
+    }
     if (boxInv) boxInv.style.display = "block";
     if (statusFilter) statusFilter.style.display = "block";
     if (boxCust) boxCust.style.display = "none";
@@ -822,6 +1061,7 @@ function filterFinanceCustomers(query) {
 }
 
 function openAddCustomerModal() {
+  FinanceForm.clearErrors("customerModal");
   document.getElementById("fCustomerId").value = "";
   document.getElementById("fCustomerName").value = "";
   document.getElementById("fCustomerEmail").value = "";
@@ -836,6 +1076,7 @@ function openAddCustomerModal() {
 }
 
 function openEditCustomerModal(id) {
+  FinanceForm.clearErrors("customerModal");
   const c = FinanceState.customers.find((x) => x.id === id);
   if (!c) return;
   document.getElementById("fCustomerId").value = c.id;
@@ -858,7 +1099,10 @@ async function saveCustomer() {
   const contact_phone = document.getElementById("fCustomerPhone").value.trim();
   const tax_id = document.getElementById("fCustomerTaxId").value.trim();
   const notes = document.getElementById("fCustomerNotes").value.trim();
-  if (!name) { showToast("Customer name is required", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("customerModal", [
+    { id: "fCustomerName", label: "Company / Customer Name" }
+  ]);
+  if (!isValid) return;
   const payload = { name, contact_email: contact_email || null, contact_phone: contact_phone || null, tax_id: tax_id || null, notes: notes || null };
   const btn = document.getElementById("customerSaveBtn");
   if (btn) btn.disabled = true;
@@ -982,6 +1226,7 @@ async function _populateBillVendorDropdown() {
 }
 
 function openAddBillModal() {
+  FinanceForm.clearErrors("billModal");
   _populateBillVendorDropdown();
   document.getElementById("billModalTitleText").textContent = "New Vendor Bill";
   document.getElementById("billModalId").value = "";
@@ -996,10 +1241,11 @@ function openAddBillModal() {
   document.getElementById("billLinesBody").innerHTML = "";
   _updateBillTotals();
   addBillLine();
-  document.getElementById("billModal").style.display = "flex";
+  openModal("billModal");
 }
 
 async function openEditBillModal(billId) {
+  FinanceForm.clearErrors("billModal");
   _populateBillVendorDropdown();
   try {
     const bill = await FinanceApi.getBill(billId);
@@ -1017,14 +1263,14 @@ async function openEditBillModal(billId) {
     (bill.lines || []).forEach((ln) => addBillLine(ln));
     if (!bill.lines || !bill.lines.length) addBillLine();
     _updateBillTotals();
-    document.getElementById("billModal").style.display = "flex";
+    openModal("billModal");
   } catch (err) {
     showToast("Failed to load bill: " + (err.message || err), "error");
   }
 }
 
 function closeBillModal() {
-  document.getElementById("billModal").style.display = "none";
+  closeModal("billModal");
 }
 
 function addBillLine(data) {
@@ -1067,9 +1313,13 @@ async function saveBillModal() {
   const issueDate = document.getElementById("billIssueDate").value;
   const dueDate = document.getElementById("billDueDate").value;
 
-  if (!vendorId) { showToast("Please select a vendor", "error"); return; }
-  if (!billNumber) { showToast("Bill number is required", "error"); return; }
-  if (!issueDate || !dueDate) { showToast("Both dates are required", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("billModal", [
+    { id: "billVendorId", label: "Vendor" },
+    { id: "billNumber", label: "Bill Number" },
+    { id: "billIssueDate", label: "Issue Date" },
+    { id: "billDueDate", label: "Due Date" },
+  ]);
+  if (!isValid) return;
 
   const lines = [];
   document.querySelectorAll("#billLinesBody tr").forEach((r) => {
@@ -1123,6 +1373,7 @@ async function confirmVoidBill(billId) {
 }
 
 async function openBillPaymentModal(billId) {
+  FinanceForm.clearErrors("billPaymentModal");
   const bill = (FinanceState.bills || []).find((b) => b.id === billId);
   document.getElementById("billPaymentBillId").value = billId;
   const infoEl = document.getElementById("billPaymentBillInfo");
@@ -1142,11 +1393,11 @@ async function openBillPaymentModal(billId) {
     } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
   }
 
-  document.getElementById("billPaymentModal").style.display = "flex";
+  openModal("billPaymentModal");
 }
 
 function closeBillPaymentModal() {
-  document.getElementById("billPaymentModal").style.display = "none";
+  closeModal("billPaymentModal");
 }
 
 async function saveBillPayment() {
@@ -1156,9 +1407,12 @@ async function saveBillPayment() {
   const bankAccountId = document.getElementById("billPaymentBankAccountId").value;
   const bill = (FinanceState.bills || []).find((b) => String(b.id) === String(billId));
 
-  if (!amount || amount <= 0) { showToast("Enter a valid payment amount", "error"); return; }
-  if (!paymentDate) { showToast("Payment date is required", "error"); return; }
-  if (!bankAccountId) { showToast("Select a bank account", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("billPaymentModal", [
+    { id: "billPaymentBankAccountId", label: "Bank Account" },
+    { id: "billPaymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
+    { id: "billPaymentDate", label: "Payment Date" },
+  ]);
+  if (!isValid) return;
 
   const payload = {
     direction: "outgoing",
@@ -1192,8 +1446,16 @@ function switchBillSubTab(subTab) {
   const recordBillBtn = document.getElementById("financeRecordBillBtn");
 
   if (subTab === "vendors") {
-    if (tabBill) tabBill.classList.remove("active");
-    if (tabVend) tabVend.classList.add("active");
+    if (tabBill) {
+      tabBill.classList.remove("active");
+      tabBill.setAttribute("aria-selected", "false");
+      tabBill.setAttribute("tabindex", "-1");
+    }
+    if (tabVend) {
+      tabVend.classList.add("active");
+      tabVend.setAttribute("aria-selected", "true");
+      tabVend.setAttribute("tabindex", "0");
+    }
     if (boxBill) boxBill.style.display = "none";
     if (statusFilter) statusFilter.style.display = "none";
     if (boxVend) boxVend.style.display = "block";
@@ -1203,8 +1465,16 @@ function switchBillSubTab(subTab) {
     if (recordBillBtn) recordBillBtn.style.display = "none";
     loadFinanceVendors();
   } else {
-    if (tabBill) tabBill.classList.add("active");
-    if (tabVend) tabVend.classList.remove("active");
+    if (tabBill) {
+      tabBill.classList.add("active");
+      tabBill.setAttribute("aria-selected", "true");
+      tabBill.setAttribute("tabindex", "0");
+    }
+    if (tabVend) {
+      tabVend.classList.remove("active");
+      tabVend.setAttribute("aria-selected", "false");
+      tabVend.setAttribute("tabindex", "-1");
+    }
     if (boxBill) boxBill.style.display = "block";
     if (statusFilter) statusFilter.style.display = "block";
     if (boxVend) boxVend.style.display = "none";
@@ -1263,6 +1533,7 @@ function filterFinanceVendors(query) {
 }
 
 function openAddVendorModal() {
+  FinanceForm.clearErrors("vendorModal");
   document.getElementById("fVendorId").value = "";
   document.getElementById("fVendorName").value = "";
   document.getElementById("fVendorCategory").value = "General";
@@ -1278,6 +1549,7 @@ function openAddVendorModal() {
 }
 
 function openEditVendorModal(id) {
+  FinanceForm.clearErrors("vendorModal");
   const v = FinanceState.vendors.find((x) => x.id === id);
   if (!v) return;
   document.getElementById("fVendorId").value = v.id;
@@ -1302,7 +1574,10 @@ async function saveVendor() {
   const contact_phone = document.getElementById("fVendorPhone").value.trim();
   const tax_id = document.getElementById("fVendorTaxId").value.trim();
   const notes = document.getElementById("fVendorNotes").value.trim();
-  if (!name) { showToast("Vendor name is required", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("vendorModal", [
+    { id: "fVendorName", label: "Vendor / Supplier Name" }
+  ]);
+  if (!isValid) return;
   const payload = { name, category: category || "General", contact_email: contact_email || null, contact_phone: contact_phone || null, tax_id: tax_id || null, notes: notes || null };
   const btn = document.getElementById("vendorSaveBtn");
   if (btn) btn.disabled = true;
@@ -1401,18 +1676,22 @@ function switchFinanceAccountsSubTab(tabName, btn) {
   _currentFinanceSubTab = tabName;
 
   const tabs = document.querySelectorAll("#financeAccountsSubNav .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) {
-    btn.classList.add("active");
-  } else {
-    const el = document.getElementById(
-      tabName === "accounts" ? "subtabFinanceAccounts" :
-      tabName === "statements" ? "subtabFinanceStatements" :
-      tabName === "cheques" ? "subtabFinanceCheques" :
-      tabName === "transfers" ? "subtabFinanceTransfers" :
-      tabName === "categories" ? "subtabFinanceCategories" : "subtabFinancePaymentTypes"
-    );
-    if (el) el.classList.add("active");
+  tabs.forEach((t) => {
+    t.classList.remove("active");
+    t.setAttribute("aria-selected", "false");
+    t.setAttribute("tabindex", "-1");
+  });
+  const activeEl = btn || document.getElementById(
+    tabName === "accounts" ? "subtabFinanceAccounts" :
+    tabName === "statements" ? "subtabFinanceStatements" :
+    tabName === "cheques" ? "subtabFinanceCheques" :
+    tabName === "transfers" ? "subtabFinanceTransfers" :
+    tabName === "categories" ? "subtabFinanceCategories" : "subtabFinancePaymentTypes"
+  );
+  if (activeEl) {
+    activeEl.classList.add("active");
+    activeEl.setAttribute("aria-selected", "true");
+    activeEl.setAttribute("tabindex", "0");
   }
 
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
@@ -1457,8 +1736,8 @@ async function loadFinanceAccounts() {
     FinanceState.accounts = items;
     renderFinanceAccounts(items);
   } catch (err) {
-    console.error("Failed to load bank accounts:", err);
-    toast("Failed to load bank accounts: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+    console.error("Failed to load company accounts:", err);
+    toast("Failed to load company accounts: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -1466,7 +1745,7 @@ async function loadFinanceAccounts() {
 
 function filterCompanyBankAccounts(filterType, btn) {
   _currentBankAccountFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPaneAccounts .filter-tab");
+  const tabs = document.querySelectorAll("#financeSubPaneAccounts .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinanceAccounts();
@@ -1488,22 +1767,30 @@ function renderFinanceAccounts(items) {
     .map(
       (acc) => `
     <tr>
-      <td><strong>${acc.account_name}</strong></td>
-      <td><span class="badge ${acc.account_type === 'cash' ? 'badge-warning' : 'badge-info'}">${(acc.account_type || 'bank').toUpperCase()}</span></td>
-      <td>${acc.bank_name || '<span style="color:var(--text3); font-style:italic;">Cash Safe</span>'}</td>
+      <td>
+        <div style="font-weight:600;display:flex;align-items:center;gap:6px;">
+          <i class="fa-solid ${acc.account_type === "cash" ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);"></i>
+          ${acc.account_name}
+        </div>
+        ${acc.bank_name && acc.account_type !== "cash" ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}</div>` : ""}
+      </td>
+      <td>
+        <span class="badge ${acc.account_type === "cash" ? "badge-info" : "badge-neutral"}">
+          ${(acc.account_type || "bank").toUpperCase()}
+        </span>
+      </td>
       <td><code>${acc.account_number}</code></td>
-      <td><span class="badge badge-info">${acc.currency}</span></td>
-      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(acc.current_balance, acc.currency)}</strong></td>
-      <td>${FinanceFormat.formatStatusBadge("account", acc.is_active ? "active" : "inactive")}</td>
+      <td><strong>${acc.currency || "USD"}</strong></td>
+      <td class="cell-money" style="text-align:right;font-weight:700;">
+        ${FinanceFormat.renderMoneyHtml(acc.current_balance, acc.currency)}
+      </td>
+      <td>
+        <span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">
+          ${acc.is_active ? "ACTIVE" : "INACTIVE"}
+        </span>
+      </td>
       <td>
         <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm btn-fill" onclick="viewAccountLedger(${acc.id})" title="View Continuous Ledger">
-            <i class="fa-solid fa-list-check"></i> Ledger
-          </button>
-          ${acc.account_type !== 'cash' ? `
-          <button class="btn btn-sm" onclick="openUploadStatementModal(${acc.id})" title="Upload Statement">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
-          </button>` : ''}
           <button class="btn btn-sm" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
@@ -1519,19 +1806,25 @@ function renderFinanceAccounts(items) {
 }
 
 function onCompanyAccountTypeChange() {
-  const type = document.getElementById("fCompanyAccountType")?.value;
-  const bankNameLabel = document.getElementById("fCompanyBankNameLabel");
+  const sel = document.getElementById("fCompanyAccountType");
+  const type = sel ? sel.value : "bank";
+  const bankField = document.getElementById("fCompanyBankNameField");
+  const accNumLabel = document.getElementById("fCompanyAccountNumberLabel");
   const bankNameInput = document.getElementById("fCompanyBankName");
+
   if (type === "cash") {
-    if (bankNameLabel) bankNameLabel.innerHTML = 'Custodian / Location <span class="opt" style="font-size:11px;color:var(--text3);">(optional)</span>';
-    if (bankNameInput) bankNameInput.placeholder = "e.g. Office Safe, Petty Cash Box";
+    if (bankField) bankField.style.display = "none";
+    if (accNumLabel) accNumLabel.textContent = "Identifier / Tag (Optional)";
+    if (bankNameInput) bankNameInput.placeholder = "e.g. Petty Cash Drawer";
   } else {
-    if (bankNameLabel) bankNameLabel.innerHTML = 'Bank Name <span class="req">*</span>';
+    if (bankField) bankField.style.display = "block";
+    if (accNumLabel) accNumLabel.textContent = "Account Number / IBAN";
     if (bankNameInput) bankNameInput.placeholder = "e.g. JPMorgan Chase or CIB";
   }
 }
 
 function openAddCompanyBankAccountModal() {
+  FinanceForm.clearErrors("companyBankAccountModal");
   document.getElementById("companyBankAccountModalTitle").textContent = "Add Company Bank / Cash Account";
   document.getElementById("fCompanyAccountId").value = "";
   document.getElementById("fCompanyAccountName").value = "";
@@ -1547,6 +1840,7 @@ function openAddCompanyBankAccountModal() {
 }
 
 function openEditCompanyBankAccountModal(id) {
+  FinanceForm.clearErrors("companyBankAccountModal");
   const acc = (FinanceState.accounts || []).find((a) => a.id === id);
   if (!acc) return;
 
@@ -1573,14 +1867,17 @@ async function saveCompanyBankAccount() {
   const account_number = document.getElementById("fCompanyAccountNumber").value.trim();
   const currency = document.getElementById("fCompanyCurrency").value;
 
-  if (!account_name) {
-    toast("Please provide an Account Name", "fa-solid fa-circle-exclamation");
-    return;
+  const rules = [
+    { id: "fCompanyAccountName", label: "Account Name" },
+  ];
+  if (account_type === "bank") {
+    rules.push({ id: "fCompanyBankName", label: "Bank Name" });
+    if (!idVal) {
+      rules.push({ id: "fCompanyAccountNumber", label: "Account Number" });
+    }
   }
-  if (account_type === "bank" && !bank_name) {
-    toast("Please provide a Bank Name for bank accounts", "fa-solid fa-circle-exclamation");
-    return;
-  }
+  const isValid = FinanceForm.validateRequiredFields("companyBankAccountModal", rules);
+  if (!isValid) return;
 
   const saveBtn = document.getElementById("companyBankAccountSaveBtn");
   if (saveBtn) saveBtn.disabled = true;
@@ -1737,6 +2034,7 @@ function renderFinanceCategories(items) {
 }
 
 function openAddFinanceCategoryModal() {
+  FinanceForm.clearErrors("financeCategoryModal");
   document.getElementById("financeCategoryModalTitle").textContent = "Add Transaction Category";
   document.getElementById("fFinanceCategoryId").value = "";
   document.getElementById("fFinanceCategoryName").value = "";
@@ -1747,6 +2045,7 @@ function openAddFinanceCategoryModal() {
 }
 
 function openEditFinanceCategoryModal(id) {
+  FinanceForm.clearErrors("financeCategoryModal");
   const cat = (FinanceState.categories || []).find((c) => c.id === id);
   if (!cat) return;
 
@@ -1766,10 +2065,10 @@ async function saveFinanceCategory() {
   const sort_order = parseInt(document.getElementById("fFinanceCategorySortOrder").value, 10) || 0;
   const is_petty = document.getElementById("fFinanceCategoryIsPetty").checked;
 
-  if (!name) {
-    toast("Please enter a category name", "fa-solid fa-circle-exclamation");
-    return;
-  }
+  const isValid = FinanceForm.validateRequiredFields("financeCategoryModal", [
+    { id: "fFinanceCategoryName", label: "Category Name" }
+  ]);
+  if (!isValid) return;
 
   const saveBtn = document.getElementById("financeCategorySaveBtn");
   if (saveBtn) saveBtn.disabled = true;
@@ -1890,6 +2189,7 @@ function renderFinancePaymentTypes(items) {
 }
 
 function openAddFinancePaymentTypeModal() {
+  FinanceForm.clearErrors("financePaymentTypeModal");
   document.getElementById("financePaymentTypeModalTitle").textContent = "Add Payment Type";
   document.getElementById("fFinancePaymentTypeId").value = "";
   document.getElementById("fFinancePaymentTypeName").value = "";
@@ -1901,6 +2201,7 @@ function openAddFinancePaymentTypeModal() {
 }
 
 function openEditFinancePaymentTypeModal(id) {
+  FinanceForm.clearErrors("financePaymentTypeModal");
   const pt = (FinanceState.paymentTypes || []).find((p) => p.id === id);
   if (!pt) return;
 
@@ -1920,14 +2221,11 @@ async function saveFinancePaymentType() {
   const requires_cheque_number = document.getElementById("fFinancePaymentTypeReqCheque").checked;
   const requires_bank_fee_flag = document.getElementById("fFinancePaymentTypeReqBankFee").checked;
 
-  if (!name) {
-    toast("Please enter a name for the payment type", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!code) {
-    toast("Please enter a unique machine code", "fa-solid fa-circle-exclamation");
-    return;
-  }
+  const isValid = FinanceForm.validateRequiredFields("financePaymentTypeModal", [
+    { id: "fFinancePaymentTypeName", label: "Payment Type Name" },
+    { id: "fFinancePaymentTypeCode", label: "Payment Type Code" }
+  ]);
+  if (!isValid) return;
 
   const saveBtn = document.getElementById("financePaymentTypeSaveBtn");
   if (saveBtn) saveBtn.disabled = true;
@@ -2489,6 +2787,7 @@ function renderFinanceTransfers(items) {
 }
 
 async function openRecordFinanceTransferModal() {
+  FinanceForm.clearErrors("financeTransferModal");
   if (!FinanceState.accounts || !FinanceState.accounts.length) {
     FinanceState.accounts = await FinanceApi.getAccounts({ is_active: true });
   }
@@ -2634,35 +2933,21 @@ async function saveFinanceTransfer() {
   const note = document.getElementById("transferNote").value.trim();
   const confirmedLeg = document.getElementById("transferConfirmedLeg")?.value || "both";
 
-  if (!date) {
-    toast("Please enter a transfer date", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!fromAmount || fromAmount <= 0) {
-    toast("Please enter a valid outflow amount greater than 0", "fa-solid fa-circle-exclamation");
-    return;
-  }
-
+  const rules = [
+    { id: "transferDate", label: "Transfer Date" },
+    { id: "transferFromAmount", label: "Outflow Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid outflow amount greater than 0." },
+  ];
   if (type === "internal" || type === "same_bank_fx") {
-    if (!fromAccountIdVal || !toAccountIdVal) {
-      toast("Please select both source and target bank accounts", "fa-solid fa-circle-exclamation");
-      return;
-    }
-    if (fromAccountIdVal === toAccountIdVal) {
-      toast("Source and target bank accounts cannot be the same", "fa-solid fa-circle-exclamation");
-      return;
-    }
+    rules.push({ id: "transferFromAccount", label: "Source Account" });
+    rules.push({ id: "transferToAccount", label: "Destination Account", check: (v) => Boolean(v) && v !== fromAccountIdVal, message: "Source and destination accounts must be selected and cannot be the same." });
   } else if (type === "external_linked") {
-    if (!fromAccountIdVal && !toAccountIdVal) {
-      toast("Please select at least one owned bank account", "fa-solid fa-circle-exclamation");
-      return;
-    }
+    rules.push({ id: "transferFromAccount", label: "Owned Account", check: () => Boolean(fromAccountIdVal || toAccountIdVal), message: "Please select at least one owned bank account." });
   }
-
-  if (type === "same_bank_fx" && (!fxRate || fxRate <= 0)) {
-    toast("Please provide an exchange rate for FX transfer", "fa-solid fa-circle-exclamation");
-    return;
+  if (type === "same_bank_fx") {
+    rules.push({ id: "transferFxRate", label: "Exchange Rate", check: (v) => parseFloat(v) > 0, message: "Please provide a valid exchange rate greater than 0." });
   }
+  const isValid = FinanceForm.validateRequiredFields("financeTransferModal", rules);
+  if (!isValid) return;
 
   const btn = document.getElementById("btnSaveFinanceTransfer");
   if (btn) btn.disabled = true;
@@ -2855,6 +3140,7 @@ async function updateChequeStatusAction(chequeId, newStatus) {
 }
 
 async function openIssueChequeModal() {
+  FinanceForm.clearErrors("financeChequeModal");
   if (!FinanceState.accounts || !FinanceState.accounts.length) {
     FinanceState.accounts = await FinanceApi.getAccounts();
   }
@@ -2935,30 +3221,18 @@ async function saveIssueCheque() {
   const linkedBillVal = document.getElementById("chequeLinkedBillId").value;
   const notes = document.getElementById("chequeNotes").value.trim();
 
-  if (!accountIdVal) {
-    toast("Please select a source bank account", "fa-solid fa-circle-exclamation");
-    return;
+  const rules = [
+    { id: "chequeAccountId", label: "Source Bank Account" },
+    { id: "chequeNumber", label: "Cheque Number" },
+    { id: "chequeIssueDate", label: "Issue Date" },
+    { id: "chequeAmount", label: "Cheque Amount", check: (v) => parseFloat(v) > 0, message: "Please enter a valid cheque amount greater than 0." },
+    { id: "chequePayee", label: "Payee Name" },
+  ];
+  if (purposeType === "cash_withdrawal") {
+    rules.push({ id: "chequeDestinationCashAccountId", label: "Destination Cash Drawer" });
   }
-  if (!chequeNumber) {
-    toast("Please enter a cheque number", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!issueDate) {
-    toast("Please select an issue date", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!amount || amount <= 0) {
-    toast("Please enter a valid cheque amount greater than 0", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!payee) {
-    toast("Please enter the payee name", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (purposeType === "cash_withdrawal" && !destCashVal) {
-    toast("Please select a destination cash drawer account to fund", "fa-solid fa-circle-exclamation");
-    return;
-  }
+  const isValid = FinanceForm.validateRequiredFields("financeChequeModal", rules);
+  if (!isValid) return;
 
   const btn = document.getElementById("chequeModalSaveBtn");
   if (btn) btn.disabled = true;
@@ -2995,10 +3269,10 @@ async function saveIssueCheque() {
 }
 
 async function openWithdrawCashModal() {
+  FinanceForm.clearErrors("financeWithdrawCashModal");
   if (!FinanceState.accounts || !FinanceState.accounts.length) {
     FinanceState.accounts = await FinanceApi.getAccounts();
   }
-
   const bankSel = document.getElementById("withdrawSourceAccountId");
   if (bankSel) {
     const banks = (FinanceState.accounts || []).filter((a) => (a.account_type === "bank" || !a.account_type || a.account_type !== "cash") && a.is_active);
@@ -3045,22 +3319,13 @@ async function saveWithdrawCash() {
   const reference = document.getElementById("withdrawReference").value.trim();
   const description = document.getElementById("withdrawDescription").value.trim();
 
-  if (!sourceAccountIdVal) {
-    toast("Please select a source bank account", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!destCashAccountIdVal) {
-    toast("Please select a destination cash drawer", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!amount || amount <= 0) {
-    toast("Please enter a valid withdrawal amount greater than 0", "fa-solid fa-circle-exclamation");
-    return;
-  }
-  if (!date) {
-    toast("Please enter a withdrawal date", "fa-solid fa-circle-exclamation");
-    return;
-  }
+  const isValid = FinanceForm.validateRequiredFields("financeWithdrawCashModal", [
+    { id: "withdrawSourceAccountId", label: "Source Bank Account" },
+    { id: "withdrawDestCashAccountId", label: "Destination Cash Drawer" },
+    { id: "withdrawAmount", label: "Withdrawal Amount", check: (v) => parseFloat(v) > 0, message: "Please enter a valid withdrawal amount greater than 0." },
+    { id: "withdrawDate", label: "Withdrawal Date" },
+  ]);
+  if (!isValid) return;
 
   const btn = document.getElementById("withdrawCashSaveBtn");
   if (btn) btn.disabled = true;
@@ -3348,6 +3613,7 @@ async function _populateSubscriptionVendorDropdown(selectedId = null) {
 }
 
 async function openAddSubscriptionModal() {
+  FinanceForm.clearErrors("subscriptionModal");
   document.getElementById("subId").value = "";
   document.getElementById("subModalTitle").textContent = "New Subscription";
   document.getElementById("subName").value = "";
@@ -3365,6 +3631,7 @@ async function openAddSubscriptionModal() {
 }
 
 async function openEditSubscriptionModal(id) {
+  FinanceForm.clearErrors("subscriptionModal");
   const s = (FinanceState.subscriptions || []).find((sub) => sub.id === parseInt(id, 10));
   if (!s) return;
 
@@ -3391,10 +3658,13 @@ async function saveSubscription() {
   const nextRenewal = document.getElementById("subNextRenewal").value;
   const autoBill = document.getElementById("subAutoBill").checked;
 
-  if (!name) { showToast("Service name is required", "error"); return; }
-  if (!vendorId) { showToast("Please select a vendor", "error"); return; }
-  if (isNaN(amount) || amount < 0) { showToast("Enter a valid amount", "error"); return; }
-  if (!nextRenewal) { showToast("Next renewal date is required", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("subscriptionModal", [
+    { id: "subName", label: "Service Name" },
+    { id: "subVendorId", label: "Vendor" },
+    { id: "subAmount", label: "Recurring Amount", check: (v) => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, message: "Enter a valid recurring amount." },
+    { id: "subNextRenewal", label: "Next Renewal Date" },
+  ]);
+  if (!isValid) return;
 
   const payload = {
     vendor_id: parseInt(vendorId, 10),
@@ -3427,6 +3697,7 @@ async function saveSubscription() {
 }
 
 async function openLogSubscriptionChargeModal(subId) {
+  FinanceForm.clearErrors("subscriptionChargeModal");
   const sub = (FinanceState.subscriptions || []).find((s) => s.id === parseInt(subId, 10));
   if (!sub) return;
 
@@ -3464,8 +3735,11 @@ async function saveSubscriptionCharge() {
   const fileInput = document.getElementById("chargeFile");
 
   if (!subId) { showToast("Subscription ID missing", "error"); return; }
-  if (isNaN(amount) || amount <= 0) { showToast("Please enter a valid charge amount", "error"); return; }
-  if (!date) { showToast("Billing date is required", "error"); return; }
+  const isValid = FinanceForm.validateRequiredFields("subscriptionChargeModal", [
+    { id: "chargeAmount", label: "Charge Amount", check: (v) => parseFloat(v) > 0, message: "Please enter a valid charge amount greater than 0." },
+    { id: "chargeDate", label: "Billing Date" },
+  ]);
+  if (!isValid) return;
 
   const formData = new FormData();
   formData.append("amount", String(amount));
@@ -4366,13 +4640,17 @@ function switchFinanceReportsTab(tabName, btn) {
   // Update tabs
   const subnav = document.getElementById("financeReportsSubNav");
   if (subnav) {
-    subnav.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
+    subnav.querySelectorAll(".filter-tab").forEach((b) => {
+      b.classList.remove("active");
+      b.setAttribute("aria-selected", "false");
+      b.setAttribute("tabindex", "-1");
+    });
   }
-  if (btn) {
-    btn.classList.add("active");
-  } else if (subnav) {
-    const target = subnav.querySelector(`[data-report-tab="${tabName}"]`);
-    if (target) target.classList.add("active");
+  const activeBtn = btn || (subnav ? subnav.querySelector(`[data-report-tab="${tabName}"]`) : null);
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+    activeBtn.setAttribute("aria-selected", "true");
+    activeBtn.setAttribute("tabindex", "0");
   }
 
   // Toggle panes
@@ -4941,4 +5219,18 @@ window.loadReportCheques = loadReportCheques;
 window.exportChequesExcel = exportChequesExcel;
 window.triggerExcelDownload = triggerExcelDownload;
 
+// ==========================================
+// Accessible Tablist Initialization (Story 0.3)
+// ==========================================
+function setupFinanceAccessibility() {
+  document.querySelectorAll('.filter-tabs, [role="tablist"]').forEach((tl) => {
+    initAccessibleTablist(tl);
+  });
+}
 
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", setupFinanceAccessibility);
+} else {
+  setupFinanceAccessibility();
+}
+window.setupFinanceAccessibility = setupFinanceAccessibility;

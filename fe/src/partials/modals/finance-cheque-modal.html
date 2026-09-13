@@ -2,14 +2,14 @@
 
 <!-- 1. Issue Cheque Modal -->
 <div id="financeChequeModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 640px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chequeModalTitleText" style="max-width: 640px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-money-check"></i></div>
       <div class="modal-head-text">
-        <h3>Issue Cheque</h3>
+        <h3 id="chequeModalTitleText">Issue Cheque</h3>
         <p>Draw a cheque against a bank account for a vendor payment, cash withdrawal, or other disbursement.</p>
       </div>
-      <button class="modal-close" onclick="closeIssueChequeModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeIssueChequeModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-section">
@@ -100,14 +100,14 @@
 
 <!-- 2. Direct Teller Cash Withdrawal Modal (No Cheque #) -->
 <div id="financeWithdrawCashModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 580px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="withdrawCashModalTitleText" style="max-width: 580px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
       <div class="modal-head-text">
-        <h3>Direct Teller Cash Withdrawal</h3>
+        <h3 id="withdrawCashModalTitleText">Direct Teller Cash Withdrawal</h3>
         <p>Record an in-person teller/counter cash withdrawal that directly funds an office cash account without a cheque.</p>
       </div>
-      <button class="modal-close" onclick="closeWithdrawCashModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeWithdrawCashModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-section">

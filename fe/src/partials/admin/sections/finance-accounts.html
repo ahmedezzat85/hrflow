@@ -1,13 +1,13 @@
         <section class="page-section" id="a-finance-accounts">
           <!-- Sub Navigation for Bank Accounts & Lookups -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-            <div class="filter-tabs" id="financeAccountsSubNav">
-              <button class="filter-tab active" id="subtabFinanceAccounts" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
-              <button class="filter-tab" id="subtabFinanceStatements" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
-              <button class="filter-tab" id="subtabFinanceCheques" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
-              <button class="filter-tab" id="subtabFinanceTransfers" data-account-tab="transfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
-              <button class="filter-tab" id="subtabFinanceCategories" data-account-tab="categories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
-              <button class="filter-tab" id="subtabFinancePaymentTypes" data-account-tab="payment_types" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
+            <div class="filter-tabs" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation">
+              <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
+              <button class="filter-tab" id="subtabFinanceStatements" role="tab" aria-selected="false" tabindex="-1" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
+              <button class="filter-tab" id="subtabFinanceCheques" role="tab" aria-selected="false" tabindex="-1" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
+              <button class="filter-tab" id="subtabFinanceTransfers" role="tab" aria-selected="false" tabindex="-1" data-account-tab="transfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
+              <button class="filter-tab" id="subtabFinanceCategories" role="tab" aria-selected="false" tabindex="-1" data-account-tab="categories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
+              <button class="filter-tab" id="subtabFinancePaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-account-tab="payment_types" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
             </div>
           </div>
 
@@ -19,10 +19,10 @@
                 <p class="section-subtitle">Accounts used for receiving customer payments, disbursements, and cash custody.</p>
               </div>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <div class="filter-tabs">
-                  <button class="filter-tab active" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
-                  <button class="filter-tab" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
-                  <button class="filter-tab" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
+                <div class="filter-tabs" role="tablist" aria-label="Bank account status filter">
+                  <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
+                  <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
+                  <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
                 </div>
                 <button class="btn btn-outline" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
                 <button class="btn btn-outline" onclick="openWithdrawCashModal()"><i class="fa-solid fa-hand-holding-dollar"></i> Withdraw Cash</button>

@@ -1,14 +1,14 @@
 <!-- fe/src/partials/modals/finance-statement-upload-modal.html -->
 
 <div id="financeStatementUploadModal" class="modal-overlay">
-  <div class="modal modal-v2 modal-v2-box" style="max-width: 620px;">
+  <div class="modal modal-v2 modal-v2-box" role="dialog" aria-modal="true" aria-labelledby="stmtUploadModalTitleText" style="max-width: 620px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-file-arrow-up"></i></div>
       <div class="modal-head-text">
-        <h3>Upload Bank Statement</h3>
+        <h3 id="stmtUploadModalTitleText">Upload Bank Statement</h3>
         <p>Import official bank statements in CSV or PDF format for automated parsing and review-driven reconciliation.</p>
       </div>
-      <button class="modal-close" data-modal-dismiss onclick="closeUploadStatementModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" data-modal-dismiss onclick="closeUploadStatementModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <form id="financeStatementUploadForm" onsubmit="handleStatementUploadSubmit(event)">
       <div class="modal-body">
