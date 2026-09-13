@@ -426,6 +426,9 @@ const FinanceApi = {
     }
     return apiRequest("GET", "/api/finance/reports/summary");
   },
+  async getDashboardSummary() {
+    return this.getFinanceSummary();
+  },
 
   // Bank Accounts
   async getAccounts(params) {

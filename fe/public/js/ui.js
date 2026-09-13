@@ -127,12 +127,16 @@ const titles = {
   'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
   'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
   'a-finance-dashboard':['Finance Overview','Executive summary of cash flow, revenue, and operating expenses.'],
+  'a-finance-sales':['Sales & Receivables','Manage customer invoices, receivables, and customer accounts.'],
+  'a-finance-spend':['Spend & Payables','Track vendor bills, payments, and recurring subscriptions.'],
+  'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
+  'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
+  'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
+  'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
   'a-finance-bills':['Vendor Bills','Track supplier bills and accounts payable.'],
-  'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
   'a-finance-accounts':['Company Bank Accounts','Manage company treasury and operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
-  'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],
@@ -142,11 +146,33 @@ const titles = {
 };
 function showSection(pageId, portal){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
-  document.querySelectorAll(appSel+' .page-section').forEach(s=>s.classList.remove('active'));
-  document.getElementById(pageId).classList.add('active');
-  document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>n.classList.toggle('active', n.dataset.page===pageId));
-  const t = titles[pageId];
-  if(t){ document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0]; document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1]; }
+
+  // Finance Information Architecture domain mapping (Story 1.1)
+  const financeDomainMap = {
+    'a-finance-sales': 'a-finance-invoices',
+    'a-finance-spend': 'a-finance-bills',
+    'a-finance-banking': 'a-finance-accounts',
+  };
+
+  const targetSectionId = financeDomainMap[pageId] || pageId;
+  const targetSection = document.getElementById(targetSectionId);
+  if (targetSection) {
+    document.querySelectorAll(appSel+' .page-section').forEach(s=>s.classList.remove('active'));
+    targetSection.classList.add('active');
+  }
+
+  document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>{
+    const p = n.dataset.page;
+    const isDirect = (p === pageId);
+    const isDomainMatch = (financeDomainMap[p] === targetSectionId || financeDomainMap[pageId] === p);
+    n.classList.toggle('active', isDirect || isDomainMatch);
+  });
+
+  const t = titles[pageId] || titles[targetSectionId];
+  if(t){
+    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
+    document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1];
+  }
   closeAllSidebars();
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
 }

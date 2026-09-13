@@ -3,11 +3,10 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
             <div class="filter-tabs" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation">
               <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
+              <button class="filter-tab" id="subtabFinanceLedger" role="tab" aria-selected="false" tabindex="-1" data-account-tab="ledger" onclick="switchFinanceAccountsSubTab('ledger', this)"><i class="fa-solid fa-book-journal-whills"></i> Continuous Ledger</button>
               <button class="filter-tab" id="subtabFinanceStatements" role="tab" aria-selected="false" tabindex="-1" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
               <button class="filter-tab" id="subtabFinanceCheques" role="tab" aria-selected="false" tabindex="-1" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
               <button class="filter-tab" id="subtabFinanceTransfers" role="tab" aria-selected="false" tabindex="-1" data-account-tab="transfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
-              <button class="filter-tab" id="subtabFinanceCategories" role="tab" aria-selected="false" tabindex="-1" data-account-tab="categories" onclick="switchFinanceAccountsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
-              <button class="filter-tab" id="subtabFinancePaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-account-tab="payment_types" onclick="switchFinanceAccountsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
             </div>
           </div>
 
