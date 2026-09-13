@@ -1039,16 +1039,76 @@ function renderFinanceVendors(items) {
 
   tbody.innerHTML = items.map((v) => `
     <tr>
-      <td><strong>${v.name}</strong>${v.notes ? `<div style="font-size:12px;color:var(--text3);">${v.notes}</div>` : ""}</td>
+      <td>
+        <a href="javascript:void(0)" class="table-entity-link" onclick="openVendor360Drawer(${v.id})"><strong>${v.name}</strong></a>
+        ${v.legal_name && v.legal_name !== v.name ? `<div style="font-size:12px;color:var(--text2);">${v.legal_name}</div>` : ""}
+        ${v.notes ? `<div style="font-size:12px;color:var(--text3);">${v.notes}</div>` : ""}
+      </td>
       <td><span class="badge badge-info">${v.category || "General"}</span></td>
       <td>${v.contact_email ? `<a href="mailto:${v.contact_email}">${v.contact_email}</a>` : "—"}</td>
       <td>${v.contact_phone || "—"}</td>
       <td><code>${v.tax_id || "—"}</code></td>
       <td>${FinanceFormat.formatStatusBadge("vendor", v.is_active ? "active" : "inactive")}</td>
-      <td><div style="display:flex;gap:6px;"><button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i></button></div></td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-icon" title="View 360 & Payments" onclick="openVendor360Drawer(${v.id})"><i class="fa-solid fa-eye"></i></button>
+          <button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i></button>
+        </div>
+      </td>
     </tr>
   `).join("");
 }
+
+function openVendor360Drawer(vendorId) {
+  const drawer = window.FinanceDrawer || window.FinanceDetailDrawer;
+  if (drawer && drawer.open) {
+    drawer.open("vendor", vendorId);
+  }
+}
+window.openVendor360Drawer = openVendor360Drawer;
+
+let _vendorDuplicateDebounce = null;
+async function onVendorFieldInput() {
+  clearTimeout(_vendorDuplicateDebounce);
+  _vendorDuplicateDebounce = setTimeout(async () => {
+    const banner = document.getElementById("vendorDuplicateBanner");
+    const bannerText = document.getElementById("vendorDuplicateText");
+    if (!banner) return;
+
+    const idVal = document.getElementById("fVendorId")?.value;
+    const name = document.getElementById("fVendorName")?.value.trim() || "";
+    const legal_name = document.getElementById("fVendorLegalName")?.value.trim() || "";
+    const contact_email = document.getElementById("fVendorEmail")?.value.trim() || "";
+    const tax_id = document.getElementById("fVendorTaxId")?.value.trim() || "";
+
+    if (!name && !legal_name && !contact_email && !tax_id) {
+      banner.style.display = "none";
+      return;
+    }
+
+    try {
+      const candidates = await FinanceApi.checkVendorDuplicate({
+        name: name || legal_name,
+        contact_email,
+        tax_id,
+      });
+      const filtered = (candidates || []).filter((c) => !idVal || c.id !== parseInt(idVal, 10));
+      if (filtered.length > 0) {
+        const top = filtered[0];
+        banner.style.display = "block";
+        if (bannerText) {
+          bannerText.innerHTML = `Existing vendor <strong>"${top.name}"</strong> matches on <em>${top.matched_field}</em>.`;
+        }
+      } else {
+        banner.style.display = "none";
+      }
+    } catch (err) {
+      console.warn("Failed duplicate check:", err);
+    }
+  }, 250);
+}
+window.onVendorFieldInput = onVendorFieldInput;
 
 function filterFinanceVendors(query) {
   const q = (query || "").trim().toLowerCase();
@@ -1056,15 +1116,111 @@ function filterFinanceVendors(query) {
   renderFinanceVendors(FinanceState.vendors.filter((v) => v.name.toLowerCase().includes(q) || (v.category && v.category.toLowerCase().includes(q)) || (v.contact_email && v.contact_email.toLowerCase().includes(q)) || (v.tax_id && v.tax_id.toLowerCase().includes(q))));
 }
 
+async function renderVendorPaymentInstructionsInModal(vendorId) {
+  const container = document.getElementById("vendorPaymentInstructionsList");
+  if (!container) return;
+  if (!vendorId) {
+    container.innerHTML = `<div style="font-size:0.8rem; color:var(--text3); font-style:italic;">Save vendor profile first to attach and verify payment instructions.</div>`;
+    return;
+  }
+  try {
+    const list = await FinanceApi.getVendorPaymentInstructions(vendorId);
+    if (!list || list.length === 0) {
+      container.innerHTML = `<div style="font-size:0.82rem; color:var(--text3); margin-bottom:8px;">No bank or payment instructions recorded for this vendor yet.</div>`;
+      return;
+    }
+    container.innerHTML = list.map((pi) => `
+      <div class="card" style="padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; background:var(--surface); border:1px solid var(--border);">
+        <div>
+          <div style="font-weight:700; font-size:0.9rem;">${pi.bank_name || 'Bank'} <span class="badge ${pi.verification_status === 'verified' ? 'badge-success' : 'badge-warning'}" style="margin-left:6px; font-size:0.7rem;">${pi.verification_status.toUpperCase()}</span></div>
+          <div style="font-size:0.8rem; color:var(--text2); font-family:monospace; margin-top:2px;">Acct: ${pi.account_number || '—'} ${pi.routing_number ? `| Routing: ${pi.routing_number}` : ''}</div>
+          <div style="font-size:0.75rem; color:var(--text3);">${pi.account_holder_name ? `Holder: ${pi.account_holder_name}` : ''} ${pi.verified_by ? `• Verified by ${pi.verified_by}` : ''}</div>
+        </div>
+        <div>
+          ${pi.verification_status !== 'verified' ? `
+            <button type="button" class="btn btn-sm btn-primary" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
+          ` : `
+            <button type="button" class="btn btn-sm btn-outline" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id}, 'unverified')"><i class="fa-solid fa-rotate-left"></i> Re-verify</button>
+          `}
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    container.innerHTML = `<div style="font-size:0.8rem; color:var(--danger);">${err.message || 'Failed to load payment instructions'}</div>`;
+  }
+}
+
+async function verifyVendorPaymentInstructionItem(vendorId, piId, decision = "verified") {
+  try {
+    await FinanceApi.verifyVendorPaymentInstruction(vendorId, piId, { decision, comment: `Instruction ${decision} via admin portal` });
+    showToast(`Payment instruction marked as ${decision}`, "success");
+    renderVendorPaymentInstructionsInModal(vendorId);
+  } catch (err) {
+    showToast(err.message || "Failed to verify instruction", "error");
+  }
+}
+window.verifyVendorPaymentInstructionItem = verifyVendorPaymentInstructionItem;
+
+async function saveVendorPaymentInstruction() {
+  const vendorId = document.getElementById("fVendorId").value;
+  if (!vendorId) {
+    showToast("Please save the vendor profile first before adding payment instructions", "warning");
+    return;
+  }
+  const bank_name = document.getElementById("fVendorPIBankName").value.trim();
+  const account_holder_name = document.getElementById("fVendorPIAccountHolder").value.trim();
+  const account_number = document.getElementById("fVendorPIAccountNumber").value.trim();
+  const routing_number = document.getElementById("fVendorPIRouting").value.trim();
+
+  if (!account_number) {
+    showToast("Account number is required", "error");
+    return;
+  }
+
+  const payload = {
+    payment_method: "bank_transfer",
+    bank_name: bank_name || "Bank",
+    account_holder_name: account_holder_name || null,
+    account_number,
+    routing_number: routing_number || null,
+  };
+
+  try {
+    await FinanceApi.createVendorPaymentInstruction(parseInt(vendorId, 10), payload);
+    showToast("Payment instruction added (unverified)", "success");
+    document.getElementById("fVendorPIBankName").value = "";
+    document.getElementById("fVendorPIAccountHolder").value = "";
+    document.getElementById("fVendorPIAccountNumber").value = "";
+    document.getElementById("fVendorPIRouting").value = "";
+    renderVendorPaymentInstructionsInModal(parseInt(vendorId, 10));
+  } catch (err) {
+    showToast(err.message || "Failed to add payment instruction", "error");
+  }
+}
+window.saveVendorPaymentInstruction = saveVendorPaymentInstruction;
+
 function openAddVendorModal() {
   FinanceForm.clearErrors("vendorModal");
+  const banner = document.getElementById("vendorDuplicateBanner");
+  if (banner) banner.style.display = "none";
   document.getElementById("fVendorId").value = "";
   document.getElementById("fVendorName").value = "";
+  if (document.getElementById("fVendorLegalName")) document.getElementById("fVendorLegalName").value = "";
   document.getElementById("fVendorCategory").value = "General";
   document.getElementById("fVendorEmail").value = "";
   document.getElementById("fVendorPhone").value = "";
+  if (document.getElementById("fVendorContactName")) document.getElementById("fVendorContactName").value = "";
+  if (document.getElementById("fVendorCountry")) document.getElementById("fVendorCountry").value = "United States";
+  if (document.getElementById("fVendorTerms")) document.getElementById("fVendorTerms").value = "30";
+  if (document.getElementById("fVendorCurrency")) document.getElementById("fVendorCurrency").value = "USD";
+  if (document.getElementById("fVendorDepartment")) document.getElementById("fVendorDepartment").value = "Engineering";
+  if (document.getElementById("fVendorWithholdingRate")) document.getElementById("fVendorWithholdingRate").value = "0.0";
+  if (document.getElementById("fVendorAddress")) document.getElementById("fVendorAddress").value = "";
   document.getElementById("fVendorTaxId").value = "";
   document.getElementById("fVendorNotes").value = "";
+
+  renderVendorPaymentInstructionsInModal(null);
+
   const title = document.getElementById("vendorModalTitle");
   if (title) title.textContent = "Add Vendor";
   const btn = document.getElementById("vendorSaveBtn");
@@ -1074,15 +1230,28 @@ function openAddVendorModal() {
 
 function openEditVendorModal(id) {
   FinanceForm.clearErrors("vendorModal");
+  const banner = document.getElementById("vendorDuplicateBanner");
+  if (banner) banner.style.display = "none";
   const v = FinanceState.vendors.find((x) => x.id === id);
   if (!v) return;
   document.getElementById("fVendorId").value = v.id;
   document.getElementById("fVendorName").value = v.name || "";
+  if (document.getElementById("fVendorLegalName")) document.getElementById("fVendorLegalName").value = v.legal_name || "";
   document.getElementById("fVendorCategory").value = v.category || "General";
   document.getElementById("fVendorEmail").value = v.contact_email || "";
   document.getElementById("fVendorPhone").value = v.contact_phone || "";
+  if (document.getElementById("fVendorContactName")) document.getElementById("fVendorContactName").value = v.contact_name || "";
+  if (document.getElementById("fVendorCountry")) document.getElementById("fVendorCountry").value = v.country || "United States";
+  if (document.getElementById("fVendorTerms")) document.getElementById("fVendorTerms").value = v.payment_terms_days !== undefined ? v.payment_terms_days : 30;
+  if (document.getElementById("fVendorCurrency")) document.getElementById("fVendorCurrency").value = v.default_currency || "USD";
+  if (document.getElementById("fVendorDepartment")) document.getElementById("fVendorDepartment").value = v.default_department || "Engineering";
+  if (document.getElementById("fVendorWithholdingRate")) document.getElementById("fVendorWithholdingRate").value = v.withholding_tax_rate !== undefined ? v.withholding_tax_rate : 0.0;
+  if (document.getElementById("fVendorAddress")) document.getElementById("fVendorAddress").value = v.remit_address || "";
   document.getElementById("fVendorTaxId").value = v.tax_id || "";
   document.getElementById("fVendorNotes").value = v.notes || "";
+
+  renderVendorPaymentInstructionsInModal(v.id);
+
   const title = document.getElementById("vendorModalTitle");
   if (title) title.textContent = "Edit Vendor";
   const btn = document.getElementById("vendorSaveBtn");
@@ -1093,16 +1262,39 @@ function openEditVendorModal(id) {
 async function saveVendor() {
   const idVal = document.getElementById("fVendorId").value;
   const name = document.getElementById("fVendorName").value.trim();
+  const legal_name = document.getElementById("fVendorLegalName") ? document.getElementById("fVendorLegalName").value.trim() : null;
   const category = document.getElementById("fVendorCategory").value.trim();
   const contact_email = document.getElementById("fVendorEmail").value.trim();
   const contact_phone = document.getElementById("fVendorPhone").value.trim();
+  const contact_name = document.getElementById("fVendorContactName") ? document.getElementById("fVendorContactName").value.trim() : null;
+  const country = document.getElementById("fVendorCountry") ? document.getElementById("fVendorCountry").value.trim() : null;
+  const payment_terms_days = document.getElementById("fVendorTerms") ? parseInt(document.getElementById("fVendorTerms").value, 10) : 30;
+  const default_currency = document.getElementById("fVendorCurrency") ? document.getElementById("fVendorCurrency").value : "USD";
+  const default_department = document.getElementById("fVendorDepartment") ? document.getElementById("fVendorDepartment").value : null;
+  const withholding_tax_rate = document.getElementById("fVendorWithholdingRate") ? parseFloat(document.getElementById("fVendorWithholdingRate").value) : 0.0;
+  const remit_address = document.getElementById("fVendorAddress") ? document.getElementById("fVendorAddress").value.trim() : null;
   const tax_id = document.getElementById("fVendorTaxId").value.trim();
   const notes = document.getElementById("fVendorNotes").value.trim();
   const isValid = FinanceForm.validateRequiredFields("vendorModal", [
     { id: "fVendorName", label: "Vendor / Supplier Name" }
   ]);
   if (!isValid) return;
-  const payload = { name, category: category || "General", contact_email: contact_email || null, contact_phone: contact_phone || null, tax_id: tax_id || null, notes: notes || null };
+  const payload = {
+    name,
+    legal_name: legal_name || null,
+    category: category || "General",
+    contact_email: contact_email || null,
+    contact_phone: contact_phone || null,
+    contact_name: contact_name || null,
+    country: country || "United States",
+    payment_terms_days: isNaN(payment_terms_days) ? 30 : payment_terms_days,
+    default_currency: default_currency || "USD",
+    default_department: default_department || null,
+    withholding_tax_rate: isNaN(withholding_tax_rate) ? 0.0 : withholding_tax_rate,
+    remit_address: remit_address || null,
+    tax_id: tax_id || null,
+    notes: notes || null,
+  };
   const btn = document.getElementById("vendorSaveBtn");
   if (btn) btn.disabled = true;
   try {
@@ -1110,8 +1302,10 @@ async function saveVendor() {
       await FinanceApi.updateVendor(parseInt(idVal, 10), payload);
       showToast("Vendor updated successfully", "success");
     } else {
-      await FinanceApi.createVendor(payload);
+      const created = await FinanceApi.createVendor(payload);
       showToast("Vendor created successfully", "success");
+      document.getElementById("fVendorId").value = created.id;
+      renderVendorPaymentInstructionsInModal(created.id);
     }
     closeModal("vendorModal");
     loadFinanceVendors();
@@ -1187,3 +1381,7 @@ window.openAddVendorModal = openAddVendorModal;
 window.openEditVendorModal = openEditVendorModal;
 window.saveVendor = saveVendor;
 window.toggleVendorActive = toggleVendorActive;
+window.onVendorFieldInput = onVendorFieldInput;
+window.openVendor360Drawer = openVendor360Drawer;
+window.saveVendorPaymentInstruction = saveVendorPaymentInstruction;
+window.verifyVendorPaymentInstructionItem = verifyVendorPaymentInstructionItem;

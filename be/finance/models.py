@@ -48,16 +48,51 @@ class VendorDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
+    legal_name = Column(String(255), nullable=True)
+    contact_name = Column(String(255), nullable=True)
     contact_email = Column(String(255), nullable=True)
     contact_phone = Column(String(50), nullable=True)
     tax_id = Column(String(100), nullable=True)
+    remit_address = Column(Text, nullable=True)
+    country = Column(String(100), default="Egypt", nullable=True)
+    payment_terms_days = Column(Integer, default=30, nullable=True)
+    default_currency = Column(String(10), default="USD", nullable=True)
     category = Column(String(100), default="General")
+    default_department = Column(String(100), nullable=True)
+    tax_treatment = Column(String(50), default="standard", nullable=True)
+    withholding_tax_rate = Column(Float, default=0.0, nullable=True)
+    onboarding_status = Column(String(50), default="active", nullable=False)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bills = relationship("BillDB", back_populates="vendor")
     subscriptions = relationship("SubscriptionDB", back_populates="vendor")
+    payment_instructions = relationship("VendorPaymentInstructionDB", back_populates="vendor", cascade="all, delete-orphan")
+
+
+class VendorPaymentInstructionDB(Base):
+    __tablename__ = "finance_vendor_payment_instructions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    payment_method = Column(String(50), default="bank_transfer", nullable=False)  # bank_transfer, ach, wire, check, cash, other
+    bank_name = Column(String(150), nullable=True)
+    account_holder_name = Column(String(255), nullable=True)
+    account_number = Column(String(100), nullable=False)
+    routing_number = Column(String(50), nullable=True)
+    swift_code = Column(String(50), nullable=True)
+    iban = Column(String(100), nullable=True)
+    verification_status = Column(String(30), default="unverified", nullable=False, index=True)  # unverified, verified, rejected
+    verified_by = Column(String(255), nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    effective_date = Column(String(20), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    vendor = relationship("VendorDB", back_populates="payment_instructions")
 
 
 class SalesInvoiceDB(Base):

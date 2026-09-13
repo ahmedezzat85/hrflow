@@ -703,6 +703,82 @@ def get_entity_activity(
             timeline=timeline,
         )
 
+    elif norm_type in ("vendor", "vendors"):
+        vend = db.query(VendorDB).filter(VendorDB.id == entity_id).first()
+        if not vend:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vendor #{entity_id} not found")
+
+        bills = db.query(BillDB).filter(BillDB.vendor_id == vend.id).all()
+        paid_bills = [b for b in bills if str(b.status).lower() == "paid"]
+        total_spend = sum(float(b.total or 0.0) for b in paid_bills)
+        open_bills = [b for b in bills if str(b.status).lower() not in ("paid", "void")]
+        open_total = sum(float(b.total or 0.0) for b in open_bills)
+
+        related: List[RelatedRecordItem] = []
+        timeline: List[TimelineEvent] = []
+
+        for b in sorted(bills, key=lambda x: str(x.issue_date or ""), reverse=True):
+            b_status = str(b.status).lower()
+            related.append(RelatedRecordItem(
+                entity_type="bill",
+                entity_id=b.id,
+                title=f"Bill {b.bill_number}",
+                badge=b_status.upper(),
+                amount=float(b.total or 0.0),
+                currency=b.currency or "USD",
+                date=b.issue_date,
+            ))
+            timeline.append(TimelineEvent(
+                id=f"bill-{b.id}-issued",
+                timestamp=f"{b.issue_date or today} 09:00:00",
+                event="bill_received",
+                plain_text=f"Bill {b.bill_number} recorded for {b.currency} {float(b.total):,.2f}",
+                actor=b.created_by or "finance@voyance.health",
+                state_transition={"from_state": "inbox", "to_state": b_status},
+            ))
+
+        # Payment instructions info
+        can_reveal = is_admin or ("finance.vendor_payment.reveal" in user_permissions)
+        instructions = vend.payment_instructions or []
+        pi_summary_parts = []
+        for pi in instructions:
+            acct_display = pi.account_number if can_reveal else _mask_sensitive(pi.account_number, False)
+            pi_summary_parts.append(f"{pi.bank_name or 'Bank'}: {acct_display} ({pi.verification_status})")
+
+        attributes = [
+            EntitySummaryAttribute(label="Legal Name", value=vend.legal_name or "—"),
+            EntitySummaryAttribute(label="Category", value=vend.category or "General"),
+            EntitySummaryAttribute(label="Contact Email", value=vend.contact_email or "—"),
+            EntitySummaryAttribute(label="Contact Phone", value=vend.contact_phone or "—"),
+            EntitySummaryAttribute(label="Tax ID", value=_mask_sensitive(vend.tax_id, is_admin) or "—"),
+            EntitySummaryAttribute(label="Payment Terms", value=f"{vend.payment_terms_days or 30} days"),
+            EntitySummaryAttribute(label="Default Currency", value=vend.default_currency or "USD"),
+            EntitySummaryAttribute(label="Total Spend", value=f"{total_spend:,.2f} {vend.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Open Bills Count", value=str(len(open_bills))),
+            EntitySummaryAttribute(label="Open Bills Total", value=f"{open_total:,.2f} {vend.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Payment Instructions", value="; ".join(pi_summary_parts) if pi_summary_parts else "None recorded"),
+        ]
+
+        summary = EntitySummary(
+            amount=open_total,
+            currency=vend.default_currency or "USD",
+            counterparty=vend.legal_name or vend.name,
+            attributes=attributes,
+            notes=vend.notes,
+            sensitive_masked=(not can_reveal and bool(instructions)),
+        )
+
+        return EntityActivityResponse(
+            entity_type="vendor",
+            entity_id=vend.id,
+            title=f"Vendor: {vend.name}",
+            status="active" if vend.is_active else "inactive",
+            summary=summary,
+            related_records=related,
+            attachments=[],
+            timeline=timeline,
+        )
+
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

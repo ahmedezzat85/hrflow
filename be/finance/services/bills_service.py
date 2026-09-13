@@ -22,7 +22,7 @@ from finance.schemas import (
     PaymentResponse,
     PaymentReversalRequest,
 )
-from finance.models import BillDB, PaymentDB
+from finance.models import BillDB, PaymentDB, VendorDB
 
 
 VALID_BILL_STATUSES = {
@@ -175,6 +175,13 @@ class BillsService:
     ) -> BillResponse:
         if payload.status not in VALID_BILL_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
+
+        # Inactive vendor validation: Inactive vendors remain on history but are excluded from new bills
+        vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payload.vendor_id).first()
+        if not vendor:
+            raise HTTPException(status_code=400, detail=f"Vendor with ID {payload.vendor_id} not found")
+        if not vendor.is_active:
+            raise HTTPException(status_code=400, detail=f"Vendor '{vendor.name}' is inactive and cannot be assigned to new bills")
 
         existing = self.repo.get_by_number(payload.bill_number)
         if existing and not payload.is_duplicate_override:

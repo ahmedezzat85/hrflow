@@ -258,12 +258,24 @@ class Customer360Summary(BaseModel):
 # ==========================================
 # Vendor Schemas
 # ==========================================
+# Vendor Schemas
+# ==========================================
 class VendorBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Vendor or supplier name")
+    legal_name: Optional[str] = Field(None, max_length=255)
+    contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    remit_address: Optional[str] = None
+    country: Optional[str] = Field("Egypt", max_length=100)
+    payment_terms_days: Optional[int] = Field(30, ge=0, le=365)
+    default_currency: Optional[str] = Field("USD", max_length=10)
     category: Optional[str] = Field("General", max_length=100)
+    default_department: Optional[str] = Field(None, max_length=100)
+    tax_treatment: Optional[str] = Field("standard", max_length=50)
+    withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0)
+    onboarding_status: Optional[str] = Field("active", max_length=50)
     notes: Optional[str] = None
 
 
@@ -273,10 +285,20 @@ class VendorCreate(VendorBase):
 
 class VendorUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    legal_name: Optional[str] = Field(None, max_length=255)
+    contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    remit_address: Optional[str] = None
+    country: Optional[str] = Field(None, max_length=100)
+    payment_terms_days: Optional[int] = Field(None, ge=0, le=365)
+    default_currency: Optional[str] = Field(None, max_length=10)
     category: Optional[str] = Field(None, max_length=100)
+    default_department: Optional[str] = Field(None, max_length=100)
+    tax_treatment: Optional[str] = Field(None, max_length=50)
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
+    onboarding_status: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -288,6 +310,101 @@ class VendorResponse(VendorBase):
 
     class Config:
         from_attributes = True
+
+
+# ==========================================
+# Vendor Payment Instruction Schemas
+# ==========================================
+class VendorPaymentInstructionBase(BaseModel):
+    payment_method: str = Field("bank_transfer", description="bank_transfer | ach | wire | check | cash | other")
+    bank_name: Optional[str] = Field(None, max_length=150)
+    account_holder_name: Optional[str] = Field(None, max_length=255)
+    account_number: str = Field(..., min_length=4, max_length=100)
+    routing_number: Optional[str] = Field(None, max_length=50)
+    swift_code: Optional[str] = Field(None, max_length=50)
+    iban: Optional[str] = Field(None, max_length=100)
+    effective_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class VendorPaymentInstructionCreate(VendorPaymentInstructionBase):
+    pass
+
+
+class VendorPaymentInstructionUpdate(BaseModel):
+    payment_method: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    routing_number: Optional[str] = None
+    swift_code: Optional[str] = None
+    iban: Optional[str] = None
+    effective_date: Optional[str] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class VendorPaymentInstructionResponse(BaseModel):
+    id: int
+    vendor_id: int
+    payment_method: str
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: str
+    routing_number: Optional[str] = None
+    swift_code: Optional[str] = None
+    iban: Optional[str] = None
+    verification_status: str
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    is_active: bool
+    effective_date: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class VendorPaymentInstructionVerifyRequest(BaseModel):
+    decision: str = Field("verified", description="verified | rejected")
+    comment: Optional[str] = None
+
+
+# ==========================================
+# Vendor Duplicate & 360 Profile Schemas
+# ==========================================
+class VendorDuplicateCheckRequest(BaseModel):
+    name: Optional[str] = None
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    exclude_id: Optional[int] = None
+
+
+class VendorDuplicateCandidate(BaseModel):
+    id: int
+    name: str
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    matched_field: str
+    matching_value: str
+
+
+class VendorSpendMetric(BaseModel):
+    total_spend: float = 0.0
+    open_bills_count: int = 0
+    open_bills_total: float = 0.0
+    last_payment_date: Optional[str] = None
+    last_payment_amount: Optional[float] = None
+    active_subscriptions_count: int = 0
+
+
+class Vendor360Response(BaseModel):
+    vendor: VendorResponse
+    payment_instructions: List[VendorPaymentInstructionResponse] = []
+    metrics: VendorSpendMetric
+    recent_bills: List[dict] = []
 
 
 # ==========================================

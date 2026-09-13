@@ -31,8 +31,12 @@ const FinanceMockState = {
     { id: 6, name: "Frontier Labs", legal_name: "Frontier Diagnostics Research", contact_email: "info@frontierlabs.com", contact_phone: "+1 555-0111", tax_id: "US-99887766", billing_address: "88 Science Park", country: "United States", default_currency: "USD", payment_terms_days: 60, owner: "Sarah Connor", notes: "Research lab", is_active: true },
   ],
   vendors: [
-    { id: 1, name: "Amazon Web Services", category: "Infrastructure", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", notes: "Hosting & compute", is_active: true },
-    { id: 2, name: "Slack Technologies", category: "SaaS", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", notes: "Team communication", is_active: true },
+    { id: 1, name: "Amazon Web Services", legal_name: "Amazon Web Services Inc", category: "Infrastructure", contact_name: "AWS Accounts Team", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", remit_address: "410 Terry Ave N, Seattle WA", country: "United States", payment_terms_days: 30, default_currency: "USD", default_department: "Engineering", tax_treatment: "standard", onboarding_status: "active", notes: "Hosting & compute", is_active: true },
+    { id: 2, name: "Slack Technologies", legal_name: "Slack Technologies LLC", category: "SaaS", contact_name: "Sales Billing", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", remit_address: "500 Howard St, San Francisco CA", country: "United States", payment_terms_days: 15, default_currency: "USD", default_department: "Operations", tax_treatment: "standard", onboarding_status: "active", notes: "Team communication", is_active: true },
+  ],
+  vendorPaymentInstructions: [
+    { id: 1, vendor_id: 1, payment_method: "bank_transfer", bank_name: "JPMorgan Chase Bank", account_holder_name: "Amazon Web Services Inc", account_number: "98765432104821", routing_number: "021000021", swift_code: "CHASUS33", iban: "US99CHAS021000021987654321", verification_status: "verified", verified_by: "admin@hrflow.test", verified_at: "2026-09-01T10:00:00", is_active: true, effective_date: "2026-01-01", notes: "Direct ACH Wire Instructions" },
+    { id: 2, vendor_id: 2, payment_method: "bank_transfer", bank_name: "Silicon Valley Bank", account_holder_name: "Slack Technologies LLC", account_number: "12345678901122", routing_number: "121140399", swift_code: "SVBKUS6S", iban: "US44SVBK121140399123456789", verification_status: "unverified", verified_by: null, verified_at: null, is_active: true, effective_date: "2026-01-01", notes: "Pending vendor bank verification" },
   ],
   invoices: [
     { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, amount_paid: 0.0, balance: 12500.0, is_overdue: false, days_overdue: 0, next_action: "Awaiting Due Date / Payment", notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
@@ -1613,6 +1617,109 @@ const FinanceApi = {
     }
     return apiRequest("DELETE", `/api/finance/vendors/${id}`);
   },
+  async checkVendorDuplicate(payload) {
+    if (_isMock()) {
+      const results = [];
+      const norm = (s) => (s || "").toLowerCase().replace(/^(the\s+)/, "").replace(/[\s,.-]+(llc|inc|corp|corporation|ltd|limited|co|company)$/, "").replace(/[^a-z0-9]/g, "");
+      const normName = payload.name ? norm(payload.name) : "";
+      const normTax = payload.tax_id ? norm(payload.tax_id) : "";
+      const email = (payload.contact_email || "").trim().toLowerCase();
+
+      for (const v of FinanceMockState.vendors) {
+        if (normName && norm(v.name) === normName) {
+          results.push({ id: v.id, name: v.name, tax_id: v.tax_id, contact_email: v.contact_email, matched_field: "name", confidence: 0.95 });
+        } else if (normTax && v.tax_id && norm(v.tax_id) === normTax) {
+          results.push({ id: v.id, name: v.name, tax_id: v.tax_id, contact_email: v.contact_email, matched_field: "tax_id", confidence: 1.0 });
+        } else if (email && v.contact_email && v.contact_email.toLowerCase() === email) {
+          results.push({ id: v.id, name: v.name, tax_id: v.tax_id, contact_email: v.contact_email, matched_field: "contact_email", confidence: 0.9 });
+        }
+      }
+      return results;
+    }
+    return apiRequest("POST", "/api/finance/vendors/check-duplicate", payload);
+  },
+  async getVendor360(id, reveal = false) {
+    if (_isMock()) {
+      const vend = FinanceMockState.vendors.find((v) => v.id === parseInt(id, 10));
+      if (!vend) throw new Error("Vendor not found");
+      const instructions = (FinanceMockState.vendorPaymentInstructions || []).filter((pi) => pi.vendor_id === vend.id).map((pi) => {
+        if (!reveal && pi.account_number && pi.account_number.length > 4) {
+          return { ...pi, account_number: "******" + pi.account_number.slice(-4), iban: pi.iban ? "******" + pi.iban.slice(-4) : null };
+        }
+        return { ...pi };
+      });
+      const bills = (FinanceMockState.bills || []).filter((b) => b.vendor_id === vend.id);
+      const paidBills = bills.filter((b) => b.status === "paid");
+      const totalSpend = paidBills.reduce((acc, b) => acc + (b.total || 0), 0);
+      const openBills = bills.filter((b) => b.status !== "paid" && b.status !== "void");
+      const openTotal = openBills.reduce((acc, b) => acc + (b.total || 0), 0);
+      return {
+        vendor: vend,
+        payment_instructions: instructions,
+        metrics: {
+          total_spend: totalSpend,
+          open_bills_count: openBills.length,
+          open_bills_total: openTotal,
+          last_payment_date: paidBills.length ? paidBills[0].due_date : null,
+          last_payment_amount: paidBills.length ? paidBills[0].total : null,
+          active_subscriptions_count: 1,
+        },
+        recent_bills: bills.slice(0, 10),
+      };
+    }
+    return apiRequest("GET", `/api/finance/vendors/${id}/360${reveal ? "?reveal=true" : ""}`);
+  },
+  async getVendorPaymentInstructions(vendorId, reveal = false) {
+    if (_isMock()) {
+      const list = (FinanceMockState.vendorPaymentInstructions || []).filter((pi) => pi.vendor_id === parseInt(vendorId, 10));
+      return list.map((pi) => {
+        if (!reveal && pi.account_number && pi.account_number.length > 4) {
+          return { ...pi, account_number: "******" + pi.account_number.slice(-4), iban: pi.iban ? "******" + pi.iban.slice(-4) : null };
+        }
+        return { ...pi };
+      });
+    }
+    return apiRequest("GET", `/api/finance/vendors/${vendorId}/payment-instructions${reveal ? "?reveal=true" : ""}`);
+  },
+  async createVendorPaymentInstruction(vendorId, payload) {
+    if (_isMock()) {
+      const newInst = {
+        id: (FinanceMockState.vendorPaymentInstructions || []).length + 1,
+        vendor_id: parseInt(vendorId, 10),
+        ...payload,
+        verification_status: "unverified",
+        verified_by: null,
+        verified_at: null,
+        is_active: true,
+      };
+      FinanceMockState.vendorPaymentInstructions.push(newInst);
+      return { ...newInst, account_number: "******" + (newInst.account_number ? newInst.account_number.slice(-4) : "0000") };
+    }
+    return apiRequest("POST", `/api/finance/vendors/${vendorId}/payment-instructions`, payload);
+  },
+  async updateVendorPaymentInstruction(vendorId, instructionId, payload) {
+    if (_isMock()) {
+      const inst = (FinanceMockState.vendorPaymentInstructions || []).find((pi) => pi.id === parseInt(instructionId, 10));
+      if (!inst) throw new Error("Payment instruction not found");
+      Object.assign(inst, payload);
+      inst.verification_status = "unverified";
+      inst.verified_by = null;
+      inst.verified_at = null;
+      return { ...inst, account_number: "******" + (inst.account_number ? inst.account_number.slice(-4) : "0000") };
+    }
+    return apiRequest("PUT", `/api/finance/vendors/${vendorId}/payment-instructions/${instructionId}`, payload);
+  },
+  async verifyVendorPaymentInstruction(vendorId, instructionId, payload) {
+    if (_isMock()) {
+      const inst = (FinanceMockState.vendorPaymentInstructions || []).find((pi) => pi.id === parseInt(instructionId, 10));
+      if (!inst) throw new Error("Payment instruction not found");
+      inst.verification_status = payload.decision || "verified";
+      inst.verified_by = "admin@hrflow.test";
+      inst.verified_at = new Date().toISOString();
+      return { ...inst, account_number: "******" + (inst.account_number ? inst.account_number.slice(-4) : "0000") };
+    }
+    return apiRequest("POST", `/api/finance/vendors/${vendorId}/payment-instructions/${instructionId}/verify`, payload);
+  },
 
   // Categories (Phase 0)
   async getCategories(params) {
@@ -2853,6 +2960,78 @@ const FinanceApi = {
             status: cust.is_active ? "active" : "inactive",
             notes: cust.notes || "",
             sensitive_masked: false,
+            attributes: attrs,
+          },
+          related_records: related,
+          attachments: [],
+          timeline,
+        };
+      } else if (norm === "vendor") {
+        const vend = (FinanceMockState.vendors || []).find((v) => v.id === id) || {
+          id,
+          name: "Amazon Web Services",
+          category: "Infrastructure",
+          contact_email: "aws-receivables@amazon.com",
+          tax_id: "VAT-1294819",
+          is_active: true,
+        };
+        const bills = (FinanceMockState.bills || []).filter((b) => b.vendor_id === vend.id);
+        const paidBills = bills.filter((b) => b.status === "paid");
+        const totalSpend = paidBills.reduce((acc, b) => acc + (b.total || 0), 0);
+        const openBills = bills.filter((b) => b.status !== "paid" && b.status !== "void");
+        const openTotal = openBills.reduce((acc, b) => acc + (b.total || 0), 0);
+
+        const instructions = (FinanceMockState.vendorPaymentInstructions || []).filter((pi) => pi.vendor_id === vend.id);
+        const piParts = instructions.map((pi) => `${pi.bank_name || 'Bank'}: ******${(pi.account_number || '').slice(-4)} (${pi.verification_status})`);
+
+        const related = bills.map((b) => ({
+          entity_type: "bill",
+          entity_id: b.id,
+          title: `Bill ${b.bill_number}`,
+          badge: (b.status || "unpaid").toUpperCase(),
+          amount: b.total,
+          currency: b.currency || "USD",
+          date: b.issue_date,
+        }));
+
+        const timeline = bills.map((b) => ({
+          id: `bill-${b.id}-issued`,
+          timestamp: `${b.issue_date || "2026-09-01"} 09:00:00`,
+          event: "bill_received",
+          plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+          actor: b.created_by || "finance@voyance.health",
+          state_transition: { from_state: "inbox", to_state: b.status || "unpaid" },
+        }));
+
+        const attrs = [
+          { label: "Legal Name", value: vend.legal_name || "—" },
+          { label: "Category", value: vend.category || "General" },
+          { label: "Contact Email", value: vend.contact_email || "—" },
+          { label: "Contact Phone", value: vend.contact_phone || "—" },
+          { label: "Tax ID", value: vend.tax_id || "—" },
+          { label: "Payment Terms", value: `${vend.payment_terms_days || 30} days` },
+          { label: "Default Currency", value: vend.default_currency || "USD" },
+          { label: "Total Spend", value: `$${totalSpend.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${vend.default_currency || "USD"}` },
+          { label: "Open Bills Count", value: String(openBills.length) },
+          { label: "Open Bills Total", value: `$${openTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${vend.default_currency || "USD"}` },
+          { label: "Payment Instructions", value: piParts.length ? piParts.join("; ") : "None recorded" },
+        ];
+
+        return {
+          entity_type: "vendor",
+          entity_id: vend.id,
+          title: `Vendor: ${vend.name}`,
+          status: vend.is_active ? "active" : "inactive",
+          summary: {
+            reference: vend.name,
+            counterparty: vend.legal_name || vend.name,
+            amount: openTotal,
+            currency: vend.default_currency || "USD",
+            date: vend.created_at,
+            due_date: null,
+            status: vend.is_active ? "active" : "inactive",
+            notes: vend.notes || "",
+            sensitive_masked: Boolean(instructions.length),
             attributes: attrs,
           },
           related_records: related,
