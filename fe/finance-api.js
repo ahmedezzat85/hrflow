@@ -745,6 +745,245 @@ const FinanceApi = {
     return apiRequest("POST", `/api/finance/reports/attention-queue/${encodedKey}/review`, payload);
   },
 
+  async getCashForecast(params = {}) {
+    if (_isMock()) {
+      const currency = (params.currency || "all").toUpperCase();
+      const horizonDays = parseInt(params.horizon_days || "90", 10);
+      const includeExpected = params.include_expected !== false && params.include_expected !== "false";
+
+      let rawAccounts = FinanceMockState.accounts || [];
+      if (currency !== "ALL") {
+        rawAccounts = rawAccounts.filter((a) => (a.currency || "").toUpperCase() === currency);
+      }
+
+      const cheques = FinanceMockState.cheques || [];
+      const transfers = FinanceMockState.transfers || [];
+
+      let totalCurrentCash = 0;
+      const currentCashByCurrency = {};
+
+      const accounts = rawAccounts.map((acc) => {
+        const bookBal = round(acc.current_balance || 0, 2);
+        const curr = (acc.currency || "USD").toUpperCase();
+        currentCashByCurrency[curr] = round((currentCashByCurrency[curr] || 0) + bookBal, 2);
+        totalCurrentCash = round(totalCurrentCash + bookBal, 2);
+
+        // Uncleared issued cheques
+        let uncleared = 0;
+        cheques.forEach((chq) => {
+          if (chq.account_id === acc.id && chq.status === "issued") {
+            uncleared += (chq.amount || 0);
+          }
+        });
+        uncleared = round(uncleared, 2);
+
+        // Pending outgoing transfers
+        let pending = 0;
+        transfers.forEach((tr) => {
+          if (tr.from_account_id === acc.id && tr.confirmed_leg !== "both") {
+            pending += (tr.from_amount || 0);
+          }
+        });
+        pending = round(pending, 2);
+
+        const availableBal = round(bookBal - uncleared - pending, 2);
+        const reconciledBal = bookBal > 0 ? round(bookBal * 0.95, 2) : bookBal;
+
+        return {
+          account_id: acc.id,
+          account_name: acc.account_name,
+          bank_name: acc.bank_name,
+          account_type: acc.account_type || "bank",
+          currency: acc.currency,
+          book_balance: bookBal,
+          available_balance: availableBal,
+          reconciled_balance: reconciledBal,
+          uncleared_cheques_amount: uncleared,
+          pending_transfers_amount: pending,
+          is_active: acc.is_active,
+        };
+      });
+
+      // Obligations
+      const obligations = [];
+      const todayStr = "2026-09-13";
+      const today = new Date("2026-09-13T00:00:00");
+
+      // (a) Invoices
+      (FinanceMockState.invoices || []).forEach((inv) => {
+        if (["void", "draft"].includes((inv.status || "").toLowerCase())) return;
+        if (currency !== "ALL" && (inv.currency || "").toUpperCase() !== currency) return;
+        const total = inv.total || 0;
+        const paid = (inv.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const bal = round(total - paid, 2);
+        if (bal <= 0) return;
+
+        const isOverdue = inv.due_date && inv.due_date < todayStr;
+        obligations.push({
+          id: `inflow-inv-${inv.id}`,
+          entity_type: "invoice",
+          entity_id: inv.id,
+          reference: inv.invoice_number,
+          counterparty: inv.customer_name || "Customer",
+          type: "inflow",
+          amount: bal,
+          currency: inv.currency,
+          due_date: isOverdue ? todayStr : (inv.due_date || todayStr),
+          status: isOverdue ? "expected" : "confirmed",
+          certainty: isOverdue ? "overdue" : "contractual",
+          target_route: "a-finance-invoices",
+          notes: `Sales Invoice balance: ${bal.toLocaleString()} ${inv.currency}`,
+        });
+      });
+
+      // (b) Bills
+      (FinanceMockState.bills || []).forEach((bill) => {
+        if (["void", "draft"].includes((bill.status || "").toLowerCase())) return;
+        if (currency !== "ALL" && (bill.currency || "").toUpperCase() !== currency) return;
+        const total = bill.total || 0;
+        const paid = (bill.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const bal = round(total - paid, 2);
+        if (bal <= 0) return;
+
+        const isOverdue = bill.due_date && bill.due_date < todayStr;
+        obligations.push({
+          id: `outflow-bill-${bill.id}`,
+          entity_type: "bill",
+          entity_id: bill.id,
+          reference: bill.bill_number,
+          counterparty: bill.vendor_name || "Vendor",
+          type: "outflow",
+          amount: bal,
+          currency: bill.currency,
+          due_date: isOverdue ? todayStr : (bill.due_date || todayStr),
+          status: "confirmed",
+          certainty: isOverdue ? "overdue" : "contractual",
+          target_route: "a-finance-bills",
+          notes: `Vendor payable balance: ${bal.toLocaleString()} ${bill.currency}`,
+        });
+      });
+
+      // (c) Subscriptions
+      if (includeExpected) {
+        (FinanceMockState.subscriptions || []).forEach((sub) => {
+          if (!sub.is_active) return;
+          if (currency !== "ALL" && (sub.currency || "").toUpperCase() !== currency) return;
+          const amt = round(sub.amount || 0, 2);
+          if (amt <= 0) return;
+
+          [0, 1, 2].forEach((cycle) => {
+            const d = new Date(today);
+            d.setDate(d.getDate() + 15 + cycle * 30);
+            const cycleDateStr = d.toISOString().split("T")[0];
+            obligations.push({
+              id: `outflow-sub-${sub.id}-c${cycle}`,
+              entity_type: "subscription",
+              entity_id: sub.id,
+              reference: `${sub.name} (Renewal #${cycle + 1})`,
+              counterparty: sub.vendor_name || sub.name,
+              type: "outflow",
+              amount: amt,
+              currency: sub.currency,
+              due_date: cycleDateStr,
+              status: "expected",
+              certainty: "estimated",
+              target_route: "a-finance-spend",
+              notes: `Recurring ${sub.billing_cycle || "monthly"} subscription charge`,
+            });
+          });
+        });
+      }
+
+      // Horizons calculations
+      const horizonsMeta = [
+        { key: "30_days", days: 30, label: "Next 30 Days", minDays: 0, maxDays: 30 },
+        { key: "60_days", days: 60, label: "31 - 60 Days", minDays: 31, maxDays: 60 },
+        { key: "90_days", days: 90, label: "61 - 90 Days", minDays: 61, maxDays: 90 },
+      ];
+
+      let runningCash = totalCurrentCash;
+      const horizons = {};
+
+      horizonsMeta.forEach((h) => {
+        let confIn = 0;
+        let expIn = 0;
+        let confOut = 0;
+        let expOut = 0;
+
+        obligations.forEach((ob) => {
+          const obDate = new Date(ob.due_date + "T00:00:00");
+          const diffDays = Math.round((obDate - today) / (1000 * 60 * 60 * 24));
+          const inRange = (h.key === "30_days" && diffDays <= 30) || (diffDays >= h.minDays && diffDays <= h.maxDays);
+          if (inRange) {
+            if (ob.type === "inflow") {
+              if (ob.status === "confirmed") confIn += ob.amount;
+              else expIn += ob.amount;
+            } else {
+              if (ob.status === "confirmed") confOut += ob.amount;
+              else expOut += ob.amount;
+            }
+          }
+        });
+
+        confIn = round(confIn, 2);
+        expIn = round(expIn, 2);
+        confOut = round(confOut, 2);
+        expOut = round(expOut, 2);
+
+        const totIn = round(confIn + expIn, 2);
+        const totOut = round(confOut + expOut, 2);
+        const netFlow = round(totIn - totOut, 2);
+        runningCash = round(runningCash + netFlow, 2);
+
+        horizons[h.key] = {
+          period_label: h.label,
+          days: h.days,
+          confirmed_inflows: confIn,
+          expected_inflows: expIn,
+          total_inflows: totIn,
+          confirmed_outflows: confOut,
+          expected_outflows: expOut,
+          total_outflows: totOut,
+          net_cash_flow: netFlow,
+          projected_ending_cash: runningCash,
+          confidence: h.key === "30_days" ? "high" : (h.key === "60_days" ? "medium" : "low"),
+        };
+      });
+
+      obligations.sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+      const fxWarnings = [];
+      if (currency === "ALL") {
+        fxWarnings.push("Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.");
+      }
+
+      return {
+        as_of_date: todayStr,
+        currency: currency,
+        accounts: accounts,
+        current_cash_by_currency: currentCashByCurrency,
+        total_current_cash: totalCurrentCash,
+        horizons: horizons,
+        material_obligations: obligations.slice(0, 50),
+        assumptions: [
+          "Draft sales invoices and unapproved vendor bills are strictly excluded from cash projections.",
+          "Contractual obligations with past-due dates are placed in the immediate 0-30 day horizon with an overdue status indicator.",
+          "Active monthly subscriptions repeat every 30 days as estimated expected outflows.",
+          "Book, available, and reconciled balances are tracked independently and never conflated.",
+        ],
+        fx_warnings: fxWarnings,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
+    let url = "/api/finance/reports/cash-forecast";
+    if (params && Object.keys(params).length > 0) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+
   // Bank Accounts
   async getAccounts(params) {
     if (_isMock()) {

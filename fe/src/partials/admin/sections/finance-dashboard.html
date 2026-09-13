@@ -226,6 +226,235 @@
             </div>
           </div>
 
+          <!-- Story 2.3: Cash Position and Forecast -->
+          <div class="card" id="financeCashForecastCard" style="margin-top: 1.5rem;">
+            <div class="card-head" style="padding: 16px 20px; border-bottom: 1px solid var(--border, #e2e8f0); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-money-bill-trend-up" style="color: var(--success, #16a34a);"></i> Cash Position & Liquidity Forecast
+                </h3>
+                <span class="badge" id="badgeForecastAsOf" style="background: var(--surface2, #f1f5f9); color: var(--text, #1e293b); font-size: 11.5px; font-weight: 600;">As of Today</span>
+              </div>
+
+              <!-- Horizon and Option Controls -->
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div class="btn-group" id="forecastHorizonSelector" style="display: inline-flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border, #e2e8f0);">
+                  <button type="button" class="btn btn-sm btn-primary" id="btnForecastHorizon30" onclick="setForecastHorizon(30)" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">30 Days</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="btnForecastHorizon60" onclick="setForecastHorizon(60)" style="padding: 4px 10px; font-size: 12px; font-weight: 600; border-left: 1px solid var(--border, #e2e8f0); border-right: 1px solid var(--border, #e2e8f0);">60 Days</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="btnForecastHorizon90" onclick="setForecastHorizon(90)" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">90 Days</button>
+                </div>
+
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2, #475569); cursor: pointer; user-select: none;">
+                  <input type="checkbox" id="chkForecastIncludeExpected" checked onchange="toggleForecastExpected(this.checked)" style="cursor: pointer;"> Include Subscriptions
+                </label>
+
+                <button class="btn btn-sm btn-outline" id="btnRefreshCashForecast" onclick="loadFinanceCashForecast()" title="Refresh cash forecast">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Multi-Currency / FX Notice Banner -->
+            <div id="financeForecastFxWarning" style="display: none; margin: 16px 20px 0 20px; font-size: 12px; color: var(--warning-dark, #b45309); background: var(--warning-soft, rgba(245, 158, 11, 0.08)); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.25);">
+              <i class="fa-solid fa-triangle-exclamation"></i> <span id="textForecastFxWarning">Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.</span>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div id="financeCashForecastSkeleton" style="display: none; padding: 20px;">
+              <div class="grid g3" style="margin-bottom: 20px;">
+                <div class="finance-skeleton" style="height: 100px; border-radius: 8px;"></div>
+                <div class="finance-skeleton" style="height: 100px; border-radius: 8px;"></div>
+                <div class="finance-skeleton" style="height: 100px; border-radius: 8px;"></div>
+              </div>
+              <div class="finance-skeleton" style="height: 140px; border-radius: 8px; margin-bottom: 20px;"></div>
+              <div class="finance-skeleton" style="height: 180px; border-radius: 8px;"></div>
+            </div>
+
+            <!-- Main Forecast Content -->
+            <div id="financeCashForecastContent" style="padding: 20px;">
+              <!-- 3 Horizon Cards -->
+              <div class="grid g3" id="forecastHorizonGrid" style="margin-bottom: 24px; gap: 16px;">
+                <!-- 30 Days -->
+                <div class="card stat-card" id="cardHorizon30" style="padding: 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13.5px; color: var(--text, #1e293b);">Next 30 Days</strong>
+                    <span class="badge badge-success" id="badgeConfidence30" style="font-size: 11px;">High Confidence</span>
+                  </div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--text, #1e293b); margin-bottom: 10px;" id="valProjectedCash30">—</div>
+                  <div style="font-size: 11.5px; color: var(--text3, #64748b); display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Inflows:</span>
+                      <strong id="valInflows30" style="color: var(--success, #16a34a);">+0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valInflowsSplit30">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Outflows:</span>
+                      <strong id="valOutflows30" style="color: var(--danger, #ef4444);">-0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valOutflowsSplit30">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border, #e2e8f0); padding-top: 4px; margin-top: 2px;">
+                      <span>Net Cash Flow:</span>
+                      <strong id="valNetFlow30">0.00</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 60 Days -->
+                <div class="card stat-card" id="cardHorizon60" style="padding: 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13.5px; color: var(--text, #1e293b);">31 - 60 Days</strong>
+                    <span class="badge badge-info" id="badgeConfidence60" style="font-size: 11px;">Medium Confidence</span>
+                  </div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--text, #1e293b); margin-bottom: 10px;" id="valProjectedCash60">—</div>
+                  <div style="font-size: 11.5px; color: var(--text3, #64748b); display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Inflows:</span>
+                      <strong id="valInflows60" style="color: var(--success, #16a34a);">+0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valInflowsSplit60">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Outflows:</span>
+                      <strong id="valOutflows60" style="color: var(--danger, #ef4444);">-0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valOutflowsSplit60">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border, #e2e8f0); padding-top: 4px; margin-top: 2px;">
+                      <span>Net Cash Flow:</span>
+                      <strong id="valNetFlow60">0.00</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 90 Days -->
+                <div class="card stat-card" id="cardHorizon90" style="padding: 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13.5px; color: var(--text, #1e293b);">61 - 90 Days</strong>
+                    <span class="badge badge-warning" id="badgeConfidence90" style="font-size: 11px;">Low Confidence</span>
+                  </div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--text, #1e293b); margin-bottom: 10px;" id="valProjectedCash90">—</div>
+                  <div style="font-size: 11.5px; color: var(--text3, #64748b); display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Inflows:</span>
+                      <strong id="valInflows90" style="color: var(--success, #16a34a);">+0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valInflowsSplit90">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Outflows:</span>
+                      <strong id="valOutflows90" style="color: var(--danger, #ef4444);">-0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valOutflowsSplit90">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border, #e2e8f0); padding-top: 4px; margin-top: 2px;">
+                      <span>Net Cash Flow:</span>
+                      <strong id="valNetFlow90">0.00</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Multi-Account Cash Visibility (Bank vs Book) -->
+              <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                  <h4 style="margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-building-columns" style="color: var(--primary, #3b82f6);"></i> Bank vs. Book Balances by Account
+                  </h4>
+                  <span style="font-size: 11.5px; color: var(--text3, #64748b);">Available = Book Balance − Uncleared Cheques − Pending Transfers</span>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <table class="table" id="tableCashAccounts" style="margin: 0; font-size: 12.5px; width: 100%;">
+                    <thead>
+                      <tr style="background: var(--surface2, #f8fafc);">
+                        <th style="padding: 10px 14px; text-align: left;">Account</th>
+                        <th style="padding: 10px 14px; text-align: left;">Bank</th>
+                        <th style="padding: 10px 14px; text-align: center;">Curr</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="General ledger book balance">Book Balance</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="Issued cheques awaiting bank clearance">Uncleared Cheques</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="In-flight transfer legs not fully confirmed">Pending Transfers</th>
+                        <th style="padding: 10px 14px; text-align: right; font-weight: 700;" title="Book balance minus uncleared cheques and pending transfers">Available Balance</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="Latest reconciled statement closing balance">Reconciled Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyCashAccounts">
+                      <tr>
+                        <td colspan="8" style="text-align: center; padding: 20px; color: var(--text3, #64748b);">Loading accounts...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Upcoming Material Inflows & Outflows -->
+              <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                      <i class="fa-solid fa-calendar-check" style="color: var(--accent, #8b5cf6);"></i> Material Inflows & Outflows
+                    </h4>
+                    <span class="badge badge-grey" style="font-size: 10.5px;">Drafts Excluded</span>
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn btn-xs btn-primary active" id="btnObligationsFilterAll" onclick="filterObligationsTable('all')">All (<span id="countObligationsAll">0</span>)</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterInflows" onclick="filterObligationsTable('inflow')">Inflows (<span id="countObligationsInflows">0</span>)</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterOutflows" onclick="filterObligationsTable('outflow')">Outflows (<span id="countObligationsOutflows">0</span>)</button>
+                  </div>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <table class="table" id="tableForecastObligations" style="margin: 0; font-size: 12.5px; width: 100%;">
+                    <thead>
+                      <tr style="background: var(--surface2, #f8fafc);">
+                        <th style="padding: 10px 14px; text-align: left;">Due Date</th>
+                        <th style="padding: 10px 14px; text-align: center;">Flow</th>
+                        <th style="padding: 10px 14px; text-align: left;">Reference</th>
+                        <th style="padding: 10px 14px; text-align: left;">Counterparty</th>
+                        <th style="padding: 10px 14px; text-align: center;">Certainty</th>
+                        <th style="padding: 10px 14px; text-align: center;">Status</th>
+                        <th style="padding: 10px 14px; text-align: right;">Amount</th>
+                        <th style="padding: 10px 14px; text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyForecastObligations">
+                      <tr>
+                        <td colspan="8" style="text-align: center; padding: 20px; color: var(--text3, #64748b);">No obligations projected for this horizon.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Forecast Assumptions and Safeguards -->
+              <div id="forecastAssumptionsBox" style="padding: 12px 16px; background: var(--surface2, #f8fafc); border-radius: 8px; border: 1px solid var(--border, #e2e8f0); font-size: 12px; color: var(--text2, #475569);">
+                <div style="font-weight: 600; margin-bottom: 4px; color: var(--text, #1e293b); display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-circle-check" style="color: var(--primary, #3b82f6);"></i> Cash Forecast Assumptions & Safeguards
+                </div>
+                <ul id="listForecastAssumptions" style="margin: 0; padding-left: 18px; line-height: 1.6;">
+                  <li>Draft sales invoices and unapproved vendor bills are strictly excluded from cash projections.</li>
+                  <li>Contractual obligations with past-due dates are placed in the immediate 0-30 day horizon with an overdue status indicator.</li>
+                  <li>Active monthly subscriptions repeat every 30 days as estimated expected outflows.</li>
+                  <li>Book, available, and reconciled balances are tracked independently and never conflated.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div class="card" style="margin-top: 1.5rem;">
             <div class="card-head">
               <div>

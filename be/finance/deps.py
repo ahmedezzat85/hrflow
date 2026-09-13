@@ -153,6 +153,11 @@ def get_attention_service(db: Session = Depends(get_db)):
     return AttentionQueueService(db)
 
 
+def get_forecast_service(db: Session = Depends(get_db)):
+    from finance.services.forecast_service import CashForecastService
+    return CashForecastService(db)
+
+
 def get_idempotency_service():
     from finance.services.idempotency import idempotency_service
     return idempotency_service

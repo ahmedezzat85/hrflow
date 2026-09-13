@@ -9,10 +9,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query, Response, Path
 
 from core.permissions import require_permission, get_current_user_permissions
-from finance.deps import get_reports_service, get_attention_service
+from finance.deps import get_reports_service, get_attention_service, get_forecast_service
 from finance.services.reports_service import ReportsService
 from finance.services.attention_service import AttentionQueueService
-from finance.schemas import AttentionQueueResponse, AttentionReviewRequest
+from finance.services.forecast_service import CashForecastService
+from finance.schemas import AttentionQueueResponse, AttentionReviewRequest, CashForecastResponse
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
     export_category_summary_xlsx,
@@ -98,6 +99,26 @@ def review_attention_item(
         "reviewed_by": record.reviewed_by,
         "reviewed_at": record.reviewed_at.isoformat() if record.reviewed_at else None,
     }
+
+
+@router.get("/cash-forecast", response_model=CashForecastResponse)
+def get_cash_forecast(
+    currency: str = Query("all", description="Currency filter: all, USD, EGP"),
+    horizon_days: int = Query(90, ge=30, le=180, description="Forecast horizon in days (e.g. 30, 60, 90)"),
+    include_expected: bool = Query(True, description="Whether to include expected recurring subscriptions"),
+    service: CashForecastService = Depends(get_forecast_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Cash position and 30/60/90-day forecast for the executive finance dashboard (Story 2.3).
+    Differentiates bank vs book balance, separates available and reconciled balances,
+    and breaks down confirmed contractual obligations from estimated expected items.
+    """
+    return service.get_cash_forecast(
+        currency=currency,
+        horizon_days=horizon_days,
+        include_expected=include_expected,
+    )
 
 
 @router.get("/transactions")

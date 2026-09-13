@@ -755,4 +755,64 @@ class AttentionReviewRequest(BaseModel):
     notes: Optional[str] = Field("", max_length=500)
 
 
+# ==========================================
+# Cash Position & Forecast Schemas (Story 2.3)
+# ==========================================
+class CashPositionAccount(BaseModel):
+    account_id: int
+    account_name: str
+    bank_name: Optional[str] = None
+    account_type: str = "bank"
+    currency: str = "USD"
+    book_balance: float = Field(0.0, description="Book balance per financial ledger")
+    available_balance: float = Field(0.0, description="Available balance factoring uncleared cheques/pending legs")
+    reconciled_balance: Optional[float] = Field(None, description="Matched balance per reconciled bank statements")
+    uncleared_cheques_amount: float = Field(0.0, description="Total issued uncleared cheques")
+    pending_transfers_amount: float = Field(0.0, description="Pending outgoing transfers")
+    is_active: bool = True
+
+
+class HorizonProjection(BaseModel):
+    period_label: str
+    days: int
+    confirmed_inflows: float = 0.0
+    expected_inflows: float = 0.0
+    total_inflows: float = 0.0
+    confirmed_outflows: float = 0.0
+    expected_outflows: float = 0.0
+    total_outflows: float = 0.0
+    net_cash_flow: float = 0.0
+    projected_ending_cash: float = 0.0
+    confidence: str = Field("high", description="high | medium | low")
+
+
+class ForecastObligationItem(BaseModel):
+    id: str
+    entity_type: str = Field(..., description="invoice | bill | subscription | payroll | transfer")
+    entity_id: int
+    reference: str
+    counterparty: str
+    type: str = Field(..., description="inflow | outflow")
+    amount: float
+    currency: str
+    due_date: str
+    status: str = Field("confirmed", description="confirmed | expected")
+    certainty: str = Field("contractual", description="contractual | estimated | overdue")
+    target_route: str
+    notes: Optional[str] = ""
+
+
+class CashForecastResponse(BaseModel):
+    as_of_date: str
+    currency: str
+    accounts: List[CashPositionAccount]
+    current_cash_by_currency: Dict[str, float]
+    total_current_cash: float
+    horizons: Dict[str, HorizonProjection]
+    material_obligations: List[ForecastObligationItem]
+    assumptions: List[str]
+    fx_warnings: List[str]
+    generated_at: str
+
+
 
