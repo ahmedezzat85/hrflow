@@ -108,7 +108,7 @@ function renderFinanceAccounts(items) {
         : (acc.unreconciled_count ? `Unreconciled (${acc.unreconciled_count})` : "Unreconciled");
 
       return `
-    <tr>
+    <tr class="${acc.is_active ? "" : "account-inactive"}">
       <td data-label="Account">
         <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
           <i class="fa-solid ${isCash ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
@@ -138,20 +138,21 @@ function renderFinanceAccounts(items) {
         <div><i class="fa-solid fa-cloud-arrow-up" style="font-size:10px;"></i> ${feedText}</div>
         <div style="margin-top:2px;"><i class="fa-solid fa-scale-balanced" style="font-size:10px;"></i> ${recText}</div>
       </td>
-      <td data-label="Status">
-        <span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">
-          ${acc.is_active ? "ACTIVE" : "INACTIVE"}
+      <td data-label="Status" style="text-align:center;">
+        <span class="status-led-badge ${acc.is_active ? "status-led-active" : "status-led-inactive"}" title="${acc.is_active ? "Active" : "Inactive"}">
+          <span class="led-dot"></span>
+          ${acc.is_active ? "Active" : "Inactive"}
         </span>
       </td>
       <td data-label="Actions" class="col-actions">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <button class="btn btn-sm btn-fill btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace">
-            <i class="fa-solid fa-folder-open"></i> Workspace
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;justify-content:flex-end;">
+          <button class="btn btn-sm btn-fill btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace" aria-label="Open Account Workspace" style="padding:6px 10px;">
+            <i class="fa-solid fa-folder-open"></i>
           </button>
-          <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
+          <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account" aria-label="Edit Account" style="padding:6px 10px;">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}">
+          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" aria-label="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" style="padding:6px 10px;">
             <i class="fa-solid ${acc.is_active ? "fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
@@ -411,8 +412,8 @@ function renderWorkspaceHeader(acc) {
     typeBadge.className = `badge ${acc.account_type === "cash" ? "badge-info" : "badge-neutral"}`;
   }
   if (statusBadge) {
-    statusBadge.textContent = acc.is_active ? "ACTIVE" : "INACTIVE";
-    statusBadge.className = `badge ${acc.is_active ? "badge-approved" : "badge-rejected"}`;
+    statusBadge.innerHTML = `<span class="led-dot"></span> ${acc.is_active ? "Active" : "Inactive"}`;
+    statusBadge.className = `status-led-badge ${acc.is_active ? "status-led-active" : "status-led-inactive"}`;
   }
   if (instEl) {
     instEl.innerHTML = `<i class="fa-solid ${acc.account_type === "cash" ? "fa-wallet" : "fa-building-columns"}"></i> ${acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "Bank")}`;

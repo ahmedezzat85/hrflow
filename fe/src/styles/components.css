@@ -203,6 +203,62 @@ tbody tr:hover {
   color: var(--text2);
 }
 
+/* Status LED Badge & Dimmed Rows */
+.status-led-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-led-active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.status-led-inactive {
+  background: rgba(239, 68, 68, 0.10);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.led-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-led-active .led-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
+}
+
+.status-led-inactive .led-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+}
+
+tr.account-inactive,
+tr.row-dimmed {
+  opacity: 0.58;
+  filter: grayscale(35%);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+tr.account-inactive:hover,
+tr.row-dimmed:hover {
+  opacity: 0.92;
+  filter: grayscale(0%);
+}
+
 .btn {
   padding: 9px 16px;
   border-radius: 10px;

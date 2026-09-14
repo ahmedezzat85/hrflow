@@ -23,12 +23,12 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
       };
     });
 
-    // $ never appears without unambiguous currency context
-    expect(results.usdPositive).toBe('$1,250.00 USD');
-    expect(results.usdNegative).toBe('-$1,250.00 USD');
-    expect(results.usdZero).toBe('$0.00 USD');
-    expect(results.usdLarge).toBe('$1,250,000.50 USD');
-    expect(results.usdAccounting).toBe('($1,4200.00 USD)'.replace('1,4200', '4,200'));
+    // $ appears in front of the number without redundant trailing USD text
+    expect(results.usdPositive).toBe('$1,250.00');
+    expect(results.usdNegative).toBe('-$1,250.00');
+    expect(results.usdZero).toBe('$0.00');
+    expect(results.usdLarge).toBe('$1,250,000.50');
+    expect(results.usdAccounting).toBe('($4,200.00)');
 
     // EGP formatting
     expect(results.egpPositive).toBe('EGP 450,000.00');
@@ -39,8 +39,8 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     expect(results.eurPositive).toBe('€980.00 EUR');
 
     // Missing value defaults safely to 0
-    expect(results.missingVal).toBe('$0.00 USD');
-    expect(results.customDecimals).toBe('$151 USD');
+    expect(results.missingVal).toBe('$0.00');
+    expect(results.customDecimals).toBe('$151');
   });
 
   test('Unit & Semantics: renderMoneyHtml produces tabular numerals and accessible labels', async ({ page }) => {
@@ -59,14 +59,14 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
 
     expect(results.posHtml).toContain('class="money money-positive');
     expect(results.posHtml).toContain('aria-label="500.00 US Dollars"');
-    expect(results.posHtml).toContain('$500.00 USD');
+    expect(results.posHtml).toContain('$500.00');
 
     expect(results.negHtml).toContain('class="money money-negative');
     expect(results.negHtml).toContain('aria-label="negative 250.00 US Dollars"');
-    expect(results.negHtml).toContain('-$250.00 USD');
+    expect(results.negHtml).toContain('-$250.00');
 
     expect(results.zeroHtml).toContain('class="money money-zero');
-    expect(results.zeroHtml).toContain('$0.00 USD');
+    expect(results.zeroHtml).toContain('$0.00');
 
     expect(results.egpHtml).toContain('aria-label="1500.00 Egyptian Pounds"');
     expect(results.egpHtml).toContain('EGP 1,500.00');
@@ -170,10 +170,10 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await expect(invTotalHeader).toBeVisible();
     await expect(invTotalHeader).toContainText('Total');
 
-    // Verify first row has right-aligned money with currency code USD
+    // Verify first row has right-aligned money with currency symbol $
     const firstInvAmount = page.locator('#financeInvoicesTableBody td.cell-money').first();
     await expect(firstInvAmount).toBeVisible();
-    await expect(firstInvAmount).toContainText('$12,500.00 USD');
+    await expect(firstInvAmount).toContainText('$12,500.00');
 
     // Verify status badge has accessible icon and role="status"
     const firstInvBadge = page.locator('#financeInvoicesTableBody .status-badge-wrap').first();
@@ -190,7 +190,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
 
     const firstBillAmount = page.locator('#financeBillsTableBody td.cell-money').first();
     await expect(firstBillAmount).toBeVisible();
-    await expect(firstBillAmount).toContainText('$4,200.00 USD');
+    await expect(firstBillAmount).toContainText('$4,200.00');
 
     const firstBillBadge = page.locator('#financeBillsTableBody .status-badge-wrap').first();
     await expect(firstBillBadge).toBeVisible();
@@ -200,16 +200,16 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
-    const accBalanceHeader = page.locator('#financeSubPaneAccounts th.cell-money');
+    const accBalanceHeader = page.locator('#financeSubPaneAccounts th.cell-money').first();
     await expect(accBalanceHeader).toBeVisible();
 
     const firstAccBalance = page.locator('#financeAccountsTableBody td.cell-money').first();
     await expect(firstAccBalance).toBeVisible();
-    await expect(firstAccBalance).toContainText('$150,000.00 USD');
+    await expect(firstAccBalance).toContainText('$150,000.00');
 
     // Verify EGP bank account renders EGP
     const egpAccRow = page.locator('#financeAccountsTableBody tr:has-text("CIB EGP Operating")');
-    await expect(egpAccRow.locator('td.cell-money')).toContainText('EGP 450,000.00');
+    await expect(egpAccRow.locator('td.cell-money').first()).toContainText('EGP 450,000.00');
   });
 
 });

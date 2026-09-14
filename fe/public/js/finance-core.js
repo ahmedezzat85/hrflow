@@ -59,7 +59,7 @@ const FinanceFormat = {
 
     if (curr === "USD") {
       symbol = "$";
-      suffix = " USD";
+      suffix = options.showCurrencySuffix ? " USD" : "";
     } else if (curr === "EGP") {
       prefix = "EGP ";
     } else if (curr === "EUR") {
