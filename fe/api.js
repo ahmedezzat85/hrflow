@@ -56,8 +56,27 @@ function forceSessionExpiredLogout() {
   }
 }
 
+let _lastCorrelationId = null;
+
+function generateCorrelationId() {
+  return (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `corr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+}
+
+function getLastCorrelationId() {
+  if (!_lastCorrelationId) {
+    _lastCorrelationId = generateCorrelationId();
+  }
+  return _lastCorrelationId;
+}
+
 async function apiRequest(method, path, body = null, auth = true, extraHeaders = {}) {
-  const headers = { "Content-Type": "application/json", ...(extraHeaders || {}) };
+  const correlationId = (extraHeaders && extraHeaders["X-Correlation-ID"]) || generateCorrelationId();
+  _lastCorrelationId = correlationId;
+  const headers = { 
+    "Content-Type": "application/json",
+    "X-Correlation-ID": correlationId,
+    ...(extraHeaders || {}) 
+  };
   const opts = { method, headers, credentials: "include" };
   if (body !== null) opts.body = JSON.stringify(body);
 
@@ -388,4 +407,6 @@ const Api = {
     return _downloadDocumentViaFetch(`/api/export/${encodeURIComponent(dataset)}/csv${qs}`, filename);
   },
   health() { return apiRequest("GET", "/api/health", null, false); },
+  getLastCorrelationId() { return _lastCorrelationId; },
 };
+

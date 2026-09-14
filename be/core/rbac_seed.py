@@ -47,6 +47,7 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "finance.subscription.read", "description": "View vendor subscriptions"},
     {"key": "finance.subscription.write", "description": "Create and manage vendor subscriptions"},
     {"key": "finance.report.read", "description": "View finance summary reports and metrics"},
+    {"key": "finance.settings.write", "description": "Manage finance settings, feature flags, and rollout controls"},
 ]
 
 SEED_ROLES: List[Dict[str, str]] = [

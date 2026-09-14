@@ -88,19 +88,17 @@ function singleFileDeployBundle() {
       isBuild = config.command === 'build';
     },
     transformIndexHtml: {
-      order: 'pre',
+      order: 'post',
       handler(html) {
         let out = resolveHtmlPartials(html, resolve(__dirname, 'src'));
         const combined = APP_SCRIPT_ORDER
           .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
           .join('\n;\n');
         out = out.replace('</body>', () => `<script>\n${combined}\n</script>\n</body>`);
-        if (isBuild) {
-          out = out
-            .replace('src="../config.js"', 'src="./config.js"')
-            .replace('src="../api.js"', 'src="./api.js"')
-            .replace('src="../finance-api.js"', 'src="./finance-api.js"');
-        }
+        const deployScripts = isBuild
+          ? '<script src="./config.js"></script>\n<script src="./api.js"></script>\n<script src="./finance-api.js"></script>'
+          : '<script src="../config.js"></script>\n<script src="../api.js"></script>\n<script src="../finance-api.js"></script>';
+        out = out.replace('<!-- @deploy-scripts -->', deployScripts);
         return out;
       },
     },

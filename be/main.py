@@ -51,6 +51,7 @@ from finance.routers import cheques as finance_cheques_router
 from finance.routers import statements as finance_statements_router
 from finance.routers import rules as finance_rules_router
 from finance.routers import activity as finance_activity_router
+from finance.routers import observability as finance_observability_router
 
 
 # Re-exported here so existing code/tests that reach into main.py for
@@ -114,9 +115,11 @@ async def security_headers(request: Request, call_next):
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Logs every request with a correlation id, status code and duration.
+    Propagates client correlation IDs across logging and diagnostics.
     On unhandled exceptions, logs the full traceback and returns a 500 so
     the client never sees an opaque 502 without a trace in the logs."""
-    request_id = uuid.uuid4().hex[:8]
+    correlation_id = request.headers.get("X-Correlation-ID") or request.headers.get("X-Request-ID")
+    request_id = correlation_id if correlation_id else uuid.uuid4().hex[:8]
     start = time.time()
     logger.info("[%s] --> %s %s", request_id, request.method, request.url.path)
     try:
@@ -129,6 +132,7 @@ async def log_requests(request: Request, call_next):
     log_fn = logger.warning if response.status_code >= 400 else logger.info
     log_fn("[%s] <-- %s %s %s (%sms)", request_id, request.method, request.url.path, response.status_code, duration_ms)
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-Correlation-ID"] = request_id
     return response
 
 app.include_router(auth_router.router)
@@ -161,6 +165,7 @@ app.include_router(finance_cheques_router.router)
 app.include_router(finance_statements_router.router)
 app.include_router(finance_rules_router.router)
 app.include_router(finance_activity_router.router)
+app.include_router(finance_observability_router.router)
 
 
 

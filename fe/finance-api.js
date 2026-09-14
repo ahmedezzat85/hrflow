@@ -67,6 +67,17 @@ const FinanceMockState = {
     { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, is_petty: false },
     { id: 7, name: "Other", kind: "other", is_active: true, sort_order: 99, is_petty: false },
   ],
+  featureFlags: {
+    phase1_navigation: true,
+    phase2_dashboard_kpis: true,
+    phase3_sales_invoicing: true,
+    phase4_vendor_payables: true,
+    phase5_banking_workspace: true,
+    phase6_reconciliation: true,
+    phase7_financial_reports: true,
+    phase8_guided_payroll: true,
+    mobile_priority_ui: true,
+  },
   paymentTypes: [
     { id: 1, name: "Cash", code: "CASH", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
     { id: 2, name: "Cheque", code: "CHEQUE", requires_cheque_number: true, requires_bank_fee_flag: false, is_active: true },
@@ -5698,6 +5709,69 @@ const FinanceApi = {
       };
     }
     return apiRequest("GET", `/api/finance/payroll/runs/${runId}/payslips/${employeeId}`);
+  },
+
+  async getFeatureFlags() {
+    if (_isMock()) {
+      const flags = FinanceMockState.featureFlags || {};
+      return {
+        status: "success",
+        flags: { ...flags },
+        rollout_stage: Object.values(flags).every(Boolean) ? "general_availability" : "pilot",
+        active_count: Object.values(flags).filter(Boolean).length,
+        total_count: Object.keys(flags).length,
+      };
+    }
+    return apiRequest("GET", "/api/finance/feature-flags");
+  },
+
+  async updateFeatureFlags(flags) {
+    if (_isMock()) {
+      FinanceMockState.featureFlags = { ...(FinanceMockState.featureFlags || {}), ...flags };
+      return {
+        status: "success",
+        flags: { ...FinanceMockState.featureFlags },
+        message: `Updated ${Object.keys(flags).length} feature flag(s) safely`,
+      };
+    }
+    return apiRequest("PATCH", "/api/finance/feature-flags", { flags });
+  },
+
+  async isFeatureEnabled(flagKey) {
+    try {
+      const res = await this.getFeatureFlags();
+      return !!(res && res.flags && res.flags[flagKey]);
+    } catch (_) {
+      return true;
+    }
+  },
+
+  async getObservabilityMetrics() {
+    if (_isMock()) {
+      return {
+        status: "success",
+        uptime_seconds: 3600.0,
+        total_commands: 42,
+        failed_commands: 0,
+        idempotency_hits: 5,
+        avg_latency_ms: 18.5,
+        reconciliation_throughput_items_per_sec: 120.0,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    return apiRequest("GET", "/api/finance/observability/metrics");
+  },
+
+  getLastCorrelationId() {
+    return typeof window.Api !== "undefined" && window.Api.getLastCorrelationId
+      ? window.Api.getLastCorrelationId()
+      : (typeof _lastCorrelationId !== "undefined" && _lastCorrelationId ? _lastCorrelationId : `corr-${Date.now()}`);
+  },
+
+  generateCorrelationId() {
+    return typeof window.Api !== "undefined" && window.Api.generateCorrelationId
+      ? window.Api.generateCorrelationId()
+      : `corr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   },
 };
 
