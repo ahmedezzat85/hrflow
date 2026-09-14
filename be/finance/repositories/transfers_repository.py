@@ -85,6 +85,16 @@ class TransfersRepository:
         ledger transaction legs based on transfer_type and confirmed_leg.
         Recalculates running balances for all affected accounts.
         """
+        confirmed_leg = transfer_data.get("confirmed_leg", "both")
+        settlement_status = transfer_data.get("settlement_status")
+        if not settlement_status:
+            if confirmed_leg == "from_only":
+                settlement_status = "in_transit"
+            elif confirmed_leg == "to_only":
+                settlement_status = "awaiting_match"
+            else:
+                settlement_status = "settled"
+
         transfer = AccountTransferDB(
             from_account_id=transfer_data.get("from_account_id"),
             to_account_id=transfer_data.get("to_account_id"),
@@ -96,7 +106,10 @@ class TransfersRepository:
             fx_rate=float(transfer_data["fx_rate"]) if transfer_data.get("fx_rate") else None,
             transfer_type=transfer_data.get("transfer_type", "internal"),
             exchange_reference=transfer_data.get("exchange_reference"),
-            confirmed_leg=transfer_data.get("confirmed_leg", "both"),
+            confirmed_leg=confirmed_leg,
+            settlement_status=settlement_status,
+            fee=float(transfer_data.get("fee") or 0.0),
+            expected_date=transfer_data.get("expected_date"),
             note=transfer_data.get("note", ""),
             created_by=created_by,
         )
@@ -182,6 +195,29 @@ class TransfersRepository:
             self.db.add(out_tx)
             affected_account_ids.add(transfer.from_account_id)
 
+            # Optional fee leg debited from source account
+            if transfer.fee and transfer.fee > 0:
+                fee_cat = (
+                    self.db.query(TransactionCategoryDB)
+                    .filter(or_(TransactionCategoryDB.name.ilike("%bank fee%"), TransactionCategoryDB.name.ilike("%bank charge%")))
+                    .first()
+                )
+                fee_tx = LedgerTransactionDB(
+                    account_id=transfer.from_account_id,
+                    date=transfer.date,
+                    amount=transfer.fee,
+                    direction="out",
+                    currency=transfer.from_currency,
+                    category_id=fee_cat.id if fee_cat else None,
+                    payment_type_id=outflow_pt_id,
+                    reference=f"Fee: {ref}",
+                    description=f"Transfer fee for {transfer.exchange_reference or 'transfer'}",
+                    source="fee",
+                    linked_transfer_id=transfer.id,
+                    created_by=created_by,
+                )
+                self.db.add(fee_tx)
+
         # 2. Post Inflow Leg (credited to to_account)
         if post_inflow and transfer.to_account_id:
             inflow_pt_id = None
@@ -224,3 +260,63 @@ class TransfersRepository:
         self.db.commit()
         self.db.refresh(transfer)
         return transfer
+
+    def match_in_transit_transfer(
+        self,
+        transfer: AccountTransferDB,
+        target_account_id: int,
+        received_amount: Optional[float] = None,
+        settled_date: Optional[str] = None,
+        note: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> AccountTransferDB:
+        """
+        Matches an in-transit transfer with destination account, creating the missing inflow leg
+        without duplicating existing legs. Updates settlement status to settled.
+        """
+        to_acc = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == target_account_id).first()
+        if not to_acc:
+            raise ValueError(f"Target bank account {target_account_id} not found")
+
+        transfer.to_account_id = target_account_id
+        transfer.to_currency = to_acc.currency
+        if received_amount:
+            transfer.to_amount = float(received_amount)
+        transfer.confirmed_leg = "both"
+        transfer.settlement_status = "settled"
+        if note:
+            transfer.note = f"{transfer.note} | Matched: {note}".strip(" |")
+
+        date = settled_date or transfer.date
+        from_name = transfer.from_account.account_name if transfer.from_account else "External Account"
+
+        pt_inbound = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "INBOUND_TRANS").first()
+        transfer_cat = (
+            self.db.query(TransactionCategoryDB)
+            .filter(or_(TransactionCategoryDB.kind == "transfer", TransactionCategoryDB.name == "Transfer"))
+            .first()
+        )
+
+        in_tx = LedgerTransactionDB(
+            account_id=target_account_id,
+            date=date,
+            amount=transfer.to_amount,
+            direction="in",
+            currency=transfer.to_currency,
+            category_id=transfer_cat.id if transfer_cat else None,
+            payment_type_id=pt_inbound.id if pt_inbound else None,
+            reference=transfer.exchange_reference or f"Transfer from {from_name}",
+            description=f"Settled transfer from {from_name} (Linked #{transfer.id})",
+            fx_rate=transfer.fx_rate,
+            source="transfer",
+            linked_transfer_id=transfer.id,
+            created_by=created_by,
+        )
+        self.db.add(in_tx)
+        self.db.flush()
+
+        self.ledger_repo.recalculate_account_running_balances(target_account_id)
+        self.db.commit()
+        self.db.refresh(transfer)
+        return transfer
+

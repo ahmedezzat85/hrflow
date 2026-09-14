@@ -529,6 +529,9 @@ class AccountTransferDB(Base):
     transfer_type = Column(String(30), default="internal", nullable=False, index=True)  # same_bank_fx | internal | external_linked
     exchange_reference = Column(String(100), nullable=True, index=True)
     confirmed_leg = Column(String(20), default="both", nullable=False)  # both | from_only | to_only
+    settlement_status = Column(String(30), default="settled", nullable=False, index=True)  # settled | in_transit | awaiting_match
+    fee = Column(Float, default=0.0, nullable=True)
+    expected_date = Column(String(20), nullable=True)  # YYYY-MM-DD
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)

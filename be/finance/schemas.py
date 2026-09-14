@@ -743,6 +743,9 @@ class AccountTransferBase(BaseModel):
     transfer_type: str = Field("internal", description="same_bank_fx | internal | external_linked")
     exchange_reference: Optional[str] = Field(None, max_length=100, description="Exchange/transaction reference")
     confirmed_leg: str = Field("both", description="both | from_only | to_only")
+    settlement_status: Optional[str] = Field(None, description="settled | in_transit | awaiting_match")
+    fee: Optional[float] = Field(0.0, description="Transfer or wire fee")
+    expected_date: Optional[str] = Field(None, description="Expected settlement date (YYYY-MM-DD)")
     note: Optional[str] = Field("", description="Transfer notes or memo")
 
 
@@ -757,6 +760,9 @@ class AccountTransferResponse(AccountTransferBase):
     to_account_id: Optional[int] = None
     from_account_name: Optional[str] = None
     to_account_name: Optional[str] = None
+    settlement_status: str = "settled"
+    fee: Optional[float] = 0.0
+    expected_date: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
     outflow_transaction_id: Optional[int] = None
@@ -764,6 +770,44 @@ class AccountTransferResponse(AccountTransferBase):
 
     class Config:
         from_attributes = True
+
+
+class TransferMatchRequest(BaseModel):
+    target_account_id: int = Field(..., description="Destination account ID receiving the in-transit transfer")
+    received_amount: Optional[float] = Field(None, gt=0.0, description="Amount credited (defaults to transfer to_amount)")
+    settled_date: Optional[str] = Field(None, description="Date funds cleared/settled (YYYY-MM-DD)")
+    note: Optional[str] = Field(None, description="Settlement note")
+
+
+class TransferPreviewRequest(BaseModel):
+    transfer_type: str = Field("internal", description="same_bank_fx | internal | external_linked")
+    from_account_id: Optional[int] = None
+    to_account_id: Optional[int] = None
+    from_amount: float = Field(..., gt=0.0)
+    to_amount: Optional[float] = None
+    fx_rate: Optional[float] = None
+    fee: Optional[float] = 0.0
+    date: Optional[str] = None
+    confirmed_leg: str = "both"
+    settlement_status: Optional[str] = None
+
+
+class TransferPreviewResponse(BaseModel):
+    from_account_name: Optional[str] = None
+    from_currency: str = "USD"
+    from_current_balance: float = 0.0
+    from_projected_balance: float = 0.0
+    to_account_name: Optional[str] = None
+    to_currency: Optional[str] = None
+    to_current_balance: Optional[float] = None
+    to_projected_balance: Optional[float] = None
+    explicit_fx_direction: Optional[str] = None
+    implied_rate: Optional[float] = None
+    settlement_status: str = "settled"
+    is_valid: bool = True
+    validation_error: Optional[str] = None
+    plain_description: str = ""
+    journal_preview: List[dict] = []
 
 
 # ==========================================

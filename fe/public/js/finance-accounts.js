@@ -1931,13 +1931,24 @@ async function openRecordFinanceTransferModal(presetFromAccountId = null) {
 
   // Defaults
   document.getElementById("transferDate").value = new Date().toISOString().split("T")[0];
+  const expDate = document.getElementById("transferExpectedDate");
+  if (expDate) expDate.value = "";
   document.getElementById("transferFromAmount").value = "";
   document.getElementById("transferToAmount").value = "";
-  document.getElementById("transferFxRate").value = "";
+  const fxInput = document.getElementById("transferFxRate");
+  if (fxInput) fxInput.value = "";
+  const feeInput = document.getElementById("transferFee");
+  if (feeInput) feeInput.value = "";
   document.getElementById("transferExchangeRef").value = "";
   document.getElementById("transferNote").value = "";
-  document.getElementById("transferFromBalanceHint").textContent = "";
-  document.getElementById("transferToBalanceHint").textContent = "";
+  document.getElementById("transferFromBalanceHint").textContent = "$0.00";
+  document.getElementById("transferToBalanceHint").textContent = "$0.00";
+  const fromProj = document.getElementById("transferFromProjectedHint");
+  if (fromProj) fromProj.textContent = "—";
+  const toProj = document.getElementById("transferToProjectedHint");
+  if (toProj) toProj.textContent = "—";
+  const sameAlert = document.getElementById("transferSameAccountAlert");
+  if (sameAlert) sameAlert.style.display = "none";
 
   if (presetFromAccountId && fromSel) {
     fromSel.value = String(presetFromAccountId);
@@ -1956,29 +1967,34 @@ function closeFinanceTransferModal() {
   closeModal("financeTransferModal");
 }
 
+let _transferPreviewDebounceTimer = null;
+
 function onTransferTypeChanged(type) {
-  const fxGroup = document.getElementById("transferFxGroup");
+  const fxSection = document.getElementById("transferFxSection");
   const extGroup = document.getElementById("transferExternalGroup");
 
   if (type === "internal") {
-    if (fxGroup) fxGroup.style.display = "none";
+    if (fxSection) fxSection.style.display = "none";
     if (extGroup) extGroup.style.display = "none";
     recalcTransferAmounts("from");
   } else if (type === "same_bank_fx") {
-    if (fxGroup) fxGroup.style.display = "block";
+    if (fxSection) fxSection.style.display = "block";
     if (extGroup) extGroup.style.display = "none";
   } else if (type === "external_linked") {
-    if (fxGroup) fxGroup.style.display = "block";
+    if (fxSection) fxSection.style.display = "block";
     if (extGroup) extGroup.style.display = "block";
   }
+  updateTransferPreview();
 }
 
 function onTransferAccountSelected(side) {
   const fromSel = document.getElementById("transferFromAccount");
   const toSel = document.getElementById("transferToAccount");
+  const sameAlert = document.getElementById("transferSameAccountAlert");
+  const postBtn = document.getElementById("btnSaveFinanceTransfer");
 
-  const fromOpt = fromSel.selectedOptions[0];
-  const toOpt = toSel.selectedOptions[0];
+  const fromOpt = fromSel ? fromSel.selectedOptions[0] : null;
+  const toOpt = toSel ? toSel.selectedOptions[0] : null;
 
   const fromCur = fromOpt ? fromOpt.getAttribute("data-currency") : "USD";
   const toCur = toOpt ? toOpt.getAttribute("data-currency") : "USD";
@@ -1993,11 +2009,21 @@ function onTransferAccountSelected(side) {
 
   const fromHint = document.getElementById("transferFromBalanceHint");
   const toHint = document.getElementById("transferToBalanceHint");
-  if (fromHint && fromBal !== null) fromHint.textContent = `Avail: ${fromCur === "EGP" ? "E£" : "$"}${Number(fromBal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  if (toHint && toBal !== null) toHint.textContent = `Current: ${toCur === "EGP" ? "E£" : "$"}${Number(toBal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (fromHint && fromBal !== null) fromHint.textContent = window.formatMoney ? window.formatMoney(fromBal, fromCur) : `$${Number(fromBal).toFixed(2)}`;
+  if (toHint && toBal !== null) toHint.textContent = window.formatMoney ? window.formatMoney(toBal, toCur) : `$${Number(toBal).toFixed(2)}`;
+
+  // Same account detection (AC 1)
+  if (fromSel && toSel && fromSel.value && toSel.value && fromSel.value === toSel.value) {
+    if (sameAlert) sameAlert.style.display = "block";
+    if (postBtn) postBtn.disabled = true;
+    toast("Source and destination accounts cannot be the same", "fa-solid fa-circle-exclamation");
+  } else {
+    if (sameAlert) sameAlert.style.display = "none";
+    if (postBtn) postBtn.disabled = false;
+  }
 
   // Auto-switch transfer type if both accounts selected
-  if (fromSel.value && toSel.value) {
+  if (fromSel && toSel && fromSel.value && toSel.value && fromSel.value !== toSel.value) {
     const isSameCur = fromCur === toCur;
     const currentType = document.querySelector('input[name="transferTypeRadio"]:checked')?.value;
 
@@ -2022,30 +2048,155 @@ function recalcTransferAmounts(source) {
   const fromAmtInput = document.getElementById("transferFromAmount");
   const toAmtInput = document.getElementById("transferToAmount");
   const fxRateInput = document.getElementById("transferFxRate");
+  const fromSel = document.getElementById("transferFromAccount");
+  const toSel = document.getElementById("transferToAccount");
 
-  const fromAmt = parseFloat(fromAmtInput.value) || 0;
-  const toAmt = parseFloat(toAmtInput.value) || 0;
-  const fxRate = parseFloat(fxRateInput.value) || 0;
+  const fromOpt = fromSel?.selectedOptions[0];
+  const toOpt = toSel?.selectedOptions[0];
+  const fromCur = fromOpt ? fromOpt.getAttribute("data-currency") : "USD";
+  const toCur = toOpt ? toOpt.getAttribute("data-currency") : "USD";
+
+  const fromAmt = parseFloat(fromAmtInput?.value) || 0;
+  let toAmt = parseFloat(toAmtInput?.value) || 0;
+  let fxRate = parseFloat(fxRateInput?.value) || 0;
 
   if (type === "internal") {
     if (source === "from") {
-      toAmtInput.value = fromAmt > 0 ? fromAmt.toFixed(2) : "";
+      if (toAmtInput) toAmtInput.value = fromAmt > 0 ? fromAmt.toFixed(2) : "";
     } else if (source === "to") {
-      fromAmtInput.value = toAmt > 0 ? toAmt.toFixed(2) : "";
+      if (fromAmtInput) fromAmtInput.value = toAmt > 0 ? toAmt.toFixed(2) : "";
     }
-    return;
+  } else {
+    // 3-way conversion computation (AC 2)
+    if (source === "from" || source === "fx") {
+      if (fromAmt > 0 && fxRate > 0) {
+        toAmt = parseFloat((fromAmt * fxRate).toFixed(2));
+        if (toAmtInput) toAmtInput.value = toAmt.toFixed(2);
+      }
+    } else if (source === "to") {
+      if (fromAmt > 0 && toAmt > 0) {
+        fxRate = parseFloat((toAmt / fromAmt).toFixed(4));
+        if (fxRateInput) fxRateInput.value = fxRate.toFixed(4);
+      }
+    }
+
+    // Inconsistent conversion check
+    const mismatchAlert = document.getElementById("transferFxMismatchAlert");
+    const mismatchText = document.getElementById("transferFxMismatchText");
+    if (fromAmt > 0 && fxRate > 0 && toAmt > 0) {
+      const expectedTo = fromAmt * fxRate;
+      if (Math.abs(toAmt - expectedTo) > 0.1) {
+        if (mismatchAlert) mismatchAlert.style.display = "block";
+        if (mismatchText) {
+          mismatchText.textContent = `Conversion mismatch: ${fromAmt} @ ${fxRate} = ${expectedTo.toFixed(2)} ${toCur}, but ${toAmt} ${toCur} is entered.`;
+        }
+      } else {
+        if (mismatchAlert) mismatchAlert.style.display = "none";
+      }
+    } else {
+      if (mismatchAlert) mismatchAlert.style.display = "none";
+    }
+
+    // Update explicit FX banner
+    const fxDirText = document.getElementById("transferFxDirectionText");
+    const impliedText = document.getElementById("transferImpliedRateText");
+    if (fxDirText) {
+      const displayRate = fxRate > 0 ? fxRate.toFixed(4) : (fromAmt > 0 && toAmt > 0 ? (toAmt / fromAmt).toFixed(4) : "—");
+      fxDirText.textContent = `Explicit Conversion: 1 ${fromCur} = ${displayRate} ${toCur}`;
+    }
+    if (impliedText) {
+      const implied = (toAmt > 0 && fromAmt > 0) ? (toAmt / fromAmt).toFixed(4) : "—";
+      impliedText.textContent = `Implied Rate: ${implied}`;
+    }
   }
 
-  // FX or External
-  if (source === "from" || source === "fx") {
-    if (fromAmt > 0 && fxRate > 0) {
-      toAmtInput.value = (fromAmt * fxRate).toFixed(2);
+  updateTransferPreview();
+}
+
+function updateTransferPreview() {
+  if (_transferPreviewDebounceTimer) clearTimeout(_transferPreviewDebounceTimer);
+  _transferPreviewDebounceTimer = setTimeout(async () => {
+    const fromSel = document.getElementById("transferFromAccount");
+    const toSel = document.getElementById("transferToAccount");
+    const type = document.querySelector('input[name="transferTypeRadio"]:checked')?.value || "internal";
+    const fromAmount = parseFloat(document.getElementById("transferFromAmount")?.value || "0");
+    const toAmountVal = document.getElementById("transferToAmount")?.value;
+    const toAmount = toAmountVal ? parseFloat(toAmountVal) : null;
+    const fxRate = parseFloat(document.getElementById("transferFxRate")?.value || "0") || null;
+    const fee = parseFloat(document.getElementById("transferFee")?.value || "0") || 0;
+    const date = document.getElementById("transferDate")?.value;
+    const confirmedLeg = type === "external_linked" ? (document.getElementById("transferConfirmedLeg")?.value || "both") : "both";
+
+    const fromProjHint = document.getElementById("transferFromProjectedHint");
+    const toProjHint = document.getElementById("transferToProjectedHint");
+    const settlementBadge = document.getElementById("transferSettlementBadge");
+    const plainDesc = document.getElementById("transferPlainDesc");
+    const journalWrapper = document.getElementById("transferJournalWrapper");
+    const journalTbody = document.getElementById("transferJournalTbody");
+
+    if (!fromAmount || fromAmount <= 0) {
+      if (fromProjHint) fromProjHint.textContent = "—";
+      if (toProjHint) toProjHint.textContent = "—";
+      if (plainDesc) plainDesc.textContent = "Select accounts and enter an amount to preview continuous ledger effect.";
+      if (journalWrapper) journalWrapper.style.display = "none";
+      return;
     }
-  } else if (source === "to") {
-    if (fromAmt > 0 && toAmt > 0) {
-      fxRateInput.value = (toAmt / fromAmt).toFixed(4);
+
+    try {
+      const payload = {
+        transfer_type: type,
+        from_account_id: fromSel?.value ? parseInt(fromSel.value, 10) : null,
+        to_account_id: toSel?.value ? parseInt(toSel.value, 10) : null,
+        from_amount: fromAmount,
+        to_amount: toAmount,
+        fx_rate: fxRate,
+        fee: fee,
+        date: date,
+        confirmed_leg: confirmedLeg,
+      };
+
+      const preview = await FinanceApi.previewTransfer(payload);
+
+      if (fromProjHint) {
+        fromProjHint.textContent = window.formatMoney ? window.formatMoney(preview.from_projected_balance, preview.from_currency) : `$${preview.from_projected_balance.toFixed(2)}`;
+      }
+      if (toProjHint && preview.to_projected_balance !== null) {
+        toProjHint.textContent = window.formatMoney ? window.formatMoney(preview.to_projected_balance, preview.to_currency) : `$${preview.to_projected_balance.toFixed(2)}`;
+      }
+      if (settlementBadge) {
+        if (preview.settlement_status === "in_transit") {
+          settlementBadge.className = "badge badge-warning";
+          settlementBadge.textContent = "In Transit (Awaiting Match)";
+        } else if (preview.settlement_status === "awaiting_match") {
+          settlementBadge.className = "badge badge-warning";
+          settlementBadge.textContent = "Awaiting Match (Inbound)";
+        } else {
+          settlementBadge.className = "badge badge-info";
+          settlementBadge.textContent = "Settled (Dual Leg)";
+        }
+      }
+      if (plainDesc) {
+        plainDesc.textContent = preview.plain_description || "";
+      }
+
+      if (journalWrapper && journalTbody) {
+        if (preview.journal_preview && preview.journal_preview.length > 0) {
+          journalTbody.innerHTML = preview.journal_preview.map((line) => `
+            <tr>
+              <td style="padding: 4px 6px;">${line.account}</td>
+              <td style="padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums;">${line.debit ? (window.formatMoney ? window.formatMoney(line.debit, line.currency) : line.debit.toFixed(2)) : "—"}</td>
+              <td style="padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums;">${line.credit ? (window.formatMoney ? window.formatMoney(line.credit, line.currency) : line.credit.toFixed(2)) : "—"}</td>
+            </tr>
+          `).join("");
+          journalWrapper.style.display = "block";
+        } else {
+          journalWrapper.style.display = "none";
+        }
+      }
+    } catch (err) {
+      if (plainDesc) plainDesc.textContent = err.message || "Failed to calculate preview";
     }
-  }
+  }, 150);
 }
 
 async function saveFinanceTransfer() {
@@ -2056,27 +2207,39 @@ async function saveFinanceTransfer() {
   const fromAmount = parseFloat(document.getElementById("transferFromAmount").value);
   const toAmountVal = document.getElementById("transferToAmount").value;
   const toAmount = toAmountVal ? parseFloat(toAmountVal) : fromAmount;
-  const fxRateVal = document.getElementById("transferFxRate").value;
+  const fxRateVal = document.getElementById("transferFxRate")?.value;
   const fxRate = fxRateVal ? parseFloat(fxRateVal) : null;
+  const feeVal = document.getElementById("transferFee")?.value;
+  const fee = feeVal ? parseFloat(feeVal) : 0.0;
+  const expectedDate = document.getElementById("transferExpectedDate")?.value || null;
   const exchangeRef = document.getElementById("transferExchangeRef").value.trim();
   const note = document.getElementById("transferNote").value.trim();
   const confirmedLeg = document.getElementById("transferConfirmedLeg")?.value || "both";
 
-  const rules = [
-    { id: "transferDate", label: "Transfer Date" },
-    { id: "transferFromAmount", label: "Outflow Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid outflow amount greater than 0." },
-  ];
-  if (type === "internal" || type === "same_bank_fx") {
-    rules.push({ id: "transferFromAccount", label: "Source Account" });
-    rules.push({ id: "transferToAccount", label: "Destination Account", check: (v) => Boolean(v) && v !== fromAccountIdVal, message: "Source and destination accounts must be selected and cannot be the same." });
-  } else if (type === "external_linked") {
-    rules.push({ id: "transferFromAccount", label: "Owned Account", check: () => Boolean(fromAccountIdVal || toAccountIdVal), message: "Please select at least one owned bank account." });
+  if (!date) {
+    toast("Please select a transfer date", "fa-solid fa-circle-exclamation");
+    return;
   }
-  if (type === "same_bank_fx") {
-    rules.push({ id: "transferFxRate", label: "Exchange Rate", check: (v) => parseFloat(v) > 0, message: "Please provide a valid exchange rate greater than 0." });
+  if (!fromAmount || fromAmount <= 0) {
+    toast("Please enter a valid outflow amount greater than 0", "fa-solid fa-circle-exclamation");
+    return;
   }
-  const isValid = FinanceForm.validateRequiredFields("financeTransferModal", rules);
-  if (!isValid) return;
+  if (!fromAccountIdVal && !toAccountIdVal) {
+    toast("Please select at least one account for the transfer", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (fromAccountIdVal && toAccountIdVal && fromAccountIdVal === toAccountIdVal) {
+    toast("Source and destination accounts cannot be the same", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if ((type === "internal" || type === "same_bank_fx") && (!fromAccountIdVal || !toAccountIdVal)) {
+    toast("Both source and destination accounts must be selected for internal transfers", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (type === "same_bank_fx" && (!fxRate || fxRate <= 0)) {
+    toast("Please provide a valid exchange rate greater than 0", "fa-solid fa-circle-exclamation");
+    return;
+  }
 
   const btn = document.getElementById("btnSaveFinanceTransfer");
   if (btn) btn.disabled = true;
@@ -2089,6 +2252,8 @@ async function saveFinanceTransfer() {
     from_amount: fromAmount,
     to_amount: toAmount,
     fx_rate: fxRate,
+    fee: fee,
+    expected_date: expectedDate,
     exchange_reference: exchangeRef || null,
     confirmed_leg: type === "external_linked" ? confirmedLeg : "both",
     note,
@@ -2101,7 +2266,9 @@ async function saveFinanceTransfer() {
 
     // Reload accounts to update balances across all views
     FinanceState.accounts = await FinanceApi.getAccounts();
-    if (_currentFinanceSubTab === "transfers") {
+    if (_activeWorkspaceAccountId) {
+      await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+    } else if (_currentFinanceSubTab === "transfers") {
       await loadFinanceTransfers();
     } else if (_currentFinanceSubTab === "accounts") {
       renderFinanceAccounts(FinanceState.accounts);
@@ -2111,6 +2278,27 @@ async function saveFinanceTransfer() {
     toast("Failed to save transfer: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   } finally {
     if (btn) btn.disabled = false;
+  }
+}
+
+async function matchInTransitTransfer(transferId) {
+  const transfer = (FinanceState.transfers || []).find((t) => t.id === transferId);
+  if (!transfer) return;
+
+  const targetAccountId = prompt(`Match in-transit transfer #${transferId} (${transfer.from_amount} ${transfer.from_currency}). Enter destination Bank Account ID:`);
+  if (!targetAccountId) return;
+
+  try {
+    await FinanceApi.matchTransfer(transferId, {
+      target_account_id: parseInt(targetAccountId, 10),
+      received_amount: transfer.to_amount,
+      note: "Matched from transfer register",
+    });
+    toast("In-transit transfer matched and settled successfully!", "fa-solid fa-circle-check");
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    await loadFinanceTransfers();
+  } catch (err) {
+    toast("Failed to match transfer: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   }
 }
 
@@ -2167,6 +2355,9 @@ window.workspaceImportStatement = workspaceImportStatement;
 window.setTransactionEntryType = setTransactionEntryType;
 window.onTxCurrencyChanged = onTxCurrencyChanged;
 window.updateTransactionPreview = updateTransactionPreview;
+window.updateTransferPreview = updateTransferPreview;
+window.matchInTransitTransfer = matchInTransitTransfer;
 window.filterWorkspaceLedger = filterWorkspaceLedger;
 window.filterWorkspaceLedgerDirection = filterWorkspaceLedgerDirection;
+
 

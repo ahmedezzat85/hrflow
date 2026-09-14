@@ -2297,6 +2297,14 @@ const FinanceApi = {
         });
       }
 
+      const confirmedLeg = payload.confirmed_leg || "both";
+      let settlementStatus = payload.settlement_status;
+      if (!settlementStatus) {
+        if (confirmedLeg === "from_only") settlementStatus = "in_transit";
+        else if (confirmedLeg === "to_only") settlementStatus = "awaiting_match";
+        else settlementStatus = "settled";
+      }
+
       const newTransfer = {
         id: transferId,
         from_account_id: fromAcc ? fromAcc.id : null,
@@ -2311,7 +2319,10 @@ const FinanceApi = {
         fx_rate: fxRate,
         transfer_type: payload.transfer_type,
         exchange_reference: payload.exchange_reference || null,
-        confirmed_leg: payload.confirmed_leg || "both",
+        confirmed_leg: confirmedLeg,
+        settlement_status: settlementStatus,
+        fee: parseFloat(payload.fee) || 0.0,
+        expected_date: payload.expected_date || null,
         note: payload.note || "",
         outflow_transaction_id: outTxId,
         inflow_transaction_id: inTxId,
@@ -2321,6 +2332,144 @@ const FinanceApi = {
       return newTransfer;
     }
     return apiRequest("POST", "/api/finance/transfers", payload);
+  },
+
+  async previewTransfer(payload) {
+    if (_isMock()) {
+      const fromAcc = payload.from_account_id
+        ? (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.from_account_id, 10))
+        : null;
+      const toAcc = payload.to_account_id
+        ? (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.to_account_id, 10))
+        : null;
+
+      const fromName = fromAcc ? fromAcc.account_name : "External Account";
+      const toName = toAcc ? toAcc.account_name : "External Account";
+      const fromCurr = fromAcc ? fromAcc.currency : "USD";
+      const toCurr = toAcc ? toAcc.currency : (payload.to_currency || fromCurr);
+      const fromCurBal = fromAcc ? fromAcc.current_balance : 0.0;
+      const toCurBal = toAcc ? toAcc.current_balance : (toAcc ? 0.0 : null);
+
+      let isValid = true;
+      let validationErr = null;
+
+      if (payload.from_account_id && payload.to_account_id && parseInt(payload.from_account_id, 10) === parseInt(payload.to_account_id, 10)) {
+        isValid = false;
+        validationErr = "Source and target bank accounts cannot be the same";
+      }
+
+      const fromAmt = parseFloat(payload.from_amount) || 0;
+      let toAmt = parseFloat(payload.to_amount) || null;
+      let fxRate = parseFloat(payload.fx_rate) || null;
+      const fee = parseFloat(payload.fee) || 0;
+
+      let explicitFx = null;
+      let impliedRate = 1.0;
+
+      if (payload.transfer_type === "internal") {
+        toAmt = fromAmt;
+        fxRate = 1.0;
+        explicitFx = `1 ${fromCurr} = 1.00 ${fromCurr}`;
+        impliedRate = 1.0;
+        if (fromAcc && toAcc && fromAcc.currency !== toAcc.currency) {
+          isValid = false;
+          validationErr = `Internal transfer requires same currency (${fromAcc.currency} != ${toAcc.currency}). Use Same-Bank FX.`;
+        }
+      } else if (payload.transfer_type === "same_bank_fx") {
+        if (fxRate && fxRate > 0) {
+          if (!toAmt || toAmt <= 0) toAmt = round(fromAmt * fxRate, 2);
+        } else if (toAmt && toAmt > 0) {
+          fxRate = fromAmt > 0 ? round(toAmt / fromAmt, 6) : null;
+        }
+        impliedRate = (toAmt && fromAmt > 0) ? round(toAmt / fromAmt, 4) : fxRate;
+        explicitFx = fxRate ? `1 ${fromCurr} = ${fxRate.toFixed(4)} ${toCurr}` : null;
+      } else {
+        if (!toAmt) toAmt = (fxRate && fxRate > 0) ? round(fromAmt * fxRate, 2) : fromAmt;
+        impliedRate = (toAmt && fromAmt > 0) ? round(toAmt / fromAmt, 4) : 1.0;
+        explicitFx = (fromCurr !== toCurr) ? `1 ${fromCurr} = ${impliedRate.toFixed(4)} ${toCurr}` : null;
+      }
+
+      const fromProj = round(fromCurBal - fromAmt - fee, 2);
+      const toProj = toCurBal !== null ? round(toCurBal + (toAmt || 0), 2) : null;
+
+      let settlementStatus = "settled";
+      if (payload.confirmed_leg === "from_only") settlementStatus = "in_transit";
+      else if (payload.confirmed_leg === "to_only") settlementStatus = "awaiting_match";
+
+      const journalPreview = [];
+      if (payload.confirmed_leg !== "to_only" && fromAcc) {
+        journalPreview.push({ account: `${fromName} (Asset)`, debit: null, credit: fromAmt, currency: fromCurr });
+        if (fee > 0) {
+          journalPreview.push({ account: `Transfer Fees / ${fromName}`, debit: fee, credit: null, currency: fromCurr });
+        }
+      }
+      if (payload.confirmed_leg !== "from_only" && toAcc) {
+        journalPreview.push({ account: `${toName} (Asset)`, debit: toAmt, credit: null, currency: toCurr });
+      }
+
+      const plainDesc = `Transfer ${fromAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${fromCurr} from ${fromName} to ${toName}`
+        + (fromCurr !== toCurr && fxRate ? ` (${(toAmt || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${toCurr} at ${fxRate.toFixed(4)})` : "")
+        + (fee > 0 ? ` with ${fee.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${fromCurr} fee` : "")
+        + `. Projected source balance: ${fromProj.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${fromCurr}.`;
+
+      return {
+        from_account_name: fromName,
+        from_currency: fromCurr,
+        from_current_balance: fromCurBal,
+        from_projected_balance: fromProj,
+        to_account_name: toName,
+        to_currency: toCurr,
+        to_current_balance: toCurBal,
+        to_projected_balance: toProj,
+        explicit_fx_direction: explicitFx,
+        implied_rate: impliedRate,
+        settlement_status: settlementStatus,
+        is_valid: isValid,
+        validation_error: validationErr,
+        plain_description: plainDesc,
+        journal_preview: journalPreview,
+      };
+    }
+    return apiRequest("POST", "/api/finance/transfers/preview", payload);
+  },
+
+  async matchTransfer(transferId, payload) {
+    if (_isMock()) {
+      const transfer = (FinanceMockState.transfers || []).find((t) => t.id === parseInt(transferId, 10));
+      if (!transfer) throw new Error("Transfer not found");
+      if (transfer.settlement_status === "settled") throw new Error("Transfer is already fully settled");
+
+      const toAcc = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.target_account_id, 10));
+      if (!toAcc) throw new Error("Target bank account not found");
+
+      transfer.to_account_id = toAcc.id;
+      transfer.to_account_name = toAcc.account_name;
+      transfer.to_currency = toAcc.currency;
+      if (payload.received_amount) transfer.to_amount = parseFloat(payload.received_amount);
+      transfer.confirmed_leg = "both";
+      transfer.settlement_status = "settled";
+      if (payload.note) transfer.note = `${transfer.note} | Matched: ${payload.note}`.trim();
+
+      toAcc.current_balance = round(toAcc.current_balance + transfer.to_amount, 2);
+      const inTxId = (FinanceMockState.transactions || []).length + 1;
+      FinanceMockState.transactions.unshift({
+        id: inTxId,
+        account_id: toAcc.id,
+        date: payload.settled_date || transfer.date,
+        amount: transfer.to_amount,
+        direction: "in",
+        currency: toAcc.currency,
+        reference: transfer.exchange_reference || `Transfer from ${transfer.from_account_name || "External"}`,
+        description: `Settled transfer from ${transfer.from_account_name || "External"} (Linked #${transfer.id})`,
+        source: "transfer",
+        linked_transfer_id: transfer.id,
+        running_balance: toAcc.current_balance,
+        created_at: new Date().toISOString(),
+      });
+      transfer.inflow_transaction_id = inTxId;
+      return transfer;
+    }
+    return apiRequest("POST", `/api/finance/transfers/${transferId}/match`, payload);
   },
 
   // Cheques (Phase 5)
