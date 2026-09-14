@@ -21,6 +21,11 @@ from finance.schemas import (
     SavedReportViewCreate,
     SavedReportViewResponse,
     ReportDrilldownResponse,
+    ProfitAndLossResponse,
+    BalanceSheetResponse,
+    TrialBalanceResponse,
+    CashFlowStatementResponse,
+    AgingReportResponse,
 )
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
@@ -379,4 +384,116 @@ def get_report_drilldown(
         currency=currency,
         entity=entity,
     )
+
+
+# ----------------------------------------------------------------------
+# Core Accounting & Aging Reports Endpoints (Story 7.2)
+# ----------------------------------------------------------------------
+@router.get("/profit-and-loss", response_model=ProfitAndLossResponse)
+def get_profit_and_loss(
+    entity: Optional[str] = Query("all", description="Entity filter"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    basis: str = Query("cash", pattern="^(cash|accrual)$", description="Accounting basis: cash or accrual"),
+    currency: str = Query("USD", description="Currency filter"),
+    comparison: str = Query("none", pattern="^(none|prior_period|prior_year)$", description="Comparison type"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Profit & Loss Statement supporting cash/accrual basis and period comparisons."""
+    return service.get_profit_and_loss(
+        entity=entity,
+        date_from=date_from,
+        date_to=date_to,
+        basis=basis,
+        currency=currency,
+        comparison=comparison,
+    )
+
+
+@router.get("/balance-sheet", response_model=BalanceSheetResponse)
+def get_balance_sheet(
+    entity: Optional[str] = Query("all", description="Entity filter"),
+    as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
+    basis: str = Query("accrual", pattern="^(cash|accrual)$", description="Accounting basis"),
+    currency: str = Query("USD", description="Currency filter"),
+    comparison: str = Query("none", description="Comparison mode"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Balance Sheet displaying Assets, Liabilities, and Balancing Equity as of cutoff date."""
+    return service.get_balance_sheet(
+        entity=entity,
+        as_of_date=as_of_date,
+        basis=basis,
+        currency=currency,
+        comparison=comparison,
+    )
+
+
+@router.get("/trial-balance", response_model=TrialBalanceResponse)
+def get_trial_balance(
+    entity: Optional[str] = Query("all", description="Entity filter"),
+    as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Trial Balance report ensuring Debits == Credits with zero net variance."""
+    return service.get_trial_balance(
+        entity=entity,
+        as_of_date=as_of_date,
+        currency=currency,
+    )
+
+
+@router.get("/cash-flow", response_model=CashFlowStatementResponse)
+def get_cash_flow_statement(
+    entity: Optional[str] = Query("all", description="Entity filter"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Statement of Cash Flows reconciling Operating and Financing activities with liquidity."""
+    return service.get_cash_flow_statement(
+        entity=entity,
+        date_from=date_from,
+        date_to=date_to,
+        currency=currency,
+    )
+
+
+@router.get("/ar-aging", response_model=AgingReportResponse)
+def get_ar_aging_report(
+    entity: Optional[str] = Query("all", description="Entity filter"),
+    as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Accounts Receivable Aging schedule partitioned into 30-day buckets per customer."""
+    return service.get_ar_aging_report(
+        entity=entity,
+        as_of_date=as_of_date,
+        currency=currency,
+    )
+
+
+@router.get("/ap-aging", response_model=AgingReportResponse)
+def get_ap_aging_report(
+    entity: Optional[str] = Query("all", description="Entity filter"),
+    as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Accounts Payable Aging schedule partitioned into 30-day buckets per vendor."""
+    return service.get_ap_aging_report(
+        entity=entity,
+        as_of_date=as_of_date,
+        currency=currency,
+    )
+
 

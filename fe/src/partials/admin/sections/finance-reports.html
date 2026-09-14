@@ -163,10 +163,16 @@
 
             <!-- Optional Sub Navigation Tabs for Fast Switching -->
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-              <div class="filter-tabs" id="financeReportsSubNav" role="tablist" aria-label="Financial reports sub navigation">
+              <div class="filter-tabs" id="financeReportsSubNav" role="tablist" aria-label="Financial reports sub navigation" style="overflow-x:auto;">
                 <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="profit-and-loss" onclick="switchFinanceReportsTab('profit-and-loss', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Profit & Loss</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balance-sheet" onclick="switchFinanceReportsTab('balance-sheet', this)"><i class="fa-solid fa-building-columns"></i> Balance Sheet</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="trial-balance" onclick="switchFinanceReportsTab('trial-balance', this)"><i class="fa-solid fa-scale-unbalanced"></i> Trial Balance</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="cash-flow" onclick="switchFinanceReportsTab('cash-flow', this)"><i class="fa-solid fa-money-bill-trend-up"></i> Cash Flow</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="ar-aging" onclick="switchFinanceReportsTab('ar-aging', this)"><i class="fa-solid fa-user-clock"></i> AR Aging</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="ap-aging" onclick="switchFinanceReportsTab('ap-aging', this)"><i class="fa-solid fa-receipt"></i> AP Aging</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="transactions" onclick="switchFinanceReportsTab('transactions', this)"><i class="fa-solid fa-list-check"></i> Transaction Ledger</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
               </div>
@@ -404,7 +410,415 @@
               </div>
             </div>
 
-            <!-- PANE 6: Generic Report Shell Placeholder (for catalog reports wired in 7.2) -->
+            <!-- PANE: Profit & Loss Statement -->
+            <div id="reportPaneProfitAndLoss" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Revenue</div>
+                    <div id="reportPnlTotalRevenue" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #EF4444;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Expenses</div>
+                    <div id="reportPnlTotalExpenses" style="font-size:1.4rem; font-weight:700; color:#EF4444;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Income</div>
+                    <div id="reportPnlNetIncome" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #8B5CF6;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(139,92,246,0.12); color:#8B5CF6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-percent"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Profit Margin</div>
+                    <div id="reportPnlNetMargin" style="font-size:1.4rem; font-weight:700; color:#8B5CF6;">0.0%</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Revenue Section Card -->
+              <div class="card" style="margin-bottom:16px;">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                  <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#10B981; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-circle-arrow-up"></i> Operating Revenue & Inflows
+                  </h3>
+                  <span id="reportPnlRevenueSubtotalBadge" class="badge badge-success" style="font-size:0.85rem; font-weight:700;">$0.00</span>
+                </div>
+                <table class="responsive-card-table" id="reportPnlRevenueTable">
+                  <thead>
+                    <tr>
+                      <th>Revenue Stream / Category</th>
+                      <th style="width:160px; text-align:right;">Amount</th>
+                      <th style="width:220px;">% of Revenue</th>
+                      <th style="width:100px; text-align:center;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportPnlRevenueTableBody"></tbody>
+                </table>
+              </div>
+
+              <!-- Expense Section Card -->
+              <div class="card" style="margin-bottom:16px;">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                  <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#EF4444; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-circle-arrow-down"></i> Operating Expenses & Cost Allocations
+                  </h3>
+                  <span id="reportPnlExpenseSubtotalBadge" class="badge badge-danger" style="font-size:0.85rem; font-weight:700;">$0.00</span>
+                </div>
+                <table class="responsive-card-table" id="reportPnlExpenseTable">
+                  <thead>
+                    <tr>
+                      <th>Expense Category</th>
+                      <th style="width:160px; text-align:right;">Amount</th>
+                      <th style="width:220px;">% of Expenses</th>
+                      <th style="width:100px; text-align:center;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportPnlExpenseTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: Balance Sheet -->
+            <div id="reportPaneBalanceSheet" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-vault"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Assets</div>
+                    <div id="reportBsTotalAssets" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #F59E0B;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(245,158,11,0.12); color:#F59E0B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-receipt"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Liabilities</div>
+                    <div id="reportBsTotalLiabilities" style="font-size:1.4rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-coins"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Owners' Equity</div>
+                    <div id="reportBsTotalEquity" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-check-double"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Accounting Equation</div>
+                    <div id="reportBsBalancedBadge" style="font-size:1.1rem; font-weight:700; color:#10B981;">BALANCED ✓</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Assets & (Liabilities + Equity) Split Grid -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:18px;">
+                <!-- Assets Card -->
+                <div class="card">
+                  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                    <h3 style="margin:0; font-size:1rem; font-weight:700; color:#2563EB;">1. Assets</h3>
+                    <span id="reportBsAssetsSubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                  </div>
+                  <table class="responsive-card-table" id="reportBsAssetsTable">
+                    <thead>
+                      <tr>
+                        <th>Asset Account</th>
+                        <th>Classification / Note</th>
+                        <th style="text-align:right;">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody id="reportBsAssetsTableBody"></tbody>
+                  </table>
+                </div>
+
+                <!-- Liabilities & Equity Card -->
+                <div style="display:flex; flex-direction:column; gap:18px;">
+                  <!-- Liabilities -->
+                  <div class="card">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                      <h3 style="margin:0; font-size:1rem; font-weight:700; color:#F59E0B;">2. Liabilities</h3>
+                      <span id="reportBsLiabilitiesSubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                    </div>
+                    <table class="responsive-card-table" id="reportBsLiabilitiesTable">
+                      <thead>
+                        <tr>
+                          <th>Liability Account</th>
+                          <th>Classification / Note</th>
+                          <th style="text-align:right;">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody id="reportBsLiabilitiesTableBody"></tbody>
+                    </table>
+                  </div>
+
+                  <!-- Equity -->
+                  <div class="card">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                      <h3 style="margin:0; font-size:1rem; font-weight:700; color:#10B981;">3. Equity</h3>
+                      <span id="reportBsEquitySubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                    </div>
+                    <table class="responsive-card-table" id="reportBsEquityTable">
+                      <thead>
+                        <tr>
+                          <th>Equity Item</th>
+                          <th>Classification / Note</th>
+                          <th style="text-align:right;">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody id="reportBsEquityTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANE: Trial Balance -->
+            <div id="reportPaneTrialBalance" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-plus-minus"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Debits</div>
+                    <div id="reportTbTotalDebits" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #8B5CF6;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(139,92,246,0.12); color:#8B5CF6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-scale-unbalanced"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Credits</div>
+                    <div id="reportTbTotalCredits" style="font-size:1.4rem; font-weight:700; color:#8B5CF6;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-circle-check"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Balance Check</div>
+                    <div id="reportTbBalancedBadge" style="font-size:1.1rem; font-weight:700; color:#10B981;">DEBITS = CREDITS ✓</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(100,116,139,0.12); color:#64748B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-calculator"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Variance</div>
+                    <div id="reportTbVariance" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Trial Balance Table -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportTbTable">
+                  <thead>
+                    <tr>
+                      <th style="width:120px;">Account Code</th>
+                      <th>Account Name</th>
+                      <th>Type</th>
+                      <th style="width:160px; text-align:right;">Debit</th>
+                      <th style="width:160px; text-align:right;">Credit</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportTbTableBody"></tbody>
+                  <tfoot id="reportTbTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: Statement of Cash Flows -->
+            <div id="reportPaneCashFlow" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #64748B;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(100,116,139,0.12); color:#64748B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-hourglass-start"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Beginning Cash</div>
+                    <div id="reportCfBeginningCash" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-briefcase"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Operating Net Cash</div>
+                    <div id="reportCfOperatingCash" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Change in Cash</div>
+                    <div id="reportCfNetChange" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #059669;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(5,150,105,0.12); color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-flag-checkered"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Ending Cash Balance</div>
+                    <div id="reportCfEndingCash" style="font-size:1.4rem; font-weight:700; color:#059669;">$0.00</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cash Flow Statement Card -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportCfTable">
+                  <thead>
+                    <tr>
+                      <th>Activity / Line Item</th>
+                      <th style="width:180px; text-align:right;">Cash Impact</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportCfTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: AR Aging Report -->
+            <div id="reportPaneArAging" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:14px; border-left:4px solid #2563EB;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outstanding</div>
+                  <div id="reportArTotalOutstanding" style="font-size:1.3rem; font-weight:700; color:#2563EB;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #10B981;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Current (Not Due)</div>
+                  <div id="reportArCurrent" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">1 - 30 Days</div>
+                  <div id="reportArDays130" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #EA580C;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">31 - 60 Days</div>
+                  <div id="reportArDays3160" style="font-size:1.3rem; font-weight:700; color:#EA580C;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #DC2626;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">61 - 90 Days</div>
+                  <div id="reportArDays6190" style="font-size:1.3rem; font-weight:700; color:#DC2626;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #7F1D1D;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">90+ Days (Severe)</div>
+                  <div id="reportArDaysOver90" style="font-size:1.3rem; font-weight:700; color:#7F1D1D;">$0.00</div>
+                </div>
+              </div>
+
+              <!-- AR Aging Table -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportArAgingTable">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th style="text-align:center; width:90px;">Invoices</th>
+                      <th style="text-align:right;">Current</th>
+                      <th style="text-align:right;">1 - 30</th>
+                      <th style="text-align:right;">31 - 60</th>
+                      <th style="text-align:right;">61 - 90</th>
+                      <th style="text-align:right;">90+ Days</th>
+                      <th style="text-align:right; width:130px;">Total Due</th>
+                      <th style="text-align:center; width:90px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportArAgingTableBody"></tbody>
+                  <tfoot id="reportArAgingTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: AP Aging Report -->
+            <div id="reportPaneApAging" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Payable</div>
+                  <div id="reportApTotalOutstanding" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #10B981;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Current (Not Due)</div>
+                  <div id="reportApCurrent" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">1 - 30 Days</div>
+                  <div id="reportApDays130" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #EA580C;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">31 - 60 Days</div>
+                  <div id="reportApDays3160" style="font-size:1.3rem; font-weight:700; color:#EA580C;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #DC2626;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">61 - 90 Days</div>
+                  <div id="reportApDays6190" style="font-size:1.3rem; font-weight:700; color:#DC2626;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #7F1D1D;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">90+ Days (Severe)</div>
+                  <div id="reportApDaysOver90" style="font-size:1.3rem; font-weight:700; color:#7F1D1D;">$0.00</div>
+                </div>
+              </div>
+
+              <!-- AP Aging Table -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportApAgingTable">
+                  <thead>
+                    <tr>
+                      <th>Vendor</th>
+                      <th style="text-align:center; width:90px;">Bills</th>
+                      <th style="text-align:right;">Current</th>
+                      <th style="text-align:right;">1 - 30</th>
+                      <th style="text-align:right;">31 - 60</th>
+                      <th style="text-align:right;">61 - 90</th>
+                      <th style="text-align:right;">90+ Days</th>
+                      <th style="text-align:right; width:130px;">Total Due</th>
+                      <th style="text-align:center; width:90px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportApAgingTableBody"></tbody>
+                  <tfoot id="reportApAgingTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: Generic Report Shell Placeholder (for catalog reports wired in 7.2) -->
             <div id="reportPanePlaceholder" style="display:none;">
               <div class="card" style="padding:36px; text-align:center;">
                 <div style="width:64px; height:64px; margin:0 auto 16px; border-radius:50%; background:rgba(37,99,235,0.1); color:var(--primary, #2563EB); display:flex; align-items:center; justify-content:center; font-size:1.8rem;">

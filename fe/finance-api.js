@@ -3964,6 +3964,72 @@ const FinanceApi = {
             supported_formats: ["json", "xlsx"],
             badge: "Audit",
           },
+          {
+            key: "profit-and-loss",
+            title: "Profit & Loss Statement (P&L)",
+            category: "Performance",
+            business_question: "What was the company's operating revenue, expense allocation, and net bottom line profit?",
+            description: "Standard income statement categorizing operational revenues, cost outflows, and net margin %.",
+            icon: "fa-solid fa-file-invoice-dollar",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json", "xlsx", "csv", "pdf"],
+            badge: "Core Financial",
+          },
+          {
+            key: "cash-flow",
+            title: "Statement of Cash Flows",
+            category: "Cash & Banking",
+            business_question: "How did cash inflows and outflows reconcile between operating, investing, and financing activities?",
+            description: "Comprehensive cash flow statement reconciling beginning to ending cash balances.",
+            icon: "fa-solid fa-money-bill-trend-up",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv", "pdf"],
+            badge: "Cash Flow",
+          },
+          {
+            key: "ar-aging",
+            title: "Accounts Receivable (AR) Aging",
+            category: "Sales & Receivables",
+            business_question: "How overdue are client invoice balances partitioned across 30-day aging buckets?",
+            description: "Customer invoice aging schedule categorized into current, 1-30, 31-60, 61-90, and 90+ day tiers.",
+            icon: "fa-solid fa-user-clock",
+            supported_basis: ["accrual"],
+            supported_formats: ["json", "xlsx", "csv", "pdf"],
+            badge: "Aging",
+          },
+          {
+            key: "ap-aging",
+            title: "Accounts Payable (AP) Aging",
+            category: "Spend & Payables",
+            business_question: "What vendor bills and disbursements are due or past due across 30-day aging buckets?",
+            description: "Vendor bill aging schedule partitioned into current, 1-30, 31-60, 61-90, and 90+ day tiers.",
+            icon: "fa-solid fa-receipt",
+            supported_basis: ["accrual"],
+            supported_formats: ["json", "xlsx", "csv", "pdf"],
+            badge: "Aging",
+          },
+          {
+            key: "balance-sheet",
+            title: "Balance Sheet (Statement of Financial Position)",
+            category: "Audit & Compliance",
+            business_question: "What are company total assets, liabilities, and owners' equity balances as of a cutoff date?",
+            description: "Core balance sheet statement enforcing the fundamental accounting equation Assets = Liabilities + Equity.",
+            icon: "fa-solid fa-building-columns",
+            supported_basis: ["accrual"],
+            supported_formats: ["json", "xlsx", "csv", "pdf"],
+            badge: "Core Financial",
+          },
+          {
+            key: "trial-balance",
+            title: "Trial Balance Ledger Audit",
+            category: "Audit & Compliance",
+            business_question: "Do total debit balances equal total credit balances across all active chart of accounts?",
+            description: "Audit report verifying zero debit-credit variance across all posted ledger lines.",
+            icon: "fa-solid fa-scale-unbalanced",
+            supported_basis: ["accrual", "cash"],
+            supported_formats: ["json", "xlsx", "csv", "pdf"],
+            badge: "Audit",
+          },
         ],
       };
     }
@@ -4059,6 +4125,191 @@ const FinanceApi = {
     }
     const qs = new URLSearchParams(params).toString();
     return apiRequest("GET", `/api/finance/reports/drilldown${qs ? "?" + qs : ""}`);
+  },
+
+  async getProfitAndLossReport(params = {}) {
+    if (_isMock()) {
+      const basis = params.basis || "cash";
+      return {
+        report_title: "Profit & Loss Statement",
+        entity: params.entity || "Voyance Health (Consolidated)",
+        basis,
+        currency: params.currency || "USD",
+        period_start: params.date_from || "2026-09-01",
+        period_end: params.date_to || "2026-09-30",
+        comparison_type: params.comparison || "none",
+        revenue_items: [
+          { category_name: "Diagnostic Imaging & PACS Software", amount: 95000.0, percentage: 76.0 },
+          { category_name: "Maintenance & Platform Consulting", amount: 30000.0, percentage: 24.0 },
+        ],
+        total_revenue: 125000.0,
+        prior_revenue: 110000.0,
+        expense_items: [
+          { category_name: "Cloud Hosting & AWS Compute Infrastructure", amount: 38000.0, percentage: 55.9 },
+          { category_name: "Cairo & Dover Office Facilities", amount: 20000.0, percentage: 29.4 },
+          { category_name: "Legal, Tax & Statutory Audit", amount: 10000.0, percentage: 14.7 },
+        ],
+        total_expenses: 68000.0,
+        prior_expenses: 62000.0,
+        net_income: 57000.0,
+        prior_net_income: 48000.0,
+        net_margin_pct: 45.6,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/profit-and-loss${qs ? "?" + qs : ""}`);
+  },
+
+  async getBalanceSheetReport(params = {}) {
+    if (_isMock()) {
+      return {
+        report_title: "Balance Sheet",
+        entity: params.entity || "Voyance Health (Consolidated)",
+        as_of_date: params.as_of_date || "2026-09-14",
+        currency: params.currency || "USD",
+        basis: params.basis || "accrual",
+        assets: {
+          title: "Assets",
+          items: [
+            { name: "Chase Operating Primary (USD)", amount: 220000.0, note: "Liquid cash" },
+            { name: "Accounts Receivable (Trade Debtors)", amount: 90000.0, note: "Open client receivables" },
+          ],
+          total: 310000.0,
+        },
+        liabilities: {
+          title: "Liabilities",
+          items: [
+            { name: "Accounts Payable (Trade Creditors)", amount: 35000.0, note: "Open vendor bills" },
+            { name: "Cheques Payable (Issued / In Transit)", amount: 10000.0, note: "Outstanding cheques" },
+          ],
+          total: 45000.0,
+        },
+        equity: {
+          title: "Equity",
+          items: [
+            { name: "Retained Earnings & Cumulative Net Income", amount: 265000.0, note: "Balanced equity" },
+          ],
+          total: 265000.0,
+        },
+        total_assets: 310000.0,
+        total_liabilities_and_equity: 310000.0,
+        is_balanced: true,
+        variance: 0.0,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/balance-sheet${qs ? "?" + qs : ""}`);
+  },
+
+  async getTrialBalanceReport(params = {}) {
+    if (_isMock()) {
+      return {
+        report_title: "Trial Balance",
+        entity: params.entity || "Voyance Health (Consolidated)",
+        as_of_date: params.as_of_date || "2026-09-14",
+        currency: params.currency || "USD",
+        lines: [
+          { code: "1000-01", name: "Chase Operating Primary (USD)", type: "asset", debit: 220000.0, credit: 0.0 },
+          { code: "1100-AR", name: "Accounts Receivable (Trade)", type: "asset", debit: 90000.0, credit: 0.0 },
+          { code: "2000-AP", name: "Accounts Payable (Trade)", type: "liability", debit: 0.0, credit: 35000.0 },
+          { code: "2100-CP", name: "Cheques Payable", type: "liability", debit: 0.0, credit: 10000.0 },
+          { code: "3000-EQ", name: "Retained Earnings / Owners' Equity", type: "equity", debit: 0.0, credit: 265000.0 },
+        ],
+        total_debits: 310000.0,
+        total_credits: 310000.0,
+        variance: 0.0,
+        is_balanced: true,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/trial-balance${qs ? "?" + qs : ""}`);
+  },
+
+  async getCashFlowReport(params = {}) {
+    if (_isMock()) {
+      return {
+        report_title: "Statement of Cash Flows",
+        entity: params.entity || "Voyance Health (Consolidated)",
+        currency: params.currency || "USD",
+        date_from: params.date_from || "2026-09-01",
+        date_to: params.date_to || "2026-09-30",
+        operating_activities: [
+          { name: "Cash Receipts from Customers & Operational Inflows", amount: 95000.0, activity_type: "operating" },
+          { name: "Cash Payments for Suppliers & Operational Outflows", amount: -55000.0, activity_type: "operating" },
+        ],
+        net_cash_operating: 40000.0,
+        investing_activities: [],
+        net_cash_investing: 0.0,
+        financing_activities: [],
+        net_cash_financing: 0.0,
+        net_change_in_cash: 40000.0,
+        beginning_cash_balance: 180000.0,
+        ending_cash_balance: 220000.0,
+        is_reconciled: true,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/cash-flow${qs ? "?" + qs : ""}`);
+  },
+
+  async getArAgingReport(params = {}) {
+    if (_isMock()) {
+      return {
+        report_title: "Accounts Receivable (AR) Aging",
+        aging_type: "ar",
+        entity: params.entity || "Voyance Health (Consolidated)",
+        as_of_date: params.as_of_date || "2026-09-14",
+        currency: params.currency || "USD",
+        rows: [
+          {
+            id: 1,
+            name: "Acme Health Systems",
+            buckets: { current: 30000.0, days_1_30: 20000.0, days_31_60: 10000.0, days_61_90: 0.0, days_over_90: 0.0, total: 60000.0 },
+            outstanding_count: 3,
+          },
+          {
+            id: 2,
+            name: "Apex Diagnostic Imaging",
+            buckets: { current: 15000.0, days_1_30: 5000.0, days_31_60: 5000.0, days_61_90: 5000.0, days_over_90: 0.0, total: 30000.0 },
+            outstanding_count: 2,
+          },
+        ],
+        totals: { current: 45000.0, days_1_30: 25000.0, days_31_60: 15000.0, days_61_90: 5000.0, days_over_90: 0.0, total: 90000.0 },
+        total_open_count: 5,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/ar-aging${qs ? "?" + qs : ""}`);
+  },
+
+  async getApAgingReport(params = {}) {
+    if (_isMock()) {
+      return {
+        report_title: "Accounts Payable (AP) Aging",
+        aging_type: "ap",
+        entity: params.entity || "Voyance Health (Consolidated)",
+        as_of_date: params.as_of_date || "2026-09-14",
+        currency: params.currency || "USD",
+        rows: [
+          {
+            id: 1,
+            name: "Cloud Datacenter Inc",
+            buckets: { current: 12000.0, days_1_30: 8000.0, days_31_60: 0.0, days_61_90: 0.0, days_over_90: 0.0, total: 20000.0 },
+            outstanding_count: 2,
+          },
+          {
+            id: 2,
+            name: "Office Space Holdings",
+            buckets: { current: 8000.0, days_1_30: 2000.0, days_31_60: 5000.0, days_61_90: 0.0, days_over_90: 0.0, total: 15000.0 },
+            outstanding_count: 1,
+          },
+        ],
+        totals: { current: 20000.0, days_1_30: 10000.0, days_31_60: 5000.0, days_61_90: 0.0, days_over_90: 0.0, total: 35000.0 },
+        total_open_count: 3,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/ap-aging${qs ? "?" + qs : ""}`);
   },
 
   async getEntityActivity(entityType, entityId) {

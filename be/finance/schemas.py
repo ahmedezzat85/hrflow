@@ -1562,6 +1562,141 @@ class ReportDrilldownResponse(BaseModel):
     records: List[Dict[str, Any]] = []
 
 
+# ==========================================
+# Core Accounting & Aging Reports (Story 7.2)
+# ==========================================
+class ProfitAndLossItem(BaseModel):
+    category_id: Optional[int] = None
+    category_name: str
+    amount: float
+    percentage: float = 0.0
+    prior_amount: Optional[float] = None
+    variance_amount: Optional[float] = None
+    variance_pct: Optional[float] = None
+
+
+class ProfitAndLossResponse(BaseModel):
+    report_title: str = "Profit & Loss Statement"
+    entity: str
+    basis: str
+    currency: str
+    period_start: str
+    period_end: str
+    comparison_type: str = "none"
+    comparison_start: Optional[str] = None
+    comparison_end: Optional[str] = None
+    revenue_items: List[ProfitAndLossItem] = []
+    total_revenue: float
+    prior_revenue: Optional[float] = None
+    expense_items: List[ProfitAndLossItem] = []
+    total_expenses: float
+    prior_expenses: Optional[float] = None
+    net_income: float
+    prior_net_income: Optional[float] = None
+    net_margin_pct: float = 0.0
+
+
+class BalanceSheetSectionItem(BaseModel):
+    name: str
+    account_id: Optional[int] = None
+    account_number: Optional[str] = None
+    amount: float
+    note: Optional[str] = None
+
+
+class BalanceSheetSection(BaseModel):
+    title: str
+    items: List[BalanceSheetSectionItem] = []
+    total: float
+
+
+class BalanceSheetResponse(BaseModel):
+    report_title: str = "Balance Sheet"
+    entity: str
+    as_of_date: str
+    currency: str
+    basis: str = "accrual"
+    assets: BalanceSheetSection
+    liabilities: BalanceSheetSection
+    equity: BalanceSheetSection
+    total_assets: float
+    total_liabilities_and_equity: float
+    is_balanced: bool = True
+    variance: float = 0.0
+
+
+class TrialBalanceLine(BaseModel):
+    code: str
+    name: str
+    type: str  # asset, liability, equity, revenue, expense
+    debit: float
+    credit: float
+
+
+class TrialBalanceResponse(BaseModel):
+    report_title: str = "Trial Balance"
+    entity: str
+    as_of_date: str
+    currency: str
+    lines: List[TrialBalanceLine] = []
+    total_debits: float
+    total_credits: float
+    variance: float = 0.0
+    is_balanced: bool = True
+
+
+class CashFlowActivityItem(BaseModel):
+    name: str
+    amount: float
+    activity_type: str  # operating, investing, financing
+
+
+class CashFlowStatementResponse(BaseModel):
+    report_title: str = "Statement of Cash Flows"
+    entity: str
+    currency: str
+    date_from: str
+    date_to: str
+    operating_activities: List[CashFlowActivityItem] = []
+    net_cash_operating: float
+    investing_activities: List[CashFlowActivityItem] = []
+    net_cash_investing: float
+    financing_activities: List[CashFlowActivityItem] = []
+    net_cash_financing: float
+    net_change_in_cash: float
+    beginning_cash_balance: float
+    ending_cash_balance: float
+    is_reconciled: bool = True
+
+
+class AgingBucketBreakdown(BaseModel):
+    current: float = 0.0
+    days_1_30: float = 0.0
+    days_31_60: float = 0.0
+    days_61_90: float = 0.0
+    days_over_90: float = 0.0
+    total: float = 0.0
+
+
+class AgingRowItem(BaseModel):
+    id: int
+    name: str
+    buckets: AgingBucketBreakdown
+    outstanding_count: int = 0
+
+
+class AgingReportResponse(BaseModel):
+    report_title: str
+    aging_type: str  # "ar" | "ap"
+    entity: str
+    as_of_date: str
+    currency: str
+    rows: List[AgingRowItem] = []
+    totals: AgingBucketBreakdown
+    total_open_count: int = 0
+
+
+
 
 
 

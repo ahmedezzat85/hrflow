@@ -23,7 +23,7 @@ test.describe('Story 7.1: Standard Report Library and Shell', () => {
 
     // Verify catalog cards are rendered
     const cards = page.locator('#reportLibraryGrid .report-catalog-card');
-    await expect(cards).toHaveCount(11);
+    await expect(cards).toHaveCount(17);
 
     // Search filter
     const searchInput = page.locator('#reportLibrarySearch');
@@ -33,12 +33,12 @@ test.describe('Story 7.1: Standard Report Library and Shell', () => {
 
     // Clear search
     await searchInput.fill('');
-    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(11);
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(17);
 
     // Domain pill filter
     await page.click('#reportLibraryCategoryPills button[data-domain="Audit & Compliance"]');
     const auditCards = page.locator('#reportLibraryGrid .report-catalog-card');
-    await expect(auditCards).toHaveCount(2); // Transactions + Cheques
+    await expect(auditCards).toHaveCount(4); // Transactions + Cheques + Balance Sheet + Trial Balance
   });
 
   test('AC 2: Shared report shell top bar, universal filter bar, and back navigation', async ({ page }) => {

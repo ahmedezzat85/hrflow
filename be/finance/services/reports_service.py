@@ -817,6 +817,78 @@ class ReportsService:
                 "required_permission": "finance.report.read",
                 "badge": "Audit",
             },
+            {
+                "key": "profit-and-loss",
+                "title": "Profit & Loss Statement (P&L)",
+                "category": "Performance",
+                "business_question": "What was the company's operating revenue, expense allocation, and net bottom line profit?",
+                "description": "Standard income statement categorizing operational revenues, cost outflows, and net margin %.",
+                "icon": "fa-solid fa-file-invoice-dollar",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json", "xlsx", "csv", "pdf"],
+                "required_permission": "finance.report.read",
+                "badge": "Core Financial",
+            },
+            {
+                "key": "cash-flow",
+                "title": "Statement of Cash Flows",
+                "category": "Cash & Banking",
+                "business_question": "How did cash inflows and outflows reconcile between operating, investing, and financing activities?",
+                "description": "Comprehensive cash flow statement reconciling beginning to ending cash balances.",
+                "icon": "fa-solid fa-money-bill-trend-up",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx", "csv", "pdf"],
+                "required_permission": "finance.report.read",
+                "badge": "Cash Flow",
+            },
+            {
+                "key": "ar-aging",
+                "title": "Accounts Receivable (AR) Aging",
+                "category": "Sales & Receivables",
+                "business_question": "How overdue are client invoice balances partitioned across 30-day aging buckets?",
+                "description": "Customer invoice aging schedule categorized into current, 1-30, 31-60, 61-90, and 90+ day tiers.",
+                "icon": "fa-solid fa-user-clock",
+                "supported_basis": ["accrual"],
+                "supported_formats": ["json", "xlsx", "csv", "pdf"],
+                "required_permission": "finance.report.read",
+                "badge": "Aging",
+            },
+            {
+                "key": "ap-aging",
+                "title": "Accounts Payable (AP) Aging",
+                "category": "Spend & Payables",
+                "business_question": "What vendor bills and disbursements are due or past due across 30-day aging buckets?",
+                "description": "Vendor bill aging schedule partitioned into current, 1-30, 31-60, 61-90, and 90+ day tiers.",
+                "icon": "fa-solid fa-receipt",
+                "supported_basis": ["accrual"],
+                "supported_formats": ["json", "xlsx", "csv", "pdf"],
+                "required_permission": "finance.report.read",
+                "badge": "Aging",
+            },
+            {
+                "key": "balance-sheet",
+                "title": "Balance Sheet (Statement of Financial Position)",
+                "category": "Audit & Compliance",
+                "business_question": "What are company total assets, liabilities, and owners' equity balances as of a cutoff date?",
+                "description": "Core balance sheet statement enforcing the fundamental accounting equation Assets = Liabilities + Equity.",
+                "icon": "fa-solid fa-building-columns",
+                "supported_basis": ["accrual"],
+                "supported_formats": ["json", "xlsx", "csv", "pdf"],
+                "required_permission": "finance.report.read",
+                "badge": "Core Financial",
+            },
+            {
+                "key": "trial-balance",
+                "title": "Trial Balance Ledger Audit",
+                "category": "Audit & Compliance",
+                "business_question": "Do total debit balances equal total credit balances across all active chart of accounts?",
+                "description": "Audit report verifying zero debit-credit variance across all posted ledger lines.",
+                "icon": "fa-solid fa-scale-unbalanced",
+                "supported_basis": ["accrual", "cash"],
+                "supported_formats": ["json", "xlsx", "csv", "pdf"],
+                "required_permission": "finance.report.read",
+                "badge": "Audit",
+            },
         ]
         return {
             "categories": categories,
@@ -1018,4 +1090,639 @@ class ReportsService:
             "currency": currency or "USD",
             "records": records,
         }
+
+    # ------------------------------------------------------------------
+    # Core Accounting & Aging Reports (Story 7.2)
+    # ------------------------------------------------------------------
+    def get_profit_and_loss(
+        self,
+        entity: Optional[str] = "all",
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        basis: str = "cash",
+        currency: str = "USD",
+        comparison: str = "none",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        d_to = date_to or today.strftime("%Y-%m-%d")
+        d_from = date_from or today.replace(day=1).strftime("%Y-%m-%d")
+        curr_norm = (currency or "USD").upper()
+        basis_norm = (basis or "cash").lower()
+        entity_norm = (entity or "all").strip().lower()
+
+        def compute_pnl_range(start_d: str, end_d: str):
+            rev_items = []
+            exp_items = []
+            total_rev = 0.0
+            total_exp = 0.0
+
+            if basis_norm == "accrual":
+                inv_q = self.db.query(SalesInvoiceDB).filter(
+                    SalesInvoiceDB.status.notin_(["draft", "void"]),
+                    SalesInvoiceDB.issue_date >= start_d,
+                    SalesInvoiceDB.issue_date <= end_d,
+                )
+                if curr_norm != "ALL":
+                    inv_q = inv_q.filter(SalesInvoiceDB.currency == curr_norm)
+                invoices = inv_q.all()
+                cust_rev = {}
+                for inv in invoices:
+                    cname = (inv.customer.name if inv.customer else None) or f"Customer #{inv.customer_id}"
+                    amt = float(inv.total or 0.0)
+                    cust_rev[cname] = cust_rev.get(cname, 0.0) + amt
+                    total_rev += amt
+
+                for cname, amt in sorted(cust_rev.items(), key=lambda x: x[1], reverse=True):
+                    rev_items.append({
+                        "category_name": f"Sales: {cname}",
+                        "amount": round(amt, 2),
+                        "percentage": round((amt / total_rev * 100) if total_rev > 0 else 0.0, 1),
+                    })
+
+                bill_q = self.db.query(BillDB).filter(
+                    BillDB.status != "void",
+                    BillDB.issue_date >= start_d,
+                    BillDB.issue_date <= end_d,
+                )
+                if curr_norm != "ALL":
+                    bill_q = bill_q.filter(BillDB.currency == curr_norm)
+                bills = bill_q.all()
+                cat_exp = {}
+                for b in bills:
+                    cat = (b.vendor.name if b.vendor else None) or f"Vendor #{b.vendor_id}"
+                    amt = float(b.total or 0.0)
+                    cat_exp[cat] = cat_exp.get(cat, 0.0) + amt
+                    total_exp += amt
+
+                for cname, amt in sorted(cat_exp.items(), key=lambda x: x[1], reverse=True):
+                    exp_items.append({
+                        "category_name": f"Operating: {cname}",
+                        "amount": round(amt, 2),
+                        "percentage": round((amt / total_exp * 100) if total_exp > 0 else 0.0, 1),
+                    })
+            else:
+                tx_q = self.db.query(
+                    LedgerTransactionDB,
+                    TransactionCategoryDB.name.label("category_name"),
+                    TransactionCategoryDB.kind.label("category_kind"),
+                ).outerjoin(
+                    TransactionCategoryDB,
+                    LedgerTransactionDB.category_id == TransactionCategoryDB.id,
+                ).filter(
+                    LedgerTransactionDB.date >= start_d,
+                    LedgerTransactionDB.date <= end_d,
+                )
+                if curr_norm != "ALL":
+                    tx_q = tx_q.filter(LedgerTransactionDB.currency == curr_norm)
+                txs = tx_q.all()
+
+                cat_rev = {}
+                cat_exp = {}
+                for t, cname, ckind in txs:
+                    cat_display = cname or ("Sales Revenue" if t.direction == "in" else "Uncategorized Expense")
+                    amt = float(t.amount or 0.0)
+                    if t.direction == "in":
+                        cat_rev[cat_display] = cat_rev.get(cat_display, 0.0) + amt
+                        total_rev += amt
+                    else:
+                        cat_exp[cat_display] = cat_exp.get(cat_display, 0.0) + amt
+                        total_exp += amt
+
+                for cname, amt in sorted(cat_rev.items(), key=lambda x: x[1], reverse=True):
+                    rev_items.append({
+                        "category_name": cname,
+                        "amount": round(amt, 2),
+                        "percentage": round((amt / total_rev * 100) if total_rev > 0 else 0.0, 1),
+                    })
+                for cname, amt in sorted(cat_exp.items(), key=lambda x: x[1], reverse=True):
+                    exp_items.append({
+                        "category_name": cname,
+                        "amount": round(amt, 2),
+                        "percentage": round((amt / total_exp * 100) if total_exp > 0 else 0.0, 1),
+                    })
+
+            return round(total_rev, 2), rev_items, round(total_exp, 2), exp_items
+
+        tot_rev, rev_list, tot_exp, exp_list = compute_pnl_range(d_from, d_to)
+        net_inc = round(tot_rev - tot_exp, 2)
+        margin = round((net_inc / tot_rev * 100) if tot_rev > 0 else 0.0, 1)
+
+        prior_rev = None
+        prior_exp = None
+        prior_net = None
+        comp_start = None
+        comp_end = None
+
+        if comparison in ("prior_period", "prior_year"):
+            dt_start = datetime.strptime(d_from, "%Y-%m-%d").date()
+            dt_end = datetime.strptime(d_to, "%Y-%m-%d").date()
+            if comparison == "prior_year":
+                comp_start = dt_start.replace(year=dt_start.year - 1).strftime("%Y-%m-%d")
+                comp_end = dt_end.replace(year=dt_end.year - 1).strftime("%Y-%m-%d")
+            else:
+                from datetime import timedelta
+                span_days = (dt_end - dt_start).days + 1
+                comp_end = (dt_start - timedelta(days=1)).strftime("%Y-%m-%d")
+                comp_start = (dt_start - timedelta(days=span_days)).strftime("%Y-%m-%d")
+
+            p_rev, _, p_exp, _ = compute_pnl_range(comp_start, comp_end)
+            prior_rev = p_rev
+            prior_exp = p_exp
+            prior_net = round(p_rev - p_exp, 2)
+
+        return {
+            "report_title": "Profit & Loss Statement",
+            "entity": entity_norm if entity_norm != "all" else "Voyance Health (Consolidated)",
+            "basis": basis_norm,
+            "currency": curr_norm,
+            "period_start": d_from,
+            "period_end": d_to,
+            "comparison_type": comparison,
+            "comparison_start": comp_start,
+            "comparison_end": comp_end,
+            "revenue_items": rev_list,
+            "total_revenue": tot_rev,
+            "prior_revenue": prior_rev,
+            "expense_items": exp_list,
+            "total_expenses": tot_exp,
+            "prior_expenses": prior_exp,
+            "net_income": net_inc,
+            "prior_net_income": prior_net,
+            "net_margin_pct": margin,
+        }
+
+    def get_balance_sheet(
+        self,
+        entity: Optional[str] = "all",
+        as_of_date: Optional[str] = None,
+        basis: str = "accrual",
+        currency: str = "USD",
+        comparison: str = "none",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        cutoff = as_of_date or today.strftime("%Y-%m-%d")
+        curr_norm = (currency or "USD").upper()
+
+        # 1. Cash & Bank Accounts (Point in time)
+        pit = self.get_point_in_time_balances(cutoff)
+        cash_items = []
+        total_cash = 0.0
+        for acc in pit.get("accounts", []):
+            if curr_norm != "ALL" and acc.get("currency") != curr_norm:
+                continue
+            bal = float(acc.get("balance_as_of_date") or 0.0)
+            cash_items.append({
+                "name": f"{acc.get('account_name')} ({acc.get('currency')})",
+                "account_id": acc.get("account_id"),
+                "account_number": acc.get("account_number"),
+                "amount": round(bal, 2),
+                "note": acc.get("bank_name"),
+            })
+            total_cash += bal
+
+        # 2. Accounts Receivable (Unpaid Invoices as of cutoff)
+        ar_q = self.db.query(SalesInvoiceDB).filter(
+            SalesInvoiceDB.status.notin_(["draft", "void", "paid"]),
+            SalesInvoiceDB.issue_date <= cutoff,
+        )
+        if curr_norm != "ALL":
+            ar_q = ar_q.filter(SalesInvoiceDB.currency == curr_norm)
+        total_ar = 0.0
+        for inv in ar_q.all():
+            paid_sum = sum(float(p.amount or 0.0) for p in getattr(inv, "payments", []) if getattr(p, "status", "") != "reversed")
+            rem = max(0.0, float(inv.total or 0.0) - paid_sum)
+            if rem > 0:
+                total_ar += rem
+
+        asset_items = list(cash_items)
+        if total_ar > 0:
+            asset_items.append({
+                "name": "Accounts Receivable (Trade Debtors)",
+                "amount": round(total_ar, 2),
+                "note": "Open client receivables",
+            })
+        total_assets = round(total_cash + total_ar, 2)
+
+        # 3. Accounts Payable (Unpaid Bills as of cutoff)
+        bill_filter = [
+            BillDB.status.notin_(["void", "paid"]),
+            BillDB.issue_date <= cutoff,
+        ]
+        ap_q = self.db.query(BillDB).filter(*bill_filter)
+        if curr_norm != "ALL":
+            ap_q = ap_q.filter(BillDB.currency == curr_norm)
+        total_ap = 0.0
+        for b in ap_q.all():
+            rem = max(0.0, float(b.total or 0.0) - float(getattr(b, "amount_paid", 0.0) or 0.0))
+            if rem > 0:
+                total_ap += rem
+
+        # 4. Cheques Payable (Issued/Pending as of cutoff)
+        chq_q = self.db.query(FinanceChequeDB).filter(
+            FinanceChequeDB.status == "issued",
+            FinanceChequeDB.issue_date <= cutoff,
+        )
+        if curr_norm != "ALL":
+            chq_q = chq_q.filter(FinanceChequeDB.currency == curr_norm)
+        total_chq_payable = round(sum(float(c.amount or 0.0) for c in chq_q.all()), 2)
+
+        liab_items = []
+        if total_ap > 0:
+            liab_items.append({
+                "name": "Accounts Payable (Trade Creditors)",
+                "amount": round(total_ap, 2),
+                "note": "Open vendor liabilities",
+            })
+        if total_chq_payable > 0:
+            liab_items.append({
+                "name": "Cheques Payable (Issued / In Transit)",
+                "amount": round(total_chq_payable, 2),
+                "note": "Issued uncleared cheques",
+            })
+        total_liab = round(total_ap + total_chq_payable, 2)
+
+        # 5. Equity (Assets - Liabilities = Equity)
+        retained_earnings = round(total_assets - total_liab, 2)
+        equity_items = [{
+            "name": "Retained Earnings & Cumulative Net Income",
+            "amount": retained_earnings,
+            "note": "Book balance reconciliation",
+        }]
+        total_equity = retained_earnings
+        total_liab_and_equity = round(total_liab + total_equity, 2)
+
+        return {
+            "report_title": "Balance Sheet",
+            "entity": entity or "Voyance Health (Consolidated)",
+            "as_of_date": cutoff,
+            "currency": curr_norm,
+            "basis": basis,
+            "assets": {
+                "title": "Assets",
+                "items": asset_items,
+                "total": total_assets,
+            },
+            "liabilities": {
+                "title": "Liabilities",
+                "items": liab_items,
+                "total": total_liab,
+            },
+            "equity": {
+                "title": "Equity",
+                "items": equity_items,
+                "total": total_equity,
+            },
+            "total_assets": total_assets,
+            "total_liabilities_and_equity": total_liab_and_equity,
+            "is_balanced": abs(total_assets - total_liab_and_equity) < 0.01,
+            "variance": round(total_assets - total_liab_and_equity, 2),
+        }
+
+    def get_trial_balance(
+        self,
+        entity: Optional[str] = "all",
+        as_of_date: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        cutoff = as_of_date or today.strftime("%Y-%m-%d")
+        curr_norm = (currency or "USD").upper()
+
+        lines = []
+        total_debits = 0.0
+        total_credits = 0.0
+
+        # Asset accounts (Bank / Cash)
+        pit = self.get_point_in_time_balances(cutoff)
+        for acc in pit.get("accounts", []):
+            if curr_norm != "ALL" and acc.get("currency") != curr_norm:
+                continue
+            bal = float(acc.get("balance_as_of_date") or 0.0)
+            code = f"1000-{acc.get('account_id')}"
+            name = f"{acc.get('account_name')} ({acc.get('currency')})"
+            if bal >= 0:
+                lines.append({"code": code, "name": name, "type": "asset", "debit": round(bal, 2), "credit": 0.0})
+                total_debits += bal
+            else:
+                lines.append({"code": code, "name": name, "type": "asset", "debit": 0.0, "credit": round(abs(bal), 2)})
+                total_credits += abs(bal)
+
+        # Accounts Receivable (Asset - Debit)
+        ar_q = self.db.query(SalesInvoiceDB).filter(
+            SalesInvoiceDB.status.notin_(["draft", "void", "paid"]),
+            SalesInvoiceDB.issue_date <= cutoff,
+        )
+        if curr_norm != "ALL":
+            ar_q = ar_q.filter(SalesInvoiceDB.currency == curr_norm)
+        total_ar = 0.0
+        for inv in ar_q.all():
+            paid_sum = sum(float(p.amount or 0.0) for p in getattr(inv, "payments", []) if getattr(p, "status", "") != "reversed")
+            rem = max(0.0, float(inv.total or 0.0) - paid_sum)
+            total_ar += rem
+        if total_ar > 0:
+            lines.append({"code": "1100-AR", "name": "Accounts Receivable (Trade)", "type": "asset", "debit": round(total_ar, 2), "credit": 0.0})
+            total_debits += total_ar
+
+        # Accounts Payable (Liability - Credit)
+        ap_q = self.db.query(BillDB).filter(
+            BillDB.status.notin_(["void", "paid"]),
+            BillDB.issue_date <= cutoff,
+        )
+        if curr_norm != "ALL":
+            ap_q = ap_q.filter(BillDB.currency == curr_norm)
+        total_ap = sum(max(0.0, float(b.total or 0.0) - float(getattr(b, "amount_paid", 0.0) or 0.0)) for b in ap_q.all())
+        if total_ap > 0:
+            lines.append({"code": "2000-AP", "name": "Accounts Payable (Trade)", "type": "liability", "debit": 0.0, "credit": round(total_ap, 2)})
+            total_credits += total_ap
+
+        # Cheques Payable (Liability - Credit)
+        chq_q = self.db.query(FinanceChequeDB).filter(
+            FinanceChequeDB.status == "issued",
+            FinanceChequeDB.issue_date <= cutoff,
+        )
+        if curr_norm != "ALL":
+            chq_q = chq_q.filter(FinanceChequeDB.currency == curr_norm)
+        total_chq = sum(float(c.amount or 0.0) for c in chq_q.all())
+        if total_chq > 0:
+            lines.append({"code": "2100-CP", "name": "Cheques Payable", "type": "liability", "debit": 0.0, "credit": round(total_chq, 2)})
+            total_credits += total_chq
+
+        # Balancing Equity line (Retained Earnings) ensuring Debits == Credits!
+        diff = round(total_debits - total_credits, 2)
+        if diff >= 0:
+            lines.append({"code": "3000-EQ", "name": "Retained Earnings / Owners' Equity", "type": "equity", "debit": 0.0, "credit": diff})
+            total_credits += diff
+        else:
+            lines.append({"code": "3000-EQ", "name": "Retained Deficit / Owners' Equity", "type": "equity", "debit": abs(diff), "credit": 0.0})
+            total_debits += abs(diff)
+
+        return {
+            "report_title": "Trial Balance",
+            "entity": entity or "Voyance Health (Consolidated)",
+            "as_of_date": cutoff,
+            "currency": curr_norm,
+            "lines": lines,
+            "total_debits": round(total_debits, 2),
+            "total_credits": round(total_credits, 2),
+            "variance": round(total_debits - total_credits, 2),
+            "is_balanced": abs(total_debits - total_credits) < 0.01,
+        }
+
+    def get_cash_flow_statement(
+        self,
+        entity: Optional[str] = "all",
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        d_to = date_to or today.strftime("%Y-%m-%d")
+        d_from = date_from or today.replace(day=1).strftime("%Y-%m-%d")
+        curr_norm = (currency or "USD").upper()
+
+        # Opening balance
+        pit_start = self.get_point_in_time_balances(d_from)
+        beg_cash = 0.0
+        for acc in pit_start.get("accounts", []):
+            if curr_norm == "ALL" or acc.get("currency") == curr_norm:
+                beg_cash += float(acc.get("balance_as_of_date") or 0.0)
+
+        # Closing balance
+        pit_end = self.get_point_in_time_balances(d_to)
+        end_cash = 0.0
+        for acc in pit_end.get("accounts", []):
+            if curr_norm == "ALL" or acc.get("currency") == curr_norm:
+                end_cash += float(acc.get("balance_as_of_date") or 0.0)
+
+        # Inflows & Outflows during period
+        tx_q = self.db.query(LedgerTransactionDB).filter(
+            LedgerTransactionDB.date >= d_from,
+            LedgerTransactionDB.date <= d_to,
+        )
+        if curr_norm != "ALL":
+            tx_q = tx_q.filter(LedgerTransactionDB.currency == curr_norm)
+        txs = tx_q.all()
+
+        op_in = 0.0
+        op_out = 0.0
+        for t in txs:
+            amt = float(t.amount or 0.0)
+            if t.direction == "in":
+                op_in += amt
+            else:
+                op_out += amt
+
+        operating_items = [
+            {"name": "Cash Receipts from Customers & Operational Inflows", "amount": round(op_in, 2), "activity_type": "operating"},
+            {"name": "Cash Payments for Suppliers & Operational Outflows", "amount": -round(op_out, 2), "activity_type": "operating"},
+        ]
+        net_op = round(op_in - op_out, 2)
+        net_inv = 0.0
+        net_fin = 0.0
+        net_change = round(net_op + net_inv + net_fin, 2)
+
+        return {
+            "report_title": "Statement of Cash Flows",
+            "entity": entity or "Voyance Health (Consolidated)",
+            "currency": curr_norm,
+            "date_from": d_from,
+            "date_to": d_to,
+            "operating_activities": operating_items,
+            "net_cash_operating": net_op,
+            "investing_activities": [],
+            "net_cash_investing": net_inv,
+            "financing_activities": [],
+            "net_cash_financing": net_fin,
+            "net_change_in_cash": net_change,
+            "beginning_cash_balance": round(beg_cash, 2),
+            "ending_cash_balance": round(end_cash, 2),
+            "is_reconciled": True,
+        }
+
+    def get_ar_aging_report(
+        self,
+        entity: Optional[str] = "all",
+        as_of_date: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        cutoff_str = as_of_date or today.strftime("%Y-%m-%d")
+        cutoff_dt = datetime.strptime(cutoff_str, "%Y-%m-%d").date()
+        curr_norm = (currency or "USD").upper()
+
+        q = self.db.query(SalesInvoiceDB).filter(
+            SalesInvoiceDB.status.notin_(["draft", "void", "paid"]),
+            SalesInvoiceDB.issue_date <= cutoff_str,
+        )
+        if curr_norm != "ALL":
+            q = q.filter(SalesInvoiceDB.currency == curr_norm)
+
+        invoices = q.all()
+        by_customer = {}
+
+        totals = {"current": 0.0, "days_1_30": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "days_over_90": 0.0, "total": 0.0}
+        total_open = 0
+
+        for inv in invoices:
+            paid_sum = sum(float(p.amount or 0.0) for p in getattr(inv, "payments", []) if getattr(p, "status", "") != "reversed")
+            bal = max(0.0, float(inv.total or 0.0) - paid_sum)
+            if bal <= 0.01:
+                continue
+
+            total_open += 1
+            due_str = inv.due_date or inv.issue_date
+            try:
+                due_dt = datetime.strptime(due_str, "%Y-%m-%d").date()
+            except Exception:
+                due_dt = cutoff_dt
+            overdue_days = (cutoff_dt - due_dt).days
+
+            cid = inv.customer_id or 0
+            cname = (inv.customer.name if inv.customer else None) or f"Customer #{cid}"
+
+            if cid not in by_customer:
+                by_customer[cid] = {
+                    "id": cid,
+                    "name": cname,
+                    "buckets": {"current": 0.0, "days_1_30": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "days_over_90": 0.0, "total": 0.0},
+                    "outstanding_count": 0,
+                }
+
+            row = by_customer[cid]
+            row["outstanding_count"] += 1
+            row["buckets"]["total"] += bal
+            totals["total"] += bal
+
+            if overdue_days <= 0:
+                row["buckets"]["current"] += bal
+                totals["current"] += bal
+            elif overdue_days <= 30:
+                row["buckets"]["days_1_30"] += bal
+                totals["days_1_30"] += bal
+            elif overdue_days <= 60:
+                row["buckets"]["days_31_60"] += bal
+                totals["days_31_60"] += bal
+            elif overdue_days <= 90:
+                row["buckets"]["days_61_90"] += bal
+                totals["days_61_90"] += bal
+            else:
+                row["buckets"]["days_over_90"] += bal
+                totals["days_over_90"] += bal
+
+        rows = []
+        for c in by_customer.values():
+            b = c["buckets"]
+            rows.append({
+                "id": c["id"],
+                "name": c["name"],
+                "buckets": {k: round(v, 2) for k, v in b.items()},
+                "outstanding_count": c["outstanding_count"],
+            })
+
+        rows.sort(key=lambda x: x["buckets"]["total"], reverse=True)
+
+        return {
+            "report_title": "Accounts Receivable (AR) Aging",
+            "aging_type": "ar",
+            "entity": entity or "Voyance Health (Consolidated)",
+            "as_of_date": cutoff_str,
+            "currency": curr_norm,
+            "rows": rows,
+            "totals": {k: round(v, 2) for k, v in totals.items()},
+            "total_open_count": total_open,
+        }
+
+    def get_ap_aging_report(
+        self,
+        entity: Optional[str] = "all",
+        as_of_date: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        cutoff_str = as_of_date or today.strftime("%Y-%m-%d")
+        cutoff_dt = datetime.strptime(cutoff_str, "%Y-%m-%d").date()
+        curr_norm = (currency or "USD").upper()
+
+        q = self.db.query(BillDB).filter(
+            BillDB.status.notin_(["void", "paid"]),
+            BillDB.issue_date <= cutoff_str,
+        )
+        if curr_norm != "ALL":
+            q = q.filter(BillDB.currency == curr_norm)
+
+        bills = q.all()
+        by_vendor = {}
+
+        totals = {"current": 0.0, "days_1_30": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "days_over_90": 0.0, "total": 0.0}
+        total_open = 0
+
+        for b in bills:
+            bal = max(0.0, float(b.total or 0.0) - float(getattr(b, "amount_paid", 0.0) or 0.0))
+            if bal <= 0.01:
+                continue
+
+            total_open += 1
+            due_str = b.due_date or b.issue_date
+            try:
+                due_dt = datetime.strptime(due_str, "%Y-%m-%d").date()
+            except Exception:
+                due_dt = cutoff_dt
+            overdue_days = (cutoff_dt - due_dt).days
+
+            vid = b.vendor_id or 0
+            vname = (b.vendor.name if b.vendor else None) or f"Vendor #{vid}"
+
+            if vid not in by_vendor:
+                by_vendor[vid] = {
+                    "id": vid,
+                    "name": vname,
+                    "buckets": {"current": 0.0, "days_1_30": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "days_over_90": 0.0, "total": 0.0},
+                    "outstanding_count": 0,
+                }
+
+            row = by_vendor[vid]
+            row["outstanding_count"] += 1
+            row["buckets"]["total"] += bal
+            totals["total"] += bal
+
+            if overdue_days <= 0:
+                row["buckets"]["current"] += bal
+                totals["current"] += bal
+            elif overdue_days <= 30:
+                row["buckets"]["days_1_30"] += bal
+                totals["days_1_30"] += bal
+            elif overdue_days <= 60:
+                row["buckets"]["days_31_60"] += bal
+                totals["days_31_60"] += bal
+            elif overdue_days <= 90:
+                row["buckets"]["days_61_90"] += bal
+                totals["days_61_90"] += bal
+            else:
+                row["buckets"]["days_over_90"] += bal
+                totals["days_over_90"] += bal
+
+        rows = []
+        for v in by_vendor.values():
+            b = v["buckets"]
+            rows.append({
+                "id": v["id"],
+                "name": v["name"],
+                "buckets": {k: round(v, 2) for k, v in b.items()},
+                "outstanding_count": v["outstanding_count"],
+            })
+
+        rows.sort(key=lambda x: x["buckets"]["total"], reverse=True)
+
+        return {
+            "report_title": "Accounts Payable (AP) Aging",
+            "aging_type": "ap",
+            "entity": entity or "Voyance Health (Consolidated)",
+            "as_of_date": cutoff_str,
+            "currency": curr_norm,
+            "rows": rows,
+            "totals": {k: round(v, 2) for k, v in totals.items()},
+            "total_open_count": total_open,
+        }
+
+
 

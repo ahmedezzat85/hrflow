@@ -139,7 +139,19 @@ async function openReportFromLibrary(reportKey) {
   await loadSavedReportViews(reportKey);
 
   // Switch to inner pane
-  const validTabs = ["category-summary", "matrix", "balances", "transactions", "cheques"];
+  const validTabs = [
+    "category-summary",
+    "matrix",
+    "balances",
+    "profit-and-loss",
+    "balance-sheet",
+    "trial-balance",
+    "cash-flow",
+    "ar-aging",
+    "ap-aging",
+    "transactions",
+    "cheques",
+  ];
   const subnav = document.getElementById("financeReportsSubNav");
   const placeholder = document.getElementById("reportPanePlaceholder");
 
@@ -155,6 +167,12 @@ async function openReportFromLibrary(reportKey) {
           "category-summary": "reportPaneCategorySummary",
           matrix: "reportPaneMatrix",
           balances: "reportPaneBalances",
+          "profit-and-loss": "reportPaneProfitAndLoss",
+          "balance-sheet": "reportPaneBalanceSheet",
+          "trial-balance": "reportPaneTrialBalance",
+          "cash-flow": "reportPaneCashFlow",
+          "ar-aging": "reportPaneArAging",
+          "ap-aging": "reportPaneApAging",
           transactions: "reportPaneTransactions",
           cheques: "reportPaneCheques",
         }[t]
@@ -201,6 +219,12 @@ function switchFinanceReportsTab(tabName, btn) {
     "category-summary": "reportPaneCategorySummary",
     matrix: "reportPaneMatrix",
     balances: "reportPaneBalances",
+    "profit-and-loss": "reportPaneProfitAndLoss",
+    "balance-sheet": "reportPaneBalanceSheet",
+    "trial-balance": "reportPaneTrialBalance",
+    "cash-flow": "reportPaneCashFlow",
+    "ar-aging": "reportPaneArAging",
+    "ap-aging": "reportPaneApAging",
     transactions: "reportPaneTransactions",
     cheques: "reportPaneCheques",
   };
@@ -240,6 +264,18 @@ function switchFinanceReportsTab(tabName, btn) {
     loadReportMatrix();
   } else if (tabName === "balances") {
     loadReportBalances();
+  } else if (tabName === "profit-and-loss") {
+    loadReportProfitAndLoss();
+  } else if (tabName === "balance-sheet") {
+    loadReportBalanceSheet();
+  } else if (tabName === "trial-balance") {
+    loadReportTrialBalance();
+  } else if (tabName === "cash-flow") {
+    loadReportCashFlow();
+  } else if (tabName === "ar-aging") {
+    loadReportArAging();
+  } else if (tabName === "ap-aging") {
+    loadReportApAging();
   } else if (tabName === "transactions") {
     loadReportTransactions();
   } else if (tabName === "cheques") {
@@ -377,6 +413,18 @@ function refreshActiveReport() {
     loadReportMatrix();
   } else if (_currentReportsTab === "balances") {
     loadReportBalances();
+  } else if (_currentReportsTab === "profit-and-loss") {
+    loadReportProfitAndLoss();
+  } else if (_currentReportsTab === "balance-sheet") {
+    loadReportBalanceSheet();
+  } else if (_currentReportsTab === "trial-balance") {
+    loadReportTrialBalance();
+  } else if (_currentReportsTab === "cash-flow") {
+    loadReportCashFlow();
+  } else if (_currentReportsTab === "ar-aging") {
+    loadReportArAging();
+  } else if (_currentReportsTab === "ap-aging") {
+    loadReportApAging();
   } else if (_currentReportsTab === "transactions") {
     loadReportTransactions();
   } else if (_currentReportsTab === "cheques") {
@@ -1139,6 +1187,545 @@ function triggerExcelDownload(url, filename) {
   document.body.removeChild(a);
 }
 
+function _esc(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// ----------------------------------------------------------------------
+// Core Accounting & Aging Report Loaders (Story 7.2)
+// ----------------------------------------------------------------------
+
+async function loadReportProfitAndLoss() {
+  const dateFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dateTo = document.getElementById("reportShellDateTo")?.value || "";
+  const basis = document.getElementById("reportShellBasis")?.value || "cash";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  const comparison = document.getElementById("reportShellComparison")?.value || "none";
+  const entity = document.getElementById("reportShellEntity")?.value || "all";
+
+  try {
+    const data = await FinanceApi.getProfitAndLossReport({
+      date_from: dateFrom,
+      date_to: dateTo,
+      basis,
+      currency: currency || undefined,
+      comparison,
+      entity,
+    });
+
+    const curr = data.currency || currency || "USD";
+    const revEl = document.getElementById("reportPnlTotalRevenue");
+    const expEl = document.getElementById("reportPnlTotalExpenses");
+    const netEl = document.getElementById("reportPnlNetIncome");
+    const marEl = document.getElementById("reportPnlNetMargin");
+    const revSubEl = document.getElementById("reportPnlRevenueSubtotalBadge");
+    const expSubEl = document.getElementById("reportPnlExpenseSubtotalBadge");
+
+    if (revEl) revEl.textContent = FinanceFormat.formatMoney(data.total_revenue || 0, curr);
+    if (expEl) expEl.textContent = FinanceFormat.formatMoney(data.total_expenses || 0, curr);
+    if (netEl) {
+      netEl.textContent = FinanceFormat.formatMoney(data.net_income || 0, curr);
+      netEl.style.color = (data.net_income || 0) >= 0 ? "#10B981" : "#EF4444";
+    }
+    if (marEl) marEl.textContent = `${(data.net_margin_pct || 0).toFixed(1)}%`;
+    if (revSubEl) revSubEl.textContent = FinanceFormat.formatMoney(data.total_revenue || 0, curr);
+    if (expSubEl) expSubEl.textContent = FinanceFormat.formatMoney(data.total_expenses || 0, curr);
+
+    // Revenue table
+    const revTbody = document.getElementById("reportPnlRevenueTableBody");
+    if (revTbody) {
+      if (!data.revenue_items || data.revenue_items.length === 0) {
+        revTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">No revenue recorded for this period.</td></tr>`;
+      } else {
+        revTbody.innerHTML = data.revenue_items.map((it) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-layer-group" style="color:#10B981; margin-right:6px;"></i> ${_esc(it.category_name)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:#10B981;">${FinanceFormat.formatMoney(it.amount, curr)}</td>
+            <td>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="flex:1; height:6px; border-radius:3px; background:#E2E8F0; overflow:hidden;">
+                  <div style="width:${Math.min(100, Math.max(0, it.percentage))}%; height:100%; background:#10B981;"></div>
+                </div>
+                <span style="font-size:0.8rem; color:var(--text-muted); width:45px; text-align:right;">${it.percentage.toFixed(1)}%</span>
+              </div>
+            </td>
+            <td style="text-align:center;">
+              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('category', '${_esc(it.category_name)}', '${_esc(it.category_name)}')">
+                <i class="fa-solid fa-search"></i>
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // Expense table
+    const expTbody = document.getElementById("reportPnlExpenseTableBody");
+    if (expTbody) {
+      if (!data.expense_items || data.expense_items.length === 0) {
+        expTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">No expenses recorded for this period.</td></tr>`;
+      } else {
+        expTbody.innerHTML = data.expense_items.map((it) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-tag" style="color:#EF4444; margin-right:6px;"></i> ${_esc(it.category_name)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(it.amount, curr)}</td>
+            <td>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="flex:1; height:6px; border-radius:3px; background:#E2E8F0; overflow:hidden;">
+                  <div style="width:${Math.min(100, Math.max(0, it.percentage))}%; height:100%; background:#EF4444;"></div>
+                </div>
+                <span style="font-size:0.8rem; color:var(--text-muted); width:45px; text-align:right;">${it.percentage.toFixed(1)}%</span>
+              </div>
+            </td>
+            <td style="text-align:center;">
+              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('category', '${_esc(it.category_name)}', '${_esc(it.category_name)}')">
+                <i class="fa-solid fa-search"></i>
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load Profit & Loss report:", err);
+    showToast(err.message || "Failed to load Profit & Loss report", "error");
+  }
+}
+
+async function loadReportBalanceSheet() {
+  const asOfDate = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  const basis = document.getElementById("reportShellBasis")?.value || "accrual";
+  const entity = document.getElementById("reportShellEntity")?.value || "all";
+
+  try {
+    const data = await FinanceApi.getBalanceSheetReport({
+      as_of_date: asOfDate,
+      currency: currency || undefined,
+      basis,
+      entity,
+    });
+
+    const curr = data.currency || currency || "USD";
+    const aEl = document.getElementById("reportBsTotalAssets");
+    const lEl = document.getElementById("reportBsTotalLiabilities");
+    const eEl = document.getElementById("reportBsTotalEquity");
+    const badge = document.getElementById("reportBsBalancedBadge");
+    const aSub = document.getElementById("reportBsAssetsSubtotal");
+    const lSub = document.getElementById("reportBsLiabilitiesSubtotal");
+    const eSub = document.getElementById("reportBsEquitySubtotal");
+
+    if (aEl) aEl.textContent = FinanceFormat.formatMoney(data.total_assets || 0, curr);
+    if (lEl) lEl.textContent = FinanceFormat.formatMoney((data.liabilities && data.liabilities.total) || 0, curr);
+    if (eEl) eEl.textContent = FinanceFormat.formatMoney((data.equity && data.equity.total) || 0, curr);
+
+    if (badge) {
+      if (data.is_balanced) {
+        badge.innerHTML = `<span style="color:#10B981;"><i class="fa-solid fa-circle-check"></i> BALANCED ✓</span>`;
+      } else {
+        badge.innerHTML = `<span style="color:#EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> VARIANCE: ${FinanceFormat.formatMoney(data.variance || 0, curr)}</span>`;
+      }
+    }
+
+    if (aSub) aSub.textContent = FinanceFormat.formatMoney((data.assets && data.assets.total) || 0, curr);
+    if (lSub) lSub.textContent = FinanceFormat.formatMoney((data.liabilities && data.liabilities.total) || 0, curr);
+    if (eSub) eSub.textContent = FinanceFormat.formatMoney((data.equity && data.equity.total) || 0, curr);
+
+    // Assets table
+    const aTbody = document.getElementById("reportBsAssetsTableBody");
+    if (aTbody) {
+      const items = (data.assets && data.assets.items) || [];
+      if (items.length === 0) {
+        aTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:14px;">No asset records.</td></tr>`;
+      } else {
+        aTbody.innerHTML = items.map((x) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-building-columns" style="color:#2563EB; margin-right:6px;"></i> ${_esc(x.name)}</td>
+            <td style="color:var(--text-muted); font-size:0.85rem;">${_esc(x.note || "")}</td>
+            <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // Liabilities table
+    const lTbody = document.getElementById("reportBsLiabilitiesTableBody");
+    if (lTbody) {
+      const items = (data.liabilities && data.liabilities.items) || [];
+      if (items.length === 0) {
+        lTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:14px;">No liability records.</td></tr>`;
+      } else {
+        lTbody.innerHTML = items.map((x) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-receipt" style="color:#F59E0B; margin-right:6px;"></i> ${_esc(x.name)}</td>
+            <td style="color:var(--text-muted); font-size:0.85rem;">${_esc(x.note || "")}</td>
+            <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // Equity table
+    const eTbody = document.getElementById("reportBsEquityTableBody");
+    if (eTbody) {
+      const items = (data.equity && data.equity.items) || [];
+      if (items.length === 0) {
+        eTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:14px;">No equity records.</td></tr>`;
+      } else {
+        eTbody.innerHTML = items.map((x) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-coins" style="color:#10B981; margin-right:6px;"></i> ${_esc(x.name)}</td>
+            <td style="color:var(--text-muted); font-size:0.85rem;">${_esc(x.note || "")}</td>
+            <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load Balance Sheet:", err);
+    showToast(err.message || "Failed to load Balance Sheet", "error");
+  }
+}
+
+async function loadReportTrialBalance() {
+  const asOfDate = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  const entity = document.getElementById("reportShellEntity")?.value || "all";
+
+  try {
+    const data = await FinanceApi.getTrialBalanceReport({
+      as_of_date: asOfDate,
+      currency: currency || undefined,
+      entity,
+    });
+
+    const curr = data.currency || currency || "USD";
+    const dEl = document.getElementById("reportTbTotalDebits");
+    const cEl = document.getElementById("reportTbTotalCredits");
+    const vEl = document.getElementById("reportTbVariance");
+    const bEl = document.getElementById("reportTbBalancedBadge");
+
+    if (dEl) dEl.textContent = FinanceFormat.formatMoney(data.total_debits || 0, curr);
+    if (cEl) cEl.textContent = FinanceFormat.formatMoney(data.total_credits || 0, curr);
+    if (vEl) vEl.textContent = FinanceFormat.formatMoney(data.variance || 0, curr);
+    if (bEl) {
+      if (data.is_balanced) {
+        bEl.innerHTML = `<span style="color:#10B981;"><i class="fa-solid fa-circle-check"></i> DEBITS = CREDITS ✓</span>`;
+      } else {
+        bEl.innerHTML = `<span style="color:#EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> UNBALANCED</span>`;
+      }
+    }
+
+    const tbody = document.getElementById("reportTbTableBody");
+    const tfoot = document.getElementById("reportTbTableFoot");
+
+    if (tbody) {
+      const lines = data.lines || [];
+      if (lines.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">No ledger lines found.</td></tr>`;
+      } else {
+        tbody.innerHTML = lines.map((l) => `
+          <tr>
+            <td style="font-family:monospace; font-size:0.85rem; font-weight:600;">${_esc(l.code)}</td>
+            <td style="font-weight:600;">${_esc(l.name)}</td>
+            <td><span class="badge badge-neutral" style="text-transform:capitalize; font-size:0.75rem;">${_esc(l.type)}</span></td>
+            <td class="cell-money" style="text-align:right; color:#2563EB;">${l.debit > 0 ? FinanceFormat.formatMoney(l.debit, curr) : "-"}</td>
+            <td class="cell-money" style="text-align:right; color:#8B5CF6;">${l.credit > 0 ? FinanceFormat.formatMoney(l.credit, curr) : "-"}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="3" style="text-align:right; font-weight:700;">TOTALS:</td>
+          <td class="cell-money" style="text-align:right; color:#2563EB; font-weight:700;">${FinanceFormat.formatMoney(data.total_debits || 0, curr)}</td>
+          <td class="cell-money" style="text-align:right; color:#8B5CF6; font-weight:700;">${FinanceFormat.formatMoney(data.total_credits || 0, curr)}</td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load Trial Balance:", err);
+    showToast(err.message || "Failed to load Trial Balance", "error");
+  }
+}
+
+async function loadReportCashFlow() {
+  const dateFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dateTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  const entity = document.getElementById("reportShellEntity")?.value || "all";
+
+  try {
+    const data = await FinanceApi.getCashFlowReport({
+      date_from: dateFrom,
+      date_to: dateTo,
+      currency: currency || undefined,
+      entity,
+    });
+
+    const curr = data.currency || currency || "USD";
+    const begEl = document.getElementById("reportCfBeginningCash");
+    const opEl = document.getElementById("reportCfOperatingCash");
+    const netEl = document.getElementById("reportCfNetChange");
+    const endEl = document.getElementById("reportCfEndingCash");
+
+    if (begEl) begEl.textContent = FinanceFormat.formatMoney(data.beginning_cash_balance || 0, curr);
+    if (opEl) opEl.textContent = FinanceFormat.formatMoney(data.net_cash_operating || 0, curr);
+    if (netEl) netEl.textContent = FinanceFormat.formatMoney(data.net_change_in_cash || 0, curr);
+    if (endEl) endEl.textContent = FinanceFormat.formatMoney(data.ending_cash_balance || 0, curr);
+
+    const tbody = document.getElementById("reportCfTableBody");
+    if (tbody) {
+      let rowsHtml = `
+        <tr style="background:var(--bg-secondary, #F8FAFC); font-weight:700;">
+          <td><i class="fa-solid fa-hourglass-start" style="color:var(--text-muted); margin-right:8px;"></i> Cash & Cash Equivalents at Beginning of Period</td>
+          <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(data.beginning_cash_balance || 0, curr)}</td>
+        </tr>
+        <tr style="background:rgba(37,99,235,0.05); font-weight:700; border-top:2px solid var(--border-color, #E2E8F0);">
+          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:#2563EB; margin-right:6px;"></i> Cash Flows from Operating Activities</td>
+        </tr>
+      `;
+
+      const opItems = data.operating_activities || [];
+      if (opItems.length === 0) {
+        rowsHtml += `<tr><td colspan="2" style="padding-left:32px; color:var(--text-muted); font-size:0.9rem;">No operational flows in period.</td></tr>`;
+      } else {
+        opItems.forEach((x) => {
+          const color = x.amount >= 0 ? "#10B981" : "#EF4444";
+          rowsHtml += `
+            <tr>
+              <td style="padding-left:32px;"><i class="fa-solid fa-caret-right" style="color:var(--text-muted); margin-right:6px;"></i> ${_esc(x.name)}</td>
+              <td class="cell-money" style="text-align:right; font-weight:600; color:${color};">${FinanceFormat.formatMoney(x.amount, curr)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      rowsHtml += `
+        <tr style="font-weight:700; background:var(--bg-secondary, #F8FAFC);">
+          <td style="padding-left:32px;">Net Cash Generated by Operating Activities</td>
+          <td class="cell-money" style="text-align:right; color:#10B981;">${FinanceFormat.formatMoney(data.net_cash_operating || 0, curr)}</td>
+        </tr>
+        <tr style="background:rgba(37,99,235,0.05); font-weight:700; border-top:2px solid var(--border-color, #E2E8F0);">
+          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:#2563EB; margin-right:6px;"></i> Cash Flows from Investing Activities</td>
+        </tr>
+      `;
+
+      const invItems = data.investing_activities || [];
+      if (invItems.length === 0) {
+        rowsHtml += `<tr><td colspan="2" style="padding-left:32px; color:var(--text-muted); font-size:0.9rem;">No capital expenditures or investment activities in period.</td></tr>`;
+      } else {
+        invItems.forEach((x) => {
+          rowsHtml += `
+            <tr>
+              <td style="padding-left:32px;">${_esc(x.name)}</td>
+              <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      rowsHtml += `
+        <tr style="background:rgba(37,99,235,0.05); font-weight:700; border-top:2px solid var(--border-color, #E2E8F0);">
+          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:#2563EB; margin-right:6px;"></i> Cash Flows from Financing Activities</td>
+        </tr>
+      `;
+
+      const finItems = data.financing_activities || [];
+      if (finItems.length === 0) {
+        rowsHtml += `<tr><td colspan="2" style="padding-left:32px; color:var(--text-muted); font-size:0.9rem;">No debt or equity financing transactions in period.</td></tr>`;
+      } else {
+        finItems.forEach((x) => {
+          rowsHtml += `
+            <tr>
+              <td style="padding-left:32px;">${_esc(x.name)}</td>
+              <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      rowsHtml += `
+        <tr style="font-weight:700; background:rgba(37,99,235,0.08); border-top:2px solid #2563EB;">
+          <td>Net Increase / (Decrease) in Cash and Cash Equivalents</td>
+          <td class="cell-money" style="text-align:right; font-size:1.05rem; color:#2563EB;">${FinanceFormat.formatMoney(data.net_change_in_cash || 0, curr)}</td>
+        </tr>
+        <tr style="font-weight:700; background:rgba(16,185,129,0.12); border-top:2px solid #10B981;">
+          <td><i class="fa-solid fa-flag-checkered" style="color:#059669; margin-right:8px;"></i> Cash & Cash Equivalents at End of Period</td>
+          <td class="cell-money" style="text-align:right; font-size:1.15rem; color:#059669;">${FinanceFormat.formatMoney(data.ending_cash_balance || 0, curr)}</td>
+        </tr>
+      `;
+
+      tbody.innerHTML = rowsHtml;
+    }
+  } catch (err) {
+    console.error("Failed to load Cash Flow report:", err);
+    showToast(err.message || "Failed to load Cash Flow report", "error");
+  }
+}
+
+async function loadReportArAging() {
+  const asOfDate = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  const entity = document.getElementById("reportShellEntity")?.value || "all";
+
+  try {
+    const data = await FinanceApi.getArAgingReport({
+      as_of_date: asOfDate,
+      currency: currency || undefined,
+      entity,
+    });
+
+    const curr = data.currency || currency || "USD";
+    const t = data.totals || { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_over_90: 0, total: 0 };
+
+    const elTot = document.getElementById("reportArTotalOutstanding");
+    const elCur = document.getElementById("reportArCurrent");
+    const el130 = document.getElementById("reportArDays130");
+    const el3160 = document.getElementById("reportArDays3160");
+    const el6190 = document.getElementById("reportArDays6190");
+    const el90 = document.getElementById("reportArDaysOver90");
+
+    if (elTot) elTot.textContent = FinanceFormat.formatMoney(t.total, curr);
+    if (elCur) elCur.textContent = FinanceFormat.formatMoney(t.current, curr);
+    if (el130) el130.textContent = FinanceFormat.formatMoney(t.days_1_30, curr);
+    if (el3160) el3160.textContent = FinanceFormat.formatMoney(t.days_31_60, curr);
+    if (el6190) el6190.textContent = FinanceFormat.formatMoney(t.days_61_90, curr);
+    if (el90) el90.textContent = FinanceFormat.formatMoney(t.days_over_90, curr);
+
+    const tbody = document.getElementById("reportArAgingTableBody");
+    const tfoot = document.getElementById("reportArAgingTableFoot");
+
+    if (tbody) {
+      const rows = data.rows || [];
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:16px;">No outstanding customer receivables as of this date.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.map((r) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-hospital-user" style="color:#2563EB; margin-right:6px;"></i> ${_esc(r.name)}</td>
+            <td style="text-align:center;"><span class="badge badge-neutral">${r.outstanding_count}</span></td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.current, curr)}</td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_1_30, curr)}</td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_31_60, curr)}</td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_61_90, curr)}</td>
+            <td class="cell-money" style="text-align:right; color:#DC2626; font-weight:600;">${FinanceFormat.formatMoney(r.buckets.days_over_90, curr)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:#2563EB;">${FinanceFormat.formatMoney(r.buckets.total, curr)}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('entity', '${r.id}', '${_esc(r.name)}')">
+                <i class="fa-solid fa-search"></i>
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="2" style="text-align:right; font-weight:700;">TOTAL RECEIVABLES:</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.current, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_1_30, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_31_60, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_61_90, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:#DC2626;">${FinanceFormat.formatMoney(t.days_over_90, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:#2563EB;">${FinanceFormat.formatMoney(t.total, curr)}</td>
+          <td></td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load AR Aging report:", err);
+    showToast(err.message || "Failed to load AR Aging report", "error");
+  }
+}
+
+async function loadReportApAging() {
+  const asOfDate = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  const entity = document.getElementById("reportShellEntity")?.value || "all";
+
+  try {
+    const data = await FinanceApi.getApAgingReport({
+      as_of_date: asOfDate,
+      currency: currency || undefined,
+      entity,
+    });
+
+    const curr = data.currency || currency || "USD";
+    const t = data.totals || { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_over_90: 0, total: 0 };
+
+    const elTot = document.getElementById("reportApTotalOutstanding");
+    const elCur = document.getElementById("reportApCurrent");
+    const el130 = document.getElementById("reportApDays130");
+    const el3160 = document.getElementById("reportApDays3160");
+    const el6190 = document.getElementById("reportApDays6190");
+    const el90 = document.getElementById("reportApDaysOver90");
+
+    if (elTot) elTot.textContent = FinanceFormat.formatMoney(t.total, curr);
+    if (elCur) elCur.textContent = FinanceFormat.formatMoney(t.current, curr);
+    if (el130) el130.textContent = FinanceFormat.formatMoney(t.days_1_30, curr);
+    if (el3160) el3160.textContent = FinanceFormat.formatMoney(t.days_31_60, curr);
+    if (el6190) el6190.textContent = FinanceFormat.formatMoney(t.days_61_90, curr);
+    if (el90) el90.textContent = FinanceFormat.formatMoney(t.days_over_90, curr);
+
+    const tbody = document.getElementById("reportApAgingTableBody");
+    const tfoot = document.getElementById("reportApAgingTableFoot");
+
+    if (tbody) {
+      const rows = data.rows || [];
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:16px;">No outstanding vendor payables as of this date.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.map((r) => `
+          <tr>
+            <td style="font-weight:600;"><i class="fa-solid fa-building" style="color:#EF4444; margin-right:6px;"></i> ${_esc(r.name)}</td>
+            <td style="text-align:center;"><span class="badge badge-neutral">${r.outstanding_count}</span></td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.current, curr)}</td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_1_30, curr)}</td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_31_60, curr)}</td>
+            <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_61_90, curr)}</td>
+            <td class="cell-money" style="text-align:right; color:#DC2626; font-weight:600;">${FinanceFormat.formatMoney(r.buckets.days_over_90, curr)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(r.buckets.total, curr)}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('entity', '${r.id}', '${_esc(r.name)}')">
+                <i class="fa-solid fa-search"></i>
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="2" style="text-align:right; font-weight:700;">TOTAL PAYABLES:</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.current, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_1_30, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_31_60, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_61_90, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:#DC2626;">${FinanceFormat.formatMoney(t.days_over_90, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(t.total, curr)}</td>
+          <td></td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load AP Aging report:", err);
+    showToast(err.message || "Failed to load AP Aging report", "error");
+  }
+}
+
 // Window exports
 window.switchFinanceReportsTab = switchFinanceReportsTab;
 window.loadFinanceReports = loadFinanceReports;
@@ -1168,6 +1755,12 @@ window.loadReportMatrix = loadReportMatrix;
 window.exportMatrixExcel = exportMatrixExcel;
 window.loadReportBalances = loadReportBalances;
 window.exportBalancesExcel = exportBalancesExcel;
+window.loadReportProfitAndLoss = loadReportProfitAndLoss;
+window.loadReportBalanceSheet = loadReportBalanceSheet;
+window.loadReportTrialBalance = loadReportTrialBalance;
+window.loadReportCashFlow = loadReportCashFlow;
+window.loadReportArAging = loadReportArAging;
+window.loadReportApAging = loadReportApAging;
 window.loadReportTransactions = loadReportTransactions;
 window.debounceReportTxSearch = debounceReportTxSearch;
 window.exportTransactionsExcel = exportTransactionsExcel;
