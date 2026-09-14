@@ -3,6 +3,54 @@ let paletteSelectedIndex = -1;
 
 const commandPaletteSources = [
   {
+    id: 'finance_actions',
+    title: 'Finance Actions',
+    icon: 'fa-solid fa-bolt',
+    search(query) {
+      const q = (query || '').toLowerCase().trim();
+      const actions = [
+        {
+          id: 'action_record_tx',
+          type: 'action',
+          name: 'Record Transaction (Global Quick-Add)',
+          role: 'Finance Action',
+          dept: 'Continuous Ledger',
+          status: 'Shift+N',
+          keywords: ['transaction', 'add', 'record', 'quick', 'entry', 'ledger', 'expense', 'income', 'money', 'payment'],
+          icon: 'fa-solid fa-money-bill-transfer',
+          onSelect: () => {
+            if (typeof window.openGlobalFinanceTransactionModal === 'function') {
+              window.openGlobalFinanceTransactionModal();
+            } else if (typeof window.openAddFinanceTransactionModal === 'function') {
+              window.openAddFinanceTransactionModal('money_out', true);
+            }
+          }
+        },
+        {
+          id: 'action_transfer_funds',
+          type: 'action',
+          name: 'Transfer Funds Between Accounts',
+          role: 'Finance Action',
+          dept: 'Cash & Banking',
+          status: 'Transfer',
+          keywords: ['transfer', 'bank', 'funds', 'wire', 'move'],
+          icon: 'fa-solid fa-arrow-right-arrow-left',
+          onSelect: () => {
+            if (typeof window.openRecordFinanceTransferModal === 'function') {
+              window.openRecordFinanceTransferModal();
+            }
+          }
+        }
+      ];
+      if (!q) return actions;
+      return actions.filter(a => {
+        const matchName = a.name.toLowerCase().includes(q);
+        const matchKeyword = a.keywords && a.keywords.some(k => k.toLowerCase().includes(q));
+        return matchName || matchKeyword;
+      });
+    }
+  },
+  {
     id: 'employees',
     title: 'Employees',
     icon: 'fa-solid fa-users',
@@ -69,22 +117,34 @@ function renderCommandPaletteResults(results, query) {
     return;
   }
 
-  const itemsHtml = results.map((item, idx) => `
+  const itemsHtml = results.map((item, idx) => {
+    const isAction = item.type === 'action';
+    const avatarHtml = isAction
+      ? `<div class="palette-item-avatar" style="background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center;"><i class="${item.icon || 'fa-solid fa-bolt'}"></i></div>`
+      : `<div class="palette-item-avatar">${initials(item.name)}</div>`;
+    const statusHtml = isAction
+      ? `<span class="badge" style="background:var(--bg3); color:var(--text2); font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px;">${item.status}</span>`
+      : statusPill(item.status);
+    return `
     <div class="palette-item ${idx === 0 ? 'active' : ''}" data-index="${idx}" onclick="selectPaletteItem(${idx})">
-      <div class="palette-item-avatar">${initials(item.name)}</div>
+      ${avatarHtml}
       <div class="palette-item-content">
         <div class="palette-item-title">${highlightMatch(item.name, query)}</div>
         <div class="palette-item-sub">${item.role} • ${item.dept}</div>
       </div>
       <div class="palette-item-meta">
-        ${statusPill(item.status)}
+        ${statusHtml}
         <i class="fa-solid fa-chevron-right palette-item-arrow"></i>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
+
+  const hasOnlyEmployees = results.length > 0 && results.every(r => r.type === 'employee');
+  const sectionTitle = hasOnlyEmployees ? `Employees (${results.length})` : `Commands & Records (${results.length})`;
 
   container.innerHTML = `
-    <div class="palette-section-title">Employees (${results.length})</div>
+    <div class="palette-section-title">${sectionTitle}</div>
     ${itemsHtml}
   `;
 }
@@ -138,10 +198,25 @@ function closeCommandPalette() {
   modal.classList.remove('active');
 }
 
-// Global shortcuts: Cmd+K / Ctrl+K & arrow navigation
+// Global shortcuts: Cmd+K / Ctrl+K, Shift+N, & arrow navigation
 window.addEventListener('keydown', (e) => {
   const modal = document.getElementById('commandPaletteModal');
   const isOpen = modal && modal.classList.contains('active');
+
+  // Shift+N shortcut to open global transaction modal when not typing in an input/textarea/select
+  if (e.shiftKey && (e.key === 'N' || e.key === 'n') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const tag = (document.activeElement?.tagName || '').toLowerCase();
+    const isEditable = document.activeElement?.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
+    if (!isEditable) {
+      e.preventDefault();
+      if (typeof window.openGlobalFinanceTransactionModal === 'function') {
+        window.openGlobalFinanceTransactionModal();
+      } else if (typeof window.openAddFinanceTransactionModal === 'function') {
+        window.openAddFinanceTransactionModal('money_out', true);
+      }
+      return;
+    }
+  }
 
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();

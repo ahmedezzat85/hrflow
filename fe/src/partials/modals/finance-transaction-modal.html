@@ -13,6 +13,17 @@
         <input type="hidden" id="fFinanceTxAccountId">
         <input type="hidden" id="fFinanceTxEntryType" value="money_out">
 
+        <!-- Global Account Selector (shown when opened globally) -->
+        <div class="form-field full" id="fFinanceTxAccountSelectGroup" style="display: none; margin-bottom: 14px;">
+          <label for="fFinanceTxAccountSelect">Bank Account <span class="req">*</span></label>
+          <select id="fFinanceTxAccountSelect" onchange="onGlobalTxAccountSelected()">
+            <option value="">— Select Target Bank / Cash Account —</option>
+          </select>
+          <small style="color: var(--text3); font-size: 11.5px; margin-top: 3px; display: block;">
+            Select the bank or cash account to record this transaction against.
+          </small>
+        </div>
+
         <!-- Active Account Context Banner -->
         <div id="fFinanceTxAccountContext" style="margin-bottom: 14px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <div>
@@ -125,7 +136,7 @@
 
             <!-- Counterparty / Payee Name (shown for money_out / money_in) -->
             <div class="form-field" id="fFinanceTxCounterpartyGroup">
-              <label for="fFinanceTxCounterparty" id="fFinanceTxCounterpartyLabel">Payee Name / Counterparty</label>
+              <label for="fFinanceTxCounterparty" id="fFinanceTxCounterpartyLabel">Payee / Vendor</label>
               <input id="fFinanceTxCounterparty" placeholder="e.g. Acme Supplies, John Doe" oninput="updateTransactionPreview()">
             </div>
 
@@ -202,9 +213,16 @@
           </div>
         </div>
       </div>
-      <div class="modal-foot">
+      <div class="modal-foot" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <button class="btn" onclick="closeModal('financeTransactionModal')">Cancel</button>
-        <button class="btn btn-fill" id="financeTxSaveBtn" onclick="saveFinanceTransaction()"><i class="fa-solid fa-floppy-disk"></i> Save Transaction</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline" id="financeTxSaveAndNewBtn" onclick="saveFinanceTransaction(true)" title="Save and immediately enter another transaction with the same account and date">
+            <i class="fa-solid fa-plus"></i> Save &amp; Add Another
+          </button>
+          <button type="button" class="btn btn-fill" id="financeTxSaveBtn" onclick="saveFinanceTransaction(false)">
+            <i class="fa-solid fa-floppy-disk"></i> Save Transaction
+          </button>
+        </div>
       </div>
     </div>
   </div>

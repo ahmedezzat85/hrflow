@@ -1493,7 +1493,7 @@ function onTxPayeeTypeChanged() {
     if (cpLabel) cpLabel.textContent = "Employee Name / Memo";
     if (cpInput) cpInput.placeholder = "Employee name (auto-filled or free-text)";
   } else {
-    if (cpLabel) cpLabel.textContent = "Payee / Counterparty Name";
+    if (cpLabel) cpLabel.textContent = "Payee / Vendor";
     if (cpInput) cpInput.placeholder = "e.g. Acme Supplies, John Doe";
   }
   updateTransactionPreview();
@@ -1701,33 +1701,117 @@ function updateTransactionPreview() {
   }, 150);
 }
 
-async function openAddFinanceTransactionModal(defaultType = "money_out") {
-  if (!_currentLedgerAccountId) return;
-  await _populateTransactionModalDropdowns();
+async function openGlobalFinanceTransactionModal(defaultType = "money_out") {
+  if (!FinanceState.accounts || !FinanceState.accounts.length) {
+    try {
+      FinanceState.accounts = await FinanceApi.getAccounts();
+    } catch (e) {
+      console.error("Failed to load accounts for global transaction modal:", e);
+    }
+  }
+  await openAddFinanceTransactionModal(defaultType, true);
+}
 
-  const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(_currentLedgerAccountId, 10));
+function onGlobalTxAccountSelected() {
+  const sel = document.getElementById("fFinanceTxAccountSelect");
+  const accId = sel ? sel.value : "";
+  document.getElementById("fFinanceTxAccountId").value = accId;
 
-  document.getElementById("financeTransactionModalTitle").textContent = "Record Transaction";
-  document.getElementById("financeTransactionModalSubtitle").textContent = "Guided continuous ledger entry for the active account.";
-  document.getElementById("fFinanceTxId").value = "";
-  document.getElementById("fFinanceTxAccountId").value = _currentLedgerAccountId;
-
-  // Active account context
   const accNameEl = document.getElementById("fFinanceTxAccountName");
   const accMetaEl = document.getElementById("fFinanceTxAccountMeta");
   const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
-  if (acc) {
-    if (accNameEl) accNameEl.textContent = acc.account_name || "Account";
-    if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${acc.institution_name || ""}`;
-    if (accBalEl) accBalEl.textContent = window.formatMoney ? window.formatMoney(acc.book_balance || 0, acc.currency) : `$${(acc.book_balance || 0).toFixed(2)}`;
-  }
-
-  // Set currency to match account
   const currSelect = document.getElementById("fFinanceTxCurrency");
-  if (currSelect && acc) {
-    currSelect.value = acc.currency;
+
+  if (accId) {
+    const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accId, 10));
+    if (acc) {
+      if (accNameEl) accNameEl.textContent = acc.account_name || "Account";
+      if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${acc.institution_name || ""}`;
+      if (accBalEl) accBalEl.textContent = window.formatMoney ? window.formatMoney(acc.book_balance || 0, acc.currency) : `$${(acc.book_balance || 0).toFixed(2)}`;
+      if (currSelect) currSelect.value = acc.currency;
+    }
+  } else {
+    if (accNameEl) accNameEl.textContent = "Select Account";
+    if (accMetaEl) accMetaEl.textContent = "";
+    if (accBalEl) accBalEl.textContent = "—";
+  }
+  onTxCurrencyChanged();
+  updateTransactionPreview();
+}
+
+async function openAddFinanceTransactionModal(defaultType = "money_out", isGlobal = false) {
+  if (!isGlobal && !_currentLedgerAccountId) return;
+  await _populateTransactionModalDropdowns();
+
+  const titleEl = document.getElementById("financeTransactionModalTitle");
+  const subtitleEl = document.getElementById("financeTransactionModalSubtitle");
+  const acctSelectGroup = document.getElementById("fFinanceTxAccountSelectGroup");
+  const saveAndNewBtn = document.getElementById("financeTxSaveAndNewBtn");
+
+  if (saveAndNewBtn) saveAndNewBtn.style.display = "";
+
+  if (isGlobal) {
+    if (titleEl) titleEl.textContent = "Quick-Add Transaction";
+    if (subtitleEl) subtitleEl.textContent = "Global quick-add transaction entry across any active bank account.";
+    if (acctSelectGroup) acctSelectGroup.style.display = "block";
+
+    if (!FinanceState.accounts || !FinanceState.accounts.length) {
+      try {
+        FinanceState.accounts = await FinanceApi.getAccounts();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const selectEl = document.getElementById("fFinanceTxAccountSelect");
+    if (selectEl) {
+      const activeAccounts = (FinanceState.accounts || []).filter((a) => a.is_active !== false);
+      selectEl.innerHTML = `
+        <option value="">— Select Target Bank / Cash Account —</option>
+        ${activeAccounts.map((a) => `
+          <option value="${a.id}">${a.account_name} (${a.currency}) · ${(a.account_type || "").toUpperCase()}</option>
+        `).join("")}
+      `;
+      if (_currentLedgerAccountId && activeAccounts.some((a) => a.id === parseInt(_currentLedgerAccountId, 10))) {
+        selectEl.value = _currentLedgerAccountId;
+        onGlobalTxAccountSelected();
+      } else {
+        selectEl.value = "";
+        document.getElementById("fFinanceTxAccountId").value = "";
+        const accNameEl = document.getElementById("fFinanceTxAccountName");
+        const accMetaEl = document.getElementById("fFinanceTxAccountMeta");
+        const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
+        if (accNameEl) accNameEl.textContent = "Select Account";
+        if (accMetaEl) accMetaEl.textContent = "";
+        if (accBalEl) accBalEl.textContent = "—";
+      }
+    }
+  } else {
+    if (titleEl) titleEl.textContent = "Record Transaction";
+    if (subtitleEl) subtitleEl.textContent = "Guided continuous ledger entry for the active account.";
+    if (acctSelectGroup) acctSelectGroup.style.display = "none";
+
+    document.getElementById("fFinanceTxAccountId").value = _currentLedgerAccountId;
+    const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(_currentLedgerAccountId, 10));
+
+    // Active account context
+    const accNameEl = document.getElementById("fFinanceTxAccountName");
+    const accMetaEl = document.getElementById("fFinanceTxAccountMeta");
+    const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
+    if (acc) {
+      if (accNameEl) accNameEl.textContent = acc.account_name || "Account";
+      if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${acc.institution_name || ""}`;
+      if (accBalEl) accBalEl.textContent = window.formatMoney ? window.formatMoney(acc.book_balance || 0, acc.currency) : `$${(acc.book_balance || 0).toFixed(2)}`;
+    }
+
+    // Set currency to match account
+    const currSelect = document.getElementById("fFinanceTxCurrency");
+    if (currSelect && acc) {
+      currSelect.value = acc.currency;
+    }
   }
 
+  document.getElementById("fFinanceTxId").value = "";
   document.getElementById("fFinanceTxDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("fFinanceTxAmount").value = "";
   document.getElementById("fFinanceTxFxRate").value = "";
@@ -1759,6 +1843,11 @@ async function openEditFinanceTransactionModal(txId) {
   if (!tx) return;
 
   await _populateTransactionModalDropdowns();
+
+  const acctSelectGroup = document.getElementById("fFinanceTxAccountSelectGroup");
+  if (acctSelectGroup) acctSelectGroup.style.display = "none";
+  const saveAndNewBtn = document.getElementById("financeTxSaveAndNewBtn");
+  if (saveAndNewBtn) saveAndNewBtn.style.display = "none";
 
   const acc = (FinanceState.accounts || []).find((a) => a.id === tx.account_id);
   document.getElementById("financeTransactionModalTitle").textContent = "Edit Transaction";
@@ -1805,9 +1894,16 @@ async function openEditFinanceTransactionModal(txId) {
   openModal("financeTransactionModal");
 }
 
-async function saveFinanceTransaction() {
+async function saveFinanceTransaction(andAddAnother = false) {
   const txId = document.getElementById("fFinanceTxId").value;
   const accountId = document.getElementById("fFinanceTxAccountId").value || _currentLedgerAccountId;
+
+  if (!accountId) {
+    toast("Please select a bank account", "fa-solid fa-circle-exclamation");
+    document.getElementById("fFinanceTxAccountSelect")?.focus();
+    return;
+  }
+
   const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
   const entryType = document.getElementById("fFinanceTxEntryType").value || "money_out";
   const date = document.getElementById("fFinanceTxDate").value;
@@ -1865,7 +1961,9 @@ async function saveFinanceTransaction() {
   }
 
   const saveBtn = document.getElementById("financeTxSaveBtn");
+  const saveAndNewBtn = document.getElementById("financeTxSaveAndNewBtn");
   if (saveBtn) saveBtn.disabled = true;
+  if (saveAndNewBtn) saveAndNewBtn.disabled = true;
 
   try {
     const payload = {
@@ -1895,19 +1993,55 @@ async function saveFinanceTransaction() {
       toast("Transaction recorded successfully", "fa-solid fa-circle-check");
     }
 
-    closeModal("financeTransactionModal");
     // Reload accounts to update cached balances
     const accounts = await FinanceApi.getAccounts();
     FinanceState.accounts = accounts;
-    if (_activeWorkspaceAccountId && _activeWorkspaceAccountId === parseInt(accountId, 10)) {
-      await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+
+    if (andAddAnother && !txId) {
+      // Clear transaction entry fields while retaining account, date, currency, entry_type, payee_type
+      document.getElementById("fFinanceTxId").value = "";
+      document.getElementById("fFinanceTxAmount").value = "";
+      document.getElementById("fFinanceTxFxRate").value = "";
+      document.getElementById("fFinanceTxCounterparty").value = "";
+      document.getElementById("fFinanceTxTaxAmount").value = "";
+      document.getElementById("fFinanceTxReference").value = "";
+      document.getElementById("fFinanceTxReason").value = "";
+      document.getElementById("fFinanceTxDescription").value = "";
+
+      // Refresh balance in context banner
+      const updatedAcc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
+      if (updatedAcc) {
+        const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
+        if (accBalEl) {
+          accBalEl.textContent = window.formatMoney ? window.formatMoney(updatedAcc.book_balance || 0, updatedAcc.currency) : `$${(updatedAcc.book_balance || 0).toFixed(2)}`;
+        }
+      }
+
+      // Background refresh if workspace or ledger is open
+      if (_activeWorkspaceAccountId && _activeWorkspaceAccountId === parseInt(accountId, 10)) {
+        await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+      } else if (_currentLedgerAccountId && _currentLedgerAccountId === accountId) {
+        await loadAccountTransactions();
+      }
+
+      updateTransactionPreview();
+      // Focus amount for rapid back-to-back input
+      setTimeout(() => {
+        document.getElementById("fFinanceTxAmount")?.focus();
+      }, 50);
     } else {
-      await loadAccountTransactions();
+      closeModal("financeTransactionModal");
+      if (_activeWorkspaceAccountId && _activeWorkspaceAccountId === parseInt(accountId, 10)) {
+        await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+      } else {
+        await loadAccountTransactions();
+      }
     }
   } catch (err) {
     toast(err.message || "Failed to save transaction", "fa-solid fa-triangle-exclamation");
   } finally {
     if (saveBtn) saveBtn.disabled = false;
+    if (saveAndNewBtn) saveAndNewBtn.disabled = false;
   }
 }
 
@@ -2497,3 +2631,6 @@ window.filterWorkspaceLedgerDirection = filterWorkspaceLedgerDirection;
 window.onTxPayeeTypeChanged = onTxPayeeTypeChanged;
 window.onTxVendorSelected = onTxVendorSelected;
 window.onTxEmployeeSelected = onTxEmployeeSelected;
+window.openGlobalFinanceTransactionModal = openGlobalFinanceTransactionModal;
+window.onGlobalTxAccountSelected = onGlobalTxAccountSelected;
+

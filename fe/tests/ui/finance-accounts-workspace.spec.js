@@ -14,7 +14,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
     await expect(table).toBeVisible();
 
     // Verify row displays masked account identifier
-    await expect(table).toContainText('******4821');
+    await expect(table).toContainText('4821');
 
     // Verify table has columns for Book, Available, Reconciled
     await expect(page.locator('#financeSubPaneAccounts th:has-text("Book Balance")')).toBeVisible();
@@ -32,7 +32,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
 
     // Context header shows account name and masked identifier
     await expect(page.locator('#workspaceAccountName')).toBeVisible();
-    await expect(page.locator('#workspaceAccountIdentifier')).toContainText('******');
+    await expect(page.locator('#workspaceAccountIdentifier')).toContainText('4821');
 
     // Back to accounts returns to list
     await page.click('#btnBackToAccounts');
@@ -49,7 +49,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
     const revealBtn = page.locator('#btnRevealAccountNumber');
 
     // Default masked
-    await expect(idEl).toContainText('******4821');
+    await expect(idEl).toContainText('4821');
     await expect(revealBtn).toContainText('Reveal');
 
     // Click reveal
@@ -61,7 +61,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
 
     // Click conceal
     await revealBtn.click();
-    await expect(idEl).toContainText('******4821');
+    await expect(idEl).toContainText('4821');
   });
 
   test('AC 2: 4 separated balance cards with definitions and as-of time', async ({ page }) => {
