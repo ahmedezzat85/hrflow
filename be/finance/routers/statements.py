@@ -29,6 +29,9 @@ from finance.schemas import (
     StatementMappingTemplateResponse,
     CSVColumnMapping,
     ReconciliationWorkspaceSummary,
+    ReconciliationCloseRequest,
+    ReconciliationReopenRequest,
+    ReconciliationCompletionReport,
 )
 from finance.services.statements_service import StatementsService
 from finance.deps import get_statements_service
@@ -280,3 +283,49 @@ def reconcile_statement_import(
     """Finalize reconciliation for a statement import once all lines are addressed."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else str(current_user)
     return statements_service.reconcile_statement(statement_id, user_email=user_email)
+
+
+@router.post(
+    "/statements/{statement_id}/close",
+    response_model=StatementImportResponse,
+    dependencies=[Depends(require_permission("finance.account.write"))],
+)
+def close_reconciliation_period(
+    statement_id: int,
+    req: ReconciliationCloseRequest,
+    statements_service: StatementsService = Depends(get_statements_service),
+    current_user=Depends(require_permission("finance.account.write")),
+):
+    """Close the reconciliation period with zero-difference gate or authorized exception override."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else str(current_user)
+    return statements_service.close_period(statement_id, req, user_email=user_email)
+
+
+@router.post(
+    "/statements/{statement_id}/reopen",
+    response_model=StatementImportResponse,
+    dependencies=[Depends(require_permission("finance.account.write"))],
+)
+def reopen_reconciliation_period(
+    statement_id: int,
+    req: ReconciliationReopenRequest,
+    statements_service: StatementsService = Depends(get_statements_service),
+    current_user=Depends(require_permission("finance.account.write")),
+):
+    """Reopen a closed reconciliation period with mandatory audited justification."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else str(current_user)
+    return statements_service.reopen_period(statement_id, req, user_email=user_email)
+
+
+@router.get(
+    "/statements/{statement_id}/completion-report",
+    response_model=ReconciliationCompletionReport,
+    dependencies=[Depends(require_permission("finance.account.read"))],
+)
+def get_reconciliation_completion_report(
+    statement_id: int,
+    statements_service: StatementsService = Depends(get_statements_service),
+):
+    """Generate completion report with balance breakdown, line reconciliation metrics, and uncleared items."""
+    return statements_service.get_completion_report(statement_id)
+

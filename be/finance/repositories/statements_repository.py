@@ -516,7 +516,7 @@ class StatementsRepository:
             if notes:
                 line.notes = notes
 
-        elif action == "create":
+        elif action in ("create", "create_transaction"):
             # Auto-create ledger transaction
             account = (
                 self.db.query(FinanceBankAccountDB)
@@ -672,3 +672,203 @@ class StatementsRepository:
         self.db.commit()
         self.db.refresh(statement_import)
         return statement_import
+
+    def close_period(
+        self,
+        import_id: int,
+        user_email: Optional[str] = None,
+        closing_notes: Optional[str] = None,
+        is_exception_override: bool = False,
+        exception_override_reason: Optional[str] = None,
+    ) -> BankStatementImportDB:
+        statement_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.id == import_id)
+            .first()
+        )
+        if not statement_import:
+            raise ValueError("Statement import not found")
+
+        # Idempotent check
+        if statement_import.status == "closed":
+            return statement_import
+
+        account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == statement_import.account_id)
+            .first()
+        )
+        book_balance = account.current_balance if account else 0.0
+        closing_balance = float(statement_import.closing_balance or 0.0)
+        diff = round(abs(closing_balance - float(book_balance)), 2)
+
+        unmatched_count = (
+            self.db.query(StatementLineDB)
+            .filter(
+                StatementLineDB.import_id == import_id,
+                StatementLineDB.status == "unmatched",
+            )
+            .count()
+        )
+
+        # Zero-difference gate
+        if diff > 0.01 or unmatched_count > 0:
+            if not is_exception_override or not (exception_override_reason and exception_override_reason.strip()):
+                raise ValueError(
+                    f"Cannot close period: balance difference (${diff:.2f}) is non-zero or "
+                    f"{unmatched_count} line(s) remain unresolved. A documented exception override reason is required."
+                )
+
+        resolved_count = (
+            self.db.query(StatementLineDB)
+            .filter(
+                StatementLineDB.import_id == import_id,
+                StatementLineDB.status.in_(["matched", "created", "ignored", "split"]),
+            )
+            .count()
+        )
+        statement_import.matched_lines_count = resolved_count
+        statement_import.status = "closed"
+        statement_import.reconciled_at = statement_import.reconciled_at or datetime.utcnow()
+        statement_import.reconciled_by = statement_import.reconciled_by or user_email
+        statement_import.closed_at = datetime.utcnow()
+        statement_import.closed_by = user_email
+        statement_import.closing_notes = closing_notes
+        statement_import.is_exception_override = is_exception_override
+        statement_import.exception_override_reason = (
+            exception_override_reason.strip() if exception_override_reason else None
+        )
+        self.db.commit()
+        self.db.refresh(statement_import)
+        return statement_import
+
+    def reopen_period(
+        self,
+        import_id: int,
+        user_email: Optional[str] = None,
+        reopen_reason: str = "",
+    ) -> BankStatementImportDB:
+        statement_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.id == import_id)
+            .first()
+        )
+        if not statement_import:
+            raise ValueError("Statement import not found")
+
+        if not reopen_reason or not reopen_reason.strip():
+            raise ValueError("A documented reason is mandatory to reopen a closed reconciliation period.")
+
+        statement_import.status = "reopened"
+        statement_import.reopened_at = datetime.utcnow()
+        statement_import.reopened_by = user_email
+        statement_import.reopen_reason = reopen_reason.strip()
+        self.db.commit()
+        self.db.refresh(statement_import)
+        return statement_import
+
+    def get_completion_report_data(self, import_id: int) -> Dict[str, Any]:
+        statement_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.id == import_id)
+            .first()
+        )
+        if not statement_import:
+            raise ValueError("Statement import not found")
+
+        account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == statement_import.account_id)
+            .first()
+        )
+        book_balance = account.current_balance if account else 0.0
+        closing_balance = float(statement_import.closing_balance or 0.0)
+        diff = round(closing_balance - float(book_balance), 2)
+        is_balanced = abs(diff) <= 0.01
+
+        lines = (
+            self.db.query(StatementLineDB)
+            .filter(StatementLineDB.import_id == import_id)
+            .all()
+        )
+
+        matched_lines = [l for l in lines if l.status == "matched"]
+        created_lines = [l for l in lines if l.status == "created"]
+        ignored_lines = [l for l in lines if l.status == "ignored"]
+        split_lines = [l for l in lines if l.status == "split"]
+
+        matched_amount = sum(l.raw_amount for l in matched_lines)
+        created_amount = sum(l.raw_amount for l in created_lines)
+        ignored_amount = sum(l.raw_amount for l in ignored_lines)
+
+        ignored_details = [
+            {
+                "line_id": l.id,
+                "date": l.raw_date,
+                "amount": l.raw_amount,
+                "description": l.raw_description,
+                "audit_reason": l.notes,
+            }
+            for l in ignored_lines
+        ]
+
+        period = statement_import.period_month
+        matched_tx_ids = {
+            row[0]
+            for row in self.db.query(StatementLineDB.matched_transaction_id)
+            .filter(StatementLineDB.matched_transaction_id.isnot(None))
+            .all()
+        }
+        tx_query = self.db.query(LedgerTransactionDB).filter(
+            LedgerTransactionDB.account_id == statement_import.account_id,
+            LedgerTransactionDB.date.like(f"{period}%"),
+        )
+        if matched_tx_ids:
+            tx_query = tx_query.filter(~LedgerTransactionDB.id.in_(matched_tx_ids))
+        uncleared_txs = tx_query.all()
+        uncleared_cheques = (
+            self.db.query(FinanceChequeDB)
+            .filter(
+                FinanceChequeDB.account_id == statement_import.account_id,
+                FinanceChequeDB.issue_date.like(f"{period}%"),
+                FinanceChequeDB.status == "issued",
+            )
+            .all()
+        )
+
+        return {
+            "statement_id": statement_import.id,
+            "account_id": statement_import.account_id,
+            "account_name": account.account_name if account else "Bank Account",
+            "period_month": statement_import.period_month,
+            "currency": account.currency if account else "USD",
+            "status": statement_import.status,
+            "opening_balance": statement_import.opening_balance or 0.0,
+            "closing_balance": closing_balance,
+            "book_balance": book_balance,
+            "balance_difference": diff,
+            "is_balanced": is_balanced,
+            "total_lines_count": len([l for l in lines if l.status != "split"]),
+            "matched_lines_count": len(matched_lines),
+            "matched_lines_amount": matched_amount,
+            "created_entries_count": len(created_lines),
+            "created_entries_amount": created_amount,
+            "ignored_lines_count": len(ignored_lines),
+            "ignored_lines_amount": ignored_amount,
+            "ignored_lines_details": ignored_details,
+            "split_lines_count": len(split_lines),
+            "uncleared_ledger_transactions_count": len(uncleared_txs),
+            "uncleared_ledger_transactions_amount": sum(t.amount for t in uncleared_txs),
+            "uncleared_cheques_count": len(uncleared_cheques),
+            "uncleared_cheques_amount": sum(c.amount for c in uncleared_cheques),
+            "closed_at": statement_import.closed_at,
+            "closed_by": statement_import.closed_by,
+            "reopened_at": statement_import.reopened_at,
+            "reopened_by": statement_import.reopened_by,
+            "reopen_reason": statement_import.reopen_reason,
+            "is_exception_override": statement_import.is_exception_override,
+            "exception_override_reason": statement_import.exception_override_reason,
+            "closing_notes": statement_import.closing_notes,
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+

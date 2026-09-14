@@ -3319,6 +3319,104 @@ const FinanceApi = {
     return apiRequest("POST", `/api/finance/statements/${statementId}/reconcile`);
   },
 
+  async closeStatementPeriod(statementId, payload = {}) {
+    if (_isMock()) {
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
+      if (!imp) throw new Error("Statement import not found");
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === imp.account_id);
+      const bookBalance = acc ? acc.current_balance : 0;
+      const diff = Math.round(((imp.closing_balance || 0) - bookBalance) * 100) / 100;
+      const allLines = (FinanceMockState.statementLines || []).filter((l) => l.import_id === parseInt(statementId, 10));
+      const unresolved = allLines.filter((l) => l.status === "unmatched");
+
+      if ((Math.abs(diff) > 0.01 || unresolved.length > 0) && (!payload.is_exception_override || !payload.exception_override_reason?.trim())) {
+        throw new Error(`Cannot close period: balance difference ($${diff.toFixed(2)}) is non-zero or ${unresolved.length} line(s) remain unresolved. A documented exception override reason is required.`);
+      }
+
+      imp.status = "closed";
+      imp.closed_at = new Date().toISOString();
+      imp.closed_by = "admin@hrflow.test";
+      imp.closing_notes = payload.closing_notes || "";
+      imp.is_exception_override = !!payload.is_exception_override;
+      imp.exception_override_reason = payload.exception_override_reason || null;
+      return imp;
+    }
+    return apiRequest("POST", `/api/finance/statements/${statementId}/close`, payload);
+  },
+
+  async reopenStatementPeriod(statementId, payload = {}) {
+    if (_isMock()) {
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
+      if (!imp) throw new Error("Statement import not found");
+      if (!payload.reopen_reason?.trim()) {
+        throw new Error("A documented reason is mandatory to reopen a closed reconciliation period.");
+      }
+      imp.status = "reopened";
+      imp.reopened_at = new Date().toISOString();
+      imp.reopened_by = "admin@hrflow.test";
+      imp.reopen_reason = payload.reopen_reason.trim();
+      return imp;
+    }
+    return apiRequest("POST", `/api/finance/statements/${statementId}/reopen`, payload);
+  },
+
+  async getStatementCompletionReport(statementId) {
+    if (_isMock()) {
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10)) || {};
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === imp.account_id);
+      const bookBalance = acc ? acc.current_balance : 0;
+      const closing = imp.closing_balance || 0;
+      const diff = Math.round((closing - bookBalance) * 100) / 100;
+      const allLines = (FinanceMockState.statementLines || []).filter((l) => l.import_id === parseInt(statementId, 10));
+      const matched = allLines.filter((l) => l.status === "matched");
+      const created = allLines.filter((l) => l.status === "created");
+      const ignored = allLines.filter((l) => l.status === "ignored");
+
+      return {
+        statement_id: parseInt(statementId, 10),
+        account_id: imp.account_id || 1,
+        account_name: imp.account_name || "Primary Checking",
+        period_month: imp.period_month || "2026-09",
+        currency: acc ? acc.currency || "USD" : "USD",
+        status: imp.status || "closed",
+        opening_balance: imp.opening_balance || 0,
+        closing_balance: closing,
+        book_balance: bookBalance,
+        balance_difference: diff,
+        is_balanced: Math.abs(diff) <= 0.01,
+        total_lines_count: allLines.filter((l) => l.status !== "split").length,
+        matched_lines_count: matched.length,
+        matched_lines_amount: matched.reduce((s, l) => s + (l.raw_amount || 0), 0),
+        created_entries_count: created.length,
+        created_entries_amount: created.reduce((s, l) => s + (l.raw_amount || 0), 0),
+        ignored_lines_count: ignored.length,
+        ignored_lines_amount: ignored.reduce((s, l) => s + (l.raw_amount || 0), 0),
+        ignored_lines_details: ignored.map((l) => ({
+          line_id: l.id,
+          date: l.raw_date,
+          amount: l.raw_amount,
+          description: l.raw_description,
+          audit_reason: l.notes || "",
+        })),
+        split_lines_count: allLines.filter((l) => l.status === "split").length,
+        uncleared_ledger_transactions_count: 0,
+        uncleared_ledger_transactions_amount: 0.0,
+        uncleared_cheques_count: 0,
+        uncleared_cheques_amount: 0.0,
+        closed_at: imp.closed_at || null,
+        closed_by: imp.closed_by || null,
+        reopened_at: imp.reopened_at || null,
+        reopened_by: imp.reopened_by || null,
+        reopen_reason: imp.reopen_reason || null,
+        is_exception_override: !!imp.is_exception_override,
+        exception_override_reason: imp.exception_override_reason || null,
+        closing_notes: imp.closing_notes || null,
+        generated_at: new Date().toISOString(),
+      };
+    }
+    return apiRequest("GET", `/api/finance/statements/${statementId}/completion-report`);
+  },
+
   // ==========================================
   // Story 6.3: Reconciliation Rules
   // ==========================================

@@ -28,6 +28,9 @@ from finance.schemas import (
     StatementMappingTemplateCreate,
     StatementMappingTemplateResponse,
     ReconciliationWorkspaceSummary,
+    ReconciliationCloseRequest,
+    ReconciliationReopenRequest,
+    ReconciliationCompletionReport,
 )
 from finance.services.statement_parsers import (
     CSVStatementParser,
@@ -88,6 +91,14 @@ class StatementsService:
             matched_lines_count=matched_count,
             reconciled_at=imp.reconciled_at,
             reconciled_by=imp.reconciled_by,
+            closed_at=imp.closed_at,
+            closed_by=imp.closed_by,
+            closing_notes=imp.closing_notes,
+            reopened_at=imp.reopened_at,
+            reopened_by=imp.reopened_by,
+            reopen_reason=imp.reopen_reason,
+            is_exception_override=imp.is_exception_override or False,
+            exception_override_reason=imp.exception_override_reason,
             created_at=imp.created_at,
             created_by=imp.created_by,
             attachments=attachments_resp,
@@ -517,3 +528,39 @@ class StatementsService:
         if not success:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
         return {"status": "deleted", "id": template_id}
+
+    def close_period(
+        self, import_id: int, req: ReconciliationCloseRequest, user_email: Optional[str] = None
+    ) -> StatementImportResponse:
+        try:
+            closed_stmt = self.repo.close_period(
+                import_id=import_id,
+                user_email=user_email,
+                closing_notes=req.closing_notes,
+                is_exception_override=req.is_exception_override,
+                exception_override_reason=req.exception_override_reason,
+            )
+            return self._import_to_response(closed_stmt)
+        except ValueError as ex:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+
+    def reopen_period(
+        self, import_id: int, req: ReconciliationReopenRequest, user_email: Optional[str] = None
+    ) -> StatementImportResponse:
+        try:
+            reopened_stmt = self.repo.reopen_period(
+                import_id=import_id,
+                user_email=user_email,
+                reopen_reason=req.reopen_reason,
+            )
+            return self._import_to_response(reopened_stmt)
+        except ValueError as ex:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+
+    def get_completion_report(self, import_id: int) -> ReconciliationCompletionReport:
+        try:
+            report_data = self.repo.get_completion_report_data(import_id)
+            return ReconciliationCompletionReport(**report_data)
+        except ValueError as ex:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ex))
+

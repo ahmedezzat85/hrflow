@@ -1105,6 +1105,14 @@ class StatementImportResponse(StatementImportBase):
     matched_lines_count: int = 0
     reconciled_at: Optional[datetime] = None
     reconciled_by: Optional[str] = None
+    closed_at: Optional[datetime] = None
+    closed_by: Optional[str] = None
+    closing_notes: Optional[str] = None
+    reopened_at: Optional[datetime] = None
+    reopened_by: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    is_exception_override: bool = False
+    exception_override_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
     attachments: List[FinanceAttachmentResponse] = []
@@ -1451,6 +1459,57 @@ class StatementApplyRulesResponse(BaseModel):
     auto_applied_count: int
     conflicts: List[RuleMatchConflict] = []
     updated_lines: List[StatementLineResponse] = []
+
+
+# =========================================================================
+# Story 6.4: Period Close, Reopen & Completion Report Schemas
+# =========================================================================
+
+class ReconciliationCloseRequest(BaseModel):
+    closing_notes: Optional[str] = Field(None, description="Optional reconciliation closing comments")
+    is_exception_override: bool = Field(False, description="Authorize exception override for non-zero difference")
+    exception_override_reason: Optional[str] = Field(None, description="Documented justification for closing with variance")
+
+
+class ReconciliationReopenRequest(BaseModel):
+    reopen_reason: str = Field(..., min_length=5, description="Documented reason explaining why period is being reopened")
+
+
+class ReconciliationCompletionReport(BaseModel):
+    statement_id: int
+    account_id: int
+    account_name: str
+    period_month: str
+    currency: str
+    status: str
+    opening_balance: float
+    closing_balance: float
+    book_balance: float
+    balance_difference: float
+    is_balanced: bool
+    total_lines_count: int
+    matched_lines_count: int
+    matched_lines_amount: float
+    created_entries_count: int
+    created_entries_amount: float
+    ignored_lines_count: int
+    ignored_lines_amount: float
+    ignored_lines_details: List[Dict[str, Any]] = []
+    split_lines_count: int = 0
+    uncleared_ledger_transactions_count: int = 0
+    uncleared_ledger_transactions_amount: float = 0.0
+    uncleared_cheques_count: int = 0
+    uncleared_cheques_amount: float = 0.0
+    closed_at: Optional[datetime] = None
+    closed_by: Optional[str] = None
+    reopened_at: Optional[datetime] = None
+    reopened_by: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    is_exception_override: bool = False
+    exception_override_reason: Optional[str] = None
+    closing_notes: Optional[str] = None
+    generated_at: str
+
 
 
 

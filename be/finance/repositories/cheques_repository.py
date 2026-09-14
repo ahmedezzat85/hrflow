@@ -236,6 +236,22 @@ class ChequesRepository:
         if bank_account.account_type != "bank":
             raise ValueError(f"Cheques can only be issued from bank accounts, but '{bank_account.account_name}' is type '{bank_account.account_type}'")
 
+        # Closed Period Lock Check
+        from finance.models import BankStatementImportDB
+        issue_date = data["issue_date"]
+        period = issue_date[:7]
+        closed_stmt = (
+            self.db.query(BankStatementImportDB)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                BankStatementImportDB.period_month == period,
+                BankStatementImportDB.status == "closed",
+            )
+            .first()
+        )
+        if closed_stmt:
+            raise ValueError(f"Cannot issue cheques in closed reconciliation period '{period}'. The period must be reopened first.")
+
         purpose_type = data.get("purpose_type", "other")
         destination_cash_account_id = data.get("destination_cash_account_id")
         dest_cash_account = None

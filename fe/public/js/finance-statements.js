@@ -806,10 +806,25 @@ function updateReconciliationHeader(imp, summary = null) {
   if (aEl) aEl.textContent = imp.account_name || "Account";
   if (prEl) prEl.textContent = `${imp.matched_lines_count || 0} / ${imp.total_lines_count || 0} Resolved`;
 
-  const isReconciled = imp.status === "reconciled";
+  _currentReconcileSummary = summary;
+  const isClosed = imp.status === "closed";
+  const isReconciled = imp.status === "reconciled" || isClosed;
+  const isReopened = imp.status === "reopened";
+
   if (stEl) {
-    stEl.textContent = isReconciled ? "Reconciled" : "Needs Review";
-    stEl.className = isReconciled ? "status-badge status-success" : "status-badge status-warning";
+    if (isClosed) {
+      stEl.textContent = "Closed";
+      stEl.className = "status-badge status-neutral";
+    } else if (imp.status === "reconciled") {
+      stEl.textContent = "Reconciled";
+      stEl.className = "status-badge status-success";
+    } else if (isReopened) {
+      stEl.textContent = "Reopened";
+      stEl.className = "status-badge status-warning";
+    } else {
+      stEl.textContent = "Needs Review";
+      stEl.className = "status-badge status-warning";
+    }
   }
 
   // Update Live KPI Bar
@@ -853,15 +868,18 @@ function updateReconciliationHeader(imp, summary = null) {
     if (remCountEl) remCountEl.textContent = String(unmatchedLines.length);
   }
 
-  const allResolved = imp.total_lines_count > 0 && imp.matched_lines_count === imp.total_lines_count;
+  const btnReopen = document.getElementById("reconcileReopenPeriodBtn");
   if (btnFinal) {
-    if (isReconciled) {
-      btnFinal.disabled = true;
-      btnFinal.innerHTML = '<i class="fa-solid fa-check-double"></i> Period Reconciled';
+    if (isClosed) {
+      btnFinal.style.display = "none";
     } else {
-      btnFinal.disabled = !allResolved;
-      btnFinal.innerHTML = '<i class="fa-solid fa-lock"></i> Reconcile &amp; Close Period';
+      btnFinal.style.display = "inline-flex";
+      btnFinal.disabled = false;
+      btnFinal.innerHTML = '<i class="fa-solid fa-lock"></i> Close Period';
     }
+  }
+  if (btnReopen) {
+    btnReopen.style.display = isClosed ? "inline-flex" : "none";
   }
 }
 
@@ -1351,28 +1369,346 @@ async function handleReconcileCreateEntrySubmit(e) {
 }
 
 async function finalizeStatementReconciliation() {
+  // Alias to openReconciliationCloseModal
+  openReconciliationCloseModal();
+}
+
+// =========================================================================
+// Story 6.4: Period Close, Reopen & Completion Report Handlers
+// =========================================================================
+
+function openReconciliationCloseModal() {
   if (!_currentReconcileImport) return;
-  const btn = document.getElementById("btnFinalizeReconciliation");
+  const imp = _currentReconcileImport;
+  const summary = _currentReconcileSummary;
+
+  const stmtBalEl = document.getElementById("closeModalStatementBal");
+  const bookBalEl = document.getElementById("closeModalBookBal");
+  const diffEl = document.getElementById("closeModalDiff");
+  const balancedBanner = document.getElementById("closeModalBalancedBanner");
+  const varianceWarning = document.getElementById("closeModalVarianceWarning");
+  const overrideSection = document.getElementById("closeModalOverrideSection");
+  const overrideCheckbox = document.getElementById("closeExceptionOverrideCheckbox");
+  const overrideReasonContainer = document.getElementById("closeExceptionReasonContainer");
+  const overrideReasonInput = document.getElementById("closeExceptionOverrideReason");
+  const notesInput = document.getElementById("closePeriodNotes");
+
+  const closingBal = imp.closing_balance !== null && imp.closing_balance !== undefined ? imp.closing_balance : 0;
+  const bookBal = summary ? (summary.book_balance || 0) : 0;
+  const diff = summary && summary.difference !== null && summary.difference !== undefined
+    ? summary.difference
+    : Math.round((closingBal - bookBal) * 100) / 100;
+  const unmatchedCount = summary ? (summary.unmatched_lines_count || 0) : 0;
+  const isZeroDiff = Math.abs(diff) <= 0.01 && unmatchedCount === 0;
+
+  if (stmtBalEl) stmtBalEl.textContent = formatCurrency(closingBal);
+  if (bookBalEl) bookBalEl.textContent = formatCurrency(bookBal);
+  if (diffEl) {
+    diffEl.textContent = formatCurrency(diff);
+    diffEl.style.color = isZeroDiff ? "var(--color-success, #16a34a)" : "var(--color-danger, #ef4444)";
+  }
+
+  if (balancedBanner) balancedBanner.style.display = isZeroDiff ? "block" : "none";
+  if (varianceWarning) varianceWarning.style.display = isZeroDiff ? "none" : "block";
+  if (overrideSection) overrideSection.style.display = isZeroDiff ? "none" : "block";
+  if (overrideCheckbox) overrideCheckbox.checked = false;
+  if (overrideReasonContainer) overrideReasonContainer.style.display = "none";
+  if (overrideReasonInput) overrideReasonInput.value = "";
+  if (notesInput) notesInput.value = "";
+
+  openModal("reconcileCloseModal");
+}
+
+function closeReconciliationCloseModal() {
+  closeModal("reconcileCloseModal");
+}
+
+function toggleCloseOverrideReasonRequirement() {
+  const checkbox = document.getElementById("closeExceptionOverrideCheckbox");
+  const container = document.getElementById("closeExceptionReasonContainer");
+  const textarea = document.getElementById("closeExceptionOverrideReason");
+  if (!checkbox || !container) return;
+  const isChecked = checkbox.checked;
+  container.style.display = isChecked ? "block" : "none";
+  if (isChecked && textarea) {
+    textarea.focus();
+  }
+}
+
+async function submitReconciliationClose(e) {
+  e.preventDefault();
+  if (!_currentReconcileImport) return;
+
+  const btn = document.getElementById("btnConfirmClosePeriod");
+  const notes = (document.getElementById("closePeriodNotes")?.value || "").trim();
+  const overrideCheckbox = document.getElementById("closeExceptionOverrideCheckbox");
+  const overrideReason = (document.getElementById("closeExceptionOverrideReason")?.value || "").trim();
+  const isOverride = overrideCheckbox ? overrideCheckbox.checked : false;
+
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Reconciling Period...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Closing Period...';
   }
 
   try {
-    const reconciled = await FinanceApi.reconcileStatement(_currentReconcileImport.id);
-    _currentReconcileImport = reconciled;
-    updateReconciliationHeader(reconciled);
-    renderReconciliationLinesTable(_currentReconcileLines);
-    showToast(`Statement period ${reconciled.period_month} successfully reconciled and closed!`, "success");
+    const closed = await FinanceApi.closeStatementPeriod(_currentReconcileImport.id, {
+      closing_notes: notes,
+      is_exception_override: isOverride,
+      exception_override_reason: overrideReason,
+    });
+    _currentReconcileImport = closed;
+    showToast(`Period ${closed.period_month} successfully closed and locked!`, "success");
+    closeReconciliationCloseModal();
+    await refreshReconciliationWorkspace();
     await loadFinanceStatements();
   } catch (err) {
-    console.error("Reconciliation finalization failed", err);
-    showToast(err.message || "Failed to finalize reconciliation", "error");
+    console.error("Close period failed:", err);
+    showToast(err.message || "Failed to close period", "error");
+  } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-lock"></i> Reconcile &amp; Close Period';
+      btn.innerHTML = '<i class="fa-solid fa-lock"></i> Finalize &amp; Close Period';
     }
   }
+}
+
+function openReconciliationReopenModal() {
+  if (!_currentReconcileImport) return;
+  const reasonInput = document.getElementById("reopenPeriodReason");
+  if (reasonInput) reasonInput.value = "";
+  openModal("reconcileReopenModal");
+}
+
+function closeReconciliationReopenModal() {
+  closeModal("reconcileReopenModal");
+}
+
+async function submitReconciliationReopen(e) {
+  e.preventDefault();
+  if (!_currentReconcileImport) return;
+
+  const btn = document.getElementById("btnConfirmReopenPeriod");
+  const reason = (document.getElementById("reopenPeriodReason")?.value || "").trim();
+
+  if (!reason || reason.length < 5) {
+    showToast("A documented audit reason of at least 5 characters is required.", "error");
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Reopening Period...';
+  }
+
+  try {
+    const reopened = await FinanceApi.reopenStatementPeriod(_currentReconcileImport.id, {
+      reopen_reason: reason,
+    });
+    _currentReconcileImport = reopened;
+    showToast(`Period ${reopened.period_month} reopened. Posting lock removed.`, "warning");
+    closeReconciliationReopenModal();
+    await refreshReconciliationWorkspace();
+    await loadFinanceStatements();
+  } catch (err) {
+    console.error("Reopen period failed:", err);
+    showToast(err.message || "Failed to reopen period", "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Confirm Reopen';
+    }
+  }
+}
+
+async function openReconciliationCompletionReportModal() {
+  if (!_currentReconcileImport) return;
+  const printArea = document.getElementById("completionReportPrintArea");
+  if (printArea) {
+    printArea.innerHTML = `
+      <div style="text-align:center; padding:40px; color:var(--text-muted);">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size:24px;"></i>
+        <p style="margin-top:8px;">Generating Completion Report...</p>
+      </div>
+    `;
+  }
+  openModal("reconciliationCompletionReportModal");
+
+  try {
+    const report = await FinanceApi.getStatementCompletionReport(_currentReconcileImport.id);
+    renderCompletionReport(report);
+  } catch (err) {
+    console.error("Failed to load completion report:", err);
+    if (printArea) {
+      printArea.innerHTML = `
+        <div class="empty-state" style="padding:30px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--color-danger);font-size:32px;"></i>
+          <p style="margin-top:10px;">${escapeHtml(err.message || "Failed to generate completion report")}</p>
+        </div>
+      `;
+    }
+  }
+}
+
+function closeReconciliationCompletionReportModal() {
+  closeModal("reconciliationCompletionReportModal");
+}
+
+function renderCompletionReport(r) {
+  const container = document.getElementById("completionReportPrintArea");
+  if (!container) return;
+
+  const isBalanced = r.is_balanced;
+  const statusBadge = r.status === "closed"
+    ? '<span class="status-badge status-neutral"><i class="fa-solid fa-lock"></i> Closed</span>'
+    : r.status === "reopened"
+    ? '<span class="status-badge status-warning"><i class="fa-solid fa-lock-open"></i> Reopened</span>'
+    : '<span class="status-badge status-success"><i class="fa-solid fa-check"></i> Reconciled</span>';
+
+  const balancePill = isBalanced
+    ? '<span style="background:rgba(22,163,74,0.15);color:#15803d;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-check"></i> Balanced ($0.00)</span>'
+    : r.is_exception_override
+    ? '<span style="background:rgba(245,158,11,0.15);color:#b45309;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> Exception Override</span>'
+    : '<span style="background:rgba(239,68,68,0.15);color:#b91c1c;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-xmark"></i> Unbalanced</span>';
+
+  let ignoredTableHtml = '';
+  if (r.ignored_lines_details && r.ignored_lines_details.length > 0) {
+    ignoredTableHtml = `
+      <div style="margin-top:20px;">
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:8px; text-transform:uppercase; color:var(--text-muted);">
+          Excluded / Ignored Lines Audit Justification (${r.ignored_lines_details.length})
+        </h4>
+        <table class="responsive-card-table" style="width:100%; font-size:12px; border:1px solid var(--border-color);">
+          <thead style="background:var(--bg-card-subtle);">
+            <tr>
+              <th style="padding:6px 10px; width:90px;">Date</th>
+              <th style="padding:6px 10px; width:100px; text-align:right;">Amount</th>
+              <th style="padding:6px 10px;">Statement Description</th>
+              <th style="padding:6px 10px;">Mandatory Audit Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.ignored_lines_details.map(item => `
+              <tr style="border-bottom:1px solid var(--border-color);">
+                <td style="padding:6px 10px; font-family:monospace;">${escapeHtml(item.date)}</td>
+                <td style="padding:6px 10px; text-align:right; font-weight:600;">${formatCurrency(item.amount)}</td>
+                <td style="padding:6px 10px;">${escapeHtml(item.description)}</td>
+                <td style="padding:6px 10px; font-style:italic; color:var(--text-primary); font-weight:500;">${escapeHtml(item.audit_reason || '—')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <div style="padding:4px 0 16px 0; border-bottom:2px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <h2 style="margin:0; font-size:18px; font-weight:800; color:var(--text-primary);">Bank Reconciliation Completion Report</h2>
+        <div style="font-size:13px; color:var(--text-muted); margin-top:3px;">
+          Account: <strong>${escapeHtml(r.account_name)}</strong> · Period: <strong>${escapeHtml(r.period_month)}</strong> · Currency: <strong>${escapeHtml(r.currency)}</strong>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        ${statusBadge}
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Report Generated: ${new Date(r.generated_at).toLocaleString()}</div>
+      </div>
+    </div>
+
+    <!-- 4-Card Balance Grid -->
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin:16px 0;">
+      <div style="background:var(--bg-card-subtle); padding:10px 14px; border-radius:6px; border:1px solid var(--border-color);">
+        <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Opening Balance</div>
+        <div style="font-size:15px; font-weight:700; font-family:monospace; margin-top:3px;">${formatCurrency(r.opening_balance)}</div>
+      </div>
+      <div style="background:var(--bg-card-subtle); padding:10px 14px; border-radius:6px; border:1px solid var(--border-color);">
+        <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Statement Closing</div>
+        <div style="font-size:15px; font-weight:700; font-family:monospace; margin-top:3px;">${formatCurrency(r.closing_balance)}</div>
+      </div>
+      <div style="background:var(--bg-card-subtle); padding:10px 14px; border-radius:6px; border:1px solid var(--border-color);">
+        <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Continuous Book Bal.</div>
+        <div style="font-size:15px; font-weight:700; font-family:monospace; margin-top:3px;">${formatCurrency(r.book_balance)}</div>
+      </div>
+      <div style="background:var(--bg-card-subtle); padding:10px 14px; border-radius:6px; border:1px solid var(--border-color);">
+        <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Balance Difference</div>
+        <div style="font-size:15px; font-weight:700; font-family:monospace; margin-top:3px; color:${isBalanced ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #ef4444)'};">
+          ${formatCurrency(r.balance_difference)} ${balancePill}
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Breakdown Table -->
+    <div style="margin-top:16px;">
+      <h4 style="font-size:13px; font-weight:700; margin-bottom:8px; text-transform:uppercase; color:var(--text-muted);">
+        Reconciliation Line Resolution Summary
+      </h4>
+      <table class="responsive-card-table" style="width:100%; font-size:12px; border:1px solid var(--border-color);">
+        <thead style="background:var(--bg-card-subtle);">
+          <tr>
+            <th style="padding:6px 10px;">Classification Category</th>
+            <th style="padding:6px 10px; text-align:center;">Count</th>
+            <th style="padding:6px 10px; text-align:right;">Total Amount</th>
+            <th style="padding:6px 10px;">Audit Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td style="padding:6px 10px;"><strong>Matched Existing Ledger Entries / Cheques</strong></td>
+            <td style="padding:6px 10px; text-align:center;">${r.matched_lines_count}</td>
+            <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.matched_lines_amount)}</td>
+            <td style="padding:6px 10px; color:var(--color-success);"><i class="fa-solid fa-check"></i> Cleared &amp; Verified</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td style="padding:6px 10px;"><strong>Auto-Created Continuous Ledger Entries</strong></td>
+            <td style="padding:6px 10px; text-align:center;">${r.created_entries_count}</td>
+            <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.created_entries_amount)}</td>
+            <td style="padding:6px 10px; color:var(--color-primary);"><i class="fa-solid fa-plus"></i> Posted to Ledger</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td style="padding:6px 10px;"><strong>Excluded / Ignored Statement Lines</strong></td>
+            <td style="padding:6px 10px; text-align:center;">${r.ignored_lines_count}</td>
+            <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.ignored_lines_amount)}</td>
+            <td style="padding:6px 10px; color:var(--text-muted);"><i class="fa-solid fa-ban"></i> Documented Exception</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td style="padding:6px 10px;"><strong>Uncleared Continuous Ledger Transactions</strong></td>
+            <td style="padding:6px 10px; text-align:center;">${r.uncleared_ledger_transactions_count}</td>
+            <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.uncleared_ledger_transactions_amount)}</td>
+            <td style="padding:6px 10px; color:var(--color-warning);"><i class="fa-solid fa-clock"></i> Outstanding in Transit</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><strong>Uncleared Outstanding Issued Cheques</strong></td>
+            <td style="padding:6px 10px; text-align:center;">${r.uncleared_cheques_count}</td>
+            <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.uncleared_cheques_amount)}</td>
+            <td style="padding:6px 10px; color:var(--color-warning);"><i class="fa-solid fa-clock"></i> Awaiting Bank Presentment</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    ${ignoredTableHtml}
+
+    <!-- Audit Sign-Off Block -->
+    <div style="margin-top:20px; padding:12px; background:var(--bg-card-subtle); border-radius:6px; border:1px solid var(--border-color); font-size:12px;">
+      <div style="font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Sign-Off &amp; Audit Trail</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <div>Closed By: <strong>${escapeHtml(r.closed_by || '—')}</strong></div>
+        <div>Closed Date: <strong>${r.closed_at ? new Date(r.closed_at).toLocaleString() : '—'}</strong></div>
+        ${r.closing_notes ? `<div style="grid-column: span 2;">Closing Comments: <em>${escapeHtml(r.closing_notes)}</em></div>` : ''}
+        ${r.is_exception_override ? `<div style="grid-column: span 2; color:#b45309;"><strong>Exception Override Justification:</strong> ${escapeHtml(r.exception_override_reason || '—')}</div>` : ''}
+        ${r.reopened_at ? `
+          <div style="grid-column: span 2; border-top:1px dashed var(--border-color); padding-top:6px; margin-top:4px; color:#d97706;">
+            Reopened By: <strong>${escapeHtml(r.reopened_by || '—')}</strong> on ${new Date(r.reopened_at).toLocaleString()}<br>
+            <strong>Reopen Audit Reason:</strong> ${escapeHtml(r.reopen_reason || '—')}
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function printCompletionReport() {
+  window.print();
 }
 
 // =========================================================================
@@ -1814,6 +2150,18 @@ window.revertRuleById = revertRuleById;
 window.openApplyRulesDialog = openApplyRulesDialog;
 window.closeApplyRulesDialog = closeApplyRulesDialog;
 window.confirmExecuteStatementRules = confirmExecuteStatementRules;
+
+// Story 6.4 exports
+window.openReconciliationCloseModal = openReconciliationCloseModal;
+window.closeReconciliationCloseModal = closeReconciliationCloseModal;
+window.toggleCloseOverrideReasonRequirement = toggleCloseOverrideReasonRequirement;
+window.submitReconciliationClose = submitReconciliationClose;
+window.openReconciliationReopenModal = openReconciliationReopenModal;
+window.closeReconciliationReopenModal = closeReconciliationReopenModal;
+window.submitReconciliationReopen = submitReconciliationReopen;
+window.openReconciliationCompletionReportModal = openReconciliationCompletionReportModal;
+window.closeReconciliationCompletionReportModal = closeReconciliationCompletionReportModal;
+window.printCompletionReport = printCompletionReport;
 
 
 
