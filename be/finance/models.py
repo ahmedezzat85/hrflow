@@ -573,19 +573,31 @@ class PayrollRunDB(Base):
     period_label = Column(String(20), nullable=False, index=True)  # e.g. "2026-09"
     period_start = Column(String(20), nullable=False)
     period_end = Column(String(20), nullable=False)
-    status = Column(String(30), default="draft", nullable=False, index=True)  # draft/approved/paid
+    status = Column(String(30), default="draft", nullable=False, index=True)  # draft/approved/finalized/paid/partially_paid/cancelled
     total_gross = Column(Float, default=0.0)
     total_tax = Column(Float, default=0.0)
     total_deductions = Column(Float, default=0.0)
     total_net = Column(Float, default=0.0)
     total_employer_cost = Column(Float, default=0.0)
+    headcount = Column(Integer, default=0)
+    currency = Column(String(10), default="USD")
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
     approved_at = Column(DateTime, nullable=True)
+    approved_by = Column(String(255), nullable=True)
+    finalized_at = Column(DateTime, nullable=True)
+    finalized_by = Column(String(255), nullable=True)
     paid_at = Column(DateTime, nullable=True)
+    paid_by = Column(String(255), nullable=True)
+    journal_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
+    liabilities_summary_json = Column(Text, default="{}")
+    exceptions_json = Column(Text, default="[]")
+    variance_summary_json = Column(Text, default="{}")
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
     bank_account = relationship("FinanceBankAccountDB")
+    journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
 
 
 class PayrollLineDB(Base):
@@ -594,14 +606,21 @@ class PayrollLineDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     payroll_run_id = Column(Integer, ForeignKey("finance_payroll_runs.id", ondelete="CASCADE"), nullable=False, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
+    employee_name = Column(String(255), nullable=True)
+    department = Column(String(100), nullable=True)
     base_salary = Column(Float, default=0.0)
     allowances_total = Column(Float, default=0.0)
     deductions_total = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
     net_pay = Column(Float, default=0.0)
     employer_cost_extra = Column(Float, default=0.0)
+    bank_name = Column(String(100), nullable=True)
+    bank_account_masked = Column(String(50), nullable=True)
+    payment_status = Column(String(30), default="pending")  # pending / paid / failed
+    failure_reason = Column(Text, nullable=True)
     snapshot_notes = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
+    paid_at = Column(DateTime, nullable=True)
 
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")

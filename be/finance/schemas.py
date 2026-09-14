@@ -1742,6 +1742,188 @@ class ReportScheduleResponse(BaseModel):
     created_at: datetime
 
 
+# ==========================================
+# Story 8.1: Guided Payroll Run Schemas
+# ==========================================
+
+class PayrollExceptionItem(BaseModel):
+    id: str
+    employee_id: int
+    employee_name: str
+    severity: str  # "blocking" | "warning"
+    title: str
+    description: str
+    correction_path: Optional[str] = None
+    is_resolved: bool = False
+
+
+class PayrollVarianceSummary(BaseModel):
+    prior_period_label: Optional[str] = None
+    headcount_delta: int = 0
+    gross_delta: float = 0.0
+    net_delta: float = 0.0
+    pct_change: float = 0.0
+    joiners_count: int = 0
+    leavers_count: int = 0
+    raises_count: int = 0
+
+
+class PayrollLiabilitiesSummary(BaseModel):
+    net_pay_payable: float = 0.0
+    income_tax_withheld: float = 0.0
+    social_insurance_employee: float = 0.0
+    social_insurance_employer: float = 0.0
+    total_liabilities: float = 0.0
+
+
+class PayrollJournalItem(BaseModel):
+    account: str
+    account_code: str
+    direction: str  # "debit" | "credit"
+    amount: float
+    description: str
+
+
+class PayrollJournalPreview(BaseModel):
+    debits: List[PayrollJournalItem] = []
+    credits: List[PayrollJournalItem] = []
+    total_debit: float = 0.0
+    total_credit: float = 0.0
+    is_balanced: bool = True
+
+
+class PayrollLineCreate(BaseModel):
+    employee_id: int
+    base_salary: float
+    allowances_total: float = 0.0
+    deductions_total: float = 0.0
+    tax_amount: float = 0.0
+    employer_cost_extra: float = 0.0
+    snapshot_notes: Optional[str] = ""
+
+
+class PayrollLineResponse(BaseModel):
+    id: int
+    payroll_run_id: int
+    employee_id: int
+    employee_name: Optional[str] = None
+    department: Optional[str] = None
+    base_salary: float
+    allowances_total: float
+    deductions_total: float
+    tax_amount: float
+    net_pay: float
+    employer_cost_extra: float
+    bank_name: Optional[str] = None
+    bank_account_masked: Optional[str] = None
+    payment_status: str = "pending"  # pending | paid | failed
+    failure_reason: Optional[str] = None
+    snapshot_notes: Optional[str] = ""
+    created_at: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayrollRunPreviewRequest(BaseModel):
+    period_label: str  # e.g. "2026-09"
+    period_start: str  # YYYY-MM-DD
+    period_end: str    # YYYY-MM-DD
+    bank_account_id: Optional[int] = None
+
+
+class PayrollRunPreviewResponse(BaseModel):
+    period_label: str
+    period_start: str
+    period_end: str
+    bank_account_id: Optional[int] = None
+    bank_account_name: Optional[str] = None
+    headcount: int = 0
+    total_gross: float = 0.0
+    total_tax: float = 0.0
+    total_deductions: float = 0.0
+    total_net: float = 0.0
+    total_employer_cost: float = 0.0
+    has_blocking_exceptions: bool = False
+    exceptions: List[PayrollExceptionItem] = []
+    variance_summary: PayrollVarianceSummary
+    liabilities_summary: PayrollLiabilitiesSummary
+    journal_preview: PayrollJournalPreview
+    lines: List[PayrollLineResponse] = []
+
+
+class PayrollRunCreate(BaseModel):
+    period_label: str
+    period_start: str
+    period_end: str
+    bank_account_id: Optional[int] = None
+    currency: str = "USD"
+    lines: Optional[List[PayrollLineCreate]] = None
+
+
+class PayrollRunResponse(BaseModel):
+    id: int
+    period_label: str
+    period_start: str
+    period_end: str
+    status: str  # draft | approved | finalized | paid | partially_paid | cancelled
+    total_gross: float
+    total_tax: float
+    total_deductions: float
+    total_net: float
+    total_employer_cost: float
+    headcount: int = 0
+    currency: str = "USD"
+    bank_account_id: Optional[int] = None
+    bank_account_name: Optional[str] = None
+    created_at: datetime
+    created_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    finalized_at: Optional[datetime] = None
+    finalized_by: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    paid_by: Optional[str] = None
+    journal_transaction_id: Optional[int] = None
+    has_blocking_exceptions: bool = False
+    exceptions: List[PayrollExceptionItem] = []
+    variance_summary: Optional[PayrollVarianceSummary] = None
+    liabilities_summary: Optional[PayrollLiabilitiesSummary] = None
+    lines: List[PayrollLineResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PayrollPaymentRequest(BaseModel):
+    bank_account_id: Optional[int] = None
+    retry_failed_only: bool = False
+    simulate_partial_failure_ids: Optional[List[int]] = None
+
+
+class EmployeePayslipResponse(BaseModel):
+    id: int
+    payroll_run_id: int
+    period_label: str
+    period_start: str
+    period_end: str
+    employee_id: int
+    employee_name: str
+    department: str
+    base_salary: float
+    allowances_total: float
+    deductions_total: float
+    tax_amount: float
+    net_pay: float
+    currency: str = "USD"
+    status: str
+    paid_date: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_masked: Optional[str] = None
+
+
+
 
 
 
