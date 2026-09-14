@@ -11,8 +11,8 @@ if (typeof window.showToast !== "function") {
         type === "error"
           ? "fa-solid fa-triangle-exclamation"
           : type === "info"
-          ? "fa-solid fa-circle-info"
-          : "fa-solid fa-circle-check";
+            ? "fa-solid fa-circle-info"
+            : "fa-solid fa-circle-check";
       toast(msg, icon);
     } else {
       console.log(`[Finance Toast ${type}] ${msg}`);
@@ -61,7 +61,7 @@ const FinanceFormat = {
       symbol = "$";
       suffix = options.showCurrencySuffix ? " USD" : "";
     } else if (curr === "EGP") {
-      prefix = "EGP ";
+      prefix = "£ ";
     } else if (curr === "EUR") {
       symbol = "€";
       suffix = " EUR";
@@ -153,7 +153,7 @@ const FinanceFormat = {
         const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(d);
         const tzPart = parts.find((p) => p.type === "timeZoneName");
         if (tzPart && tzPart.value) tz = tzPart.value;
-      } catch (_) {}
+      } catch (_) { }
 
       return `${datePart} ${hours}:${minutes} (${tz})`;
     }
@@ -673,7 +673,7 @@ const FinanceCommand = {
 
   lockSubmitButton(buttonOrId) {
     const btn = typeof buttonOrId === "string" ? document.getElementById(buttonOrId) : buttonOrId;
-    if (!btn) return () => {};
+    if (!btn) return () => { };
     if (btn.disabled) return null; // Already locked!
 
     const originalHtml = btn.innerHTML;
@@ -701,7 +701,7 @@ const FinanceTable = {
     try {
       const val = localStorage.getItem(this.DENSITY_KEY);
       if (this.VALID_DENSITIES.includes(val)) return val;
-    } catch (e) {}
+    } catch (e) { }
     return "regular";
   },
 
@@ -709,7 +709,7 @@ const FinanceTable = {
     if (!this.VALID_DENSITIES.includes(density)) density = "regular";
     try {
       localStorage.setItem(this.DENSITY_KEY, density);
-    } catch (e) {}
+    } catch (e) { }
 
     // Apply class to all tables/containers
     const tables = document.querySelectorAll(".responsive-card-table, .finance-table");
@@ -768,7 +768,7 @@ const FinanceTable = {
     try {
       const raw = sessionStorage.getItem(this.getStateKey(tableId));
       if (raw) return JSON.parse(raw);
-    } catch (e) {}
+    } catch (e) { }
     return {
       page: 1,
       pageSize: 10,
@@ -781,13 +781,13 @@ const FinanceTable = {
   saveState(tableId, state) {
     try {
       sessionStorage.setItem(this.getStateKey(tableId), JSON.stringify(state));
-    } catch (e) {}
+    } catch (e) { }
   },
 
   clearState(tableId) {
     try {
       sessionStorage.removeItem(this.getStateKey(tableId));
-    } catch (e) {}
+    } catch (e) { }
   },
 
   // Sorting
@@ -1321,7 +1321,7 @@ const FinanceDrawer = {
     if (this.current && this.current.triggerEl && typeof this.current.triggerEl.focus === "function") {
       try {
         this.current.triggerEl.focus();
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (updateHistory && window.location.hash && window.location.hash.startsWith("#detail=")) {
