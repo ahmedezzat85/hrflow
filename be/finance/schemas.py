@@ -996,6 +996,83 @@ class CSVColumnMapping(BaseModel):
     reference_col: Optional[str] = None
 
 
+class StatementMappingTemplateBase(BaseModel):
+    template_name: str = Field(..., min_length=1, max_length=100, description="Unique template identifier")
+    bank_name: Optional[str] = None
+    account_id: Optional[int] = None
+    date_col: Optional[str] = None
+    description_col: Optional[str] = None
+    debit_col: Optional[str] = None
+    credit_col: Optional[str] = None
+    amount_col: Optional[str] = None
+    reference_col: Optional[str] = None
+    date_format: Optional[str] = "auto"
+    decimal_separator: Optional[str] = "."
+    encoding: Optional[str] = "utf-8"
+
+
+class StatementMappingTemplateCreate(StatementMappingTemplateBase):
+    pass
+
+
+class StatementMappingTemplateResponse(StatementMappingTemplateBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StatementValidationErrorItem(BaseModel):
+    row_index: int
+    column: str
+    value: Optional[str] = ""
+    message: str
+    correction_path: Optional[str] = ""
+
+
+class StatementLinePreviewItem(BaseModel):
+    row_index: int
+    raw_date: str
+    raw_amount: float
+    direction: str  # in | out
+    raw_description: str
+    raw_reference: Optional[str] = ""
+    line_fingerprint: str
+    is_duplicate: bool = False
+    is_valid: bool = True
+    error_message: Optional[str] = None
+
+
+class StatementValidationSummary(BaseModel):
+    total_rows: int = 0
+    valid_count: int = 0
+    error_count: int = 0
+    warning_count: int = 0
+    duplicate_lines_count: int = 0
+    opening_balance: Optional[float] = None
+    closing_balance: Optional[float] = None
+    total_debit: float = 0.0
+    total_credit: float = 0.0
+    calculated_net: float = 0.0
+    expected_closing_balance: Optional[float] = None
+    balance_delta: Optional[float] = None
+    balance_matches: bool = False
+
+
+class StatementPreviewResponse(BaseModel):
+    file_fingerprint: str
+    duplicate_file_detected: bool = False
+    duplicate_import_id: Optional[int] = None
+    detected_format: str  # csv | pdf
+    detected_headers: List[str] = []
+    suggested_mapping: Optional[CSVColumnMapping] = None
+    preview_rows: List[StatementLinePreviewItem] = []
+    validation_summary: StatementValidationSummary
+    errors: List[StatementValidationErrorItem] = []
+    is_review_required: bool = False  # Always true for PDF imports
+
+
 class StatementImportBase(BaseModel):
     account_id: int = Field(..., description="Target bank account ID")
     period_month: str = Field(..., description="Statement period month (YYYY-MM)")
@@ -1003,7 +1080,13 @@ class StatementImportBase(BaseModel):
 
 
 class StatementImportCreate(StatementImportBase):
-    pass
+    opening_balance: Optional[float] = None
+    closing_balance: Optional[float] = None
+    encoding: Optional[str] = "utf-8"
+    date_format: Optional[str] = "auto"
+    decimal_separator: Optional[str] = "."
+    allow_duplicate: bool = False
+    review_state: Optional[str] = "needs_review"
 
 
 class StatementImportResponse(StatementImportBase):
@@ -1011,6 +1094,13 @@ class StatementImportResponse(StatementImportBase):
     account_name: Optional[str] = None
     status: str
     uploaded_file_ref: str
+    file_fingerprint: Optional[str] = None
+    opening_balance: Optional[float] = None
+    closing_balance: Optional[float] = None
+    encoding: Optional[str] = "utf-8"
+    date_format: Optional[str] = "auto"
+    decimal_separator: Optional[str] = "."
+    review_state: Optional[str] = "needs_review"
     total_lines_count: int = 0
     matched_lines_count: int = 0
     reconciled_at: Optional[datetime] = None

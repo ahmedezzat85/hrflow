@@ -2877,6 +2877,161 @@ const FinanceApi = {
   // ==========================================
   // Bank Statement Imports & Reconciliation (Phase 7)
   // ==========================================
+  async previewStatement(accountId, formData) {
+    if (_isMock()) {
+      const periodMonth = (formData.get ? formData.get("period_month") : null) || "2026-09";
+      const fileObj = formData.get ? formData.get("file") : null;
+      const fileName = fileObj && fileObj.name ? fileObj.name : "statement.csv";
+      const ext = fileName.split(".").pop().toLowerCase();
+      const detectedFormat = ext === "pdf" ? "pdf" : "csv";
+
+      const openBal = formData.get && formData.get("opening_balance") ? parseFloat(formData.get("opening_balance")) : 5000.0;
+      const closeBal = formData.get && formData.get("closing_balance") ? parseFloat(formData.get("closing_balance")) : 6700.0;
+
+      // Mock file fingerprint
+      const fileFp = `sha256-mock-${fileName}-${fileObj ? fileObj.size : 1024}`;
+      const existing = (FinanceMockState.statementImports || []).find(
+        (i) => i.account_id === parseInt(accountId, 10) && i.file_fingerprint === fileFp
+      );
+
+      const rows = [
+        {
+          row_index: 2,
+          raw_date: `${periodMonth}-02`,
+          raw_amount: 500.0,
+          direction: "out",
+          raw_description: "AWS CLOUD INFRASTRUCTURE INVOICE",
+          raw_reference: "REF-001",
+          line_fingerprint: "fp-line-1",
+          is_duplicate: false,
+          is_valid: true,
+          error_message: null,
+        },
+        {
+          row_index: 3,
+          raw_date: `${periodMonth}-08`,
+          raw_amount: 2200.0,
+          direction: "in",
+          raw_description: "HEALTHCARE SERVICES WIRE INWARD",
+          raw_reference: "REF-002",
+          line_fingerprint: "fp-line-2",
+          is_duplicate: false,
+          is_valid: true,
+          error_message: null,
+        },
+      ];
+
+      const totalDebit = 500.0;
+      const totalCredit = 2200.0;
+      const calculatedNet = round(totalCredit - totalDebit, 2); // +1700
+      const expectedClosing = openBal !== null ? round(openBal + calculatedNet, 2) : null;
+      const delta = closeBal !== null && expectedClosing !== null ? round(closeBal - expectedClosing, 2) : 0.0;
+      const matches = Math.abs(delta) < 0.01;
+
+      return {
+        file_fingerprint: fileFp,
+        duplicate_file_detected: Boolean(existing),
+        duplicate_import_id: existing ? existing.id : null,
+        detected_format: detectedFormat,
+        detected_headers: ["Date", "Description", "Debit", "Credit", "Reference"],
+        suggested_mapping: {
+          date_col: "Date",
+          description_col: "Description",
+          debit_col: "Debit",
+          credit_col: "Credit",
+          amount_col: null,
+          reference_col: "Reference",
+        },
+        preview_rows: rows,
+        validation_summary: {
+          total_rows: 2,
+          valid_count: 2,
+          error_count: 0,
+          warning_count: 0,
+          duplicate_lines_count: 0,
+          opening_balance: openBal,
+          closing_balance: closeBal,
+          total_debit: totalDebit,
+          total_credit: totalCredit,
+          calculated_net: calculatedNet,
+          expected_closing_balance: expectedClosing,
+          balance_delta: delta,
+          balance_matches: matches,
+        },
+        errors: [],
+        is_review_required: detectedFormat === "pdf",
+      };
+    }
+
+    let res;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/finance/accounts/${accountId}/statements/preview`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+    } catch (networkErr) {
+      throw new Error("Network error - is the backend server running?");
+    }
+    if (res.status === 401) {
+      if (typeof forceSessionExpiredLogout === "function") forceSessionExpiredLogout();
+      throw new Error("Session expired. Please sign in again.");
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Preview failed with status ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getStatementTemplates(accountId) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.statementTemplates || [])];
+      if (accountId) {
+        list = list.filter((t) => !t.account_id || t.account_id === parseInt(accountId, 10));
+      }
+      return list;
+    }
+    const q = account_id ? `?account_id=${accountId}` : "";
+    return apiRequest("GET", `/api/finance/statements/templates${q}`);
+  },
+
+  async saveStatementTemplate(payload) {
+    if (_isMock()) {
+      if (!FinanceMockState.statementTemplates) FinanceMockState.statementTemplates = [];
+      const newTmpl = {
+        id: FinanceMockState.statementTemplates.length + 1,
+        ...payload,
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.statementTemplates.push(newTmpl);
+      return newTmpl;
+    }
+    return apiRequest("POST", "/api/finance/statements/templates", payload);
+  },
+
+  async deleteStatementTemplate(templateId) {
+    if (_isMock()) {
+      FinanceMockState.statementTemplates = (FinanceMockState.statementTemplates || []).filter(
+        (t) => t.id !== parseInt(templateId, 10)
+      );
+      return { status: "deleted" };
+    }
+    return apiRequest("DELETE", `/api/finance/statements/templates/${templateId}`);
+  },
+
+  async discardStatement(statementId) {
+    if (_isMock()) {
+      FinanceMockState.statementImports = (FinanceMockState.statementImports || []).filter(
+        (i) => i.id !== parseInt(statementId, 10)
+      );
+      FinanceMockState.statementLines = (FinanceMockState.statementLines || []).filter(
+        (l) => l.import_id !== parseInt(statementId, 10)
+      );
+      return { status: "discarded", id: statementId };
+    }
+    return apiRequest("DELETE", `/api/finance/statements/${statementId}`);
+  },
   async listAccountStatements(accountId, periodMonth) {
     if (_isMock()) {
       let list = [...(FinanceMockState.statementImports || [])];

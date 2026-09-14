@@ -425,6 +425,13 @@ class BankStatementImportDB(Base):
     file_type = Column(String(10), default="csv", nullable=False)  # csv | pdf
     status = Column(String(20), default="needs_review", nullable=False, index=True)  # parsing | needs_review | reconciled
     uploaded_file_ref = Column(String(500), default="", nullable=False)
+    file_fingerprint = Column(String(64), nullable=True, index=True)
+    opening_balance = Column(Float, nullable=True)
+    closing_balance = Column(Float, nullable=True)
+    encoding = Column(String(20), default="utf-8", nullable=True)
+    date_format = Column(String(30), default="auto", nullable=True)
+    decimal_separator = Column(String(5), default=".", nullable=True)
+    review_state = Column(String(30), default="needs_review", nullable=True)  # needs_review | resumable | validated
     total_lines_count = Column(Integer, default=0, nullable=False)
     matched_lines_count = Column(Integer, default=0, nullable=False)
     reconciled_at = Column(DateTime, nullable=True)
@@ -442,6 +449,8 @@ class StatementLineDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     import_id = Column(Integer, ForeignKey("finance_statement_imports.id", ondelete="CASCADE"), nullable=False, index=True)
+    row_index = Column(Integer, nullable=True)
+    line_fingerprint = Column(String(64), nullable=True, index=True)
     raw_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
     raw_amount = Column(Float, nullable=False)
     direction = Column(String(10), default="out", nullable=False)  # in | out
@@ -458,9 +467,29 @@ class StatementLineDB(Base):
     matched_cheque = relationship("FinanceChequeDB")
 
 
+class StatementMappingTemplateDB(Base):
+    __tablename__ = "finance_statement_mapping_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    template_name = Column(String(100), nullable=False, unique=True, index=True)
+    bank_name = Column(String(100), nullable=True)
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    date_col = Column(String(100), nullable=True)
+    description_col = Column(String(100), nullable=True)
+    debit_col = Column(String(100), nullable=True)
+    credit_col = Column(String(100), nullable=True)
+    amount_col = Column(String(100), nullable=True)
+    reference_col = Column(String(100), nullable=True)
+    date_format = Column(String(30), default="auto", nullable=True)
+    decimal_separator = Column(String(5), default=".", nullable=True)
+    encoding = Column(String(20), default="utf-8", nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # Aliases for statement models
 FinanceBankStatementImportDB = BankStatementImportDB
 FinanceStatementLineDB = StatementLineDB
+FinanceStatementMappingTemplateDB = StatementMappingTemplateDB
 
 
 class FinanceAttachmentDB(Base):

@@ -1,6 +1,7 @@
 """
 be/finance/services/statements_service.py
-Service layer for Bank Statement Imports, parsing, and review-driven reconciliation.
+Service layer for Bank Statement Imports, preview parsing, validation,
+template management, and review-driven reconciliation.
 """
 import os
 import uuid
@@ -8,15 +9,30 @@ from typing import List, Optional, Dict, Any
 from fastapi import UploadFile, HTTPException, status
 
 from finance.repositories.statements_repository import StatementsRepository
-from finance.models import BankStatementImportDB, StatementLineDB
+from finance.models import (
+    BankStatementImportDB,
+    StatementLineDB,
+    StatementMappingTemplateDB,
+    FinanceAttachmentDB,
+)
 from finance.schemas import (
     StatementImportResponse,
     StatementLineResponse,
     StatementLineResolveRequest,
     FinanceAttachmentResponse,
     CSVColumnMapping,
+    StatementPreviewResponse,
+    StatementValidationSummary,
+    StatementLinePreviewItem,
+    StatementValidationErrorItem,
+    StatementMappingTemplateCreate,
+    StatementMappingTemplateResponse,
 )
-from finance.services.statement_parsers import CSVStatementParser, PDFStatementParser
+from finance.services.statement_parsers import (
+    CSVStatementParser,
+    PDFStatementParser,
+    compute_file_fingerprint,
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "finance_attachments")
@@ -60,6 +76,13 @@ class StatementsService:
             file_type=imp.file_type,
             status=imp.status,
             uploaded_file_ref=imp.uploaded_file_ref,
+            file_fingerprint=imp.file_fingerprint,
+            opening_balance=imp.opening_balance,
+            closing_balance=imp.closing_balance,
+            encoding=imp.encoding or "utf-8",
+            date_format=imp.date_format or "auto",
+            decimal_separator=imp.decimal_separator or ".",
+            review_state=imp.review_state or "needs_review",
             total_lines_count=imp.total_lines_count,
             matched_lines_count=matched_count,
             reconciled_at=imp.reconciled_at,
@@ -90,12 +113,155 @@ class StatementsService:
             suggested_matches=suggestions,
         )
 
+    async def preview_statement(
+        self,
+        account_id: int,
+        period_month: str,
+        file: UploadFile,
+        mapping: Optional[CSVColumnMapping] = None,
+        encoding: str = "utf-8",
+        date_format: str = "auto",
+        decimal_separator: str = ".",
+        opening_balance: Optional[float] = None,
+        closing_balance: Optional[float] = None,
+    ) -> StatementPreviewResponse:
+        """
+        Parse and validate statement rows entirely in memory.
+        No database commits occur before validation confirmation.
+        """
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
+
+        filename = file.filename or "statement.csv"
+        ext = os.path.splitext(filename)[1].lower().lstrip(".")
+        detected_format = "pdf" if ext == "pdf" else "csv"
+
+        # 1. Compute file fingerprint
+        file_fp = compute_file_fingerprint(content)
+
+        # 2. Check duplicate file on this account
+        existing_dup = self.repo.find_import_by_fingerprint(account_id, file_fp)
+        dup_file_detected = existing_dup is not None
+        dup_import_id = existing_dup.id if existing_dup else None
+
+        # 3. Parse rows
+        map_dict = mapping.dict(exclude_unset=True) if mapping else None
+        if detected_format == "csv":
+            parsed_lines, errors, detected_headers, suggested = CSVStatementParser.parse_with_validation(
+                content,
+                mapping=map_dict,
+                encoding=encoding,
+                date_format=date_format,
+                decimal_separator=decimal_separator,
+            )
+            is_review_required = False
+        else:
+            parsed_lines, errors, detected_headers, suggested = PDFStatementParser.parse_with_validation(content)
+            is_review_required = True  # PDF extractions are always review-required
+
+        # 4. Check for existing line fingerprints in DB for this account
+        line_fps = [l["line_fingerprint"] for l in parsed_lines if l.get("line_fingerprint")]
+        existing_fps = self.repo.find_existing_line_fingerprints(account_id, line_fps)
+
+        duplicate_lines_count = 0
+        preview_items: List[StatementLinePreviewItem] = []
+        total_debit = 0.0
+        total_credit = 0.0
+
+        for row in parsed_lines:
+            is_dup = row.get("is_duplicate", False) or (row.get("line_fingerprint") in existing_fps)
+            if is_dup:
+                duplicate_lines_count += 1
+
+            amt = float(row["raw_amount"])
+            if row["direction"] == "in":
+                total_credit += amt
+            else:
+                total_debit += amt
+
+            preview_items.append(
+                StatementLinePreviewItem(
+                    row_index=row.get("row_index", 0),
+                    raw_date=row["raw_date"],
+                    raw_amount=amt,
+                    direction=row["direction"],
+                    raw_description=row["raw_description"],
+                    raw_reference=row.get("raw_reference", ""),
+                    line_fingerprint=row["line_fingerprint"],
+                    is_duplicate=is_dup,
+                    is_valid=True,
+                )
+            )
+
+        # 5. Balance summary calculation
+        total_debit = round(total_debit, 2)
+        total_credit = round(total_credit, 2)
+        calculated_net = round(total_credit - total_debit, 2)
+
+        expected_closing = None
+        balance_delta = None
+        balance_matches = False
+        if opening_balance is not None and closing_balance is not None:
+            expected_closing = round(opening_balance + calculated_net, 2)
+            balance_delta = round(closing_balance - expected_closing, 2)
+            balance_matches = abs(balance_delta) < 0.01
+
+        validation_summary = StatementValidationSummary(
+            total_rows=len(parsed_lines) + len(errors),
+            valid_count=len(parsed_lines),
+            error_count=len(errors),
+            warning_count=duplicate_lines_count,
+            duplicate_lines_count=duplicate_lines_count,
+            opening_balance=opening_balance,
+            closing_balance=closing_balance,
+            total_debit=total_debit,
+            total_credit=total_credit,
+            calculated_net=calculated_net,
+            expected_closing_balance=expected_closing,
+            balance_delta=balance_delta,
+            balance_matches=balance_matches,
+        )
+
+        error_items = [
+            StatementValidationErrorItem(
+                row_index=e.get("row_index", 0),
+                column=e.get("column", ""),
+                value=e.get("value", ""),
+                message=e.get("message", ""),
+                correction_path=e.get("correction_path", ""),
+            )
+            for e in errors
+        ]
+
+        suggested_obj = CSVColumnMapping(**suggested) if suggested else None
+
+        return StatementPreviewResponse(
+            file_fingerprint=file_fp,
+            duplicate_file_detected=dup_file_detected,
+            duplicate_import_id=dup_import_id,
+            detected_format=detected_format,
+            detected_headers=detected_headers,
+            suggested_mapping=suggested_obj,
+            preview_rows=preview_items[:30],  # Preview first 30 rows
+            validation_summary=validation_summary,
+            errors=error_items,
+            is_review_required=is_review_required,
+        )
+
     async def upload_and_parse_statement(
         self,
         account_id: int,
         period_month: str,
         file: UploadFile,
         mapping: Optional[CSVColumnMapping] = None,
+        opening_balance: Optional[float] = None,
+        closing_balance: Optional[float] = None,
+        encoding: str = "utf-8",
+        date_format: str = "auto",
+        decimal_separator: str = ".",
+        allow_duplicate: bool = False,
+        review_state: str = "needs_review",
         created_by: Optional[str] = None,
     ) -> StatementImportResponse:
         content = await file.read()
@@ -105,6 +271,15 @@ class StatementsService:
         filename = file.filename or "statement.csv"
         ext = os.path.splitext(filename)[1].lower().lstrip(".")
         file_type = "pdf" if ext == "pdf" else "csv"
+
+        # Duplicate file detection
+        file_fp = compute_file_fingerprint(content)
+        existing_dup = self.repo.find_import_by_fingerprint(account_id, file_fp)
+        if existing_dup and not allow_duplicate:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"This exact statement file was already imported on {existing_dup.created_at.strftime('%Y-%m-%d')} (Import #{existing_dup.id}). Set allow_duplicate=true to re-import.",
+            )
 
         # Save to private uploads/finance_attachments/
         os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -119,11 +294,17 @@ class StatementsService:
             period_month=period_month,
             file_type=file_type,
             uploaded_file_ref=disk_path,
+            file_fingerprint=file_fp,
+            opening_balance=opening_balance,
+            closing_balance=closing_balance,
+            encoding=encoding,
+            date_format=date_format,
+            decimal_separator=decimal_separator,
+            review_state="needs_review" if file_type == "pdf" else review_state,
             created_by=created_by,
         )
 
         # Create FinanceAttachmentDB
-        from finance.models import FinanceAttachmentDB
         att = FinanceAttachmentDB(
             statement_import_id=stmt_import.id,
             file_name=filename,
@@ -137,17 +318,32 @@ class StatementsService:
 
         # Parse lines
         parsed_lines: List[Dict[str, Any]] = []
+        map_dict = mapping.dict(exclude_unset=True) if mapping else None
         if file_type == "csv":
-            map_dict = mapping.dict(exclude_unset=True) if mapping else None
-            parsed_lines = CSVStatementParser.parse(content, mapping=map_dict)
+            parsed_lines, _, _, _ = CSVStatementParser.parse_with_validation(
+                content,
+                mapping=map_dict,
+                encoding=encoding,
+                date_format=date_format,
+                decimal_separator=decimal_separator,
+            )
         elif file_type == "pdf":
-            parsed_lines = PDFStatementParser.parse(content)
+            parsed_lines, _, _, _ = PDFStatementParser.parse_with_validation(content)
 
         if parsed_lines:
             self.repo.add_statement_lines(stmt_import.id, parsed_lines)
 
         self.repo.db.refresh(stmt_import)
         return self._import_to_response(stmt_import)
+
+    def discard_statement(self, import_id: int) -> Dict[str, Any]:
+        try:
+            success = self.repo.delete_import(import_id)
+            if not success:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Statement import not found")
+            return {"status": "discarded", "id": import_id}
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     def list_statements(
         self, account_id: Optional[int] = None, period_month: Optional[str] = None
@@ -204,7 +400,6 @@ class StatementsService:
         if imp.status == "reconciled":
             return self._import_to_response(imp)
 
-        # Check if any lines are still unmatched
         unmatched_count = (
             self.repo.db.query(StatementLineDB)
             .filter(StatementLineDB.import_id == import_id, StatementLineDB.status == "unmatched")
@@ -218,3 +413,31 @@ class StatementsService:
 
         reconciled = self.repo.reconcile_import(import_id, user_email=user_email)
         return self._import_to_response(reconciled)
+
+    # Template service methods
+    def create_template(self, req: StatementMappingTemplateCreate) -> StatementMappingTemplateResponse:
+        tmpl = self.repo.create_template(
+            template_name=req.template_name,
+            bank_name=req.bank_name,
+            account_id=req.account_id,
+            date_col=req.date_col,
+            description_col=req.description_col,
+            debit_col=req.debit_col,
+            credit_col=req.credit_col,
+            amount_col=req.amount_col,
+            reference_col=req.reference_col,
+            date_format=req.date_format,
+            decimal_separator=req.decimal_separator,
+            encoding=req.encoding,
+        )
+        return StatementMappingTemplateResponse.from_orm(tmpl)
+
+    def list_templates(self, account_id: Optional[int] = None) -> List[StatementMappingTemplateResponse]:
+        templates = self.repo.list_templates(account_id=account_id)
+        return [StatementMappingTemplateResponse.from_orm(t) for t in templates]
+
+    def delete_template(self, template_id: int) -> Dict[str, Any]:
+        success = self.repo.delete_template(template_id)
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        return {"status": "deleted", "id": template_id}

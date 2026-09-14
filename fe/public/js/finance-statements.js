@@ -1,6 +1,35 @@
 // ==========================================
 // 9. Bank Statement Imports & Reconciliation (Phase 7)
 // ==========================================
+// Safe HTML escaping helper
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Fallback currency formatter
+function formatCurrency(amount, currency = "USD") {
+  if (typeof FinanceFormat !== "undefined" && typeof FinanceFormat.formatMoney === "function") {
+    return FinanceFormat.formatMoney(amount, currency);
+  }
+  const n = Number(amount) || 0;
+  return n.toLocaleString("en-US", { style: "currency", currency: currency || "USD" });
+}
+
+function onStatementAccountSelected() {
+  const accSel = document.getElementById("stmtUploadAccountId");
+  if (!accSel) return;
+  // Trigger template filter or reload templates if account specific
+  if (typeof loadStatementTemplates === "function") {
+    loadStatementTemplates(accSel.value);
+  }
+}
+
 let _allFinanceStatements = [];
 let _currentReconcileImport = null;
 let _currentReconcileLines = [];
@@ -182,9 +211,53 @@ function syncStatementUploadPeriod(source) {
   }
 }
 
+// Wizard State
+let _activeWizardStep = 1;
+let _wizardPreviewData = null;
+let _wizardSavedTemplates = [];
+
+function goToWizardStep(stepNum) {
+  _activeWizardStep = stepNum;
+  for (let s = 1; s <= 4; s++) {
+    const pane = document.getElementById(`stmtWizardStep${s}`);
+    const indicator = document.getElementById(`stmtStepIndicator${s}`);
+    if (pane) pane.style.display = s === stepNum ? "block" : "none";
+    if (indicator) {
+      if (s === stepNum) {
+        indicator.classList.add("active");
+        indicator.style.fontWeight = "600";
+        indicator.style.color = "var(--primary)";
+        const num = indicator.querySelector(".step-num");
+        if (num) {
+          num.style.background = "var(--primary)";
+          num.style.color = "#fff";
+        }
+      } else if (s < stepNum) {
+        indicator.classList.remove("active");
+        indicator.style.fontWeight = "500";
+        indicator.style.color = "var(--success, #16a34a)";
+        const num = indicator.querySelector(".step-num");
+        if (num) {
+          num.style.background = "var(--success, #16a34a)";
+          num.style.color = "#fff";
+        }
+      } else {
+        indicator.classList.remove("active");
+        indicator.style.fontWeight = "500";
+        indicator.style.color = "var(--text3)";
+        const num = indicator.querySelector(".step-num");
+        if (num) {
+          num.style.background = "var(--bg3, #e2e8f0)";
+          num.style.color = "var(--text2)";
+        }
+      }
+    }
+  }
+}
+
 async function openUploadStatementModal(presetAccountId) {
-  const form = document.getElementById("financeStatementUploadForm");
-  if (form) form.reset();
+  _activeWizardStep = 1;
+  _wizardPreviewData = null;
 
   const select = document.getElementById("stmtUploadAccountId");
   if (select) {
@@ -209,132 +282,462 @@ async function openUploadStatementModal(presetAccountId) {
           select.appendChild(opt);
         }
       });
-      if (presetAccountId) {
-        select.value = String(presetAccountId);
-      }
+      if (presetAccountId) select.value = String(presetAccountId);
     } catch (e) {
       console.warn("Could not load accounts", e);
-      if (FinanceState && FinanceState.accounts) {
-        select.innerHTML = '<option value="">— Select company bank account —</option>';
-        FinanceState.accounts.forEach((a) => {
-          if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
-            const opt = document.createElement("option");
-            opt.value = a.id;
-            opt.textContent = `${a.account_name} (${a.currency || "USD"}) — ${a.bank_name || "Bank"}`;
-            select.appendChild(opt);
-          }
-        });
-        if (presetAccountId) select.value = String(presetAccountId);
-      }
     }
   }
 
-  // Pre-fill current month YYYY-MM and sync selects
+  // Pre-fill current month YYYY-MM
   const now = new Date();
   const y = String(now.getFullYear());
   const m = String(now.getMonth() + 1).padStart(2, "0");
-
-  const monthSel = document.getElementById("stmtUploadMonth");
-  const yearSel = document.getElementById("stmtUploadYear");
-  if (monthSel) monthSel.value = m;
-  if (yearSel) yearSel.value = y;
-
   const periodInput = document.getElementById("stmtUploadPeriodMonth");
-  if (periodInput) {
-    periodInput.value = `${y}-${m}`;
+  if (periodInput) periodInput.value = `${y}-${m}`;
+
+  // Reset fields
+  const fileInput = document.getElementById("stmtUploadFile");
+  if (fileInput) fileInput.value = "";
+  const openBal = document.getElementById("stmtOpeningBalance");
+  if (openBal) openBal.value = "";
+  const closeBal = document.getElementById("stmtClosingBalance");
+  if (closeBal) closeBal.value = "";
+  const allowDup = document.getElementById("stmtAllowDuplicateCheck");
+  if (allowDup) allowDup.checked = false;
+  const saveTmplCheck = document.getElementById("stmtSaveTemplateCheck");
+  if (saveTmplCheck) saveTmplCheck.checked = false;
+  const saveTmplName = document.getElementById("stmtSaveTemplateName");
+  if (saveTmplName) {
+    saveTmplName.value = "";
+    saveTmplName.style.display = "none";
   }
 
-  const mappingFields = document.getElementById("stmtCsvMappingFields");
-  if (mappingFields) mappingFields.style.display = "none";
+  // Load reusable templates
+  await loadStatementTemplates();
 
+  goToWizardStep(1);
   openModal("financeStatementUploadModal");
 }
 
 function closeUploadStatementModal() {
   closeModal("financeStatementUploadModal");
+  _wizardPreviewData = null;
 }
 
-function toggleCsvMappingFields() {
-  const el = document.getElementById("stmtCsvMappingFields");
-  const chevron = document.getElementById("stmtCsvMappingChevron");
-  if (!el) return;
-  const isHidden = el.style.display === "none";
-  el.style.display = isHidden ? "block" : "none";
-  if (chevron) chevron.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+async function loadStatementTemplates() {
+  const tmplSelect = document.getElementById("stmtWizardTemplateSelect");
+  if (!tmplSelect) return;
+  tmplSelect.innerHTML = '<option value="">— Auto-detect from file —</option>';
+  try {
+    const templates = await FinanceApi.getStatementTemplates();
+    _wizardSavedTemplates = templates || [];
+    _wizardSavedTemplates.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = `${t.template_name} (${t.bank_name || 'Bank'})`;
+      tmplSelect.appendChild(opt);
+    });
+  } catch (err) {
+    console.warn("Could not load mapping templates", err);
+  }
+}
+
+function onStatementTemplateSelected() {
+  const tmplSelect = document.getElementById("stmtWizardTemplateSelect");
+  if (!tmplSelect) return;
+  const tmplId = tmplSelect.value;
+  if (!tmplId) return;
+
+  const tmpl = _wizardSavedTemplates.find((t) => String(t.id) === String(tmplId));
+  if (!tmpl) return;
+
+  if (tmpl.date_format && document.getElementById("stmtDateFormat")) {
+    document.getElementById("stmtDateFormat").value = tmpl.date_format;
+  }
+  if (tmpl.decimal_separator && document.getElementById("stmtDecimalSeparator")) {
+    document.getElementById("stmtDecimalSeparator").value = tmpl.decimal_separator;
+  }
+  if (tmpl.encoding && document.getElementById("stmtEncoding")) {
+    document.getElementById("stmtEncoding").value = tmpl.encoding;
+  }
 }
 
 function onStatementFileTypeChange() {
   const type = document.getElementById("stmtUploadFileType")?.value;
   const fileInput = document.getElementById("stmtUploadFile");
-  const mappingSec = document.getElementById("stmtCsvMappingSection");
   if (fileInput) {
     fileInput.accept = type === "pdf" ? ".pdf" : ".csv";
   }
-  if (mappingSec) {
-    mappingSec.style.display = type === "pdf" ? "none" : "block";
+  const mapContainer = document.getElementById("stmtWizardMappingContainer");
+  if (mapContainer) {
+    mapContainer.style.display = type === "pdf" ? "none" : "block";
   }
 }
 
-async function handleStatementUploadSubmit(e) {
-  e.preventDefault();
+function onStatementFileSelected() {
+  const fileInput = document.getElementById("stmtUploadFile");
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const file = fileInput.files[0];
+  const ext = file.name.split(".").pop().toLowerCase();
+  const typeSel = document.getElementById("stmtUploadFileType");
+  if (typeSel) {
+    typeSel.value = ext === "pdf" ? "pdf" : "csv";
+    onStatementFileTypeChange();
+  }
+}
+
+function toggleSaveTemplateInput() {
+  const check = document.getElementById("stmtSaveTemplateCheck");
+  const input = document.getElementById("stmtSaveTemplateName");
+  if (!check || !input) return;
+  input.style.display = check.checked ? "inline-block" : "none";
+}
+
+async function executeStatementPreview() {
   const accountId = document.getElementById("stmtUploadAccountId")?.value;
   const periodMonth = document.getElementById("stmtUploadPeriodMonth")?.value;
   const fileInput = document.getElementById("stmtUploadFile");
 
   if (!accountId) {
-    showToast("Please select a target bank account", "error");
+    if (typeof showToast === "function") showToast("Please select a target bank account", "error");
+    else if (typeof toast === "function") toast("Please select a target bank account", "fa-solid fa-triangle-exclamation");
     return;
   }
   if (!periodMonth) {
-    showToast("Please specify the statement period month", "error");
+    if (typeof showToast === "function") showToast("Please specify the statement period month", "error");
+    else if (typeof toast === "function") toast("Please specify the statement period month", "fa-solid fa-triangle-exclamation");
     return;
   }
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-    showToast("Please choose a statement file to upload", "error");
+    if (typeof showToast === "function") showToast("Please choose a statement file to upload", "error");
+    else if (typeof toast === "function") toast("Please choose a statement file to upload", "fa-solid fa-triangle-exclamation");
     return;
   }
+
+  const openBalVal = document.getElementById("stmtOpeningBalance")?.value;
+  const closeBalVal = document.getElementById("stmtClosingBalance")?.value;
+  const encoding = document.getElementById("stmtEncoding")?.value || "utf-8";
+  const dateFormat = document.getElementById("stmtDateFormat")?.value || "auto";
+  const decimalSep = document.getElementById("stmtDecimalSeparator")?.value || ".";
 
   const formData = new FormData();
   formData.append("period_month", periodMonth);
   formData.append("file", fileInput.files[0]);
+  formData.append("encoding", encoding);
+  formData.append("date_format", dateFormat);
+  formData.append("decimal_separator", decimalSep);
+  if (openBalVal) formData.append("opening_balance", openBalVal);
+  if (closeBalVal) formData.append("closing_balance", closeBalVal);
 
-  // Optional custom mapping
-  const dateCol = document.getElementById("mapDateCol")?.value.trim();
-  const descCol = document.getElementById("mapDescCol")?.value.trim();
-  const debitCol = document.getElementById("mapDebitCol")?.value.trim();
-  const creditCol = document.getElementById("mapCreditCol")?.value.trim();
-  if (dateCol || descCol || debitCol || creditCol) {
-    const mapping = {};
-    if (dateCol) mapping.date_col = dateCol;
-    if (descCol) mapping.description_col = descCol;
-    if (debitCol) mapping.debit_col = debitCol;
-    if (creditCol) mapping.credit_col = creditCol;
+  const nextBtn = document.getElementById("btnStmtWizardStep1Next");
+  if (nextBtn) {
+    nextBtn.disabled = true;
+    nextBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Parsing &amp; Validating...';
+  }
+
+  try {
+    const preview = await FinanceApi.previewStatement(accountId, formData);
+    _wizardPreviewData = preview;
+
+    // 1. Populate Step 2 (Map & Preview)
+    const fileNameEl = document.getElementById("stmtMetaFileName");
+    if (fileNameEl) fileNameEl.innerText = fileInput.files[0].name;
+    const formatEl = document.getElementById("stmtMetaFormat");
+    if (formatEl) formatEl.innerText = (preview.detected_format || "CSV").toUpperCase();
+    const totalFoundEl = document.getElementById("stmtMetaTotalFound");
+    if (totalFoundEl) totalFoundEl.innerText = `${preview.validation_summary ? preview.validation_summary.total_rows : 0} rows found`;
+    const fpEl = document.getElementById("stmtMetaFingerprint");
+    if (fpEl) fpEl.innerText = (preview.file_fingerprint || "").slice(0, 16) + "...";
+
+    // Duplicate File Warning Banner
+    const dupWarn = document.getElementById("stmtWizardDuplicateWarning");
+    if (dupWarn) dupWarn.style.display = preview.duplicate_file_detected ? "flex" : "none";
+
+    // Populate Column Mapping selects
+    populateMappingSelects(preview.detected_headers || [], preview.suggested_mapping || {});
+
+    // Render preview table
+    renderWizardPreviewRows(preview.preview_rows || []);
+
+    // 2. Populate Step 3 (Validate & Check Balances)
+    const summary = preview.validation_summary || {};
+    const validEl = document.getElementById("stmtKpiValid");
+    if (validEl) validEl.innerText = summary.valid_count || 0;
+    const errEl = document.getElementById("stmtKpiErrors");
+    if (errEl) errEl.innerText = summary.error_count || 0;
+    const dupEl = document.getElementById("stmtKpiDuplicates");
+    if (dupEl) dupEl.innerText = summary.duplicate_lines_count || 0;
+    const netEl = document.getElementById("stmtKpiNetActivity");
+    if (netEl) {
+      const netVal = Number(summary.calculated_net || 0);
+      netEl.innerHTML = `${netVal >= 0 ? '+' : '-'}$${Math.abs(netVal).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      netEl.style.color = netVal >= 0 ? 'var(--success, #16a34a)' : 'var(--danger, #dc2626)';
+    }
+
+    // Balance Math Check
+    const openMath = document.getElementById("stmtMathOpening");
+    if (openMath) openMath.innerText = summary.opening_balance != null ? `$${Number(summary.opening_balance).toFixed(2)}` : '—';
+    const netMath = document.getElementById("stmtMathNet");
+    if (netMath) netMath.innerText = `$${Number(summary.calculated_net || 0).toFixed(2)}`;
+    const calcCloseMath = document.getElementById("stmtMathCalcClosing");
+    if (calcCloseMath) calcCloseMath.innerText = summary.expected_closing_balance != null ? `$${Number(summary.expected_closing_balance).toFixed(2)}` : '—';
+    const statedCloseMath = document.getElementById("stmtMathStatedClosing");
+    if (statedCloseMath) statedCloseMath.innerText = summary.closing_balance != null ? `$${Number(summary.closing_balance).toFixed(2)}` : '—';
+
+    const statusBadge = document.getElementById("stmtBalanceStatusBadge");
+    const deltaRow = document.getElementById("stmtMathDeltaRow");
+    const deltaVal = document.getElementById("stmtMathDeltaVal");
+
+    if (summary.opening_balance != null && summary.closing_balance != null) {
+      if (summary.balance_matches) {
+        if (statusBadge) {
+          statusBadge.className = "badge badge-approved";
+          statusBadge.innerText = "Balanced";
+        }
+        if (deltaRow) deltaRow.style.display = "none";
+      } else {
+        if (statusBadge) {
+          statusBadge.className = "badge badge-rejected";
+          statusBadge.innerText = "Difference";
+        }
+        if (deltaRow) {
+          deltaRow.style.display = "block";
+          if (deltaVal) deltaVal.innerText = `$${Number(summary.balance_delta || 0).toFixed(2)}`;
+        }
+      }
+    } else {
+      if (statusBadge) {
+        statusBadge.className = "badge badge-pending";
+        statusBadge.innerText = "Unverified (No Balances)";
+      }
+      if (deltaRow) deltaRow.style.display = "none";
+    }
+
+    // Malformed row errors diagnosis
+    const errors = preview.errors || [];
+    const errorsBox = document.getElementById("stmtErrorsContainer");
+    const errorsTbody = document.getElementById("stmtErrorsTbody");
+    if (errorsBox && errorsTbody) {
+      if (errors.length > 0) {
+        errorsBox.style.display = "block";
+        errorsTbody.innerHTML = errors.map((e) => `
+          <tr>
+            <td><strong>#${e.row_index}</strong></td>
+            <td><code>${e.column}</code></td>
+            <td style="color:var(--danger);font-family:monospace;">${e.value || '—'}</td>
+            <td>
+              <div>${e.message}</div>
+              ${e.correction_path ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;"><i class="fa-solid fa-wrench"></i> ${e.correction_path}</div>` : ''}
+            </td>
+          </tr>
+        `).join("");
+      } else {
+        errorsBox.style.display = "none";
+        errorsTbody.innerHTML = "";
+      }
+    }
+
+    // PDF alert
+    const pdfAlert = document.getElementById("stmtPdfReviewAlert");
+    if (pdfAlert) pdfAlert.style.display = preview.is_review_required ? "flex" : "none";
+
+    // 3. Populate Step 4 (Confirm)
+    const accSelect = document.getElementById("stmtUploadAccountId");
+    const confirmAcc = document.getElementById("stmtConfirmAccountName");
+    if (confirmAcc) confirmAcc.innerText = accSelect ? accSelect.selectedOptions[0]?.text || "Bank Account" : "Bank Account";
+    const confirmPeriod = document.getElementById("stmtConfirmPeriod");
+    if (confirmPeriod) confirmPeriod.innerText = periodMonth;
+    const confirmLines = document.getElementById("stmtConfirmLinesCount");
+    if (confirmLines) confirmLines.innerText = summary.valid_count || 0;
+
+    goToWizardStep(2);
+  } catch (err) {
+    console.error("Preview failed:", err);
+    if (typeof showToast === "function") showToast(err.message || "Failed to preview statement file", "error");
+    else if (typeof toast === "function") toast("Preview failed: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.innerHTML = '<i class="fa-solid fa-arrow-right"></i> Next: Upload &amp; Preview';
+    }
+  }
+}
+
+function populateMappingSelects(headers, suggested) {
+  const fields = [
+    { id: "wizardMapDateCol", key: "date_col", required: true },
+    { id: "wizardMapDescCol", key: "description_col", required: true },
+    { id: "wizardMapRefCol", key: "reference_col", required: false },
+    { id: "wizardMapDebitCol", key: "debit_col", required: false },
+    { id: "wizardMapCreditCol", key: "credit_col", required: false },
+    { id: "wizardMapAmountCol", key: "amount_col", required: false },
+  ];
+
+  fields.forEach(({ id, key, required }) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— None / Auto —</option>' +
+      headers.map((h) => `<option value="${h}">${h}</option>`).join("");
+    
+    if (suggested && suggested[key]) {
+      sel.value = suggested[key];
+    }
+  });
+}
+
+function renderWizardPreviewRows(rows) {
+  const tbody = document.getElementById("stmtWizardPreviewTbody");
+  if (!tbody) return;
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:14px;">No rows could be parsed. Check column mapping.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r) => {
+    const isCredit = r.direction === "in";
+    const dirBadge = isCredit
+      ? '<span class="badge" style="background:#f0fdf4; color:#16a34a; font-weight:600;"><i class="fa-solid fa-arrow-down"></i> Inflow</span>'
+      : '<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:600;"><i class="fa-solid fa-arrow-up"></i> Outflow</span>';
+    const amtColor = isCredit ? '#16a34a' : 'inherit';
+
+    return `
+      <tr>
+        <td style="color:var(--text3); font-family:monospace;">#${r.row_index}</td>
+        <td style="font-family:monospace;">${r.raw_date}</td>
+        <td>${r.raw_description}</td>
+        <td style="font-family:monospace;font-size:11px;">${r.raw_reference || '—'}</td>
+        <td style="text-align:center;">${dirBadge}</td>
+        <td style="text-align:right; font-weight:600; color:${amtColor};">$${Number(r.raw_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function recalculatePreviewWithMapping() {
+  // Triggers re-preview with updated custom mapping
+  executeStatementPreview();
+}
+
+function exportStatementRejectedRows() {
+  if (!_wizardPreviewData || !_wizardPreviewData.errors || !_wizardPreviewData.errors.length) {
+    if (typeof showToast === "function") showToast("No rejected lines to export.", "info");
+    return;
+  }
+
+  const errors = _wizardPreviewData.errors;
+  const headers = ["Row Index", "Column", "Value", "Error Diagnostic", "Correction Path"];
+  const csvRows = [headers.join(",")];
+
+  errors.forEach((e) => {
+    const safeVal = `"${String(e.value || '').replace(/"/g, '""')}"`;
+    const safeMsg = `"${String(e.message || '').replace(/"/g, '""')}"`;
+    const safePath = `"${String(e.correction_path || '').replace(/"/g, '""')}"`;
+    csvRows.push([e.row_index, e.column, safeVal, safeMsg, safePath].join(","));
+  });
+
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `statement_rejected_rows_${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function commitStatementImport(reviewState = "needs_review") {
+  const accountId = document.getElementById("stmtUploadAccountId")?.value;
+  const periodMonth = document.getElementById("stmtUploadPeriodMonth")?.value;
+  const fileInput = document.getElementById("stmtUploadFile");
+
+  if (!accountId || !periodMonth || !fileInput || !fileInput.files || !fileInput.files[0]) {
+    if (typeof showToast === "function") showToast("Missing statement file or parameters.", "error");
+    return;
+  }
+
+  const openBalVal = document.getElementById("stmtOpeningBalance")?.value;
+  const closeBalVal = document.getElementById("stmtClosingBalance")?.value;
+  const encoding = document.getElementById("stmtEncoding")?.value || "utf-8";
+  const dateFormat = document.getElementById("stmtDateFormat")?.value || "auto";
+  const decimalSep = document.getElementById("stmtDecimalSeparator")?.value || ".";
+  const allowDup = document.getElementById("stmtAllowDuplicateCheck")?.checked || false;
+
+  const mapping = {};
+  const dateCol = document.getElementById("wizardMapDateCol")?.value;
+  const descCol = document.getElementById("wizardMapDescCol")?.value;
+  const debitCol = document.getElementById("wizardMapDebitCol")?.value;
+  const creditCol = document.getElementById("wizardMapCreditCol")?.value;
+  const amountCol = document.getElementById("wizardMapAmountCol")?.value;
+  const refCol = document.getElementById("wizardMapRefCol")?.value;
+
+  if (dateCol) mapping.date_col = dateCol;
+  if (descCol) mapping.description_col = descCol;
+  if (debitCol) mapping.debit_col = debitCol;
+  if (creditCol) mapping.credit_col = creditCol;
+  if (amountCol) mapping.amount_col = amountCol;
+  if (refCol) mapping.reference_col = refCol;
+
+  const formData = new FormData();
+  formData.append("period_month", periodMonth);
+  formData.append("file", fileInput.files[0]);
+  formData.append("encoding", encoding);
+  formData.append("date_format", dateFormat);
+  formData.append("decimal_separator", decimalSep);
+  formData.append("allow_duplicate", allowDup ? "true" : "false");
+  formData.append("review_state", reviewState);
+  if (openBalVal) formData.append("opening_balance", openBalVal);
+  if (closeBalVal) formData.append("closing_balance", closeBalVal);
+  if (Object.keys(mapping).length > 0) {
     formData.append("column_mapping", JSON.stringify(mapping));
   }
 
-  const submitBtn = document.getElementById("btnSubmitStatementUpload");
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading &amp; Parsing...';
+  // Save template if user requested
+  const saveTmpl = document.getElementById("stmtSaveTemplateCheck")?.checked;
+  const tmplName = (document.getElementById("stmtSaveTemplateName")?.value || "").trim();
+  if (saveTmpl && tmplName) {
+    try {
+      await FinanceApi.saveStatementTemplate({
+        template_name: tmplName,
+        account_id: parseInt(accountId, 10),
+        ...mapping,
+        date_format: dateFormat,
+        decimal_separator: decimalSep,
+        encoding,
+      });
+    } catch (e) {
+      console.warn("Failed to save template:", e);
+    }
+  }
+
+  const commitBtn = document.getElementById("btnConfirmCommitStatement");
+  if (commitBtn) {
+    commitBtn.disabled = true;
+    commitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Committing Statement...';
   }
 
   try {
     const result = await FinanceApi.uploadStatement(accountId, formData);
-    showToast(`Statement uploaded successfully (${result.total_lines_count || 0} lines parsed)`, "success");
+    const msg = reviewState === "resumable"
+      ? `Statement saved as draft (${result.total_lines_count || 0} lines).`
+      : `Statement imported successfully (${result.total_lines_count || 0} lines).`;
+    if (typeof showToast === "function") showToast(msg, "success");
+    else if (typeof toast === "function") toast(msg, "fa-solid fa-circle-check");
+
     closeUploadStatementModal();
     await loadFinanceStatements();
 
-    // Open reconciliation modal immediately
-    if (result && result.id) {
+    if (result && result.id && typeof openReconciliationModal === "function") {
       openReconciliationModal(result.id);
     }
   } catch (err) {
-    console.error("Statement upload failed", err);
-    showToast(err.message || "Failed to upload bank statement", "error");
+    console.error("Statement commit failed:", err);
+    if (typeof showToast === "function") showToast(err.message || "Failed to commit statement import", "error");
+    else if (typeof toast === "function") toast("Failed: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="fa-solid fa-upload"></i> Upload &amp; Parse';
+    if (commitBtn) {
+      commitBtn.disabled = false;
+      commitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Confirm &amp; Commit Import';
     }
   }
 }
@@ -707,9 +1110,15 @@ window.loadFinanceStatements = loadFinanceStatements;
 window.filterFinanceStatements = filterFinanceStatements;
 window.openUploadStatementModal = openUploadStatementModal;
 window.closeUploadStatementModal = closeUploadStatementModal;
-window.toggleCsvMappingFields = toggleCsvMappingFields;
+window.goToWizardStep = goToWizardStep;
+window.executeStatementPreview = executeStatementPreview;
+window.recalculatePreviewWithMapping = recalculatePreviewWithMapping;
+window.exportStatementRejectedRows = exportStatementRejectedRows;
+window.commitStatementImport = commitStatementImport;
+window.onStatementFileSelected = onStatementFileSelected;
+window.onStatementTemplateSelected = onStatementTemplateSelected;
+window.toggleSaveTemplateInput = toggleSaveTemplateInput;
 window.onStatementFileTypeChange = onStatementFileTypeChange;
-window.handleStatementUploadSubmit = handleStatementUploadSubmit;
 window.openReconciliationModal = openReconciliationModal;
 window.closeReconciliationModal = closeReconciliationModal;
 window.filterReconciliationLines = filterReconciliationLines;
@@ -722,4 +1131,5 @@ window.finalizeStatementReconciliation = finalizeStatementReconciliation;
 window.syncStatementUploadPeriod = syncStatementUploadPeriod;
 window.onStatementFilterSelectChange = onStatementFilterSelectChange;
 window.onStatementFilterChange = onStatementFilterChange;
+window.onStatementAccountSelected = onStatementAccountSelected;
 

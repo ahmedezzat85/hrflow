@@ -10,6 +10,7 @@ from sqlalchemy import desc, and_
 from finance.models import (
     BankStatementImportDB,
     StatementLineDB,
+    StatementMappingTemplateDB,
     LedgerTransactionDB,
     FinanceChequeDB,
     FinanceBankAccountDB,
@@ -22,12 +23,51 @@ class StatementsRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    def find_import_by_fingerprint(
+        self, account_id: int, file_fingerprint: str
+    ) -> Optional[BankStatementImportDB]:
+        """Find an existing import with identical file hash on the target account."""
+        if not file_fingerprint:
+            return None
+        return (
+            self.db.query(BankStatementImportDB)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                BankStatementImportDB.file_fingerprint == file_fingerprint,
+            )
+            .first()
+        )
+
+    def find_existing_line_fingerprints(
+        self, account_id: int, fingerprints: List[str]
+    ) -> set:
+        """Find line fingerprints that already exist on statements for this account."""
+        if not fingerprints:
+            return set()
+        rows = (
+            self.db.query(StatementLineDB.line_fingerprint)
+            .join(BankStatementImportDB, StatementLineDB.import_id == BankStatementImportDB.id)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                StatementLineDB.line_fingerprint.in_(fingerprints),
+            )
+            .all()
+        )
+        return {r[0] for r in rows if r[0]}
+
     def create_import(
         self,
         account_id: int,
         period_month: str,
         file_type: str,
         uploaded_file_ref: str,
+        file_fingerprint: Optional[str] = None,
+        opening_balance: Optional[float] = None,
+        closing_balance: Optional[float] = None,
+        encoding: Optional[str] = "utf-8",
+        date_format: Optional[str] = "auto",
+        decimal_separator: Optional[str] = ".",
+        review_state: Optional[str] = "needs_review",
         created_by: Optional[str] = None,
     ) -> BankStatementImportDB:
         statement_import = BankStatementImportDB(
@@ -36,6 +76,13 @@ class StatementsRepository:
             file_type=file_type,
             status="needs_review",
             uploaded_file_ref=uploaded_file_ref,
+            file_fingerprint=file_fingerprint,
+            opening_balance=opening_balance,
+            closing_balance=closing_balance,
+            encoding=encoding,
+            date_format=date_format,
+            decimal_separator=decimal_separator,
+            review_state=review_state,
             total_lines_count=0,
             matched_lines_count=0,
             created_at=datetime.utcnow(),
@@ -45,6 +92,17 @@ class StatementsRepository:
         self.db.commit()
         self.db.refresh(statement_import)
         return statement_import
+
+    def delete_import(self, import_id: int) -> bool:
+        """Safely discard an import and its un-reconciled lines."""
+        imp = self.db.query(BankStatementImportDB).filter(BankStatementImportDB.id == import_id).first()
+        if not imp:
+            return False
+        if imp.status == "reconciled":
+            raise ValueError("Cannot discard an already reconciled statement import.")
+        self.db.delete(imp)
+        self.db.commit()
+        return True
 
     def get_import_by_id(self, import_id: int) -> Optional[BankStatementImportDB]:
         return (
@@ -77,6 +135,8 @@ class StatementsRepository:
         for d in lines_data:
             line = StatementLineDB(
                 import_id=import_id,
+                row_index=d.get("row_index"),
+                line_fingerprint=d.get("line_fingerprint"),
                 raw_date=d.get("raw_date", datetime.utcnow().strftime("%Y-%m-%d")),
                 raw_amount=float(d.get("raw_amount", 0.0)),
                 direction=d.get("direction", "out"),
@@ -102,6 +162,82 @@ class StatementsRepository:
         for l in lines:
             self.db.refresh(l)
         return lines
+
+    # Reusable Mapping Templates
+    def create_template(
+        self,
+        template_name: str,
+        bank_name: Optional[str] = None,
+        account_id: Optional[int] = None,
+        date_col: Optional[str] = None,
+        description_col: Optional[str] = None,
+        debit_col: Optional[str] = None,
+        credit_col: Optional[str] = None,
+        amount_col: Optional[str] = None,
+        reference_col: Optional[str] = None,
+        date_format: Optional[str] = "auto",
+        decimal_separator: Optional[str] = ".",
+        encoding: Optional[str] = "utf-8",
+    ) -> StatementMappingTemplateDB:
+        existing = (
+            self.db.query(StatementMappingTemplateDB)
+            .filter(StatementMappingTemplateDB.template_name == template_name)
+            .first()
+        )
+        if existing:
+            existing.bank_name = bank_name
+            existing.account_id = account_id
+            existing.date_col = date_col
+            existing.description_col = description_col
+            existing.debit_col = debit_col
+            existing.credit_col = credit_col
+            existing.amount_col = amount_col
+            existing.reference_col = reference_col
+            existing.date_format = date_format
+            existing.decimal_separator = decimal_separator
+            existing.encoding = encoding
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing
+
+        tmpl = StatementMappingTemplateDB(
+            template_name=template_name,
+            bank_name=bank_name,
+            account_id=account_id,
+            date_col=date_col,
+            description_col=description_col,
+            debit_col=debit_col,
+            credit_col=credit_col,
+            amount_col=amount_col,
+            reference_col=reference_col,
+            date_format=date_format,
+            decimal_separator=decimal_separator,
+            encoding=encoding,
+        )
+        self.db.add(tmpl)
+        self.db.commit()
+        self.db.refresh(tmpl)
+        return tmpl
+
+    def list_templates(self, account_id: Optional[int] = None) -> List[StatementMappingTemplateDB]:
+        query = self.db.query(StatementMappingTemplateDB)
+        if account_id:
+            query = query.filter(
+                (StatementMappingTemplateDB.account_id == account_id)
+                | (StatementMappingTemplateDB.account_id.is_(None))
+            )
+        return query.order_by(StatementMappingTemplateDB.template_name.asc()).all()
+
+    def get_template_by_id(self, template_id: int) -> Optional[StatementMappingTemplateDB]:
+        return self.db.query(StatementMappingTemplateDB).filter(StatementMappingTemplateDB.id == template_id).first()
+
+    def delete_template(self, template_id: int) -> bool:
+        tmpl = self.get_template_by_id(template_id)
+        if not tmpl:
+            return False
+        self.db.delete(tmpl)
+        self.db.commit()
+        return True
 
     def get_statement_lines(self, import_id: int) -> List[StatementLineDB]:
         return (
