@@ -460,6 +460,8 @@ class StatementLineDB(Base):
     matched_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL"), nullable=True, index=True)
     status = Column(String(20), default="unmatched", nullable=False, index=True)  # unmatched | matched | created | ignored | split
     notes = Column(Text, default="", nullable=False)
+    applied_rule_id = Column(Integer, ForeignKey("finance_reconciliation_rules.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_auto_applied = Column(Boolean, default=False, nullable=False)
     parent_line_id = Column(Integer, ForeignKey("finance_statement_lines.id", ondelete="CASCADE"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -468,6 +470,7 @@ class StatementLineDB(Base):
     matched_cheque = relationship("FinanceChequeDB")
     parent_line = relationship("StatementLineDB", remote_side=[id], back_populates="child_lines")
     child_lines = relationship("StatementLineDB", back_populates="parent_line", cascade="all, delete-orphan")
+    applied_rule = relationship("ReconciliationRuleDB", back_populates="statement_lines")
 
 
 class StatementMappingTemplateDB(Base):
@@ -489,10 +492,50 @@ class StatementMappingTemplateDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class ReconciliationRuleDB(Base):
+    __tablename__ = "finance_reconciliation_rules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True, index=True)
+    description = Column(String(255), default="", nullable=False)
+    priority = Column(Integer, default=10, nullable=False, index=True)  # 1 = highest priority
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    mode = Column(String(20), default="suggestion", nullable=False)  # suggestion | auto_apply
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    
+    # Conditions
+    description_pattern = Column(String(255), nullable=True)
+    direction = Column(String(10), nullable=True)  # in | out
+    min_amount = Column(Float, nullable=True)
+    max_amount = Column(Float, nullable=True)
+    counterparty = Column(String(255), nullable=True)
+    
+    # Action
+    action = Column(String(30), default="suggest_category", nullable=False)  # suggest_category | auto_create | auto_ignore
+    target_category = Column(String(100), nullable=True)
+    target_vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="SET NULL"), nullable=True)
+    payment_method = Column(String(50), default="bank_transfer", nullable=True)
+    audit_reason = Column(String(255), nullable=True)
+
+    # Governance & Metrics
+    creator = Column(String(255), nullable=True)
+    approved_by = Column(String(255), nullable=True)
+    is_approved = Column(Boolean, default=False, nullable=False)
+    last_used_at = Column(DateTime, nullable=True)
+    times_applied = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    account = relationship("FinanceBankAccountDB")
+    target_vendor = relationship("VendorDB")
+    statement_lines = relationship("StatementLineDB", back_populates="applied_rule")
+
+
 # Aliases for statement models
 FinanceBankStatementImportDB = BankStatementImportDB
 FinanceStatementLineDB = StatementLineDB
 FinanceStatementMappingTemplateDB = StatementMappingTemplateDB
+FinanceReconciliationRuleDB = ReconciliationRuleDB
 
 
 class FinanceAttachmentDB(Base):

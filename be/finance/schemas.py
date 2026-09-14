@@ -1151,6 +1151,8 @@ class StatementLineResponse(StatementLineBase):
     id: int
     matched_transaction_id: Optional[int] = None
     matched_cheque_id: Optional[int] = None
+    applied_rule_id: Optional[int] = None
+    is_auto_applied: bool = False
     parent_line_id: Optional[int] = None
     created_at: Optional[datetime] = None
     suggested_matches: List[SuggestedMatch] = []
@@ -1348,6 +1350,108 @@ class CashForecastResponse(BaseModel):
     assumptions: List[str]
     fx_warnings: List[str]
     generated_at: str
+
+
+# =========================================================================
+# Story 6.3: Reconciliation Rules Schemas
+# =========================================================================
+
+class ReconciliationRuleBase(BaseModel):
+    name: str = Field(..., max_length=100)
+    description: Optional[str] = ""
+    priority: int = Field(10, ge=1, le=100, description="Rule evaluation priority (1 = highest)")
+    is_active: bool = True
+    mode: str = Field("suggestion", description="suggestion | auto_apply")
+    account_id: Optional[int] = Field(None, description="Optional bank account scope (null = global)")
+    
+    # Conditions
+    description_pattern: Optional[str] = Field(None, description="Substring or regex pattern for line description")
+    direction: Optional[str] = Field(None, description="in | out")
+    min_amount: Optional[float] = Field(None, ge=0.0)
+    max_amount: Optional[float] = Field(None, ge=0.0)
+    counterparty: Optional[str] = None
+    
+    # Actions
+    action: str = Field("suggest_category", description="suggest_category | auto_create | auto_ignore")
+    target_category: Optional[str] = None
+    target_vendor_id: Optional[int] = None
+    payment_method: Optional[str] = "bank_transfer"
+    audit_reason: Optional[str] = None
+
+
+class ReconciliationRuleCreate(ReconciliationRuleBase):
+    creator: Optional[str] = None
+    is_approved: Optional[bool] = False
+    approved_by: Optional[str] = None
+
+
+class ReconciliationRuleUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
+    mode: Optional[str] = None
+    account_id: Optional[int] = None
+    description_pattern: Optional[str] = None
+    direction: Optional[str] = None
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    counterparty: Optional[str] = None
+    action: Optional[str] = None
+    target_category: Optional[str] = None
+    target_vendor_id: Optional[int] = None
+    payment_method: Optional[str] = None
+    audit_reason: Optional[str] = None
+    is_approved: Optional[bool] = None
+    approved_by: Optional[str] = None
+
+
+class ReconciliationRuleResponse(ReconciliationRuleBase):
+    id: int
+    creator: Optional[str] = None
+    approved_by: Optional[str] = None
+    is_approved: bool = False
+    last_used_at: Optional[datetime] = None
+    times_applied: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RuleMatchConflict(BaseModel):
+    winning_rule_id: int
+    winning_rule_name: str
+    conflicting_rule_id: int
+    conflicting_rule_name: str
+    line_id: int
+    conflict_reason: str
+
+
+class ReconciliationRulePreviewRequest(BaseModel):
+    rule: ReconciliationRuleCreate
+    statement_id: Optional[int] = None
+    account_id: Optional[int] = None
+
+
+class ReconciliationRulePreviewResponse(BaseModel):
+    matched_lines_count: int
+    sample_matched_lines: List[StatementLineResponse] = []
+    conflicts: List[RuleMatchConflict] = []
+    mode: str
+    is_approved: bool
+    summary: str
+
+
+class StatementApplyRulesResponse(BaseModel):
+    statement_id: int
+    evaluated_lines_count: int
+    suggestions_count: int
+    auto_applied_count: int
+    conflicts: List[RuleMatchConflict] = []
+    updated_lines: List[StatementLineResponse] = []
+
 
 
 

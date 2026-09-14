@@ -49,6 +49,7 @@ from finance.routers import transactions as finance_transactions_router
 from finance.routers import transfers as finance_transfers_router
 from finance.routers import cheques as finance_cheques_router
 from finance.routers import statements as finance_statements_router
+from finance.routers import rules as finance_rules_router
 from finance.routers import activity as finance_activity_router
 
 
@@ -158,6 +159,7 @@ app.include_router(finance_transactions_router.router)
 app.include_router(finance_transfers_router.router)
 app.include_router(finance_cheques_router.router)
 app.include_router(finance_statements_router.router)
+app.include_router(finance_rules_router.router)
 app.include_router(finance_activity_router.router)
 
 

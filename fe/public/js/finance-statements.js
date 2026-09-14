@@ -1375,6 +1375,390 @@ async function finalizeStatementReconciliation() {
   }
 }
 
+// =========================================================================
+// Story 6.3: Reconciliation Rules Engine Controller
+// =========================================================================
+let _cachedRules = [];
+let _currentRulesFilter = "all";
+
+async function openReconciliationRulesModal() {
+  await loadAndRenderRulesTable();
+  openModal("financeReconciliationRulesModal");
+}
+
+function closeReconciliationRulesModal() {
+  closeModal("financeReconciliationRulesModal");
+}
+
+async function loadAndRenderRulesTable() {
+  try {
+    _cachedRules = await FinanceApi.getReconciliationRules();
+    renderRulesTable(_cachedRules);
+  } catch (err) {
+    console.error("Failed to load rules:", err);
+    showToast(err.message || "Failed to load rules", "error");
+  }
+}
+
+function filterRulesTable(filterType, tabBtn) {
+  _currentRulesFilter = filterType;
+  const container = document.getElementById("rulesFilterTabs");
+  if (container) {
+    container.querySelectorAll(".filter-tab").forEach((btn) => btn.classList.remove("active"));
+  }
+  if (tabBtn) tabBtn.classList.add("active");
+
+  let filtered = _cachedRules;
+  if (filterType === "suggestion") {
+    filtered = _cachedRules.filter((r) => r.mode === "suggestion");
+  } else if (filterType === "auto_apply") {
+    filtered = _cachedRules.filter((r) => r.mode === "auto_apply");
+  }
+  renderRulesTable(filtered);
+}
+
+function renderRulesTable(rules) {
+  const tbody = document.getElementById("reconciliationRulesTableBody");
+  const empty = document.getElementById("rulesEmptyState");
+  const countLabel = document.getElementById("rulesCountLabel");
+
+  if (countLabel) countLabel.innerText = `${rules.length} rule${rules.length === 1 ? '' : 's'} configured`;
+  if (!tbody) return;
+
+  if (!rules || rules.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  tbody.innerHTML = rules.map((r) => {
+    const isAuto = r.mode === "auto_apply";
+    const modeBadge = isAuto
+      ? `<span class="status-badge status-primary" style="font-size:11px;"><i class="fa-solid fa-bolt"></i> Auto-Apply ${r.is_approved ? '<i class="fa-solid fa-check-double" title="Approved"></i>' : '<span style="color:var(--color-danger);">(Pending Approval)</span>'}</span>`
+      : `<span class="status-badge status-neutral" style="font-size:11px;"><i class="fa-solid fa-lightbulb"></i> Suggestion</span>`;
+
+    const conditionPills = [];
+    if (r.description_pattern) conditionPills.push(`<code>${escapeHtml(r.description_pattern)}</code>`);
+    if (r.direction) conditionPills.push(`<span class="badge" style="font-size:10px;">${r.direction.toUpperCase()}</span>`);
+    if (r.min_amount != null || r.max_amount != null) {
+      conditionPills.push(`<span class="badge" style="font-size:10px;">$${r.min_amount || 0} - ${r.max_amount ? '$' + r.max_amount : 'Any'}</span>`);
+    }
+    if (r.counterparty) conditionPills.push(`<span class="badge" style="font-size:10px;">Party: ${escapeHtml(r.counterparty)}</span>`);
+
+    let actionDesc = "";
+    if (r.action === "suggest_category") actionDesc = `Category: <strong>${escapeHtml(r.target_category || 'Uncategorized')}</strong>`;
+    else if (r.action === "auto_create") actionDesc = `<span style="color:var(--color-primary);font-weight:600;"><i class="fa-solid fa-plus"></i> Auto-create Entry</span>`;
+    else if (r.action === "auto_ignore") actionDesc = `<span style="color:var(--color-danger);font-weight:600;"><i class="fa-solid fa-ban"></i> Auto-ignore (${escapeHtml(r.audit_reason || 'Documented')})</span>`;
+
+    return `
+      <tr id="ruleRow_${r.id}" style="${!r.is_active ? 'opacity:0.6;background:var(--bg-card-subtle);' : ''}">
+        <td><span class="status-badge" style="font-size:11px;font-weight:700;">#${r.priority}</span></td>
+        <td>
+          <div style="font-weight:600;font-size:13px;color:var(--text-primary);">${escapeHtml(r.name)}</div>
+          ${r.description ? `<div style="font-size:11px;color:var(--text-muted);">${escapeHtml(r.description)}</div>` : ''}
+        </td>
+        <td>${modeBadge}</td>
+        <td><div style="display:flex;flex-wrap:wrap;gap:4px;">${conditionPills.join("") || '<em style="color:var(--text-muted);font-size:11px;">Any line</em>'}</div></td>
+        <td><div style="font-size:12px;">${actionDesc}</div></td>
+        <td style="text-align:center;">
+          <div style="font-weight:700;font-size:13px;">${r.times_applied || 0}</div>
+          <div style="font-size:10px;color:var(--text-muted);">${r.last_used_at ? r.last_used_at.substring(0, 10) : 'Never'}</div>
+        </td>
+        <td style="text-align:center;">
+          <div style="display:flex;gap:4px;justify-content:center;align-items:center;">
+            <button type="button" class="btn btn-sm btn-outline btn-toggle-rule" onclick="toggleRuleActive(${r.id}, ${!r.is_active})" title="${r.is_active ? 'Deactivate' : 'Activate'}" style="padding:2px 6px;font-size:11px;">
+              <i class="fa-solid ${r.is_active ? 'fa-toggle-on text-success' : 'fa-toggle-off text-muted'}"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline btn-edit-rule" onclick="editRule(${r.id})" title="Edit rule" style="padding:2px 6px;font-size:11px;">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            ${isAuto && (r.times_applied > 0) ? `
+              <button type="button" class="btn btn-sm btn-outline btn-revert-rule" onclick="revertRuleById(${r.id})" title="Revert auto-applied lines" style="padding:2px 6px;font-size:11px;color:var(--color-warning);">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn-sm btn-outline btn-delete-rule" onclick="deleteRuleById(${r.id})" title="Delete rule" style="padding:2px 6px;font-size:11px;color:var(--color-danger);">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function openCreateRuleModal() {
+  const form = document.getElementById("financeRuleForm");
+  if (form) form.reset();
+  const idEl = document.getElementById("ruleEditId");
+  if (idEl) idEl.value = "";
+  const title = document.getElementById("ruleModalTitleText");
+  if (title) title.innerText = "Create Reconciliation Rule";
+  const previewBox = document.getElementById("rulePreviewResultsContainer");
+  if (previewBox) previewBox.style.display = "none";
+  onRuleModeChange();
+  onRuleActionChange();
+  openModal("financeRuleEditModal");
+}
+
+function editRule(ruleId) {
+  const rule = _cachedRules.find((r) => r.id === parseInt(ruleId, 10));
+  if (!rule) return;
+
+  const idEl = document.getElementById("ruleEditId");
+  if (idEl) idEl.value = rule.id;
+  const title = document.getElementById("ruleModalTitleText");
+  if (title) title.innerText = `Edit Rule #${rule.id}`;
+
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val !== null && val !== undefined ? val : "";
+  };
+
+  setVal("ruleFormName", rule.name);
+  setVal("ruleFormPriority", rule.priority);
+  setVal("ruleFormDescription", rule.description);
+  setVal("ruleFormMode", rule.mode);
+  setVal("ruleFormDescPattern", rule.description_pattern);
+  setVal("ruleFormDirection", rule.direction);
+  setVal("ruleFormMinAmount", rule.min_amount);
+  setVal("ruleFormMaxAmount", rule.max_amount);
+  setVal("ruleFormAction", rule.action);
+  setVal("ruleFormTargetCategory", rule.target_category);
+  setVal("ruleFormAuditReason", rule.audit_reason);
+
+  const isAppr = document.getElementById("ruleFormIsApproved");
+  if (isAppr) isAppr.checked = Boolean(rule.is_approved);
+
+  const previewBox = document.getElementById("rulePreviewResultsContainer");
+  if (previewBox) previewBox.style.display = "none";
+
+  onRuleModeChange();
+  onRuleActionChange();
+  openModal("financeRuleEditModal");
+}
+
+function closeRuleEditModal() {
+  closeModal("financeRuleEditModal");
+}
+
+function onRuleModeChange() {
+  const mode = document.getElementById("ruleFormMode")?.value;
+  const container = document.getElementById("ruleApprovalContainer");
+  if (container) {
+    container.style.display = mode === "auto_apply" ? "block" : "none";
+  }
+}
+
+function onRuleActionChange() {
+  const action = document.getElementById("ruleFormAction")?.value;
+  const catField = document.getElementById("ruleCategoryField");
+  const auditField = document.getElementById("ruleAuditReasonField");
+
+  if (action === "auto_ignore") {
+    if (catField) catField.style.display = "none";
+    if (auditField) auditField.style.display = "block";
+  } else {
+    if (catField) catField.style.display = "block";
+    if (auditField) auditField.style.display = "none";
+  }
+}
+
+function collectRuleFormData() {
+  const name = (document.getElementById("ruleFormName")?.value || "").trim();
+  const priority = parseInt(document.getElementById("ruleFormPriority")?.value || "10", 10);
+  const description = (document.getElementById("ruleFormDescription")?.value || "").trim();
+  const mode = document.getElementById("ruleFormMode")?.value || "suggestion";
+  const isApproved = Boolean(document.getElementById("ruleFormIsApproved")?.checked);
+  const descPattern = (document.getElementById("ruleFormDescPattern")?.value || "").trim();
+  const direction = document.getElementById("ruleFormDirection")?.value || null;
+  const minAmt = document.getElementById("ruleFormMinAmount")?.value ? parseFloat(document.getElementById("ruleFormMinAmount").value) : null;
+  const maxAmt = document.getElementById("ruleFormMaxAmount")?.value ? parseFloat(document.getElementById("ruleFormMaxAmount").value) : null;
+  const action = document.getElementById("ruleFormAction")?.value || "suggest_category";
+  const targetCat = (document.getElementById("ruleFormTargetCategory")?.value || "").trim() || null;
+  const auditReason = (document.getElementById("ruleFormAuditReason")?.value || "").trim() || null;
+
+  return {
+    name,
+    priority,
+    description,
+    mode,
+    is_approved: isApproved,
+    description_pattern: descPattern || null,
+    direction: direction || null,
+    min_amount: minAmt,
+    max_amount: maxAmt,
+    action,
+    target_category: targetCat,
+    audit_reason: auditReason,
+  };
+}
+
+async function triggerRuleDryRunPreview() {
+  const candidate = collectRuleFormData();
+  if (!candidate.name) {
+    showToast("Rule name is required to run a preview test.", "info");
+    return;
+  }
+
+  const container = document.getElementById("rulePreviewResultsContainer");
+  const summaryEl = document.getElementById("rulePreviewSummaryText");
+  const conflictsEl = document.getElementById("rulePreviewConflictsAlert");
+  const listEl = document.getElementById("rulePreviewMatchedLinesList");
+
+  try {
+    const res = await FinanceApi.previewReconciliationRule({
+      rule: candidate,
+      statement_id: _currentReconcileImport ? _currentReconcileImport.id : null,
+    });
+
+    if (container) container.style.display = "block";
+    if (summaryEl) summaryEl.innerText = res.summary;
+
+    if (conflictsEl) {
+      if (res.conflicts && res.conflicts.length > 0) {
+        conflictsEl.style.display = "block";
+        conflictsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>${res.conflicts.length} conflict(s) detected:</strong><br>` +
+          res.conflicts.map((c) => `· Line #${c.line_id}: ${escapeHtml(c.conflict_reason)}`).join("<br>");
+      } else {
+        conflictsEl.style.display = "none";
+      }
+    }
+
+    if (listEl) {
+      if (res.sample_matched_lines && res.sample_matched_lines.length > 0) {
+        listEl.innerHTML = res.sample_matched_lines.map((l) => `
+          <div style="background:var(--bg-card);padding:4px 8px;border-radius:4px;border:1px solid var(--border-color);">
+            #${l.id} · ${l.raw_date} · ${escapeHtml(l.raw_description)} · ${formatCurrency(l.raw_amount)} (${l.direction.toUpperCase()})
+          </div>
+        `).join("");
+      } else {
+        listEl.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No unmatched statement lines match these conditions.</div>';
+      }
+    }
+  } catch (err) {
+    console.error("Preview failed:", err);
+    showToast(err.message || "Failed to run dry-run preview", "error");
+  }
+}
+
+async function handleRuleFormSubmit(e) {
+  e.preventDefault();
+  const editId = document.getElementById("ruleEditId")?.value;
+  const payload = collectRuleFormData();
+
+  if (payload.action === "auto_ignore" && !payload.audit_reason) {
+    showToast("A mandatory audit reason is required for auto-ignore rules.", "error");
+    return;
+  }
+
+  const btn = document.getElementById("btnSaveReconciliationRule");
+  if (btn) btn.disabled = true;
+
+  try {
+    if (editId) {
+      await FinanceApi.updateReconciliationRule(editId, payload);
+      showToast(`Reconciliation rule updated`, "success");
+    } else {
+      await FinanceApi.createReconciliationRule(payload);
+      showToast(`Reconciliation rule created`, "success");
+    }
+    closeRuleEditModal();
+    await loadAndRenderRulesTable();
+  } catch (err) {
+    console.error("Save rule failed:", err);
+    showToast(err.message || "Failed to save rule", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function toggleRuleActive(ruleId, newStatus) {
+  try {
+    await FinanceApi.updateReconciliationRule(ruleId, { is_active: newStatus });
+    showToast(`Rule ${newStatus ? 'activated' : 'deactivated'}`, "info");
+    await loadAndRenderRulesTable();
+  } catch (err) {
+    console.error("Toggle rule failed:", err);
+    showToast(err.message || "Failed to update rule status", "error");
+  }
+}
+
+async function deleteRuleById(ruleId) {
+  if (!confirm(`Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`)) return;
+  try {
+    await FinanceApi.deleteReconciliationRule(ruleId);
+    showToast("Rule deleted successfully", "info");
+    await loadAndRenderRulesTable();
+  } catch (err) {
+    console.error("Delete rule failed:", err);
+    showToast(err.message || "Failed to delete rule", "error");
+  }
+}
+
+async function revertRuleById(ruleId) {
+  if (!confirm(`Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`)) return;
+  try {
+    const res = await FinanceApi.revertRule(ruleId);
+    showToast(res.message || "Rule resolutions reverted", "success");
+    await loadAndRenderRulesTable();
+    await refreshReconciliationWorkspace();
+  } catch (err) {
+    console.error("Revert rule failed:", err);
+    showToast(err.message || "Failed to revert rule", "error");
+  }
+}
+
+async function openApplyRulesDialog() {
+  if (!_currentReconcileImport) return;
+
+  const container = document.getElementById("applyRulesStatsSummary");
+  if (container) {
+    container.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Simulating rule evaluations...';
+  }
+  openModal("financeApplyRulesConfirmModal");
+
+  try {
+    const sim = await FinanceApi.applyRulesToStatement(_currentReconcileImport.id, true);
+    if (container) {
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+          <div>Evaluated Unmatched Lines: <strong>${sim.evaluated_lines_count}</strong></div>
+          <div>Projected Suggestions: <strong class="text-primary">${sim.suggestions_count}</strong></div>
+          <div>Projected Auto-Applied: <strong class="text-success">${sim.auto_applied_count}</strong></div>
+          <div>Conflicts Detected: <strong class="${sim.conflicts.length ? 'text-warning' : 'text-muted'}">${sim.conflicts.length}</strong></div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    if (container) container.innerHTML = `<span style="color:var(--color-danger);">${escapeHtml(err.message || 'Simulation failed')}</span>`;
+  }
+}
+
+function closeApplyRulesDialog() {
+  closeModal("financeApplyRulesConfirmModal");
+}
+
+async function confirmExecuteStatementRules() {
+  if (!_currentReconcileImport) return;
+  const btn = document.getElementById("btnConfirmExecuteRules");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await FinanceApi.applyRulesToStatement(_currentReconcileImport.id, false);
+    showToast(`Rules applied: ${res.suggestions_count} suggestions, ${res.auto_applied_count} auto-resolved`, "success");
+    closeApplyRulesDialog();
+    await refreshReconciliationWorkspace();
+    await loadFinanceStatements();
+  } catch (err) {
+    console.error("Execute rules failed:", err);
+    showToast(err.message || "Failed to execute rules", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // Window exports
 window.loadFinanceStatements = loadFinanceStatements;
 window.filterFinanceStatements = filterFinanceStatements;
@@ -1412,5 +1796,24 @@ window.syncStatementUploadPeriod = syncStatementUploadPeriod;
 window.onStatementFilterSelectChange = onStatementFilterSelectChange;
 window.onStatementFilterChange = onStatementFilterChange;
 window.onStatementAccountSelected = onStatementAccountSelected;
+
+// Story 6.3 Rules Engine Window Exports
+window.openReconciliationRulesModal = openReconciliationRulesModal;
+window.closeReconciliationRulesModal = closeReconciliationRulesModal;
+window.filterRulesTable = filterRulesTable;
+window.openCreateRuleModal = openCreateRuleModal;
+window.editRule = editRule;
+window.closeRuleEditModal = closeRuleEditModal;
+window.onRuleModeChange = onRuleModeChange;
+window.onRuleActionChange = onRuleActionChange;
+window.triggerRuleDryRunPreview = triggerRuleDryRunPreview;
+window.handleRuleFormSubmit = handleRuleFormSubmit;
+window.toggleRuleActive = toggleRuleActive;
+window.deleteRuleById = deleteRuleById;
+window.revertRuleById = revertRuleById;
+window.openApplyRulesDialog = openApplyRulesDialog;
+window.closeApplyRulesDialog = closeApplyRulesDialog;
+window.confirmExecuteStatementRules = confirmExecuteStatementRules;
+
 
 

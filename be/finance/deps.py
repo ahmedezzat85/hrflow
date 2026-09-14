@@ -143,6 +143,20 @@ def get_statements_service(repo=Depends(get_statements_repo)):
     return StatementsService(repo)
 
 
+def get_rules_repo(db: Session = Depends(get_db)):
+    from finance.repositories.rules_repository import RulesRepository
+    return RulesRepository(db)
+
+
+def get_rules_service(
+    rules_repo=Depends(get_rules_repo),
+    statements_repo=Depends(get_statements_repo),
+):
+    from finance.services.rules_service import RulesService
+    return RulesService(rules_repo=rules_repo, statements_repo=statements_repo)
+
+
+
 def get_reports_service(db: Session = Depends(get_db)):
     from finance.services.reports_service import ReportsService
     return ReportsService(db)

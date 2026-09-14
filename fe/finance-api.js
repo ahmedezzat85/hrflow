@@ -198,6 +198,60 @@ const FinanceMockState = {
       suggested_matches: []
     }
   ],
+  reconciliationRules: [
+    {
+      id: 1,
+      name: "Auto-Categorize Cloud Services",
+      description: "Suggest Hosting category for Amazon Web Services",
+      priority: 10,
+      is_active: true,
+      mode: "suggestion",
+      account_id: null,
+      description_pattern: "AMAZON|AWS",
+      direction: "out",
+      min_amount: null,
+      max_amount: null,
+      counterparty: "Amazon",
+      action: "suggest_category",
+      target_category: "Hosting Cloud Infrastructure",
+      target_vendor_id: 1,
+      payment_method: "card",
+      audit_reason: null,
+      creator: "admin@hrflow.test",
+      approved_by: null,
+      is_approved: false,
+      last_used_at: "2026-09-02T10:00:00",
+      times_applied: 4,
+      created_at: "2026-08-01T10:00:00",
+      updated_at: "2026-08-01T10:00:00"
+    },
+    {
+      id: 2,
+      name: "Bank Monthly Maintenance Fees",
+      description: "Auto-ignore routine monthly checking account service charges",
+      priority: 5,
+      is_active: true,
+      mode: "auto_apply",
+      account_id: null,
+      description_pattern: "SERVICE FEE|MAINTENANCE",
+      direction: "out",
+      min_amount: 1.0,
+      max_amount: 50.0,
+      counterparty: "Chase",
+      action: "auto_ignore",
+      target_category: "Bank Charges",
+      target_vendor_id: null,
+      payment_method: "bank_transfer",
+      audit_reason: "Standard recurring bank maintenance charge covered by corporate policy",
+      creator: "admin@hrflow.test",
+      approved_by: "controller@voyancehealth.com",
+      is_approved: true,
+      last_used_at: "2026-09-01T09:00:00",
+      times_applied: 2,
+      created_at: "2026-08-10T10:00:00",
+      updated_at: "2026-08-10T10:00:00"
+    }
+  ],
   transactions: [
     {
       id: 1,
@@ -3264,6 +3318,218 @@ const FinanceApi = {
     }
     return apiRequest("POST", `/api/finance/statements/${statementId}/reconcile`);
   },
+
+  // ==========================================
+  // Story 6.3: Reconciliation Rules
+  // ==========================================
+  async getReconciliationRules(params = {}) {
+    if (_isMock()) {
+      let rules = [...(FinanceMockState.reconciliationRules || [])];
+      if (params.is_active !== undefined && params.is_active !== null) {
+        const act = String(params.is_active) === "true";
+        rules = rules.filter((r) => r.is_active === act);
+      }
+      if (params.account_id) {
+        rules = rules.filter((r) => !r.account_id || r.account_id === parseInt(params.account_id, 10));
+      }
+      if (params.mode) {
+        rules = rules.filter((r) => r.mode === params.mode);
+      }
+      return rules.sort((a, b) => a.priority - b.priority || a.id - b.id);
+    }
+    const q = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/rules${q ? `?${q}` : ""}`);
+  },
+
+  async createReconciliationRule(payload) {
+    if (_isMock()) {
+      const newRule = {
+        id: Date.now(),
+        name: payload.name,
+        description: payload.description || "",
+        priority: parseInt(payload.priority || 10, 10),
+        is_active: payload.is_active !== false,
+        mode: payload.mode || "suggestion",
+        account_id: payload.account_id || null,
+        description_pattern: payload.description_pattern || null,
+        direction: payload.direction || null,
+        min_amount: payload.min_amount ? parseFloat(payload.min_amount) : null,
+        max_amount: payload.max_amount ? parseFloat(payload.max_amount) : null,
+        counterparty: payload.counterparty || null,
+        action: payload.action || "suggest_category",
+        target_category: payload.target_category || null,
+        target_vendor_id: payload.target_vendor_id || null,
+        payment_method: payload.payment_method || "bank_transfer",
+        audit_reason: payload.audit_reason || null,
+        creator: "admin@hrflow.test",
+        approved_by: payload.is_approved ? "controller@voyancehealth.com" : null,
+        is_approved: Boolean(payload.is_approved),
+        last_used_at: null,
+        times_applied: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      (FinanceMockState.reconciliationRules = FinanceMockState.reconciliationRules || []).push(newRule);
+      return newRule;
+    }
+    return apiRequest("POST", "/api/finance/rules", payload);
+  },
+
+  async updateReconciliationRule(ruleId, payload) {
+    if (_isMock()) {
+      const rule = (FinanceMockState.reconciliationRules || []).find((r) => r.id === parseInt(ruleId, 10));
+      if (!rule) throw new Error("Reconciliation rule not found");
+      Object.assign(rule, payload, { updated_at: new Date().toISOString() });
+      return rule;
+    }
+    return apiRequest("PUT", `/api/finance/rules/${ruleId}`, payload);
+  },
+
+  async deleteReconciliationRule(ruleId) {
+    if (_isMock()) {
+      const idx = (FinanceMockState.reconciliationRules || []).findIndex((r) => r.id === parseInt(ruleId, 10));
+      if (idx >= 0) FinanceMockState.reconciliationRules.splice(idx, 1);
+      return { status: "success", message: `Rule #${ruleId} deleted` };
+    }
+    return apiRequest("DELETE", `/api/finance/rules/${ruleId}`);
+  },
+
+  async previewReconciliationRule(payload) {
+    if (_isMock()) {
+      const ruleCandidate = payload.rule;
+      const unmatchedLines = (FinanceMockState.statementLines || []).filter((l) => l.status === "unmatched");
+      const matched = unmatchedLines.filter((l) => {
+        if (ruleCandidate.direction && l.direction !== ruleCandidate.direction) return false;
+        if (ruleCandidate.min_amount && l.raw_amount < ruleCandidate.min_amount) return false;
+        if (ruleCandidate.max_amount && l.raw_amount > ruleCandidate.max_amount) return false;
+        if (ruleCandidate.description_pattern) {
+          const pat = new RegExp(ruleCandidate.description_pattern, "i");
+          if (!pat.test(l.raw_description || "") && !pat.test(l.raw_reference || "")) return false;
+        }
+        return true;
+      });
+
+      const conflicts = [];
+      const activeRules = (FinanceMockState.reconciliationRules || []).filter((r) => r.is_active);
+      matched.forEach((m) => {
+        activeRules.forEach((ar) => {
+          if (ar.id === ruleCandidate.id) return;
+          const pat = new RegExp(ar.description_pattern || ".*", "i");
+          if (pat.test(m.raw_description || "") || pat.test(m.raw_reference || "")) {
+            conflicts.push({
+              winning_rule_id: ruleCandidate.priority <= ar.priority ? 0 : ar.id,
+              winning_rule_name: ruleCandidate.priority <= ar.priority ? ruleCandidate.name : ar.name,
+              conflicting_rule_id: ruleCandidate.priority <= ar.priority ? ar.id : 0,
+              conflicting_rule_name: ruleCandidate.priority <= ar.priority ? ar.name : ruleCandidate.name,
+              line_id: m.id,
+              conflict_reason: `Both rules match statement line #${m.id}. Higher priority (${Math.min(ruleCandidate.priority, ar.priority)}) wins.`,
+            });
+          }
+        });
+      });
+
+      return {
+        matched_lines_count: matched.length,
+        sample_matched_lines: matched.slice(0, 5),
+        conflicts: conflicts,
+        mode: ruleCandidate.mode || "suggestion",
+        is_approved: Boolean(ruleCandidate.is_approved),
+        summary: `Matches ${matched.length} unmatched line(s) with ${conflicts.length} conflict(s) detected.`,
+      };
+    }
+    return apiRequest("POST", "/api/finance/rules/preview", payload);
+  },
+
+  async applyRulesToStatement(statementId, dryRun = false) {
+    if (_isMock()) {
+      const activeRules = (FinanceMockState.reconciliationRules || []).filter((r) => r.is_active);
+      const lines = (FinanceMockState.statementLines || []).filter(
+        (l) => l.import_id === parseInt(statementId, 10) && l.status === "unmatched"
+      );
+
+      let suggestionsCount = 0;
+      let autoAppliedCount = 0;
+      const updatedLines = [];
+
+      lines.forEach((line) => {
+        for (const rule of activeRules) {
+          if (rule.direction && line.direction !== rule.direction) continue;
+          if (rule.min_amount && line.raw_amount < rule.min_amount) continue;
+          if (rule.max_amount && line.raw_amount > rule.max_amount) continue;
+          if (rule.description_pattern) {
+            const pat = new RegExp(rule.description_pattern, "i");
+            if (!pat.test(line.raw_description || "") && !pat.test(line.raw_reference || "")) continue;
+          }
+
+          // Matched winning rule
+          if (dryRun) break;
+
+          if (rule.mode === "suggestion") {
+            line.notes = `[Rule: ${rule.name}] Suggests: ${rule.action} (${rule.target_category || ''})`;
+            line.applied_rule_id = rule.id;
+            line.is_auto_applied = false;
+            suggestionsCount++;
+            updatedLines.push(line);
+          } else if (rule.mode === "auto_apply" && rule.is_approved) {
+            if (rule.action === "auto_ignore") {
+              line.status = "ignored";
+              line.notes = rule.audit_reason || `Auto-ignored by rule ${rule.name}`;
+              line.applied_rule_id = rule.id;
+              line.is_auto_applied = true;
+              autoAppliedCount++;
+              updatedLines.push(line);
+            } else if (rule.action === "auto_create") {
+              line.status = "created";
+              line.matched_transaction_id = Date.now();
+              line.applied_rule_id = rule.id;
+              line.is_auto_applied = true;
+              autoAppliedCount++;
+              updatedLines.push(line);
+            }
+            rule.times_applied = (rule.times_applied || 0) + 1;
+            rule.last_used_at = new Date().toISOString();
+          }
+          break;
+        }
+      });
+
+      return {
+        statement_id: parseInt(statementId, 10),
+        evaluated_lines_count: lines.length,
+        suggestions_count: suggestionsCount,
+        auto_applied_count: autoAppliedCount,
+        conflicts: [],
+        updated_lines: updatedLines,
+      };
+    }
+    return apiRequest("POST", `/api/finance/statements/${statementId}/apply-rules?dry_run=${dryRun ? "true" : "false"}`);
+  },
+
+  async revertRule(ruleId) {
+    if (_isMock()) {
+      const id = parseInt(ruleId, 10);
+      const lines = (FinanceMockState.statementLines || []).filter(
+        (l) => l.applied_rule_id === id && l.is_auto_applied
+      );
+      lines.forEach((l) => {
+        l.status = "unmatched";
+        l.matched_transaction_id = null;
+        l.applied_rule_id = null;
+        l.is_auto_applied = false;
+      });
+      const rule = (FinanceMockState.reconciliationRules || []).find((r) => r.id === id);
+      if (rule) rule.times_applied = Math.max(0, (rule.times_applied || 0) - lines.length);
+
+      return {
+        rule_id: id,
+        reverted_lines_count: lines.length,
+        status: "success",
+        message: `Reverted ${lines.length} auto-applied line(s).`,
+      };
+    }
+    return apiRequest("POST", `/api/finance/rules/${ruleId}/revert`);
+  },
+
 
   // ==========================================
   // 10. Financial Reports & Excel Export (Phase 8)
