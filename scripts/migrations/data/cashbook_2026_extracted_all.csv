@@ -1,3 +1,38 @@
 source_month,source_row,source_block,record_type,date,account,payment_type,ref_no,category,details,currency,direction,amount,out_currency,out_amount,in_currency,in_amount,fx_rate,egp_eqv,usd_eqv,is_petty,issues
 JAN,50,main_ledger,transaction,2026-01-01,NBK,BANK-FEES,,Bank Fees,,EGP,out,300.0,,,,,47.25,0.0,6.349206349206349,False,
 JAN,51,main_ledger,transaction,2026-01-04,ARAB_BANK,BANK-FEES,,Bank Fees,,EGP,out,450.0,,,,,47.25,0.0,9.523809523809524,False,
+JAN,52,main_ledger,transaction,2026-01-04,CASH,CASH,1,Electricity,,EGP,out,212.0,,,,,47.25,0.0,4.4867724867724865,False,
+JAN,53,main_ledger,transaction,2026-01-06,ARAB_BANK,OUTBOUND_TRANS,2,Internet,Payment of WE Data Invoice E-2211023,EGP,out,34877.0,,,,,47.25,0.0,738.1375661375662,False,
+JAN,54,main_ledger,transaction,2026-01-06,ARAB_BANK,BANK-FEES,,Bank Fees,,EGP,out,10.0,,,,,47.25,0.0,0.21164021164021163,False,
+JAN,55,main_ledger,transaction,2026-01-07,CASH,CASH,3,Kitchen Supplies,Coffee ,EGP,out,535.0,,,,,47.25,0.0,11.322751322751323,False,
+JAN,56,main_ledger,transaction,2026-01-08,CASH,CASH,4,Social Insurance,,EGP,out,31841.0,,,,,47.25,0.0,673.8835978835979,False,
+JAN,57,main_ledger,transaction,2026-01-12,CASH,CASH,5,Kitchen Supplies,,EGP,out,3250.0,,,,,47.25,0.0,68.78306878306879,False,
+JAN,58,main_ledger,transaction,2026-01-14,CASH,CASH,6,Kitchen Supplies,carrefour,EGP,out,4657.0,,,,,47.25,0.0,98.56084656084656,False,
+JAN,59,main_ledger,transaction,2026-01-14,CASH,CASH,7,Medical Insurance,Abdelmohsen,EGP,out,2700.0,,,,,47.25,0.0,57.142857142857146,False,
+JAN,60,main_ledger,fx_conversion,2026-01-15,CASH,USDTOEGP,,,,,,,USD,1800.0,EGP,85014.0,47.23,85014.0,0.0,False,
+JAN,61,main_ledger,transaction,2026-01-15,CASH,CASH,,Taxes,,EGP,out,76128.0,,,,,47.23,0.0,1611.8568706330723,False,
+JAN,62,main_ledger,transaction,2026-01-15,CASH,CASH,8,Kitchen Supplies,Spinneys,EGP,out,556.0,,,,,47.23,0.0,11.772178699978827,False,
+JAN,63,main_ledger,fx_conversion,2026-01-19,CASH,USDTOEGP,,,,,,,USD,1000.0,EGP,47330.0,47.33,47330.0,0.0,False,
+JAN,64,main_ledger,transaction,2026-01-19,CASH,CASH,9,Robot,Gomroky,EGP,out,63500.0,,,,,47.33,0.0,1341.643777730826,False,
+JAN,65,main_ledger,transaction,2026-01-19,CASH,CASH,10,Kitchen Supplies,Coffee ,EGP,out,1850.0,,,,,47.33,0.0,39.08725966617367,False,
+JAN,66,main_ledger,transaction,2026-01-20,CASH,CASH,11,Other,Aramex,EGP,out,238.0,,,,,47.33,0.0,5.0285231354320725,False,
+JAN,67,main_ledger,transaction,2026-01-20,CASH,CASH,12,Robot,Gomroky,EGP,out,2900.0,,,,,47.33,0.0,61.27192055778576,False,
+JAN,68,main_ledger,transaction,2026-01-21,CASH,CASH,13,Other,ISO,EGP,out,22800.0,,,,,47.33,0.0,481.7240650750053,False,
+JAN,69,main_ledger,transaction,2026-01-26,ARAB_BANK,CHK,,,#0127295,USD,out,10000.0,,,,,,0.0,0.0,False,missing_category
+JAN,70,main_ledger,transaction,2026-01-26,CASH,CASH,,,,USD,in,10000.0,,,,,47.33,0.0,0.0,False,missing_category
+JAN,71,main_ledger,unclassified,2026-01-26,CASH,USDTOEGP,,,,,,,,,,,,0.0,0.0,False,multiple_amounts_unclassified:EGP_in=46900.0,USD_out=1000.0
+JAN,72,main_ledger,transaction,2026-01-26,CASH,CASH,,Other,ISO Consultation (Should be divided into multiple chunks with kitchen supplies),EGP,out,9000.0,,,,,47.33,0.0,190.15423621381788,False,
+JAN,73,main_ledger,transaction,2026-01-26,CASH,CASH,14,Robot,ROBOT,EGP,out,23950.0,,,,,47.33,0.0,506.02155081343756,False,
+JAN,74,main_ledger,transaction,2026-01-28,NBK,BANK-FEES,,Bank Fees,,EGP,out,120.0,,,,,47.0,,2.5531914893617023,False,
+JAN,74,main_ledger,transaction,2026-01-28,NBK,BANK-FEES,,Bank Fees,,USD,out,2.56,,,,,47.0,,2.5531914893617023,False,
+JAN,75,main_ledger,transaction,2026-01-29,CASH,,15,Salaries,,USD,out,7925.0,,,,,47.0,372475.0,0.0,False,missing_category
+JAN,76,main_ledger,unclassified,,,,16,,transportation 980,,,,,,,,47.33,0.0,0.0,False,missing_date;missing_account;no_amount
+JAN,107,petty_transportation,transaction,2026-01-07,CASH,CASH,,Transportation,,EGP,out,200.0,,,,,,0.0,0.0,True,
+JAN,108,petty_transportation,transaction,2026-01-08,CASH,CASH,,Transportation,,EGP,out,115.0,,,,,,0.0,0.0,True,
+JAN,109,petty_transportation,transaction,2026-01-12,CASH,CASH,,Transportation,,EGP,out,95.0,,,,,,0.0,0.0,True,
+JAN,110,petty_transportation,transaction,2026-01-14,CASH,CASH,,Transportation,,EGP,out,60.0,,,,,,0.0,0.0,True,
+JAN,111,petty_transportation,transaction,2026-01-15,CASH,CASH,,Transportation,,EGP,out,100.0,,,,,,0.0,0.0,True,
+JAN,112,petty_transportation,transaction,2026-01-20,CASH,CASH,,Transportation,,EGP,out,100.0,,,,,,0.0,0.0,True,
+JAN,113,petty_transportation,transaction,2026-01-26,CASH,CASH,,Transportation,,EGP,out,100.0,,,,,,0.0,0.0,True,
+JAN,114,petty_transportation,transaction,2026-01-28,CASH,CASH,,Transportation,,EGP,out,210.0,,,,,,0.0,0.0,True,
+JAN,115,petty_transportation,unclassified,,,,,Transportation,,,,,,,,,,0.0,0.0,True,missing_date;missing_account;no_amount
