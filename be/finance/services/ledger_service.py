@@ -65,6 +65,9 @@ class LedgerService:
             category_id=tx.category_id,
             payment_type_id=tx.payment_type_id,
             entry_type=getattr(tx, "entry_type", "standard") or "standard",
+            payee_type=getattr(tx, "payee_type", "none") or "none",
+            payee_id=getattr(tx, "payee_id", None),
+            payee_name=getattr(tx, "payee_name", None),
             counterparty=getattr(tx, "counterparty", None),
             tax_amount=float(getattr(tx, "tax_amount", 0.0) or 0.0),
             base_amount=getattr(tx, "base_amount", None),
@@ -87,6 +90,65 @@ class LedgerService:
             created_at=tx.created_at,
             created_by=tx.created_by,
         )
+
+    def _validate_and_resolve_payee(self, data: dict) -> None:
+        """
+        Validates payee_type, payee_id, payee_name and ensures mutual exclusivity:
+        - payee_type in ('none', 'vendor', 'employee')
+        - payee_type 'none': payee_id must be None
+        - payee_type 'vendor': payee_id must resolve to VendorDB if present
+        - payee_type 'employee': payee_id must resolve to EmployeeDB if present
+        - Synchronizes payee_name and counterparty
+        """
+        payee_type = (data.get("payee_type") or "none").lower()
+        if payee_type not in ("none", "vendor", "employee"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid payee_type '{payee_type}'. Must be one of 'none', 'vendor', 'employee'.",
+            )
+        data["payee_type"] = payee_type
+        payee_id = data.get("payee_id")
+        payee_name = data.get("payee_name")
+
+        if payee_type == "none":
+            if payee_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="payee_id cannot be provided when payee_type is 'none'",
+                )
+            data["payee_id"] = None
+        elif payee_type == "vendor":
+            if payee_id:
+                from finance.models import VendorDB
+                vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payee_id).first()
+                if not vendor:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Vendor with ID {payee_id} not found",
+                    )
+                if not payee_name:
+                    data["payee_name"] = vendor.name
+                if not data.get("counterparty"):
+                    data["counterparty"] = vendor.name
+        elif payee_type == "employee":
+            if payee_id:
+                from models_db import EmployeeDB
+                emp = self.repo.db.query(EmployeeDB).filter(EmployeeDB.id == payee_id).first()
+                if not emp:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Employee with ID {payee_id} not found",
+                    )
+                if not payee_name:
+                    data["payee_name"] = emp.name
+                if not data.get("counterparty"):
+                    data["counterparty"] = emp.name
+
+        # Sync counterparty and payee_name if one is present and the other is not
+        if not data.get("counterparty") and data.get("payee_name"):
+            data["counterparty"] = data["payee_name"]
+        if not data.get("payee_name") and data.get("counterparty"):
+            data["payee_name"] = data["counterparty"]
 
     def list_transactions(
         self,
@@ -208,6 +270,9 @@ class LedgerService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Payment type with ID {data['payment_type_id']} not found",
                 )
+
+        # Validate and resolve payee information
+        self._validate_and_resolve_payee(data)
 
         try:
             tx = self.repo.create_transaction(account_id, data, created_by=user_email)
@@ -340,6 +405,16 @@ class LedgerService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Payment type with ID {data['payment_type_id']} not found",
                 )
+
+        if any(k in data for k in ("payee_type", "payee_id", "payee_name", "counterparty")):
+            merged_payee_data = {
+                "payee_type": data.get("payee_type", getattr(tx, "payee_type", "none")),
+                "payee_id": data.get("payee_id", getattr(tx, "payee_id", None)),
+                "payee_name": data.get("payee_name", getattr(tx, "payee_name", None)),
+                "counterparty": data.get("counterparty", getattr(tx, "counterparty", None)),
+            }
+            self._validate_and_resolve_payee(merged_payee_data)
+            data.update(merged_payee_data)
 
         try:
             updated = self.repo.update_transaction(tx_id, data)

@@ -968,12 +968,14 @@ async function loadReportCategorySummary() {
   const dateFrom = document.getElementById("reportCatSumDateFrom")?.value || "";
   const dateTo = document.getElementById("reportCatSumDateTo")?.value || "";
   const currency = document.getElementById("reportCatSumCurrency")?.value || "";
+  const includeInternal = document.getElementById("reportShellIncludeInternal") ? document.getElementById("reportShellIncludeInternal").checked : true;
 
   try {
     const report = await FinanceApi.getCategorySummaryReport({
       date_from: dateFrom,
       date_to: dateTo,
       currency: currency || undefined,
+      include_internal: includeInternal,
     });
 
     const totSpentEl = document.getElementById("reportCatSumTotalSpent");
@@ -1063,10 +1065,13 @@ async function loadReportMatrix() {
   const tfoot = document.getElementById("reportMatrixTableFoot");
   const empty = document.getElementById("reportMatrixEmpty");
 
+  const includeInternal = document.getElementById("reportShellIncludeInternal") ? document.getElementById("reportShellIncludeInternal").checked : true;
+
   try {
     const report = await FinanceApi.getMatrixReport({
       year: parseInt(year, 10),
       period_group: _currentMatrixPeriodGroup,
+      include_internal: includeInternal,
     });
 
     if (!thead || !tbody) return;
@@ -1246,6 +1251,7 @@ async function loadReportTransactions() {
   if (catId) params.category_id = parseInt(catId, 10);
   if (dir) params.direction = dir;
   if (search) params.search = search;
+  params.include_internal = document.getElementById("reportShellIncludeInternal") ? document.getElementById("reportShellIncludeInternal").checked : true;
 
   try {
     const report = await FinanceApi.getTransactionsReport(params);
@@ -1266,12 +1272,17 @@ async function loadReportTransactions() {
       const tr = document.createElement("tr");
       const amt = Number(tx.amount || 0);
       const isOut = tx.direction === "out";
+      const payeeName = tx.payee_name || tx.counterparty || tx.payee_or_source || "—";
+      const isInternal = tx.payee_type === "employee";
+      const payeeBadge = isInternal
+        ? ` <span class="badge badge-info" style="font-size:10px; margin-left:4px;" title="Internal Employee Payment"><i class="fa-solid fa-user"></i> Internal</span>`
+        : "";
 
       tr.innerHTML = `
-        <td>${FinanceFormat.formatFinanceDate(tx.transaction_date)}</td>
+        <td>${FinanceFormat.formatFinanceDate(tx.transaction_date || tx.date)}</td>
         <td><strong>${tx.account_name}</strong></td>
         <td><span class="badge badge-neutral">${tx.category_name}</span></td>
-        <td>${tx.payee_or_source || "—"}</td>
+        <td>${payeeName}${payeeBadge}</td>
         <td style="font-size:0.85rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.description || "—"}</td>
         <td style="text-align:center;">
           <span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">
@@ -1281,7 +1292,7 @@ async function loadReportTransactions() {
         <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? '#EF4444' : '#10B981'};">
           ${isOut ? '-' : '+'}${FinanceFormat.formatMoney(amt, tx.currency)}
         </td>
-        <td>${FinanceFormat.formatStatusBadge("transaction", tx.status)}</td>
+        <td>${FinanceFormat.formatStatusBadge("transaction", tx.status || "posted")}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -1308,6 +1319,7 @@ function exportTransactionsExcel() {
   if (catId) params.category_id = parseInt(catId, 10);
   if (dir) params.direction = dir;
   if (search) params.search = search;
+  params.include_internal = document.getElementById("reportShellIncludeInternal") ? document.getElementById("reportShellIncludeInternal").checked : true;
 
   const url = FinanceApi.downloadExcelUrl("/api/finance/reports/transactions", params);
   triggerExcelDownload(url, `transaction_ledger_${dateFrom || 'start'}_to_${dateTo || 'end'}.xlsx`);

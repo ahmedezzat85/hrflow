@@ -264,6 +264,9 @@ class LedgerTransactionDB(Base):
     description = Column(String(255), default="", nullable=False)
     entry_type = Column(String(30), default="standard", nullable=False, index=True)  # standard | money_in | money_out | bank_fee | adjustment
     counterparty = Column(String(255), nullable=True)
+    payee_type = Column(String(20), default="none", nullable=True, index=True)  # none | vendor | employee
+    payee_id = Column(Integer, nullable=True, index=True)
+    payee_name = Column(String(255), nullable=True)
     tax_amount = Column(Float, default=0.0)
     base_amount = Column(Float, nullable=True)
     reason = Column(Text, nullable=True)

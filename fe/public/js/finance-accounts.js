@@ -1442,7 +1442,86 @@ async function _populateTransactionModalDropdowns() {
           .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
           .join("");
     }
+
+    // Populate Vendors
+    try {
+      if (!FinanceState.vendors || !FinanceState.vendors.length) {
+        FinanceState.vendors = await FinanceApi.getVendors();
+      }
+      const vendorSel = document.getElementById("fFinanceTxVendorId");
+      if (vendorSel) {
+        vendorSel.innerHTML = '<option value="">— Select Vendor —</option>' +
+          (FinanceState.vendors || [])
+            .filter((v) => v.is_active !== false)
+            .map((v) => `<option value="${v.id}">${v.name}</option>`)
+            .join("");
+      }
+    } catch (_) {}
+
+    // Populate Employees
+    try {
+      if (!window.employees || !window.employees.length) {
+        if (window.Api && window.Api.getEmployees) {
+          window.employees = await Api.getEmployees();
+        }
+      }
+      const empSel = document.getElementById("fFinanceTxEmployeeId");
+      if (empSel) {
+        const emps = window.employees || [];
+        empSel.innerHTML = '<option value="">— Select Employee (or enter name below) —</option>' +
+          emps.map((e) => `<option value="${e.id}">${e.name || e.full_name || 'Employee #' + e.id} (${e.dept || e.department || 'Staff'})</option>`).join("");
+      }
+    } catch (_) {}
   } catch (_) {}
+}
+
+function onTxPayeeTypeChanged() {
+  const payeeType = document.getElementById("fFinanceTxPayeeType")?.value || "none";
+  const vendorGroup = document.getElementById("fFinanceTxVendorGroup");
+  const empGroup = document.getElementById("fFinanceTxEmployeeGroup");
+  const cpGroup = document.getElementById("fFinanceTxCounterpartyGroup");
+  const cpLabel = document.getElementById("fFinanceTxCounterpartyLabel");
+  const cpInput = document.getElementById("fFinanceTxCounterparty");
+
+  if (vendorGroup) vendorGroup.style.display = payeeType === "vendor" ? "block" : "none";
+  if (empGroup) empGroup.style.display = payeeType === "employee" ? "block" : "none";
+
+  if (payeeType === "vendor") {
+    if (cpLabel) cpLabel.textContent = "Vendor Name / Memo";
+    if (cpInput) cpInput.placeholder = "Vendor name (auto-filled or custom)";
+  } else if (payeeType === "employee") {
+    if (cpLabel) cpLabel.textContent = "Employee Name / Memo";
+    if (cpInput) cpInput.placeholder = "Employee name (auto-filled or free-text)";
+  } else {
+    if (cpLabel) cpLabel.textContent = "Payee / Counterparty Name";
+    if (cpInput) cpInput.placeholder = "e.g. Acme Supplies, John Doe";
+  }
+  updateTransactionPreview();
+}
+
+function onTxVendorSelected() {
+  const vendorId = parseInt(document.getElementById("fFinanceTxVendorId")?.value, 10);
+  if (vendorId && FinanceState.vendors) {
+    const v = FinanceState.vendors.find((item) => item.id === vendorId);
+    if (v) {
+      const cpInput = document.getElementById("fFinanceTxCounterparty");
+      if (cpInput) cpInput.value = v.name;
+    }
+  }
+  updateTransactionPreview();
+}
+
+function onTxEmployeeSelected() {
+  const empId = parseInt(document.getElementById("fFinanceTxEmployeeId")?.value, 10);
+  const emps = window.employees || [];
+  if (empId && emps.length) {
+    const e = emps.find((item) => item.id === empId);
+    if (e) {
+      const cpInput = document.getElementById("fFinanceTxCounterparty");
+      if (cpInput) cpInput.value = e.name || e.full_name || "";
+    }
+  }
+  updateTransactionPreview();
 }
 
 let _txPreviewDebounceTimer = null;
@@ -1460,6 +1539,9 @@ function setTransactionEntryType(type, btn) {
   const counterpartyGroup = document.getElementById("fFinanceTxCounterpartyGroup");
   const counterpartyLabel = document.getElementById("fFinanceTxCounterpartyLabel");
   const counterpartyInput = document.getElementById("fFinanceTxCounterparty");
+  const payeeTypeGroup = document.getElementById("fFinanceTxPayeeTypeGroup");
+  const vendorGroup = document.getElementById("fFinanceTxVendorGroup");
+  const empGroup = document.getElementById("fFinanceTxEmployeeGroup");
   const taxGroup = document.getElementById("fFinanceTxTaxGroup");
   const directionGroup = document.getElementById("fFinanceTxDirectionGroup");
   const directionInput = document.getElementById("fFinanceTxDirection");
@@ -1469,9 +1551,9 @@ function setTransactionEntryType(type, btn) {
   const catSel = document.getElementById("fFinanceTxCategory");
 
   if (type === "money_out") {
+    if (payeeTypeGroup) payeeTypeGroup.style.display = "block";
+    onTxPayeeTypeChanged();
     if (counterpartyGroup) counterpartyGroup.style.display = "block";
-    if (counterpartyLabel) counterpartyLabel.textContent = "Payee / Vendor";
-    if (counterpartyInput) counterpartyInput.placeholder = "e.g. Acme Supplies, Landlord";
     if (taxGroup) taxGroup.style.display = "block";
     if (directionGroup) directionGroup.style.display = "none";
     if (directionInput) directionInput.value = "out";
@@ -1479,6 +1561,9 @@ function setTransactionEntryType(type, btn) {
     if (reasonGroup) reasonGroup.style.display = "none";
     if (reasonInput) reasonInput.required = false;
   } else if (type === "money_in") {
+    if (payeeTypeGroup) payeeTypeGroup.style.display = "none";
+    if (vendorGroup) vendorGroup.style.display = "none";
+    if (empGroup) empGroup.style.display = "none";
     if (counterpartyGroup) counterpartyGroup.style.display = "block";
     if (counterpartyLabel) counterpartyLabel.textContent = "Customer / Payer";
     if (counterpartyInput) counterpartyInput.placeholder = "e.g. Client Ltd, Customer Name";
@@ -1489,6 +1574,9 @@ function setTransactionEntryType(type, btn) {
     if (reasonGroup) reasonGroup.style.display = "none";
     if (reasonInput) reasonInput.required = false;
   } else if (type === "bank_fee") {
+    if (payeeTypeGroup) payeeTypeGroup.style.display = "none";
+    if (vendorGroup) vendorGroup.style.display = "none";
+    if (empGroup) empGroup.style.display = "none";
     if (counterpartyGroup) counterpartyGroup.style.display = "none";
     if (taxGroup) taxGroup.style.display = "none";
     if (directionGroup) directionGroup.style.display = "none";
@@ -1504,6 +1592,9 @@ function setTransactionEntryType(type, btn) {
       if (feeCat) catSel.value = feeCat.id;
     }
   } else if (type === "adjustment") {
+    if (payeeTypeGroup) payeeTypeGroup.style.display = "none";
+    if (vendorGroup) vendorGroup.style.display = "none";
+    if (empGroup) empGroup.style.display = "none";
     if (counterpartyGroup) counterpartyGroup.style.display = "none";
     if (taxGroup) taxGroup.style.display = "none";
     if (directionGroup) directionGroup.style.display = "block";
@@ -1648,7 +1739,15 @@ async function openAddFinanceTransactionModal(defaultType = "money_out") {
   document.getElementById("fFinanceTxReason").value = "";
   document.getElementById("fFinanceTxDescription").value = "";
 
+  const payeeTypeSel = document.getElementById("fFinanceTxPayeeType");
+  if (payeeTypeSel) payeeTypeSel.value = "none";
+  const vendorSel = document.getElementById("fFinanceTxVendorId");
+  if (vendorSel) vendorSel.value = "";
+  const empSel = document.getElementById("fFinanceTxEmployeeId");
+  if (empSel) empSel.value = "";
+
   setTransactionEntryType(defaultType);
+  onTxPayeeTypeChanged();
   onTxCurrencyChanged();
   updateTransactionPreview();
 
@@ -1680,7 +1779,7 @@ async function openEditFinanceTransactionModal(txId) {
   document.getElementById("fFinanceTxDirection").value = tx.direction;
   document.getElementById("fFinanceTxAmount").value = tx.amount;
   document.getElementById("fFinanceTxFxRate").value = tx.fx_rate || "";
-  document.getElementById("fFinanceTxCounterparty").value = tx.counterparty || "";
+  document.getElementById("fFinanceTxCounterparty").value = tx.payee_name || tx.counterparty || "";
   document.getElementById("fFinanceTxTaxAmount").value = tx.tax_amount || "";
   document.getElementById("fFinanceTxCategory").value = tx.category_id || "";
   document.getElementById("fFinanceTxPaymentType").value = tx.payment_type_id || "";
@@ -1688,7 +1787,18 @@ async function openEditFinanceTransactionModal(txId) {
   document.getElementById("fFinanceTxReason").value = tx.reason || "";
   document.getElementById("fFinanceTxDescription").value = tx.description || "";
 
+  const payeeTypeSel = document.getElementById("fFinanceTxPayeeType");
+  const pType = tx.payee_type || "none";
+  if (payeeTypeSel) payeeTypeSel.value = pType;
+
+  const vendorSel = document.getElementById("fFinanceTxVendorId");
+  if (vendorSel) vendorSel.value = (pType === "vendor" && tx.payee_id) ? tx.payee_id : "";
+
+  const empSel = document.getElementById("fFinanceTxEmployeeId");
+  if (empSel) empSel.value = (pType === "employee" && tx.payee_id) ? tx.payee_id : "";
+
   setTransactionEntryType(tx.entry_type || (tx.direction === "in" ? "money_in" : "money_out"));
+  onTxPayeeTypeChanged();
   onTxCurrencyChanged();
   updateTransactionPreview();
 
@@ -1706,7 +1816,19 @@ async function saveFinanceTransaction() {
   const fx_rate_val = document.getElementById("fFinanceTxFxRate").value;
   const fx_rate = fx_rate_val ? parseFloat(fx_rate_val) : null;
   const direction = document.getElementById("fFinanceTxDirection").value || (entryType === "money_in" ? "in" : "out");
+
+  const payeeType = (entryType === "money_out") ? (document.getElementById("fFinanceTxPayeeType")?.value || "none") : "none";
+  let payeeId = null;
+  if (payeeType === "vendor") {
+    const vVal = document.getElementById("fFinanceTxVendorId")?.value;
+    payeeId = vVal ? parseInt(vVal, 10) : null;
+  } else if (payeeType === "employee") {
+    const eVal = document.getElementById("fFinanceTxEmployeeId")?.value;
+    payeeId = eVal ? parseInt(eVal, 10) : null;
+  }
+
   const counterparty = document.getElementById("fFinanceTxCounterparty").value.trim() || null;
+  const payeeName = counterparty;
   const tax_amount_val = document.getElementById("fFinanceTxTaxAmount").value;
   const tax_amount = tax_amount_val ? parseFloat(tax_amount_val) : null;
   const category_id_val = document.getElementById("fFinanceTxCategory").value;
@@ -1737,6 +1859,10 @@ async function saveFinanceTransaction() {
     toast("Please select a transaction category", "fa-solid fa-circle-exclamation");
     return;
   }
+  if (entryType === "money_out" && payeeType === "vendor" && !payeeId && !payeeName) {
+    toast("Please select a vendor or enter a payee name", "fa-solid fa-circle-exclamation");
+    return;
+  }
 
   const saveBtn = document.getElementById("financeTxSaveBtn");
   if (saveBtn) saveBtn.disabled = true;
@@ -1753,6 +1879,9 @@ async function saveFinanceTransaction() {
       description,
       fx_rate,
       entry_type: entryType,
+      payee_type: payeeType,
+      payee_id: payeeId,
+      payee_name: payeeName,
       counterparty,
       tax_amount,
       reason: entryType === "adjustment" ? reason : null,
@@ -2365,5 +2494,6 @@ window.updateTransferPreview = updateTransferPreview;
 window.matchInTransitTransfer = matchInTransitTransfer;
 window.filterWorkspaceLedger = filterWorkspaceLedger;
 window.filterWorkspaceLedgerDirection = filterWorkspaceLedgerDirection;
-
-
+window.onTxPayeeTypeChanged = onTxPayeeTypeChanged;
+window.onTxVendorSelected = onTxVendorSelected;
+window.onTxEmployeeSelected = onTxEmployeeSelected;

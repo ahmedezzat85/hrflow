@@ -31,6 +31,7 @@ def get_transaction(
 
 
 @router.patch("/{transaction_id}", response_model=LedgerTransactionResponse)
+@router.put("/{transaction_id}", response_model=LedgerTransactionResponse)
 def update_manual_transaction(
     transaction_id: int,
     payload: LedgerTransactionUpdate,

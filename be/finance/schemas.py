@@ -129,6 +129,9 @@ class LedgerTransactionBase(BaseModel):
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
     entry_type: Optional[str] = Field("standard", description="Guided entry type: standard, money_in, money_out, bank_fee, adjustment")
     counterparty: Optional[str] = Field(None, description="Counterparty name (payer, vendor, client)")
+    payee_type: Optional[str] = Field("none", description="Payee classification: none, vendor, employee")
+    payee_id: Optional[int] = Field(None, description="Payee ID (vendor_id or employee_id)")
+    payee_name: Optional[str] = Field(None, description="Payee name")
     tax_amount: Optional[float] = Field(0.0, description="Included tax portion")
     base_amount: Optional[float] = Field(None, description="Converted amount in base/account currency")
     reason: Optional[str] = Field(None, description="Explanation or mandatory reason for adjustments")
@@ -172,6 +175,9 @@ class LedgerTransactionUpdate(BaseModel):
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
     entry_type: Optional[str] = None
     counterparty: Optional[str] = None
+    payee_type: Optional[str] = None
+    payee_id: Optional[int] = None
+    payee_name: Optional[str] = None
     tax_amount: Optional[float] = None
     base_amount: Optional[float] = None
     reason: Optional[str] = None

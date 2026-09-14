@@ -139,6 +139,9 @@ class LedgerRepository:
             description=data.get("description", "") or "",
             entry_type=data.get("entry_type", "standard") or "standard",
             counterparty=data.get("counterparty"),
+            payee_type=data.get("payee_type", "none") or "none",
+            payee_id=data.get("payee_id"),
+            payee_name=data.get("payee_name"),
             tax_amount=float(data.get("tax_amount") or 0.0),
             base_amount=float(data["base_amount"]) if data.get("base_amount") is not None else None,
             reason=data.get("reason"),
@@ -188,12 +191,15 @@ class LedgerRepository:
             raise ValueError(f"Transaction with ID {tx_id} not found")
 
         for key, value in data.items():
-            if hasattr(tx, key) and value is not None:
-                if key == "amount":
-                    value = float(value)
-                elif key == "fx_rate" and value is not None:
-                    value = float(value)
-                setattr(tx, key, value)
+            if hasattr(tx, key):
+                if value is not None:
+                    if key == "amount":
+                        value = float(value)
+                    elif key == "fx_rate" and value is not None:
+                        value = float(value)
+                    setattr(tx, key, value)
+                elif key in ("payee_id", "payee_name", "counterparty", "description", "reference", "cheque_number", "reason", "base_amount"):
+                    setattr(tx, key, None)
 
         self.db.flush()
         self.recalculate_account_running_balances(tx.account_id)

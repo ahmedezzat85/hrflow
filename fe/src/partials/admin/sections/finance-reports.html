@@ -131,6 +131,14 @@
                       <option value="prior_year">vs. Prior Year</option>
                     </select>
                   </div>
+
+                  <!-- Include Internal Payments -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-weight:600; color:var(--text-muted); font-size:0.85rem;" title="Include internal employee disbursements (salaries, medical, reimbursements)">
+                      <input type="checkbox" id="reportShellIncludeInternal" checked onchange="onReportShellFilterChanged()" style="cursor:pointer;" />
+                      <span>Internal Payments</span>
+                    </label>
+                  </div>
                 </div>
 
                 <!-- Saved Views & Export Actions -->

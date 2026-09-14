@@ -309,6 +309,8 @@ class ReportsService:
         payment_type_id: Optional[int] = None,
         direction: Optional[str] = None,
         search: Optional[str] = None,
+        payee_type: Optional[str] = None,
+        include_internal: bool = True,
     ) -> Dict[str, Any]:
         q = (
             self.db.query(LedgerTransactionDB)
@@ -329,6 +331,11 @@ class ReportsService:
             q = q.filter(LedgerTransactionDB.payment_type_id == payment_type_id)
         if direction:
             q = q.filter(LedgerTransactionDB.direction == direction.lower())
+        if payee_type:
+            q = q.filter(LedgerTransactionDB.payee_type == payee_type.lower())
+        elif not include_internal:
+            q = q.filter(or_(LedgerTransactionDB.payee_type != "employee", LedgerTransactionDB.payee_type.is_(None)))
+
         if search:
             like_term = f"%{search.strip()}%"
             q = q.filter(
@@ -336,6 +343,8 @@ class ReportsService:
                     LedgerTransactionDB.reference.ilike(like_term),
                     LedgerTransactionDB.description.ilike(like_term),
                     LedgerTransactionDB.cheque_number.ilike(like_term),
+                    LedgerTransactionDB.counterparty.ilike(like_term),
+                    LedgerTransactionDB.payee_name.ilike(like_term),
                 )
             )
 
@@ -365,6 +374,10 @@ class ReportsService:
                 "category_name": tx.category.name if tx.category else "Uncategorized",
                 "payment_type_id": tx.payment_type_id,
                 "payment_type_name": tx.payment_type.name if tx.payment_type else "—",
+                "payee_type": getattr(tx, "payee_type", "none") or "none",
+                "payee_id": getattr(tx, "payee_id", None),
+                "payee_name": getattr(tx, "payee_name", None) or getattr(tx, "counterparty", None) or "",
+                "counterparty": getattr(tx, "counterparty", None) or getattr(tx, "payee_name", None) or "",
                 "reference": tx.reference or "",
                 "description": tx.description or "",
                 "cheque_number": tx.cheque_number or "",
@@ -390,6 +403,7 @@ class ReportsService:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         currency: Optional[str] = None,
+        include_internal: bool = True,
     ) -> Dict[str, Any]:
         """
         Category spend rollup mirroring the monthly SPENT block.
@@ -413,6 +427,8 @@ class ReportsService:
             q = q.filter(LedgerTransactionDB.date <= date_to)
         if currency:
             q = q.filter(LedgerTransactionDB.currency == currency.upper())
+        if not include_internal:
+            q = q.filter(or_(LedgerTransactionDB.payee_type != "employee", LedgerTransactionDB.payee_type.is_(None)))
 
         rows = (
             q.group_by(LedgerTransactionDB.category_id, TransactionCategoryDB.name, TransactionCategoryDB.kind)
@@ -439,6 +455,7 @@ class ReportsService:
             "date_from": date_from,
             "date_to": date_to,
             "currency": currency,
+            "include_internal": include_internal,
             "total_spent": round(total_spent, 2),
             "categories": categories_list,
         }
@@ -451,6 +468,7 @@ class ReportsService:
         year: int,
         period_group: str = "month",
         currency: Optional[str] = None,
+        include_internal: bool = True,
     ) -> Dict[str, Any]:
         """
         Generates an annual category spend matrix.
@@ -490,6 +508,8 @@ class ReportsService:
         )
         if currency:
             q = q.filter(LedgerTransactionDB.currency == currency.upper())
+        if not include_internal:
+            q = q.filter(or_(LedgerTransactionDB.payee_type != "employee", LedgerTransactionDB.payee_type.is_(None)))
 
         records = q.all()
 

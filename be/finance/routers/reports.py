@@ -146,7 +146,9 @@ def get_transactions_report(
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     payment_type_id: Optional[int] = Query(None, description="Filter by payment type ID"),
     direction: Optional[str] = Query(None, description="Filter by direction ('in' or 'out')"),
-    search: Optional[str] = Query(None, description="Search reference/description/cheque"),
+    search: Optional[str] = Query(None, description="Search reference/description/cheque/payee"),
+    payee_type: Optional[str] = Query(None, description="Filter by payee type ('none', 'vendor', 'employee')"),
+    include_internal: bool = Query(True, description="Whether to include internal employee disbursements"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
@@ -162,6 +164,8 @@ def get_transactions_report(
         payment_type_id=payment_type_id,
         direction=direction,
         search=search,
+        payee_type=payee_type,
+        include_internal=include_internal,
     )
 
     if format == "xlsx":
@@ -181,6 +185,7 @@ def get_category_summary_report(
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     currency: Optional[str] = Query(None, description="Filter by currency"),
+    include_internal: bool = Query(True, description="Whether to include internal employee disbursements"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
@@ -192,6 +197,7 @@ def get_category_summary_report(
         date_from=date_from,
         date_to=date_to,
         currency=currency,
+        include_internal=include_internal,
     )
 
     if format == "xlsx":
@@ -211,6 +217,7 @@ def get_category_by_period_matrix(
     year: int = Query(default=2026, description="Fiscal / Calendar Year"),
     period_group: str = Query("month", pattern="^(month|quarter)$", description="Group by month or quarter"),
     currency: Optional[str] = Query(None, description="Filter by currency"),
+    include_internal: bool = Query(True, description="Whether to include internal employee disbursements"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
@@ -222,6 +229,7 @@ def get_category_by_period_matrix(
         year=year,
         period_group=period_group,
         currency=currency,
+        include_internal=include_internal,
     )
 
     if format == "xlsx":

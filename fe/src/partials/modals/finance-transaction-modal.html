@@ -97,9 +97,35 @@
               </select>
             </div>
 
-            <!-- Counterparty (shown for money_out / money_in) -->
+            <!-- Payee Type (Classification) -->
+            <div class="form-field" id="fFinanceTxPayeeTypeGroup">
+              <label for="fFinanceTxPayeeType">Payee Type</label>
+              <select id="fFinanceTxPayeeType" onchange="onTxPayeeTypeChanged()">
+                <option value="none" selected>None / Ad-hoc</option>
+                <option value="vendor">Vendor</option>
+                <option value="employee">Employee</option>
+              </select>
+            </div>
+
+            <!-- Vendor Picker (shown when payee_type == 'vendor') -->
+            <div class="form-field" id="fFinanceTxVendorGroup" style="display: none;">
+              <label for="fFinanceTxVendorId">Select Vendor <span class="req">*</span></label>
+              <select id="fFinanceTxVendorId" onchange="onTxVendorSelected()">
+                <option value="">— Select Vendor —</option>
+              </select>
+            </div>
+
+            <!-- Employee Picker (shown when payee_type == 'employee') -->
+            <div class="form-field" id="fFinanceTxEmployeeGroup" style="display: none;">
+              <label for="fFinanceTxEmployeeId">Select Employee <span class="opt">(Optional)</span></label>
+              <select id="fFinanceTxEmployeeId" onchange="onTxEmployeeSelected()">
+                <option value="">— Select Employee (or enter name below) —</option>
+              </select>
+            </div>
+
+            <!-- Counterparty / Payee Name (shown for money_out / money_in) -->
             <div class="form-field" id="fFinanceTxCounterpartyGroup">
-              <label for="fFinanceTxCounterparty" id="fFinanceTxCounterpartyLabel">Payee / Vendor</label>
+              <label for="fFinanceTxCounterparty" id="fFinanceTxCounterpartyLabel">Payee Name / Counterparty</label>
               <input id="fFinanceTxCounterparty" placeholder="e.g. Acme Supplies, John Doe" oninput="updateTransactionPreview()">
             </div>
 
