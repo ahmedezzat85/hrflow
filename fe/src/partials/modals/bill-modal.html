@@ -22,6 +22,12 @@
           <div style="font-size: 1.8rem; color: var(--primary, #3b82f6); margin-bottom: 6px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
           <div style="font-weight: 600; font-size: 0.92rem;">Drop vendor invoice PDF or click to browse</div>
           <div style="font-size: 0.78rem; color: var(--text3); margin-top: 3px;">Supports multi-page PDFs, scans, and images (Max 15MB)</div>
+          <div class="mobile-camera-capture-wrap" style="margin-top: 10px;">
+            <button type="button" class="btn btn-outline btn-sm" id="btnMobileCameraCapture" onclick="event.stopPropagation(); document.getElementById('billCameraInput').click();" style="display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:6px 14px;">
+              <i class="fa-solid fa-camera"></i> Take Photo / Scan Receipt
+            </button>
+            <input type="file" id="billCameraInput" accept="image/*" capture="environment" style="display: none;" onclick="event.stopPropagation()" onchange="handleBillFileSelected(event)">
+          </div>
           <div id="billFileAttachedInfo" style="display:none; margin-top:10px; font-size:0.85rem; font-weight:600; color:var(--success, #10b981);">
             <i class="fa-solid fa-circle-check"></i> <span id="billAttachedFileName">document.pdf</span>
             <span id="billExtractionConfidenceBadge" class="badge badge-info" style="margin-left: 8px;">Confidence: 94%</span>
