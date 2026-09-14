@@ -73,10 +73,24 @@ def get_db_context() -> Generator[Session, None, None]:
 
 
 def init_db():
-    """Creates all tables defined in Base metadata (useful for quick local dev/testing)."""
+    """Creates all tables defined in Base metadata and synchronizes missing columns."""
     import models_db  # noqa: F401 - ensure all models are registered with Base
+    import finance.models  # noqa: F401 - ensure finance models are registered with Base
+    from sqlalchemy import inspect, text
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+    # Sync missing columns on existing tables for local SQLite / dev instances
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    with engine.connect() as conn:
+        for t_name, table in Base.metadata.tables.items():
+            if t_name in existing_tables:
+                current_cols = {c['name'] for c in inspector.get_columns(t_name)}
+                for col in table.columns:
+                    if col.name not in current_cols:
+                        type_str = col.type.compile(engine.dialect)
+                        conn.execute(text(f"ALTER TABLE {t_name} ADD COLUMN {col.name} {type_str}"))
+        conn.commit()
 
 
 def reset_engine_for_testing(custom_url: str = None):

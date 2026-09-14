@@ -90,6 +90,12 @@ logger.info(
     Config.ENVIRONMENT, origins,
 )
 
+try:
+    from db import init_db
+    init_db()
+except Exception as _init_err:
+    logger.warning("Database schema auto-sync encountered non-fatal error: %s", _init_err)
+
 _CSP_POLICY = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
