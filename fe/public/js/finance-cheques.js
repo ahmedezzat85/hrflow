@@ -69,48 +69,80 @@ function renderFinanceCheques(items) {
         purposeBadge = `<span class="badge badge-pending">General</span>`;
       }
 
-      let statusBadge = "";
-      if (c.status === "cleared") {
-        statusBadge = `<span class="badge badge-approved"><i class="fa-solid fa-circle-check"></i> Cleared</span>`;
-      } else if (c.status === "bounced") {
-        statusBadge = `<span class="badge badge-rejected"><i class="fa-solid fa-triangle-exclamation"></i> Bounced</span>`;
-      } else if (c.status === "voided") {
-        statusBadge = `<span class="badge" style="background:var(--bg3); color:var(--text3);"><i class="fa-solid fa-ban"></i> Voided</span>`;
-      } else {
-        statusBadge = `<span class="badge badge-pending"><i class="fa-solid fa-clock"></i> Issued</span>`;
+      let staleBadge = "";
+      if (c.is_stale) {
+        staleBadge = `<span class="badge badge-rejected" style="margin-left:4px; font-size:10.5px;" title="${c.stale_warning || 'Stale-dated (>180 days)'}"><i class="fa-solid fa-clock-rotate-left"></i> Stale</span>`;
       }
 
-      const sym = c.currency === "EGP" ? "E£" : "$";
-      const amtStr = `-${sym}${Number(c.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+      let linkageInfo = "";
+      if (c.replaced_cheque_id) {
+        linkageInfo += `<div style="font-size:11px;color:var(--text3);margin-top:2px;"><i class="fa-solid fa-link"></i> Replaces #${c.replaced_cheque_id}</div>`;
+      }
+      if (c.replacement_cheque_id) {
+        linkageInfo += `<div style="font-size:11px;color:#7c3aed;margin-top:2px;"><i class="fa-solid fa-arrows-rotate"></i> Replaced by #${c.replacement_cheque_id}</div>`;
+      }
 
       let actionsHtml = "";
-      if (c.status === "issued") {
+      if (c.status === "draft") {
         actionsHtml = `
           <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm" onclick="updateChequeStatusAction(${c.id}, 'cleared')" title="Mark Cleared" style="color:var(--success);"><i class="fa-solid fa-check"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="updateChequeStatusAction(${c.id}, 'bounced')" title="Mark Bounced"><i class="fa-solid fa-triangle-exclamation"></i></button>
-            <button class="btn btn-sm" onclick="updateChequeStatusAction(${c.id}, 'voided')" title="Void Cheque"><i class="fa-solid fa-ban"></i></button>
+            <button class="btn btn-sm btn-primary" onclick="promoteDraftChequeAction(${c.id})" title="Issue Cheque"><i class="fa-solid fa-stamp"></i> Issue</button>
+            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Draft"><i class="fa-solid fa-ban"></i></button>
+          </div>
+        `;
+      } else if (c.status === "issued") {
+        actionsHtml = `
+          <div style="display:flex;gap:4px;justify-content:center;">
+            <button class="btn btn-sm" onclick="updateChequeStatusQuick(${c.id}, 'outstanding')" title="Mark Outstanding"><i class="fa-solid fa-hourglass-half"></i></button>
+            <button class="btn btn-sm" onclick="updateChequeStatusQuick(${c.id}, 'cleared')" title="Mark Cleared" style="color:var(--success);"><i class="fa-solid fa-check"></i></button>
+            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'stopped')" title="Stop Payment" style="color:#d97706;"><i class="fa-solid fa-hand"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="openChequeActionModal(${c.id}, 'bounced')" title="Mark Bounced"><i class="fa-solid fa-triangle-exclamation"></i></button>
+            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Cheque"><i class="fa-solid fa-ban"></i></button>
+            <button class="btn btn-sm" onclick="openChequeReplaceModal(${c.id})" title="Replace Cheque" style="color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i></button>
+          </div>
+        `;
+      } else if (c.status === "outstanding") {
+        actionsHtml = `
+          <div style="display:flex;gap:4px;justify-content:center;">
+            <button class="btn btn-sm" onclick="updateChequeStatusQuick(${c.id}, 'cleared')" title="Mark Cleared" style="color:var(--success);"><i class="fa-solid fa-check"></i></button>
+            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'stopped')" title="Stop Payment" style="color:#d97706;"><i class="fa-solid fa-hand"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="openChequeActionModal(${c.id}, 'bounced')" title="Mark Bounced"><i class="fa-solid fa-triangle-exclamation"></i></button>
+            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Cheque"><i class="fa-solid fa-ban"></i></button>
+            <button class="btn btn-sm" onclick="openChequeReplaceModal(${c.id})" title="Replace Cheque" style="color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i></button>
           </div>
         `;
       } else if (c.status === "cleared") {
         actionsHtml = `
           <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm" onclick="updateChequeStatusAction(${c.id}, 'voided')" title="Void Cleared Cheque"><i class="fa-solid fa-ban"></i></button>
+            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Cleared Cheque"><i class="fa-solid fa-ban"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="openChequeActionModal(${c.id}, 'bounced')" title="Mark Bounced Post-Clearance"><i class="fa-solid fa-triangle-exclamation"></i></button>
+          </div>
+        `;
+      } else if (c.status === "bounced" || c.status === "stopped") {
+        actionsHtml = `
+          <div style="display:flex;gap:4px;justify-content:center;">
+            <button class="btn btn-sm" onclick="openChequeReplaceModal(${c.id})" title="Issue Replacement Cheque" style="color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i> Replace</button>
           </div>
         `;
       } else {
-        actionsHtml = `<span style="color:var(--text3); font-size:11px;">No actions</span>`;
+        actionsHtml = `<span style="color:var(--text3); font-size:11px;">Terminal</span>`;
       }
 
       return `
         <tr>
-          <td><strong style="font-family:monospace;font-size:13px;"><i class="fa-solid fa-money-check"></i> ${c.cheque_number}</strong></td>
+          <td>
+            <strong style="font-family:monospace;font-size:13px;"><i class="fa-solid fa-money-check"></i> ${c.cheque_number}</strong>
+            ${linkageInfo}
+          </td>
           <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.issue_date)}</span></td>
           <td><strong>${c.account_name || '—'}</strong></td>
           <td><strong>${c.payee}</strong></td>
           <td>${purposeBadge}</td>
           <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(-Math.abs(c.amount || 0), c.currency || "USD")}</strong></td>
-          <td style="text-align:center;">${FinanceFormat.formatStatusBadge("cheque", c.status)}</td>
+          <td style="text-align:center;">
+            ${FinanceFormat.formatStatusBadge("cheque", c.status)}
+            ${staleBadge}
+          </td>
           <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.clear_date)}</span></td>
           <td style="text-align:center;">${actionsHtml}</td>
         </tr>
@@ -119,40 +151,12 @@ function renderFinanceCheques(items) {
     .join("");
 }
 
-async function updateChequeStatusAction(chequeId, newStatus) {
+// Quick status update for non-exception transitions (cleared, outstanding)
+async function updateChequeStatusQuick(chequeId, newStatus) {
   let clearDate = null;
   if (newStatus === "cleared") {
     clearDate = new Date().toISOString().split("T")[0];
   }
-  const chq = (FinanceState.cheques || []).find((c) => c.id === parseInt(chequeId, 10));
-  const chqSummary = chq
-    ? `<strong>Cheque #${chq.cheque_number}</strong> · ${chq.payee} · ${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}`
-    : `Cheque #${chequeId}`;
-
-  if (newStatus === "bounced") {
-    const res = await FinanceCommand.confirmAction({
-      title: "Mark Cheque as Bounced",
-      summary: chqSummary,
-      consequence: "Marking this cheque as Bounced will automatically generate continuous ledger reversal entries and restore account balances.",
-      actionLabel: "Confirm Bounced",
-      actionClass: "btn btn-danger",
-      requireReason: true,
-      severity: "danger",
-    });
-    if (!res.confirmed) return;
-  } else if (newStatus === "voided") {
-    const res = await FinanceCommand.confirmAction({
-      title: "Void Cheque",
-      summary: chqSummary,
-      consequence: "Voiding will permanently void this cheque. Any linked continuous ledger transactions will be automatically reversed and balances restored.",
-      actionLabel: "Void Cheque",
-      actionClass: "btn btn-danger",
-      requireReason: true,
-      severity: "danger",
-    });
-    if (!res.confirmed) return;
-  }
-
   try {
     const payload = { status: newStatus };
     if (clearDate) payload.clear_date = clearDate;
@@ -160,7 +164,6 @@ async function updateChequeStatusAction(chequeId, newStatus) {
     await FinanceApi.updateChequeStatus(chequeId, payload);
     toast(`Cheque status updated to ${newStatus.toUpperCase()}`, "fa-solid fa-circle-check");
 
-    // Reload accounts and cheques to synchronize balances everywhere
     FinanceState.accounts = await FinanceApi.getAccounts();
     await loadFinanceCheques();
     if (_currentFinanceSubTab === "accounts") {
@@ -169,6 +172,188 @@ async function updateChequeStatusAction(chequeId, newStatus) {
   } catch (err) {
     console.error("Failed to update cheque status:", err);
     toast("Failed to update cheque: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+// Promote draft cheque to issued
+async function promoteDraftChequeAction(chequeId) {
+  await updateChequeStatusQuick(chequeId, "issued");
+}
+
+// Exception action modal state
+let _activeChequeActionId = null;
+let _activeChequeActionStatus = null;
+
+function openChequeActionModal(chequeId, targetStatus) {
+  _activeChequeActionId = parseInt(chequeId, 10);
+  _activeChequeActionStatus = targetStatus;
+
+  const chq = (FinanceState.cheques || []).find((c) => c.id === _activeChequeActionId);
+  const titleMap = {
+    bounced: "Mark Cheque as Bounced",
+    stopped: "Stop Payment on Cheque",
+    voided: "Void Cheque",
+  };
+  const titleEl = document.getElementById("chequeActionModalTitle");
+  if (titleEl) titleEl.innerText = titleMap[targetStatus] || "Cheque Exception";
+
+  const card = document.getElementById("chequeActionSummaryCard");
+  if (card) {
+    card.innerHTML = chq
+      ? `<strong>Cheque #${chq.cheque_number}</strong> · ${chq.payee} · <strong>${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}</strong> (Account: ${chq.account_name || 'Bank'})`
+      : `Cheque #${chequeId}`;
+  }
+
+  const reasonEl = document.getElementById("chequeActionReason");
+  if (reasonEl) reasonEl.value = "";
+  const evEl = document.getElementById("chequeActionEvidence");
+  if (evEl) evEl.value = "";
+
+  openModal("financeChequeActionModal");
+}
+
+function closeChequeActionModal() {
+  closeModal("financeChequeActionModal");
+  _activeChequeActionId = null;
+  _activeChequeActionStatus = null;
+}
+
+async function executeChequeAction() {
+  const reason = (document.getElementById("chequeActionReason").value || "").trim();
+  const evidence = (document.getElementById("chequeActionEvidence").value || "").trim();
+
+  if (!reason) {
+    toast("A reason is mandatory for exception actions.", "fa-solid fa-triangle-exclamation");
+    return;
+  }
+
+  const btn = document.getElementById("chequeActionConfirmBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    await FinanceApi.updateChequeStatus(_activeChequeActionId, {
+      status: _activeChequeActionStatus,
+      reason,
+      evidence: evidence || null,
+    });
+    toast(`Cheque marked as ${_activeChequeActionStatus.toUpperCase()}`, "fa-solid fa-circle-check");
+    closeChequeActionModal();
+
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    await loadFinanceCheques();
+    if (_currentFinanceSubTab === "accounts") {
+      renderFinanceAccounts(FinanceState.accounts);
+    }
+  } catch (err) {
+    console.error("Failed to execute cheque action:", err);
+    toast("Action failed: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Replacement modal state
+let _activeChequeReplaceId = null;
+
+function openChequeReplaceModal(chequeId) {
+  _activeChequeReplaceId = parseInt(chequeId, 10);
+  const chq = (FinanceState.cheques || []).find((c) => c.id === _activeChequeReplaceId);
+
+  const summaryEl = document.getElementById("chequeReplaceOldSummary");
+  if (summaryEl) {
+    summaryEl.innerHTML = chq
+      ? `<strong>Original Cheque #${chq.cheque_number}</strong> · Payee: <strong>${chq.payee}</strong> · Amount: <strong>${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}</strong> (Account: ${chq.account_name || 'Bank'})`
+      : `Cheque #${chequeId}`;
+  }
+
+  document.getElementById("replaceNewChequeNumber").value = "";
+  document.getElementById("replaceNewIssueDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("replaceSignerName").value = chq ? (chq.signer_name || "") : "";
+  document.getElementById("replaceReason").value = "";
+  document.getElementById("replaceEvidence").value = "";
+
+  openModal("financeChequeReplaceModal");
+}
+
+function closeChequeReplaceModal() {
+  closeModal("financeChequeReplaceModal");
+  _activeChequeReplaceId = null;
+}
+
+async function executeChequeReplace() {
+  const newNum = (document.getElementById("replaceNewChequeNumber").value || "").trim();
+  const newDate = document.getElementById("replaceNewIssueDate").value;
+  const signer = (document.getElementById("replaceSignerName").value || "").trim();
+  const reason = (document.getElementById("replaceReason").value || "").trim();
+  const evidence = (document.getElementById("replaceEvidence").value || "").trim();
+
+  if (!newNum || !newDate || !reason) {
+    toast("New cheque #, issue date, and reason are required.", "fa-solid fa-triangle-exclamation");
+    return;
+  }
+
+  const btn = document.getElementById("replaceConfirmBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    await FinanceApi.replaceCheque(_activeChequeReplaceId, {
+      new_cheque_number: newNum,
+      new_issue_date: newDate,
+      signer_name: signer || null,
+      reason,
+      evidence: evidence || null,
+    });
+    toast(`Replacement Cheque #${newNum} issued successfully!`, "fa-solid fa-circle-check");
+    closeChequeReplaceModal();
+
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    await loadFinanceCheques();
+    if (_currentFinanceSubTab === "accounts") {
+      renderFinanceAccounts(FinanceState.accounts);
+    }
+  } catch (err) {
+    console.error("Failed to replace cheque:", err);
+    toast("Replacement failed: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function checkChequeIssueDate() {
+  const dateVal = document.getElementById("chequeIssueDate").value;
+  const banner = document.getElementById("chequeStaleWarningBanner");
+  if (!banner || !dateVal) return;
+
+  const issueDt = new Date(dateVal);
+  const now = new Date();
+  const diffDays = Math.floor((now - issueDt) / (1000 * 60 * 60 * 24));
+  if (diffDays > 180) {
+    banner.style.display = "flex";
+    const txt = document.getElementById("chequeStaleWarningText");
+    if (txt) {
+      txt.innerText = `This issue date is ${diffDays} days old, exceeding the standard 180-day clearance validity.`;
+    }
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+function checkChequeDuplicate() {
+  const accId = document.getElementById("chequeAccountId").value;
+  const num = (document.getElementById("chequeNumber").value || "").trim().toLowerCase();
+  const warn = document.getElementById("chequeDuplicateWarning");
+  if (!warn || !accId || !num) {
+    if (warn) warn.style.display = "none";
+    return;
+  }
+
+  const exists = (FinanceState.cheques || []).some(
+    (c) => c.account_id === parseInt(accId, 10) && (c.cheque_number || "").trim().toLowerCase() === num
+  );
+  if (exists) {
+    warn.style.display = "flex";
+  } else {
+    warn.style.display = "none";
   }
 }
 
@@ -207,10 +392,17 @@ async function openIssueChequeModal() {
   document.getElementById("chequeNumber").value = "";
   document.getElementById("chequeIssueDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("chequeAmount").value = "";
-  document.getElementById("chequeCurrency").value = "EGP";
+  document.getElementById("chequeCurrency").value = "USD";
+  document.getElementById("chequePostingPolicy").value = "at_issue";
+  document.getElementById("chequeSignerName").value = "";
   document.getElementById("chequePayee").value = "";
   document.getElementById("chequePurposeType").value = "other";
   document.getElementById("chequeNotes").value = "";
+
+  const staleBanner = document.getElementById("chequeStaleWarningBanner");
+  if (staleBanner) staleBanner.style.display = "none";
+  const dupWarn = document.getElementById("chequeDuplicateWarning");
+  if (dupWarn) dupWarn.style.display = "none";
 
   const destGroup = document.getElementById("chequeDestCashGroup");
   if (destGroup) destGroup.style.display = "none";
@@ -230,6 +422,7 @@ function onChequeAccountSelected() {
   if (opt && opt.getAttribute("data-currency")) {
     document.getElementById("chequeCurrency").value = opt.getAttribute("data-currency");
   }
+  checkChequeDuplicate();
 }
 
 function onChequePurposeChanged() {
@@ -241,13 +434,15 @@ function onChequePurposeChanged() {
   if (billGroup) billGroup.style.display = purpose === "vendor_payment" ? "block" : "none";
 }
 
-async function saveIssueCheque() {
+async function saveIssueCheque(isDraft = false) {
   const accountIdVal = document.getElementById("chequeAccountId").value;
   const chequeNumber = document.getElementById("chequeNumber").value.trim();
   const issueDate = document.getElementById("chequeIssueDate").value;
   const amountVal = document.getElementById("chequeAmount").value;
   const amount = parseFloat(amountVal);
   const currency = document.getElementById("chequeCurrency").value;
+  const postingPolicy = document.getElementById("chequePostingPolicy").value;
+  const signerName = (document.getElementById("chequeSignerName").value || "").trim();
   const payee = document.getElementById("chequePayee").value.trim();
   const purposeType = document.getElementById("chequePurposeType").value;
   const destCashVal = document.getElementById("chequeDestinationCashAccountId").value;
@@ -267,8 +462,10 @@ async function saveIssueCheque() {
   const isValid = FinanceForm.validateRequiredFields("financeChequeModal", rules);
   if (!isValid) return;
 
-  const btn = document.getElementById("chequeModalSaveBtn");
-  if (btn) btn.disabled = true;
+  const saveBtn = document.getElementById("chequeModalSaveBtn");
+  const draftBtn = document.getElementById("chequeSaveDraftBtn");
+  if (saveBtn) saveBtn.disabled = true;
+  if (draftBtn) draftBtn.disabled = true;
 
   const payload = {
     account_id: parseInt(accountIdVal, 10),
@@ -276,8 +473,11 @@ async function saveIssueCheque() {
     issue_date: issueDate,
     amount,
     currency,
+    posting_policy: postingPolicy,
+    signer_name: signerName || null,
     payee,
     purpose_type: purposeType,
+    status: isDraft ? "draft" : "issued",
     destination_cash_account_id: destCashVal ? parseInt(destCashVal, 10) : null,
     linked_bill_id: linkedBillVal ? parseInt(linkedBillVal, 10) : null,
     notes: notes || null,
@@ -285,7 +485,7 @@ async function saveIssueCheque() {
 
   try {
     await FinanceApi.createCheque(payload);
-    toast("Cheque issued successfully! Running balances updated.", "fa-solid fa-circle-check");
+    toast(isDraft ? "Cheque draft saved successfully." : "Cheque issued successfully!", "fa-solid fa-circle-check");
     closeIssueChequeModal();
 
     FinanceState.accounts = await FinanceApi.getAccounts();
@@ -294,10 +494,11 @@ async function saveIssueCheque() {
       renderFinanceAccounts(FinanceState.accounts);
     }
   } catch (err) {
-    console.error("Failed to issue cheque:", err);
-    toast("Failed to issue cheque: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+    console.error("Failed to save cheque:", err);
+    toast("Failed to save cheque: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   } finally {
-    if (btn) btn.disabled = false;
+    if (saveBtn) saveBtn.disabled = false;
+    if (draftBtn) draftBtn.disabled = false;
   }
 }
 

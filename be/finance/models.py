@@ -307,7 +307,15 @@ class FinanceChequeDB(Base):
     purpose_type = Column(String(50), default="other", nullable=False, index=True)  # vendor_payment | cash_withdrawal | other
     destination_cash_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
-    status = Column(String(30), default="issued", nullable=False, index=True)  # issued | cleared | bounced | voided
+    status = Column(String(30), default="issued", nullable=False, index=True)  # draft | issued | outstanding | cleared | bounced | stopped | voided | replaced
+    posting_policy = Column(String(30), default="at_issue", nullable=False)  # at_issue | at_clearing
+    signer_name = Column(String(255), nullable=True)
+    authorized_by = Column(String(255), nullable=True)
+    attachment_url = Column(String(500), nullable=True)
+    exception_reason = Column(Text, nullable=True)
+    exception_evidence = Column(String(255), nullable=True)
+    replacement_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True)
+    replaced_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True)
     clear_date = Column(String(20), nullable=True)  # YYYY-MM-DD
     fiscal_year = Column(Integer, nullable=False, index=True)
     linked_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL", use_alter=True), nullable=True)
@@ -326,6 +334,8 @@ class FinanceChequeDB(Base):
     linked_transaction = relationship("LedgerTransactionDB", foreign_keys=[linked_transaction_id], post_update=True)
     linked_cash_transaction = relationship("LedgerTransactionDB", foreign_keys=[linked_cash_transaction_id], post_update=True)
     ledger_transactions = relationship("LedgerTransactionDB", foreign_keys="[LedgerTransactionDB.linked_cheque_id]", back_populates="linked_cheque")
+    replacement_cheque = relationship("FinanceChequeDB", foreign_keys=[replacement_cheque_id], remote_side=[id], post_update=True)
+    replaced_cheque = relationship("FinanceChequeDB", foreign_keys=[replaced_cheque_id], remote_side=[id], post_update=True)
 
 
 # Alias for clean domain referencing

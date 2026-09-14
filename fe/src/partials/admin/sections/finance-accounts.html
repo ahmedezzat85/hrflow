@@ -550,10 +550,14 @@
                 </select>
                 <div class="filter-tabs" id="financeChequeStatusTabs">
                   <button class="filter-tab active" data-status="" onclick="filterFinanceChequeStatus('', this)">All</button>
+                  <button class="filter-tab" data-status="draft" onclick="filterFinanceChequeStatus('draft', this)">Draft</button>
                   <button class="filter-tab" data-status="issued" onclick="filterFinanceChequeStatus('issued', this)">Issued</button>
+                  <button class="filter-tab" data-status="outstanding" onclick="filterFinanceChequeStatus('outstanding', this)">Outstanding</button>
                   <button class="filter-tab" data-status="cleared" onclick="filterFinanceChequeStatus('cleared', this)">Cleared</button>
                   <button class="filter-tab" data-status="bounced" onclick="filterFinanceChequeStatus('bounced', this)">Bounced</button>
+                  <button class="filter-tab" data-status="stopped" onclick="filterFinanceChequeStatus('stopped', this)">Stopped</button>
                   <button class="filter-tab" data-status="voided" onclick="filterFinanceChequeStatus('voided', this)">Voided</button>
+                  <button class="filter-tab" data-status="replaced" onclick="filterFinanceChequeStatus('replaced', this)">Replaced</button>
                 </div>
                 <button class="btn btn-outline" onclick="openWithdrawCashModal()"><i class="fa-solid fa-hand-holding-dollar"></i> Withdraw Cash</button>
                 <button class="btn btn-fill" onclick="openIssueChequeModal()"><i class="fa-solid fa-plus"></i> Issue Cheque</button>

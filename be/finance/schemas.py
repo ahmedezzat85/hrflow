@@ -822,17 +822,33 @@ class ChequeBase(BaseModel):
     purpose_type: str = Field("other", description="vendor_payment | cash_withdrawal | other")
     destination_cash_account_id: Optional[int] = Field(None, description="Required for cash_withdrawal")
     linked_bill_id: Optional[int] = Field(None, description="Optional vendor bill to pay")
+    posting_policy: str = Field("at_issue", description="at_issue | at_clearing")
+    signer_name: Optional[str] = Field(None, description="Authorized cheque signer")
+    authorized_by: Optional[str] = Field(None, description="Approver / authorizing officer")
+    attachment_url: Optional[str] = Field(None, description="Attachment / scan reference")
     notes: Optional[str] = Field("", description="Memo or internal notes")
 
 
 class ChequeCreate(ChequeBase):
     account_id: int = Field(..., description="Bank account from which cheque is drawn")
     fiscal_year: Optional[int] = Field(None, description="Fiscal year (defaults to issue year)")
+    status: Optional[str] = Field("issued", description="draft | issued")
 
 
 class ChequeStatusUpdate(BaseModel):
-    status: str = Field(..., description="cleared | bounced | voided")
+    status: str = Field(..., description="draft | issued | outstanding | cleared | bounced | stopped | voided | replaced")
     clear_date: Optional[str] = Field(None, description="Date cleared (YYYY-MM-DD)")
+    reason: Optional[str] = Field(None, description="Reason required for exceptions (bounced, stopped, voided, replaced)")
+    evidence: Optional[str] = Field(None, description="Evidence or bank notice reference")
+
+
+class ChequeReplaceRequest(BaseModel):
+    new_cheque_number: str = Field(..., min_length=1, max_length=50, description="New replacement cheque serial number")
+    new_issue_date: str = Field(..., description="Issue date for replacement cheque (YYYY-MM-DD)")
+    reason: str = Field(..., min_length=1, description="Mandatory reason for replacement")
+    evidence: Optional[str] = Field(None, description="Evidence, slip ref, or memo")
+    signer_name: Optional[str] = Field(None, description="Authorized cheque signer")
+    notes: Optional[str] = Field(None, description="Internal notes for replacement cheque")
 
 
 class ChequeResponse(ChequeBase):
@@ -841,6 +857,16 @@ class ChequeResponse(ChequeBase):
     account_name: Optional[str] = None
     destination_cash_account_name: Optional[str] = None
     status: str
+    posting_policy: str = "at_issue"
+    signer_name: Optional[str] = None
+    authorized_by: Optional[str] = None
+    attachment_url: Optional[str] = None
+    exception_reason: Optional[str] = None
+    exception_evidence: Optional[str] = None
+    replacement_cheque_id: Optional[int] = None
+    replaced_cheque_id: Optional[int] = None
+    is_stale: bool = False
+    stale_warning: Optional[str] = None
     clear_date: Optional[str] = None
     fiscal_year: int
     linked_transaction_id: Optional[int] = None

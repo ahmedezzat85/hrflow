@@ -222,10 +222,14 @@ const FinanceFormat = {
       cancelled: { label: "Cancelled", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
     },
     cheque: {
-      issued: { label: "Issued", badgeClass: "badge-pending", icon: "fa-solid fa-clock" },
+      draft: { label: "Draft", badgeClass: "badge-pending", icon: "fa-solid fa-file-pen" },
+      issued: { label: "Issued", badgeClass: "badge-info", icon: "fa-solid fa-stamp" },
+      outstanding: { label: "Outstanding", badgeClass: "badge-warning", icon: "fa-solid fa-hourglass-half" },
       cleared: { label: "Cleared", badgeClass: "badge-approved", icon: "fa-solid fa-circle-check" },
       bounced: { label: "Bounced", badgeClass: "badge-rejected", icon: "fa-solid fa-triangle-exclamation" },
+      stopped: { label: "Stopped", badgeClass: "badge-danger", icon: "fa-solid fa-hand" },
       voided: { label: "Voided", badgeClass: "badge-grey", icon: "fa-solid fa-ban" },
+      replaced: { label: "Replaced", badgeClass: "badge-secondary", icon: "fa-solid fa-arrows-rotate" },
     },
     statement: {
       imported: { label: "Imported", badgeClass: "badge-info", icon: "fa-solid fa-file-import" },

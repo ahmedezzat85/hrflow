@@ -12,6 +12,22 @@
       <button class="modal-close" onclick="closeIssueChequeModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
+      <!-- Stale Date Warning Banner -->
+      <div id="chequeStaleWarningBanner" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 14px;">
+        <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:16px;"></i>
+        <div class="alert-content" style="font-size:12.5px; color:#92400e;">
+          <strong>Stale-Date Warning:</strong> <span id="chequeStaleWarningText">This issue date exceeds the standard 180-day bank clearance window. Banks may dishonour upon presentment.</span>
+        </div>
+      </div>
+
+      <!-- Duplicate Check Warning -->
+      <div id="chequeDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px;">
+        <i class="fa-solid fa-circle-exclamation" style="color:#dc2626; font-size:16px;"></i>
+        <div class="alert-content" style="font-size:12.5px; color:#991b1b;">
+          <strong>Duplicate Cheque Number:</strong> <span id="chequeDuplicateWarningText">This cheque number is already registered for this account.</span>
+        </div>
+      </div>
+
       <div class="form-section">
         <div class="form-grid">
           <div class="form-field full">
@@ -23,12 +39,12 @@
 
           <div class="form-field">
             <label for="chequeNumber">Cheque # <span class="req">*</span></label>
-            <input type="text" id="chequeNumber" placeholder="e.g. 001042" required>
+            <input type="text" id="chequeNumber" placeholder="e.g. 001042" oninput="checkChequeDuplicate()" required>
           </div>
 
           <div class="form-field">
             <label for="chequeIssueDate">Issue Date <span class="req">*</span></label>
-            <input type="date" id="chequeIssueDate" required>
+            <input type="date" id="chequeIssueDate" onchange="checkChequeIssueDate()" required>
           </div>
 
           <div class="form-field">
@@ -46,6 +62,19 @@
               <option value="SAR">SAR — Saudi Riyal</option>
               <option value="AED">AED — UAE Dirham</option>
             </select>
+          </div>
+
+          <div class="form-field">
+            <label for="chequePostingPolicy">Posting Policy</label>
+            <select id="chequePostingPolicy">
+              <option value="at_issue" selected>Immediate (Outflow on issue)</option>
+              <option value="at_clearing">Deferred (Outflow on clearance)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="chequeSignerName">Authorized Signer</label>
+            <input type="text" id="chequeSignerName" placeholder="Signer / Officer name">
           </div>
 
           <div class="form-field full">
@@ -91,8 +120,105 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeIssueChequeModal()">Cancel</button>
-      <button class="btn btn-fill" id="chequeModalSaveBtn" onclick="saveIssueCheque()">
+      <button class="btn btn-outline" id="chequeSaveDraftBtn" onclick="saveIssueCheque(true)">
+        <i class="fa-solid fa-file-pen"></i> Save as Draft
+      </button>
+      <button class="btn btn-fill" id="chequeModalSaveBtn" onclick="saveIssueCheque(false)">
         <i class="fa-solid fa-stamp"></i> Issue Cheque
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 1.1 Cheque Exception Action Modal (Bounce / Stop / Void) -->
+<div id="financeChequeActionModal" class="modal-overlay">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chequeActionModalTitle" style="max-width: 520px;">
+    <div class="modal-head">
+      <div class="modal-head-icon" id="chequeActionHeadIcon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="modal-head-text">
+        <h3 id="chequeActionModalTitle">Cheque Exception Action</h3>
+        <p id="chequeActionModalSubtitle">Provide a mandatory reason and optional evidence reference.</p>
+      </div>
+      <button class="modal-close" onclick="closeChequeActionModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="chequeActionSummaryCard" style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px;"></div>
+      
+      <div class="alert-box alert-warning" id="chequeActionNotice" style="margin-bottom:14px; background:#fffbeb; border:1px solid #fef08a; border-radius:8px; padding:10px 14px;">
+        <i class="fa-solid fa-circle-info" style="color:#d97706;"></i>
+        <div class="alert-content" style="font-size:12px; color:#92400e;">
+          This action will atomically reverse any posted continuous ledger outflow transactions and restore the account balance.
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="chequeActionReason">Reason for Action <span class="req">*</span></label>
+          <textarea id="chequeActionReason" rows="2" placeholder="e.g. Insufficient funds, signature mismatch, stop payment requested..." required></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="chequeActionEvidence">Evidence / Reference (Optional)</label>
+          <input type="text" id="chequeActionEvidence" placeholder="e.g. Bank slip #, formal stop request letter #">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeChequeActionModal()">Cancel</button>
+      <button class="btn btn-danger" id="chequeActionConfirmBtn" onclick="executeChequeAction()">
+        Confirm Exception
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 1.2 Replace Cheque Modal -->
+<div id="financeChequeReplaceModal" class="modal-overlay">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chequeReplaceModalTitle" style="max-width: 560px;">
+    <div class="modal-head">
+      <div class="modal-head-icon" style="background:#f5f3ff; color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i></div>
+      <div class="modal-head-text">
+        <h3 id="chequeReplaceModalTitle">Issue Replacement Cheque</h3>
+        <p>Void/replace the existing cheque and draw a new replacement cheque with linked audit history.</p>
+      </div>
+      <button class="modal-close" onclick="closeChequeReplaceModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="chequeReplaceOldSummary" style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px;"></div>
+
+      <div class="alert-box" style="margin-bottom:14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px;">
+        <i class="fa-solid fa-shield-halved" style="color:#16a34a;"></i>
+        <div class="alert-content" style="font-size:12px; color:#166534;">
+          The old cheque will be retired to <strong>Replaced</strong> status and its ledger entries reversed. The new replacement cheque will be issued with linked bidirectional lineage.
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="replaceNewChequeNumber">New Cheque # <span class="req">*</span></label>
+          <input type="text" id="replaceNewChequeNumber" placeholder="e.g. 001043" required>
+        </div>
+        <div class="form-field">
+          <label for="replaceNewIssueDate">New Issue Date <span class="req">*</span></label>
+          <input type="date" id="replaceNewIssueDate" required>
+        </div>
+        <div class="form-field full">
+          <label for="replaceSignerName">Authorized Signer</label>
+          <input type="text" id="replaceSignerName" placeholder="Signer / Officer name">
+        </div>
+        <div class="form-field full">
+          <label for="replaceReason">Reason for Replacement <span class="req">*</span></label>
+          <textarea id="replaceReason" rows="2" placeholder="e.g. Lost in transit, leaf damaged, incorrect beneficiary spelling..." required></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="replaceEvidence">Evidence / Reference (Optional)</label>
+          <input type="text" id="replaceEvidence" placeholder="e.g. Incident report # or courier tracking #">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeChequeReplaceModal()">Cancel</button>
+      <button class="btn btn-fill" id="replaceConfirmBtn" onclick="executeChequeReplace()">
+        <i class="fa-solid fa-arrows-rotate"></i> Issue Replacement
       </button>
     </div>
   </div>

@@ -2508,13 +2508,21 @@ const FinanceApi = {
       const bank = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.account_id, 10));
       const destCash = payload.destination_cash_account_id ? (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.destination_cash_account_id, 10)) : null;
       const yr = payload.fiscal_year || (payload.issue_date ? parseInt(payload.issue_date.split("-")[0], 10) : new Date().getFullYear());
+      const st = payload.status || "issued";
+      const policy = payload.posting_policy || "at_issue";
+      const diffDays = Math.floor((new Date() - new Date(payload.issue_date)) / (1000 * 60 * 60 * 24));
+      const isStale = diffDays > 180;
       const newCheque = {
         id: (FinanceMockState.cheques || []).length + 1,
         ...payload,
         account_id: parseInt(payload.account_id, 10),
         account_name: bank ? bank.account_name : null,
         destination_cash_account_name: destCash ? destCash.account_name : null,
-        status: "issued",
+        status: st,
+        posting_policy: policy,
+        signer_name: payload.signer_name || null,
+        is_stale: isStale,
+        stale_warning: isStale ? `Cheque is stale-dated (${diffDays} days old, exceeding standard 180-day validity).` : null,
         clear_date: null,
         fiscal_year: yr,
         created_at: new Date().toISOString(),
@@ -2522,14 +2530,16 @@ const FinanceApi = {
       if (!FinanceMockState.cheques) FinanceMockState.cheques = [];
       FinanceMockState.cheques.unshift(newCheque);
 
-      // Deduct balance from bank
-      if (bank) bank.current_balance = round(bank.current_balance - Number(payload.amount), 2);
-      if (destCash && payload.purpose_type === "cash_withdrawal") {
-        destCash.current_balance = round(destCash.current_balance + Number(payload.amount), 2);
-      }
-      if (payload.linked_bill_id) {
-        const bill = (FinanceMockState.bills || []).find((b) => b.id === parseInt(payload.linked_bill_id, 10));
-        if (bill) bill.status = "paid";
+      // Deduct balance from bank only if issued and at_issue
+      if (st === "issued" && policy === "at_issue") {
+        if (bank) bank.current_balance = round(bank.current_balance - Number(payload.amount), 2);
+        if (destCash && payload.purpose_type === "cash_withdrawal") {
+          destCash.current_balance = round(destCash.current_balance + Number(payload.amount), 2);
+        }
+        if (payload.linked_bill_id) {
+          const bill = (FinanceMockState.bills || []).find((b) => b.id === parseInt(payload.linked_bill_id, 10));
+          if (bill) bill.status = "paid";
+        }
       }
       return newCheque;
     }
@@ -2539,24 +2549,110 @@ const FinanceApi = {
     if (_isMock()) {
       const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
       if (!c) throw new Error("Cheque not found");
+      const oldStatus = c.status;
       c.status = payload.status;
+      if (payload.reason) c.exception_reason = payload.reason;
+      if (payload.evidence) c.exception_evidence = payload.evidence;
+
+      const bank = (FinanceMockState.accounts || []).find((a) => a.id === c.account_id);
+      const cash = c.destination_cash_account_id ? (FinanceMockState.accounts || []).find((a) => a.id === c.destination_cash_account_id) : null;
+
       if (payload.status === "cleared") {
         c.clear_date = payload.clear_date || new Date().toISOString().split("T")[0];
-      } else if (payload.status === "bounced" || payload.status === "voided") {
-        const bank = (FinanceMockState.accounts || []).find((a) => a.id === c.account_id);
-        if (bank) bank.current_balance = round(bank.current_balance + Number(c.amount), 2);
-        if (c.destination_cash_account_id) {
-          const cash = (FinanceMockState.accounts || []).find((a) => a.id === c.destination_cash_account_id);
-          if (cash) cash.current_balance = round(cash.current_balance - Number(c.amount), 2);
+        if (c.posting_policy === "at_clearing") {
+          if (bank) bank.current_balance = round(bank.current_balance - Number(c.amount), 2);
+          if (cash && c.purpose_type === "cash_withdrawal") {
+            cash.current_balance = round(cash.current_balance + Number(c.amount), 2);
+          }
+          if (c.linked_bill_id) {
+            const bill = (FinanceMockState.bills || []).find((b) => b.id === c.linked_bill_id);
+            if (bill) bill.status = "paid";
+          }
         }
-        if (c.linked_bill_id) {
-          const bill = (FinanceMockState.bills || []).find((b) => b.id === c.linked_bill_id);
-          if (bill) bill.status = "unpaid";
+      } else if (payload.status === "issued" && oldStatus === "draft") {
+        if (c.posting_policy === "at_issue") {
+          if (bank) bank.current_balance = round(bank.current_balance - Number(c.amount), 2);
+          if (cash && c.purpose_type === "cash_withdrawal") {
+            cash.current_balance = round(cash.current_balance + Number(c.amount), 2);
+          }
+        }
+      } else if (["bounced", "stopped", "voided", "replaced"].includes(payload.status)) {
+        // Reverse if previously deducted
+        const wasDeducted = (oldStatus === "issued" && c.posting_policy === "at_issue") ||
+                            (oldStatus === "outstanding" && c.posting_policy === "at_issue") ||
+                            (oldStatus === "cleared");
+        if (wasDeducted) {
+          if (bank) bank.current_balance = round(bank.current_balance + Number(c.amount), 2);
+          if (cash && c.purpose_type === "cash_withdrawal") {
+            cash.current_balance = round(cash.current_balance - Number(c.amount), 2);
+          }
+          if (c.linked_bill_id) {
+            const bill = (FinanceMockState.bills || []).find((b) => b.id === c.linked_bill_id);
+            if (bill) bill.status = "unpaid";
+          }
         }
       }
       return c;
     }
     return apiRequest("PATCH", `/api/finance/cheques/${id}/status`, payload);
+  },
+  async replaceCheque(id, payload) {
+    if (_isMock()) {
+      const oldCheque = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!oldCheque) throw new Error("Cheque not found");
+
+      // Reverse old cheque balance impact
+      const wasDeducted = oldCheque.status === "issued" || oldCheque.status === "outstanding" || oldCheque.status === "cleared";
+      const bank = (FinanceMockState.accounts || []).find((a) => a.id === oldCheque.account_id);
+      const cash = oldCheque.destination_cash_account_id ? (FinanceMockState.accounts || []).find((a) => a.id === oldCheque.destination_cash_account_id) : null;
+
+      if (wasDeducted) {
+        if (bank) bank.current_balance = round(bank.current_balance + Number(oldCheque.amount), 2);
+        if (cash && oldCheque.purpose_type === "cash_withdrawal") {
+          cash.current_balance = round(cash.current_balance - Number(oldCheque.amount), 2);
+        }
+      }
+
+      oldCheque.status = "replaced";
+      oldCheque.exception_reason = payload.reason;
+      if (payload.evidence) oldCheque.exception_evidence = payload.evidence;
+
+      // Issue new replacement cheque
+      const newCheque = {
+        id: (FinanceMockState.cheques || []).length + 1,
+        account_id: oldCheque.account_id,
+        account_name: oldCheque.account_name,
+        cheque_number: payload.new_cheque_number,
+        issue_date: payload.new_issue_date,
+        amount: oldCheque.amount,
+        currency: oldCheque.currency,
+        payee: oldCheque.payee,
+        purpose_type: oldCheque.purpose_type,
+        destination_cash_account_id: oldCheque.destination_cash_account_id,
+        destination_cash_account_name: oldCheque.destination_cash_account_name,
+        linked_bill_id: oldCheque.linked_bill_id,
+        status: "issued",
+        posting_policy: oldCheque.posting_policy || "at_issue",
+        signer_name: payload.signer_name || oldCheque.signer_name,
+        replaced_cheque_id: oldCheque.id,
+        clear_date: null,
+        fiscal_year: parseInt(payload.new_issue_date.split("-")[0], 10),
+        notes: `Replacement for Cheque #${oldCheque.cheque_number}. ${payload.notes || ''}`.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      oldCheque.replacement_cheque_id = newCheque.id;
+      FinanceMockState.cheques.unshift(newCheque);
+
+      if (newCheque.posting_policy === "at_issue") {
+        if (bank) bank.current_balance = round(bank.current_balance - Number(newCheque.amount), 2);
+        if (cash && newCheque.purpose_type === "cash_withdrawal") {
+          cash.current_balance = round(cash.current_balance + Number(newCheque.amount), 2);
+        }
+      }
+      return newCheque;
+    }
+    return apiRequest("POST", `/api/finance/cheques/${id}/replace`, payload);
   },
 
   // Subscriptions & Charges (Phase 6)

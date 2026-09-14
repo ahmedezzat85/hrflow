@@ -13,6 +13,7 @@ from core.permissions import require_permission
 from finance.schemas import (
     ChequeCreate,
     ChequeStatusUpdate,
+    ChequeReplaceRequest,
     ChequeResponse,
 )
 from finance.services.cheques_service import ChequesService
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/api/finance/cheques", tags=["Finance - Cheques"])
 @router.get("", response_model=List[ChequeResponse])
 def list_cheques(
     fiscal_year: Optional[int] = Query(None, description="Filter by fiscal year (e.g. 2026)"),
-    status: Optional[str] = Query(None, description="Filter by status: issued | cleared | bounced | voided"),
+    status: Optional[str] = Query(None, description="Filter by status: draft | issued | outstanding | cleared | bounced | stopped | voided | replaced"),
     account_id: Optional[int] = Query(None, description="Filter by bank account ID"),
     payee: Optional[str] = Query(None, description="Filter by payee name"),
     search: Optional[str] = Query(None, description="Search cheque number, payee, or notes"),
@@ -64,7 +65,7 @@ def issue_cheque(
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
     idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
-    """Issues a new cheque, generating continuous ledger transactions and updating balances."""
+    """Issues or drafts a new cheque, generating continuous ledger transactions and updating balances."""
     user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
     return idempotency.execute_idempotent(
         idempotency_key=idempotency_key,
@@ -83,11 +84,30 @@ def update_cheque_status(
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
     idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
-    """Updates cheque status (cleared, bounced, voided), performing ledger reversals if bounced or voided."""
+    """Updates cheque status (outstanding, cleared, bounced, stopped, voided), performing ledger updates or reversals."""
     user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
     return idempotency.execute_idempotent(
         idempotency_key=idempotency_key,
         user_email=user_email,
         endpoint_path=f"/api/finance/cheques:{cheque_id}:status:{payload.status}",
         operation_fn=lambda: service.update_cheque_status(cheque_id, payload),
+    )
+
+
+@router.post("/{cheque_id}/replace", response_model=ChequeResponse, status_code=status.HTTP_201_CREATED)
+def replace_cheque(
+    cheque_id: int,
+    payload: ChequeReplaceRequest,
+    current_user: dict = Depends(require_permission("finance.account.write")),
+    service: ChequesService = Depends(get_cheques_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
+):
+    """Replaces a cheque with a new serial number, reversing old cheque ledger entries and linking both records."""
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path=f"/api/finance/cheques:{cheque_id}:replace",
+        operation_fn=lambda: service.replace_cheque(cheque_id, payload, created_by=user_email),
     )
