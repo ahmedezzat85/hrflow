@@ -107,25 +107,26 @@ except ImportError:
     raise
 
 # ---------------------------------------------------------------------------
-# Adjust these imports to match the actual backend module paths.
 # ---------------------------------------------------------------------------
-try:
-    from be.finance.deps import get_session  # SQLAlchemy session factory
-    from be.finance.repositories import (
-        categories_repository,
-        payment_types_repository,
-        ledger_repository,
-        transfers_repository,
-    )
-    from be.finance.services.ledger_service import recompute_account_balance
-except ImportError:
-    get_session = None
-    categories_repository = None
-    payment_types_repository = None
-    ledger_repository = None
-    transfers_repository = None
-    recompute_account_balance = None
+# Backend database & repository imports
+# ---------------------------------------------------------------------------
+import os
+be_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "be"))
+if be_dir not in sys.path:
+    sys.path.insert(0, be_dir)
 
+try:
+    import models_db
+    from db import get_db_context
+    from finance.models import LedgerTransactionDB, AccountTransferDB, FinanceBankAccountDB
+    from finance.repositories.categories_repository import CategoriesRepository
+    from finance.repositories.payment_types_repository import PaymentTypesRepository
+    from finance.repositories.ledger_repository import LedgerRepository
+    from finance.repositories.transfers_repository import TransfersRepository
+except ImportError as exc:
+    print(f"Warning: Could not import backend modules: {exc}", file=sys.stderr)
+    models_db = None
+    get_db_context = None
 
 IMPORT_SOURCE = "cashbook_migration_2026"
 MONTH_SHEETS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG",
@@ -135,24 +136,17 @@ TXN_HEADER = ["Date", "Account", "Payment Type", "REF No.", "EGP", "USD",
 
 
 # ---------------------------------------------------------------------------
-# ACCOUNT MAPPING — fill this in with real primary keys before --commit
+# ACCOUNT MAPPING — populated with real FinanceAccount IDs from the database
 # ---------------------------------------------------------------------------
-# Maps (cash-book institution label, transaction currency) -> the specific
-# FinanceAccount to post against. This is the single source of truth for
-# account resolution; the script never falls back to a name-only lookup.
-#
-# If an institution has one multi-currency account rather than one account
-# per currency, set both currency keys for that institution to the same
-# account_id.
 ACCOUNT_MAP = {
-    ("ARAB_BANK", "EGP"): {"account_id": None, "account_name": "Arab Bank - EGP"},
-    ("ARAB_BANK", "USD"): {"account_id": None, "account_name": "Arab Bank - USD"},
-    ("NBK",       "EGP"): {"account_id": None, "account_name": "NBK - EGP"},
-    ("NBK",       "USD"): {"account_id": None, "account_name": "NBK - USD"},
-    ("CIB",       "EGP"): {"account_id": None, "account_name": "CIB - EGP"},
+    ("ARAB_BANK", "USD"): {"account_id": 3, "account_name": "Arab Bank - USD"},
+    ("ARAB_BANK", "EGP"): {"account_id": 4, "account_name": "Arab Bank  - EGP"},
+    ("NBK",       "USD"): {"account_id": 5, "account_name": "NBK - USD"},
+    ("NBK",       "EGP"): {"account_id": 6, "account_name": "NBK - EGP"},
+    ("CASH",      "USD"): {"account_id": 7, "account_name": "CASH - USD"},
+    ("CASH",      "EGP"): {"account_id": 8, "account_name": "CASH - EGP"},
     ("CIB",       "USD"): {"account_id": None, "account_name": "CIB - USD"},
-    ("CASH",      "EGP"): {"account_id": None, "account_name": "Cash - EGP"},
-    ("CASH",      "USD"): {"account_id": None, "account_name": "Cash - USD"},
+    ("CIB",       "EGP"): {"account_id": None, "account_name": "CIB - EGP"},
 }
 
 
@@ -384,29 +378,39 @@ def parse_date(value: Optional[str]) -> Optional[date]:
 
 
 def resolve_category(session, name: Optional[str]):
-    if categories_repository is None:
-        return None
     if not name:
         raise LookupError("Row has no category and is not a petty/Transportation row.")
-    cat = categories_repository.get_by_name(session, name)
+    s = str(name).strip()
+    if s.upper() in ("ROBOT", "ROBOT/R&D EQUIPMENT"):
+        s = "Robot/R&D Equipment"
+    elif s.lower() == "bank fees":
+        s = "Bank Fees"
+    
+    cat = CategoriesRepository(session).get_by_name(s) if CategoriesRepository else None
     if cat is None:
-        raise LookupError(f"Unknown category '{name}'. This must already exist from "
+        raise LookupError(f"Unknown category '{name}' (normalized: '{s}'). This must already exist from "
                            f"Phase 0 (categories seeded from the CONFIG sheet taxonomy). "
                            f"Migration will not auto-create categories.")
     return cat
 
 
-def resolve_payment_type(session, code_or_name: Optional[str]):
-    if payment_types_repository is None:
-        return None
+def resolve_payment_type(session, code_or_name: Optional[str], cat_name: Optional[str] = None, account_label: Optional[str] = None):
     if not code_or_name:
-        raise LookupError("Row has no payment type.")
-    pt = payment_types_repository.get_by_code(session, code_or_name)
+        if cat_name == "Bank Fees":
+            code = "BANK_FEES"
+        elif account_label == "CASH":
+            code = "CASH"
+        else:
+            code = "OTHER"
+    else:
+        code = str(code_or_name).strip().upper().replace("-", "_")
+
+    pt = PaymentTypesRepository(session).get_by_code(code) if PaymentTypesRepository else None
     if pt is None:
-        raise LookupError(f"Unknown payment type '{code_or_name}'. Expected one of the "
+        raise LookupError(f"Unknown payment type '{code_or_name}' (resolved code: '{code}'). Expected one of the "
                            f"CONFIG sheet PAYMENTS vocabulary (CASHWITHDRAW, CHK, INTTRANS, "
                            f"INBOUND_TRANS, OUTBOUND_TRANS, USDTOEGP, CASH, DEBIT_CARD, "
-                           f"BANK-FEES). Migration will not auto-create payment types.")
+                           f"BANK_FEES). Migration will not auto-create payment types.")
     return pt
 
 
@@ -415,6 +419,7 @@ def process_transaction_row(session, row: dict, batch_id: str, dry_run: bool) ->
     fp = fingerprint(row)
     txn_date = parse_date(row["date"])
     amount = row.get("amount")
+    source_ref = f"{row['source_month']}:row{row['source_row']}"
 
     outcome = Outcome(row_index=idx, record_type="transaction", status="would_import",
                        account=row.get("account", ""), date=row.get("date", ""),
@@ -428,27 +433,39 @@ def process_transaction_row(session, row: dict, batch_id: str, dry_run: bool) ->
 
     outcome.account = account_label
 
-    if dry_run or ledger_repository is None:
+    if dry_run or session is None or LedgerRepository is None:
         return outcome
 
-    if ledger_repository.exists_by_fingerprint(session, fp):
-        outcome.status, outcome.reason = "skipped_flagged", "already imported (fingerprint match)"
+    # Check for existing record by source + reference or fingerprint
+    existing = session.query(LedgerTransactionDB).filter(
+        LedgerTransactionDB.source == IMPORT_SOURCE,
+        LedgerTransactionDB.reference == source_ref
+    ).first()
+    if existing:
+        outcome.status, outcome.reason = "skipped_flagged", "already imported (fingerprint/reference match)"
         return outcome
 
     try:
         category = resolve_category(session, row["category"])
-        payment_type = resolve_payment_type(session, row["payment_type"])
+        payment_type = resolve_payment_type(session, row.get("payment_type"), row.get("category"), row.get("account"))
     except LookupError as exc:
         outcome.status, outcome.reason = "error", str(exc)
         return outcome
 
-    ledger_repository.create(
-        session, account_id=account_id, date=txn_date, amount=amount,
-        currency=row["currency"], direction=row["direction"], category_id=category.id,
-        payment_type_id=payment_type.id, description=row.get("details") or "",
-        reference=row.get("ref_no") or "", fx_rate=row.get("fx_rate"),
-        source=IMPORT_SOURCE, import_batch_id=batch_id, import_fingerprint=fp,
-    )
+    tx_data = {
+        "date": row["date"],
+        "amount": amount,
+        "direction": row["direction"],
+        "currency": row["currency"],
+        "category_id": category.id if category else None,
+        "payment_type_id": payment_type.id if payment_type else None,
+        "reference": source_ref,
+        "description": row.get("details") or f"Imported from cashbook {source_ref}",
+        "fx_rate": row.get("fx_rate"),
+        "source": IMPORT_SOURCE,
+        "reason": f"Import fingerprint: {fp}",
+    }
+    LedgerRepository(session).create_transaction(account_id, tx_data, created_by=IMPORT_SOURCE)
     outcome.status = "imported"
     return outcome
 
@@ -458,6 +475,7 @@ def process_fx_conversion_row(session, row: dict, batch_id: str, dry_run: bool) 
     fp = fingerprint(row)
     txn_date = parse_date(row["date"])
     out_amount, in_amount = row.get("out_amount"), row.get("in_amount")
+    source_ref = f"{row['source_month']}:row{row['source_row']}"
 
     outcome = Outcome(row_index=idx, record_type="fx_conversion", status="would_import",
                        account=row.get("account", ""), date=row.get("date", ""),
@@ -476,26 +494,32 @@ def process_fx_conversion_row(session, row: dict, batch_id: str, dry_run: bool) 
                        else "cross-account transfer (institution has separate "
                             "per-currency accounts)")
 
-    if dry_run or transfers_repository is None:
+    if dry_run or session is None or TransfersRepository is None:
         return outcome
 
-    if transfers_repository.exists_by_fingerprint(session, fp):
-        outcome.status, outcome.reason = "skipped_flagged", "already imported (fingerprint match)"
+    existing = session.query(AccountTransferDB).filter(
+        AccountTransferDB.exchange_reference == source_ref
+    ).first()
+    if existing:
+        outcome.status, outcome.reason = "skipped_flagged", "already imported (exchange_reference match)"
         return outcome
 
-    # If the institution has one multi-currency account, from_account_id ==
-    # to_account_id and this posts as a same-bank FX conversion (Phase 3,
-    # transfer_type='same_bank_fx'). If the institution has separate
-    # per-currency accounts, from_account_id != to_account_id and this
-    # correctly posts as a cross-account transfer instead.
-    transfers_repository.create(
-        session, from_account_id=from_account_id, to_account_id=to_account_id,
-        date=txn_date, from_amount=out_amount, from_currency=row["out_currency"],
-        to_amount=in_amount, to_currency=row["in_currency"], fx_rate=row.get("fx_rate"),
-        transfer_type="same_bank_fx" if is_same_account else "internal",
-        note="Migrated from VOYANCE-CASH-BOOK-2026.xlsx (USDTOEGP)",
-        source=IMPORT_SOURCE, import_batch_id=batch_id, import_fingerprint=fp,
-    )
+    transfer_data = {
+        "from_account_id": from_account_id,
+        "to_account_id": to_account_id,
+        "date": row["date"],
+        "from_amount": out_amount,
+        "from_currency": row["out_currency"],
+        "to_amount": in_amount,
+        "to_currency": row["in_currency"],
+        "fx_rate": row.get("fx_rate"),
+        "transfer_type": "same_bank_fx" if is_same_account else "internal",
+        "confirmed_leg": "both",
+        "settlement_status": "settled",
+        "note": f"Migrated from VOYANCE-CASH-BOOK-2026.xlsx ({source_ref} USDTOEGP)",
+        "exchange_reference": source_ref,
+    }
+    TransfersRepository(session).create_transfer(transfer_data, created_by=IMPORT_SOURCE)
     outcome.status = "imported"
     return outcome
 
@@ -503,10 +527,8 @@ def process_fx_conversion_row(session, row: dict, batch_id: str, dry_run: bool) 
 def run_import(records: list, dry_run: bool) -> list:
     outcomes = []
     batch_id = f"{IMPORT_SOURCE}_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
-    session = get_session() if (get_session and not dry_run) else None
-    touched_account_ids = set()
 
-    try:
+    if dry_run or get_db_context is None:
         for row in records:
             idx = row["source_row"]
             if row.get("issues"):
@@ -519,30 +541,47 @@ def run_import(records: list, dry_run: bool) -> list:
 
             rtype = row.get("record_type")
             if rtype == "transaction":
-                o = process_transaction_row(session, row, batch_id, dry_run)
+                o = process_transaction_row(None, row, batch_id, dry_run=True)
             elif rtype == "fx_conversion":
-                o = process_fx_conversion_row(session, row, batch_id, dry_run)
+                o = process_fx_conversion_row(None, row, batch_id, dry_run=True)
             else:
                 o = Outcome(row_index=idx, record_type=rtype or "", status="skipped_flagged",
                              reason=f"unsupported record_type '{rtype}'")
+            outcomes.append(o)
+        return outcomes
 
+    with get_db_context() as session:
+        for row in records:
+            idx = row["source_row"]
+            if row.get("issues"):
+                outcomes.append(Outcome(
+                    row_index=idx, record_type=row.get("record_type", ""),
+                    status="skipped_flagged", reason=row["issues"],
+                    account=row.get("account") or "", date=row.get("date") or "",
+                ))
+                continue
+
+            rtype = row.get("record_type")
+            if rtype == "transaction":
+                o = process_transaction_row(session, row, batch_id, dry_run=False)
+            elif rtype == "fx_conversion":
+                o = process_fx_conversion_row(session, row, batch_id, dry_run=False)
+            else:
+                o = Outcome(row_index=idx, record_type=rtype or "", status="skipped_flagged",
+                             reason=f"unsupported record_type '{rtype}'")
             outcomes.append(o)
 
-        if not dry_run and session is not None:
-            errors = [o for o in outcomes if o.status == "error"]
-            if errors:
-                session.rollback()
-                print(f"ABORTED: {len(errors)} row(s) failed lookup resolution. "
-                      f"No rows were committed. See migration_report.csv for details.",
-                      file=sys.stderr)
-            else:
-                session.commit()
-                print(f"Committed batch {batch_id}: "
-                      f"{sum(1 for o in outcomes if o.status == 'imported')} rows imported, "
-                      f"{sum(1 for o in outcomes if o.status == 'skipped_flagged')} skipped.")
-    finally:
-        if session is not None:
-            session.close()
+        errors = [o for o in outcomes if o.status == "error"]
+        if errors:
+            session.rollback()
+            print(f"ABORTED: {len(errors)} row(s) failed lookup resolution. "
+                  f"No rows were committed. See migration_report.csv for details.",
+                  file=sys.stderr)
+        else:
+            session.commit()
+            print(f"Committed batch {batch_id}: "
+                  f"{sum(1 for o in outcomes if o.status == 'imported')} rows imported, "
+                  f"{sum(1 for o in outcomes if o.status == 'skipped_flagged')} skipped.")
 
     return outcomes
 
@@ -558,6 +597,21 @@ def write_report(outcomes: list, path: str = "migration_report.csv") -> None:
     print(f"Report written to {path}")
 
 
+def configure_database(db_path: Optional[str] = None) -> str:
+    """Sets target database and resets cached connection engine/factory."""
+    import config
+    import db as db_mod
+    if not db_path:
+        db_path = os.path.join(be_dir, "hrflow.db")
+    abs_path = os.path.abspath(db_path).replace("\\", "/")
+    url = f"sqlite:///{abs_path}"
+    os.environ["DATABASE_URL"] = url
+    config.Config.DATABASE_URL = url
+    db_mod._engine = None
+    db_mod._SessionFactory = None
+    return abs_path
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                        formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -566,6 +620,8 @@ def main():
     parser.add_argument("--export-csv", default=None,
                          help="Optional: also write the extracted/classified rows here "
                               "for manual review. Never hand-edit and re-feed this file.")
+    parser.add_argument("--db-path", default=None,
+                         help="Optional: path to SQLite database file. Defaults to be/hrflow.db.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--dry-run", action="store_true", default=True,
                         help="Default. Validates and reports; writes nothing to the DB.")
@@ -573,7 +629,12 @@ def main():
                         help="Actually writes to the database inside one transaction.")
     args = parser.parse_args()
 
+    target_db = configure_database(args.db_path)
+
     dry_run = not args.commit
+    if not dry_run:
+        print(f"Targeting database: {target_db}")
+
     records = extract_records(args.xlsx)
 
     if args.export_csv:
