@@ -1137,19 +1137,31 @@ class StatementLineBase(BaseModel):
     notes: Optional[str] = ""
 
 
+class StatementLineSplitPortion(BaseModel):
+    amount: float = Field(..., gt=0.0, description="Portion amount")
+    description: Optional[str] = Field(None, description="Description for split portion")
+    reference: Optional[str] = Field(None, description="Reference for split portion")
+    category_id: Optional[int] = None
+    payment_type_id: Optional[int] = None
+    matched_transaction_id: Optional[int] = None
+    matched_cheque_id: Optional[int] = None
+
+
 class StatementLineResponse(StatementLineBase):
     id: int
     matched_transaction_id: Optional[int] = None
     matched_cheque_id: Optional[int] = None
+    parent_line_id: Optional[int] = None
     created_at: Optional[datetime] = None
     suggested_matches: List[SuggestedMatch] = []
+    child_lines: List["StatementLineResponse"] = []
 
     class Config:
         from_attributes = True
 
 
 class StatementLineResolveRequest(BaseModel):
-    action: str = Field(..., description="match | create | ignore")
+    action: str = Field(..., description="match | create | ignore | split")
     matched_transaction_id: Optional[int] = Field(None, description="Existing ledger transaction ID to link")
     matched_cheque_id: Optional[int] = Field(None, description="Existing cheque ID to link & auto-clear")
     # Fields required when action == 'create'
@@ -1157,7 +1169,27 @@ class StatementLineResolveRequest(BaseModel):
     payment_type_id: Optional[int] = Field(None, description="Payment Type ID when auto-creating transaction")
     description: Optional[str] = Field(None, description="Custom description for created transaction")
     reference: Optional[str] = Field(None, description="Reference for created transaction")
-    notes: Optional[str] = Field(None, description="Resolution notes")
+    notes: Optional[str] = Field(None, description="Resolution notes (mandatory for ignore)")
+    # Fields required when action == 'split'
+    splits: Optional[List[StatementLineSplitPortion]] = Field(None, description="Child line portions for split")
+
+
+class ReconciliationWorkspaceSummary(BaseModel):
+    statement_id: int
+    account_id: int
+    account_name: str
+    currency: str
+    period_month: str
+    statement_opening_balance: Optional[float] = None
+    statement_closing_balance: Optional[float] = None
+    book_balance: float = 0.0
+    difference: Optional[float] = None
+    total_lines_count: int = 0
+    resolved_lines_count: int = 0
+    unmatched_lines_count: int = 0
+    resolved_amount: float = 0.0
+    unresolved_amount: float = 0.0
+    status: str = "needs_review"
 
 
 # ==========================================

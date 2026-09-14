@@ -28,6 +28,7 @@ from finance.schemas import (
     StatementMappingTemplateCreate,
     StatementMappingTemplateResponse,
     CSVColumnMapping,
+    ReconciliationWorkspaceSummary,
 )
 from finance.services.statements_service import StatementsService
 from finance.deps import get_statements_service
@@ -251,6 +252,19 @@ def resolve_statement_line(
         req=req,
         user_email=user_email,
     )
+
+
+@router.get(
+    "/statements/{statement_id}/summary",
+    response_model=ReconciliationWorkspaceSummary,
+    dependencies=[Depends(require_permission("finance.account.read"))],
+)
+def get_reconciliation_workspace_summary(
+    statement_id: int,
+    statements_service: StatementsService = Depends(get_statements_service),
+):
+    """Get live reconciliation workspace balance summary, differences, and resolved totals."""
+    return statements_service.get_reconciliation_workspace_summary(statement_id)
 
 
 @router.post(

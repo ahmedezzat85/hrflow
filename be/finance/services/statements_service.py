@@ -23,10 +23,11 @@ from finance.schemas import (
     CSVColumnMapping,
     StatementPreviewResponse,
     StatementValidationSummary,
-    StatementLinePreviewItem,
     StatementValidationErrorItem,
+    StatementLinePreviewItem,
     StatementMappingTemplateCreate,
     StatementMappingTemplateResponse,
+    ReconciliationWorkspaceSummary,
 )
 from finance.services.statement_parsers import (
     CSVStatementParser,
@@ -97,6 +98,28 @@ class StatementsService:
         if line.status == "unmatched":
             suggestions = self.repo.find_suggested_matches(account_id, line)
 
+        child_responses = []
+        for ch in getattr(line, "child_lines", []) or []:
+            child_responses.append(
+                StatementLineResponse(
+                    id=ch.id,
+                    import_id=ch.import_id,
+                    raw_date=ch.raw_date,
+                    raw_amount=ch.raw_amount,
+                    direction=ch.direction,
+                    raw_description=ch.raw_description,
+                    raw_reference=ch.raw_reference or "",
+                    status=ch.status,
+                    notes=ch.notes or "",
+                    matched_transaction_id=ch.matched_transaction_id,
+                    matched_cheque_id=ch.matched_cheque_id,
+                    parent_line_id=ch.parent_line_id,
+                    created_at=ch.created_at,
+                    suggested_matches=[],
+                    child_lines=[],
+                )
+            )
+
         return StatementLineResponse(
             id=line.id,
             import_id=line.import_id,
@@ -109,8 +132,10 @@ class StatementsService:
             notes=line.notes or "",
             matched_transaction_id=line.matched_transaction_id,
             matched_cheque_id=line.matched_cheque_id,
+            parent_line_id=line.parent_line_id,
             created_at=line.created_at,
             suggested_matches=suggestions,
+            child_lines=child_responses,
         )
 
     async def preview_statement(
@@ -378,19 +403,66 @@ class StatementsService:
                 detail="Cannot modify lines of an already reconciled statement",
             )
 
-        resolved = self.repo.resolve_line(
-            line=line,
-            action=req.action,
-            matched_transaction_id=req.matched_transaction_id,
-            matched_cheque_id=req.matched_cheque_id,
-            category_id=req.category_id,
-            payment_type_id=req.payment_type_id,
-            description=req.description,
-            reference=req.reference,
-            notes=req.notes,
-            created_by=user_email,
-        )
+        splits_data = [s.dict() for s in req.splits] if req.splits else None
+        try:
+            resolved = self.repo.resolve_line(
+                line=line,
+                action=req.action,
+                matched_transaction_id=req.matched_transaction_id,
+                matched_cheque_id=req.matched_cheque_id,
+                category_id=req.category_id,
+                payment_type_id=req.payment_type_id,
+                description=req.description,
+                reference=req.reference,
+                notes=req.notes,
+                splits=splits_data,
+                created_by=user_email,
+            )
+        except ValueError as ex:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+
         return self._line_to_response(resolved, line.statement_import.account_id)
+
+    def get_reconciliation_workspace_summary(self, import_id: int) -> ReconciliationWorkspaceSummary:
+        imp = self.repo.get_import_by_id(import_id)
+        if not imp:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Statement import not found")
+
+        account = imp.account
+        currency = account.currency if account else "USD"
+        book_balance = round(account.current_balance, 2) if account else 0.0
+
+        all_lines = self.repo.get_statement_lines(import_id)
+        # Exclude parent lines that have been split into child portions
+        active_lines = [l for l in all_lines if l.status != "split"]
+
+        resolved_lines = [l for l in active_lines if l.status in ("matched", "created", "ignored")]
+        unmatched_lines = [l for l in active_lines if l.status == "unmatched"]
+
+        resolved_amount = round(sum(l.raw_amount for l in resolved_lines), 2)
+        unresolved_amount = round(sum(l.raw_amount for l in unmatched_lines), 2)
+
+        difference = None
+        if imp.closing_balance is not None:
+            difference = round(imp.closing_balance - book_balance, 2)
+
+        return ReconciliationWorkspaceSummary(
+            statement_id=imp.id,
+            account_id=imp.account_id,
+            account_name=account.account_name if account else f"Account #{imp.account_id}",
+            currency=currency,
+            period_month=imp.period_month,
+            statement_opening_balance=imp.opening_balance,
+            statement_closing_balance=imp.closing_balance,
+            book_balance=book_balance,
+            difference=difference,
+            total_lines_count=len(active_lines),
+            resolved_lines_count=len(resolved_lines),
+            unmatched_lines_count=len(unmatched_lines),
+            resolved_amount=resolved_amount,
+            unresolved_amount=unresolved_amount,
+            status=imp.status,
+        )
 
     def reconcile_statement(self, import_id: int, user_email: Optional[str] = None) -> StatementImportResponse:
         imp = self.repo.get_import_by_id(import_id)

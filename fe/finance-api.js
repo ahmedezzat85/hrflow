@@ -170,7 +170,7 @@ const FinanceMockState = {
       matched_cheque_id: null,
       suggested_matches: [
         {
-          transaction_id: 1,
+          transaction_id: 101,
           cheque_id: null,
           match_type: "exact_transaction",
           score: 0.95,
@@ -3148,12 +3148,54 @@ const FinanceApi = {
     return apiRequest("GET", `/api/finance/statements/${statementId}/lines`);
   },
 
+  async getStatementSummary(statementId) {
+    if (_isMock()) {
+      const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
+      const allLines = (FinanceMockState.statementLines || []).filter((l) => l.import_id === parseInt(statementId, 10));
+      const activeLines = allLines.filter((l) => l.status !== "split");
+      const resolvedLines = activeLines.filter((l) => ["matched", "created", "ignored"].includes(l.status));
+      const unmatchedLines = activeLines.filter((l) => l.status === "unmatched");
+
+      const resolvedAmount = resolvedLines.reduce((s, l) => s + (l.raw_amount || 0), 0);
+      const unresolvedAmount = unmatchedLines.reduce((s, l) => s + (l.raw_amount || 0), 0);
+
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === (imp ? imp.account_id : null));
+      const bookBalance = acc ? acc.current_balance : 0;
+      const diff = imp && imp.closing_balance !== undefined ? imp.closing_balance - bookBalance : null;
+
+      return {
+        statement_id: parseInt(statementId, 10),
+        account_id: imp ? imp.account_id : 1,
+        account_name: imp ? imp.account_name || "Primary Checking" : "Primary Checking",
+        currency: acc ? acc.currency || "USD" : "USD",
+        period_month: imp ? imp.period_month : "2026-09",
+        statement_opening_balance: imp ? imp.opening_balance : 10000.0,
+        statement_closing_balance: imp ? imp.closing_balance : 10350.0,
+        book_balance: bookBalance,
+        difference: diff,
+        total_lines_count: activeLines.length,
+        resolved_lines_count: resolvedLines.length,
+        unmatched_lines_count: unmatchedLines.length,
+        resolved_amount: resolvedAmount,
+        unresolved_amount: unresolvedAmount,
+        status: imp ? imp.status : "needs_review",
+      };
+    }
+    return apiRequest("GET", `/api/finance/statements/${statementId}/summary`);
+  },
+
   async resolveStatementLine(statementId, lineId, payload) {
     if (_isMock()) {
       const line = (FinanceMockState.statementLines || []).find((l) => l.id === parseInt(lineId, 10));
       if (!line) throw new Error("Statement line not found");
 
       if (payload.action === "match") {
+        if (payload.matched_transaction_id) {
+          const already = (FinanceMockState.statementLines || []).find(
+            (l) => l.id !== line.id && l.matched_transaction_id === payload.matched_transaction_id && ["matched", "created"].includes(l.status)
+          );
+          if (already) throw new Error(`Ledger Transaction #${payload.matched_transaction_id} is already matched to line #${already.id}`);
+        }
         line.status = "matched";
         line.matched_transaction_id = payload.matched_transaction_id || null;
         line.matched_cheque_id = payload.matched_cheque_id || null;
@@ -3168,15 +3210,41 @@ const FinanceApi = {
         line.status = "created";
         line.matched_transaction_id = Date.now();
       } else if (payload.action === "ignore") {
+        if (!payload.notes || !payload.notes.trim()) {
+          throw new Error("A documented reason is mandatory to ignore a statement line.");
+        }
         line.status = "ignored";
+        line.notes = payload.notes.trim();
+      } else if (payload.action === "split") {
+        if (!payload.splits || payload.splits.length < 2) {
+          throw new Error("Split action requires at least two split portions.");
+        }
+        const totalSplit = payload.splits.reduce((s, p) => s + (p.amount || 0), 0);
+        if (Math.abs(totalSplit - line.raw_amount) > 0.01) {
+          throw new Error(`Split portions total (${totalSplit}) must equal line amount (${line.raw_amount}) within currency precision.`);
+        }
+        line.status = "split";
+        line.child_lines = payload.splits.map((p, idx) => ({
+          id: Date.now() + idx,
+          import_id: line.import_id,
+          parent_line_id: line.id,
+          raw_date: line.raw_date,
+          raw_amount: p.amount,
+          direction: line.direction,
+          raw_description: p.description || `${line.raw_description} (Split ${idx + 1})`,
+          raw_reference: p.reference || line.raw_reference,
+          status: "matched",
+          notes: `Split ${idx + 1} from line #${line.id}`,
+        }));
+        (FinanceMockState.statementLines || []).push(...line.child_lines);
       }
-      if (payload.notes) line.notes = payload.notes;
+      if (payload.notes && payload.action !== "ignore") line.notes = payload.notes;
 
       // Update import matched count
       const imp = (FinanceMockState.statementImports || []).find((i) => i.id === parseInt(statementId, 10));
       if (imp) {
         const resolvedCount = (FinanceMockState.statementLines || []).filter(
-          (l) => l.import_id === imp.id && ["matched", "created", "ignored"].includes(l.status)
+          (l) => l.import_id === imp.id && ["matched", "created", "ignored", "split"].includes(l.status)
         ).length;
         imp.matched_lines_count = resolvedCount;
       }

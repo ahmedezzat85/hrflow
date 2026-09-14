@@ -275,10 +275,32 @@ class StatementsRepository:
         except ValueError:
             line_dt = datetime.utcnow()
 
+        # Find transaction IDs and cheque IDs already matched across all non-ignored lines
+        matched_tx_ids = {
+            row[0]
+            for row in self.db.query(StatementLineDB.matched_transaction_id)
+            .filter(
+                StatementLineDB.matched_transaction_id.isnot(None),
+                StatementLineDB.status.in_(["matched", "created"]),
+                StatementLineDB.id != line.id,
+            )
+            .all()
+        }
+        matched_cheque_ids = {
+            row[0]
+            for row in self.db.query(StatementLineDB.matched_cheque_id)
+            .filter(
+                StatementLineDB.matched_cheque_id.isnot(None),
+                StatementLineDB.status.in_(["matched", "created"]),
+                StatementLineDB.id != line.id,
+            )
+            .all()
+        }
+
         # 1. Match against Ledger Transactions on same account and direction
-        # Look for transactions within 10 days before/after
-        min_date = (line_dt - timedelta(days=10)).strftime("%Y-%m-%d")
-        max_date = (line_dt + timedelta(days=10)).strftime("%Y-%m-%d")
+        # Look for transactions within 14 days before/after
+        min_date = (line_dt - timedelta(days=14)).strftime("%Y-%m-%d")
+        max_date = (line_dt + timedelta(days=14)).strftime("%Y-%m-%d")
 
         candidate_txs = (
             self.db.query(LedgerTransactionDB)
@@ -292,15 +314,18 @@ class StatementsRepository:
         )
 
         for tx in candidate_txs:
+            if tx.id in matched_tx_ids:
+                continue
+
             score = 0.0
             reasons = []
 
             # Check exact amount
             if abs(tx.amount - target_amount) < 0.01:
-                score += 0.6
+                score += 0.55
                 reasons.append("Exact amount match")
             elif abs(tx.amount - target_amount) / (target_amount or 1.0) < 0.05:
-                score += 0.3
+                score += 0.25
                 reasons.append("Proximity amount match")
             else:
                 continue
@@ -310,38 +335,67 @@ class StatementsRepository:
                 tx_dt = datetime.strptime(tx.date, "%Y-%m-%d")
                 day_diff = abs((tx_dt - line_dt).days)
                 if day_diff == 0:
-                    score += 0.4
-                    reasons.append("Exact date match")
+                    score += 0.35
+                    reasons.append("Same date")
                 elif day_diff <= 3:
-                    score += 0.3
+                    score += 0.25
                     reasons.append(f"Within {day_diff} day(s)")
                 elif day_diff <= 7:
-                    score += 0.1
+                    score += 0.15
+                    reasons.append(f"Within {day_diff} days")
+                else:
                     reasons.append(f"Within {day_diff} days")
             except ValueError:
                 pass
 
-            # Check reference / description text similarity
+            # Check reference similarity
             if (
                 line.raw_reference
                 and tx.reference
-                and line.raw_reference.lower() in tx.reference.lower()
+                and (
+                    line.raw_reference.lower() in tx.reference.lower()
+                    or tx.reference.lower() in line.raw_reference.lower()
+                )
             ):
                 score += 0.2
-                reasons.append("Reference match")
+                reasons.append(f"Ref match: {tx.reference}")
+
+            # Check counterparty / description match
+            if (
+                tx.counterparty
+                and tx.counterparty.lower() in line.raw_description.lower()
+            ):
+                score += 0.2
+                reasons.append(f"Counterparty: {tx.counterparty}")
+            elif (
+                tx.description
+                and len(tx.description) > 3
+                and tx.description.lower() in line.raw_description.lower()
+            ):
+                score += 0.15
+                reasons.append("Description similarity")
+
+            # Check source link (transfer pair / invoice / bill)
+            if tx.linked_transfer_id:
+                reasons.append("Internal Transfer pair")
+                score += 0.1
+            elif tx.linked_invoice_id:
+                reasons.append("Sales Invoice Payment")
+            elif tx.linked_bill_id:
+                reasons.append("Vendor Bill Payment")
 
             suggestions.append(
                 SuggestedMatch(
                     transaction_id=tx.id,
                     cheque_id=None,
-                    match_type="exact_transaction" if score >= 0.9 else "probable_transaction",
+                    match_type="exact_transaction" if score >= 0.85 else "probable_transaction",
                     score=min(round(score, 2), 1.0),
                     date=tx.date,
                     amount=tx.amount,
                     direction=tx.direction,
-                    description=tx.description or "Ledger Outflow" if tx.direction == "out" else "Ledger Inflow",
+                    description=tx.description or (f"{tx.counterparty} - Ledger Outflow" if tx.direction == "out" else f"{tx.counterparty} - Ledger Inflow"),
                     reference=tx.reference or "",
-                    reason=", ".join(reasons),
+                    reason=" · ".join(reasons) if reasons else "Ledger proximity candidate",
                 )
             )
 
@@ -356,15 +410,18 @@ class StatementsRepository:
                 .all()
             )
             for chq in candidate_cheques:
+                if chq.id in matched_cheque_ids:
+                    continue
+
                 if abs(chq.amount - target_amount) < 0.01:
-                    score = 0.7
-                    reasons = ["Cheque amount match", f"Cheque #{chq.cheque_number}"]
+                    score = 0.65
+                    reasons = [f"Cheque #{chq.cheque_number}", "Exact amount match"]
                     try:
                         chq_dt = datetime.strptime(chq.issue_date, "%Y-%m-%d")
                         diff = abs((line_dt - chq_dt).days)
                         if diff <= 7:
-                            score += 0.25
-                            reasons.append("Issued within 7 days")
+                            score += 0.2
+                            reasons.append(f"Issued {diff}d ago")
                     except ValueError:
                         pass
 
@@ -372,8 +429,12 @@ class StatementsRepository:
                     if chq.cheque_number in line.raw_description or (
                         line.raw_reference and chq.cheque_number in line.raw_reference
                     ):
-                        score += 0.2
-                        reasons.append("Cheque number found in statement")
+                        score += 0.25
+                        reasons.append("Cheque number present in statement")
+
+                    if chq.payee and chq.payee.lower() in line.raw_description.lower():
+                        score += 0.15
+                        reasons.append(f"Payee match: {chq.payee}")
 
                     suggestions.append(
                         SuggestedMatch(
@@ -386,7 +447,7 @@ class StatementsRepository:
                             direction="out",
                             description=f"Cheque #{chq.cheque_number} to {chq.payee}",
                             reference=chq.cheque_number,
-                            reason=", ".join(reasons),
+                            reason=" · ".join(reasons),
                         )
                     )
 
@@ -405,12 +466,40 @@ class StatementsRepository:
         description: Optional[str] = None,
         reference: Optional[str] = None,
         notes: Optional[str] = None,
+        splits: Optional[List[Dict[str, Any]]] = None,
         created_by: Optional[str] = None,
     ) -> StatementLineDB:
         account_id = line.statement_import.account_id
 
         if action == "match":
+            # Concurrency & double match prevention
+            if matched_transaction_id:
+                already_matched = (
+                    self.db.query(StatementLineDB)
+                    .filter(
+                        StatementLineDB.matched_transaction_id == matched_transaction_id,
+                        StatementLineDB.status.in_(["matched", "created"]),
+                        StatementLineDB.id != line.id,
+                    )
+                    .first()
+                )
+                if already_matched:
+                    raise ValueError(f"Ledger Transaction #{matched_transaction_id} is already matched to statement line #{already_matched.id}")
+                line.matched_transaction_id = matched_transaction_id
+
             if matched_cheque_id:
+                already_chq = (
+                    self.db.query(StatementLineDB)
+                    .filter(
+                        StatementLineDB.matched_cheque_id == matched_cheque_id,
+                        StatementLineDB.status.in_(["matched", "created"]),
+                        StatementLineDB.id != line.id,
+                    )
+                    .first()
+                )
+                if already_chq:
+                    raise ValueError(f"Cheque #{matched_cheque_id} is already matched to statement line #{already_chq.id}")
+
                 chq = (
                     self.db.query(FinanceChequeDB)
                     .filter(FinanceChequeDB.id == matched_cheque_id)
@@ -422,8 +511,6 @@ class StatementsRepository:
                     line.matched_cheque_id = chq.id
                     if chq.linked_transaction_id:
                         line.matched_transaction_id = chq.linked_transaction_id
-            elif matched_transaction_id:
-                line.matched_transaction_id = matched_transaction_id
 
             line.status = "matched"
             if notes:
@@ -466,16 +553,90 @@ class StatementsRepository:
                 line.notes = notes
 
         elif action == "ignore":
+            if not notes or not notes.strip():
+                raise ValueError("A documented reason is mandatory to ignore a statement line.")
             line.status = "ignored"
-            if notes:
-                line.notes = notes
+            line.notes = notes.strip()
+
+        elif action == "split":
+            if not splits or len(splits) < 2:
+                raise ValueError("Split action requires at least two split portions.")
+
+            total_split = round(sum(float(s.get("amount", 0.0)) for s in splits), 2)
+            if abs(total_split - round(line.raw_amount, 2)) > 0.01:
+                raise ValueError(f"Split portions total ({total_split}) must equal line amount ({line.raw_amount}) within currency precision.")
+
+            account = (
+                self.db.query(FinanceBankAccountDB)
+                .filter(FinanceBankAccountDB.id == account_id)
+                .first()
+            )
+            curr = account.currency if account else "USD"
+            from finance.repositories.ledger_repository import LedgerRepository
+            ledger_repo = LedgerRepository(self.db)
+
+            for idx, s in enumerate(splits):
+                s_amt = round(float(s.get("amount", 0.0)), 2)
+                s_desc = s.get("description") or f"{line.raw_description} (Split {idx + 1})"
+                s_ref = s.get("reference") or line.raw_reference or ""
+                s_cat = s.get("category_id")
+                s_pt = s.get("payment_type_id")
+                s_tx_id = s.get("matched_transaction_id")
+                s_chq_id = s.get("matched_cheque_id")
+
+                # If no matched tx provided, auto-create a ledger transaction for this portion
+                if not s_tx_id and not s_chq_id:
+                    part_tx = LedgerTransactionDB(
+                        account_id=account_id,
+                        date=line.raw_date,
+                        amount=s_amt,
+                        direction=line.direction,
+                        currency=curr,
+                        category_id=s_cat,
+                        payment_type_id=s_pt,
+                        reference=s_ref,
+                        description=s_desc,
+                        source="statement_import",
+                        created_at=datetime.utcnow(),
+                        created_by=created_by,
+                    )
+                    self.db.add(part_tx)
+                    self.db.flush()
+                    s_tx_id = part_tx.id
+                elif s_chq_id:
+                    chq = self.db.query(FinanceChequeDB).filter(FinanceChequeDB.id == s_chq_id).first()
+                    if chq:
+                        chq.status = "cleared"
+                        chq.clear_date = line.raw_date
+                        if chq.linked_transaction_id:
+                            s_tx_id = chq.linked_transaction_id
+
+                child = StatementLineDB(
+                    import_id=line.import_id,
+                    parent_line_id=line.id,
+                    raw_date=line.raw_date,
+                    raw_amount=s_amt,
+                    direction=line.direction,
+                    raw_description=s_desc,
+                    raw_reference=s_ref,
+                    status="matched",
+                    matched_transaction_id=s_tx_id,
+                    matched_cheque_id=s_chq_id,
+                    notes=f"Split {idx + 1}/{len(splits)} from line #{line.id}",
+                    created_at=datetime.utcnow(),
+                )
+                self.db.add(child)
+
+            ledger_repo.recalculate_account_running_balances(account_id)
+            line.status = "split"
+            line.notes = notes or f"Split into {len(splits)} portions"
 
         # Update matched lines count on import
         matched_count = (
             self.db.query(StatementLineDB)
             .filter(
                 StatementLineDB.import_id == line.import_id,
-                StatementLineDB.status.in_(["matched", "created", "ignored"]),
+                StatementLineDB.status.in_(["matched", "created", "ignored", "split"]),
             )
             .count()
         )

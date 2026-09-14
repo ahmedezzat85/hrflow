@@ -749,16 +749,17 @@ async function openReconciliationModal(importId) {
   openModal("financeReconciliationModal");
 
   try {
-    const [imp, lines] = await Promise.all([
+    const [imp, lines, summary] = await Promise.all([
       FinanceApi.getStatement(importId),
       FinanceApi.getStatementLines(importId),
+      FinanceApi.getStatementSummary ? FinanceApi.getStatementSummary(importId) : null,
     ]);
 
     _currentReconcileImport = imp;
     _currentReconcileLines = lines;
     _currentReconcileFilter = "all";
 
-    updateReconciliationHeader(imp);
+    updateReconciliationHeader(imp, summary);
     renderReconciliationLinesTable(lines);
   } catch (err) {
     console.error("Failed to load reconciliation details", err);
@@ -775,7 +776,25 @@ function closeReconciliationModal() {
   _currentReconcileLines = [];
 }
 
-function updateReconciliationHeader(imp) {
+async function refreshReconciliationWorkspace() {
+  if (!_currentReconcileImport) return;
+  try {
+    const [imp, lines, summary] = await Promise.all([
+      FinanceApi.getStatement(_currentReconcileImport.id),
+      FinanceApi.getStatementLines(_currentReconcileImport.id),
+      FinanceApi.getStatementSummary ? FinanceApi.getStatementSummary(_currentReconcileImport.id) : null,
+    ]);
+    _currentReconcileImport = imp;
+    _currentReconcileLines = lines;
+    updateReconciliationHeader(imp, summary);
+    filterReconciliationLines(_currentReconcileFilter);
+    await loadFinanceStatements();
+  } catch (err) {
+    console.warn("Failed refreshing reconciliation workspace", err);
+  }
+}
+
+function updateReconciliationHeader(imp, summary = null) {
   if (!imp) return;
   const pEl = document.getElementById("reconcileSummaryPeriod");
   const aEl = document.getElementById("reconcileSummaryAccount");
@@ -791,6 +810,47 @@ function updateReconciliationHeader(imp) {
   if (stEl) {
     stEl.textContent = isReconciled ? "Reconciled" : "Needs Review";
     stEl.className = isReconciled ? "status-badge status-success" : "status-badge status-warning";
+  }
+
+  // Update Live KPI Bar
+  const closeValEl = document.getElementById("reconcileStatementClosingVal");
+  const bookValEl = document.getElementById("reconcileBookBalanceVal");
+  const diffValEl = document.getElementById("reconcileDifferenceVal");
+  const resAmtEl = document.getElementById("reconcileResolvedAmountVal");
+  const remCountEl = document.getElementById("reconcileRemainingCountVal");
+
+  if (closeValEl) {
+    closeValEl.textContent = imp.closing_balance !== null && imp.closing_balance !== undefined
+      ? formatCurrency(imp.closing_balance)
+      : "Not set";
+  }
+
+  if (summary) {
+    if (bookValEl) bookValEl.textContent = formatCurrency(summary.book_balance || 0);
+    if (diffValEl) {
+      if (summary.difference !== null && summary.difference !== undefined) {
+        const diff = summary.difference;
+        diffValEl.textContent = formatCurrency(diff);
+        if (Math.abs(diff) < 0.01) {
+          diffValEl.style.color = "var(--color-success, #16a34a)";
+        } else {
+          diffValEl.style.color = "var(--color-danger, #ef4444)";
+        }
+      } else {
+        diffValEl.textContent = "—";
+        diffValEl.style.color = "inherit";
+      }
+    }
+    if (resAmtEl) resAmtEl.textContent = formatCurrency(summary.resolved_amount || 0);
+    if (remCountEl) remCountEl.textContent = String(summary.unmatched_lines_count || 0);
+  } else {
+    // Fallback calculation from lines
+    const active = _currentReconcileLines.filter((l) => l.status !== "split");
+    const resolvedLines = active.filter((l) => ["matched", "created", "ignored"].includes(l.status));
+    const unmatchedLines = active.filter((l) => l.status === "unmatched");
+    const resAmt = resolvedLines.reduce((s, l) => s + (l.raw_amount || 0), 0);
+    if (resAmtEl) resAmtEl.textContent = formatCurrency(resAmt);
+    if (remCountEl) remCountEl.textContent = String(unmatchedLines.length);
   }
 
   const allResolved = imp.total_lines_count > 0 && imp.matched_lines_count === imp.total_lines_count;
@@ -815,7 +875,7 @@ function filterReconciliationLines(filterType, btn) {
   if (filterType === "unmatched") {
     filtered = filtered.filter((l) => l.status === "unmatched");
   } else if (filterType === "matched") {
-    filtered = filtered.filter((l) => ["matched", "created"].includes(l.status));
+    filtered = filtered.filter((l) => ["matched", "created", "split"].includes(l.status));
   } else if (filterType === "ignored") {
     filtered = filtered.filter((l) => l.status === "ignored");
   }
@@ -858,56 +918,99 @@ function renderReconciliationLinesTable(lines) {
       statusBadge = '<span class="status-badge status-primary" style="font-size:11px;"><i class="fa-solid fa-plus"></i> Created</span>';
     } else if (line.status === "ignored") {
       statusBadge = '<span class="status-badge status-neutral" style="font-size:11px;"><i class="fa-solid fa-ban"></i> Ignored</span>';
+    } else if (line.status === "split") {
+      statusBadge = '<span class="status-badge" style="background:#f5f3ff;color:#7c3aed;font-size:11px;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split</span>';
     } else {
       statusBadge = '<span class="status-badge status-warning" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Unmatched</span>';
     }
 
-    // Suggested Matches Column
+    // Side-by-side: Left side is statement detail
+    const statementDetailHtml = `
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-weight:600;font-size:12px;font-family:monospace;">${escapeHtml(line.raw_date)}</span>
+          <span class="status-badge" style="font-size:10px;padding:1px 6px;">#${line.id}</span>
+        </div>
+        <div style="font-weight:600;font-size:13px;color:var(--text-primary);">${escapeHtml(line.raw_description || 'Bank transaction')}</div>
+        ${line.raw_reference ? `<div style="font-size:11px;color:var(--text-muted);"><i class="fa-solid fa-hashtag"></i> Ref: <span style="font-family:monospace;">${escapeHtml(line.raw_reference)}</span></div>` : ''}
+        ${line.notes ? `<div style="font-size:11px;font-style:italic;color:var(--text-muted);"><i class="fa-solid fa-comment-dots"></i> ${escapeHtml(line.notes)}</div>` : ''}
+      </div>
+    `;
+
+    // Side-by-side: Right side is ranked candidate matches with explanation rationale
     let matchColContent = "";
     if (line.status === "unmatched") {
       const suggestions = line.suggested_matches || [];
       if (suggestions.length > 0) {
         matchColContent = `
-          <select id="lineMatchSelect_${line.id}" class="form-control" style="width:100%;font-size:12px;padding:3px 8px;height:32px;">
-            ${suggestions
-              .map(
-                (s, idx) => `
-              <option value="${s.transaction_id || ''}" data-cheque="${s.cheque_id || ''}" ${idx === 0 ? 'selected' : ''}>
-                ${s.match_type === 'cheque' ? 'Cheque' : 'Tx'} [${Math.round(s.score * 100)}%] ${escapeHtml(s.description)} (${formatCurrency(s.amount)})
-              </option>
-            `
-              )
-              .join("")}
-          </select>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <select id="lineMatchSelect_${line.id}" class="form-control" style="width:100%;font-size:12px;padding:4px 8px;height:34px;" onchange="onReconcileMatchSelectChange(${line.id})">
+              ${suggestions
+                .map(
+                  (s, idx) => `
+                <option value="${s.transaction_id || ''}" data-cheque="${s.cheque_id || ''}" data-score="${s.score}" data-reason="${escapeHtml(s.reason)}" ${idx === 0 ? 'selected' : ''}>
+                  ${s.match_type === 'cheque' ? 'Cheque' : 'Ledger Tx'} [${Math.round(s.score * 100)}%] ${escapeHtml(s.description)} (${formatCurrency(s.amount)})
+                </option>
+              `
+                )
+                .join("")}
+            </select>
+            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--primary, #2563eb);background:rgba(37,99,235,0.06);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> <span>${escapeHtml(suggestions[0].reason || 'Candidate match')}</span>
+            </div>
+          </div>
         `;
       } else {
-        matchColContent = '<span style="color:var(--text-muted);font-size:12px;">No automated match found</span>';
+        matchColContent = '<span style="color:var(--text-muted);font-size:12px;font-style:italic;"><i class="fa-solid fa-circle-question"></i> No automated ledger or cheque candidate found</span>';
       }
     } else if (line.status === "matched") {
       if (line.matched_cheque_id) {
-        matchColContent = `<span style="color:var(--color-success);font-size:12px;"><i class="fa-solid fa-money-check"></i> Linked Cheque #${line.matched_cheque_id} (Auto-cleared)</span>`;
+        matchColContent = `
+          <div style="font-size:12px;color:var(--color-success);">
+            <strong><i class="fa-solid fa-money-check"></i> Linked Issued Cheque #${line.matched_cheque_id}</strong>
+            <div style="font-size:11px;color:var(--text-muted);">Status auto-updated to Cleared on ${escapeHtml(line.raw_date)}</div>
+          </div>
+        `;
       } else {
-        matchColContent = `<span style="color:var(--color-success);font-size:12px;"><i class="fa-solid fa-link"></i> Linked to Ledger Tx #${line.matched_transaction_id}</span>`;
+        matchColContent = `
+          <div style="font-size:12px;color:var(--color-success);">
+            <strong><i class="fa-solid fa-link"></i> Linked to Continuous Ledger Tx #${line.matched_transaction_id}</strong>
+          </div>
+        `;
       }
     } else if (line.status === "created") {
-      matchColContent = `<span style="color:var(--color-primary);font-size:12px;"><i class="fa-solid fa-receipt"></i> Created Continuous Ledger Entry</span>`;
+      matchColContent = `<span style="color:var(--color-primary);font-size:12px;font-weight:600;"><i class="fa-solid fa-receipt"></i> Created Continuous Ledger Entry</span>`;
     } else if (line.status === "ignored") {
-      matchColContent = '<span style="color:var(--text-muted);font-size:12px;">Excluded from reconciliation</span>';
+      matchColContent = `
+        <div style="font-size:12px;color:var(--text-muted);">
+          <div><i class="fa-solid fa-ban"></i> <em>Excluded from continuous cash book</em></div>
+          <div style="font-size:11px;font-weight:500;">Audit Reason: ${escapeHtml(line.notes || 'Documented')}</div>
+        </div>
+      `;
+    } else if (line.status === "split") {
+      const children = line.child_lines || [];
+      matchColContent = `
+        <div style="font-size:12px;">
+          <div style="font-weight:600;color:#7c3aed;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split into ${children.length || 'multiple'} ledger portions</div>
+          ${children.map((c) => `<div style="font-size:11px;color:var(--text-muted);">· ${escapeHtml(c.raw_description)}: ${formatCurrency(c.raw_amount)}</div>`).join("")}
+        </div>
+      `;
     }
 
-    // Actions Column
+    // Actions Column: 1-Click Match, Create, Split, Ignore-with-reason
     let actionButtons = "";
     if (!isStmtReconciled && line.status === "unmatched") {
       const hasMatches = (line.suggested_matches || []).length > 0;
       actionButtons = `
-        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+        <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">
           ${
             hasMatches
-              ? `<button class="btn btn-sm btn-fill btn-success" style="padding:4px 8px;font-size:11px;" onclick="confirmLineMatch(${line.id})"><i class="fa-solid fa-check"></i> Match</button>`
+              ? `<button class="btn btn-sm btn-fill btn-success btn-confirm-match" style="padding:4px 8px;font-size:11px;" onclick="confirmLineMatch(${line.id})" title="Confirm this candidate match"><i class="fa-solid fa-check"></i> Match</button>`
               : ""
           }
-          <button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;" onclick="openCreateEntryForLine(${line.id})"><i class="fa-solid fa-plus"></i> Create</button>
-          <button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:var(--text-muted);" onclick="ignoreStatementLine(${line.id})"><i class="fa-solid fa-ban"></i></button>
+          <button class="btn btn-sm btn-outline btn-create-entry" style="padding:4px 8px;font-size:11px;" onclick="openCreateEntryForLine(${line.id})" title="Post new ledger entry"><i class="fa-solid fa-plus"></i> Create</button>
+          <button class="btn btn-sm btn-outline btn-split-line" style="padding:4px 8px;font-size:11px;color:#7c3aed;" onclick="openSplitModalForLine(${line.id})" title="Split into multiple allocations"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split</button>
+          <button class="btn btn-sm btn-outline btn-ignore-line" style="padding:4px 8px;font-size:11px;color:var(--color-danger, #ef4444);" onclick="openIgnoreModalForLine(${line.id})" title="Exclude line with audit reason"><i class="fa-solid fa-ban"></i></button>
         </div>
       `;
     } else {
@@ -915,18 +1018,25 @@ function renderReconciliationLinesTable(lines) {
     }
 
     tr.innerHTML = `
-      <td style="font-weight:600;font-size:12px;">${escapeHtml(line.raw_date)}</td>
-      <td>
-        <div style="font-weight:500;font-size:12px;">${escapeHtml(line.raw_description)}</div>
-        ${line.raw_reference ? `<div style="font-size:11px;color:var(--text-muted);">Ref: ${escapeHtml(line.raw_reference)}</div>` : ''}
-      </td>
-      <td style="text-align:right;font-weight:600;font-size:13px;" class="${amountClass}">${formattedAmount}</td>
+      <td>${statementDetailHtml}</td>
+      <td style="text-align:right;font-weight:700;font-size:13px;" class="${amountClass}">${formattedAmount}</td>
       <td style="text-align:center;">${statusBadge}</td>
       <td>${matchColContent}</td>
       <td style="text-align:center;">${actionButtons}</td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+function onReconcileMatchSelectChange(lineId) {
+  const sel = document.getElementById(`lineMatchSelect_${lineId}`);
+  const rationaleEl = document.getElementById(`matchRationaleText_${lineId}`);
+  if (!sel || !rationaleEl) return;
+  const opt = sel.selectedOptions && sel.selectedOptions[0];
+  if (opt) {
+    const reason = opt.getAttribute("data-reason") || "Candidate match";
+    rationaleEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> <span>${escapeHtml(reason)}</span>`;
+  }
 }
 
 async function confirmLineMatch(lineId) {
@@ -950,45 +1060,205 @@ async function confirmLineMatch(lineId) {
     });
 
     showToast("Statement line matched successfully", "success");
-    // Update local state and re-render
-    const idx = _currentReconcileLines.findIndex((l) => l.id === lineId);
-    if (idx >= 0) _currentReconcileLines[idx] = updated;
-
-    _currentReconcileImport.matched_lines_count = _currentReconcileLines.filter((l) =>
-      ["matched", "created", "ignored"].includes(l.status)
-    ).length;
-
-    updateReconciliationHeader(_currentReconcileImport);
-    filterReconciliationLines(_currentReconcileFilter);
-    await loadFinanceStatements();
+    await refreshReconciliationWorkspace();
   } catch (err) {
     console.error("Match resolution failed", err);
     showToast(err.message || "Failed to confirm match", "error");
   }
 }
 
-async function ignoreStatementLine(lineId) {
+function openIgnoreModalForLine(lineId) {
+  const line = _currentReconcileLines.find((l) => l.id === lineId);
+  if (!line) return;
+
+  const idEl = document.getElementById("reconcileIgnoreLineId");
+  const summaryEl = document.getElementById("reconcileIgnoreSummaryLine");
+  const reasonEl = document.getElementById("reconcileIgnoreReason");
+
+  if (idEl) idEl.value = line.id;
+  if (reasonEl) reasonEl.value = "";
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <strong>${escapeHtml(line.raw_date)}</strong> · <span>${escapeHtml(line.raw_description)}</span> · <strong class="${line.direction === 'in' ? 'text-success' : 'text-danger'}">${line.direction === 'in' ? '+' : '-'}${formatCurrency(line.raw_amount)}</strong>
+    `;
+  }
+  openModal("reconcileIgnoreModal");
+}
+
+function closeReconcileIgnoreModal() {
+  closeModal("reconcileIgnoreModal");
+}
+
+async function handleReconcileIgnoreSubmit(e) {
+  e.preventDefault();
   if (!_currentReconcileImport) return;
+
+  const lineId = parseInt(document.getElementById("reconcileIgnoreLineId").value, 10);
+  const reason = (document.getElementById("reconcileIgnoreReason").value || "").trim();
+
+  if (!reason) {
+    showToast("A mandatory audit reason is required to exclude a statement line.", "error");
+    return;
+  }
+
   try {
-    const updated = await FinanceApi.resolveStatementLine(_currentReconcileImport.id, lineId, {
+    await FinanceApi.resolveStatementLine(_currentReconcileImport.id, lineId, {
       action: "ignore",
-      notes: "Ignored by user",
+      notes: reason,
     });
 
-    showToast("Line ignored", "info");
-    const idx = _currentReconcileLines.findIndex((l) => l.id === lineId);
-    if (idx >= 0) _currentReconcileLines[idx] = updated;
-
-    _currentReconcileImport.matched_lines_count = _currentReconcileLines.filter((l) =>
-      ["matched", "created", "ignored"].includes(l.status)
-    ).length;
-
-    updateReconciliationHeader(_currentReconcileImport);
-    filterReconciliationLines(_currentReconcileFilter);
-    await loadFinanceStatements();
+    showToast("Statement line excluded with audit reason", "info");
+    closeReconcileIgnoreModal();
+    await refreshReconciliationWorkspace();
   } catch (err) {
     console.error("Ignore failed", err);
     showToast(err.message || "Failed to ignore line", "error");
+  }
+}
+
+// Split statement line functionality
+let _activeSplitSourceLine = null;
+
+function openSplitModalForLine(lineId) {
+  const line = _currentReconcileLines.find((l) => l.id === lineId);
+  if (!line) return;
+
+  _activeSplitSourceLine = line;
+  const idEl = document.getElementById("reconcileSplitLineId");
+  const srcAmtEl = document.getElementById("reconcileSplitSourceAmountVal");
+
+  if (idEl) idEl.value = line.id;
+  if (srcAmtEl) srcAmtEl.textContent = formatCurrency(line.raw_amount);
+
+  const container = document.getElementById("reconcileSplitPortionsList");
+  if (container) {
+    container.innerHTML = "";
+    // Default to two split portions
+    const half = (line.raw_amount / 2).toFixed(2);
+    const rest = (line.raw_amount - parseFloat(half)).toFixed(2);
+    addReconcileSplitRow(half, `${line.raw_description} (Part 1)`);
+    addReconcileSplitRow(rest, `${line.raw_description} (Part 2)`);
+  }
+  updateReconcileSplitDiff();
+  openModal("reconcileSplitModal");
+}
+
+function closeReconcileSplitModal() {
+  closeModal("reconcileSplitModal");
+  _activeSplitSourceLine = null;
+}
+
+function addReconcileSplitRow(presetAmount = "", presetDesc = "") {
+  const container = document.getElementById("reconcileSplitPortionsList");
+  if (!container) return;
+
+  const rowId = "splitRow_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+  const div = document.createElement("div");
+  div.id = rowId;
+  div.className = "split-portion-row";
+  div.style.cssText = "display:grid; grid-template-columns: 110px 1fr auto; gap:8px; align-items:center; background:var(--bg-card); padding:8px; border:1px solid var(--border-color); border-radius:6px;";
+
+  div.innerHTML = `
+    <div>
+      <label style="font-size:10px;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:2px;">Amount</label>
+      <input type="number" step="0.01" min="0.01" class="form-control split-amount-input" value="${presetAmount}" required oninput="updateReconcileSplitDiff()" style="height:32px;font-size:13px;font-weight:600;">
+    </div>
+    <div>
+      <label style="font-size:10px;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:2px;">Description</label>
+      <input type="text" class="form-control split-desc-input" value="${escapeHtml(presetDesc)}" required placeholder="Allocation description" style="height:32px;font-size:12px;">
+    </div>
+    <div style="padding-top:14px;">
+      <button type="button" class="btn btn-sm btn-outline" style="color:var(--color-danger);height:32px;padding:0 8px;" onclick="removeReconcileSplitRow('${rowId}')" title="Remove portion"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `;
+  container.appendChild(div);
+  updateReconcileSplitDiff();
+}
+
+function removeReconcileSplitRow(rowId) {
+  const container = document.getElementById("reconcileSplitPortionsList");
+  if (!container) return;
+  if (container.children.length <= 2) {
+    showToast("A split requires at least two portions.", "info");
+    return;
+  }
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+  updateReconcileSplitDiff();
+}
+
+function updateReconcileSplitDiff() {
+  if (!_activeSplitSourceLine) return;
+  const inputs = document.querySelectorAll(".split-amount-input");
+  let sum = 0;
+  inputs.forEach((inp) => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) sum += v;
+  });
+
+  const sumEl = document.getElementById("reconcileSplitSumVal");
+  const diffEl = document.getElementById("reconcileSplitDiffBadge");
+  const btn = document.getElementById("btnConfirmSplitPortions");
+
+  const target = _activeSplitSourceLine.raw_amount;
+  const diff = Math.round((target - sum) * 100) / 100;
+
+  if (sumEl) sumEl.textContent = formatCurrency(sum);
+  if (diffEl) {
+    if (Math.abs(diff) < 0.01) {
+      diffEl.textContent = "Balanced ($0.00)";
+      diffEl.className = "status-badge status-success";
+      if (btn) btn.disabled = false;
+    } else {
+      diffEl.textContent = `Diff: ${diff > 0 ? "+" : ""}${formatCurrency(diff)}`;
+      diffEl.className = "status-badge status-danger";
+      if (btn) btn.disabled = true;
+    }
+  }
+}
+
+async function handleReconcileSplitSubmit(e) {
+  e.preventDefault();
+  if (!_currentReconcileImport || !_activeSplitSourceLine) return;
+
+  const rows = document.querySelectorAll(".split-portion-row");
+  if (rows.length < 2) {
+    showToast("At least two portions are required to split a line.", "error");
+    return;
+  }
+
+  const portions = [];
+  rows.forEach((row) => {
+    const amt = parseFloat(row.querySelector(".split-amount-input")?.value);
+    const desc = (row.querySelector(".split-desc-input")?.value || "").trim();
+    if (!isNaN(amt) && amt > 0) {
+      portions.push({ amount: amt, description: desc });
+    }
+  });
+
+  const total = portions.reduce((s, p) => s + p.amount, 0);
+  if (Math.abs(total - _activeSplitSourceLine.raw_amount) > 0.01) {
+    showToast("Split portions total must equal source amount within precision.", "error");
+    return;
+  }
+
+  const btn = document.getElementById("btnConfirmSplitPortions");
+  if (btn) btn.disabled = true;
+
+  try {
+    await FinanceApi.resolveStatementLine(_currentReconcileImport.id, _activeSplitSourceLine.id, {
+      action: "split",
+      splits: portions,
+    });
+
+    showToast("Statement line split into allocated portions", "success");
+    closeReconcileSplitModal();
+    await refreshReconciliationWorkspace();
+  } catch (err) {
+    console.error("Split failed:", err);
+    showToast(err.message || "Failed to split statement line", "error");
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1123,7 +1393,17 @@ window.openReconciliationModal = openReconciliationModal;
 window.closeReconciliationModal = closeReconciliationModal;
 window.filterReconciliationLines = filterReconciliationLines;
 window.confirmLineMatch = confirmLineMatch;
-window.ignoreStatementLine = ignoreStatementLine;
+window.ignoreStatementLine = openIgnoreModalForLine;
+window.openIgnoreModalForLine = openIgnoreModalForLine;
+window.closeReconcileIgnoreModal = closeReconcileIgnoreModal;
+window.handleReconcileIgnoreSubmit = handleReconcileIgnoreSubmit;
+window.openSplitModalForLine = openSplitModalForLine;
+window.closeReconcileSplitModal = closeReconcileSplitModal;
+window.addReconcileSplitRow = addReconcileSplitRow;
+window.removeReconcileSplitRow = removeReconcileSplitRow;
+window.updateReconcileSplitDiff = updateReconcileSplitDiff;
+window.handleReconcileSplitSubmit = handleReconcileSplitSubmit;
+window.onReconcileMatchSelectChange = onReconcileMatchSelectChange;
 window.openCreateEntryForLine = openCreateEntryForLine;
 window.closeReconcileCreateEntryModal = closeReconcileCreateEntryModal;
 window.handleReconcileCreateEntrySubmit = handleReconcileCreateEntrySubmit;
@@ -1132,4 +1412,5 @@ window.syncStatementUploadPeriod = syncStatementUploadPeriod;
 window.onStatementFilterSelectChange = onStatementFilterSelectChange;
 window.onStatementFilterChange = onStatementFilterChange;
 window.onStatementAccountSelected = onStatementAccountSelected;
+
 

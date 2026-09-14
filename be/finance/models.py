@@ -458,13 +458,16 @@ class StatementLineDB(Base):
     raw_reference = Column(String(100), default="", nullable=True)
     matched_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True, index=True)
     matched_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL"), nullable=True, index=True)
-    status = Column(String(20), default="unmatched", nullable=False, index=True)  # unmatched | matched | created | ignored
+    status = Column(String(20), default="unmatched", nullable=False, index=True)  # unmatched | matched | created | ignored | split
     notes = Column(Text, default="", nullable=False)
+    parent_line_id = Column(Integer, ForeignKey("finance_statement_lines.id", ondelete="CASCADE"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     statement_import = relationship("BankStatementImportDB", back_populates="lines")
     matched_transaction = relationship("LedgerTransactionDB")
     matched_cheque = relationship("FinanceChequeDB")
+    parent_line = relationship("StatementLineDB", remote_side=[id], back_populates="child_lines")
+    child_lines = relationship("StatementLineDB", back_populates="parent_line", cascade="all, delete-orphan")
 
 
 class StatementMappingTemplateDB(Base):
