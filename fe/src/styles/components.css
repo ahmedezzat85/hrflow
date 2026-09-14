@@ -6,6 +6,9 @@
   box-shadow: var(--shadow);
   padding: 22px;
   transition: box-shadow .2s ease, transform .2s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .card:hover {
@@ -678,6 +681,13 @@ select.form-control option {
 
 .table-wrap {
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+.card:has(> table) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }

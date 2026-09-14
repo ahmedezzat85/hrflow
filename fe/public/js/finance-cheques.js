@@ -130,21 +130,21 @@ function renderFinanceCheques(items) {
 
       return `
         <tr>
-          <td>
+          <td data-label="Cheque #">
             <strong style="font-family:monospace;font-size:13px;"><i class="fa-solid fa-money-check"></i> ${c.cheque_number}</strong>
             ${linkageInfo}
           </td>
-          <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.issue_date)}</span></td>
-          <td><strong>${c.account_name || '—'}</strong></td>
-          <td><strong>${c.payee}</strong></td>
-          <td>${purposeBadge}</td>
-          <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(-Math.abs(c.amount || 0), c.currency || "USD")}</strong></td>
-          <td style="text-align:center;">
+          <td data-label="Issue Date"><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.issue_date)}</span></td>
+          <td data-label="Source Account"><strong>${c.account_name || '—'}</strong></td>
+          <td data-label="Payee"><strong>${c.payee}</strong></td>
+          <td data-label="Purpose">${purposeBadge}</td>
+          <td data-label="Amount" class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(-Math.abs(c.amount || 0), c.currency || "USD")}</strong></td>
+          <td data-label="Status" style="text-align:center;">
             ${FinanceFormat.formatStatusBadge("cheque", c.status)}
             ${staleBadge}
           </td>
-          <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.clear_date)}</span></td>
-          <td style="text-align:center;">${actionsHtml}</td>
+          <td data-label="Clear Date"><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.clear_date)}</span></td>
+          <td data-label="Actions" style="text-align:center;">${actionsHtml}</td>
         </tr>
       `;
     })

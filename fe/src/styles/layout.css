@@ -425,10 +425,14 @@
 .page {
   padding: 12px 32px 28px;
   max-width: 1400px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .page-section {
   display: none;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-section.active {

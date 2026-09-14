@@ -1,7 +1,7 @@
         <section class="page-section" id="a-finance-accounts">
           <!-- Sub Navigation for Bank Accounts & Lookups -->
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-            <div class="filter-tabs" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; max-width:100%;">
+            <div class="filter-tabs" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation" style="max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;">
               <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
               <button class="filter-tab" id="subtabFinanceLedger" role="tab" aria-selected="false" tabindex="-1" data-account-tab="ledger" onclick="switchFinanceAccountsSubTab('ledger', this)"><i class="fa-solid fa-book-journal-whills"></i> Continuous Ledger</button>
               <button class="filter-tab" id="subtabFinanceStatements" role="tab" aria-selected="false" tabindex="-1" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
@@ -11,13 +11,13 @@
           </div>
 
           <!-- PANE 1: Bank & Cash Accounts -->
-          <div id="financeSubPaneAccounts">
+          <div id="financeSubPaneAccounts" style="max-width:100%; min-width:0;">
             <div class="toolbar">
               <div class="section-title-group">
                 <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</h2>
                 <p class="section-subtitle">Accounts used for receiving customer payments, disbursements, and cash custody.</p>
               </div>
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:100%;">
                 <div class="filter-tabs" role="tablist" aria-label="Bank account status filter">
                   <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
                   <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
@@ -29,24 +29,26 @@
                 <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()"><i class="fa-solid fa-plus"></i> Add Account</button>
               </div>
             </div>
-            <div class="card">
+            <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
               <div class="section-loading-bar" id="financeAccountsLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th>Account / Institution</th>
-                    <th>Type &amp; Identifier</th>
-                    <th>Currency</th>
-                    <th class="cell-money">Book Balance</th>
-                    <th class="cell-money">Available</th>
-                    <th class="cell-money">Reconciled</th>
-                    <th>Feed / Reconciled</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financeAccountsTableBody"></tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th>Account / Institution</th>
+                      <th>Type &amp; Identifier</th>
+                      <th>Currency</th>
+                      <th class="cell-money">Book Balance</th>
+                      <th class="cell-money">Available</th>
+                      <th class="cell-money">Reconciled</th>
+                      <th>Feed / Reconciled</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeAccountsTableBody"></tbody>
+                </table>
+              </div>
               <div class="empty-state" id="financeAccountsEmpty" style="display: none;">
                 <i class="fa-solid fa-building-columns"></i>
                 <p>No company bank or cash accounts configured yet.</p>
@@ -166,25 +168,27 @@
                 </div>
               </div>
 
-              <div class="card">
+              <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
                 <div class="section-loading-bar" id="workspaceLedgerLoadingBar"><span></span></div>
-                <table class="responsive-card-table">
-                  <thead>
-                    <tr>
-                      <th style="width:90px;">Date</th>
-                      <th>Category</th>
-                      <th>Payment Method</th>
-                      <th>Reference</th>
-                      <th>Description</th>
-                      <th style="text-align:right;">In (+)</th>
-                      <th style="text-align:right;">Out (-)</th>
-                      <th style="text-align:right;">Rate / Equiv</th>
-                      <th style="text-align:right;">Running Balance</th>
-                      <th style="width:90px; text-align:center;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="workspaceLedgerTableBody"></tbody>
-                </table>
+                <div class="table-wrap">
+                  <table class="responsive-card-table">
+                    <thead>
+                      <tr>
+                        <th style="width:90px;">Date</th>
+                        <th>Category</th>
+                        <th>Payment Method</th>
+                        <th>Reference</th>
+                        <th>Description</th>
+                        <th style="text-align:right;">In (+)</th>
+                        <th style="text-align:right;">Out (-)</th>
+                        <th style="text-align:right;">Rate / Equiv</th>
+                        <th style="text-align:right;">Running Balance</th>
+                        <th style="width:90px; text-align:center;">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="workspaceLedgerTableBody"></tbody>
+                  </table>
+                </div>
                 <div class="empty-state" id="workspaceLedgerEmpty" style="display:none;">
                   <i class="fa-solid fa-money-bill-transfer"></i>
                   <p>No activity transactions found for this account.</p>
@@ -217,25 +221,27 @@
 
             <!-- Workspace Tab 3: Statements -->
             <div id="workspacePaneStatements" style="display:none;">
-              <div class="card">
-                <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border);">
+              <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
+                <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px;">
                   <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-file-invoice"></i> Account Statement Imports</h3>
                   <button class="btn btn-sm btn-fill" onclick="workspaceImportStatement()"><i class="fa-solid fa-cloud-arrow-up"></i> Import New Statement</button>
                 </div>
-                <table class="responsive-card-table">
-                  <thead>
-                    <tr>
-                      <th style="width:100px;">Period</th>
-                      <th>File Name</th>
-                      <th>Lines Count</th>
-                      <th>Matched Lines</th>
-                      <th>Status</th>
-                      <th>Uploaded At</th>
-                      <th style="width:120px; text-align:center;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="workspaceStatementsTableBody"></tbody>
-                </table>
+                <div class="table-wrap">
+                  <table class="responsive-card-table">
+                    <thead>
+                      <tr>
+                        <th style="width:100px;">Period</th>
+                        <th>File Name</th>
+                        <th>Lines Count</th>
+                        <th>Matched Lines</th>
+                        <th>Status</th>
+                        <th>Uploaded At</th>
+                        <th style="width:120px; text-align:center;">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="workspaceStatementsTableBody"></tbody>
+                  </table>
+                </div>
                 <div class="empty-state" id="workspaceStatementsEmpty" style="display:none;">
                   <i class="fa-solid fa-file-invoice"></i>
                   <p>No statement files imported for this account yet.</p>
@@ -329,21 +335,23 @@
                 <button class="btn btn-fill" onclick="openAddFinanceCategoryModal()"><i class="fa-solid fa-plus"></i> Add Category</button>
               </div>
             </div>
-            <div class="card">
+            <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
               <div class="section-loading-bar" id="financeCategoriesLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th style="width:60px;">#</th>
-                    <th>Category Name</th>
-                    <th>Reporting Kind</th>
-                    <th>Petty / Recurring Spend</th>
-                    <th>Status</th>
-                    <th style="width:120px;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financeCategoriesTableBody"></tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th style="width:60px;">#</th>
+                      <th>Category Name</th>
+                      <th>Reporting Kind</th>
+                      <th>Petty / Recurring Spend</th>
+                      <th>Status</th>
+                      <th style="width:120px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeCategoriesTableBody"></tbody>
+                </table>
+              </div>
               <div class="empty-state" id="financeCategoriesEmpty" style="display: none;">
                 <i class="fa-solid fa-tags"></i>
                 <p>No transaction categories found.</p>
@@ -367,21 +375,23 @@
                 <button class="btn btn-fill" onclick="openAddFinancePaymentTypeModal()"><i class="fa-solid fa-plus"></i> Add Payment Type</button>
               </div>
             </div>
-            <div class="card">
+            <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
               <div class="section-loading-bar" id="financePaymentTypesLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Machine Code</th>
-                    <th>Requires Cheque #</th>
-                    <th>Requires Bank Fee Flag</th>
-                    <th>Status</th>
-                    <th style="width:120px;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financePaymentTypesTableBody"></tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Machine Code</th>
+                      <th>Requires Cheque #</th>
+                      <th>Requires Bank Fee Flag</th>
+                      <th>Status</th>
+                      <th style="width:120px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financePaymentTypesTableBody"></tbody>
+                </table>
+              </div>
               <div class="empty-state" id="financePaymentTypesEmpty" style="display: none;">
                 <i class="fa-solid fa-credit-card"></i>
                 <p>No payment types configured yet.</p>
@@ -460,25 +470,27 @@
             </div>
 
             <!-- Table Card -->
-            <div class="card">
+            <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
               <div class="section-loading-bar" id="financeLedgerLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th style="width:90px;">Date</th>
-                    <th>Category</th>
-                    <th>Payment Method</th>
-                    <th>Reference</th>
-                    <th>Description</th>
-                    <th style="text-align:right;">In (+)</th>
-                    <th style="text-align:right;">Out (-)</th>
-                    <th style="text-align:right;">Rate / Equiv</th>
-                    <th style="text-align:right;">Running Balance</th>
-                    <th style="width:90px; text-align:center;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financeLedgerTableBody"></tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th style="width:90px;">Date</th>
+                      <th>Category</th>
+                      <th>Payment Method</th>
+                      <th>Reference</th>
+                      <th>Description</th>
+                      <th style="text-align:right;">In (+)</th>
+                      <th style="text-align:right;">Out (-)</th>
+                      <th style="text-align:right;">Rate / Equiv</th>
+                      <th style="text-align:right;">Running Balance</th>
+                      <th style="width:90px; text-align:center;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeLedgerTableBody"></tbody>
+                </table>
+              </div>
               <div class="empty-state" id="financeLedgerEmpty" style="display:none;">
                 <i class="fa-solid fa-money-bill-transfer"></i>
                 <p>No transactions found for this account.</p>
@@ -506,24 +518,26 @@
                 <button class="btn btn-fill" onclick="openRecordFinanceTransferModal()"><i class="fa-solid fa-plus"></i> Record Transfer</button>
               </div>
             </div>
-            <div class="card">
+            <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
               <div class="section-loading-bar" id="financeTransfersLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th style="width:95px;">Date</th>
-                    <th>Type</th>
-                    <th>Source Account</th>
-                    <th style="text-align:right;">Outflow</th>
-                    <th>Destination Account</th>
-                    <th style="text-align:right;">Inflow</th>
-                    <th style="text-align:right;">FX Rate</th>
-                    <th>Reference / Memo</th>
-                    <th style="width:110px; text-align:center;">Legs Status</th>
-                  </tr>
-                </thead>
-                <tbody id="financeTransfersTableBody"></tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th style="width:95px;">Date</th>
+                      <th>Type</th>
+                      <th>Source Account</th>
+                      <th style="text-align:right;">Outflow</th>
+                      <th>Destination Account</th>
+                      <th style="text-align:right;">Inflow</th>
+                      <th style="text-align:right;">FX Rate</th>
+                      <th>Reference / Memo</th>
+                      <th style="width:110px; text-align:center;">Legs Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeTransfersTableBody"></tbody>
+                </table>
+              </div>
               <div class="empty-state" id="financeTransfersEmpty" style="display:none;">
                 <i class="fa-solid fa-arrow-right-arrow-left"></i>
                 <p>No account transfers recorded yet.</p>
@@ -563,24 +577,26 @@
                 <button class="btn btn-fill" onclick="openIssueChequeModal()"><i class="fa-solid fa-plus"></i> Issue Cheque</button>
               </div>
             </div>
-            <div class="card">
+            <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
               <div class="section-loading-bar" id="financeChequesLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th style="width:110px;">Cheque #</th>
-                    <th style="width:95px;">Issue Date</th>
-                    <th>Source Account</th>
-                    <th>Payee</th>
-                    <th>Purpose</th>
-                    <th style="text-align:right;">Amount</th>
-                    <th style="width:90px; text-align:center;">Status</th>
-                    <th style="width:95px;">Clear Date</th>
-                    <th style="width:130px; text-align:center;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financeChequesTableBody"></tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="responsive-card-table">
+                  <thead>
+                    <tr>
+                      <th style="width:110px;">Cheque #</th>
+                      <th style="width:95px;">Issue Date</th>
+                      <th>Source Account</th>
+                      <th>Payee</th>
+                      <th>Purpose</th>
+                      <th style="text-align:right;">Amount</th>
+                      <th style="width:90px; text-align:center;">Status</th>
+                      <th style="width:95px;">Clear Date</th>
+                      <th style="width:130px; text-align:center;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeChequesTableBody"></tbody>
+                </table>
+              </div>
               <div class="empty-state" id="financeChequesEmpty" style="display:none;">
                 <i class="fa-solid fa-money-check"></i>
                 <p>No cheques recorded for the selected filters.</p>
@@ -646,23 +662,25 @@
                   <button class="btn btn-fill" id="btnUploadStatement" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
                 </div>
               </div>
-              <div class="card">
+              <div class="card" style="max-width:100%; min-width:0; overflow-x:hidden;">
                 <div class="section-loading-bar" id="financeStatementsLoadingBar"><span></span></div>
-                <table class="responsive-card-table" id="statementImportsTable">
-                  <thead>
-                    <tr>
-                      <th style="width:100px;">Period</th>
-                      <th>Bank Account</th>
-                      <th style="width:80px;text-align:center;">Format</th>
-                      <th style="width:110px;text-align:center;">Total Lines</th>
-                      <th style="width:120px;text-align:center;">Resolved</th>
-                      <th style="width:110px;text-align:center;">Status</th>
-                      <th style="width:130px;">Uploaded At</th>
-                      <th style="width:160px;text-align:center;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="statementImportsTableBody"></tbody>
-                </table>
+                <div class="table-wrap">
+                  <table class="responsive-card-table" id="statementImportsTable">
+                    <thead>
+                      <tr>
+                        <th style="width:100px;">Period</th>
+                        <th>Bank Account</th>
+                        <th style="width:80px;text-align:center;">Format</th>
+                        <th style="width:110px;text-align:center;">Total Lines</th>
+                        <th style="width:120px;text-align:center;">Resolved</th>
+                        <th style="width:110px;text-align:center;">Status</th>
+                        <th style="width:130px;">Uploaded At</th>
+                        <th style="width:160px;text-align:center;">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="statementImportsTableBody"></tbody>
+                  </table>
+                </div>
                 <div class="empty-state" id="financeStatementsEmpty" style="display:none;">
                   <i class="fa-solid fa-file-invoice"></i>
                   <p>No bank statements imported yet for this period.</p>

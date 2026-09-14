@@ -109,42 +109,42 @@ function renderFinanceAccounts(items) {
 
       return `
     <tr>
-      <td>
-        <div style="font-weight:600;display:flex;align-items:center;gap:6px;">
-          <i class="fa-solid ${isCash ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);"></i>
-          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;">
+      <td data-label="Account">
+        <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
+          <i class="fa-solid ${isCash ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
+          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;word-break:break-word;">
             ${acc.account_name}
           </a>
         </div>
         ${acc.bank_name && !isCash ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}${acc.country ? ' · ' + acc.country : ''}</div>` : (acc.country ? `<div style="font-size:12px;color:var(--text3);">${acc.country}</div>` : '')}
       </td>
-      <td>
+      <td data-label="Type & ID">
         <span class="badge ${isCash ? "badge-info" : "badge-neutral"}">
           ${typeLabel}
         </span>
         <code style="margin-left:4px;font-size:11.5px;">${acc.account_number || "—"}</code>
       </td>
-      <td><strong>${acc.currency || "USD"}</strong></td>
-      <td class="cell-money" style="text-align:right;font-weight:700;">
+      <td data-label="Currency"><strong>${acc.currency || "USD"}</strong></td>
+      <td data-label="Book Balance" class="cell-money" style="text-align:right;font-weight:700;">
         ${FinanceFormat.renderMoneyHtml(bookBal, acc.currency)}
       </td>
-      <td class="cell-money" style="text-align:right;font-weight:700;color:var(--accent);">
+      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent);">
         ${FinanceFormat.renderMoneyHtml(availBal, acc.currency)}
       </td>
-      <td class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">
+      <td data-label="Reconciled" class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">
         ${FinanceFormat.renderMoneyHtml(recBal, acc.currency)}
       </td>
-      <td style="font-size:11.5px;color:var(--text3);">
+      <td data-label="Feed / Rec" style="font-size:11.5px;color:var(--text3);">
         <div><i class="fa-solid fa-cloud-arrow-up" style="font-size:10px;"></i> ${feedText}</div>
         <div style="margin-top:2px;"><i class="fa-solid fa-scale-balanced" style="font-size:10px;"></i> ${recText}</div>
       </td>
-      <td>
+      <td data-label="Status">
         <span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">
           ${acc.is_active ? "ACTIVE" : "INACTIVE"}
         </span>
       </td>
-      <td>
-        <div style="display:flex;gap:6px;align-items:center;">
+      <td data-label="Actions" class="col-actions">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-sm btn-fill btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace">
             <i class="fa-solid fa-folder-open"></i> Workspace
           </button>
@@ -701,16 +701,16 @@ function renderWorkspaceLedger(items) {
 
       return `
         <tr>
-          <td><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
-          <td><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
-          <td><span style="font-size:12px;">${tx.reference || "—"}</span></td>
-          <td><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
-          <td style="text-align:right;">${inDisplay}</td>
-          <td style="text-align:right;">${outDisplay}</td>
-          <td style="text-align:right;">${fxDisplay}</td>
-          <td style="text-align:right;"><strong>${symbol}${Number(tx.running_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-          <td style="text-align:center;">${actionsHtml}</td>
+          <td data-label="Date"><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
+          <td data-label="Category"><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
+          <td data-label="Payment Type"><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td data-label="Reference"><span style="font-size:12px;">${tx.reference || "—"}</span></td>
+          <td data-label="Description"><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
+          <td data-label="In (+)" class="cell-money" style="text-align:right;">${inDisplay}</td>
+          <td data-label="Out (-)" class="cell-money" style="text-align:right;">${outDisplay}</td>
+          <td data-label="Rate / Equiv" style="text-align:right;">${fxDisplay}</td>
+          <td data-label="Balance" class="cell-money" style="text-align:right;"><strong>${symbol}${Number(tx.running_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
+          <td data-label="Actions" class="col-actions" style="text-align:center;">${actionsHtml}</td>
         </tr>
       `;
     })
@@ -736,13 +736,13 @@ async function loadWorkspaceStatements() {
       .map(
         (s) => `
       <tr>
-        <td><strong>${s.period_month || "—"}</strong></td>
-        <td><i class="fa-regular fa-file-lines" style="color:var(--text3);margin-right:4px;"></i> ${s.file_name || s.filename || "Statement"}</td>
-        <td>${s.lines_count || s.total_lines || 0}</td>
-        <td>${s.matched_lines || s.resolved_lines || 0}</td>
-        <td><span class="badge ${s.status === 'reconciled' ? 'badge-approved' : 'badge-pending'}">${(s.status || 'PENDING').toUpperCase()}</span></td>
-        <td style="font-size:12px;color:var(--text3);">${s.created_at ? s.created_at.slice(0, 10) : '—'}</td>
-        <td style="text-align:center;">
+        <td data-label="Period"><strong>${s.period_month || "—"}</strong></td>
+        <td data-label="File Name"><i class="fa-regular fa-file-lines" style="color:var(--text3);margin-right:4px;"></i> ${s.file_name || s.filename || "Statement"}</td>
+        <td data-label="Total Lines">${s.lines_count || s.total_lines || 0}</td>
+        <td data-label="Matched">${s.matched_lines || s.resolved_lines || 0}</td>
+        <td data-label="Status"><span class="badge ${s.status === 'reconciled' ? 'badge-approved' : 'badge-pending'}">${(s.status || 'PENDING').toUpperCase()}</span></td>
+        <td data-label="Uploaded At" style="font-size:12px;color:var(--text3);">${s.created_at ? s.created_at.slice(0, 10) : '—'}</td>
+        <td data-label="Actions" class="col-actions" style="text-align:center;">
           <button class="btn btn-sm btn-outline" onclick="switchWorkspaceTab('reconcile')">
             <i class="fa-solid fa-scale-balanced"></i> Reconcile
           </button>
@@ -1892,18 +1892,18 @@ function renderFinanceTransfers(items) {
 
       return `
         <tr>
-          <td><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(t.date)}</span></td>
-          <td>${typeBadge}</td>
-          <td><strong>${t.from_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
-          <td class="cell-money">${FinanceFormat.renderMoneyHtml(-Math.abs(t.from_amount || 0), t.from_currency, { extraClass: "money-negative" })}</td>
-          <td><strong>${t.to_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
-          <td class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
-          <td style="text-align:right;">${fxDisplay}</td>
-          <td>
+          <td data-label="Date"><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(t.date)}</span></td>
+          <td data-label="Type">${typeBadge}</td>
+          <td data-label="From Account"><strong>${t.from_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
+          <td data-label="Outflow" class="cell-money">${FinanceFormat.renderMoneyHtml(-Math.abs(t.from_amount || 0), t.from_currency, { extraClass: "money-negative" })}</td>
+          <td data-label="To Account"><strong>${t.to_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
+          <td data-label="Inflow" class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
+          <td data-label="FX Rate" style="text-align:right;">${fxDisplay}</td>
+          <td data-label="Reference / Memo">
             ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--primary);">${t.exchange_reference}</strong><br>` : ""}
             <span style="font-size:12px; color:var(--text2);">${t.note || "—"}</span>
           </td>
-          <td style="text-align:center;">${legsStatus}</td>
+          <td data-label="Legs Status" class="col-actions" style="text-align:center;">${legsStatus}</td>
         </tr>
       `;
     })

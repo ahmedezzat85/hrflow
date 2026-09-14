@@ -175,14 +175,14 @@ function renderFinanceStatementsTable(statements) {
     const uploadDate = stmt.created_at ? new Date(stmt.created_at).toLocaleDateString() : "—";
 
     tr.innerHTML = `
-      <td style="font-weight:600;"><i class="fa-regular fa-calendar" style="margin-right:6px;color:var(--text-muted);"></i>${escapeHtml(stmt.period_month)}</td>
-      <td style="font-weight:500;">${escapeHtml(stmt.account_name || 'Bank Account #' + stmt.account_id)}</td>
-      <td style="text-align:center;">${fmtBadge}</td>
-      <td style="text-align:center;">${stmt.total_lines_count || 0}</td>
-      <td style="text-align:center;font-weight:600;color:${progressPct === 100 ? 'var(--color-success)' : 'inherit'};">${progressText}</td>
-      <td style="text-align:center;">${statusBadge}</td>
-      <td>${uploadDate}</td>
-      <td style="text-align:center;">
+      <td data-label="Period" style="font-weight:600;"><i class="fa-regular fa-calendar" style="margin-right:6px;color:var(--text-muted);"></i>${escapeHtml(stmt.period_month)}</td>
+      <td data-label="Account" style="font-weight:500;">${escapeHtml(stmt.account_name || 'Bank Account #' + stmt.account_id)}</td>
+      <td data-label="Format" style="text-align:center;">${fmtBadge}</td>
+      <td data-label="Total Lines" style="text-align:center;">${stmt.total_lines_count || 0}</td>
+      <td data-label="Matched Lines" style="text-align:center;font-weight:600;color:${progressPct === 100 ? 'var(--color-success)' : 'inherit'};">${progressText}</td>
+      <td data-label="Status" style="text-align:center;">${statusBadge}</td>
+      <td data-label="Uploaded At">${uploadDate}</td>
+      <td data-label="Actions" style="text-align:center;">
         <button class="btn btn-sm btn-outline btn-review-statement" onclick="openReconciliationModal(${stmt.id})">
           <i class="fa-solid fa-scale-balanced"></i> Review &amp; Reconcile
         </button>
