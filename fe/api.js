@@ -30,7 +30,10 @@ const SessionInfo = {
   getEmployeeId() { return this._employeeId; },
   getName() { return this._name; },
   getPermissions() { return this._permissions; },
-  hasPermission(key) { return this._permissions.includes(key); },
+  hasPermission(key) {
+    if (this._role === "admin" || this._role === "system_admin" || this._permissions.includes("*")) return true;
+    return this._permissions.includes(key);
+  },
   isKnown() { return this._role !== null; },
 };
 

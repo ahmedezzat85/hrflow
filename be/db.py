@@ -92,6 +92,14 @@ def init_db():
                         conn.execute(text(f"ALTER TABLE {t_name} ADD COLUMN {col.name} {type_str}"))
         conn.commit()
 
+    # Idempotently seed RBAC roles, permissions, and initial user links
+    try:
+        from core.rbac_seed import seed_rbac
+        with get_db_context() as db:
+            seed_rbac(db)
+    except Exception:
+        pass
+
 
 def reset_engine_for_testing(custom_url: str = None):
     """Utility for test fixtures to bind a fresh in-memory or temporary database."""

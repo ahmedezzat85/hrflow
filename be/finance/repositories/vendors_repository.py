@@ -82,7 +82,7 @@ class VendorsRepository:
             remit_address=data.get("remit_address", "").strip() if data.get("remit_address") else None,
             country=data.get("country", "Egypt") or "Egypt",
             payment_terms_days=int(data.get("payment_terms_days", 30)),
-            default_currency=data.get("default_currency", "USD") or "USD",
+            default_currency=data.get("default_currency", "EGP") or "EGP",
             category=data.get("category", "General").strip() if data.get("category") else "General",
             default_department=data.get("default_department", "").strip() if data.get("default_department") else None,
             tax_treatment=data.get("tax_treatment", "standard") or "standard",

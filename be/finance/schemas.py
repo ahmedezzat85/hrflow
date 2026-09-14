@@ -324,7 +324,7 @@ class VendorBase(BaseModel):
     remit_address: Optional[str] = None
     country: Optional[str] = Field("Egypt", max_length=100)
     payment_terms_days: Optional[int] = Field(30, ge=0, le=365)
-    default_currency: Optional[str] = Field("USD", max_length=10)
+    default_currency: Optional[str] = Field("EGP", max_length=10)
     category: Optional[str] = Field("General", max_length=100)
     default_department: Optional[str] = Field(None, max_length=100)
     tax_treatment: Optional[str] = Field("standard", max_length=50)

@@ -64,7 +64,26 @@
             </div>
             <div class="form-field">
               <label for="fVendorCountry">Country</label>
-              <input id="fVendorCountry" value="United States" placeholder="e.g. United States, Egypt">
+              <select id="fVendorCountry" class="form-control">
+                <option value="Egypt" selected>Egypt</option>
+                <option value="United States">United States</option>
+                <option value="United Arab Emirates">United Arab Emirates</option>
+                <option value="Saudi Arabia">Saudi Arabia</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="Germany">Germany</option>
+                <option value="France">France</option>
+                <option value="Canada">Canada</option>
+                <option value="Qatar">Qatar</option>
+                <option value="Kuwait">Kuwait</option>
+                <option value="Jordan">Jordan</option>
+                <option value="Bahrain">Bahrain</option>
+                <option value="Oman">Oman</option>
+                <option value="Netherlands">Netherlands</option>
+                <option value="Ireland">Ireland</option>
+                <option value="India">India</option>
+                <option value="China">China</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
             <div class="form-field">
               <label for="fVendorTerms">Payment Terms (Days)</label>
@@ -73,10 +92,12 @@
             <div class="form-field">
               <label for="fVendorCurrency">Default Currency</label>
               <select id="fVendorCurrency" class="form-control">
-                <option value="USD" selected>USD — US Dollars</option>
-                <option value="EGP">EGP — Egyptian Pounds</option>
+                <option value="EGP" selected>EGP — Egyptian Pounds</option>
+                <option value="USD">USD — US Dollars</option>
                 <option value="EUR">EUR — Euros</option>
                 <option value="GBP">GBP — British Pounds</option>
+                <option value="SAR">SAR — Saudi Riyal</option>
+                <option value="AED">AED — UAE Dirham</option>
               </select>
             </div>
             <div class="form-field">

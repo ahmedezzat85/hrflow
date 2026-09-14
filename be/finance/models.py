@@ -56,7 +56,7 @@ class VendorDB(Base):
     remit_address = Column(Text, nullable=True)
     country = Column(String(100), default="Egypt", nullable=True)
     payment_terms_days = Column(Integer, default=30, nullable=True)
-    default_currency = Column(String(10), default="USD", nullable=True)
+    default_currency = Column(String(10), default="EGP", nullable=True)
     category = Column(String(100), default="General")
     default_department = Column(String(100), nullable=True)
     tax_treatment = Column(String(50), default="standard", nullable=True)

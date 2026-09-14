@@ -1210,9 +1210,9 @@ function openAddVendorModal() {
   document.getElementById("fVendorEmail").value = "";
   document.getElementById("fVendorPhone").value = "";
   if (document.getElementById("fVendorContactName")) document.getElementById("fVendorContactName").value = "";
-  if (document.getElementById("fVendorCountry")) document.getElementById("fVendorCountry").value = "United States";
+  if (document.getElementById("fVendorCountry")) document.getElementById("fVendorCountry").value = "Egypt";
   if (document.getElementById("fVendorTerms")) document.getElementById("fVendorTerms").value = "30";
-  if (document.getElementById("fVendorCurrency")) document.getElementById("fVendorCurrency").value = "USD";
+  if (document.getElementById("fVendorCurrency")) document.getElementById("fVendorCurrency").value = "EGP";
   if (document.getElementById("fVendorDepartment")) document.getElementById("fVendorDepartment").value = "Engineering";
   if (document.getElementById("fVendorWithholdingRate")) document.getElementById("fVendorWithholdingRate").value = "0.0";
   if (document.getElementById("fVendorAddress")) document.getElementById("fVendorAddress").value = "";
@@ -1241,9 +1241,19 @@ function openEditVendorModal(id) {
   document.getElementById("fVendorEmail").value = v.contact_email || "";
   document.getElementById("fVendorPhone").value = v.contact_phone || "";
   if (document.getElementById("fVendorContactName")) document.getElementById("fVendorContactName").value = v.contact_name || "";
-  if (document.getElementById("fVendorCountry")) document.getElementById("fVendorCountry").value = v.country || "United States";
+  if (document.getElementById("fVendorCountry")) {
+    const cVal = v.country || "Egypt";
+    const cSelect = document.getElementById("fVendorCountry");
+    if (cSelect && !Array.from(cSelect.options).some((o) => o.value === cVal)) {
+      const opt = document.createElement("option");
+      opt.value = cVal;
+      opt.textContent = cVal;
+      cSelect.appendChild(opt);
+    }
+    cSelect.value = cVal;
+  }
   if (document.getElementById("fVendorTerms")) document.getElementById("fVendorTerms").value = v.payment_terms_days !== undefined ? v.payment_terms_days : 30;
-  if (document.getElementById("fVendorCurrency")) document.getElementById("fVendorCurrency").value = v.default_currency || "USD";
+  if (document.getElementById("fVendorCurrency")) document.getElementById("fVendorCurrency").value = v.default_currency || "EGP";
   if (document.getElementById("fVendorDepartment")) document.getElementById("fVendorDepartment").value = v.default_department || "Engineering";
   if (document.getElementById("fVendorWithholdingRate")) document.getElementById("fVendorWithholdingRate").value = v.withholding_tax_rate !== undefined ? v.withholding_tax_rate : 0.0;
   if (document.getElementById("fVendorAddress")) document.getElementById("fVendorAddress").value = v.remit_address || "";
@@ -1269,7 +1279,7 @@ async function saveVendor() {
   const contact_name = document.getElementById("fVendorContactName") ? document.getElementById("fVendorContactName").value.trim() : null;
   const country = document.getElementById("fVendorCountry") ? document.getElementById("fVendorCountry").value.trim() : null;
   const payment_terms_days = document.getElementById("fVendorTerms") ? parseInt(document.getElementById("fVendorTerms").value, 10) : 30;
-  const default_currency = document.getElementById("fVendorCurrency") ? document.getElementById("fVendorCurrency").value : "USD";
+  const default_currency = document.getElementById("fVendorCurrency") ? document.getElementById("fVendorCurrency").value : "EGP";
   const default_department = document.getElementById("fVendorDepartment") ? document.getElementById("fVendorDepartment").value : null;
   const withholding_tax_rate = document.getElementById("fVendorWithholdingRate") ? parseFloat(document.getElementById("fVendorWithholdingRate").value) : 0.0;
   const remit_address = document.getElementById("fVendorAddress") ? document.getElementById("fVendorAddress").value.trim() : null;
@@ -1286,9 +1296,9 @@ async function saveVendor() {
     contact_email: contact_email || null,
     contact_phone: contact_phone || null,
     contact_name: contact_name || null,
-    country: country || "United States",
+    country: country || "Egypt",
     payment_terms_days: isNaN(payment_terms_days) ? 30 : payment_terms_days,
-    default_currency: default_currency || "USD",
+    default_currency: default_currency || "EGP",
     default_department: default_department || null,
     withholding_tax_rate: isNaN(withholding_tax_rate) ? 0.0 : withholding_tax_rate,
     remit_address: remit_address || null,

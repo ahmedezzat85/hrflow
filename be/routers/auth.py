@@ -66,6 +66,8 @@ def api_google_login(
             u = db.query(UserDB).filter(UserDB.email.ilike(email.strip())).first()
             if u:
                 perms = get_user_permissions(u.id, db)
+        if str(result.get("role", "")).lower() in ("admin", "superadmin", "super_admin", "system_admin"):
+            perms.add("*")
     except Exception as e:
         logger.warning("Failed resolving user permissions on login: %s", e)
 
