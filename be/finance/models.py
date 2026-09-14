@@ -262,6 +262,11 @@ class LedgerTransactionDB(Base):
     payment_type_id = Column(Integer, ForeignKey("finance_payment_types.id", ondelete="SET NULL"), nullable=True, index=True)
     reference = Column(String(255), default="", nullable=False)
     description = Column(String(255), default="", nullable=False)
+    entry_type = Column(String(30), default="standard", nullable=False, index=True)  # standard | money_in | money_out | bank_fee | adjustment
+    counterparty = Column(String(255), nullable=True)
+    tax_amount = Column(Float, default=0.0)
+    base_amount = Column(Float, nullable=True)
+    reason = Column(Text, nullable=True)
     cheque_number = Column(String(50), nullable=True, index=True)
     fx_rate = Column(Float, nullable=True)
     source = Column(String(50), nullable=False, index=True)

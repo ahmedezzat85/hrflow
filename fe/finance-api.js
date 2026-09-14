@@ -1954,11 +1954,30 @@ const FinanceApi = {
       if (!FinanceMockState.transactions) FinanceMockState.transactions = [];
       const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
       const amount = parseFloat(payload.amount);
-      const direction = payload.direction;
+      const entryType = (payload.entry_type || "standard").toLowerCase();
+      let direction = payload.direction;
+      if (entryType === "bank_fee") direction = "out";
+
+      const txCurr = (payload.currency || (acc ? acc.currency : "USD")).toUpperCase();
+      const acctCurr = (acc ? acc.currency : "USD").toUpperCase();
+
+      if (txCurr !== acctCurr) {
+        if (!payload.fx_rate || parseFloat(payload.fx_rate) <= 0) {
+          throw new Error(`Currency mismatch between transaction (${txCurr}) and account (${acctCurr}). An exchange rate (fx_rate) is required.`);
+        }
+      }
+
+      if (entryType === "adjustment") {
+        if (!payload.reason || !payload.reason.trim()) {
+          throw new Error("A specific reason is required when recording an adjustment.");
+        }
+      }
+
+      const effectiveAmt = txCurr !== acctCurr && payload.fx_rate ? amount / parseFloat(payload.fx_rate) : amount;
 
       if (acc) {
-        if (direction === "in") acc.current_balance = round(acc.current_balance + amount, 2);
-        else acc.current_balance = round(acc.current_balance - amount, 2);
+        if (direction === "in") acc.current_balance = round(acc.current_balance + effectiveAmt, 2);
+        else acc.current_balance = round(acc.current_balance - effectiveAmt, 2);
       }
 
       const cat = FinanceMockState.categories.find((c) => c.id === parseInt(payload.category_id, 10));
@@ -1970,7 +1989,12 @@ const FinanceApi = {
         date: payload.date,
         amount,
         direction,
-        currency: payload.currency || (acc ? acc.currency : "USD"),
+        currency: txCurr,
+        entry_type: entryType,
+        counterparty: payload.counterparty || null,
+        tax_amount: parseFloat(payload.tax_amount || 0.0),
+        base_amount: txCurr !== acctCurr && payload.fx_rate ? round(effectiveAmt, 2) : null,
+        reason: payload.reason || null,
         category_id: payload.category_id ? parseInt(payload.category_id, 10) : null,
         payment_type_id: payload.payment_type_id ? parseInt(payload.payment_type_id, 10) : null,
         category_name: cat ? cat.name : null,
@@ -1979,7 +2003,7 @@ const FinanceApi = {
         reference: payload.reference || "",
         description: payload.description || "",
         fx_rate: payload.fx_rate ? parseFloat(payload.fx_rate) : null,
-        fx_equivalent: payload.fx_rate ? round(amount * parseFloat(payload.fx_rate), 2) : null,
+        fx_equivalent: payload.fx_rate ? round(effectiveAmt, 2) : null,
         destination_cash_account_id: payload.destination_cash_account_id ? parseInt(payload.destination_cash_account_id, 10) : null,
         cheque_number: payload.cheque_number || null,
         source: "manual",
@@ -1999,6 +2023,7 @@ const FinanceApi = {
             amount,
             direction: "in",
             currency: destCash.currency,
+            entry_type: "standard",
             category_id: payload.category_id ? parseInt(payload.category_id, 10) : null,
             payment_type_id: payload.payment_type_id ? parseInt(payload.payment_type_id, 10) : null,
             category_name: cat ? cat.name : null,
@@ -2017,6 +2042,68 @@ const FinanceApi = {
       return newTx;
     }
     return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload);
+  },
+
+  async previewTransaction(accountId, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+
+      const amount = parseFloat(payload.amount || 0);
+      const txCurr = (payload.currency || acc.currency || "USD").toUpperCase();
+      const acctCurr = (acc.currency || "USD").toUpperCase();
+      const fxRate = payload.fx_rate ? parseFloat(payload.fx_rate) : null;
+
+      if (txCurr !== acctCurr) {
+        if (!fxRate || fxRate <= 0) {
+          throw new Error(`Currency mismatch between transaction (${txCurr}) and account (${acctCurr}). An exchange rate (fx_rate) is required.`);
+        }
+      }
+
+      const effectiveAmt = txCurr !== acctCurr && fxRate ? round(amount / fxRate, 2) : amount;
+      const curBal = Number(acc.current_balance || 0);
+      const direction = payload.entry_type === "bank_fee" ? "out" : (payload.direction || "out");
+      const projBal = direction === "in" ? round(curBal + effectiveAmt, 2) : round(curBal - effectiveAmt, 2);
+      const effectWord = direction === "in" ? "increase" : "decrease";
+
+      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "E£" : txCurr);
+      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "E£" : acctCurr);
+
+      let plain = `This will ${effectWord} the Book Balance of ${acc.account_name} by ${sym}${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${txCurr}.`;
+      if (txCurr !== acctCurr) {
+        plain += ` (Converted @ ${fxRate}: ${acctSym}${effectiveAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${acctCurr}).`;
+      }
+      plain += ` Projected Book Balance: ${acctSym}${projBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${acctCurr}.`;
+
+      const journal = [];
+      const acctLabel = `Cash / Bank: ${acc.account_name}`;
+      if (direction === "in") {
+        journal.append ? journal.append({}) : journal.push({ type: "debit", account: acctLabel, amount: effectiveAmt, currency: acctCurr });
+        const offsetLabel = payload.entry_type === "money_in" ? "Revenue / Accounts Receivable" : "Retained Earnings (Adjustment)";
+        journal.push({ type: "credit", account: offsetLabel, amount: effectiveAmt, currency: acctCurr });
+      } else {
+        const offsetLabel = payload.entry_type === "bank_fee" ? "Bank & Financing Fees Expense" : (payload.entry_type === "adjustment" ? "Retained Earnings / Variance Adjustment" : "Expense / Accounts Payable");
+        journal.push({ type: "debit", account: offsetLabel, amount: effectiveAmt, currency: acctCurr });
+        journal.push({ type: "credit", account: acctLabel, amount: effectiveAmt, currency: acctCurr });
+      }
+
+      return {
+        account_id: acc.id,
+        account_name: acc.account_name,
+        account_currency: acctCurr,
+        entry_type: payload.entry_type || "standard",
+        direction,
+        transaction_amount: amount,
+        transaction_currency: txCurr,
+        fx_rate: fxRate,
+        converted_amount: effectiveAmt,
+        current_book_balance: curBal,
+        projected_book_balance: projBal,
+        plain_description: plain,
+        journal_preview: journal,
+      };
+    }
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions/preview`, payload);
   },
 
   async getTransaction(id) {

@@ -18,6 +18,8 @@ from finance.schemas import (
     LedgerTransactionCreate,
     LedgerTransactionResponse,
     PettySummaryResponse,
+    TransactionPreviewRequest,
+    TransactionPreviewResponse,
 )
 from finance.services.accounts_service import AccountsService
 from finance.services.ledger_service import LedgerService
@@ -143,8 +145,30 @@ def create_account_transaction(
     service: LedgerService = Depends(get_ledger_service),
 ):
     """Records a manual continuous ledger transaction and recomputes running balances."""
+    if (payload.entry_type or "").lower() == "adjustment":
+        perms = set(current_user.get("permissions", [])) if isinstance(current_user, dict) else set()
+        role = (current_user.get("role") or "").lower() if isinstance(current_user, dict) else ""
+        if "*" not in perms and "finance.adjustment.manage" not in perms and role not in ("admin", "system_admin"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Manual balance adjustments require 'finance.adjustment.manage' authorization",
+            )
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.record_manual_transaction(account_id, payload, user_email=user_email)
+
+
+@router.post(
+    "/{account_id}/transactions/preview",
+    response_model=TransactionPreviewResponse,
+)
+def preview_account_transaction(
+    account_id: int,
+    payload: TransactionPreviewRequest,
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    service: LedgerService = Depends(get_ledger_service),
+):
+    """Generates plain-language balance effect and journal preview without posting."""
+    return service.preview_transaction(account_id, payload)
 
 
 @router.get(

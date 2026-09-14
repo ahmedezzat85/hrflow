@@ -12,6 +12,8 @@ from finance.repositories.payment_types_repository import PaymentTypesRepository
 from finance.schemas import (
     LedgerTransactionCreate,
     LedgerTransactionResponse,
+    TransactionPreviewRequest,
+    TransactionPreviewResponse,
 )
 from finance.models import LedgerTransactionDB
 
@@ -62,6 +64,11 @@ class LedgerService:
             currency=tx.currency,
             category_id=tx.category_id,
             payment_type_id=tx.payment_type_id,
+            entry_type=getattr(tx, "entry_type", "standard") or "standard",
+            counterparty=getattr(tx, "counterparty", None),
+            tax_amount=float(getattr(tx, "tax_amount", 0.0) or 0.0),
+            base_amount=getattr(tx, "base_amount", None),
+            reason=getattr(tx, "reason", None),
             category_name=cat_name,
             payment_type_code=pt_code,
             payment_type_name=pt_name,
@@ -129,6 +136,7 @@ class LedgerService:
         payload: LedgerTransactionCreate,
         user_email: Optional[str] = None,
     ) -> LedgerTransactionResponse:
+        account = None
         if self.accounts_repo:
             account = self.accounts_repo.get_by_id(account_id)
             if not account:
@@ -149,8 +157,33 @@ class LedgerService:
                 detail="Transaction amount must be strictly greater than 0",
             )
 
+        # Currency mismatch validation: transaction currency vs account currency
+        tx_curr = (payload.currency or "USD").upper()
+        acct_curr = (account.currency if account else "USD").upper()
+        if tx_curr != acct_curr:
+            if not payload.fx_rate or payload.fx_rate <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Currency mismatch between transaction ({tx_curr}) and account ({acct_curr}). An exchange rate (fx_rate) is required.",
+                )
+
+        # Guided entry type validation
+        entry_type = (payload.entry_type or "standard").lower()
+        if entry_type == "bank_fee":
+            payload.direction = "out"
+        elif entry_type == "adjustment":
+            if not payload.reason or not payload.reason.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A specific reason is required when recording an adjustment.",
+                )
+
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
         data["source"] = "manual"
+
+        # Auto-compute base_amount if foreign currency
+        if tx_curr != acct_curr and payload.fx_rate:
+            data["base_amount"] = self.compute_equivalent_amount(payload.amount, tx_curr, payload.fx_rate, acct_curr)
 
         # Resolve category string fallback if category_id not provided
         if not data.get("category_id") and payload.category and self.categories_repo:
@@ -184,6 +217,81 @@ class LedgerService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
             )
+
+    def preview_transaction(
+        self,
+        account_id: int,
+        payload: TransactionPreviewRequest,
+    ) -> TransactionPreviewResponse:
+        if not self.accounts_repo:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Accounts repo unavailable")
+        account = self.accounts_repo.get_by_id(account_id)
+        if not account:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Bank account with ID {account_id} not found")
+
+        tx_curr = (payload.currency or account.currency or "USD").upper()
+        acct_curr = (account.currency or "USD").upper()
+        fx_rate = payload.fx_rate
+
+        if tx_curr != acct_curr:
+            if not fx_rate or fx_rate <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Currency mismatch between transaction ({tx_curr}) and account ({acct_curr}). An exchange rate (fx_rate) is required.",
+                )
+            converted = self.compute_equivalent_amount(payload.amount, tx_curr, fx_rate, acct_curr) or payload.amount
+        else:
+            converted = payload.amount
+
+        cur_bal = float(account.current_balance or 0.0)
+        direction = "out" if payload.entry_type == "bank_fee" else payload.direction.lower()
+        if direction == "in":
+            proj_bal = round(cur_bal + converted, 2)
+            effect_word = "increase"
+        else:
+            proj_bal = round(cur_bal - converted, 2)
+            effect_word = "decrease"
+
+        sym = "$" if tx_curr == "USD" else ("E£" if tx_curr == "EGP" else tx_curr)
+        acct_sym = "$" if acct_curr == "USD" else ("E£" if acct_curr == "EGP" else acct_curr)
+
+        plain = f"This will {effect_word} the Book Balance of {account.account_name} by {sym}{payload.amount:,.2f} {tx_curr}."
+        if tx_curr != acct_curr:
+            plain += f" (Converted @ {fx_rate}: {acct_sym}{converted:,.2f} {acct_curr})."
+        plain += f" Projected Book Balance: {acct_sym}{proj_bal:,.2f} {acct_curr}."
+
+        # Journal preview lines
+        journal = []
+        acct_label = f"Cash / Bank: {account.account_name}"
+        if direction == "in":
+            journal.append({"type": "debit", "account": acct_label, "amount": converted, "currency": acct_curr})
+            offset_label = "Revenue / Accounts Receivable" if payload.entry_type == "money_in" else "Retained Earnings (Adjustment)"
+            journal.append({"type": "credit", "account": offset_label, "amount": converted, "currency": acct_curr})
+        else:
+            if payload.entry_type == "bank_fee":
+                offset_label = "Bank & Financing Fees Expense"
+            elif payload.entry_type == "adjustment":
+                offset_label = "Retained Earnings / Variance Adjustment"
+            else:
+                offset_label = "Expense / Accounts Payable"
+            journal.append({"type": "debit", "account": offset_label, "amount": converted, "currency": acct_curr})
+            journal.append({"type": "credit", "account": acct_label, "amount": converted, "currency": acct_curr})
+
+        return TransactionPreviewResponse(
+            account_id=account.id,
+            account_name=account.account_name,
+            account_currency=acct_curr,
+            entry_type=payload.entry_type,
+            direction=direction,
+            transaction_amount=payload.amount,
+            transaction_currency=tx_curr,
+            fx_rate=fx_rate,
+            converted_amount=converted,
+            current_book_balance=cur_bal,
+            projected_book_balance=proj_bal,
+            plain_description=plain,
+            journal_preview=journal,
+        )
 
     def update_manual_transaction(
         self,

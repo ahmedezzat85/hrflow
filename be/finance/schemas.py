@@ -127,6 +127,11 @@ class LedgerTransactionBase(BaseModel):
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency code")
     category_id: Optional[int] = Field(None, description="FK to TransactionCategory")
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
+    entry_type: Optional[str] = Field("standard", description="Guided entry type: standard, money_in, money_out, bank_fee, adjustment")
+    counterparty: Optional[str] = Field(None, description="Counterparty name (payer, vendor, client)")
+    tax_amount: Optional[float] = Field(0.0, description="Included tax portion")
+    base_amount: Optional[float] = Field(None, description="Converted amount in base/account currency")
+    reason: Optional[str] = Field(None, description="Explanation or mandatory reason for adjustments")
     reference: Optional[str] = Field("", max_length=255, description="Reference, e.g. invoice # or note")
     description: Optional[str] = Field("", max_length=255, description="Description / memo")
     fx_rate: Optional[float] = Field(None, description="Applied daily exchange rate if applicable")
@@ -165,11 +170,45 @@ class LedgerTransactionUpdate(BaseModel):
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     category_id: Optional[int] = Field(None, description="FK to TransactionCategory")
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
+    entry_type: Optional[str] = None
+    counterparty: Optional[str] = None
+    tax_amount: Optional[float] = None
+    base_amount: Optional[float] = None
+    reason: Optional[str] = None
     reference: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=255)
     cheque_number: Optional[str] = Field(None, max_length=50)
     destination_cash_account_id: Optional[int] = None
     fx_rate: Optional[float] = None
+
+
+class TransactionPreviewRequest(BaseModel):
+    account_id: int
+    entry_type: str = Field("money_out", description="money_in, money_out, bank_fee, adjustment")
+    direction: str = Field("out", description="in or out")
+    amount: float = Field(..., gt=0.0)
+    currency: str = Field("USD")
+    fx_rate: Optional[float] = None
+    category_id: Optional[int] = None
+    counterparty: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class TransactionPreviewResponse(BaseModel):
+    account_id: int
+    account_name: str
+    account_currency: str
+    entry_type: str
+    direction: str
+    transaction_amount: float
+    transaction_currency: str
+    fx_rate: Optional[float] = None
+    converted_amount: float
+    current_book_balance: float
+    projected_book_balance: float
+    plain_description: str
+    journal_preview: List[dict]
+
 
 
 class PettySummaryItem(BaseModel):

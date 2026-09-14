@@ -1,58 +1,178 @@
   <div class="modal-overlay" id="financeTransactionModal">
-    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeTransactionModalTitle">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeTransactionModalTitle" style="max-width: 680px;">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
         <div class="modal-head-text">
           <h3 id="financeTransactionModalTitle">Record Transaction</h3>
-          <p id="financeTransactionModalSubtitle">Enter a continuous ledger transaction for this account.</p>
+          <p id="financeTransactionModalSubtitle">Guided continuous ledger entry for the active account.</p>
         </div>
         <button class="modal-close" onclick="closeModal('financeTransactionModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="fFinanceTxId">
         <input type="hidden" id="fFinanceTxAccountId">
+        <input type="hidden" id="fFinanceTxEntryType" value="money_out">
+
+        <!-- Active Account Context Banner -->
+        <div id="fFinanceTxAccountContext" style="margin-bottom: 14px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <i class="fa-solid fa-building-columns" style="color: var(--primary); margin-right: 6px;"></i>
+            <strong id="fFinanceTxAccountName">Active Account</strong>
+            <span id="fFinanceTxAccountMeta" style="color: var(--text3); margin-left: 6px;">(USD)</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text2);">
+            Current Book Balance: <strong id="fFinanceTxAccountBookBalance" style="color: var(--text);">$0.00</strong>
+          </div>
+        </div>
+
+        <!-- Transaction Type Segmented Selector -->
+        <div class="form-field full" style="margin-bottom: 14px;">
+          <label style="margin-bottom: 6px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3);">Transaction Type</label>
+          <div class="filter-tabs" id="fFinanceTxTypeSelector" role="tablist" style="display: flex; gap: 6px; width: 100%;">
+            <button type="button" class="filter-tab active" id="fFinanceTxTypeMoneyOut" data-tx-type="money_out" onclick="setTransactionEntryType('money_out', this)" style="flex: 1; text-align: center; justify-content: center;">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Money Out
+            </button>
+            <button type="button" class="filter-tab" id="fFinanceTxTypeMoneyIn" data-tx-type="money_in" onclick="setTransactionEntryType('money_in', this)" style="flex: 1; text-align: center; justify-content: center;">
+              <i class="fa-solid fa-arrow-down-left-and-up-to-right"></i> Money In
+            </button>
+            <button type="button" class="filter-tab" id="fFinanceTxTypeBankFee" data-tx-type="bank_fee" onclick="setTransactionEntryType('bank_fee', this)" style="flex: 1; text-align: center; justify-content: center;">
+              <i class="fa-solid fa-receipt"></i> Bank Fee
+            </button>
+            <button type="button" class="filter-tab" id="fFinanceTxTypeAdjustment" data-tx-type="adjustment" onclick="setTransactionEntryType('adjustment', this)" style="flex: 1; text-align: center; justify-content: center;">
+              <i class="fa-solid fa-scale-balanced"></i> Adjustment
+            </button>
+          </div>
+        </div>
+
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Transaction Details <span class="line"></span></div>
+          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Entry Details <span class="line"></span></div>
           <div class="form-grid">
+            <!-- Date -->
             <div class="form-field">
               <label for="fFinanceTxDate">Date <span class="req">*</span></label>
-              <input type="date" id="fFinanceTxDate">
+              <input type="date" id="fFinanceTxDate" onchange="updateTransactionPreview()">
             </div>
+
+            <!-- Currency -->
             <div class="form-field">
-              <label for="fFinanceTxDirection">Direction <span class="req">*</span></label>
-              <select id="fFinanceTxDirection">
-                <option value="out">Expense / Money Out (-)</option>
-                <option value="in">Income / Deposit (+)</option>
+              <label for="fFinanceTxCurrency">Currency <span class="req">*</span></label>
+              <select id="fFinanceTxCurrency" onchange="onTxCurrencyChanged()">
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="EGP">EGP - Egyptian Pound</option>
+                <option value="SAR">SAR - Saudi Riyal</option>
+                <option value="AED">AED - UAE Dirham</option>
+                <option value="GBP">GBP - British Pound</option>
               </select>
             </div>
+
+            <!-- Amount -->
             <div class="form-field">
               <label for="fFinanceTxAmount">Amount <span class="req">*</span></label>
-              <input type="number" id="fFinanceTxAmount" step="0.01" min="0.01" placeholder="0.00">
+              <input type="number" id="fFinanceTxAmount" step="0.01" min="0.01" placeholder="0.00" oninput="updateTransactionPreview()">
             </div>
-            <div class="form-field">
-              <label for="fFinanceTxFxRate">FX Rate <span class="opt">(Optional, daily rate)</span></label>
-              <input type="number" id="fFinanceTxFxRate" step="0.0001" min="0" placeholder="e.g. 48.50">
+
+            <!-- FX Rate (conditional / mismatch) -->
+            <div class="form-field" id="fFinanceTxFxGroup">
+              <label for="fFinanceTxFxRate">FX Rate <span id="fFinanceTxFxLabel" class="opt">(Optional if same currency)</span></label>
+              <input type="number" id="fFinanceTxFxRate" step="0.0001" min="0" placeholder="e.g. 48.50" oninput="updateTransactionPreview()">
             </div>
-            <div class="form-field">
+
+            <!-- Currency Mismatch Warning Alert -->
+            <div class="form-field full" id="fFinanceTxCurrencyWarning" style="display: none;">
+              <div class="alert alert-warning" style="display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 10px 14px; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); border-radius: 6px; font-size: 12.5px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); margin-top: 2px;"></i>
+                <div>
+                  <strong>Currency Mismatch:</strong> Transaction currency differs from account currency. An explicit FX rate is required to convert to account book balance.
+                </div>
+              </div>
+            </div>
+
+            <!-- Direction (shown only for adjustment, otherwise locked) -->
+            <div class="form-field" id="fFinanceTxDirectionGroup" style="display: none;">
+              <label for="fFinanceTxDirection">Adjustment Effect <span class="req">*</span></label>
+              <select id="fFinanceTxDirection" onchange="updateTransactionPreview()">
+                <option value="out">Decrease Book Balance (-)</option>
+                <option value="in">Increase Book Balance (+)</option>
+              </select>
+            </div>
+
+            <!-- Counterparty (shown for money_out / money_in) -->
+            <div class="form-field" id="fFinanceTxCounterpartyGroup">
+              <label for="fFinanceTxCounterparty" id="fFinanceTxCounterpartyLabel">Payee / Vendor</label>
+              <input id="fFinanceTxCounterparty" placeholder="e.g. Acme Supplies, John Doe" oninput="updateTransactionPreview()">
+            </div>
+
+            <!-- Tax Amount (shown for money_out) -->
+            <div class="form-field" id="fFinanceTxTaxGroup">
+              <label for="fFinanceTxTaxAmount">Tax / VAT Amount <span class="opt">(Included in total)</span></label>
+              <input type="number" id="fFinanceTxTaxAmount" step="0.01" min="0" placeholder="0.00" oninput="updateTransactionPreview()">
+            </div>
+
+            <!-- Category -->
+            <div class="form-field" id="fFinanceTxCategoryGroup">
               <label for="fFinanceTxCategory">Category <span class="req">*</span></label>
-              <select id="fFinanceTxCategory">
+              <select id="fFinanceTxCategory" onchange="updateTransactionPreview()">
                 <option value="">— Select Category —</option>
               </select>
             </div>
-            <div class="form-field">
-              <label for="fFinanceTxPaymentType">Payment Type <span class="req">*</span></label>
+
+            <!-- Payment Type -->
+            <div class="form-field" id="fFinanceTxPaymentTypeGroup">
+              <label for="fFinanceTxPaymentType">Payment Method <span class="req">*</span></label>
               <select id="fFinanceTxPaymentType">
-                <option value="">— Select Payment Type —</option>
+                <option value="">— Select Payment Method —</option>
               </select>
             </div>
-            <div class="form-field full">
+
+            <!-- Reference -->
+            <div class="form-field full" id="fFinanceTxReferenceGroup">
               <label for="fFinanceTxReference">Reference / Cheque # / Doc #</label>
               <input id="fFinanceTxReference" placeholder="e.g. INV-2026-004, Receipt #102, CHK-8812">
             </div>
+
+            <!-- Reason (REQUIRED for adjustment) -->
+            <div class="form-field full" id="fFinanceTxReasonGroup" style="display: none;">
+              <label for="fFinanceTxReason">Authorization &amp; Adjustment Reason <span class="req">*</span></label>
+              <input id="fFinanceTxReason" placeholder="e.g. Opening balance calibration per audited financials, Bank fee correction" oninput="updateTransactionPreview()">
+              <small style="color: var(--text3); font-size: 11.5px; margin-top: 3px; display: block;">
+                Mandatory audit trail reason explaining why this direct ledger adjustment is being recorded.
+              </small>
+            </div>
+
+            <!-- Description / Memo -->
             <div class="form-field full">
               <label for="fFinanceTxDescription">Description / Memo</label>
               <textarea id="fFinanceTxDescription" rows="2" placeholder="e.g. Client lunch, Monthly office supplies, Retainer payment"></textarea>
             </div>
+          </div>
+        </div>
+
+        <!-- Live Financial Impact Preview Box -->
+        <div class="card" id="fFinanceTxPreviewCard" style="margin-top: 14px; padding: 12px 16px; background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary);">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Financial Impact Preview
+            </span>
+            <span id="fFinanceTxProjectedBadge" class="badge badge-info" style="font-size: 11px;">Projected Balance: —</span>
+          </div>
+          <p id="fFinanceTxPlainDesc" style="margin: 0; font-size: 12.5px; color: var(--text2);">
+            Enter an amount to see projected balance and ledger impact.
+          </p>
+
+          <!-- Journal Preview Table (for adjustments and multi-line impact) -->
+          <div id="fFinanceTxJournalWrapper" style="display: none; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px;">
+            <div style="font-size: 11.5px; font-weight: 600; color: var(--text3); margin-bottom: 4px;">Journal Entry Preview:</div>
+            <table class="responsive-card-table" style="font-size: 12px; width: 100%;">
+              <thead>
+                <tr>
+                  <th style="padding: 4px 6px;">Account / Item</th>
+                  <th style="padding: 4px 6px; text-align: right;">Debit</th>
+                  <th style="padding: 4px 6px; text-align: right;">Credit</th>
+                </tr>
+              </thead>
+              <tbody id="fFinanceTxJournalTbody"></tbody>
+            </table>
           </div>
         </div>
       </div>

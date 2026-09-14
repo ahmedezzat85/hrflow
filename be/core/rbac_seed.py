@@ -43,6 +43,7 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "finance.account.read", "description": "View company bank accounts"},
     {"key": "finance.account.write", "description": "Manage company bank accounts and balances"},
     {"key": "finance.bank_account.reveal", "description": "Reveal unmasked company bank account identifiers"},
+    {"key": "finance.adjustment.manage", "description": "Authorize and record manual balance adjustments and journal corrections"},
     {"key": "finance.subscription.read", "description": "View vendor subscriptions"},
     {"key": "finance.subscription.write", "description": "Create and manage vendor subscriptions"},
     {"key": "finance.report.read", "description": "View finance summary reports and metrics"},

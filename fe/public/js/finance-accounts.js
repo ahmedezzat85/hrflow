@@ -1439,21 +1439,212 @@ async function _populateTransactionModalDropdowns() {
   } catch (_) {}
 }
 
-async function openAddFinanceTransactionModal() {
+let _txPreviewDebounceTimer = null;
+
+function setTransactionEntryType(type, btn) {
+  const entryTypeInput = document.getElementById("fFinanceTxEntryType");
+  if (entryTypeInput) entryTypeInput.value = type;
+
+  // Update tabs active state
+  const typeButtons = document.querySelectorAll("#fFinanceTxTypeSelector button[data-tx-type]");
+  typeButtons.forEach((b) => {
+    b.classList.toggle("active", b.getAttribute("data-tx-type") === type);
+  });
+
+  const counterpartyGroup = document.getElementById("fFinanceTxCounterpartyGroup");
+  const counterpartyLabel = document.getElementById("fFinanceTxCounterpartyLabel");
+  const counterpartyInput = document.getElementById("fFinanceTxCounterparty");
+  const taxGroup = document.getElementById("fFinanceTxTaxGroup");
+  const directionGroup = document.getElementById("fFinanceTxDirectionGroup");
+  const directionInput = document.getElementById("fFinanceTxDirection");
+  const paymentTypeGroup = document.getElementById("fFinanceTxPaymentTypeGroup");
+  const reasonGroup = document.getElementById("fFinanceTxReasonGroup");
+  const reasonInput = document.getElementById("fFinanceTxReason");
+  const catSel = document.getElementById("fFinanceTxCategory");
+
+  if (type === "money_out") {
+    if (counterpartyGroup) counterpartyGroup.style.display = "block";
+    if (counterpartyLabel) counterpartyLabel.textContent = "Payee / Vendor";
+    if (counterpartyInput) counterpartyInput.placeholder = "e.g. Acme Supplies, Landlord";
+    if (taxGroup) taxGroup.style.display = "block";
+    if (directionGroup) directionGroup.style.display = "none";
+    if (directionInput) directionInput.value = "out";
+    if (paymentTypeGroup) paymentTypeGroup.style.display = "block";
+    if (reasonGroup) reasonGroup.style.display = "none";
+    if (reasonInput) reasonInput.required = false;
+  } else if (type === "money_in") {
+    if (counterpartyGroup) counterpartyGroup.style.display = "block";
+    if (counterpartyLabel) counterpartyLabel.textContent = "Customer / Payer";
+    if (counterpartyInput) counterpartyInput.placeholder = "e.g. Client Ltd, Customer Name";
+    if (taxGroup) taxGroup.style.display = "none";
+    if (directionGroup) directionGroup.style.display = "none";
+    if (directionInput) directionInput.value = "in";
+    if (paymentTypeGroup) paymentTypeGroup.style.display = "block";
+    if (reasonGroup) reasonGroup.style.display = "none";
+    if (reasonInput) reasonInput.required = false;
+  } else if (type === "bank_fee") {
+    if (counterpartyGroup) counterpartyGroup.style.display = "none";
+    if (taxGroup) taxGroup.style.display = "none";
+    if (directionGroup) directionGroup.style.display = "none";
+    if (directionInput) directionInput.value = "out";
+    if (paymentTypeGroup) paymentTypeGroup.style.display = "block";
+    if (reasonGroup) reasonGroup.style.display = "none";
+    if (reasonInput) reasonInput.required = false;
+    // Auto-select Bank Fee category if available
+    if (catSel && FinanceState.categories) {
+      const feeCat = FinanceState.categories.find((c) =>
+        c.name.toLowerCase().includes("bank fee") || c.name.toLowerCase().includes("bank charge")
+      );
+      if (feeCat) catSel.value = feeCat.id;
+    }
+  } else if (type === "adjustment") {
+    if (counterpartyGroup) counterpartyGroup.style.display = "none";
+    if (taxGroup) taxGroup.style.display = "none";
+    if (directionGroup) directionGroup.style.display = "block";
+    if (paymentTypeGroup) paymentTypeGroup.style.display = "none";
+    if (reasonGroup) reasonGroup.style.display = "block";
+    if (reasonInput) reasonInput.required = true;
+  }
+
+  updateTransactionPreview();
+}
+
+function onTxCurrencyChanged() {
+  const accountId = document.getElementById("fFinanceTxAccountId")?.value || _currentLedgerAccountId;
+  const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
+  const txCurrency = document.getElementById("fFinanceTxCurrency")?.value || "USD";
+  const accCurrency = acc ? acc.currency : "USD";
+  const warningEl = document.getElementById("fFinanceTxCurrencyWarning");
+  const fxLabel = document.getElementById("fFinanceTxFxLabel");
+  const fxInput = document.getElementById("fFinanceTxFxRate");
+
+  if (txCurrency !== accCurrency) {
+    if (warningEl) warningEl.style.display = "block";
+    if (fxLabel) {
+      fxLabel.textContent = `(REQUIRED to convert ${txCurrency} to ${accCurrency})`;
+      fxLabel.style.color = "var(--danger)";
+    }
+    if (fxInput) fxInput.required = true;
+  } else {
+    if (warningEl) warningEl.style.display = "none";
+    if (fxLabel) {
+      fxLabel.textContent = "(Optional if same currency)";
+      fxLabel.style.color = "var(--text3)";
+    }
+    if (fxInput) fxInput.required = false;
+  }
+  updateTransactionPreview();
+}
+
+function updateTransactionPreview() {
+  if (_txPreviewDebounceTimer) clearTimeout(_txPreviewDebounceTimer);
+  _txPreviewDebounceTimer = setTimeout(async () => {
+    const accountId = document.getElementById("fFinanceTxAccountId")?.value || _currentLedgerAccountId;
+    if (!accountId) return;
+
+    const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
+    const entryType = document.getElementById("fFinanceTxEntryType")?.value || "money_out";
+    const amountVal = parseFloat(document.getElementById("fFinanceTxAmount")?.value || "0");
+    const currency = document.getElementById("fFinanceTxCurrency")?.value || (acc ? acc.currency : "USD");
+    const direction = document.getElementById("fFinanceTxDirection")?.value || (entryType === "money_in" ? "in" : "out");
+    const fxRateVal = parseFloat(document.getElementById("fFinanceTxFxRate")?.value || "0") || null;
+    const counterparty = document.getElementById("fFinanceTxCounterparty")?.value || null;
+    const taxAmountVal = parseFloat(document.getElementById("fFinanceTxTaxAmount")?.value || "0") || null;
+    const reason = document.getElementById("fFinanceTxReason")?.value || null;
+    const catId = parseInt(document.getElementById("fFinanceTxCategory")?.value, 10) || null;
+
+    const plainDescEl = document.getElementById("fFinanceTxPlainDesc");
+    const badgeEl = document.getElementById("fFinanceTxProjectedBadge");
+    const journalWrapper = document.getElementById("fFinanceTxJournalWrapper");
+    const journalTbody = document.getElementById("fFinanceTxJournalTbody");
+
+    if (!amountVal || amountVal <= 0) {
+      if (plainDescEl) plainDescEl.textContent = "Enter an amount to see projected balance and ledger impact.";
+      if (badgeEl) badgeEl.textContent = `Current Book Balance: ${acc ? (window.formatMoney ? window.formatMoney(acc.book_balance, acc.currency) : "$" + (acc.book_balance || 0).toFixed(2)) : "—"}`;
+      if (journalWrapper) journalWrapper.style.display = "none";
+      return;
+    }
+
+    try {
+      const payload = {
+        amount: amountVal,
+        currency: currency,
+        direction: direction,
+        entry_type: entryType,
+        counterparty: counterparty,
+        fx_rate: fxRateVal,
+        tax_amount: taxAmountVal,
+        reason: reason,
+        category_id: catId
+      };
+      const preview = await FinanceApi.previewTransaction(parseInt(accountId, 10), payload);
+      if (plainDescEl) plainDescEl.textContent = preview.plain_description || "";
+      if (badgeEl) {
+        const fmtBal = window.formatMoney ? window.formatMoney(preview.projected_book_balance, acc ? acc.currency : currency) : `$${preview.projected_book_balance.toFixed(2)}`;
+        badgeEl.textContent = `Projected: ${fmtBal}`;
+      }
+
+      if (journalWrapper && journalTbody) {
+        if (preview.journal_preview && preview.journal_preview.length > 0) {
+          journalTbody.innerHTML = preview.journal_preview.map((line) => `
+            <tr>
+              <td style="padding: 4px 6px;">${line.account || "Account"}</td>
+              <td style="padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums;">${line.debit ? (window.formatMoney ? window.formatMoney(line.debit, acc ? acc.currency : currency) : line.debit.toFixed(2)) : "—"}</td>
+              <td style="padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums;">${line.credit ? (window.formatMoney ? window.formatMoney(line.credit, acc ? acc.currency : currency) : line.credit.toFixed(2)) : "—"}</td>
+            </tr>
+          `).join("");
+          journalWrapper.style.display = "block";
+        } else {
+          journalWrapper.style.display = "none";
+        }
+      }
+    } catch (err) {
+      if (plainDescEl) plainDescEl.textContent = err.message || "Unable to compute preview.";
+    }
+  }, 150);
+}
+
+async function openAddFinanceTransactionModal(defaultType = "money_out") {
   if (!_currentLedgerAccountId) return;
   await _populateTransactionModalDropdowns();
 
+  const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(_currentLedgerAccountId, 10));
+
   document.getElementById("financeTransactionModalTitle").textContent = "Record Transaction";
+  document.getElementById("financeTransactionModalSubtitle").textContent = "Guided continuous ledger entry for the active account.";
   document.getElementById("fFinanceTxId").value = "";
   document.getElementById("fFinanceTxAccountId").value = _currentLedgerAccountId;
+
+  // Active account context
+  const accNameEl = document.getElementById("fFinanceTxAccountName");
+  const accMetaEl = document.getElementById("fFinanceTxAccountMeta");
+  const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
+  if (acc) {
+    if (accNameEl) accNameEl.textContent = acc.account_name || "Account";
+    if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${acc.institution_name || ""}`;
+    if (accBalEl) accBalEl.textContent = window.formatMoney ? window.formatMoney(acc.book_balance || 0, acc.currency) : `$${(acc.book_balance || 0).toFixed(2)}`;
+  }
+
+  // Set currency to match account
+  const currSelect = document.getElementById("fFinanceTxCurrency");
+  if (currSelect && acc) {
+    currSelect.value = acc.currency;
+  }
+
   document.getElementById("fFinanceTxDate").value = new Date().toISOString().split("T")[0];
-  document.getElementById("fFinanceTxDirection").value = "out";
   document.getElementById("fFinanceTxAmount").value = "";
   document.getElementById("fFinanceTxFxRate").value = "";
+  document.getElementById("fFinanceTxCounterparty").value = "";
+  document.getElementById("fFinanceTxTaxAmount").value = "";
   document.getElementById("fFinanceTxCategory").value = "";
   document.getElementById("fFinanceTxPaymentType").value = "";
   document.getElementById("fFinanceTxReference").value = "";
+  document.getElementById("fFinanceTxReason").value = "";
   document.getElementById("fFinanceTxDescription").value = "";
+
+  setTransactionEntryType(defaultType);
+  onTxCurrencyChanged();
+  updateTransactionPreview();
 
   openModal("financeTransactionModal");
 }
@@ -1464,17 +1655,36 @@ async function openEditFinanceTransactionModal(txId) {
 
   await _populateTransactionModalDropdowns();
 
+  const acc = (FinanceState.accounts || []).find((a) => a.id === tx.account_id);
   document.getElementById("financeTransactionModalTitle").textContent = "Edit Transaction";
   document.getElementById("fFinanceTxId").value = tx.id;
   document.getElementById("fFinanceTxAccountId").value = tx.account_id;
+  if (acc) {
+    const accNameEl = document.getElementById("fFinanceTxAccountName");
+    const accMetaEl = document.getElementById("fFinanceTxAccountMeta");
+    const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
+    if (accNameEl) accNameEl.textContent = acc.account_name || "Account";
+    if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${acc.institution_name || ""}`;
+    if (accBalEl) accBalEl.textContent = window.formatMoney ? window.formatMoney(acc.book_balance || 0, acc.currency) : `$${(acc.book_balance || 0).toFixed(2)}`;
+  }
+  const currSelect = document.getElementById("fFinanceTxCurrency");
+  if (currSelect) currSelect.value = tx.currency || (acc ? acc.currency : "USD");
+
   document.getElementById("fFinanceTxDate").value = tx.date;
   document.getElementById("fFinanceTxDirection").value = tx.direction;
   document.getElementById("fFinanceTxAmount").value = tx.amount;
   document.getElementById("fFinanceTxFxRate").value = tx.fx_rate || "";
+  document.getElementById("fFinanceTxCounterparty").value = tx.counterparty || "";
+  document.getElementById("fFinanceTxTaxAmount").value = tx.tax_amount || "";
   document.getElementById("fFinanceTxCategory").value = tx.category_id || "";
   document.getElementById("fFinanceTxPaymentType").value = tx.payment_type_id || "";
   document.getElementById("fFinanceTxReference").value = tx.reference || "";
+  document.getElementById("fFinanceTxReason").value = tx.reason || "";
   document.getElementById("fFinanceTxDescription").value = tx.description || "";
+
+  setTransactionEntryType(tx.entry_type || (tx.direction === "in" ? "money_in" : "money_out"));
+  onTxCurrencyChanged();
+  updateTransactionPreview();
 
   openModal("financeTransactionModal");
 }
@@ -1482,16 +1692,23 @@ async function openEditFinanceTransactionModal(txId) {
 async function saveFinanceTransaction() {
   const txId = document.getElementById("fFinanceTxId").value;
   const accountId = document.getElementById("fFinanceTxAccountId").value || _currentLedgerAccountId;
+  const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
+  const entryType = document.getElementById("fFinanceTxEntryType").value || "money_out";
   const date = document.getElementById("fFinanceTxDate").value;
-  const direction = document.getElementById("fFinanceTxDirection").value;
+  const currency = document.getElementById("fFinanceTxCurrency").value || (acc ? acc.currency : "USD");
   const amount = parseFloat(document.getElementById("fFinanceTxAmount").value);
   const fx_rate_val = document.getElementById("fFinanceTxFxRate").value;
   const fx_rate = fx_rate_val ? parseFloat(fx_rate_val) : null;
+  const direction = document.getElementById("fFinanceTxDirection").value || (entryType === "money_in" ? "in" : "out");
+  const counterparty = document.getElementById("fFinanceTxCounterparty").value.trim() || null;
+  const tax_amount_val = document.getElementById("fFinanceTxTaxAmount").value;
+  const tax_amount = tax_amount_val ? parseFloat(tax_amount_val) : null;
   const category_id_val = document.getElementById("fFinanceTxCategory").value;
   const category_id = category_id_val ? parseInt(category_id_val, 10) : null;
   const payment_type_id_val = document.getElementById("fFinanceTxPaymentType").value;
   const payment_type_id = payment_type_id_val ? parseInt(payment_type_id_val, 10) : null;
   const reference = document.getElementById("fFinanceTxReference").value.trim();
+  const reason = document.getElementById("fFinanceTxReason").value.trim();
   const description = document.getElementById("fFinanceTxDescription").value.trim();
 
   if (!date) {
@@ -1502,7 +1719,15 @@ async function saveFinanceTransaction() {
     toast("Please enter a valid amount greater than zero", "fa-solid fa-circle-exclamation");
     return;
   }
-  if (!category_id) {
+  if (acc && currency !== acc.currency && (!fx_rate || fx_rate <= 0)) {
+    toast(`Foreign currency transaction (${currency} vs account ${acc.currency}) requires an explicit exchange rate.`, "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (entryType === "adjustment" && !reason) {
+    toast("Adjustment reason is required for direct balance/journal corrections", "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (!category_id && entryType !== "adjustment") {
     toast("Please select a transaction category", "fa-solid fa-circle-exclamation");
     return;
   }
@@ -1511,23 +1736,26 @@ async function saveFinanceTransaction() {
   if (saveBtn) saveBtn.disabled = true;
 
   try {
+    const payload = {
+      date,
+      direction,
+      amount,
+      currency,
+      category_id,
+      payment_type_id,
+      reference,
+      description,
+      fx_rate,
+      entry_type: entryType,
+      counterparty,
+      tax_amount,
+      reason: entryType === "adjustment" ? reason : null,
+    };
+
     if (txId) {
-      const payload = { date, direction, amount, category_id, payment_type_id, reference, description, fx_rate };
       await FinanceApi.updateTransaction(Number(txId), payload);
       toast("Transaction updated successfully", "fa-solid fa-circle-check");
     } else {
-      const acc = (FinanceState.accounts || []).find((a) => a.id === parseInt(accountId, 10));
-      const payload = {
-        date,
-        direction,
-        amount,
-        currency: acc ? acc.currency : "USD",
-        category_id,
-        payment_type_id,
-        reference,
-        description,
-        fx_rate,
-      };
       await FinanceApi.createAccountTransaction(Number(accountId), payload);
       toast("Transaction recorded successfully", "fa-solid fa-circle-check");
     }
@@ -1536,7 +1764,11 @@ async function saveFinanceTransaction() {
     // Reload accounts to update cached balances
     const accounts = await FinanceApi.getAccounts();
     FinanceState.accounts = accounts;
-    await loadAccountTransactions();
+    if (_activeWorkspaceAccountId && _activeWorkspaceAccountId === parseInt(accountId, 10)) {
+      await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+    } else {
+      await loadAccountTransactions();
+    }
   } catch (err) {
     toast(err.message || "Failed to save transaction", "fa-solid fa-triangle-exclamation");
   } finally {
@@ -1932,5 +2164,9 @@ window.saveWorkspaceAccountSettings = saveWorkspaceAccountSettings;
 window.workspaceRecordTransaction = workspaceRecordTransaction;
 window.workspaceTransfer = workspaceTransfer;
 window.workspaceImportStatement = workspaceImportStatement;
+window.setTransactionEntryType = setTransactionEntryType;
+window.onTxCurrencyChanged = onTxCurrencyChanged;
+window.updateTransactionPreview = updateTransactionPreview;
 window.filterWorkspaceLedger = filterWorkspaceLedger;
 window.filterWorkspaceLedgerDirection = filterWorkspaceLedgerDirection;
+
