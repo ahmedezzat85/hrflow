@@ -80,7 +80,7 @@
             <!-- Amount -->
             <div class="form-field">
               <label for="fFinanceTxAmount">Amount <span class="req">*</span></label>
-              <input type="number" id="fFinanceTxAmount" step="0.01" min="0.01" placeholder="0.00" oninput="updateTransactionPreview()">
+              <input type="number" id="fFinanceTxAmount" step="0.01" min="0.01" placeholder="0.00" oninput="updateTransactionPreview(); checkTransactionDuplicateSettlement();">
             </div>
 
             <!-- FX Rate (conditional / mismatch) -->
@@ -95,6 +95,20 @@
                 <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); margin-top: 2px;"></i>
                 <div>
                   <strong>Currency Mismatch:</strong> Transaction currency differs from account currency. An explicit FX rate is required to convert to account book balance.
+                </div>
+              </div>
+            </div>
+
+            <!-- Duplicate Settlement Candidate Warning Banner -->
+            <div class="form-field full" id="fFinanceTxDuplicateWarning" style="display: none; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; font-size: 12px; color: var(--text);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b; font-size: 14px;"></i>
+                  <span id="fFinanceTxDuplicateWarningText">Matching open document found.</span>
+                </div>
+                <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                  <button type="button" class="btn btn-xs btn-fill" id="fFinanceTxDuplicateActionBtn" onclick="linkDuplicateCandidate()">Link to Bill</button>
+                  <button type="button" class="btn btn-xs" onclick="dismissDuplicateWarning()">Dismiss</button>
                 </div>
               </div>
             </div>
@@ -115,6 +129,7 @@
                 <option value="none" selected>None / Ad-hoc</option>
                 <option value="vendor">Vendor</option>
                 <option value="employee">Employee</option>
+                <option value="customer">Customer</option>
               </select>
             </div>
 
@@ -124,6 +139,36 @@
               <select id="fFinanceTxVendorId" onchange="onTxVendorSelected()">
                 <option value="">— Select Vendor —</option>
               </select>
+            </div>
+
+            <!-- Settlement Document Target (Vendor Bill) -->
+            <div class="form-field full" id="fFinanceTxLinkedBillGroup" style="display: none; margin-top: -6px; margin-bottom: 10px;">
+              <label for="fFinanceTxLinkedBillId">Settlement Target / Bill Link <span class="opt">(Optional)</span></label>
+              <select id="fFinanceTxLinkedBillId" onchange="onTxLinkedBillSelected()">
+                <option value="">No specific bill (general vendor disbursement)</option>
+              </select>
+              <small style="color: var(--text3); font-size: 11.5px; display: block; margin-top: 3px;">
+                Selecting an open bill auto-fills amount &amp; reference, and marks the bill paid upon saving.
+              </small>
+            </div>
+
+            <!-- Customer Picker (shown when payee_type == 'customer' or entry_type == 'money_in') -->
+            <div class="form-field" id="fFinanceTxCustomerGroup" style="display: none;">
+              <label for="fFinanceTxCustomerId">Select Customer <span class="opt">(Optional)</span></label>
+              <select id="fFinanceTxCustomerId" onchange="onTxCustomerSelected()">
+                <option value="">— Select Customer (or enter name below) —</option>
+              </select>
+            </div>
+
+            <!-- Settlement Document Target (Customer Invoice) -->
+            <div class="form-field full" id="fFinanceTxLinkedInvoiceGroup" style="display: none; margin-top: -6px; margin-bottom: 10px;">
+              <label for="fFinanceTxLinkedInvoiceId">Settlement Target / Invoice Link <span class="opt">(Optional)</span></label>
+              <select id="fFinanceTxLinkedInvoiceId" onchange="onTxLinkedInvoiceSelected()">
+                <option value="">No specific invoice (unallocated customer payment)</option>
+              </select>
+              <small style="color: var(--text3); font-size: 11.5px; display: block; margin-top: 3px;">
+                Selecting an open invoice auto-fills amount &amp; reference, and updates invoice status upon saving.
+              </small>
             </div>
 
             <!-- Employee Picker (shown when payee_type == 'employee') -->
@@ -137,7 +182,7 @@
             <!-- Counterparty / Payee Name (shown for money_out / money_in) -->
             <div class="form-field" id="fFinanceTxCounterpartyGroup">
               <label for="fFinanceTxCounterparty" id="fFinanceTxCounterpartyLabel">Payee / Vendor</label>
-              <input id="fFinanceTxCounterparty" placeholder="e.g. Acme Supplies, John Doe" oninput="updateTransactionPreview()">
+              <input id="fFinanceTxCounterparty" placeholder="e.g. Acme Supplies, John Doe" oninput="updateTransactionPreview(); checkTransactionDuplicateSettlement();">
             </div>
 
             <!-- Tax Amount (shown for money_out) -->

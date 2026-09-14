@@ -94,17 +94,18 @@ class LedgerService:
     def _validate_and_resolve_payee(self, data: dict) -> None:
         """
         Validates payee_type, payee_id, payee_name and ensures mutual exclusivity:
-        - payee_type in ('none', 'vendor', 'employee')
+        - payee_type in ('none', 'vendor', 'employee', 'customer')
         - payee_type 'none': payee_id must be None
         - payee_type 'vendor': payee_id must resolve to VendorDB if present
         - payee_type 'employee': payee_id must resolve to EmployeeDB if present
+        - payee_type 'customer': payee_id must resolve to CustomerDB if present
         - Synchronizes payee_name and counterparty
         """
         payee_type = (data.get("payee_type") or "none").lower()
-        if payee_type not in ("none", "vendor", "employee"):
+        if payee_type not in ("none", "vendor", "employee", "customer"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid payee_type '{payee_type}'. Must be one of 'none', 'vendor', 'employee'.",
+                detail=f"Invalid payee_type '{payee_type}'. Must be one of 'none', 'vendor', 'employee', 'customer'.",
             )
         data["payee_type"] = payee_type
         payee_id = data.get("payee_id")
@@ -143,6 +144,19 @@ class LedgerService:
                     data["payee_name"] = emp.name
                 if not data.get("counterparty"):
                     data["counterparty"] = emp.name
+        elif payee_type == "customer":
+            if payee_id:
+                from finance.models import CustomerDB
+                cust = self.repo.db.query(CustomerDB).filter(CustomerDB.id == payee_id).first()
+                if not cust:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Customer with ID {payee_id} not found",
+                    )
+                if not payee_name:
+                    data["payee_name"] = cust.name
+                if not data.get("counterparty"):
+                    data["counterparty"] = cust.name
 
         # Sync counterparty and payee_name if one is present and the other is not
         if not data.get("counterparty") and data.get("payee_name"):
@@ -273,6 +287,38 @@ class LedgerService:
 
         # Validate and resolve payee information
         self._validate_and_resolve_payee(data)
+
+        # Unified settlement linking (FUX-406)
+        if data.get("linked_bill_id"):
+            from finance.services.settlement_service import SettlementService
+            settlement_svc = SettlementService(self.repo.db)
+            try:
+                settlement_svc.settle_bill(
+                    bill_id=data["linked_bill_id"],
+                    amount=data["amount"],
+                    payment_date=data["date"],
+                    bank_account_id=account_id,
+                    currency=data.get("currency", account.currency if account else "USD"),
+                    reference=data.get("reference", ""),
+                )
+                data["source"] = "bill_payment"
+            except ValueError as e:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        elif data.get("linked_invoice_id"):
+            from finance.services.settlement_service import SettlementService
+            settlement_svc = SettlementService(self.repo.db)
+            try:
+                settlement_svc.settle_invoice(
+                    invoice_id=data["linked_invoice_id"],
+                    amount=data["amount"],
+                    payment_date=data["date"],
+                    bank_account_id=account_id,
+                    currency=data.get("currency", account.currency if account else "USD"),
+                    reference=data.get("reference", ""),
+                )
+                data["source"] = "invoice_payment"
+            except ValueError as e:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
         try:
             tx = self.repo.create_transaction(account_id, data, created_by=user_email)

@@ -129,8 +129,8 @@ class LedgerTransactionBase(BaseModel):
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
     entry_type: Optional[str] = Field("standard", description="Guided entry type: standard, money_in, money_out, bank_fee, adjustment")
     counterparty: Optional[str] = Field(None, description="Counterparty name (payer, vendor, client)")
-    payee_type: Optional[str] = Field("none", description="Payee classification: none, vendor, employee")
-    payee_id: Optional[int] = Field(None, description="Payee ID (vendor_id or employee_id)")
+    payee_type: Optional[str] = Field("none", description="Payee classification: none, vendor, employee, customer")
+    payee_id: Optional[int] = Field(None, description="Payee ID (vendor_id, employee_id, customer_id)")
     payee_name: Optional[str] = Field(None, description="Payee name")
     tax_amount: Optional[float] = Field(0.0, description="Included tax portion")
     base_amount: Optional[float] = Field(None, description="Converted amount in base/account currency")
@@ -186,6 +186,36 @@ class LedgerTransactionUpdate(BaseModel):
     cheque_number: Optional[str] = Field(None, max_length=50)
     destination_cash_account_id: Optional[int] = None
     fx_rate: Optional[float] = None
+    linked_invoice_id: Optional[int] = None
+    linked_bill_id: Optional[int] = None
+
+
+class DuplicateSettlementCheckResponse(BaseModel):
+    has_match: bool = False
+    match_type: Optional[str] = None  # "bill" or "invoice"
+    document_id: Optional[int] = None
+    document_number: Optional[str] = None
+    document_total: Optional[float] = None
+    remaining_balance: Optional[float] = None
+    currency: Optional[str] = None
+    due_date: Optional[str] = None
+    message: Optional[str] = None
+
+
+class UnlinkedSettlementCandidateResponse(BaseModel):
+    transaction_id: int
+    date: str
+    amount: float
+    currency: str
+    payee_type: str
+    payee_id: Optional[int] = None
+    payee_name: Optional[str] = None
+    matching_bill_id: Optional[int] = None
+    matching_bill_number: Optional[str] = None
+    bill_total: Optional[float] = None
+    bill_remaining: Optional[float] = None
+    bill_due_date: Optional[str] = None
+
 
 
 class TransactionPreviewRequest(BaseModel):

@@ -389,52 +389,37 @@ class BillsRepository:
 
         bill = None
         if data.get("related_bill_id"):
-            bill = self.db.query(BillDB).filter(
-                BillDB.id == data["related_bill_id"]
-            ).first()
-            if not bill:
-                raise ValueError(f"Bill {data['related_bill_id']} not found")
-
-            # Check remaining balance (exclude reversed payments)
-            existing_payments = [p for p in self.list_payments(bill.id) if not p.is_reversed]
-            paid_so_far = sum(p.amount for p in existing_payments)
-            remaining = round(bill.total - paid_so_far, 2)
-            payment_amount = float(data["amount"])
-
-            if payment_amount > remaining + 0.01:
-                raise ValueError(
-                    f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f})."
-                )
-
-        payment = PaymentDB(
-            direction=data.get("direction", "outgoing"),
-            related_invoice_id=data.get("related_invoice_id"),
-            related_bill_id=data.get("related_bill_id"),
-            amount=data["amount"],
-            currency=data.get("currency", "USD"),
-            payment_date=data["payment_date"],
-            bank_account_id=data["bank_account_id"],
-            method=data.get("method", "bank_transfer"),
-            reference=data.get("reference", ""),
-            is_reversed=False,
-        )
-        self.db.add(payment)
+            from finance.services.settlement_service import SettlementService
+            settlement_svc = SettlementService(self.db)
+            bill, payment = settlement_svc.settle_bill(
+                bill_id=data["related_bill_id"],
+                amount=data["amount"],
+                payment_date=data["payment_date"],
+                bank_account_id=bank_account.id,
+                currency=data.get("currency", "USD"),
+                reference=data.get("reference", ""),
+                method=data.get("method", "bank_transfer"),
+            )
+        else:
+            payment = PaymentDB(
+                direction=data.get("direction", "outgoing"),
+                related_invoice_id=data.get("related_invoice_id"),
+                related_bill_id=data.get("related_bill_id"),
+                amount=data["amount"],
+                currency=data.get("currency", "USD"),
+                payment_date=data["payment_date"],
+                bank_account_id=data["bank_account_id"],
+                method=data.get("method", "bank_transfer"),
+                reference=data.get("reference", ""),
+                is_reversed=False,
+            )
+            self.db.add(payment)
 
         # Adjust balance: incoming → credit, outgoing → debit
         if payment.direction == "incoming":
             bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
         else:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
-
-        # Update bill status & amount_paid
-        if bill and bill.status != "void":
-            existing_payments = [p for p in self.list_payments(bill.id) if not p.is_reversed]
-            paid_so_far = sum(p.amount for p in existing_payments) + payment.amount
-            bill.amount_paid = round(paid_so_far, 2)
-            if bill.amount_paid >= bill.total - 0.01:
-                bill.status = "paid"
-            elif bill.status in ("ready_to_pay", "scheduled", "partially_paid"):
-                bill.status = "partially_paid"
 
         # Record corresponding ledger transaction for single source of truth
         bill_cat = None

@@ -509,6 +509,27 @@ const FinanceMockState = {
 };
 
 const FinanceApi = {
+  // Customers
+  async getCustomers(params) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.customers || [])];
+      if (params && params.is_active !== undefined) {
+        list = list.filter((c) => c.is_active === params.is_active);
+      }
+      if (params && params.search) {
+        const s = params.search.toLowerCase();
+        list = list.filter((c) => (c.name && c.name.toLowerCase().includes(s)) || (c.contact_email && c.contact_email.toLowerCase().includes(s)));
+      }
+      return list;
+    }
+    let url = "/api/finance/customers";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+
   // Invoices
   async getInvoices(params) {
     if (_isMock()) {
@@ -2293,10 +2314,61 @@ const FinanceApi = {
         fx_equivalent: payload.fx_rate ? round(effectiveAmt, 2) : null,
         destination_cash_account_id: payload.destination_cash_account_id ? parseInt(payload.destination_cash_account_id, 10) : null,
         cheque_number: payload.cheque_number || null,
-        source: "manual",
+        source: payload.linked_bill_id ? "bill_payment" : (payload.linked_invoice_id ? "invoice_payment" : "manual"),
+        linked_bill_id: payload.linked_bill_id ? parseInt(payload.linked_bill_id, 10) : null,
+        linked_invoice_id: payload.linked_invoice_id ? parseInt(payload.linked_invoice_id, 10) : null,
         running_balance: acc ? acc.current_balance : amount,
         created_at: new Date().toISOString(),
       };
+
+      if (payload.linked_bill_id) {
+        const bill = (FinanceMockState.bills || []).find((b) => b.id === newTx.linked_bill_id);
+        if (bill) {
+          bill.amount_paid = round((bill.amount_paid || 0) + amount, 2);
+          if (bill.amount_paid >= (bill.total || 0) - 0.01) {
+            bill.status = "paid";
+          } else {
+            bill.status = "partially_paid";
+          }
+          if (!FinanceMockState.billPayments) FinanceMockState.billPayments = [];
+          FinanceMockState.billPayments.push({
+            id: Date.now(),
+            related_bill_id: bill.id,
+            amount,
+            currency: txCurr,
+            payment_date: payload.date,
+            bank_account_id: parseInt(accountId, 10),
+            reference: payload.reference || bill.bill_number,
+            method: "bank_transfer",
+            is_reversed: false,
+          });
+        }
+      } else if (payload.linked_invoice_id) {
+        const inv = (FinanceMockState.invoices || []).find((i) => i.id === newTx.linked_invoice_id);
+        if (inv) {
+          const prevPaid = (FinanceMockState.payments || [])
+            .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
+            .reduce((s, p) => s + (p.amount || 0), 0);
+          if (prevPaid + amount >= (inv.total || 0) - 0.01) {
+            inv.status = "paid";
+          } else {
+            inv.status = "partially_paid";
+          }
+          if (!FinanceMockState.payments) FinanceMockState.payments = [];
+          FinanceMockState.payments.push({
+            id: Date.now(),
+            related_invoice_id: inv.id,
+            amount,
+            currency: txCurr,
+            payment_date: payload.date,
+            bank_account_id: parseInt(accountId, 10),
+            reference: payload.reference || inv.invoice_number,
+            method: "bank_transfer",
+            is_reversed: false,
+          });
+        }
+      }
+
       FinanceMockState.transactions.unshift(newTx);
 
       if (payload.destination_cash_account_id && direction === "out") {
@@ -2329,6 +2401,68 @@ const FinanceApi = {
       return newTx;
     }
     return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload);
+  },
+
+  async checkDuplicateSettlement(params) {
+    if (_isMock()) {
+      const pType = (params.payee_type || "").toLowerCase();
+      const pId = parseInt(params.payee_id, 10);
+      const amt = parseFloat(params.amount || 0);
+
+      if (pType === "vendor" && pId) {
+        const bills = (FinanceMockState.bills || []).filter((b) => b.vendor_id === pId && b.status !== "paid" && b.status !== "void");
+        for (const bill of bills) {
+          const paid = (bill.amount_paid || 0);
+          const remaining = Math.max(0, (bill.total || 0) - paid);
+          const tol = Math.max(1.0, remaining * 0.05);
+          if (Math.abs(remaining - amt) <= tol || Math.abs(bill.total - amt) <= tol) {
+            return {
+              has_match: true,
+              match_type: "bill",
+              document_id: bill.id,
+              document_number: bill.bill_number,
+              document_total: bill.total,
+              remaining_balance: remaining,
+              currency: bill.currency,
+              due_date: bill.due_date,
+              message: `Matching open bill #${bill.bill_number} found with remaining balance of ${bill.currency} ${remaining.toFixed(2)} (Due: ${bill.due_date}).`,
+            };
+          }
+        }
+      } else if (pType === "customer" && pId) {
+        const invoices = (FinanceMockState.invoices || []).filter((i) => i.customer_id === pId && i.status !== "paid" && i.status !== "void");
+        for (const inv of invoices) {
+          const prevPaid = (FinanceMockState.payments || [])
+            .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
+            .reduce((s, p) => s + (p.amount || 0), 0);
+          const remaining = Math.max(0, (inv.total || 0) - prevPaid);
+          const tol = Math.max(1.0, remaining * 0.05);
+          if (Math.abs(remaining - amt) <= tol || Math.abs(inv.total - amt) <= tol) {
+            return {
+              has_match: true,
+              match_type: "invoice",
+              document_id: inv.id,
+              document_number: inv.invoice_number,
+              document_total: inv.total,
+              remaining_balance: remaining,
+              currency: inv.currency,
+              due_date: inv.due_date,
+              message: `Matching open invoice #${inv.invoice_number} found with remaining balance of ${inv.currency} ${remaining.toFixed(2)} (Due: ${inv.due_date}).`,
+            };
+          }
+        }
+      }
+      return { has_match: false };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/transactions/duplicate-settlement-check?${qs}`);
+  },
+
+  async getUnlinkedSettlementCandidates(limit = 20) {
+    if (_isMock()) {
+      return [];
+    }
+    return apiRequest("GET", `/api/finance/transactions/unlinked-settlement-candidates?limit=${limit}`);
   },
 
   async previewTransaction(accountId, payload) {
