@@ -1507,8 +1507,60 @@ class ReconciliationCompletionReport(BaseModel):
     reopen_reason: Optional[str] = None
     is_exception_override: bool = False
     exception_override_reason: Optional[str] = None
-    closing_notes: Optional[str] = None
     generated_at: str
+
+
+# =========================================================================
+# Story 7.1: Standard Report Library, Shell & Drill-Down Schemas
+# =========================================================================
+
+class ReportMetadataResponse(BaseModel):
+    key: str
+    title: str
+    category: str
+    business_question: str
+    description: str
+    icon: str
+    supported_basis: List[str] = ["cash"]
+    supported_formats: List[str] = ["json", "xlsx"]
+    required_permission: str = "finance.report.read"
+    badge: Optional[str] = "Standard"
+
+
+class ReportLibraryResponse(BaseModel):
+    categories: List[str]
+    reports: List[ReportMetadataResponse]
+
+
+class SavedReportViewCreate(BaseModel):
+    report_key: str = Field(..., description="Unique key of the target report")
+    view_name: str = Field(..., min_length=2, max_length=150, description="User friendly name for saved view")
+    filters: Dict[str, Any] = Field(default_factory=dict, description="Saved filter definitions (period, basis, currency, etc)")
+    is_default: bool = Field(False, description="Set as default view when loading this report")
+
+
+class SavedReportViewResponse(BaseModel):
+    id: int
+    report_key: str
+    view_name: str
+    filters: Dict[str, Any]
+    created_by: Optional[str] = None
+    created_at: datetime
+    is_default: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class ReportDrilldownResponse(BaseModel):
+    report_key: str
+    drilldown_type: str
+    target_title: str
+    total_records: int
+    total_amount: float
+    currency: str
+    records: List[Dict[str, Any]] = []
+
 
 
 

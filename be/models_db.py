@@ -55,6 +55,8 @@ from finance.models import (  # noqa: E402, F401
     PayrollLineDB,
     FinanceAttentionReviewDB,
     AttentionReviewDB,
+    FinanceSavedReportViewDB,
+    SavedReportViewDB,
 )
 
 

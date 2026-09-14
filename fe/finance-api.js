@@ -3835,6 +3835,232 @@ const FinanceApi = {
     return `${API_BASE_URL}${endpoint}?${qs}`;
   },
 
+  // ==========================================
+  // Story 7.1: Standard Report Library & Shell
+  // ==========================================
+  async getReportLibrary() {
+    if (_isMock()) {
+      return {
+        categories: ["Performance", "Cash & Banking", "Sales & Receivables", "Spend & Payables", "Payroll", "Audit & Compliance"],
+        reports: [
+          {
+            key: "category-summary",
+            title: "Category Spend Rollup",
+            category: "Performance",
+            business_question: "Where are company operational outflows being spent across budget categories?",
+            description: "Monthly expense aggregation and budget percentage allocation mirroring the SPENT block.",
+            icon: "fa-solid fa-chart-pie",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json", "xlsx"],
+            badge: "Core Spend",
+          },
+          {
+            key: "matrix",
+            title: "Annual Spend Matrix",
+            category: "Performance",
+            business_question: "How does category spend trend across months and fiscal quarters?",
+            description: "Comprehensive cross-tabulation of category expenses across months or quarters with row totals.",
+            icon: "fa-solid fa-table-cells",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json", "xlsx"],
+            badge: "Trend Analysis",
+          },
+          {
+            key: "balances",
+            title: "Point-in-Time Balances",
+            category: "Cash & Banking",
+            business_question: "What was our cash and liquidity position on any specific historical date?",
+            description: "Historical balance calculations for all active bank and cash accounts as of a cutoff date.",
+            icon: "fa-solid fa-scale-balanced",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx"],
+            badge: "Liquidity",
+          },
+          {
+            key: "cash-forecast",
+            title: "Cash Position & 30/60/90-Day Forecast",
+            category: "Cash & Banking",
+            business_question: "What is our net projected cash flow and liquidity runway over the next 90 days?",
+            description: "Forward-looking cash projections incorporating confirmed receivables, bills, and subscriptions.",
+            icon: "fa-solid fa-chart-line",
+            supported_basis: ["cash"],
+            supported_formats: ["json"],
+            badge: "Planning",
+          },
+          {
+            key: "reconciliation-summary",
+            title: "Bank Reconciliation Summary",
+            category: "Cash & Banking",
+            business_question: "Which bank accounts and monthly statement periods are reconciled, closed, or pending review?",
+            description: "Overview of statement reconciliation completion status, book variances, and period locks.",
+            icon: "fa-solid fa-file-invoice-dollar",
+            supported_basis: ["cash"],
+            supported_formats: ["json"],
+            badge: "Control",
+          },
+          {
+            key: "invoices-summary",
+            title: "Customer Receivables & Sales Summary",
+            category: "Sales & Receivables",
+            business_question: "What is our revenue run rate and outstanding receivables exposure by customer?",
+            description: "Sales invoice status breakdown, collections aging, and revenue channel distribution.",
+            icon: "fa-solid fa-file-invoice",
+            supported_basis: ["accrual", "cash"],
+            supported_formats: ["json"],
+            badge: "Revenue",
+          },
+          {
+            key: "bills-summary",
+            title: "Vendor Payables & Commitments Schedule",
+            category: "Spend & Payables",
+            business_question: "What vendor liabilities and upcoming disbursements are scheduled for payment?",
+            description: "Vendor bill approval queues, payment readiness, and upcoming payment obligations.",
+            icon: "fa-solid fa-receipt",
+            supported_basis: ["accrual", "cash"],
+            supported_formats: ["json"],
+            badge: "Payables",
+          },
+          {
+            key: "subscriptions-summary",
+            title: "Recurring Spend & SaaS Commitments",
+            category: "Spend & Payables",
+            business_question: "What are our recurring software, cloud infrastructure, and tool commitments?",
+            description: "Active subscription contracts, upcoming renewal dates, and monthly equivalent run rates.",
+            icon: "fa-solid fa-repeat",
+            supported_basis: ["accrual", "cash"],
+            supported_formats: ["json"],
+            badge: "Commitments",
+          },
+          {
+            key: "payroll-summary",
+            title: "Payroll Register & Compensation Outflows",
+            category: "Payroll",
+            business_question: "How much did net salaries, employee benefits, and payroll taxes cost per cycle?",
+            description: "Monthly payroll register aggregation across active staff and department allocations.",
+            icon: "fa-solid fa-users",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json"],
+            badge: "Payroll",
+          },
+          {
+            key: "transactions",
+            title: "Continuous Transaction Ledger",
+            category: "Audit & Compliance",
+            business_question: "What is the detailed, auditable transaction log across all accounts and categories?",
+            description: "Filterable general ledger transaction journal with running balances and reference links.",
+            icon: "fa-solid fa-list-check",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json", "xlsx"],
+            badge: "General Ledger",
+          },
+          {
+            key: "cheques",
+            title: "Cheque Register & Clear Status",
+            category: "Audit & Compliance",
+            business_question: "What is the status, clearing trail, and presentment date of all company issued cheques?",
+            description: "Cheque register filtered by fiscal year and account with status breakdown.",
+            icon: "fa-solid fa-money-check",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx"],
+            badge: "Audit",
+          },
+        ],
+      };
+    }
+    return apiRequest("GET", "/api/finance/reports/library");
+  },
+
+  async getSavedReportViews(reportKey) {
+    if (_isMock()) {
+      let views = FinanceMockState.savedReportViews || [
+        {
+          id: 1,
+          report_key: "category-summary",
+          view_name: "Executive USD View",
+          filters: { period: "QTD", basis: "accrual", currency: "USD" },
+          is_default: true,
+          created_by: "admin@hrflow.test",
+          created_at: new Date().toISOString(),
+        },
+      ];
+      if (reportKey) views = views.filter((v) => v.report_key === reportKey);
+      return views;
+    }
+    const q = reportKey ? `?report_key=${encodeURIComponent(reportKey)}` : "";
+    return apiRequest("GET", `/api/finance/reports/saved-views${q}`);
+  },
+
+  async createSavedReportView(payload) {
+    if (_isMock()) {
+      if (!FinanceMockState.savedReportViews) FinanceMockState.savedReportViews = [];
+      if (payload.is_default) {
+        FinanceMockState.savedReportViews.forEach((v) => {
+          if (v.report_key === payload.report_key) v.is_default = false;
+        });
+      }
+      const newV = {
+        id: Date.now(),
+        report_key: payload.report_key,
+        view_name: payload.view_name,
+        filters: payload.filters || {},
+        is_default: !!payload.is_default,
+        created_by: "admin@hrflow.test",
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.savedReportViews.push(newV);
+      return newV;
+    }
+    return apiRequest("POST", "/api/finance/reports/saved-views", payload);
+  },
+
+  async deleteSavedReportView(viewId) {
+    if (_isMock()) {
+      if (FinanceMockState.savedReportViews) {
+        FinanceMockState.savedReportViews = FinanceMockState.savedReportViews.filter((v) => v.id !== parseInt(viewId, 10));
+      }
+      return { success: true, id: viewId };
+    }
+    return apiRequest("DELETE", `/api/finance/reports/saved-views/${viewId}`);
+  },
+
+  async getReportDrilldown(params = {}) {
+    if (_isMock()) {
+      const isCat = params.drilldown_type === "category";
+      return {
+        report_key: params.report_key || "category-summary",
+        drilldown_type: params.drilldown_type || "category",
+        target_title: isCat ? "Category: Hosting Cloud Infrastructure" : "Account: Voyance Operating USD",
+        total_records: 2,
+        total_amount: 5400.0,
+        currency: params.currency || "USD",
+        records: [
+          {
+            id: 101,
+            date: "2026-09-02",
+            description: "AWS Cloud Compute Hosting",
+            reference: "AWS-EC2-01",
+            category: "Hosting Cloud Infrastructure",
+            amount: 4200.0,
+            currency: "USD",
+            direction: "out",
+          },
+          {
+            id: 102,
+            date: "2026-09-04",
+            description: "Cloudflare Enterprise Security",
+            reference: "CF-INV-02",
+            category: "Hosting Cloud Infrastructure",
+            amount: 1200.0,
+            currency: "USD",
+            direction: "out",
+          },
+        ],
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/drilldown${qs ? "?" + qs : ""}`);
+  },
+
   async getEntityActivity(entityType, entityId) {
     const norm = (entityType || "").toLowerCase().replace(/s$/, "");
     const id = parseInt(entityId, 10);

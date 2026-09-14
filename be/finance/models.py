@@ -653,3 +653,19 @@ class FinanceAttentionReviewDB(Base):
 # Alias for clean domain referencing
 AttentionReviewDB = FinanceAttentionReviewDB
 
+
+class FinanceSavedReportViewDB(Base):
+    __tablename__ = "finance_saved_report_views"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_key = Column(String(100), nullable=False, index=True)
+    view_name = Column(String(200), nullable=False)
+    filters_json = Column(Text, nullable=False, default="{}")
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_default = Column(Boolean, default=False, nullable=False)
+
+
+SavedReportViewDB = FinanceSavedReportViewDB
+
+

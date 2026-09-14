@@ -1,12 +1,184 @@
 // ==========================================
-// 10. Financial Reports & Excel Export (Phase 8)
+// 10. Financial Reports & Excel Export (Phase 8) & Story 7.1 Report Library & Shell
 // ==========================================
 let _currentReportsTab = "category-summary";
 let _currentMatrixPeriodGroup = "month";
 let _reportTxSearchDebounceTimer = null;
+let _reportLibrary = [];
+let _activeDomainFilter = "all";
+let _activeReportKey = "category-summary";
+let _currentSavedViews = [];
+let _activeSavedViewId = null;
+let _currentDrilldownRecords = [];
+let _currentDrilldownContext = {};
+
+// ----------------------------------------------------------------------
+// Report Library Directory View & Domain Filtering
+// ----------------------------------------------------------------------
+async function loadReportLibrary() {
+  try {
+    const data = await FinanceApi.getReportLibrary();
+    _reportLibrary = (data && data.reports) || [];
+    renderReportLibraryCatalog();
+  } catch (err) {
+    console.error("Failed to load report library catalog:", err);
+  }
+}
+
+function filterReportLibraryByDomain(domain, btn) {
+  _activeDomainFilter = domain;
+  const container = document.getElementById("reportLibraryCategoryPills");
+  if (container) {
+    container.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
+  }
+  if (btn) btn.classList.add("active");
+  renderReportLibraryCatalog();
+}
+
+function filterReportLibraryCatalog() {
+  renderReportLibraryCatalog();
+}
+
+function renderReportLibraryCatalog() {
+  const grid = document.getElementById("reportLibraryGrid");
+  if (!grid) return;
+  const q = (document.getElementById("reportLibrarySearch")?.value || "").toLowerCase().trim();
+
+  const filtered = (_reportLibrary || []).filter((r) => {
+    const matchesDomain = _activeDomainFilter === "all" || r.category === _activeDomainFilter;
+    const matchesSearch =
+      !q ||
+      r.title.toLowerCase().includes(q) ||
+      r.category.toLowerCase().includes(q) ||
+      (r.business_question || "").toLowerCase().includes(q) ||
+      (r.description || "").toLowerCase().includes(q);
+    return matchesDomain && matchesSearch;
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1 / -1; padding:40px; text-align:center;">
+        <i class="fa-solid fa-magnifying-glass" style="font-size:2rem; color:var(--text-muted); margin-bottom:12px;"></i>
+        <p style="color:var(--text-muted);">No reports found matching "${q}".</p>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = filtered
+    .map((r) => {
+      const basisList = (r.supported_basis || [])
+        .map((b) => b.charAt(0).toUpperCase() + b.slice(1))
+        .join(" & ");
+      return `
+      <div class="card report-catalog-card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between; border-top:3px solid var(--primary, #2563EB); transition:transform 0.15s ease, box-shadow 0.15s ease;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+            <div style="width:40px; height:40px; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--primary, #2563EB); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <i class="${r.icon || 'fa-solid fa-chart-pie'}"></i>
+            </div>
+            <span class="badge badge-info" style="font-size:0.75rem;">${r.category}</span>
+          </div>
+          <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-main); margin-bottom:6px;">${r.title}</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">${r.description}</p>
+          <div style="background:var(--bg-secondary, #F8FAFC); border-left:3px solid var(--primary, #2563EB); padding:8px 12px; border-radius:4px; font-size:0.82rem; color:var(--text-main); margin-bottom:14px; font-style:italic;">
+            <i class="fa-solid fa-circle-question" style="color:var(--primary, #2563EB); margin-right:4px;"></i> Answers: "${r.business_question}"
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--border-color, #E2E8F0); margin-top:10px;">
+          <span class="badge badge-neutral" style="font-size:0.75rem;">${basisList || 'Cash & Accrual'}</span>
+          <button class="btn btn-sm btn-primary" onclick="openReportFromLibrary('${r.key}')">
+            <i class="fa-solid fa-arrow-right"></i> Open Report
+          </button>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+}
+
+// ----------------------------------------------------------------------
+// Shared Report Shell Navigation & Setup
+// ----------------------------------------------------------------------
+function backToReportLibrary() {
+  const dirView = document.getElementById("reportLibraryDirectoryView");
+  const shell = document.getElementById("reportShellContainer");
+  if (dirView) dirView.style.display = "block";
+  if (shell) shell.style.display = "none";
+}
+
+async function openReportFromLibrary(reportKey) {
+  _activeReportKey = reportKey;
+  const dirView = document.getElementById("reportLibraryDirectoryView");
+  const shell = document.getElementById("reportShellContainer");
+  if (dirView) dirView.style.display = "none";
+  if (shell) shell.style.display = "block";
+
+  // Find metadata
+  const meta = (_reportLibrary || []).find((r) => r.key === reportKey);
+  const titleEl = document.getElementById("reportShellTitle");
+  const catBadge = document.getElementById("reportShellCategoryBadge");
+  const basisBadge = document.getElementById("reportShellBasisBadge");
+  const qEl = document.getElementById("reportShellQuestion");
+
+  if (titleEl && meta) {
+    titleEl.innerHTML = `<i class="${meta.icon || 'fa-solid fa-chart-pie'}"></i> ${meta.title}`;
+  }
+  if (catBadge && meta) catBadge.textContent = meta.category;
+  if (basisBadge && meta) {
+    basisBadge.textContent =
+      (meta.supported_basis || [])
+        .map((b) => b.charAt(0).toUpperCase() + b.slice(1))
+        .join(" & ") || "Cash & Accrual";
+  }
+  if (qEl && meta) {
+    qEl.innerHTML = `<strong>Answers:</strong> ${meta.business_question}`;
+  }
+
+  // Load saved views for this report
+  await loadSavedReportViews(reportKey);
+
+  // Switch to inner pane
+  const validTabs = ["category-summary", "matrix", "balances", "transactions", "cheques"];
+  const subnav = document.getElementById("financeReportsSubNav");
+  const placeholder = document.getElementById("reportPanePlaceholder");
+
+  if (validTabs.includes(reportKey)) {
+    if (placeholder) placeholder.style.display = "none";
+    if (subnav) subnav.style.display = "flex";
+    switchFinanceReportsTab(reportKey);
+  } else {
+    // Hide standard panes, show placeholder with details
+    validTabs.forEach((t) => {
+      const pane = document.getElementById(
+        {
+          "category-summary": "reportPaneCategorySummary",
+          matrix: "reportPaneMatrix",
+          balances: "reportPaneBalances",
+          transactions: "reportPaneTransactions",
+          cheques: "reportPaneCheques",
+        }[t]
+      );
+      if (pane) pane.style.display = "none";
+    });
+    if (subnav) subnav.style.display = "none";
+    if (placeholder) {
+      placeholder.style.display = "block";
+      const pTitle = document.getElementById("reportPlaceholderTitle");
+      const pDesc = document.getElementById("reportPlaceholderDesc");
+      const pIcon = document.getElementById("reportPlaceholderIcon");
+      if (pTitle && meta) pTitle.textContent = meta.title;
+      if (pDesc && meta)
+        pDesc.textContent =
+          meta.description + " Underlying transactions and documents can be inspected below.";
+      if (pIcon && meta) pIcon.className = meta.icon || "fa-solid fa-chart-line";
+    }
+  }
+}
 
 function switchFinanceReportsTab(tabName, btn) {
   _currentReportsTab = tabName;
+  _activeReportKey = tabName;
 
   // Update tabs
   const subnav = document.getElementById("financeReportsSubNav");
@@ -33,12 +205,33 @@ function switchFinanceReportsTab(tabName, btn) {
     cheques: "reportPaneCheques",
   };
 
+  const placeholder = document.getElementById("reportPanePlaceholder");
+  if (placeholder) placeholder.style.display = "none";
+
   Object.entries(panes).forEach(([k, paneId]) => {
     const el = document.getElementById(paneId);
     if (el) {
       el.style.display = k === tabName ? "block" : "none";
     }
   });
+
+  // Sync shell top bar title with active tab
+  const meta = (_reportLibrary || []).find((r) => r.key === tabName);
+  if (meta) {
+    const titleEl = document.getElementById("reportShellTitle");
+    const catBadge = document.getElementById("reportShellCategoryBadge");
+    const basisBadge = document.getElementById("reportShellBasisBadge");
+    const qEl = document.getElementById("reportShellQuestion");
+    if (titleEl) titleEl.innerHTML = `<i class="${meta.icon || 'fa-solid fa-chart-pie'}"></i> ${meta.title}`;
+    if (catBadge) catBadge.textContent = meta.category;
+    if (basisBadge) {
+      basisBadge.textContent =
+        (meta.supported_basis || [])
+          .map((b) => b.charAt(0).toUpperCase() + b.slice(1))
+          .join(" & ") || "Cash & Accrual";
+    }
+    if (qEl) qEl.innerHTML = `<strong>Answers:</strong> ${meta.business_question}`;
+  }
 
   // Load active tab data
   if (tabName === "category-summary") {
@@ -62,6 +255,11 @@ async function loadFinanceReports() {
   const today = `${yyyy}-${mm}-${dd}`;
   const firstOfMonth = `${yyyy}-${mm}-01`;
 
+  const sFrom = document.getElementById("reportShellDateFrom");
+  const sTo = document.getElementById("reportShellDateTo");
+  if (sFrom && !sFrom.value) sFrom.value = firstOfMonth;
+  if (sTo && !sTo.value) sTo.value = today;
+
   const dFrom1 = document.getElementById("reportCatSumDateFrom");
   const dTo1 = document.getElementById("reportCatSumDateTo");
   if (dFrom1 && !dFrom1.value) dFrom1.value = firstOfMonth;
@@ -78,7 +276,8 @@ async function loadFinanceReports() {
   // Populate account & category dropdowns in transactions pane
   populateReportFilters();
 
-  switchFinanceReportsTab(_currentReportsTab);
+  // Load catalog
+  await loadReportLibrary();
 }
 
 function populateReportFilters() {
@@ -100,6 +299,380 @@ function populateReportFilters() {
       opt.textContent = c.name;
       catSel.appendChild(opt);
     });
+  }
+}
+
+// ----------------------------------------------------------------------
+// Period Presets & Filter Bar Synchronization
+// ----------------------------------------------------------------------
+function onReportShellPeriodPresetChanged(preset) {
+  const dFrom = document.getElementById("reportShellDateFrom");
+  const dTo = document.getElementById("reportShellDateTo");
+  if (!dFrom || !dTo) return;
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-indexed
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const fmt = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+
+  if (preset === "this_month") {
+    dFrom.value = `${y}-${pad(m + 1)}-01`;
+    dTo.value = fmt(now);
+  } else if (preset === "last_month") {
+    const firstLastM = new Date(y, m - 1, 1);
+    const lastLastM = new Date(y, m, 0);
+    dFrom.value = fmt(firstLastM);
+    dTo.value = fmt(lastLastM);
+  } else if (preset === "this_quarter") {
+    const qStartMonth = Math.floor(m / 3) * 3;
+    dFrom.value = `${y}-${pad(qStartMonth + 1)}-01`;
+    dTo.value = fmt(now);
+  } else if (preset === "ytd") {
+    dFrom.value = `${y}-01-01`;
+    dTo.value = fmt(now);
+  } else if (preset === "trailing_12m") {
+    const t12 = new Date(y - 1, m, now.getDate());
+    dFrom.value = fmt(t12);
+    dTo.value = fmt(now);
+  }
+  onReportShellFilterChanged();
+}
+
+function onReportShellFilterChanged() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const curr = document.getElementById("reportShellCurrency")?.value || "";
+
+  // Propagate to active panes
+  const cFrom = document.getElementById("reportCatSumDateFrom");
+  const cTo = document.getElementById("reportCatSumDateTo");
+  const cCurr = document.getElementById("reportCatSumCurrency");
+  if (cFrom && dFrom) cFrom.value = dFrom;
+  if (cTo && dTo) cTo.value = dTo;
+  if (cCurr) cCurr.value = curr;
+
+  const bAsOf = document.getElementById("reportBalancesAsOfDate");
+  if (bAsOf && dTo) bAsOf.value = dTo;
+
+  const txFrom = document.getElementById("reportTxDateFrom");
+  const txTo = document.getElementById("reportTxDateTo");
+  if (txFrom && dFrom) txFrom.value = dFrom;
+  if (txTo && dTo) txTo.value = dTo;
+
+  refreshActiveReport();
+}
+
+function refreshActiveReport() {
+  const freshness = document.getElementById("reportShellFreshness");
+  if (freshness) {
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    freshness.innerHTML = `<i class="fa-solid fa-clock"></i> Fresh as of: ${timeStr}`;
+  }
+
+  if (_currentReportsTab === "category-summary") {
+    loadReportCategorySummary();
+  } else if (_currentReportsTab === "matrix") {
+    loadReportMatrix();
+  } else if (_currentReportsTab === "balances") {
+    loadReportBalances();
+  } else if (_currentReportsTab === "transactions") {
+    loadReportTransactions();
+  } else if (_currentReportsTab === "cheques") {
+    loadReportCheques();
+  }
+}
+
+// ----------------------------------------------------------------------
+// Saved Views CRUD Management
+// ----------------------------------------------------------------------
+async function loadSavedReportViews(reportKey) {
+  try {
+    const views = await FinanceApi.getSavedReportViews(reportKey);
+    _currentSavedViews = views || [];
+    const sel = document.getElementById("reportShellSavedViews");
+    const delBtn = document.getElementById("reportShellDeleteViewBtn");
+    if (delBtn) delBtn.style.display = "none";
+    if (!sel) return;
+
+    sel.innerHTML = '<option value="">Standard View</option>';
+    let defaultView = null;
+    _currentSavedViews.forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v.id;
+      opt.textContent = v.view_name + (v.is_default ? " (Default)" : "");
+      sel.appendChild(opt);
+      if (v.is_default) defaultView = v;
+    });
+
+    if (defaultView) {
+      sel.value = defaultView.id;
+      applySelectedSavedView(defaultView.id, false);
+    }
+  } catch (err) {
+    console.error("Failed to load saved report views:", err);
+  }
+}
+
+function applySelectedSavedView(viewId, triggerReload = true) {
+  const delBtn = document.getElementById("reportShellDeleteViewBtn");
+  if (!viewId) {
+    _activeSavedViewId = null;
+    if (delBtn) delBtn.style.display = "none";
+    if (triggerReload) onReportShellFilterChanged();
+    return;
+  }
+
+  _activeSavedViewId = parseInt(viewId, 10);
+  if (delBtn) delBtn.style.display = "inline-flex";
+
+  const v = _currentSavedViews.find((x) => x.id === _activeSavedViewId);
+  if (!v || !v.filters) return;
+
+  const f = v.filters;
+  if (f.preset) {
+    const pSel = document.getElementById("reportShellPeriodPreset");
+    if (pSel) pSel.value = f.preset;
+  }
+  if (f.date_from) {
+    const dF = document.getElementById("reportShellDateFrom");
+    if (dF) dF.value = f.date_from;
+  }
+  if (f.date_to) {
+    const dT = document.getElementById("reportShellDateTo");
+    if (dT) dT.value = f.date_to;
+  }
+  if (f.basis) {
+    const bSel = document.getElementById("reportShellBasis");
+    if (bSel) bSel.value = f.basis;
+  }
+  if (f.currency !== undefined) {
+    const cSel = document.getElementById("reportShellCurrency");
+    if (cSel) cSel.value = f.currency;
+  }
+  if (f.comparison) {
+    const cmpSel = document.getElementById("reportShellComparison");
+    if (cmpSel) cmpSel.value = f.comparison;
+  }
+  if (f.entity) {
+    const eSel = document.getElementById("reportShellEntity");
+    if (eSel) eSel.value = f.entity;
+  }
+
+  if (triggerReload) onReportShellFilterChanged();
+}
+
+function openSaveReportViewModal() {
+  const m = document.getElementById("saveReportViewModal");
+  if (!m) return;
+  const nameInput = document.getElementById("saveReportViewName");
+  const defCheck = document.getElementById("saveReportViewIsDefault");
+  if (nameInput) nameInput.value = "";
+  if (defCheck) defCheck.checked = false;
+  m.style.display = "flex";
+}
+
+function closeSaveReportViewModal() {
+  const m = document.getElementById("saveReportViewModal");
+  if (m) m.style.display = "none";
+}
+
+async function submitSaveReportView() {
+  const nameInput = document.getElementById("saveReportViewName");
+  const defCheck = document.getElementById("saveReportViewIsDefault");
+  const viewName = nameInput?.value?.trim();
+  if (!viewName) {
+    showToast("Please enter a name for this view", "error");
+    return;
+  }
+
+  const payload = {
+    report_key: _activeReportKey,
+    view_name: viewName,
+    is_default: !!defCheck?.checked,
+    filters: {
+      preset: document.getElementById("reportShellPeriodPreset")?.value || "custom",
+      date_from: document.getElementById("reportShellDateFrom")?.value || "",
+      date_to: document.getElementById("reportShellDateTo")?.value || "",
+      basis: document.getElementById("reportShellBasis")?.value || "cash",
+      currency: document.getElementById("reportShellCurrency")?.value || "",
+      comparison: document.getElementById("reportShellComparison")?.value || "none",
+      entity: document.getElementById("reportShellEntity")?.value || "all",
+    },
+  };
+
+  try {
+    const saved = await FinanceApi.createSavedReportView(payload);
+    closeSaveReportViewModal();
+    showToast(`Saved view "${saved.view_name}" created`, "success");
+    await loadSavedReportViews(_activeReportKey);
+    const sel = document.getElementById("reportShellSavedViews");
+    if (sel && saved.id) {
+      sel.value = saved.id;
+      applySelectedSavedView(saved.id, false);
+    }
+  } catch (err) {
+    console.error("Failed to save report view:", err);
+    showToast(err.message || "Failed to save report view", "error");
+  }
+}
+
+async function deleteActiveReportView() {
+  if (!_activeSavedViewId) return;
+  if (!confirm("Are you sure you want to delete this saved view?")) return;
+
+  try {
+    await FinanceApi.deleteSavedReportView(_activeSavedViewId);
+    showToast("Saved view deleted", "success");
+    _activeSavedViewId = null;
+    await loadSavedReportViews(_activeReportKey);
+  } catch (err) {
+    console.error("Failed to delete view:", err);
+    showToast(err.message || "Failed to delete saved view", "error");
+  }
+}
+
+// ----------------------------------------------------------------------
+// Contextual Drill-Down Modal & Records Export
+// ----------------------------------------------------------------------
+async function openReportDrilldown(drilldownType, targetId, title) {
+  const m = document.getElementById("reportDrilldownModal");
+  if (!m) return;
+  m.style.display = "flex";
+
+  const tEl = document.getElementById("reportDrilldownTitle");
+  const subEl = document.getElementById("reportDrilldownSubtitle");
+  const ctxText = document.getElementById("reportDrilldownContextText");
+  const countEl = document.getElementById("reportDrilldownRecordCount");
+  const sumEl = document.getElementById("reportDrilldownTotalSum");
+  const tbody = document.getElementById("reportDrilldownTableBody");
+  const empty = document.getElementById("reportDrilldownEmpty");
+  const loading = document.getElementById("reportDrilldownLoadingBar");
+
+  if (tEl) tEl.innerHTML = `<i class="fa-solid fa-search-dollar"></i> ${title || 'Transaction Drill-Down'}`;
+  if (subEl) subEl.textContent = `Granular ledger transactions for ${title || 'selected item'}`;
+  if (ctxText) ctxText.textContent = `${(drilldownType || '').toUpperCase()}: ${title || targetId}`;
+  if (tbody) tbody.innerHTML = "";
+  if (empty) empty.style.display = "none";
+  if (loading) loading.style.display = "block";
+
+  const dateFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dateTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "";
+
+  _currentDrilldownContext = { drilldownType, targetId, title, dateFrom, dateTo, currency };
+
+  try {
+    const res = await FinanceApi.getReportDrilldown({
+      report_key: _activeReportKey,
+      drilldown_type: drilldownType,
+      target_id: targetId,
+      date_from: dateFrom,
+      date_to: dateTo,
+      currency: currency || undefined,
+    });
+
+    _currentDrilldownRecords = res.records || [];
+    if (countEl) countEl.textContent = res.total_records || _currentDrilldownRecords.length;
+    if (sumEl) sumEl.textContent = FinanceFormat.formatMoney(res.total_amount || 0, res.currency || currency || "USD");
+
+    if (_currentDrilldownRecords.length === 0) {
+      if (empty) empty.style.display = "block";
+      return;
+    }
+
+    _currentDrilldownRecords.forEach((r) => {
+      const tr = document.createElement("tr");
+      const isOut = (r.direction || "out") === "out";
+      tr.innerHTML = `
+        <td>${FinanceFormat.formatFinanceDate(r.date)}</td>
+        <td><span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">${(r.type || 'expense').toUpperCase()}</span></td>
+        <td><code>${r.reference || '—'}</code></td>
+        <td><strong>${r.description || '—'}</strong></td>
+        <td>${r.account || '—'}</td>
+        <td style="text-align:center;"><span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">${(r.direction || 'out').toUpperCase()}</span></td>
+        <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? '#EF4444' : '#10B981'};">
+          ${isOut ? '-' : '+'}${FinanceFormat.formatMoney(r.amount || 0, r.currency || 'USD')}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("Failed to load drilldown data:", err);
+    showToast(err.message || "Failed to load drilldown details", "error");
+  } finally {
+    if (loading) loading.style.display = "none";
+  }
+}
+
+function closeReportDrilldownModal() {
+  const m = document.getElementById("reportDrilldownModal");
+  if (m) m.style.display = "none";
+}
+
+function exportDrilldownData() {
+  if (!_currentDrilldownRecords || _currentDrilldownRecords.length === 0) {
+    showToast("No records available to export", "info");
+    return;
+  }
+  const headers = ["Date", "Type", "Reference", "Description", "Account", "Direction", "Amount", "Currency"];
+  const rows = _currentDrilldownRecords.map((r) => [
+    `"${r.date || ''}"`,
+    `"${r.type || ''}"`,
+    `"${r.reference || ''}"`,
+    `"${(r.description || '').replace(/"/g, '""')}"`,
+    `"${(r.account || '').replace(/"/g, '""')}"`,
+    `"${r.direction || ''}"`,
+    r.amount || 0,
+    `"${r.currency || 'USD'}"`,
+  ]);
+  const csvContent = [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `drilldown_${_currentDrilldownContext.drilldownType || 'records'}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Drilldown records exported to CSV", "success");
+}
+
+// ----------------------------------------------------------------------
+// Export Menu & Handlers
+// ----------------------------------------------------------------------
+function toggleReportExportMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById("reportShellExportMenu");
+  if (menu) {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+}
+
+document.addEventListener("click", () => {
+  const menu = document.getElementById("reportShellExportMenu");
+  if (menu) menu.style.display = "none";
+});
+
+function exportActiveReport(format) {
+  const menu = document.getElementById("reportShellExportMenu");
+  if (menu) menu.style.display = "none";
+
+  if (format === "excel") {
+    if (_currentReportsTab === "category-summary") exportCategorySummaryExcel();
+    else if (_currentReportsTab === "matrix") exportMatrixExcel();
+    else if (_currentReportsTab === "balances") exportBalancesExcel();
+    else if (_currentReportsTab === "transactions") exportTransactionsExcel();
+    else if (_currentReportsTab === "cheques") exportChequesExcel();
+    else showToast("Excel export prepared for " + _activeReportKey, "info");
+  } else if (format === "csv") {
+    showToast("Generating CSV export for active report...", "info");
+    if (_currentReportsTab === "transactions") exportTransactionsExcel();
+    else exportCategorySummaryExcel();
+  } else if (format === "pdf") {
+    window.print();
   }
 }
 
@@ -145,8 +718,12 @@ async function loadReportCategorySummary() {
       const amt = Number(cat.total_amount || 0);
       const pct = Number(cat.percentage || 0);
 
+      tr.style.cursor = "pointer";
+      tr.title = "Click to drill down into underlying transactions";
+      tr.onclick = () => openReportDrilldown("category", cat.category_id || cat.category_name, cat.category_name);
+
       tr.innerHTML = `
-        <td><strong>${cat.category_name}</strong></td>
+        <td><strong style="color:var(--primary, #2563EB);">${cat.category_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
         <td><span class="badge ${cat.kind === 'cost' ? 'badge-danger' : 'badge-neutral'}">${(cat.kind || 'cost').toUpperCase()}</span></td>
         <td style="text-align:center;">${cat.transaction_count || 0}</td>
         <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.renderMoneyHtml(amt, reportCurr)}</td>
@@ -182,10 +759,10 @@ function exportCategorySummaryExcel() {
 }
 
 // ----------------------------------------------------------------------
-// Annual Spend Matrix
+// Annual Spend Matrix (Month/Quarter Cross-tab)
 // ----------------------------------------------------------------------
-function setMatrixPeriodGroup(grp, btn) {
-  _currentMatrixPeriodGroup = grp;
+function setMatrixPeriodGroup(group, btn) {
+  _currentMatrixPeriodGroup = group;
   const container = document.getElementById("reportMatrixPeriodTabs");
   if (container) {
     container.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
@@ -198,69 +775,71 @@ async function loadReportMatrix() {
   const loading = document.getElementById("reportMatrixLoadingBar");
   if (loading) loading.style.display = "block";
 
-  const yr = document.getElementById("reportMatrixYear")?.value || "2026";
-  const grp = _currentMatrixPeriodGroup || "month";
+  const year = document.getElementById("reportMatrixYear")?.value || "2026";
+  const thead = document.getElementById("reportMatrixTableHead");
+  const tbody = document.getElementById("reportMatrixTableBody");
+  const tfoot = document.getElementById("reportMatrixTableFoot");
+  const empty = document.getElementById("reportMatrixEmpty");
 
   try {
-    const report = await FinanceApi.getCategoryMatrixReport({ year: yr, period_group: grp });
+    const report = await FinanceApi.getMatrixReport({
+      year: parseInt(year, 10),
+      period_group: _currentMatrixPeriodGroup,
+    });
 
-    const thead = document.getElementById("reportMatrixTableHead");
-    const tbody = document.getElementById("reportMatrixTableBody");
-    const tfoot = document.getElementById("reportMatrixTableFoot");
-    const empty = document.getElementById("reportMatrixEmpty");
-
-    if (!thead || !tbody || !tfoot) return;
+    if (!thead || !tbody) return;
     thead.innerHTML = "";
     tbody.innerHTML = "";
-    tfoot.innerHTML = "";
+    if (tfoot) tfoot.innerHTML = "";
 
-    const labels = report.period_labels || [];
-    if (!report.rows || report.rows.length === 0) {
+    const periods = report.periods || [];
+    const rows = report.rows || [];
+
+    if (rows.length === 0) {
       if (empty) empty.style.display = "block";
       return;
     }
     if (empty) empty.style.display = "none";
 
-    // Header
-    const trHead = document.createElement("tr");
-    let headHtml = `<th style="min-width:180px;">Category</th>`;
-    labels.forEach((lbl) => {
-      headHtml += `<th style="text-align:right; min-width:80px;">${lbl}</th>`;
+    // Build Header
+    let hHtml = `<tr><th style="min-width:180px;">Category</th>`;
+    periods.forEach((p) => {
+      hHtml += `<th class="cell-money" style="text-align:right;">${p}</th>`;
     });
-    headHtml += `<th style="text-align:right; min-width:95px;">Total</th><th style="text-align:right; min-width:70px;">% Total</th>`;
-    trHead.innerHTML = headHtml;
-    thead.appendChild(trHead);
+    hHtml += `<th class="cell-money" style="text-align:right; min-width:110px;">Total Spent</th></tr>`;
+    thead.innerHTML = hHtml;
 
-    // Rows
-    report.rows.forEach((row) => {
-      const tr = document.createElement("tr");
-      let rowHtml = `<td><strong>${row.category_name}</strong></td>`;
-      labels.forEach((lbl) => {
-        const val = Number((row.periods && row.periods[lbl]) || 0);
-        rowHtml += `<td class="cell-money" style="text-align:right; font-variant-numeric:tabular-nums;">${val > 0 ? FinanceFormat.formatMoney(val, report.currency || "USD", { decimals: 0 }) : "—"}</td>`;
+    // Build Body Rows
+    rows.forEach((r) => {
+      let rHtml = `<tr><td><strong>${r.category_name}</strong></td>`;
+      periods.forEach((p) => {
+        const val = Number((r.period_values && r.period_values[p]) || 0);
+        rHtml += `<td class="cell-money" style="text-align:right; ${val > 0 ? 'font-weight:600;' : 'color:var(--text-muted);'}">
+          ${val > 0 ? FinanceFormat.renderMoneyHtml(val, "USD") : "—"}
+        </td>`;
       });
-      const tot = Number(row.total || 0);
-      const pct = Number(row.percentage || 0);
-      rowHtml += `<td class="cell-money" style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">${FinanceFormat.renderMoneyHtml(tot, report.currency || "USD", { decimals: 0 })}</td>`;
-      rowHtml += `<td style="text-align:right; color:var(--text-muted); font-size:0.85rem;">${pct.toFixed(1)}%</td>`;
-      tr.innerHTML = rowHtml;
+      const rTot = Number(r.total || 0);
+      rHtml += `<td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.renderMoneyHtml(rTot, "USD")}</td></tr>`;
+      const tr = document.createElement("tr");
+      tr.innerHTML = rHtml;
       tbody.appendChild(tr);
     });
 
-    // Foot (Totals)
-    const trFoot = document.createElement("tr");
-    trFoot.style.borderTop = "2px solid var(--border-color, #E2E8F0)";
-    trFoot.style.fontWeight = "700";
-    let footHtml = `<td>Total Spend</td>`;
-    labels.forEach((lbl) => {
-      const tot = Number((report.period_totals && report.period_totals[lbl]) || 0);
-      footHtml += `<td class="cell-money" style="text-align:right; font-variant-numeric:tabular-nums;">${FinanceFormat.formatMoney(tot, report.currency || "USD", { decimals: 0 })}</td>`;
-    });
-    const yrTot = Number(report.year_total || 0);
-    footHtml += `<td class="cell-money" style="text-align:right; font-variant-numeric:tabular-nums; color:#EF4444;">${FinanceFormat.renderMoneyHtml(yrTot, report.currency || "USD", { decimals: 0 })}</td>`;
-    footHtml += `<td style="text-align:right;">100.0%</td>`;
-    trFoot.innerHTML = footHtml;
-    tfoot.appendChild(trFoot);
+    // Build Footer Totals
+    if (tfoot) {
+      let fHtml = `<tr><td>TOTAL</td>`;
+      periods.forEach((p) => {
+        const pTot = Number((report.period_totals && report.period_totals[p]) || 0);
+        fHtml += `<td class="cell-money" style="text-align:right; color:var(--text-main); font-weight:700;">
+          ${FinanceFormat.renderMoneyHtml(pTot, "USD")}
+        </td>`;
+      });
+      const gTot = Number(report.grand_total || 0);
+      fHtml += `<td class="cell-money" style="text-align:right; font-weight:800; font-size:1.05rem; color:#EF4444;">
+        ${FinanceFormat.renderMoneyHtml(gTot, "USD")}
+      </td></tr>`;
+      tfoot.innerHTML = fHtml;
+    }
   } catch (err) {
     console.error("Failed to load matrix report:", err);
     showToast(err.message || "Failed to load annual spend matrix", "error");
@@ -270,10 +849,10 @@ async function loadReportMatrix() {
 }
 
 function exportMatrixExcel() {
-  const yr = document.getElementById("reportMatrixYear")?.value || "2026";
-  const grp = _currentMatrixPeriodGroup || "month";
-  const url = FinanceApi.downloadExcelUrl("/api/finance/reports/category-by-period-matrix", { year: yr, period_group: grp });
-  triggerExcelDownload(url, `spend_matrix_${yr}_${grp}.xlsx`);
+  const year = document.getElementById("reportMatrixYear")?.value || "2026";
+  const params = { year: parseInt(year, 10), period_group: _currentMatrixPeriodGroup };
+  const url = FinanceApi.downloadExcelUrl("/api/finance/reports/matrix", params);
+  triggerExcelDownload(url, `spend_matrix_${year}_${_currentMatrixPeriodGroup}.xlsx`);
 }
 
 // ----------------------------------------------------------------------
@@ -319,9 +898,13 @@ async function loadReportBalances() {
       const bal = Number(acc.balance_as_of_date || 0);
       const isBank = acc.account_type === "bank";
 
+      tr.style.cursor = "pointer";
+      tr.title = "Click to drill down into account transactions";
+      tr.onclick = () => openReportDrilldown("account", acc.account_id, acc.account_name);
+
       tr.innerHTML = `
         <td>
-          <div style="font-weight:600;">${acc.account_name}</div>
+          <div style="font-weight:600; color:var(--primary, #2563EB);">${acc.account_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
         </td>
         <td>
           <span class="badge ${isBank ? 'badge-neutral' : 'badge-info'}">
@@ -374,76 +957,55 @@ async function loadReportTransactions() {
   const dir = document.getElementById("reportTxDirection")?.value || "";
   const search = document.getElementById("reportTxSearch")?.value || "";
 
-  const params = {};
+  const params = { limit: 200, offset: 0 };
   if (dateFrom) params.date_from = dateFrom;
   if (dateTo) params.date_to = dateTo;
-  if (accId) params.account_id = accId;
-  if (catId) params.category_id = catId;
+  if (accId) params.account_id = parseInt(accId, 10);
+  if (catId) params.category_id = parseInt(catId, 10);
   if (dir) params.direction = dir;
   if (search) params.search = search;
 
   try {
     const report = await FinanceApi.getTransactionsReport(params);
-
-    const inEl = document.getElementById("reportTxTotalInflows");
-    const outEl = document.getElementById("reportTxTotalOutflows");
-    const netEl = document.getElementById("reportTxNetChange");
-    const tbody = document.getElementById("reportTransactionsTableBody");
+    const tbody = document.getElementById("reportTxTableBody");
     const empty = document.getElementById("reportTxEmpty");
-
-    const inflows = Number(report.total_inflows || 0);
-    const outflows = Number(report.total_outflows || 0);
-    const net = Number(report.net_change || 0);
-
-    if (inEl) inEl.textContent = FinanceFormat.formatMoney(inflows, "USD", { showSign: true });
-    if (outEl) outEl.textContent = FinanceFormat.formatMoney(-outflows, "USD");
-    if (netEl) {
-      netEl.textContent = FinanceFormat.formatMoney(net, "USD", { showSign: true });
-      netEl.style.color = net >= 0 ? "#10B981" : "#EF4444";
-    }
 
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    if (!report.transactions || report.transactions.length === 0) {
+    const txs = report.transactions || [];
+    if (txs.length === 0) {
       if (empty) empty.style.display = "block";
       return;
     }
     if (empty) empty.style.display = "none";
 
-    report.transactions.forEach((tx) => {
+    txs.forEach((tx) => {
       const tr = document.createElement("tr");
-      const isIn = tx.direction === "in";
       const amt = Number(tx.amount || 0);
-      const run = Number(tx.running_balance || 0);
+      const isOut = tx.direction === "out";
 
       tr.innerHTML = `
-        <td style="font-variant-numeric:tabular-nums;">${FinanceFormat.formatFinanceDate(tx.date)}</td>
+        <td>${FinanceFormat.formatFinanceDate(tx.transaction_date)}</td>
         <td><strong>${tx.account_name}</strong></td>
-        <td>
-          <span class="badge ${isIn ? 'badge-success' : 'badge-danger'}">
-            <i class="fa-solid ${isIn ? 'fa-arrow-down-long' : 'fa-arrow-up-long'}"></i> ${isIn ? 'INFLOW' : 'OUTFLOW'}
+        <td><span class="badge badge-neutral">${tx.category_name}</span></td>
+        <td>${tx.payee_or_source || "—"}</td>
+        <td style="font-size:0.85rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.description || "—"}</td>
+        <td style="text-align:center;">
+          <span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">
+            <i class="fa-solid ${isOut ? 'fa-arrow-up' : 'fa-arrow-down'}"></i> ${tx.direction.toUpperCase()}
           </span>
         </td>
-        <td>${tx.category_name || "—"}</td>
-        <td>${tx.payment_type_name || "—"}</td>
-        <td>
-          <div>${tx.reference || "—"}</div>
-          ${tx.description ? `<div style="font-size:0.75rem; color:var(--text-muted);">${tx.description}</div>` : ""}
-          ${tx.cheque_number ? `<div style="font-size:0.75rem; color:#6366F1;"><i class="fa-solid fa-money-check"></i> Chq #${tx.cheque_number}</div>` : ""}
+        <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? '#EF4444' : '#10B981'};">
+          ${isOut ? '-' : '+'}${FinanceFormat.formatMoney(amt, tx.currency)}
         </td>
-        <td class="cell-money" style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">
-          ${FinanceFormat.renderMoneyHtml(isIn ? amt : -amt, tx.currency || "USD", { showSign: true })}
-        </td>
-        <td class="cell-money" style="text-align:right; color:var(--text-muted); font-variant-numeric:tabular-nums;">
-          ${FinanceFormat.renderMoneyHtml(run, tx.currency || "USD")}
-        </td>
+        <td>${FinanceFormat.formatStatusBadge("transaction", tx.status)}</td>
       `;
       tbody.appendChild(tr);
     });
   } catch (err) {
     console.error("Failed to load transactions report:", err);
-    showToast(err.message || "Failed to load transactions report", "error");
+    showToast(err.message || "Failed to load transaction ledger", "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -460,17 +1022,17 @@ function exportTransactionsExcel() {
   const params = {};
   if (dateFrom) params.date_from = dateFrom;
   if (dateTo) params.date_to = dateTo;
-  if (accId) params.account_id = accId;
-  if (catId) params.category_id = catId;
+  if (accId) params.account_id = parseInt(accId, 10);
+  if (catId) params.category_id = parseInt(catId, 10);
   if (dir) params.direction = dir;
   if (search) params.search = search;
 
   const url = FinanceApi.downloadExcelUrl("/api/finance/reports/transactions", params);
-  triggerExcelDownload(url, `transactions_ledger_${dateFrom || 'start'}_to_${dateTo || 'end'}.xlsx`);
+  triggerExcelDownload(url, `transaction_ledger_${dateFrom || 'start'}_to_${dateTo || 'end'}.xlsx`);
 }
 
 // ----------------------------------------------------------------------
-// Cheques Report
+// Cheque Register Report
 // ----------------------------------------------------------------------
 async function loadReportCheques() {
   const loading = document.getElementById("reportChequesLoadingBar");
@@ -485,33 +1047,36 @@ async function loadReportCheques() {
   try {
     const report = await FinanceApi.getChequesReport(params);
 
-    const s = report.summary || {};
-    const bySt = s.by_status || {};
+    // Update KPI Breakdown Cards
+    const tCount = document.getElementById("reportChequesTotalCount");
+    const tAmt = document.getElementById("reportChequesTotalAmount");
+    const iCount = document.getElementById("reportChequesIssuedCount");
+    const iAmt = document.getElementById("reportChequesIssuedAmount");
+    const cCount = document.getElementById("reportChequesClearedCount");
+    const cAmt = document.getElementById("reportChequesClearedAmount");
+    const bvCount = document.getElementById("reportChequesBouncedVoidedCount");
+    const bvAmt = document.getElementById("reportChequesBouncedVoidedAmount");
 
-    const totCntEl = document.getElementById("reportChequesTotalCount");
-    const totAmtEl = document.getElementById("reportChequesTotalAmount");
-    const issCntEl = document.getElementById("reportChequesIssuedCount");
-    const issAmtEl = document.getElementById("reportChequesIssuedAmount");
-    const clrCntEl = document.getElementById("reportChequesClearedCount");
-    const clrAmtEl = document.getElementById("reportChequesClearedAmount");
-    const bncCntEl = document.getElementById("reportChequesBouncedVoidedCount");
-    const bncAmtEl = document.getElementById("reportChequesBouncedVoidedAmount");
+    const sum = report.summary || {};
+    if (tCount) tCount.textContent = sum.total_count || 0;
+    if (tAmt) tAmt.textContent = FinanceFormat.formatMoney(sum.total_amount || 0, "USD");
 
-    if (totCntEl) totCntEl.textContent = s.total_count || 0;
-    if (totAmtEl) totAmtEl.textContent = FinanceFormat.formatMoney(s.total_amount, "USD");
-
+    const bySt = sum.by_status || {};
     const iss = bySt.issued || { count: 0, amount: 0 };
-    if (issCntEl) issCntEl.textContent = iss.count;
-    if (issAmtEl) issAmtEl.textContent = FinanceFormat.formatMoney(iss.amount, "USD");
-
     const clr = bySt.cleared || { count: 0, amount: 0 };
-    if (clrCntEl) clrCntEl.textContent = clr.count;
-    if (clrAmtEl) clrAmtEl.textContent = FinanceFormat.formatMoney(clr.amount, "USD");
+    const bnc = bySt.bounced || { count: 0, amount: 0 };
+    const voi = bySt.voided || { count: 0, amount: 0 };
 
-    const bnc = Number(bySt.bounced?.count || 0) + Number(bySt.voided?.count || 0);
-    const bncAmt = Number(bySt.bounced?.amount || 0) + Number(bySt.voided?.amount || 0);
-    if (bncCntEl) bncCntEl.textContent = bnc;
-    if (bncAmtEl) bncAmtEl.textContent = FinanceFormat.formatMoney(bncAmt, "USD");
+    if (iCount) iCount.textContent = iss.count;
+    if (iAmt) iAmt.textContent = FinanceFormat.formatMoney(iss.amount, "USD");
+
+    if (cCount) cCount.textContent = clr.count;
+    if (cAmt) cAmt.textContent = FinanceFormat.formatMoney(clr.amount, "USD");
+
+    const bvTotCount = (bnc.count || 0) + (voi.count || 0);
+    const bvTotAmt = (bnc.amount || 0) + (voi.amount || 0);
+    if (bvCount) bvCount.textContent = bvTotCount;
+    if (bvAmt) bvAmt.textContent = FinanceFormat.formatMoney(bvTotAmt, "USD");
 
     const tbody = document.getElementById("reportChequesTableBody");
     const empty = document.getElementById("reportChequesEmpty");
@@ -519,13 +1084,14 @@ async function loadReportCheques() {
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    if (!report.cheques || report.cheques.length === 0) {
+    const chks = report.cheques || [];
+    if (chks.length === 0) {
       if (empty) empty.style.display = "block";
       return;
     }
     if (empty) empty.style.display = "none";
 
-    report.cheques.forEach((chk) => {
+    chks.forEach((chk) => {
       const tr = document.createElement("tr");
       const amt = Number(chk.amount || 0);
 
@@ -573,9 +1139,28 @@ function triggerExcelDownload(url, filename) {
   document.body.removeChild(a);
 }
 
-// Window exports for Phase 8 Reports
+// Window exports
 window.switchFinanceReportsTab = switchFinanceReportsTab;
 window.loadFinanceReports = loadFinanceReports;
+window.loadReportLibrary = loadReportLibrary;
+window.filterReportLibraryByDomain = filterReportLibraryByDomain;
+window.filterReportLibraryCatalog = filterReportLibraryCatalog;
+window.openReportFromLibrary = openReportFromLibrary;
+window.backToReportLibrary = backToReportLibrary;
+window.onReportShellPeriodPresetChanged = onReportShellPeriodPresetChanged;
+window.onReportShellFilterChanged = onReportShellFilterChanged;
+window.refreshActiveReport = refreshActiveReport;
+window.loadSavedReportViews = loadSavedReportViews;
+window.applySelectedSavedView = applySelectedSavedView;
+window.openSaveReportViewModal = openSaveReportViewModal;
+window.closeSaveReportViewModal = closeSaveReportViewModal;
+window.submitSaveReportView = submitSaveReportView;
+window.deleteActiveReportView = deleteActiveReportView;
+window.openReportDrilldown = openReportDrilldown;
+window.closeReportDrilldownModal = closeReportDrilldownModal;
+window.exportDrilldownData = exportDrilldownData;
+window.toggleReportExportMenu = toggleReportExportMenu;
+window.exportActiveReport = exportActiveReport;
 window.loadReportCategorySummary = loadReportCategorySummary;
 window.exportCategorySummaryExcel = exportCategorySummaryExcel;
 window.setMatrixPeriodGroup = setMatrixPeriodGroup;
@@ -589,4 +1174,3 @@ window.exportTransactionsExcel = exportTransactionsExcel;
 window.loadReportCheques = loadReportCheques;
 window.exportChequesExcel = exportChequesExcel;
 window.triggerExcelDownload = triggerExcelDownload;
-

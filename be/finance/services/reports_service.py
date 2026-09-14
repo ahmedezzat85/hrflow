@@ -3,6 +3,7 @@ be/finance/services/reports_service.py
 Service layer for financial reporting, aggregation, point-in-time balance calculations,
 category spend rollups, and period matrices.
 """
+import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ from finance.models import (
     SalesInvoiceDB,
     BillDB,
     SubscriptionDB,
+    FinanceSavedReportViewDB,
 )
 
 
@@ -662,3 +664,358 @@ class ReportsService:
             },
             "cheques": cheques_list,
         }
+
+    # ------------------------------------------------------------------
+    # 6. Story 7.1: Standard Report Library Catalog & Shell Controls
+    # ------------------------------------------------------------------
+    def get_report_library(self) -> Dict[str, Any]:
+        """Returns standard report library organized into 6 core business question domains."""
+        categories = [
+            "Performance",
+            "Cash & Banking",
+            "Sales & Receivables",
+            "Spend & Payables",
+            "Payroll",
+            "Audit & Compliance",
+        ]
+        reports = [
+            # Performance
+            {
+                "key": "category-summary",
+                "title": "Category Spend Rollup",
+                "category": "Performance",
+                "business_question": "Where are company operational outflows being spent across budget categories?",
+                "description": "Monthly expense aggregation and budget percentage allocation mirroring the SPENT block.",
+                "icon": "fa-solid fa-chart-pie",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json", "xlsx"],
+                "required_permission": "finance.report.read",
+                "badge": "Core Spend",
+            },
+            {
+                "key": "matrix",
+                "title": "Annual Spend Matrix",
+                "category": "Performance",
+                "business_question": "How does category spend trend across months and fiscal quarters?",
+                "description": "Comprehensive cross-tabulation of category expenses across months or quarters with row totals.",
+                "icon": "fa-solid fa-table-cells",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json", "xlsx"],
+                "required_permission": "finance.report.read",
+                "badge": "Trend Analysis",
+            },
+            # Cash & Banking
+            {
+                "key": "balances",
+                "title": "Point-in-Time Balances",
+                "category": "Cash & Banking",
+                "business_question": "What was our cash and liquidity position on any specific historical date?",
+                "description": "Historical balance calculations for all active bank and cash accounts as of a cutoff date.",
+                "icon": "fa-solid fa-scale-balanced",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx"],
+                "required_permission": "finance.report.read",
+                "badge": "Liquidity",
+            },
+            {
+                "key": "cash-forecast",
+                "title": "Cash Position & 30/60/90-Day Forecast",
+                "category": "Cash & Banking",
+                "business_question": "What is our net projected cash flow and liquidity runway over the next 90 days?",
+                "description": "Forward-looking cash projections incorporating confirmed receivables, bills, and subscriptions.",
+                "icon": "fa-solid fa-chart-line",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Planning",
+            },
+            {
+                "key": "reconciliation-summary",
+                "title": "Bank Reconciliation Summary",
+                "category": "Cash & Banking",
+                "business_question": "Which bank accounts and monthly statement periods are reconciled, closed, or pending review?",
+                "description": "Overview of statement reconciliation completion status, book variances, and period locks.",
+                "icon": "fa-solid fa-file-invoice-dollar",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Control",
+            },
+            # Sales & Receivables
+            {
+                "key": "invoices-summary",
+                "title": "Customer Receivables & Sales Summary",
+                "category": "Sales & Receivables",
+                "business_question": "What is our revenue run rate and outstanding receivables exposure by customer?",
+                "description": "Sales invoice status breakdown, collections aging, and revenue channel distribution.",
+                "icon": "fa-solid fa-file-invoice",
+                "supported_basis": ["accrual", "cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Revenue",
+            },
+            # Spend & Payables
+            {
+                "key": "bills-summary",
+                "title": "Vendor Payables & Commitments Schedule",
+                "category": "Spend & Payables",
+                "business_question": "What vendor liabilities and upcoming disbursements are scheduled for payment?",
+                "description": "Vendor bill approval queues, payment readiness, and upcoming payment obligations.",
+                "icon": "fa-solid fa-receipt",
+                "supported_basis": ["accrual", "cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Payables",
+            },
+            {
+                "key": "subscriptions-summary",
+                "title": "Recurring Spend & SaaS Commitments",
+                "category": "Spend & Payables",
+                "business_question": "What are our recurring software, cloud infrastructure, and tool commitments?",
+                "description": "Active subscription contracts, upcoming renewal dates, and monthly equivalent run rates.",
+                "icon": "fa-solid fa-repeat",
+                "supported_basis": ["accrual", "cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Commitments",
+            },
+            # Payroll
+            {
+                "key": "payroll-summary",
+                "title": "Payroll Register & Compensation Outflows",
+                "category": "Payroll",
+                "business_question": "How much did net salaries, employee benefits, and payroll taxes cost per cycle?",
+                "description": "Monthly payroll register aggregation across active staff and department allocations.",
+                "icon": "fa-solid fa-users",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Payroll",
+            },
+            # Audit & Compliance
+            {
+                "key": "transactions",
+                "title": "Continuous Transaction Ledger",
+                "category": "Audit & Compliance",
+                "business_question": "What is the detailed, auditable transaction log across all accounts and categories?",
+                "description": "Filterable general ledger transaction journal with running balances and reference links.",
+                "icon": "fa-solid fa-list-check",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json", "xlsx"],
+                "required_permission": "finance.report.read",
+                "badge": "General Ledger",
+            },
+            {
+                "key": "cheques",
+                "title": "Cheque Register & Clear Status",
+                "category": "Audit & Compliance",
+                "business_question": "What is the status, clearing trail, and presentment date of all company issued cheques?",
+                "description": "Cheque register filtered by fiscal year and account with status breakdown.",
+                "icon": "fa-solid fa-money-check",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx"],
+                "required_permission": "finance.report.read",
+                "badge": "Audit",
+            },
+        ]
+        return {
+            "categories": categories,
+            "reports": reports,
+        }
+
+    # ------------------------------------------------------------------
+    # 7. Saved Report Views Management
+    # ------------------------------------------------------------------
+    def list_saved_views(
+        self, report_key: Optional[str] = None, user_email: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        q = self.db.query(FinanceSavedReportViewDB)
+        if report_key:
+            q = q.filter(FinanceSavedReportViewDB.report_key == report_key)
+        views = q.order_by(FinanceSavedReportViewDB.is_default.desc(), FinanceSavedReportViewDB.id.desc()).all()
+
+        results = []
+        for v in views:
+            filters_parsed = {}
+            if v.filters_json:
+                try:
+                    filters_parsed = json.loads(v.filters_json)
+                except Exception:
+                    filters_parsed = {}
+            results.append({
+                "id": v.id,
+                "report_key": v.report_key,
+                "view_name": v.view_name,
+                "filters": filters_parsed,
+                "created_by": v.created_by,
+                "created_at": v.created_at,
+                "is_default": v.is_default,
+            })
+        return results
+
+    def create_saved_view(
+        self,
+        report_key: str,
+        view_name: str,
+        filters: Dict[str, Any],
+        user_email: Optional[str] = None,
+        is_default: bool = False,
+    ) -> Dict[str, Any]:
+        if not view_name or not view_name.strip():
+            raise ValueError("View name cannot be empty.")
+
+        if is_default:
+            # Unset any existing default for this report
+            self.db.query(FinanceSavedReportViewDB).filter(
+                FinanceSavedReportViewDB.report_key == report_key,
+                FinanceSavedReportViewDB.is_default == True,
+            ).update({"is_default": False})
+
+        new_view = FinanceSavedReportViewDB(
+            report_key=report_key,
+            view_name=view_name.strip(),
+            filters_json=json.dumps(filters or {}),
+            created_by=user_email,
+            created_at=datetime.utcnow(),
+            is_default=is_default,
+        )
+        self.db.add(new_view)
+        self.db.commit()
+        self.db.refresh(new_view)
+
+        return {
+            "id": new_view.id,
+            "report_key": new_view.report_key,
+            "view_name": new_view.view_name,
+            "filters": filters or {},
+            "created_by": new_view.created_by,
+            "created_at": new_view.created_at,
+            "is_default": new_view.is_default,
+        }
+
+    def delete_saved_view(self, view_id: int) -> bool:
+        view = self.db.query(FinanceSavedReportViewDB).filter(FinanceSavedReportViewDB.id == view_id).first()
+        if not view:
+            return False
+        self.db.delete(view)
+        self.db.commit()
+        return True
+
+    # ------------------------------------------------------------------
+    # 8. Contextual Drill-Down Records
+    # ------------------------------------------------------------------
+    def get_report_drilldown(
+        self,
+        report_key: str,
+        drilldown_type: str,
+        drilldown_id: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        currency: Optional[str] = None,
+        entity: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Fetches the granular contributing ledger transactions or documents
+        for a clicked total, cell, or category in any report without losing context.
+        """
+        records = []
+        target_title = f"{report_key} - {drilldown_type}"
+        total_amount = 0.0
+
+        if drilldown_type in ("category", "category_spend"):
+            q = (
+                self.db.query(LedgerTransactionDB)
+                .join(FinanceBankAccountDB, LedgerTransactionDB.account_id == FinanceBankAccountDB.id)
+                .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
+            )
+            if drilldown_id and drilldown_id.isdigit():
+                cat_id = int(drilldown_id)
+                q = q.filter(LedgerTransactionDB.category_id == cat_id)
+                cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == cat_id).first()
+                if cat:
+                    target_title = f"Category: {cat.name}"
+            elif drilldown_id:
+                q = q.filter(TransactionCategoryDB.name.ilike(f"%{drilldown_id}%"))
+                target_title = f"Category: {drilldown_id}"
+
+            if date_from:
+                q = q.filter(LedgerTransactionDB.date >= date_from)
+            if date_to:
+                q = q.filter(LedgerTransactionDB.date <= date_to)
+            if currency and currency.upper() != "ALL":
+                q = q.filter(LedgerTransactionDB.currency == currency.upper())
+
+            # Operational outflows
+            q = q.filter(LedgerTransactionDB.direction == "out")
+            txs = q.order_by(LedgerTransactionDB.date.desc(), LedgerTransactionDB.id.desc()).limit(150).all()
+
+            for t in txs:
+                records.append({
+                    "id": t.id,
+                    "date": t.date,
+                    "account_name": t.account.account_name if t.account else "Unknown",
+                    "description": t.description,
+                    "reference": t.reference,
+                    "category": t.category.name if t.category else "Uncategorized",
+                    "counterparty": t.counterparty or "",
+                    "amount": round(t.amount, 2),
+                    "currency": t.currency,
+                    "direction": t.direction,
+                })
+                total_amount += t.amount
+
+        elif drilldown_type in ("account", "account_balance"):
+            q = self.db.query(LedgerTransactionDB)
+            if drilldown_id and drilldown_id.isdigit():
+                acc_id = int(drilldown_id)
+                q = q.filter(LedgerTransactionDB.account_id == acc_id)
+                acc = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == acc_id).first()
+                if acc:
+                    target_title = f"Account: {acc.account_name}"
+            if date_to:
+                q = q.filter(LedgerTransactionDB.date <= date_to)
+
+            txs = q.order_by(LedgerTransactionDB.date.desc(), LedgerTransactionDB.id.desc()).limit(150).all()
+            for t in txs:
+                records.append({
+                    "id": t.id,
+                    "date": t.date,
+                    "description": t.description,
+                    "reference": t.reference,
+                    "amount": round(t.amount, 2),
+                    "currency": t.currency,
+                    "direction": t.direction,
+                    "running_balance": round(t.running_balance, 2),
+                })
+                total_amount += (t.amount if t.direction == "in" else -t.amount)
+
+        elif drilldown_type in ("cheques", "cheque_status"):
+            q = self.db.query(FinanceChequeDB)
+            if drilldown_id and drilldown_id.lower() != "all":
+                q = q.filter(FinanceChequeDB.status == drilldown_id.lower())
+                target_title = f"Cheques Status: {drilldown_id.upper()}"
+            chqs = q.order_by(FinanceChequeDB.issue_date.desc()).limit(150).all()
+            for c in chqs:
+                records.append({
+                    "id": c.id,
+                    "cheque_number": c.cheque_number,
+                    "issue_date": c.issue_date,
+                    "clear_date": c.clear_date or "",
+                    "payee": c.payee,
+                    "amount": round(c.amount, 2),
+                    "currency": c.currency,
+                    "status": c.status,
+                    "purpose": c.purpose_type,
+                })
+                total_amount += c.amount
+
+        return {
+            "report_key": report_key,
+            "drilldown_type": drilldown_type,
+            "target_title": target_title,
+            "total_records": len(records),
+            "total_amount": round(total_amount, 2),
+            "currency": currency or "USD",
+            "records": records,
+        }
+

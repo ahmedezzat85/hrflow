@@ -4,7 +4,7 @@ Financial Reporting & Excel Export Router.
 All endpoints are gated with RBAC permission 'finance.report.read'.
 Supports dual-format responses: default JSON (for UI tables) and XLSX (for Excel download).
 """
-from typing import Dict, Any, Optional, Set
+from typing import Dict, Any, Optional, Set, List
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, Response, Path
 
@@ -13,7 +13,15 @@ from finance.deps import get_reports_service, get_attention_service, get_forecas
 from finance.services.reports_service import ReportsService
 from finance.services.attention_service import AttentionQueueService
 from finance.services.forecast_service import CashForecastService
-from finance.schemas import AttentionQueueResponse, AttentionReviewRequest, CashForecastResponse
+from finance.schemas import (
+    AttentionQueueResponse,
+    AttentionReviewRequest,
+    CashForecastResponse,
+    ReportLibraryResponse,
+    SavedReportViewCreate,
+    SavedReportViewResponse,
+    ReportDrilldownResponse,
+)
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
     export_category_summary_xlsx,
@@ -277,3 +285,98 @@ def get_cheques_report(
         )
 
     return data
+
+
+# =========================================================================
+# Story 7.1: Standard Report Library & Shell Endpoints
+# =========================================================================
+
+@router.get("/library", response_model=ReportLibraryResponse)
+def get_report_library(
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Returns the standard report library catalog grouped into 6 business question domains.
+    """
+    return service.get_report_library()
+
+
+@router.get("/saved-views", response_model=List[SavedReportViewResponse])
+def list_saved_report_views(
+    report_key: Optional[str] = Query(None, description="Filter by report key"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Lists saved filter definitions and preset views for reports.
+    """
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.list_saved_views(report_key=report_key, user_email=user_email)
+
+
+@router.post("/saved-views", response_model=SavedReportViewResponse)
+def create_saved_report_view(
+    req: SavedReportViewCreate,
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Saves a report view definition (filters, basis, period, currency) for one-click restoration.
+    """
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    try:
+        return service.create_saved_view(
+            report_key=req.report_key,
+            view_name=req.view_name,
+            filters=req.filters,
+            user_email=user_email,
+            is_default=req.is_default,
+        )
+    except ValueError as ex:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+
+
+@router.delete("/saved-views/{view_id}")
+def delete_saved_report_view(
+    view_id: int,
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Deletes a saved report view definition.
+    """
+    from fastapi import HTTPException, status
+    deleted = service.delete_saved_view(view_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved view not found")
+    return {"success": True, "id": view_id}
+
+
+@router.get("/drilldown", response_model=ReportDrilldownResponse)
+def get_report_drilldown(
+    report_key: str = Query(..., description="Report identifier"),
+    drilldown_type: str = Query(..., description="category | account | cheques | etc"),
+    drilldown_id: Optional[str] = Query(None, description="Identifier of category, account, etc"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    currency: Optional[str] = Query(None, description="Currency filter"),
+    entity: Optional[str] = Query(None, description="Entity filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Fetches the granular contributing ledger transactions or documents
+    for a clicked total, cell, or category in any report without losing context.
+    """
+    return service.get_report_drilldown(
+        report_key=report_key,
+        drilldown_type=drilldown_type,
+        drilldown_id=drilldown_id,
+        date_from=date_from,
+        date_to=date_to,
+        currency=currency,
+        entity=entity,
+    )
+
