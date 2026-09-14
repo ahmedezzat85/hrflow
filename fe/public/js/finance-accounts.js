@@ -122,7 +122,7 @@ function renderFinanceAccounts(items) {
         <span class="badge ${isCash ? "badge-info" : "badge-neutral"}">
           ${typeLabel}
         </span>
-        <code style="margin-left:4px;font-size:11.5px;">${acc.account_number || "—"}</code>
+        <code style="margin-left:4px;font-size:11.5px;">${FinanceFormat.formatMaskedAccountNumber(acc.account_number, isCash)}</code>
       </td>
       <td data-label="Currency"><strong>${acc.currency || "USD"}</strong></td>
       <td data-label="Book Balance" class="cell-money" style="text-align:right;font-weight:700;">
@@ -218,7 +218,8 @@ function openEditCompanyBankAccountModal(id) {
   if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = acc.country || "United States";
   document.getElementById("fCompanyBankName").value = acc.bank_name || "";
   document.getElementById("fCompanyAccountNumber").value = "";
-  document.getElementById("fCompanyAccountNumber").placeholder = acc.account_number + " (leave blank to keep unchanged)";
+  const maskedAccPlaceholder = FinanceFormat.formatMaskedAccountNumber(acc.account_number, acc.account_type === "cash");
+  document.getElementById("fCompanyAccountNumber").placeholder = maskedAccPlaceholder + " (leave blank to keep unchanged)";
 
   const currEl = document.getElementById("fCompanyCurrency");
   const currWarn = document.getElementById("fCompanyCurrencyWarning");
@@ -368,6 +369,7 @@ async function openAccountWorkspace(accountId, initialTab = "activity") {
   if (paneWorkspace) paneWorkspace.style.display = "block";
 
   try {
+    _isWorkspaceAccountNumberRevealed = false;
     const acc = await FinanceApi.getAccount(accountId, { reveal: false });
     _activeWorkspaceAccount = acc;
     renderWorkspaceHeader(acc);
@@ -422,7 +424,9 @@ function renderWorkspaceHeader(acc) {
     countryEl.innerHTML = `<i class="fa-solid fa-globe"></i> ${acc.country || "Global"}`;
   }
   if (idEl) {
-    idEl.textContent = acc.account_number;
+    idEl.textContent = _isWorkspaceAccountNumberRevealed
+      ? acc.account_number
+      : FinanceFormat.formatMaskedAccountNumber(acc.account_number, acc.account_type === "cash");
   }
   if (revBtn) {
     revBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Reveal';
@@ -468,7 +472,7 @@ async function revealWorkspaceAccountNumber() {
       _isWorkspaceAccountNumberRevealed = true;
     } else {
       const acc = await FinanceApi.getAccount(_activeWorkspaceAccountId, { reveal: false });
-      if (idEl) idEl.textContent = acc.account_number;
+      if (idEl) idEl.textContent = FinanceFormat.formatMaskedAccountNumber(acc.account_number, acc.account_type === "cash");
       if (btn) btn.innerHTML = '<i class="fa-solid fa-eye"></i> Reveal';
       _isWorkspaceAccountNumberRevealed = false;
     }
@@ -1184,7 +1188,8 @@ async function viewAccountLedger(accountId) {
     if (metaEl) {
       const typeLabel = (acc.account_type || "bank").toUpperCase();
       const institution = acc.bank_name || "Cash Custody";
-      metaEl.textContent = `${typeLabel} · ${institution} · ${acc.currency} · ${acc.account_number}`;
+      const maskedNum = FinanceFormat.formatMaskedAccountNumber(acc.account_number, acc.account_type === "cash");
+  metaEl.textContent = `${typeLabel} · ${institution} · ${acc.currency} · ${maskedNum}`;
     }
     if (balEl) {
       const symbol = acc.currency === "EGP" ? "E£" : "$";

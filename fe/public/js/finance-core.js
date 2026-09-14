@@ -273,6 +273,16 @@ const FinanceFormat = {
     const label = options.customLabel || item.label;
     return `<span class="badge ${item.badgeClass} status-badge-wrap" role="status" aria-label="Status: ${label}"><i class="${item.icon}" aria-hidden="true"></i> ${label}</span>`;
   },
+
+  formatMaskedAccountNumber(raw, isCash = false) {
+    if (!raw) return "—";
+    const str = String(raw).trim();
+    if (!str || str === "—" || str === "--") return "—";
+    if (isCash) return str;
+    if (str.length <= 4) return str;
+    const last4 = str.slice(-4);
+    return `•••• ${last4}`;
+  },
 };
 
 // Global aliases for convenience
@@ -281,6 +291,7 @@ window.formatMoney = FinanceFormat.formatMoney.bind(FinanceFormat);
 window.renderMoneyHtml = FinanceFormat.renderMoneyHtml.bind(FinanceFormat);
 window.formatFinanceDate = FinanceFormat.formatFinanceDate.bind(FinanceFormat);
 window.formatStatusBadge = FinanceFormat.formatStatusBadge.bind(FinanceFormat);
+window.formatMaskedAccountNumber = FinanceFormat.formatMaskedAccountNumber.bind(FinanceFormat);
 window.getDerivedInvoiceStatus = FinanceFormat.getDerivedInvoiceStatus.bind(FinanceFormat);
 window.getDerivedBillStatus = FinanceFormat.getDerivedBillStatus.bind(FinanceFormat);
 

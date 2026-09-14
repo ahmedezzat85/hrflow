@@ -1194,7 +1194,7 @@ async function loadReportBalances() {
           </span>
         </td>
         <td>${acc.bank_name || "—"}</td>
-        <td><code style="font-size:0.85rem;">${acc.account_number}</code></td>
+        <td><code style="font-size:0.85rem;">${FinanceFormat.formatMaskedAccountNumber(acc.account_number, !isBank)}</code></td>
         <td>${acc.country || "—"}</td>
         <td><strong>${acc.currency}</strong></td>
         <td class="cell-money" style="text-align:right; color:var(--text-muted);">${FinanceFormat.renderMoneyHtml(op, acc.currency)}</td>
