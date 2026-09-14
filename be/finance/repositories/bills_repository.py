@@ -56,6 +56,7 @@ class BillsRepository:
         queue: Optional[str] = None,
         vendor_id: Optional[int] = None,
         search: Optional[str] = None,
+        has_attachment: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[BillDB]:
@@ -86,6 +87,10 @@ class BillsRepository:
 
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
+        if has_attachment is True:
+            query = query.filter(BillDB.attachment_url.isnot(None), BillDB.attachment_url != "")
+        elif has_attachment is False:
+            query = query.filter(or_(BillDB.attachment_url.is_(None), BillDB.attachment_url == ""))
         if search:
             s = f"%{search.strip()}%"
             query = query.join(VendorDB, isouter=True).filter(
@@ -93,6 +98,7 @@ class BillsRepository:
                     BillDB.bill_number.ilike(s),
                     VendorDB.name.ilike(s),
                     BillDB.department.ilike(s),
+                    BillDB.category.ilike(s),
                 )
             )
         return (
@@ -101,6 +107,35 @@ class BillsRepository:
             .limit(limit)
             .all()
         )
+
+    def update_attachment(
+        self,
+        bill_id: int,
+        attachment_name: str,
+        attachment_url: str,
+        file_fingerprint: Optional[str] = None,
+    ) -> Optional[BillDB]:
+        bill = self.get_by_id(bill_id)
+        if not bill:
+            return None
+        bill.attachment_name = attachment_name
+        bill.attachment_url = attachment_url
+        if file_fingerprint:
+            bill.file_fingerprint = file_fingerprint
+        self.db.commit()
+        self.db.refresh(bill)
+        return self._load_bill_full(bill_id)
+
+    def delete_attachment(self, bill_id: int) -> Optional[BillDB]:
+        bill = self.get_by_id(bill_id)
+        if not bill:
+            return None
+        bill.attachment_name = None
+        bill.attachment_url = None
+        bill.file_fingerprint = None
+        self.db.commit()
+        self.db.refresh(bill)
+        return self._load_bill_full(bill_id)
 
     def get_queue_counts(self, vendor_id: Optional[int] = None) -> dict:
         query = self.db.query(BillDB)

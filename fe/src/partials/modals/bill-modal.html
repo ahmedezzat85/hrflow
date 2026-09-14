@@ -29,8 +29,19 @@
             <input type="file" id="billCameraInput" accept="image/*" capture="environment" style="display: none;" onclick="event.stopPropagation()" onchange="handleBillFileSelected(event)">
           </div>
           <div id="billFileAttachedInfo" style="display:none; margin-top:10px; font-size:0.85rem; font-weight:600; color:var(--success, #10b981);">
-            <i class="fa-solid fa-circle-check"></i> <span id="billAttachedFileName">document.pdf</span>
-            <span id="billExtractionConfidenceBadge" class="badge badge-info" style="margin-left: 8px;">Confidence: 94%</span>
+            <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <i class="fa-solid fa-circle-check"></i> <span id="billAttachedFileName">document.pdf</span>
+              <span id="billExtractionConfidenceBadge" class="badge badge-info" style="margin-left: 8px;">Confidence: 94%</span>
+              <button type="button" class="btn btn-sm btn-outline" id="billAttachedFilePreviewBtn" onclick="event.stopPropagation(); previewCurrentModalBillDocument();" style="margin-left:8px; padding:2px 8px; font-size:0.75rem;">
+                <i class="fa-solid fa-eye"></i> Preview
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="billAttachedFileDownloadBtn" onclick="event.stopPropagation(); downloadCurrentModalBillDocument();" style="padding:2px 8px; font-size:0.75rem;">
+                <i class="fa-solid fa-download"></i> Download
+              </button>
+              <button type="button" class="btn btn-sm btn-outline btn-danger" id="billAttachedFileRemoveBtn" onclick="event.stopPropagation(); removeBillModalAttachment();" style="padding:2px 8px; font-size:0.75rem;">
+                <i class="fa-solid fa-trash-can"></i> Remove
+              </button>
+            </div>
           </div>
         </div>
       </div>

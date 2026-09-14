@@ -16,6 +16,11 @@
                 <option value="overdue">Overdue</option>
                 <option value="void">Void</option>
               </select>
+              <select id="financeBillAttachmentFilter" class="form-control filter-select" aria-label="Filter bills by attachment" onchange="applyAndRenderBills()">
+                <option value="">All Documents</option>
+                <option value="with_attachment">Has Attachment</option>
+                <option value="no_attachment">No Attachment</option>
+              </select>
               <div class="search-box" id="financeVendorSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeVendorSearch" placeholder="Search vendors..." aria-label="Search vendors" oninput="filterFinanceVendors(this.value)">

@@ -2,9 +2,13 @@
 be/finance/services/bills_service.py
 Business logic and validation for Vendor Bills and outgoing Payments.
 """
+import os
+import uuid
+import hashlib
+import mimetypes
 from datetime import datetime
-from typing import List, Optional
-from fastapi import HTTPException, status
+from typing import List, Optional, Tuple
+from fastapi import HTTPException, status, UploadFile
 
 from finance.repositories.bills_repository import BillsRepository
 from finance.schemas import (
@@ -41,9 +45,15 @@ VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
 
 
+BILL_UPLOADS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "finance_bills"
+)
+
+
 class BillsService:
     def __init__(self, repo: BillsRepository):
         self.repo = repo
+        os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Serialization helpers
@@ -135,6 +145,7 @@ class BillsService:
         queue: Optional[str] = None,
         vendor_id: Optional[int] = None,
         search: Optional[str] = None,
+        has_attachment: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[BillResponse]:
@@ -144,7 +155,13 @@ class BillsService:
                 detail=f"Invalid status '{status}'. Must be one of: {', '.join(VALID_BILL_STATUSES)}",
             )
         bills = self.repo.list_all(
-            status=status, queue=queue, vendor_id=vendor_id, search=search, limit=limit, offset=offset
+            status=status,
+            queue=queue,
+            vendor_id=vendor_id,
+            search=search,
+            has_attachment=has_attachment,
+            limit=limit,
+            offset=offset,
         )
         return [self._bill_to_response(b) for b in bills]
 
@@ -438,3 +455,80 @@ class BillsService:
             raise HTTPException(status_code=400, detail=str(e))
 
         return self._payment_to_response(payment)
+
+    # ------------------------------------------------------------------
+    # Document Attachment Storage (FUX-407)
+    # ------------------------------------------------------------------
+    async def upload_attachment(self, bill_id: int, file: UploadFile) -> BillResponse:
+        bill = self.repo.get_by_id(bill_id)
+        if not bill:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+
+        if not file or not file.filename:
+            raise HTTPException(status_code=400, detail="A valid file is required for attachment upload.")
+
+        safe_filename = os.path.basename(file.filename)
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file cannot be empty.")
+
+        fingerprint = hashlib.sha256(content).hexdigest()
+        unique_name = f"{uuid.uuid4().hex}_{safe_filename}"
+        file_path = os.path.join(BILL_UPLOADS_DIR, unique_name)
+
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        # Store persistent local file path in attachment_url
+        updated = self.repo.update_attachment(
+            bill_id=bill_id,
+            attachment_name=safe_filename,
+            attachment_url=file_path,
+            file_fingerprint=fingerprint,
+        )
+        return self._bill_to_response(updated)
+
+    def get_attachment_file(self, bill_id: int) -> Tuple[str, str, str]:
+        """Returns (file_path, filename, media_type) for streaming attachment."""
+        bill = self.repo.get_by_id(bill_id)
+        if not bill:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+
+        if not bill.attachment_url:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} has no attachment")
+
+        file_path = bill.attachment_url
+        if not os.path.isabs(file_path):
+            file_path = os.path.join(BILL_UPLOADS_DIR, file_path)
+
+        if not os.path.isfile(file_path):
+            raise HTTPException(status_code=404, detail="Attachment file not found on disk")
+
+        filename = bill.attachment_name or os.path.basename(file_path)
+        mime_type, _ = mimetypes.guess_type(filename)
+        mime_type = mime_type or "application/octet-stream"
+
+        return file_path, filename, mime_type
+
+    def delete_attachment(self, bill_id: int) -> BillResponse:
+        bill = self.repo.get_by_id(bill_id)
+        if not bill:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+
+        if not bill.attachment_url and not bill.attachment_name:
+            raise HTTPException(status_code=400, detail="Bill has no attachment to delete")
+
+        # Optionally remove local file from disk if it exists
+        if bill.attachment_url:
+            file_path = bill.attachment_url
+            if not os.path.isabs(file_path):
+                file_path = os.path.join(BILL_UPLOADS_DIR, file_path)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            except OSError:
+                pass
+
+        updated = self.repo.delete_attachment(bill_id)
+        return self._bill_to_response(updated)
+

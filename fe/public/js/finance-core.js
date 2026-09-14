@@ -1294,18 +1294,26 @@ const FinanceDrawer = {
       if (!attachments.length) {
         attachList.innerHTML = getEmptyStateHtml("No documents attached to this record.", "fa-solid fa-paperclip");
       } else {
+        const isBill = this.current?.entityType === "bill" || data.entity_type === "bill";
+        const targetId = this.current?.entityId || data.entity_id;
         attachList.innerHTML = attachments.map((att) => `
-          <div class="related-record-card" style="cursor:default;">
+          <div class="related-record-card" style="cursor:default; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:10px;">
               <i class="fa-solid fa-file-pdf" style="font-size:1.4rem; color:var(--danger, #ef4444);"></i>
               <div>
                 <div style="font-weight:600; font-size:0.88rem; color:var(--text);">${att.file_name}</div>
-                <div style="font-size:0.75rem; color:var(--text3);">${(att.file_size / 1024).toFixed(1)} KB • Uploaded ${att.uploaded_at ? FinanceFormat.formatFinanceDate(att.uploaded_at) : "recently"}</div>
+                <div style="font-size:0.75rem; color:var(--text3);">${att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB • ` : ""}Uploaded ${att.uploaded_at ? FinanceFormat.formatFinanceDate(att.uploaded_at) : "recently"}</div>
               </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline" onclick="showToast('Document preview loaded', 'info')">
-              <i class="fa-solid fa-eye"></i> Preview
-            </button>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn btn-sm btn-outline btn-drawer-preview-attachment" onclick="${isBill ? `previewBillDocument(${targetId})` : `showToast('Document preview loaded', 'info')`}">
+                <i class="fa-solid fa-eye"></i> Preview
+              </button>
+              ${isBill ? `
+              <button type="button" class="btn btn-sm btn-outline btn-drawer-download-attachment" onclick="downloadBillAttachment(${targetId})">
+                <i class="fa-solid fa-download"></i> Download
+              </button>` : ""}
+            </div>
           </div>
         `).join("");
       }

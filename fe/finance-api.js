@@ -49,10 +49,10 @@ const FinanceMockState = {
   bills: [
     { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
     { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
-    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
+    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
     { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
     { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
-    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
+    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
   ],
   payments: [],
   billPayments: [
@@ -757,9 +757,13 @@ const FinanceApi = {
         list = list.filter((b) => b.status === params.status);
       }
       if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
+      if (params && params.has_attachment !== undefined && params.has_attachment !== null && params.has_attachment !== "") {
+        const hasAtt = String(params.has_attachment).toLowerCase() === "true" || params.has_attachment === true;
+        list = list.filter((b) => hasAtt ? !!(b.attachment_name || b.attachment_url) : !(b.attachment_name || b.attachment_url));
+      }
       if (params && params.search) {
         const s = params.search.toLowerCase();
-        list = list.filter((b) => (b.bill_number && b.bill_number.toLowerCase().includes(s)) || (b.vendor_name || "").toLowerCase().includes(s) || (b.department || "").toLowerCase().includes(s));
+        list = list.filter((b) => (b.bill_number && b.bill_number.toLowerCase().includes(s)) || (b.vendor_name || "").toLowerCase().includes(s) || (b.department || "").toLowerCase().includes(s) || (b.category || "").toLowerCase().includes(s));
       }
       return list;
     }
@@ -1051,6 +1055,49 @@ const FinanceApi = {
       return payment;
     }
     return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload);
+  },
+
+  async uploadBillAttachment(billId, file) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
+      if (!bill) throw new Error("Bill not found");
+      const filename = file?.name || "uploaded_bill.pdf";
+      bill.attachment_name = filename;
+      bill.attachment_url = `/api/finance/bills/${bill.id}/attachment`;
+      bill.file_fingerprint = "sha256-mock-" + Date.now();
+      return bill;
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiRequest("POST", `/api/finance/bills/${billId}/attachment`, formData);
+  },
+
+  async deleteBillAttachment(billId) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
+      if (!bill) throw new Error("Bill not found");
+      bill.attachment_name = null;
+      bill.attachment_url = null;
+      bill.file_fingerprint = null;
+      return bill;
+    }
+    return apiRequest("DELETE", `/api/finance/bills/${billId}/attachment`);
+  },
+
+  async getBillAttachmentBlobUrl(billId) {
+    if (_isMock()) {
+      // Create a mock sample text/pdf blob URL
+      const sampleContent = `%PDF-1.4\n% Mock bill attachment document for bill #${billId}\n1 0 obj\n<< /Title (Bill ${billId}) >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF`;
+      const blob = new Blob([sampleContent], { type: "application/pdf" });
+      return URL.createObjectURL(blob);
+    }
+    const token = typeof TokenStore !== "undefined" ? TokenStore.get() : null;
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`/api/finance/bills/${billId}/attachment`, { headers, credentials: "include" });
+    if (!res.ok) throw new Error(`Failed to load attachment: ${res.statusText}`);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
   },
 
   getPayrollRuns() {
@@ -5511,17 +5558,17 @@ const FinanceApi = {
             ],
           },
           related_records: related,
-          attachments: [
+          attachments: (bill.attachment_name || bill.attachment_url) ? [
             {
-              id: 2,
-              file_name: `${bill.bill_number}_receipt.pdf`,
+              id: bill.id,
+              file_name: bill.attachment_name || `${bill.bill_number}_receipt.pdf`,
               file_size: 154800,
               mime_type: "application/pdf",
-              storage_ref: "gdrive://bills/bill.pdf",
+              storage_ref: `/api/finance/bills/${bill.id}/attachment`,
               uploaded_at: bill.created_at || "2026-09-01T08:00:00Z",
-              uploaded_by: "ap@voyancemed.com",
+              uploaded_by: bill.created_by || "ap@voyancemed.com",
             },
-          ],
+          ] : [],
           timeline,
         };
       } else if (norm === "transaction") {

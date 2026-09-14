@@ -6,7 +6,8 @@ Full CRUD + payment recording, gated with RBAC permissions:
  - finance.bill.write (create, update, void, record payment)
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, UploadFile, File
+from fastapi.responses import FileResponse
 
 from core.permissions import require_permission
 from finance.schemas import (
@@ -55,6 +56,7 @@ def list_vendor_bills(
     queue: Optional[str] = Query(None, description="AP Inbox work queue: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|all"),
     vendor_id: Optional[int] = Query(None, description="Filter by vendor ID"),
     search: Optional[str] = Query(None, description="Search by bill number, vendor name, or department"),
+    has_attachment: Optional[bool] = Query(None, description="Filter bills having or missing attachment"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_permission("finance.bill.read")),
@@ -62,7 +64,13 @@ def list_vendor_bills(
 ):
     """List vendor bills with optional queue, status, vendor, and search filters."""
     return service.list_bills(
-        status=status, queue=queue, vendor_id=vendor_id, search=search, limit=limit, offset=offset
+        status=status,
+        queue=queue,
+        vendor_id=vendor_id,
+        search=search,
+        has_attachment=has_attachment,
+        limit=limit,
+        offset=offset,
     )
 
 
@@ -203,3 +211,49 @@ def reverse_bill_payment(
         req=payload,
         current_user=current_user,
     )
+
+
+# ── Attachments (FUX-407) ─────────────────────────────────────────────────────
+
+@router.post("/{bill_id}/attachment", response_model=BillResponse)
+async def upload_bill_attachment(
+    bill_id: int,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Upload or replace a document attachment on a vendor bill.
+    Stores the binary file on disk, generates SHA-256 fingerprint, and updates bill metadata.
+    """
+    return await service.upload_attachment(bill_id=bill_id, file=file)
+
+
+@router.get("/{bill_id}/attachment")
+def get_bill_attachment(
+    bill_id: int,
+    current_user: dict = Depends(require_permission("finance.bill.read")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Download or stream the stored document attachment for a vendor bill.
+    """
+    file_path, filename, media_type = service.get_attachment_file(bill_id)
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type=media_type,
+    )
+
+
+@router.delete("/{bill_id}/attachment", response_model=BillResponse)
+def delete_bill_attachment(
+    bill_id: int,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Delete the attached document from a vendor bill and remove storage references.
+    """
+    return service.delete_attachment(bill_id=bill_id)
+

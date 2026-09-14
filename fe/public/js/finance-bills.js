@@ -104,16 +104,25 @@ function applyAndRenderBills() {
   const state = FinanceTable.getState("finance_bills");
   const statusFilter = document.getElementById("financeBillStatusFilter");
   const searchInput = document.getElementById("financeBillSearch");
+  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
 
   const currentStatus = statusFilter ? statusFilter.value : "";
   const currentSearch = searchInput ? searchInput.value.trim() : "";
+  const currentAttachment = attachmentFilter ? attachmentFilter.value : "";
 
   state.filters = {
     ...(currentStatus ? { status: currentStatus } : {}),
     ...(currentSearch ? { search: currentSearch } : {}),
+    ...(currentAttachment ? { attachment: currentAttachment } : {}),
   };
 
   let items = FinanceState.bills || [];
+  if (currentAttachment === "with_attachment") {
+    items = items.filter((b) => !!(b.attachment_name || b.attachment_url));
+  } else if (currentAttachment === "no_attachment") {
+    items = items.filter((b) => !(b.attachment_name || b.attachment_url));
+  }
+
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
     items = items.filter((bill) =>
@@ -154,11 +163,15 @@ function applyAndRenderBills() {
       } else if (removedKey === "search" && searchInput) {
         searchInput.value = "";
         applyAndRenderBills();
+      } else if (removedKey === "attachment" && attachmentFilter) {
+        attachmentFilter.value = "";
+        applyAndRenderBills();
       }
     },
     () => {
       if (statusFilter) statusFilter.value = "";
       if (searchInput) searchInput.value = "";
+      if (attachmentFilter) attachmentFilter.value = "";
       loadFinanceBills();
     }
   );
@@ -233,6 +246,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
         </div>
       </td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${(bill.attachment_name || bill.attachment_url) ? `<button class="btn btn-sm btn-outline btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip"></i></button>` : ""}
         <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${(derivedStatus === "needs_approval" || (bill.requires_approval && bill.approval_status !== "approved")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
@@ -261,7 +275,12 @@ async function _populateBillVendorDropdown() {
   } catch (_) {}
 }
 
+let _currentModalPendingFile = null;
+let _currentModalAttachmentBillId = null;
+
 function _resetBillCaptureSection() {
+  _currentModalPendingFile = null;
+  _currentModalAttachmentBillId = null;
   const fileInput = document.getElementById("billFileInput");
   const fileAttached = document.getElementById("billFileAttachedInfo");
   const fileName = document.getElementById("billAttachedFileName");
@@ -360,6 +379,7 @@ async function handleBillFileSelected(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
+  _currentModalPendingFile = file;
   const fileInfo = document.getElementById("billFileAttachedInfo");
   const fileNameSpan = document.getElementById("billAttachedFileName");
   const confidenceBadge = document.getElementById("billExtractionConfidenceBadge");
@@ -511,11 +531,12 @@ async function openEditBillModal(billId) {
     document.getElementById("billNotes").value = bill.notes || "";
     document.getElementById("billIsReviewed").checked = !!bill.is_reviewed;
 
-    if (bill.attachment_name) {
+    if (bill.attachment_name || bill.attachment_url) {
+      _currentModalAttachmentBillId = bill.id;
       const fileInfo = document.getElementById("billFileAttachedInfo");
       const fileNameSpan = document.getElementById("billAttachedFileName");
       const confidenceBadge = document.getElementById("billExtractionConfidenceBadge");
-      if (fileNameSpan) fileNameSpan.textContent = bill.attachment_name;
+      if (fileNameSpan) fileNameSpan.textContent = bill.attachment_name || "bill_attachment.pdf";
       if (fileInfo) fileInfo.style.display = "block";
       if (confidenceBadge && bill.extraction_confidence != null) {
         confidenceBadge.style.display = "inline-block";
@@ -653,13 +674,25 @@ async function saveBillModal() {
   const btn = document.getElementById("billModalSaveBtn");
   if (btn) btn.disabled = true;
   try {
+    let savedBill = null;
     if (billId) {
-      await FinanceApi.updateBill(billId, payload);
+      savedBill = await FinanceApi.updateBill(billId, payload);
       showToast("Bill updated", "success");
     } else {
-      await FinanceApi.createBill(payload);
+      savedBill = await FinanceApi.createBill(payload);
       showToast("Bill created", "success");
     }
+
+    // If a new physical file was chosen, upload it to durable attachment storage
+    if (_currentModalPendingFile && savedBill && savedBill.id) {
+      try {
+        await FinanceApi.uploadBillAttachment(savedBill.id, _currentModalPendingFile);
+      } catch (uploadErr) {
+        console.warn("Failed to upload bill attachment:", uploadErr);
+        showToast("Bill saved, but attachment upload failed: " + (uploadErr.message || uploadErr), "warning");
+      }
+    }
+
     closeBillModal();
     loadFinanceBills();
   } catch (err) {
@@ -1395,3 +1428,147 @@ window.onVendorFieldInput = onVendorFieldInput;
 window.openVendor360Drawer = openVendor360Drawer;
 window.saveVendorPaymentInstruction = saveVendorPaymentInstruction;
 window.verifyVendorPaymentInstructionItem = verifyVendorPaymentInstructionItem;
+
+// ── Attachment Document Preview & Download (FUX-407) ─────────────────────────
+
+async function previewBillDocument(billId) {
+  try {
+    const modal = document.getElementById("documentPreviewModal");
+    const container = document.getElementById("docPreviewContainer");
+    const title = document.getElementById("docPreviewTitle");
+    const downloadBtn = document.getElementById("docPreviewDownloadBtn");
+
+    if (!modal || !container) {
+      showToast("Document preview modal not found", "error");
+      return;
+    }
+
+    const bill = (FinanceState.bills || []).find((b) => b.id === parseInt(billId, 10)) || { bill_number: `#${billId}` };
+    const fileName = bill.attachment_name || `Bill_${bill.bill_number}.pdf`;
+
+    if (title) title.textContent = `Attachment: ${fileName}`;
+    container.innerHTML = '<div style="color:var(--text3); padding:20px; font-size:14px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading document preview...</div>';
+
+    if (modal.classList) {
+      modal.classList.add("active");
+    } else {
+      modal.style.display = "flex";
+    }
+
+    const blobUrl = await FinanceApi.getBillAttachmentBlobUrl(billId);
+    if (downloadBtn) {
+      downloadBtn.href = blobUrl;
+      downloadBtn.download = fileName;
+    }
+
+    const isPdf = fileName.toLowerCase().endsWith(".pdf") || fileName.toLowerCase().includes(".pdf");
+    if (isPdf) {
+      container.innerHTML = `<iframe src="${blobUrl}" style="width:100%; height:75vh; border:none; background:var(--surface);"></iframe>`;
+    } else {
+      container.innerHTML = `<img src="${blobUrl}" alt="Attachment preview" style="max-width:100%; max-height:75vh; object-fit:contain;">`;
+    }
+  } catch (err) {
+    showToast("Failed to preview bill document: " + (err.message || err), "error");
+  }
+}
+
+async function downloadBillAttachment(billId) {
+  try {
+    const bill = (FinanceState.bills || []).find((b) => b.id === parseInt(billId, 10));
+    const fileName = bill?.attachment_name || `Bill_${billId}.pdf`;
+    const blobUrl = await FinanceApi.getBillAttachmentBlobUrl(billId);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (err) {
+    showToast("Failed to download bill attachment: " + (err.message || err), "error");
+  }
+}
+
+async function previewCurrentModalBillDocument() {
+  if (_currentModalPendingFile) {
+    const url = URL.createObjectURL(_currentModalPendingFile);
+    const modal = document.getElementById("documentPreviewModal");
+    const container = document.getElementById("docPreviewContainer");
+    const title = document.getElementById("docPreviewTitle");
+    const downloadBtn = document.getElementById("docPreviewDownloadBtn");
+    if (title) title.textContent = `Attachment: ${_currentModalPendingFile.name}`;
+    if (downloadBtn) {
+      downloadBtn.href = url;
+      downloadBtn.download = _currentModalPendingFile.name;
+    }
+    if (modal) modal.classList.add("active");
+    if (_currentModalPendingFile.name.toLowerCase().endsWith(".pdf")) {
+      container.innerHTML = `<iframe src="${url}" style="width:100%; height:75vh; border:none; background:var(--surface);"></iframe>`;
+    } else {
+      container.innerHTML = `<img src="${url}" alt="Preview" style="max-width:100%; max-height:75vh; object-fit:contain;">`;
+    }
+    return;
+  }
+  const billId = _currentModalAttachmentBillId || document.getElementById("billModalId")?.value;
+  if (billId) {
+    previewBillDocument(billId);
+  } else {
+    showToast("No attachment available to preview", "info");
+  }
+}
+
+async function downloadCurrentModalBillDocument() {
+  if (_currentModalPendingFile) {
+    const url = URL.createObjectURL(_currentModalPendingFile);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = _currentModalPendingFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+  const billId = _currentModalAttachmentBillId || document.getElementById("billModalId")?.value;
+  if (billId) {
+    downloadBillAttachment(billId);
+  } else {
+    showToast("No attachment available to download", "info");
+  }
+}
+
+async function removeBillModalAttachment() {
+  const billId = _currentModalAttachmentBillId || document.getElementById("billModalId")?.value;
+  if (billId) {
+    const result = await FinanceCommand.confirmAction({
+      title: "Remove Attached Document",
+      consequence: "Are you sure you want to remove this document attachment from the bill?",
+      actionLabel: "Remove Attachment",
+      actionClass: "btn btn-danger",
+    });
+    if (!result.confirmed) return;
+    try {
+      await FinanceApi.deleteBillAttachment(billId);
+      showToast("Attachment removed", "success");
+    } catch (err) {
+      showToast("Failed to remove attachment: " + (err.message || err), "error");
+      return;
+    }
+  }
+
+  _currentModalPendingFile = null;
+  _currentModalAttachmentBillId = null;
+  const fileInput = document.getElementById("billFileInput");
+  if (fileInput) fileInput.value = "";
+  const fileInfo = document.getElementById("billFileAttachedInfo");
+  if (fileInfo) fileInfo.style.display = "none";
+  const fileNameSpan = document.getElementById("billAttachedFileName");
+  if (fileNameSpan) fileNameSpan.textContent = "";
+  const fingerprint = document.getElementById("billFileFingerprint");
+  if (fingerprint) fingerprint.value = "";
+}
+
+window.previewBillDocument = previewBillDocument;
+window.downloadBillAttachment = downloadBillAttachment;
+window.previewCurrentModalBillDocument = previewCurrentModalBillDocument;
+window.downloadCurrentModalBillDocument = downloadCurrentModalBillDocument;
+window.removeBillModalAttachment = removeBillModalAttachment;
+

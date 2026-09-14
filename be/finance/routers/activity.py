@@ -4,6 +4,7 @@ Production router for Finance Entity Activity Timelines and Detail Summaries (St
 Provides unified activity, timeline history, linked records, and permission-aware sensitive masking
 for all finance entities (invoices, bills, transfers, cheques, transactions, accounts).
 """
+import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -31,6 +32,7 @@ from finance.schemas import (
     EntitySummaryAttribute,
     RelatedRecordItem,
     TimelineEvent,
+    FinanceAttachmentResponse,
 )
 
 router = APIRouter(prefix="/api/finance/activity", tags=["Finance - Activity & Timeline"])
@@ -305,6 +307,25 @@ def get_entity_activity(
 
         timeline.sort(key=lambda e: e.timestamp)
 
+        bill_attachments = []
+        if bill.attachment_name or bill.attachment_url:
+            file_name = bill.attachment_name or "bill_document"
+            file_size = 0
+            if bill.attachment_url and os.path.isfile(bill.attachment_url):
+                try:
+                    file_size = os.path.getsize(bill.attachment_url)
+                except OSError:
+                    pass
+            bill_attachments.append(FinanceAttachmentResponse(
+                id=bill.id,
+                file_name=file_name,
+                file_size=file_size,
+                mime_type="application/pdf" if file_name.lower().endswith(".pdf") else "application/octet-stream",
+                storage_ref=f"/api/finance/bills/{bill.id}/attachment",
+                uploaded_at=bill.created_at,
+                uploaded_by=bill.created_by,
+            ))
+
         return EntityActivityResponse(
             entity_type="bill",
             entity_id=bill.id,
@@ -312,7 +333,7 @@ def get_entity_activity(
             status=bill.status,
             summary=summary,
             related_records=related,
-            attachments=[],
+            attachments=bill_attachments,
             timeline=timeline,
         )
 
