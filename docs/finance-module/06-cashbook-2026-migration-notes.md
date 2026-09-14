@@ -27,6 +27,24 @@ plan. As an interim, higher-value path, this migration imports the same real
 transaction history directly from `VOYANCE-CASH-BOOK-2026.xlsx`, the cash book the
 business already maintains in parallel with its bank accounts.
 
+## Design: self-contained, no intermediate CSV
+
+An earlier version of this migration was split into two steps: a one-off extraction
+pass that wrote a CSV, and a separate import script that read that CSV. That design
+was abandoned. Producing the intermediate CSV required transcribing roughly 400 rows
+of real financial data (dates, account names, EGP/USD amounts) across tool calls,
+which is an unacceptable source of silent transcription error for financial records
+— a single mistyped amount or date would corrupt the migration input with no
+visible signal.
+
+`migrate_cashbook_2026.py` now reads `VOYANCE-CASH-BOOK-2026.xlsx` directly and
+performs extraction, classification, and import in a single run. There is no
+hand-authored data file anywhere in this pipeline. The script optionally supports
+`--export-csv <path>` to write out the extracted/classified rows for human review,
+but that export is a read-only artifact: it must never be edited and fed back into
+the importer. Any correction belongs in the source spreadsheet, followed by a full
+re-run of the script against the corrected `.xlsx`.
+
 ## Source structure discovered
 
 `VOYANCE-CASH-BOOK-2026.xlsx` contains:
@@ -44,7 +62,7 @@ business already maintains in parallel with its bank accounts.
   - A `Date | Account | Payment Type | REF No. | EGP | USD | EGP_O | USD_O |
     Category | Details | Rate | EGP_EQV | USD_EQV` transaction table, structured
     as **two separate data blocks** in the same columns:
-    1. The main ledger (all non-transportation activity).
+    1. The main ledger (all non-Transportation activity).
     2. A second, visually separated "Transportation" petty-spend mini-ledger —
        exactly the duplicate-mini-ledger pattern the bank/ledger plan's Phase 0
        `is_petty` flag was designed to replace.
@@ -54,13 +72,13 @@ business already maintains in parallel with its bank accounts.
 
 Detecting the two data blocks per sheet could not rely on a second header row
 (the Transportation block does not repeat the `Date/Account/...` header). Blocks
-were instead detected by locating the header row once, then splitting the rows
+are instead detected by locating the header row once, then splitting the rows
 below it into contiguous runs separated by 5+ fully blank rows — this correctly
 separates the main ledger, the Transportation block, and the totals footer
 without misfiring on the sheet's isolated 0/0 filler rows (which populate columns
 K/L even on otherwise blank rows).
 
-Each row was classified into one of:
+Each row is classified into one of:
 
 - **`transaction`** — exactly one non-zero amount among EGP-in/USD-in/EGP-out/
   USD-out. Mapped to currency + direction (`in`/`out`).
@@ -77,7 +95,7 @@ Each row was classified into one of:
   missing category (for non-petty rows), or an amount combination that did not
   match any of the patterns above.
 
-## Result
+## Verified result (extraction only, no import performed)
 
 | Outcome | Count |
 |---|---:|
@@ -91,24 +109,19 @@ Flagged-row reasons (a single row can have more than one):
 - `missing_date` — rows where the date cell was blank in the source sheet.
 - `missing_account` — rows where the account column was blank.
 - `missing_category` — non-petty rows with no category assigned in the source.
-- `multiple_amounts_unclassified` — one row (a `BANK-FEES` entry with an
-  ambiguous combination) that did not match either dual-currency-fee pattern.
+- `multiple_amounts_unclassified` — a small number of rows (mostly ambiguous
+  `BANK-FEES` combinations) that did not match either dual-currency-fee pattern.
 
-Flagged rows are never silently imported. They are written to
-`data/cashbook_2026_needs_review.csv` for manual correction in the source
-spreadsheet (or direct correction of the CSV) and must be re-extracted and
-re-run through the migration script rather than patched into the database
-by hand.
+Flagged rows are never silently imported. Fix them in the source spreadsheet and
+re-run the script; do not hand-patch the script or any exported review CSV to
+force flagged rows through.
 
 ## Files in this change
 
-- `scripts/migrations/migrate_cashbook_2026.py` — the import script. Defaults to
-  `--dry-run`; only `--commit` writes to the database, inside one transaction,
-  and only if zero lookup errors occurred across the whole batch.
-- `scripts/migrations/data/cashbook_2026_extracted_all.csv` — all 397 extracted,
-  classified rows (clean and flagged).
-- `scripts/migrations/data/cashbook_2026_needs_review.csv` — the 120 flagged
-  rows only, for focused manual triage.
+- `scripts/migrations/migrate_cashbook_2026.py` — the complete, self-contained
+  migration. Defaults to `--dry-run`; only `--commit` writes to the database,
+  inside one transaction, and only if zero lookup errors occurred across the
+  whole batch. Supports `--export-csv` for a read-only review export.
 
 ## Before running with `--commit`
 
@@ -118,10 +131,12 @@ by hand.
    script will not auto-create categories.
 3. Confirm every `payment_type` value already exists in `PaymentType` — the
    script will not auto-create payment types.
-4. Run with `--dry-run` first and review `migration_report.csv` in full.
+4. Run with `--dry-run` first (optionally with `--export-csv` for review) and
+   inspect `migration_report.csv` in full.
 5. Cross-check post-import account balances against the `USD BALANCE SUMMARY` /
    `EGP BALANCE SUMMARY` blocks in the source workbook for each month before
    trusting the imported ledger for reporting.
-6. Resolve the 120 flagged rows in `cashbook_2026_needs_review.csv` separately;
-   they represent roughly 30 percent of the extracted history and should not be
-   considered "imported" until manually corrected and re-run.
+6. Resolve the ~120 flagged rows separately in the source spreadsheet; they
+   represent roughly 30 percent of the extracted history and should not be
+   considered "imported" until corrected in `VOYANCE-CASH-BOOK-2026.xlsx` and the
+   script is re-run.
