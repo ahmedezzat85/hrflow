@@ -1223,7 +1223,7 @@ class EntitySummaryAttribute(BaseModel):
 
 
 class EntitySummary(BaseModel):
-    reference: str
+    reference: Optional[str] = ""
     counterparty: Optional[str] = ""
     amount: Optional[float] = None
     currency: Optional[str] = None

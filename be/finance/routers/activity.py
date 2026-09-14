@@ -684,6 +684,7 @@ def get_entity_activity(
         ]
 
         summary = EntitySummary(
+            reference=f"CUST-{cust.id:04d}",
             amount=outstanding_balance,
             currency=cust.default_currency or "USD",
             counterparty=cust.legal_name or cust.name,
@@ -745,6 +746,7 @@ def get_entity_activity(
             acct_display = pi.account_number if can_reveal else _mask_sensitive(pi.account_number, False)
             pi_summary_parts.append(f"{pi.bank_name or 'Bank'}: {acct_display} ({pi.verification_status})")
 
+        vend_curr = vend.default_currency or "EGP"
         attributes = [
             EntitySummaryAttribute(label="Legal Name", value=vend.legal_name or "—"),
             EntitySummaryAttribute(label="Category", value=vend.category or "General"),
@@ -752,16 +754,17 @@ def get_entity_activity(
             EntitySummaryAttribute(label="Contact Phone", value=vend.contact_phone or "—"),
             EntitySummaryAttribute(label="Tax ID", value=_mask_sensitive(vend.tax_id, is_admin) or "—"),
             EntitySummaryAttribute(label="Payment Terms", value=f"{vend.payment_terms_days or 30} days"),
-            EntitySummaryAttribute(label="Default Currency", value=vend.default_currency or "USD"),
-            EntitySummaryAttribute(label="Total Spend", value=f"{total_spend:,.2f} {vend.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Default Currency", value=vend_curr),
+            EntitySummaryAttribute(label="Total Spend", value=f"{total_spend:,.2f} {vend_curr}"),
             EntitySummaryAttribute(label="Open Bills Count", value=str(len(open_bills))),
-            EntitySummaryAttribute(label="Open Bills Total", value=f"{open_total:,.2f} {vend.default_currency or 'USD'}"),
+            EntitySummaryAttribute(label="Open Bills Total", value=f"{open_total:,.2f} {vend_curr}"),
             EntitySummaryAttribute(label="Payment Instructions", value="; ".join(pi_summary_parts) if pi_summary_parts else "None recorded"),
         ]
 
         summary = EntitySummary(
+            reference=f"VEND-{vend.id:04d}",
             amount=open_total,
-            currency=vend.default_currency or "USD",
+            currency=vend_curr,
             counterparty=vend.legal_name or vend.name,
             attributes=attributes,
             notes=vend.notes,

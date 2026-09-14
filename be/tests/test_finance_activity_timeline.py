@@ -251,3 +251,37 @@ def test_activity_unsupported_and_not_found(app_client, admin_cookies):
     assert res_missing.status_code == 404
     assert "not found" in res_missing.json()["detail"]
 
+
+def test_vendor_and_customer_activity_timeline(app_client, admin_cookies):
+    """Validates activity endpoint for vendor and customer."""
+    # 1. Vendor activity
+    ven_resp = app_client.post(
+        "/api/finance/vendors",
+        json={"name": "Activity Test Vendor", "category": "SaaS"},
+        cookies=admin_cookies,
+    )
+    assert ven_resp.status_code == 201
+    vendor_id = ven_resp.json()["id"]
+
+    act_ven = app_client.get(f"/api/finance/activity/vendor/{vendor_id}", cookies=admin_cookies)
+    assert act_ven.status_code == 200
+    v_data = act_ven.json()
+    assert v_data["entity_type"] == "vendor"
+    assert "VEND-" in v_data["summary"]["reference"]
+
+    # 2. Customer activity
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Activity Test Customer"},
+        cookies=admin_cookies,
+    )
+    assert cust_resp.status_code == 201
+    cust_id = cust_resp.json()["id"]
+
+    act_cust = app_client.get(f"/api/finance/activity/customer/{cust_id}", cookies=admin_cookies)
+    assert act_cust.status_code == 200
+    c_data = act_cust.json()
+    assert c_data["entity_type"] == "customer"
+    assert "CUST-" in c_data["summary"]["reference"]
+
+
