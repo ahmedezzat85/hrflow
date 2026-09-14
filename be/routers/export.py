@@ -24,6 +24,13 @@ from services.export import (
     get_salary_history_export_data,
     get_vacations_export_data,
     get_invoices_export_data,
+    get_finance_ledger_export_data,
+    get_finance_accounts_export_data,
+    get_finance_invoices_export_data,
+    get_finance_bills_export_data,
+    get_finance_cheques_export_data,
+    get_finance_transfers_export_data,
+    get_finance_subscriptions_export_data,
     export_to_google_sheets,
 )
 from logging_config import get_logger
@@ -38,6 +45,13 @@ VALID_DATASETS = {
     "salary": "Salary & Raise History",
     "vacations": "Vacation & Leaves",
     "invoices": "Contractor Invoices",
+    "finance_ledger": "General Ledger Transactions",
+    "finance_accounts": "Bank & Treasury Accounts",
+    "finance_invoices": "Finance Sales Invoices",
+    "finance_bills": "Bills & Vendor Payables",
+    "finance_cheques": "Cheques & Custody",
+    "finance_transfers": "Account & FX Transfers",
+    "finance_subscriptions": "Software & SaaS Subscriptions",
 }
 
 
@@ -59,6 +73,20 @@ def _extract_dataset_data(
         return get_vacations_export_data(year=year)
     elif dataset == "invoices":
         return get_invoices_export_data(year=year, month=month)
+    elif dataset == "finance_ledger":
+        return get_finance_ledger_export_data(year=year, start_date=start_date, end_date=end_date)
+    elif dataset == "finance_accounts":
+        return get_finance_accounts_export_data()
+    elif dataset == "finance_invoices":
+        return get_finance_invoices_export_data(year=year, start_date=start_date, end_date=end_date, status=status)
+    elif dataset == "finance_bills":
+        return get_finance_bills_export_data(year=year, start_date=start_date, end_date=end_date, status=status)
+    elif dataset == "finance_cheques":
+        return get_finance_cheques_export_data(year=year, start_date=start_date, end_date=end_date, status=status)
+    elif dataset == "finance_transfers":
+        return get_finance_transfers_export_data(year=year, start_date=start_date, end_date=end_date)
+    elif dataset == "finance_subscriptions":
+        return get_finance_subscriptions_export_data()
     else:
         raise HTTPException(
             status_code=400,

@@ -398,8 +398,10 @@ const Api = {
   downloadExportCsv(dataset, params = {}) {
     const q = new URLSearchParams();
     if (params && params.year) q.set("year", params.year);
+    if (params && params.month) q.set("month", params.month);
     if (params && params.start_date) q.set("start_date", params.start_date);
     if (params && params.end_date) q.set("end_date", params.end_date);
+    if (params && params.status) q.set("status", params.status);
     if (params && params.payment_year) q.set("payment_year", params.payment_year);
     if (params && params.payment_month) q.set("payment_month", params.payment_month);
     const qs = q.toString() ? `?${q.toString()}` : "";
