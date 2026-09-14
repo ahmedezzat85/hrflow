@@ -669,3 +669,38 @@ class FinanceSavedReportViewDB(Base):
 SavedReportViewDB = FinanceSavedReportViewDB
 
 
+class FinanceExportAuditDB(Base):
+    __tablename__ = "finance_export_audits"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_key = Column(String(100), nullable=False, index=True)
+    export_format = Column(String(20), nullable=False)  # xlsx | csv | pdf
+    user_email = Column(String(255), nullable=True)
+    row_count = Column(Integer, default=0, nullable=False)
+    file_name = Column(String(255), nullable=False)
+    filters_json = Column(Text, default="{}", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+ExportAuditDB = FinanceExportAuditDB
+
+
+class FinanceReportScheduleDB(Base):
+    __tablename__ = "finance_report_schedules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_key = Column(String(100), nullable=False, index=True)
+    report_title = Column(String(200), nullable=False)
+    frequency = Column(String(50), nullable=False)  # daily | weekly | monthly
+    recipients_json = Column(Text, nullable=False, default="[]")
+    export_format = Column(String(20), default="xlsx", nullable=False)
+    filters_json = Column(Text, default="{}", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+ReportScheduleDB = FinanceReportScheduleDB
+
+
+

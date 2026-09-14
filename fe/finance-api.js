@@ -273,6 +273,54 @@ const FinanceMockState = {
     }
   ],
   attentionReviewed: new Set(),
+  reportExportAudits: [
+    {
+      id: 1,
+      report_key: "profit-and-loss",
+      export_format: "xlsx",
+      user_email: "admin@hrflow.test",
+      row_count: 18,
+      file_name: "profit_and_loss_2026-09-01_to_2026-09-30.xlsx",
+      filters: { basis: "accrual", currency: "USD", period: "this_month" },
+      created_at: "2026-09-14T08:30:00Z",
+    },
+    {
+      id: 2,
+      report_key: "balance-sheet",
+      export_format: "csv",
+      user_email: "admin@hrflow.test",
+      row_count: 12,
+      file_name: "balance_sheet_2026-09-14.csv",
+      filters: { basis: "accrual", as_of_date: "2026-09-14" },
+      created_at: "2026-09-14T09:00:00Z",
+    },
+  ],
+  reportSchedules: [
+    {
+      id: 1,
+      report_key: "profit-and-loss",
+      report_title: "Profit & Loss Statement (P&L)",
+      frequency: "monthly",
+      recipients: ["finance-team@voyance.health", "cfo@voyance.health"],
+      export_format: "xlsx",
+      filters: { basis: "accrual", currency: "USD" },
+      is_active: true,
+      created_by: "admin@hrflow.test",
+      created_at: "2026-09-01T08:00:00Z",
+    },
+    {
+      id: 2,
+      report_key: "ar-aging",
+      report_title: "Accounts Receivable (AR) Aging",
+      frequency: "weekly",
+      recipients: ["collections@voyance.health"],
+      export_format: "csv",
+      filters: { currency: "USD" },
+      is_active: true,
+      created_by: "admin@hrflow.test",
+      created_at: "2026-09-02T11:00:00Z",
+    },
+  ],
 };
 
 const FinanceApi = {
@@ -4310,6 +4358,140 @@ const FinanceApi = {
     }
     const qs = new URLSearchParams(params).toString();
     return apiRequest("GET", `/api/finance/reports/ap-aging${qs ? "?" + qs : ""}`);
+  },
+
+  // ==========================================
+  // Story 7.3: Controlled Exports & Scheduled Delivery
+  // ==========================================
+  async exportReport(payload) {
+    if (_isMock()) {
+      if (!FinanceMockState.reportExportAudits) FinanceMockState.reportExportAudits = [];
+      const ext = payload.format === "xlsx" ? "xlsx" : (payload.format === "pdf" ? "pdf" : "csv");
+      const fileName = `${payload.report_key}_export_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const audit = {
+        id: Date.now(),
+        report_key: payload.report_key,
+        export_format: payload.format,
+        user_email: "admin@hrflow.test",
+        row_count: 24,
+        file_name: fileName,
+        filters: payload.filters || {},
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.reportExportAudits.unshift(audit);
+
+      const mime = ext === "xlsx"
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : (ext === "pdf" ? "application/pdf" : "text/csv;charset=utf-8;");
+      const dummyContent = ext === "csv"
+        ? `# Report: ${payload.report_key}\n# Generated: ${new Date().toISOString()}\nAccount,Amount\nTotal,10000\n`
+        : "HRFlow Mock Binary Export Content";
+      const blob = new Blob([dummyContent], { type: mime });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      return { success: true, file_name: fileName };
+    }
+
+    const res = await fetch(`${API_BASE_URL}/api/finance/reports/export`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 401) {
+      if (typeof forceSessionExpiredLogout === "function") forceSessionExpiredLogout();
+      throw new Error("Session expired. Please sign in again.");
+    }
+    if (!res.ok) {
+      let detail = `Export failed (${res.status})`;
+      try {
+        const data = await res.json();
+        detail = data.detail || data.error || detail;
+      } catch (_) {}
+      throw new Error(detail);
+    }
+
+    let fileName = `${payload.report_key}_export.${payload.format}`;
+    const disp = res.headers.get("Content-Disposition");
+    if (disp && disp.includes("filename=")) {
+      const m = disp.match(/filename="?([^"]+)"?/);
+      if (m && m[1]) fileName = m[1];
+    }
+
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    return { success: true, file_name: fileName };
+  },
+
+  async getExportAudits(reportKey, limit = 50) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.reportExportAudits || [])];
+      if (reportKey) list = list.filter((a) => a.report_key === reportKey);
+      return list.slice(0, limit);
+    }
+    const params = new URLSearchParams();
+    if (reportKey) params.set("report_key", reportKey);
+    if (limit) params.set("limit", limit);
+    return apiRequest("GET", `/api/finance/reports/export-audits?${params.toString()}`);
+  },
+
+  async getReportSchedules(reportKey) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.reportSchedules || [])];
+      if (reportKey) list = list.filter((s) => s.report_key === reportKey);
+      return list;
+    }
+    const qs = reportKey ? `?report_key=${encodeURIComponent(reportKey)}` : "";
+    return apiRequest("GET", `/api/finance/reports/schedules${qs}`);
+  },
+
+  async createReportSchedule(payload) {
+    if (_isMock()) {
+      if (!FinanceMockState.reportSchedules) FinanceMockState.reportSchedules = [];
+      const newSched = {
+        id: Date.now(),
+        report_key: payload.report_key,
+        report_title: payload.report_title || payload.report_key,
+        frequency: payload.frequency || "monthly",
+        recipients: Array.isArray(payload.recipients) ? payload.recipients : (payload.recipients || "").split(",").map(e => e.trim()).filter(Boolean),
+        export_format: payload.export_format || "xlsx",
+        filters: payload.filters || {},
+        is_active: true,
+        created_by: "admin@hrflow.test",
+        created_at: new Date().toISOString(),
+      };
+      FinanceMockState.reportSchedules.unshift(newSched);
+      return newSched;
+    }
+    return apiRequest("POST", "/api/finance/reports/schedules", payload);
+  },
+
+  async deleteReportSchedule(scheduleId) {
+    if (_isMock()) {
+      if (FinanceMockState.reportSchedules) {
+        FinanceMockState.reportSchedules = FinanceMockState.reportSchedules.filter(
+          (s) => s.id !== parseInt(scheduleId, 10)
+        );
+      }
+      return { success: true, id: scheduleId };
+    }
+    return apiRequest("DELETE", `/api/finance/reports/schedules/${scheduleId}`);
   },
 
   async getEntityActivity(entityType, entityId) {

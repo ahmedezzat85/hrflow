@@ -26,6 +26,10 @@ from finance.schemas import (
     TrialBalanceResponse,
     CashFlowStatementResponse,
     AgingReportResponse,
+    ReportExportRequest,
+    ReportExportAuditResponse,
+    ReportScheduleCreate,
+    ReportScheduleResponse,
 )
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
@@ -495,5 +499,106 @@ def get_ap_aging_report(
         as_of_date=as_of_date,
         currency=currency,
     )
+
+
+# =========================================================================
+# Story 7.3: Controlled Exports & Scheduled Delivery
+# =========================================================================
+
+@router.post("/export")
+def export_report_file(
+    req: ReportExportRequest,
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+    user_perms: Set[str] = Depends(get_current_user_permissions),
+):
+    """
+    Standardized export service for all financial reports (Story 7.3).
+    Includes complete metadata, formula-injection defense, and role-based data redaction.
+    Records an immutable audit event for every export operation.
+    """
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    can_view_sensitive = "finance.bank.manage" in user_perms or "finance.admin" in user_perms or "admin" in user_perms
+
+    file_bytes, file_name, mime_type = service.generate_report_export(
+        report_key=req.report_key,
+        export_format=req.format,
+        filters=req.filters,
+        user_email=user_email,
+        can_view_sensitive=can_view_sensitive,
+    )
+
+    return Response(
+        content=file_bytes,
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_name}"',
+            "X-Export-Report-Key": req.report_key,
+            "X-Export-Format": req.format.lower(),
+        },
+    )
+
+
+@router.get("/export-audits", response_model=List[ReportExportAuditResponse])
+def list_export_audits(
+    report_key: Optional[str] = Query(None, description="Filter audits by report key"),
+    limit: int = Query(50, ge=1, le=200, description="Max audit records"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Returns audit trail of report downloads and exports with requesting user and filter metadata.
+    """
+    return service.list_export_audits(report_key=report_key, limit=limit)
+
+
+@router.get("/schedules", response_model=List[ReportScheduleResponse])
+def list_report_schedules(
+    report_key: Optional[str] = Query(None, description="Filter schedules by report key"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Lists automated and scheduled report deliveries.
+    """
+    return service.list_schedules(report_key=report_key)
+
+
+@router.post("/schedules", response_model=ReportScheduleResponse)
+def create_report_schedule(
+    req: ReportScheduleCreate,
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Creates a scheduled report delivery with defined frequency, recipient list, and filters.
+    """
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.create_schedule(
+        report_key=req.report_key,
+        report_title=req.report_title,
+        frequency=req.frequency,
+        recipients=req.recipients,
+        export_format=req.export_format,
+        filters=req.filters,
+        created_by=user_email,
+    )
+
+
+@router.delete("/schedules/{schedule_id}")
+def delete_report_schedule(
+    schedule_id: int = Path(..., description="Schedule ID to cancel"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Cancels and removes a scheduled report delivery.
+    """
+    from fastapi import HTTPException, status
+    deleted = service.delete_schedule(schedule_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report schedule not found")
+    return {"success": True, "id": schedule_id}
+
 
 

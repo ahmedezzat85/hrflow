@@ -704,23 +704,257 @@ document.addEventListener("click", () => {
   if (menu) menu.style.display = "none";
 });
 
-function exportActiveReport(format) {
+function getActiveReportFilters() {
+  return {
+    preset: document.getElementById("reportShellPeriodPreset")?.value || "custom",
+    date_from: document.getElementById("reportShellDateFrom")?.value || "",
+    date_to: document.getElementById("reportShellDateTo")?.value || "",
+    basis: document.getElementById("reportShellBasis")?.value || "cash",
+    currency: document.getElementById("reportShellCurrency")?.value || "",
+    comparison: document.getElementById("reportShellComparison")?.value || "none",
+    entity: document.getElementById("reportShellEntity")?.value || "all",
+  };
+}
+
+function _escapeHtmlText(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function exportActiveReport(format) {
   const menu = document.getElementById("reportShellExportMenu");
   if (menu) menu.style.display = "none";
 
-  if (format === "excel") {
-    if (_currentReportsTab === "category-summary") exportCategorySummaryExcel();
-    else if (_currentReportsTab === "matrix") exportMatrixExcel();
-    else if (_currentReportsTab === "balances") exportBalancesExcel();
-    else if (_currentReportsTab === "transactions") exportTransactionsExcel();
-    else if (_currentReportsTab === "cheques") exportChequesExcel();
-    else showToast("Excel export prepared for " + _activeReportKey, "info");
-  } else if (format === "csv") {
-    showToast("Generating CSV export for active report...", "info");
-    if (_currentReportsTab === "transactions") exportTransactionsExcel();
-    else exportCategorySummaryExcel();
-  } else if (format === "pdf") {
-    window.print();
+  const normFormat = (format === "excel" ? "xlsx" : format || "xlsx").toLowerCase();
+  const reportKey = _activeReportKey || _currentReportsTab || "profit-and-loss";
+  const filters = getActiveReportFilters();
+
+  try {
+    showToast(`Generating ${normFormat.toUpperCase()} export for ${reportKey}...`, "info");
+    await FinanceApi.exportReport({
+      report_key: reportKey,
+      format: normFormat,
+      filters: filters,
+    });
+    showToast(`${normFormat.toUpperCase()} export completed`, "success");
+  } catch (err) {
+    console.error("Export failed:", err);
+    showToast(err.message || "Failed to generate report export", "error");
+  }
+}
+
+// ----------------------------------------------------------------------
+// Scheduled Delivery & Export Audits (Story 7.3)
+// ----------------------------------------------------------------------
+function openScheduleReportModal() {
+  const modal = document.getElementById("scheduleReportExportModal");
+  if (!modal) return;
+  const menu = document.getElementById("reportShellExportMenu");
+  if (menu) menu.style.display = "none";
+
+  const reportKey = _activeReportKey || _currentReportsTab || "profit-and-loss";
+  const meta = (_reportLibrary || []).find((r) => r.key === reportKey);
+  const title = meta ? meta.title : reportKey.replace(/-/g, " ").toUpperCase();
+
+  const titleEl = document.getElementById("scheduleReportTargetTitle");
+  if (titleEl) titleEl.value = `${title} (${reportKey})`;
+
+  const infoEl = document.getElementById("scheduleReportFilterInfo");
+  const filters = getActiveReportFilters();
+  if (infoEl) {
+    infoEl.textContent = `Basis: ${filters.basis.toUpperCase()}, Currency: ${filters.currency || "USD"}, Period: ${filters.preset}`;
+  }
+
+  const recEl = document.getElementById("scheduleReportRecipients");
+  if (recEl) recEl.value = "";
+
+  modal.style.display = "flex";
+}
+
+function closeScheduleReportModal() {
+  const modal = document.getElementById("scheduleReportExportModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function submitScheduleReport() {
+  const reportKey = _activeReportKey || _currentReportsTab || "profit-and-loss";
+  const meta = (_reportLibrary || []).find((r) => r.key === reportKey);
+  const title = meta ? meta.title : reportKey.replace(/-/g, " ").toUpperCase();
+  const frequency = document.getElementById("scheduleReportFrequency")?.value || "monthly";
+  const format = document.getElementById("scheduleReportFormat")?.value || "xlsx";
+  const rawRecipients = document.getElementById("scheduleReportRecipients")?.value?.trim() || "";
+
+  if (!rawRecipients) {
+    showToast("Please enter at least one recipient email", "error");
+    return;
+  }
+
+  const recipients = rawRecipients
+    .split(/[\n,]+/)
+    .map((e) => e.trim())
+    .filter((e) => Boolean(e) && e.includes("@"));
+
+  if (recipients.length === 0) {
+    showToast("Please provide valid email address(es)", "error");
+    return;
+  }
+
+  const payload = {
+    report_key: reportKey,
+    report_title: title,
+    frequency,
+    recipients,
+    export_format: format,
+    filters: getActiveReportFilters(),
+  };
+
+  try {
+    const created = await FinanceApi.createReportSchedule(payload);
+    closeScheduleReportModal();
+    showToast(`Automated delivery scheduled for ${title} (${frequency})`, "success");
+    loadReportSchedules();
+  } catch (err) {
+    console.error("Failed to create report schedule:", err);
+    showToast(err.message || "Failed to schedule report delivery", "error");
+  }
+}
+
+let _currentDeliveriesModalTab = "schedules";
+
+function openScheduledDeliveriesModal() {
+  const modal = document.getElementById("reportDeliveriesAndAuditsModal");
+  if (!modal) return;
+  const menu = document.getElementById("reportShellExportMenu");
+  if (menu) menu.style.display = "none";
+
+  modal.style.display = "flex";
+  switchDeliveriesModalTab("schedules");
+  loadReportSchedules();
+  loadReportExportAudits();
+}
+
+function closeScheduledDeliveriesModal() {
+  const modal = document.getElementById("reportDeliveriesAndAuditsModal");
+  if (modal) modal.style.display = "none";
+}
+
+function switchDeliveriesModalTab(tab) {
+  _currentDeliveriesModalTab = tab;
+  const btnSched = document.getElementById("btnTabReportSchedules");
+  const btnAudits = document.getElementById("btnTabExportAudits");
+  const tabSched = document.getElementById("tabContentReportSchedules");
+  const tabAudits = document.getElementById("tabContentExportAudits");
+
+  if (tab === "schedules") {
+    if (btnSched) btnSched.classList.add("active");
+    if (btnAudits) btnAudits.classList.remove("active");
+    if (tabSched) tabSched.style.display = "block";
+    if (tabAudits) tabAudits.style.display = "none";
+  } else {
+    if (btnSched) btnSched.classList.remove("active");
+    if (btnAudits) btnAudits.classList.add("active");
+    if (tabSched) tabSched.style.display = "none";
+    if (tabAudits) tabAudits.style.display = "block";
+  }
+}
+
+async function loadReportSchedules() {
+  const tbody = document.getElementById("reportSchedulesTableBody");
+  const empty = document.getElementById("reportSchedulesEmpty");
+  const countEl = document.getElementById("countReportSchedules");
+
+  try {
+    const schedules = await FinanceApi.getReportSchedules();
+    if (countEl) countEl.textContent = (schedules || []).length;
+
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (!schedules || schedules.length === 0) {
+      if (empty) empty.style.display = "block";
+      return;
+    }
+    if (empty) empty.style.display = "none";
+
+    tbody.innerHTML = schedules
+      .map((s) => {
+        const recipientsList = Array.isArray(s.recipients) ? s.recipients.join(", ") : (s.recipients || "—");
+        const freqBadge = `<span class="badge badge-info" style="text-transform:capitalize;">${s.frequency}</span>`;
+        const fmtBadge = `<span class="badge badge-neutral" style="text-transform:uppercase;">${s.export_format}</span>`;
+        return `
+          <tr data-schedule-id="${s.id}">
+            <td><strong>${_escapeHtmlText(s.report_title || s.report_key)}</strong></td>
+            <td>${freqBadge}</td>
+            <td>${fmtBadge}</td>
+            <td style="max-width:240px; word-break:break-all; font-size:0.85rem;">${_escapeHtmlText(recipientsList)}</td>
+            <td style="font-size:0.85rem; color:var(--text-muted);">${_escapeHtmlText(s.created_by || "system")}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-sm btn-outline delete-schedule-btn" style="color:#EF4444; padding:3px 8px;" onclick="deleteReportSchedule(${s.id})" title="Cancel Delivery Schedule">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (err) {
+    console.error("Failed to load report schedules:", err);
+  }
+}
+
+async function deleteReportSchedule(scheduleId) {
+  if (!confirm("Are you sure you want to cancel this automated delivery schedule?")) return;
+  try {
+    await FinanceApi.deleteReportSchedule(scheduleId);
+    showToast("Delivery schedule cancelled", "success");
+    await loadReportSchedules();
+  } catch (err) {
+    console.error("Failed to delete schedule:", err);
+    showToast(err.message || "Failed to cancel schedule", "error");
+  }
+}
+
+async function loadReportExportAudits() {
+  const tbody = document.getElementById("reportExportAuditsTableBody");
+  const empty = document.getElementById("reportExportAuditsEmpty");
+  const countEl = document.getElementById("countExportAudits");
+
+  try {
+    const audits = await FinanceApi.getExportAudits(null, 50);
+    if (countEl) countEl.textContent = (audits || []).length;
+
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (!audits || audits.length === 0) {
+      if (empty) empty.style.display = "block";
+      return;
+    }
+    if (empty) empty.style.display = "none";
+
+    tbody.innerHTML = audits
+      .map((a) => {
+        const dateStr = a.created_at ? new Date(a.created_at).toLocaleString() : "—";
+        const fmtBadge = `<span class="badge badge-neutral" style="text-transform:uppercase;">${a.export_format}</span>`;
+        return `
+          <tr>
+            <td style="font-size:0.82rem; white-space:nowrap;">${dateStr}</td>
+            <td><strong>${_escapeHtmlText(a.report_key)}</strong></td>
+            <td>${fmtBadge}</td>
+            <td style="text-align:right; font-weight:600;">${a.row_count || 0}</td>
+            <td style="font-family:monospace; font-size:0.82rem; color:var(--text-muted);">${_escapeHtmlText(a.file_name || "—")}</td>
+            <td style="font-size:0.85rem;">${_escapeHtmlText(a.user_email || "system")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (err) {
+    console.error("Failed to load export audits:", err);
   }
 }
 
@@ -1767,3 +2001,14 @@ window.exportTransactionsExcel = exportTransactionsExcel;
 window.loadReportCheques = loadReportCheques;
 window.exportChequesExcel = exportChequesExcel;
 window.triggerExcelDownload = triggerExcelDownload;
+window.getActiveReportFilters = getActiveReportFilters;
+window.openScheduleReportModal = openScheduleReportModal;
+window.closeScheduleReportModal = closeScheduleReportModal;
+window.submitScheduleReport = submitScheduleReport;
+window.openScheduledDeliveriesModal = openScheduledDeliveriesModal;
+window.closeScheduledDeliveriesModal = closeScheduledDeliveriesModal;
+window.switchDeliveriesModalTab = switchDeliveriesModalTab;
+window.loadReportSchedules = loadReportSchedules;
+window.deleteReportSchedule = deleteReportSchedule;
+window.loadReportExportAudits = loadReportExportAudits;
+

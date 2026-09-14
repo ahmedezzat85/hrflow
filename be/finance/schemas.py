@@ -1696,6 +1696,53 @@ class AgingReportResponse(BaseModel):
     total_open_count: int = 0
 
 
+# ==========================================
+# Story 7.3: Controlled Exports & Schedules
+# ==========================================
+
+class ReportExportRequest(BaseModel):
+    report_key: str
+    format: str = "xlsx"  # xlsx, csv, pdf
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ReportExportAuditResponse(BaseModel):
+    id: int
+    report_key: str
+    export_format: str
+    user_email: Optional[str] = None
+    row_count: int = 0
+    file_name: str
+    filters_json: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReportScheduleCreate(BaseModel):
+    report_key: str
+    report_title: str
+    frequency: str  # daily | weekly | monthly
+    recipients: List[str]  # list of email addresses
+    export_format: str = "xlsx"
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ReportScheduleResponse(BaseModel):
+    id: int
+    report_key: str
+    report_title: str
+    frequency: str
+    recipients: List[str]
+    export_format: str
+    filters: Dict[str, Any]
+    is_active: bool
+    created_by: Optional[str] = None
+    created_at: datetime
+
+
+
 
 
 

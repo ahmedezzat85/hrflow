@@ -4,7 +4,8 @@ Generates professionally styled Excel (.xlsx) workbooks for Finance reports usin
 Includes frozen headers, dark navy branding, currency/date formats, and auto column widths.
 """
 import io
-from typing import Dict, Any, List
+import csv
+from typing import Dict, Any, List, Optional
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -41,6 +42,51 @@ TOTAL_BORDER = Border(
 
 NUM_FORMAT_CURRENCY = "#,##0.00"
 NUM_FORMAT_PERCENT = "0.0%"
+
+
+def sanitize_cell_value(val: Any) -> Any:
+    """Formula injection defense: neutralizes spreadsheet formula execution triggers."""
+    if isinstance(val, str) and val:
+        if val[0] in ("=", "+", "-", "@", "\t", "\r"):
+            return f"'{val}"
+    return val
+
+
+def mask_account_number(acc_num: Optional[str]) -> str:
+    """Masks bank account number for unprivileged export roles."""
+    if not acc_num:
+        return "—"
+    clean = str(acc_num).strip()
+    if len(clean) <= 4:
+        return "••••"
+    return f"••••{clean[-4:]}"
+
+
+def write_standard_metadata_header(
+    ws,
+    title: str,
+    metadata: Dict[str, Any],
+    row_start: int = 1,
+) -> int:
+    """Writes standardized header block with metadata into worksheet and returns the next content row."""
+    ws.cell(row=row_start, column=1, value=sanitize_cell_value(title)).font = TITLE_FONT
+    meta_parts = []
+    if metadata.get("entity"):
+        meta_parts.append(f"Entity: {metadata['entity']}")
+    if metadata.get("basis"):
+        meta_parts.append(f"Basis: {str(metadata['basis']).upper()}")
+    if metadata.get("currency"):
+        meta_parts.append(f"Currency: {metadata['currency']}")
+    if metadata.get("period"):
+        meta_parts.append(f"Period: {metadata['period']}")
+    if metadata.get("generated_at"):
+        meta_parts.append(f"Generated: {metadata['generated_at']}")
+    if metadata.get("requesting_user"):
+        meta_parts.append(f"User: {metadata['requesting_user']}")
+
+    sub = " | ".join(meta_parts)
+    ws.cell(row=row_start + 1, column=1, value=sanitize_cell_value(sub)).font = SUBTITLE_FONT
+    return row_start + 3
 
 
 def _auto_fit_columns(ws, min_width: int = 12, max_width: int = 40):
@@ -449,3 +495,388 @@ def export_cheques_xlsx(report: Dict[str, Any]) -> bytes:
 
     _auto_fit_columns(ws)
     return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
+# 6. Profit & Loss Statement
+# ----------------------------------------------------------------------
+def export_profit_and_loss_xlsx(report: Dict[str, Any], metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Profit & Loss"
+    ws.views.sheetView[0].showGridLines = True
+
+    start_row = write_standard_metadata_header(ws, report.get("report_title", "Profit & Loss Statement"), metadata)
+
+    # KPI Banner Row
+    curr = metadata.get("currency", report.get("currency", "USD"))
+    ws.cell(row=start_row, column=1, value="Total Revenue:").font = TOTAL_FONT
+    c_rev = ws.cell(row=start_row, column=2, value=float(report.get("total_revenue", 0.0)))
+    c_rev.font = TOTAL_FONT
+    c_rev.number_format = NUM_FORMAT_CURRENCY
+
+    ws.cell(row=start_row, column=4, value="Total Expenses:").font = TOTAL_FONT
+    c_exp = ws.cell(row=start_row, column=5, value=float(report.get("total_expenses", 0.0)))
+    c_exp.font = TOTAL_FONT
+    c_exp.number_format = NUM_FORMAT_CURRENCY
+
+    ws.cell(row=start_row, column=7, value="Net Income:").font = TOTAL_FONT
+    c_net = ws.cell(row=start_row, column=8, value=float(report.get("net_income", 0.0)))
+    c_net.font = TOTAL_FONT
+    c_net.number_format = NUM_FORMAT_CURRENCY
+
+    ws.cell(row=start_row, column=10, value="Margin:").font = TOTAL_FONT
+    c_mar = ws.cell(row=start_row, column=11, value=float(report.get("net_margin_pct", 0.0)) / 100.0)
+    c_mar.font = TOTAL_FONT
+    c_mar.number_format = NUM_FORMAT_PERCENT
+
+    cur_row = start_row + 2
+
+    # Revenue Section
+    ws.cell(row=cur_row, column=1, value="1. Operating Revenue & Inflows").font = Font(name="Segoe UI", size=11, bold=True, color="10B981")
+    cur_row += 1
+    for col_idx, h in enumerate(["Revenue Category", "Amount", "% of Revenue"], start=1):
+        cell = ws.cell(row=cur_row, column=col_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
+    cur_row += 1
+
+    for it in report.get("revenue_items", []):
+        ws.cell(row=cur_row, column=1, value=sanitize_cell_value(it.get("category_name"))).font = CELL_FONT
+        c = ws.cell(row=cur_row, column=2, value=float(it.get("amount", 0.0)))
+        c.font = CELL_FONT
+        c.number_format = NUM_FORMAT_CURRENCY
+        p = ws.cell(row=cur_row, column=3, value=float(it.get("percentage", 0.0)) / 100.0)
+        p.font = CELL_FONT
+        p.number_format = NUM_FORMAT_PERCENT
+        cur_row += 1
+
+    # Expense Section
+    cur_row += 1
+    ws.cell(row=cur_row, column=1, value="2. Operating Expenses & Allocations").font = Font(name="Segoe UI", size=11, bold=True, color="EF4444")
+    cur_row += 1
+    for col_idx, h in enumerate(["Expense Category", "Amount", "% of Expenses"], start=1):
+        cell = ws.cell(row=cur_row, column=col_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
+    cur_row += 1
+
+    for it in report.get("expense_items", []):
+        ws.cell(row=cur_row, column=1, value=sanitize_cell_value(it.get("category_name"))).font = CELL_FONT
+        c = ws.cell(row=cur_row, column=2, value=float(it.get("amount", 0.0)))
+        c.font = CELL_FONT
+        c.number_format = NUM_FORMAT_CURRENCY
+        p = ws.cell(row=cur_row, column=3, value=float(it.get("percentage", 0.0)) / 100.0)
+        p.font = CELL_FONT
+        p.number_format = NUM_FORMAT_PERCENT
+        cur_row += 1
+
+    _auto_fit_columns(ws)
+    return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
+# 7. Balance Sheet
+# ----------------------------------------------------------------------
+def export_balance_sheet_xlsx(report: Dict[str, Any], metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Balance Sheet"
+    ws.views.sheetView[0].showGridLines = True
+
+    start_row = write_standard_metadata_header(ws, report.get("report_title", "Balance Sheet"), metadata)
+
+    # Balance check row
+    status_str = "BALANCED ✓" if report.get("is_balanced") else f"VARIANCE: {report.get('variance', 0.0):,.2f}"
+    ws.cell(row=start_row, column=1, value=f"Accounting Equation Status: {status_str}").font = TOTAL_FONT
+
+    cur_row = start_row + 2
+    for section_key, section_title in [("assets", "1. Assets"), ("liabilities", "2. Liabilities"), ("equity", "3. Equity")]:
+        sec = report.get(section_key, {})
+        ws.cell(row=cur_row, column=1, value=section_title).font = TITLE_FONT
+        cur_row += 1
+        for col_idx, h in enumerate(["Account / Item", "Note", "Balance"], start=1):
+            cell = ws.cell(row=cur_row, column=col_idx, value=h)
+            cell.fill = HEADER_FILL
+            cell.font = HEADER_FONT
+            cell.border = THIN_BORDER
+        cur_row += 1
+
+        for it in sec.get("items", []):
+            acc_name = it.get("name", "")
+            if not can_view_sensitive and "#" in acc_name:
+                acc_name = mask_account_number(acc_name)
+            ws.cell(row=cur_row, column=1, value=sanitize_cell_value(acc_name)).font = CELL_FONT
+            ws.cell(row=cur_row, column=2, value=sanitize_cell_value(it.get("note", ""))).font = CELL_FONT
+            c = ws.cell(row=cur_row, column=3, value=float(it.get("amount", 0.0)))
+            c.font = CELL_FONT
+            c.number_format = NUM_FORMAT_CURRENCY
+            cur_row += 1
+
+        # Section total
+        ws.cell(row=cur_row, column=1, value=f"Total {sec.get('title', section_key.title())}").font = TOTAL_FONT
+        c_tot = ws.cell(row=cur_row, column=3, value=float(sec.get("total", 0.0)))
+        c_tot.font = TOTAL_FONT
+        c_tot.number_format = NUM_FORMAT_CURRENCY
+        c_tot.border = TOTAL_BORDER
+        cur_row += 2
+
+    _auto_fit_columns(ws)
+    return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
+# 8. Trial Balance
+# ----------------------------------------------------------------------
+def export_trial_balance_xlsx(report: Dict[str, Any], metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Trial Balance"
+    ws.views.sheetView[0].showGridLines = True
+
+    start_row = write_standard_metadata_header(ws, report.get("report_title", "Trial Balance"), metadata)
+
+    cur_row = start_row
+    headers = ["Account Code", "Account Name", "Account Type", "Debit", "Credit"]
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=cur_row, column=col_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
+    cur_row += 1
+
+    for line in report.get("lines", []):
+        acc_name = line.get("name", "")
+        if not can_view_sensitive and "#" in acc_name:
+            acc_name = mask_account_number(acc_name)
+        ws.cell(row=cur_row, column=1, value=sanitize_cell_value(line.get("code"))).font = CELL_FONT
+        ws.cell(row=cur_row, column=2, value=sanitize_cell_value(acc_name)).font = CELL_FONT
+        ws.cell(row=cur_row, column=3, value=sanitize_cell_value(line.get("type"))).font = CELL_FONT
+        d_cell = ws.cell(row=cur_row, column=4, value=float(line.get("debit", 0.0)))
+        d_cell.font = CELL_FONT
+        d_cell.number_format = NUM_FORMAT_CURRENCY
+        c_cell = ws.cell(row=cur_row, column=5, value=float(line.get("credit", 0.0)))
+        c_cell.font = CELL_FONT
+        c_cell.number_format = NUM_FORMAT_CURRENCY
+        cur_row += 1
+
+    # Totals Row
+    ws.cell(row=cur_row, column=1, value="TOTALS").font = TOTAL_FONT
+    d_tot = ws.cell(row=cur_row, column=4, value=float(report.get("total_debits", 0.0)))
+    d_tot.font = TOTAL_FONT
+    d_tot.number_format = NUM_FORMAT_CURRENCY
+    d_tot.border = TOTAL_BORDER
+    c_tot = ws.cell(row=cur_row, column=5, value=float(report.get("total_credits", 0.0)))
+    c_tot.font = TOTAL_FONT
+    c_tot.number_format = NUM_FORMAT_CURRENCY
+    c_tot.border = TOTAL_BORDER
+
+    _auto_fit_columns(ws)
+    return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
+# 9. Statement of Cash Flows
+# ----------------------------------------------------------------------
+def export_cash_flow_xlsx(report: Dict[str, Any], metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Cash Flows"
+    ws.views.sheetView[0].showGridLines = True
+
+    start_row = write_standard_metadata_header(ws, report.get("report_title", "Statement of Cash Flows"), metadata)
+
+    cur_row = start_row
+    ws.cell(row=cur_row, column=1, value="Cash & Cash Equivalents at Beginning of Period").font = TOTAL_FONT
+    b_cell = ws.cell(row=cur_row, column=2, value=float(report.get("beginning_cash_balance", 0.0)))
+    b_cell.font = TOTAL_FONT
+    b_cell.number_format = NUM_FORMAT_CURRENCY
+    cur_row += 2
+
+    for sec_name, items, net_val in [
+        ("Operating Activities", report.get("operating_activities", []), report.get("net_cash_operating", 0.0)),
+        ("Investing Activities", report.get("investing_activities", []), report.get("net_cash_investing", 0.0)),
+        ("Financing Activities", report.get("financing_activities", []), report.get("net_cash_financing", 0.0)),
+    ]:
+        ws.cell(row=cur_row, column=1, value=f"Cash Flows from {sec_name}").font = TITLE_FONT
+        cur_row += 1
+        for it in items:
+            ws.cell(row=cur_row, column=1, value=sanitize_cell_value(it.get("name"))).font = CELL_FONT
+            c = ws.cell(row=cur_row, column=2, value=float(it.get("amount", 0.0)))
+            c.font = CELL_FONT
+            c.number_format = NUM_FORMAT_CURRENCY
+            cur_row += 1
+
+        ws.cell(row=cur_row, column=1, value=f"Net Cash from {sec_name}").font = TOTAL_FONT
+        net_c = ws.cell(row=cur_row, column=2, value=float(net_val))
+        net_c.font = TOTAL_FONT
+        net_c.number_format = NUM_FORMAT_CURRENCY
+        cur_row += 2
+
+    ws.cell(row=cur_row, column=1, value="Net Increase / (Decrease) in Cash").font = TOTAL_FONT
+    c_diff = ws.cell(row=cur_row, column=2, value=float(report.get("net_change_in_cash", 0.0)))
+    c_diff.font = TOTAL_FONT
+    c_diff.number_format = NUM_FORMAT_CURRENCY
+    cur_row += 1
+
+    ws.cell(row=cur_row, column=1, value="Cash & Cash Equivalents at End of Period").font = TOTAL_FONT
+    c_end = ws.cell(row=cur_row, column=2, value=float(report.get("ending_cash_balance", 0.0)))
+    c_end.font = TOTAL_FONT
+    c_end.number_format = NUM_FORMAT_CURRENCY
+    c_end.border = TOTAL_BORDER
+
+    _auto_fit_columns(ws)
+    return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
+# 10. Aging Reports (AR and AP)
+# ----------------------------------------------------------------------
+def export_aging_xlsx(report: Dict[str, Any], metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Aging Report"
+    ws.views.sheetView[0].showGridLines = True
+
+    start_row = write_standard_metadata_header(ws, report.get("report_title", "Aging Report"), metadata)
+
+    cur_row = start_row
+    entity_col_name = "Customer" if report.get("aging_type") == "ar" else "Vendor"
+    headers = [entity_col_name, "Invoices/Bills", "Current", "1 - 30 Days", "31 - 60 Days", "61 - 90 Days", "90+ Days", "Total Outstanding"]
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=cur_row, column=col_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
+    cur_row += 1
+
+    for r in report.get("rows", []):
+        b = r.get("buckets", {})
+        ws.cell(row=cur_row, column=1, value=sanitize_cell_value(r.get("name"))).font = CELL_FONT
+        ws.cell(row=cur_row, column=2, value=r.get("outstanding_count", 0)).font = CELL_FONT
+
+        for idx, key in enumerate(["current", "days_1_30", "days_31_60", "days_61_90", "days_over_90", "total"], start=3):
+            c = ws.cell(row=cur_row, column=idx, value=float(b.get(key, 0.0)))
+            c.font = CELL_FONT
+            c.number_format = NUM_FORMAT_CURRENCY
+        cur_row += 1
+
+    # Totals Row
+    t = report.get("totals", {})
+    ws.cell(row=cur_row, column=1, value="TOTALS").font = TOTAL_FONT
+    ws.cell(row=cur_row, column=2, value=report.get("total_open_count", 0)).font = TOTAL_FONT
+    for idx, key in enumerate(["current", "days_1_30", "days_31_60", "days_61_90", "days_over_90", "total"], start=3):
+        c = ws.cell(row=cur_row, column=idx, value=float(t.get(key, 0.0)))
+        c.font = TOTAL_FONT
+        c.number_format = NUM_FORMAT_CURRENCY
+        c.border = TOTAL_BORDER
+
+    _auto_fit_columns(ws)
+    return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
+# 11. Generic Clean CSV Exporter with Metadata Header & Formula Defense
+# ----------------------------------------------------------------------
+def export_report_csv(report_data: Dict[str, Any], report_key: str, metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+
+    # Standardized metadata comments at top
+    writer.writerow(["# Report:", sanitize_cell_value(report_data.get("report_title", report_key))])
+    writer.writerow(["# Entity:", sanitize_cell_value(metadata.get("entity", "All"))])
+    writer.writerow(["# Basis:", sanitize_cell_value(str(metadata.get("basis", "cash")).upper())])
+    writer.writerow(["# Currency:", sanitize_cell_value(metadata.get("currency", "USD"))])
+    writer.writerow(["# Period:", sanitize_cell_value(metadata.get("period", "All"))])
+    writer.writerow(["# Generated At:", sanitize_cell_value(metadata.get("generated_at", ""))])
+    writer.writerow(["# Requesting User:", sanitize_cell_value(metadata.get("requesting_user", ""))])
+    writer.writerow([])  # Blank spacer row
+
+    if report_key == "profit-and-loss":
+        writer.writerow(["Section", "Category", "Amount", "Percentage"])
+        for it in report_data.get("revenue_items", []):
+            writer.writerow(["Revenue", sanitize_cell_value(it.get("category_name")), it.get("amount", 0.0), f"{it.get('percentage', 0.0)}%"])
+        for it in report_data.get("expense_items", []):
+            writer.writerow(["Expense", sanitize_cell_value(it.get("category_name")), it.get("amount", 0.0), f"{it.get('percentage', 0.0)}%"])
+        writer.writerow(["SUMMARY", "Net Income", report_data.get("net_income", 0.0), f"{report_data.get('net_margin_pct', 0.0)}%"])
+
+    elif report_key == "balance-sheet":
+        writer.writerow(["Section", "Account", "Note", "Balance"])
+        for sec in ["assets", "liabilities", "equity"]:
+            s_data = report_data.get(sec, {})
+            for it in s_data.get("items", []):
+                acc = it.get("name", "")
+                if not can_view_sensitive and "#" in acc:
+                    acc = mask_account_number(acc)
+                writer.writerow([sec.upper(), sanitize_cell_value(acc), sanitize_cell_value(it.get("note", "")), it.get("amount", 0.0)])
+            writer.writerow([sec.upper(), f"Total {sec.title()}", "", s_data.get("total", 0.0)])
+
+    elif report_key == "trial-balance":
+        writer.writerow(["Account Code", "Account Name", "Account Type", "Debit", "Credit"])
+        for l in report_data.get("lines", []):
+            acc = l.get("name", "")
+            if not can_view_sensitive and "#" in acc:
+                acc = mask_account_number(acc)
+            writer.writerow([sanitize_cell_value(l.get("code")), sanitize_cell_value(acc), sanitize_cell_value(l.get("type")), l.get("debit", 0.0), l.get("credit", 0.0)])
+        writer.writerow(["TOTALS", "", "", report_data.get("total_debits", 0.0), report_data.get("total_credits", 0.0)])
+
+    elif report_key in ("ar-aging", "ap-aging"):
+        entity_name = "Customer" if report_key == "ar-aging" else "Vendor"
+        writer.writerow([entity_name, "Open Items", "Current", "1 - 30 Days", "31 - 60 Days", "61 - 90 Days", "90+ Days", "Total Due"])
+        for r in report_data.get("rows", []):
+            b = r.get("buckets", {})
+            writer.writerow([
+                sanitize_cell_value(r.get("name")),
+                r.get("outstanding_count", 0),
+                b.get("current", 0.0),
+                b.get("days_1_30", 0.0),
+                b.get("days_31_60", 0.0),
+                b.get("days_61_90", 0.0),
+                b.get("days_over_90", 0.0),
+                b.get("total", 0.0),
+            ])
+        t = report_data.get("totals", {})
+        writer.writerow([
+            "TOTALS",
+            report_data.get("total_open_count", 0),
+            t.get("current", 0.0),
+            t.get("days_1_30", 0.0),
+            t.get("days_31_60", 0.0),
+            t.get("days_61_90", 0.0),
+            t.get("days_over_90", 0.0),
+            t.get("total", 0.0),
+        ])
+
+    elif report_key == "transactions":
+        writer.writerow(["Date", "Account", "Direction", "Category", "Payment Type", "Amount", "Currency", "Reference", "Description", "Cheque #", "Running Balance"])
+        for t in report_data.get("transactions", []):
+            acc = t.get("account_name", "")
+            if not can_view_sensitive:
+                acc = mask_account_number(acc)
+            writer.writerow([
+                sanitize_cell_value(t.get("date")),
+                sanitize_cell_value(acc),
+                sanitize_cell_value(t.get("direction")),
+                sanitize_cell_value(t.get("category")),
+                sanitize_cell_value(t.get("payment_type")),
+                t.get("amount", 0.0),
+                sanitize_cell_value(t.get("currency")),
+                sanitize_cell_value(t.get("reference")),
+                sanitize_cell_value(t.get("description")),
+                sanitize_cell_value(t.get("cheque_number")),
+                t.get("running_balance", 0.0),
+            ])
+    else:
+        writer.writerow(["Item", "Value"])
+        for k, v in report_data.items():
+            if isinstance(v, (str, int, float, bool)):
+                writer.writerow([sanitize_cell_value(k), sanitize_cell_value(v)])
+
+    return output.getvalue().encode("utf-8")
+

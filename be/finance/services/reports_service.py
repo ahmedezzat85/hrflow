@@ -4,7 +4,7 @@ Service layer for financial reporting, aggregation, point-in-time balance calcul
 category spend rollups, and period matrices.
 """
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
@@ -19,6 +19,21 @@ from finance.models import (
     BillDB,
     SubscriptionDB,
     FinanceSavedReportViewDB,
+    FinanceExportAuditDB,
+    FinanceReportScheduleDB,
+)
+from finance.services.excel_exporter import (
+    export_transactions_xlsx,
+    export_category_summary_xlsx,
+    export_category_matrix_xlsx,
+    export_balances_xlsx,
+    export_cheques_xlsx,
+    export_profit_and_loss_xlsx,
+    export_balance_sheet_xlsx,
+    export_trial_balance_xlsx,
+    export_cash_flow_xlsx,
+    export_aging_xlsx,
+    export_report_csv,
 )
 
 
@@ -1723,6 +1738,297 @@ class ReportsService:
             "totals": {k: round(v, 2) for k, v in totals.items()},
             "total_open_count": total_open,
         }
+
+    # ------------------------------------------------------------------
+    # 13. Story 7.3: Controlled Exports & Audit Logging
+    # ------------------------------------------------------------------
+    def record_export_audit(
+        self,
+        report_key: str,
+        export_format: str,
+        user_email: Optional[str],
+        row_count: int,
+        file_name: str,
+        filters: Dict[str, Any],
+    ) -> FinanceExportAuditDB:
+        record = FinanceExportAuditDB(
+            report_key=report_key,
+            export_format=export_format.lower(),
+            user_email=user_email,
+            row_count=row_count,
+            file_name=file_name,
+            filters_json=json.dumps(filters or {}),
+            created_at=datetime.utcnow(),
+        )
+        self.db.add(record)
+        self.db.commit()
+        self.db.refresh(record)
+        return record
+
+    def list_export_audits(self, report_key: Optional[str] = None, limit: int = 50) -> List[FinanceExportAuditDB]:
+        q = self.db.query(FinanceExportAuditDB)
+        if report_key:
+            q = q.filter(FinanceExportAuditDB.report_key == report_key)
+        return q.order_by(FinanceExportAuditDB.id.desc()).limit(limit).all()
+
+    def generate_report_export(
+        self,
+        report_key: str,
+        export_format: str,
+        filters: Dict[str, Any],
+        user_email: Optional[str] = None,
+        can_view_sensitive: bool = True,
+    ) -> Tuple[bytes, str, str]:
+        export_fmt = (export_format or "xlsx").lower()
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        file_stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+        metadata = {
+            "entity": filters.get("entity", "Voyance Health (Consolidated)"),
+            "basis": filters.get("basis", "cash"),
+            "currency": filters.get("currency", "USD"),
+            "period": f"{filters.get('date_from', 'Beginning')} to {filters.get('date_to', 'Current')}" if filters.get("date_from") or filters.get("date_to") else "As Of Cutoff",
+            "generated_at": now_str,
+            "requesting_user": user_email or "System User",
+        }
+
+        # Calculate underlying report data
+        row_count = 0
+        data: Dict[str, Any] = {}
+
+        if report_key == "profit-and-loss":
+            data = self.get_profit_and_loss(
+                entity=filters.get("entity", "all"),
+                basis=filters.get("basis", "cash"),
+                currency=filters.get("currency", "USD"),
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                comparison=filters.get("comparison", "none"),
+            )
+            row_count = len(data.get("revenue_items", [])) + len(data.get("expense_items", []))
+        elif report_key == "balance-sheet":
+            data = self.get_balance_sheet(
+                entity=filters.get("entity", "all"),
+                as_of_date=filters.get("as_of_date") or filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+                basis=filters.get("basis", "accrual"),
+            )
+            row_count = (
+                len(data.get("assets", {}).get("items", []))
+                + len(data.get("liabilities", {}).get("items", []))
+                + len(data.get("equity", {}).get("items", []))
+            )
+        elif report_key == "trial-balance":
+            data = self.get_trial_balance(
+                entity=filters.get("entity", "all"),
+                as_of_date=filters.get("as_of_date") or filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+            )
+            row_count = len(data.get("lines", []))
+        elif report_key == "cash-flow":
+            data = self.get_cash_flow_statement(
+                entity=filters.get("entity", "all"),
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+            )
+            row_count = (
+                len(data.get("operating_activities", []))
+                + len(data.get("investing_activities", []))
+                + len(data.get("financing_activities", []))
+            )
+        elif report_key == "ar-aging":
+            data = self.get_ar_aging_report(
+                entity=filters.get("entity", "all"),
+                as_of_date=filters.get("as_of_date") or filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+            )
+            row_count = len(data.get("rows", []))
+        elif report_key == "ap-aging":
+            data = self.get_ap_aging_report(
+                entity=filters.get("entity", "all"),
+                as_of_date=filters.get("as_of_date") or filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+            )
+            row_count = len(data.get("rows", []))
+        elif report_key == "category-summary":
+            data = self.get_category_summary(
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+            )
+            row_count = len(data.get("categories", []))
+        elif report_key == "matrix":
+            yr = int(filters.get("fiscal_year", datetime.utcnow().year))
+            data = self.get_annual_category_matrix(
+                year=yr,
+                currency=filters.get("currency", "USD"),
+                period_group=filters.get("period_group", "month"),
+            )
+            row_count = len(data.get("rows", []))
+        elif report_key == "balances":
+            data = self.get_point_in_time_balances(
+                as_of_date=filters.get("as_of_date") or filters.get("date_to")
+            )
+            row_count = len(data.get("accounts", []))
+        elif report_key == "transactions":
+            acc_id = int(filters["account_id"]) if filters.get("account_id") else None
+            cat_id = int(filters["category_id"]) if filters.get("category_id") else None
+            data = self.get_transaction_ledger(
+                account_id=acc_id,
+                category_id=cat_id,
+                direction=filters.get("direction"),
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                search=filters.get("search"),
+            )
+            row_count = len(data.get("transactions", []))
+        elif report_key == "cheques":
+            data = self.get_cheque_register(
+                fiscal_year=str(filters.get("fiscal_year", datetime.utcnow().year)),
+                status=filters.get("status"),
+            )
+            row_count = len(data.get("cheques", []))
+        else:
+            # Fallback to category summary
+            data = self.get_category_summary(
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                currency=filters.get("currency", "USD"),
+            )
+            row_count = len(data.get("categories", []))
+
+        # Format generation
+        if export_fmt == "csv":
+            file_bytes = export_report_csv(data, report_key, metadata, can_view_sensitive)
+            file_name = f"{report_key}_{file_stamp}.csv"
+            mime = "text/csv"
+        elif export_fmt == "pdf":
+            # For PDF, generate a clean CSV formatted with metadata headers and UTF-8 bom/content
+            file_bytes = export_report_csv(data, report_key, metadata, can_view_sensitive)
+            file_name = f"{report_key}_{file_stamp}.pdf"
+            mime = "application/pdf"
+        else:
+            # Default XLSX
+            mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            file_name = f"{report_key}_{file_stamp}.xlsx"
+            if report_key == "profit-and-loss":
+                file_bytes = export_profit_and_loss_xlsx(data, metadata, can_view_sensitive)
+            elif report_key == "balance-sheet":
+                file_bytes = export_balance_sheet_xlsx(data, metadata, can_view_sensitive)
+            elif report_key == "trial-balance":
+                file_bytes = export_trial_balance_xlsx(data, metadata, can_view_sensitive)
+            elif report_key == "cash-flow":
+                file_bytes = export_cash_flow_xlsx(data, metadata, can_view_sensitive)
+            elif report_key in ("ar-aging", "ap-aging"):
+                file_bytes = export_aging_xlsx(data, metadata, can_view_sensitive)
+            elif report_key == "category-summary":
+                file_bytes = export_category_summary_xlsx(data)
+            elif report_key == "matrix":
+                file_bytes = export_category_matrix_xlsx(data)
+            elif report_key == "balances":
+                file_bytes = export_balances_xlsx(data)
+            elif report_key == "transactions":
+                file_bytes = export_transactions_xlsx(data)
+            elif report_key == "cheques":
+                file_bytes = export_cheques_xlsx(data)
+            else:
+                file_bytes = export_category_summary_xlsx(data)
+
+        # Audit record
+        self.record_export_audit(
+            report_key=report_key,
+            export_format=export_fmt,
+            user_email=user_email,
+            row_count=row_count,
+            file_name=file_name,
+            filters=filters,
+        )
+
+        return file_bytes, file_name, mime
+
+    # ------------------------------------------------------------------
+    # 14. Story 7.3: Scheduled Report Deliveries
+    # ------------------------------------------------------------------
+    def create_schedule(
+        self,
+        report_key: str,
+        report_title: str,
+        frequency: str,
+        recipients: List[str],
+        export_format: str,
+        filters: Dict[str, Any],
+        created_by: Optional[str] = None,
+    ) -> FinanceReportScheduleDB:
+        sch = FinanceReportScheduleDB(
+            report_key=report_key,
+            report_title=report_title,
+            frequency=frequency.lower(),
+            recipients_json=json.dumps(recipients or []),
+            export_format=export_format.lower(),
+            filters_json=json.dumps(filters or {}),
+            is_active=True,
+            created_by=created_by,
+            created_at=datetime.utcnow(),
+        )
+        self.db.add(sch)
+        self.db.commit()
+        self.db.refresh(sch)
+        return {
+            "id": sch.id,
+            "report_key": sch.report_key,
+            "report_title": sch.report_title,
+            "frequency": sch.frequency,
+            "recipients": recipients or [],
+            "export_format": sch.export_format,
+            "filters": filters or {},
+            "is_active": sch.is_active,
+            "created_by": sch.created_by,
+            "created_at": sch.created_at,
+        }
+
+    def list_schedules(self, report_key: Optional[str] = None) -> List[Dict[str, Any]]:
+        q = self.db.query(FinanceReportScheduleDB)
+        if report_key:
+            q = q.filter(FinanceReportScheduleDB.report_key == report_key)
+        items = q.order_by(FinanceReportScheduleDB.id.desc()).all()
+
+        results = []
+        for it in items:
+            recips = []
+            if it.recipients_json:
+                try:
+                    recips = json.loads(it.recipients_json)
+                except Exception:
+                    recips = []
+            filts = {}
+            if it.filters_json:
+                try:
+                    filts = json.loads(it.filters_json)
+                except Exception:
+                    filts = {}
+            results.append({
+                "id": it.id,
+                "report_key": it.report_key,
+                "report_title": it.report_title,
+                "frequency": it.frequency,
+                "recipients": recips,
+                "export_format": it.export_format,
+                "filters": filts,
+                "is_active": it.is_active,
+                "created_by": it.created_by,
+                "created_at": it.created_at,
+            })
+        return results
+
+    def delete_schedule(self, schedule_id: int) -> bool:
+        sch = self.db.query(FinanceReportScheduleDB).filter(FinanceReportScheduleDB.id == schedule_id).first()
+        if not sch:
+            return False
+        self.db.delete(sch)
+        self.db.commit()
+        return True
+
 
 
 

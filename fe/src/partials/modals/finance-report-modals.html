@@ -78,3 +78,128 @@
     </div>
   </div>
 </div>
+
+<!-- Schedule Report Export Modal -->
+<div class="modal-overlay" id="scheduleReportExportModal" style="display:none; z-index:1000;">
+  <div class="modal modal-md" style="max-width:520px; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden;">
+    <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+      <h3 class="modal-title" style="margin:0; font-size:1.15rem;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--primary, #2563EB);"></i> Schedule Report Delivery</h3>
+      <button class="modal-close" onclick="closeScheduleReportModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:16px 20px;">
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:14px;">
+        Automate periodic delivery of this financial report directly to stakeholder email addresses.
+      </p>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label" style="font-weight:600; font-size:0.85rem;">Target Report</label>
+        <input type="text" id="scheduleReportTargetTitle" class="form-input" style="width:100%; background:var(--bg-secondary, #F8FAFC);" readonly />
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label for="scheduleReportFrequency" class="form-label" style="font-weight:600; font-size:0.85rem;">Frequency *</label>
+          <select id="scheduleReportFrequency" class="form-input" style="width:100%;">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly (Mondays)</option>
+            <option value="monthly" selected>Monthly (1st of Month)</option>
+            <option value="quarterly">Quarterly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="scheduleReportFormat" class="form-label" style="font-weight:600; font-size:0.85rem;">Export Format *</label>
+          <select id="scheduleReportFormat" class="form-input" style="width:100%;">
+            <option value="xlsx" selected>Excel (.xlsx)</option>
+            <option value="csv">CSV Spreadsheet</option>
+            <option value="pdf">PDF Document</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label for="scheduleReportRecipients" class="form-label" style="font-weight:600; font-size:0.85rem;">Recipients (Comma-separated emails) *</label>
+        <textarea id="scheduleReportRecipients" class="form-input" rows="2" placeholder="e.g. cfo@voyance.health, finance-team@voyance.health" style="width:100%; font-family:inherit;"></textarea>
+      </div>
+      <div style="background:var(--bg-secondary, #F8FAFC); border-left:3px solid var(--primary, #2563EB); padding:10px 12px; border-radius:4px; font-size:0.82rem; color:var(--text-muted);">
+        <i class="fa-solid fa-circle-info" style="color:var(--primary, #2563EB); margin-right:4px;"></i>
+        <strong>Active Filters Snapshot:</strong> <span id="scheduleReportFilterInfo">Current shell filters will be evaluated dynamically at each run.</span>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+      <button class="btn btn-secondary" onclick="closeScheduleReportModal()">Cancel</button>
+      <button class="btn btn-primary" id="submitScheduleReportBtn" onclick="submitScheduleReport()"><i class="fa-solid fa-paper-plane"></i> Save Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scheduled Deliveries & Controlled Export Audits Modal -->
+<div class="modal-overlay" id="reportDeliveriesAndAuditsModal" style="display:none; z-index:1000;">
+  <div class="modal modal-lg" style="max-width:960px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg);">
+    <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+      <div>
+        <h3 class="modal-title" style="margin:0; font-size:1.15rem;"><i class="fa-solid fa-list-check" style="color:var(--primary, #2563EB);"></i> Report Deliveries & Export Audits</h3>
+        <p class="modal-subtitle" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px; margin-bottom:0;">
+          Manage automated delivery schedules and review tamper-evident export audit trails.
+        </p>
+      </div>
+      <button class="modal-close" onclick="closeScheduledDeliveriesModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+    </div>
+
+    <!-- Modal Tabs -->
+    <div style="padding:10px 20px; background:var(--bg-secondary, #F8FAFC); border-bottom:1px solid var(--border-color, #E2E8F0); display:flex; gap:12px;">
+      <button class="filter-tab active" id="btnTabReportSchedules" onclick="switchDeliveriesModalTab('schedules')">
+        <i class="fa-solid fa-calendar-check"></i> Automated Schedules (<span id="countReportSchedules">0</span>)
+      </button>
+      <button class="filter-tab" id="btnTabExportAudits" onclick="switchDeliveriesModalTab('audits')">
+        <i class="fa-solid fa-shield-halved"></i> Export Audit Trail (<span id="countExportAudits">0</span>)
+      </button>
+    </div>
+
+    <div class="modal-body" style="flex:1; overflow-y:auto; padding:16px 20px;">
+      <!-- TAB 1: Schedules -->
+      <div id="tabContentReportSchedules">
+        <table class="responsive-card-table" id="reportSchedulesTable">
+          <thead>
+            <tr>
+              <th>Report</th>
+              <th>Frequency</th>
+              <th>Format</th>
+              <th>Recipients</th>
+              <th>Created By</th>
+              <th style="text-align:center; width:90px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="reportSchedulesTableBody"></tbody>
+        </table>
+        <div class="empty-state" id="reportSchedulesEmpty" style="display:none; padding:32px 16px; text-align:center;">
+          <i class="fa-solid fa-calendar-xmark" style="font-size:2rem; color:var(--text-muted); margin-bottom:8px;"></i>
+          <p>No automated delivery schedules configured yet.</p>
+        </div>
+      </div>
+
+      <!-- TAB 2: Export Audits -->
+      <div id="tabContentExportAudits" style="display:none;">
+        <table class="responsive-card-table" id="reportExportAuditsTable">
+          <thead>
+            <tr>
+              <th>Date / Time</th>
+              <th>Report</th>
+              <th>Format</th>
+              <th style="text-align:right;">Rows</th>
+              <th>File Name</th>
+              <th>User</th>
+            </tr>
+          </thead>
+          <tbody id="reportExportAuditsTableBody"></tbody>
+        </table>
+        <div class="empty-state" id="reportExportAuditsEmpty" style="display:none; padding:32px 16px; text-align:center;">
+          <i class="fa-solid fa-file-shield" style="font-size:2rem; color:var(--text-muted); margin-bottom:8px;"></i>
+          <p>No export operations recorded yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+      <button class="btn btn-sm btn-outline" onclick="openScheduleReportModal()"><i class="fa-solid fa-plus"></i> New Schedule</button>
+      <button class="btn btn-secondary" onclick="closeScheduledDeliveriesModal()">Close</button>
+    </div>
+  </div>
+</div>
+
