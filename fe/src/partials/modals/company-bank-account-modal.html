@@ -26,16 +26,27 @@
             </div>
             <div class="form-field">
               <label for="fCompanyCountry">Country</label>
-              <input id="fCompanyCountry" placeholder="e.g. EG, US">
+              <select id="fCompanyCountry" class="filter-select">
+                <option value="United States">United States</option>
+                <option value="Egypt">Egypt</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="United Arab Emirates">United Arab Emirates</option>
+                <option value="Saudi Arabia">Saudi Arabia</option>
+                <option value="Germany">Germany</option>
+                <option value="Canada">Canada</option>
+                <option value="Switzerland">Switzerland</option>
+                <option value="France">France</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
             <div class="form-field full" id="fCompanyBankNameField">
-              <label for="fCompanyBankName" id="fCompanyBankNameLabel">Bank Name <span class="req">*</span></label>
+              <label for="fCompanyBankName" id="fCompanyBankNameLabel">Bank / Custodian Name <span class="req">*</span></label>
               <input id="fCompanyBankName" placeholder="e.g. JPMorgan Chase or CIB">
             </div>
             <div class="form-field full">
               <label for="fCompanyAccountNumber" id="fCompanyAccountNumberLabel">Account Number / IBAN <span class="req">*</span></label>
               <input id="fCompanyAccountNumber" aria-describedby="fCompanyAccountNumberHelp" placeholder="e.g. 12345678904821 or EG..." style="font-family:monospace;">
-              <span id="fCompanyAccountNumberHelp" style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stored securely and masked in reporting tables.</span>
+              <span id="fCompanyAccountNumberHelp" style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stored securely and masked by default in reporting tables.</span>
             </div>
             <div class="form-field">
               <label for="fCompanyCurrency">Currency <span class="req">*</span></label>
@@ -45,10 +56,17 @@
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
               </select>
+              <div id="fCompanyCurrencyWarning" class="alert alert-warning" style="display:none;font-size:11.5px;padding:6px 10px;margin-top:4px;">
+                <i class="fa-solid fa-lock"></i> Currency cannot be modified after transactions have been posted.
+              </div>
             </div>
             <div class="form-field" id="fCompanyOpeningBalanceField">
               <label for="fCompanyOpeningBalance">Opening Balance <span class="req">*</span></label>
               <input type="number" id="fCompanyOpeningBalance" step="0.01" min="0" value="0.00">
+            </div>
+            <div class="form-field" id="fCompanyOpeningDateField">
+              <label for="fCompanyOpeningBalanceDate">Opening Balance Date</label>
+              <input type="date" id="fCompanyOpeningBalanceDate">
             </div>
           </div>
         </div>

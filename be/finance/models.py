@@ -223,6 +223,7 @@ class FinanceBankAccountDB(Base):
     account_number = Column(String(100), nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     opening_balance = Column(Float, default=0.0)
+    opening_balance_date = Column(String(20), nullable=True)  # YYYY-MM-DD
     current_balance = Column(Float, default=0.0)
     account_type = Column(String(20), default="bank", nullable=False)  # bank | cash
     country = Column(String(100), default="Egypt", nullable=True)

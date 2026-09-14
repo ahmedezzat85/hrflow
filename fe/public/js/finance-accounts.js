@@ -96,25 +96,47 @@ function renderFinanceAccounts(items) {
   if (empty) empty.style.display = "none";
 
   tbody.innerHTML = items
-    .map(
-      (acc) => `
+    .map((acc) => {
+      const typeLabel = (acc.account_type || "bank").toUpperCase();
+      const isCash = acc.account_type === "cash";
+      const bookBal = acc.book_balance !== undefined ? acc.book_balance : acc.current_balance;
+      const availBal = acc.available_balance !== undefined ? acc.available_balance : acc.current_balance;
+      const recBal = acc.reconciled_balance !== undefined ? acc.reconciled_balance : 0;
+      const feedText = acc.last_import_date ? `Feed: ${acc.last_import_date}` : "No feed";
+      const recText = acc.last_reconciled_date
+        ? `Reconciled: ${acc.last_reconciled_date}`
+        : (acc.unreconciled_count ? `Unreconciled (${acc.unreconciled_count})` : "Unreconciled");
+
+      return `
     <tr>
       <td>
         <div style="font-weight:600;display:flex;align-items:center;gap:6px;">
-          <i class="fa-solid ${acc.account_type === "cash" ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);"></i>
-          ${acc.account_name}
+          <i class="fa-solid ${isCash ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);"></i>
+          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;">
+            ${acc.account_name}
+          </a>
         </div>
-        ${acc.bank_name && acc.account_type !== "cash" ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}</div>` : ""}
+        ${acc.bank_name && !isCash ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}${acc.country ? ' · ' + acc.country : ''}</div>` : (acc.country ? `<div style="font-size:12px;color:var(--text3);">${acc.country}</div>` : '')}
       </td>
       <td>
-        <span class="badge ${acc.account_type === "cash" ? "badge-info" : "badge-neutral"}">
-          ${(acc.account_type || "bank").toUpperCase()}
+        <span class="badge ${isCash ? "badge-info" : "badge-neutral"}">
+          ${typeLabel}
         </span>
+        <code style="margin-left:4px;font-size:11.5px;">${acc.account_number || "—"}</code>
       </td>
-      <td><code>${acc.account_number}</code></td>
       <td><strong>${acc.currency || "USD"}</strong></td>
       <td class="cell-money" style="text-align:right;font-weight:700;">
-        ${FinanceFormat.renderMoneyHtml(acc.current_balance, acc.currency)}
+        ${FinanceFormat.renderMoneyHtml(bookBal, acc.currency)}
+      </td>
+      <td class="cell-money" style="text-align:right;font-weight:700;color:var(--accent);">
+        ${FinanceFormat.renderMoneyHtml(availBal, acc.currency)}
+      </td>
+      <td class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">
+        ${FinanceFormat.renderMoneyHtml(recBal, acc.currency)}
+      </td>
+      <td style="font-size:11.5px;color:var(--text3);">
+        <div><i class="fa-solid fa-cloud-arrow-up" style="font-size:10px;"></i> ${feedText}</div>
+        <div style="margin-top:2px;"><i class="fa-solid fa-scale-balanced" style="font-size:10px;"></i> ${recText}</div>
       </td>
       <td>
         <span class="badge ${acc.is_active ? "badge-approved" : "badge-rejected"}">
@@ -122,18 +144,21 @@ function renderFinanceAccounts(items) {
         </span>
       </td>
       <td>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-sm btn-fill btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace">
+            <i class="fa-solid fa-folder-open"></i> Workspace
+          </button>
+          <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}">
+          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}">
             <i class="fa-solid ${acc.is_active ? "fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
     </tr>
-  `
-    )
+  `;
+    })
     .join("");
 }
 
@@ -161,12 +186,21 @@ function openAddCompanyBankAccountModal() {
   document.getElementById("fCompanyAccountId").value = "";
   document.getElementById("fCompanyAccountName").value = "";
   if (document.getElementById("fCompanyAccountType")) document.getElementById("fCompanyAccountType").value = "bank";
-  if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = "EG";
+  if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = "United States";
   document.getElementById("fCompanyBankName").value = "";
   document.getElementById("fCompanyAccountNumber").value = "";
-  document.getElementById("fCompanyCurrency").value = "USD";
+  const currEl = document.getElementById("fCompanyCurrency");
+  if (currEl) {
+    currEl.value = "USD";
+    currEl.disabled = false;
+  }
+  const currWarn = document.getElementById("fCompanyCurrencyWarning");
+  if (currWarn) currWarn.style.display = "none";
   document.getElementById("fCompanyOpeningBalance").value = "0.00";
   document.getElementById("fCompanyOpeningBalanceField").style.display = "block";
+  if (document.getElementById("fCompanyOpeningBalanceDate")) {
+    document.getElementById("fCompanyOpeningBalanceDate").value = "";
+  }
   onCompanyAccountTypeChange();
   openModal("companyBankAccountModal");
 }
@@ -180,12 +214,28 @@ function openEditCompanyBankAccountModal(id) {
   document.getElementById("fCompanyAccountId").value = acc.id;
   document.getElementById("fCompanyAccountName").value = acc.account_name;
   if (document.getElementById("fCompanyAccountType")) document.getElementById("fCompanyAccountType").value = acc.account_type || "bank";
-  if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = acc.country || "";
+  if (document.getElementById("fCompanyCountry")) document.getElementById("fCompanyCountry").value = acc.country || "United States";
   document.getElementById("fCompanyBankName").value = acc.bank_name || "";
   document.getElementById("fCompanyAccountNumber").value = "";
   document.getElementById("fCompanyAccountNumber").placeholder = acc.account_number + " (leave blank to keep unchanged)";
-  document.getElementById("fCompanyCurrency").value = acc.currency || "USD";
+
+  const currEl = document.getElementById("fCompanyCurrency");
+  const currWarn = document.getElementById("fCompanyCurrencyWarning");
+  if (currEl) {
+    currEl.value = acc.currency || "USD";
+    if (acc.has_postings) {
+      currEl.disabled = true;
+      if (currWarn) currWarn.style.display = "block";
+    } else {
+      currEl.disabled = false;
+      if (currWarn) currWarn.style.display = "none";
+    }
+  }
+
   document.getElementById("fCompanyOpeningBalanceField").style.display = "none";
+  if (document.getElementById("fCompanyOpeningBalanceDate")) {
+    document.getElementById("fCompanyOpeningBalanceDate").value = acc.opening_balance_date || "";
+  }
   onCompanyAccountTypeChange();
   openModal("companyBankAccountModal");
 }
@@ -198,6 +248,7 @@ async function saveCompanyBankAccount() {
   const bank_name = document.getElementById("fCompanyBankName").value.trim();
   const account_number = document.getElementById("fCompanyAccountNumber").value.trim();
   const currency = document.getElementById("fCompanyCurrency").value;
+  const opening_balance_date = document.getElementById("fCompanyOpeningBalanceDate")?.value || null;
 
   const rules = [
     { id: "fCompanyAccountName", label: "Account Name" },
@@ -216,7 +267,7 @@ async function saveCompanyBankAccount() {
 
   try {
     if (idVal) {
-      const payload = { account_name, account_type, country, currency };
+      const payload = { account_name, account_type, country, currency, opening_balance_date };
       if (bank_name || account_type === "cash") payload.bank_name = bank_name || null;
       if (account_number) payload.account_number = account_number;
       await FinanceApi.updateAccount(Number(idVal), payload);
@@ -237,6 +288,7 @@ async function saveCompanyBankAccount() {
         account_number: finalAccNum,
         currency,
         opening_balance,
+        opening_balance_date,
       };
       await FinanceApi.createAccount(payload);
       toast("Account created successfully", "fa-solid fa-circle-check");
@@ -279,6 +331,466 @@ async function toggleCompanyBankAccountActive(id, currentActive) {
     await loadFinanceAccounts();
   } catch (err) {
     toast(err.message || `Failed to ${action} account`, "fa-solid fa-triangle-exclamation");
+  }
+}
+
+// ==========================================
+// 5.0 Dedicated Account Workspace (Story 5.1)
+// ==========================================
+let _activeWorkspaceAccountId = null;
+let _activeWorkspaceAccount = null;
+let _isWorkspaceAccountNumberRevealed = false;
+let _workspaceLedgerDirectionFilter = "all";
+
+async function openAccountWorkspace(accountId, initialTab = "activity") {
+  _activeWorkspaceAccountId = accountId;
+  _isWorkspaceAccountNumberRevealed = false;
+
+  const paneAccounts = document.getElementById("financeSubPaneAccounts");
+  const paneStatements = document.getElementById("financeSubPaneStatements");
+  const paneCheques = document.getElementById("financeSubPaneCheques");
+  const paneTransfers = document.getElementById("financeSubPaneTransfers");
+  const paneCategories = document.getElementById("financeSubPaneCategories");
+  const panePaymentTypes = document.getElementById("financeSubPanePaymentTypes");
+  const paneLedger = document.getElementById("financeSubPaneLedger");
+  const paneWorkspace = document.getElementById("financeSubPaneWorkspace");
+  const subNav = document.getElementById("financeAccountsSubNav");
+
+  if (paneAccounts) paneAccounts.style.display = "none";
+  if (paneStatements) paneStatements.style.display = "none";
+  if (paneCheques) paneCheques.style.display = "none";
+  if (paneTransfers) paneTransfers.style.display = "none";
+  if (paneCategories) paneCategories.style.display = "none";
+  if (panePaymentTypes) panePaymentTypes.style.display = "none";
+  if (paneLedger) paneLedger.style.display = "none";
+  if (subNav) subNav.style.display = "none";
+  if (paneWorkspace) paneWorkspace.style.display = "block";
+
+  try {
+    const acc = await FinanceApi.getAccount(accountId, { reveal: false });
+    _activeWorkspaceAccount = acc;
+    renderWorkspaceHeader(acc);
+    populateWorkspaceSettings(acc);
+    switchWorkspaceTab(initialTab);
+  } catch (err) {
+    console.error("Failed to open account workspace:", err);
+    toast("Failed to load account workspace: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+function closeAccountWorkspace() {
+  _activeWorkspaceAccountId = null;
+  _activeWorkspaceAccount = null;
+  _isWorkspaceAccountNumberRevealed = false;
+
+  const paneWorkspace = document.getElementById("financeSubPaneWorkspace");
+  const paneAccounts = document.getElementById("financeSubPaneAccounts");
+  const subNav = document.getElementById("financeAccountsSubNav");
+
+  if (paneWorkspace) paneWorkspace.style.display = "none";
+  if (paneAccounts) paneAccounts.style.display = "block";
+  if (subNav) subNav.style.display = "flex";
+
+  loadFinanceAccounts();
+}
+
+function renderWorkspaceHeader(acc) {
+  if (!acc) return;
+
+  const nameEl = document.getElementById("workspaceAccountName");
+  const typeBadge = document.getElementById("workspaceAccountTypeBadge");
+  const statusBadge = document.getElementById("workspaceAccountStatusBadge");
+  const instEl = document.getElementById("workspaceAccountInstitution");
+  const countryEl = document.getElementById("workspaceAccountCountry");
+  const idEl = document.getElementById("workspaceAccountIdentifier");
+  const revBtn = document.getElementById("btnRevealAccountNumber");
+
+  if (nameEl) nameEl.textContent = acc.account_name;
+  if (typeBadge) {
+    typeBadge.textContent = (acc.account_type || "bank").toUpperCase();
+    typeBadge.className = `badge ${acc.account_type === "cash" ? "badge-info" : "badge-neutral"}`;
+  }
+  if (statusBadge) {
+    statusBadge.textContent = acc.is_active ? "ACTIVE" : "INACTIVE";
+    statusBadge.className = `badge ${acc.is_active ? "badge-approved" : "badge-rejected"}`;
+  }
+  if (instEl) {
+    instEl.innerHTML = `<i class="fa-solid ${acc.account_type === "cash" ? "fa-wallet" : "fa-building-columns"}"></i> ${acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "Bank")}`;
+  }
+  if (countryEl) {
+    countryEl.innerHTML = `<i class="fa-solid fa-globe"></i> ${acc.country || "Global"}`;
+  }
+  if (idEl) {
+    idEl.textContent = acc.account_number;
+  }
+  if (revBtn) {
+    revBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Reveal';
+  }
+
+  const bookBal = acc.book_balance !== undefined ? acc.book_balance : acc.current_balance;
+  const availBal = acc.available_balance !== undefined ? acc.available_balance : acc.current_balance;
+  const bankBal = acc.bank_balance !== undefined ? acc.bank_balance : acc.current_balance;
+  const recBal = acc.reconciled_balance !== undefined ? acc.reconciled_balance : 0;
+
+  const bookEl = document.getElementById("workspaceBookBalance");
+  const bookAsOfEl = document.getElementById("workspaceBookBalanceAsOf");
+  const availEl = document.getElementById("workspaceAvailableBalance");
+  const availSubEl = document.getElementById("workspaceAvailableBalanceSub");
+  const bankEl = document.getElementById("workspaceBankBalance");
+  const bankImportEl = document.getElementById("workspaceLastImportStatus");
+  const recEl = document.getElementById("workspaceReconciledBalance");
+  const recStatusEl = document.getElementById("workspaceLastReconciledStatus");
+
+  if (bookEl) bookEl.innerHTML = FinanceFormat.renderMoneyHtml(bookBal, acc.currency);
+  if (bookAsOfEl) bookAsOfEl.textContent = `As of: ${acc.balance_as_of || "Today"}`;
+
+  if (availEl) availEl.innerHTML = FinanceFormat.renderMoneyHtml(availBal, acc.currency);
+  if (availSubEl) availSubEl.textContent = (acc.balance_definitions && acc.balance_definitions.available_balance) || "Liquid after uncleared cheques";
+
+  if (bankEl) bankEl.innerHTML = FinanceFormat.renderMoneyHtml(bankBal, acc.currency);
+  if (bankImportEl) bankImportEl.textContent = `Last feed: ${acc.last_import_date || "None"}`;
+
+  if (recEl) recEl.innerHTML = FinanceFormat.renderMoneyHtml(recBal, acc.currency);
+  if (recStatusEl) recStatusEl.textContent = `Last reconciled: ${acc.last_reconciled_date || "Never"}`;
+}
+
+async function revealWorkspaceAccountNumber() {
+  if (!_activeWorkspaceAccountId) return;
+  const idEl = document.getElementById("workspaceAccountIdentifier");
+  const btn = document.getElementById("btnRevealAccountNumber");
+
+  try {
+    if (!_isWorkspaceAccountNumberRevealed) {
+      const acc = await FinanceApi.getAccount(_activeWorkspaceAccountId, { reveal: true });
+      if (idEl) idEl.textContent = acc.account_number;
+      if (btn) btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Conceal';
+      _isWorkspaceAccountNumberRevealed = true;
+    } else {
+      const acc = await FinanceApi.getAccount(_activeWorkspaceAccountId, { reveal: false });
+      if (idEl) idEl.textContent = acc.account_number;
+      if (btn) btn.innerHTML = '<i class="fa-solid fa-eye"></i> Reveal';
+      _isWorkspaceAccountNumberRevealed = false;
+    }
+  } catch (err) {
+    console.error("Reveal error:", err);
+    toast(err.message || "Unauthorized to reveal account number", "fa-solid fa-lock");
+  }
+}
+
+function switchWorkspaceTab(tabName, btn) {
+  const tabs = ["activity", "reconcile", "statements", "details"];
+  tabs.forEach((t) => {
+    const tabBtn = document.getElementById(`tabWs${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    if (tabBtn) {
+      tabBtn.classList.remove("active");
+      tabBtn.setAttribute("aria-selected", "false");
+      tabBtn.setAttribute("tabindex", "-1");
+    }
+    const pane = document.getElementById(`workspacePane${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    if (pane) pane.style.display = (t === tabName ? "block" : "none");
+  });
+
+  const activeBtn = btn || document.getElementById(`tabWs${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+    activeBtn.setAttribute("aria-selected", "true");
+    activeBtn.setAttribute("tabindex", "0");
+  }
+
+  if (tabName === "activity") {
+    loadWorkspaceActivity();
+  } else if (tabName === "statements") {
+    loadWorkspaceStatements();
+  } else if (tabName === "reconcile") {
+    loadWorkspaceReconcile();
+  }
+}
+
+function populateWorkspaceSettings(acc) {
+  if (!acc) return;
+  const nameInput = document.getElementById("wsSettingAccountName");
+  const typeSelect = document.getElementById("wsSettingAccountType");
+  const countrySelect = document.getElementById("wsSettingCountry");
+  const bankInput = document.getElementById("wsSettingBankName");
+  const currSelect = document.getElementById("wsSettingCurrency");
+  const dateInput = document.getElementById("wsSettingOpeningDate");
+  const currLock = document.getElementById("wsSettingCurrencyLockNotice");
+
+  if (nameInput) nameInput.value = acc.account_name || "";
+  if (typeSelect) typeSelect.value = acc.account_type || "bank";
+  if (countrySelect) countrySelect.value = acc.country || "United States";
+  if (bankInput) bankInput.value = acc.bank_name || "";
+  if (currSelect) currSelect.value = acc.currency || "USD";
+  if (dateInput) dateInput.value = acc.opening_balance_date || "";
+
+  if (acc.has_postings) {
+    if (currSelect) currSelect.disabled = true;
+    if (currLock) currLock.style.display = "block";
+  } else {
+    if (currSelect) currSelect.disabled = false;
+    if (currLock) currLock.style.display = "none";
+  }
+}
+
+async function saveWorkspaceAccountSettings() {
+  if (!_activeWorkspaceAccountId) return;
+  const btn = document.getElementById("btnSaveWsSettings");
+  if (btn) btn.disabled = true;
+
+  try {
+    const account_name = document.getElementById("wsSettingAccountName").value.trim();
+    const account_type = document.getElementById("wsSettingAccountType").value;
+    const country = document.getElementById("wsSettingCountry").value;
+    const bank_name = document.getElementById("wsSettingBankName").value.trim();
+    const currency = document.getElementById("wsSettingCurrency").value;
+    const opening_balance_date = document.getElementById("wsSettingOpeningDate").value || null;
+
+    if (!account_name) {
+      toast("Account name is required", "fa-solid fa-triangle-exclamation");
+      return;
+    }
+
+    const payload = {
+      account_name,
+      account_type,
+      country,
+      bank_name: bank_name || (account_type === "cash" ? "Cash Account" : null),
+      currency,
+      opening_balance_date,
+    };
+
+    await FinanceApi.updateAccount(_activeWorkspaceAccountId, payload);
+    toast("Account settings saved successfully", "fa-solid fa-circle-check");
+    await openAccountWorkspace(_activeWorkspaceAccountId, "details");
+  } catch (err) {
+    console.error("Failed to save account settings:", err);
+    toast(err.message || "Failed to save settings", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function workspaceRecordTransaction() {
+  if (_activeWorkspaceAccountId) {
+    _currentLedgerAccountId = _activeWorkspaceAccountId;
+    openAddFinanceTransactionModal();
+  }
+}
+
+function workspaceTransfer() {
+  if (_activeWorkspaceAccountId) {
+    openRecordFinanceTransferModal(_activeWorkspaceAccountId);
+  } else {
+    openRecordFinanceTransferModal();
+  }
+}
+
+function workspaceImportStatement() {
+  if (_activeWorkspaceAccountId) {
+    openUploadStatementModal(_activeWorkspaceAccountId);
+  } else {
+    openUploadStatementModal();
+  }
+}
+
+async function loadWorkspaceActivity() {
+  if (!_activeWorkspaceAccountId) return;
+  const bar = document.getElementById("workspaceLedgerLoadingBar");
+  if (bar) bar.style.display = "block";
+
+  try {
+    await _populateWorkspaceFilterDropdowns();
+    const params = {};
+    const dateFrom = document.getElementById("workspaceLedgerDateFrom")?.value;
+    const dateTo = document.getElementById("workspaceLedgerDateTo")?.value;
+    const catId = document.getElementById("workspaceLedgerCategoryFilter")?.value;
+    const ptId = document.getElementById("workspaceLedgerPaymentTypeFilter")?.value;
+
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    if (catId) params.category_id = catId;
+    if (ptId) params.payment_type_id = ptId;
+    if (_workspaceLedgerDirectionFilter && _workspaceLedgerDirectionFilter !== "all") {
+      params.direction = _workspaceLedgerDirectionFilter;
+    }
+
+    const items = await FinanceApi.getAccountTransactions(_activeWorkspaceAccountId, params);
+    renderWorkspaceLedger(items);
+  } catch (err) {
+    console.error("Failed to load workspace ledger activity:", err);
+  } finally {
+    if (bar) bar.style.display = "none";
+  }
+}
+
+async function _populateWorkspaceFilterDropdowns() {
+  try {
+    if (!FinanceState.categories || !FinanceState.categories.length) {
+      FinanceState.categories = await FinanceApi.getCategories();
+    }
+    if (!FinanceState.paymentTypes || !FinanceState.paymentTypes.length) {
+      FinanceState.paymentTypes = await FinanceApi.getPaymentTypes();
+    }
+
+    const catSel = document.getElementById("workspaceLedgerCategoryFilter");
+    if (catSel && catSel.options.length <= 1) {
+      catSel.innerHTML = '<option value="">All Categories</option>' +
+        (FinanceState.categories || [])
+          .map((c) => `<option value="${c.id}">${c.name}${c.is_petty ? " (Petty)" : ""}</option>`)
+          .join("");
+    }
+
+    const ptSel = document.getElementById("workspaceLedgerPaymentTypeFilter");
+    if (ptSel && ptSel.options.length <= 1) {
+      ptSel.innerHTML = '<option value="">All Payment Types</option>' +
+        (FinanceState.paymentTypes || [])
+          .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+          .join("");
+    }
+  } catch (_) {}
+}
+
+function filterWorkspaceLedger() {
+  loadWorkspaceActivity();
+}
+
+function filterWorkspaceLedgerDirection(direction, btn) {
+  _workspaceLedgerDirectionFilter = direction;
+  const tabs = document.querySelectorAll("#workspacePaneActivity .filter-tabs .filter-tab");
+  tabs.forEach((t) => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadWorkspaceActivity();
+}
+
+function renderWorkspaceLedger(items) {
+  const tbody = document.getElementById("workspaceLedgerTableBody");
+  const empty = document.getElementById("workspaceLedgerEmpty");
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  const acc = _activeWorkspaceAccount;
+  const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+
+  tbody.innerHTML = items
+    .map((tx) => {
+      const isIn = tx.direction === "in";
+      const inDisplay = isIn ? `<strong style="color:var(--success);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
+      const outDisplay = !isIn ? `<strong style="color:var(--danger);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
+
+      let fxDisplay = "—";
+      if (tx.fx_rate) {
+        const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
+        const eqSym = eqCurr === "EGP" ? "E£" : "$";
+        const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
+        fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
+      }
+
+      const isManual = tx.source === "manual";
+      const actionsHtml = isManual
+        ? `<div style="display:flex;gap:4px;justify-content:center;">
+             <button class="btn btn-sm" onclick="openEditFinanceTransactionModal(${tx.id})" title="Edit Transaction"><i class="fa-solid fa-pen"></i></button>
+             <button class="btn btn-sm btn-danger" onclick="confirmDeleteFinanceTransaction(${tx.id})" title="Void / Delete Transaction"><i class="fa-solid fa-trash"></i></button>
+           </div>`
+        : `<span class="badge badge-info" title="System-generated from ${tx.source}"><i class="fa-solid fa-lock"></i> ${(tx.source || '').replace('_', ' ').toUpperCase()}</span>`;
+
+      return `
+        <tr>
+          <td><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
+          <td><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
+          <td><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td><span style="font-size:12px;">${tx.reference || "—"}</span></td>
+          <td><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
+          <td style="text-align:right;">${inDisplay}</td>
+          <td style="text-align:right;">${outDisplay}</td>
+          <td style="text-align:right;">${fxDisplay}</td>
+          <td style="text-align:right;"><strong>${symbol}${Number(tx.running_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
+          <td style="text-align:center;">${actionsHtml}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function loadWorkspaceStatements() {
+  if (!_activeWorkspaceAccountId) return;
+  const tbody = document.getElementById("workspaceStatementsTableBody");
+  const empty = document.getElementById("workspaceStatementsEmpty");
+  if (!tbody) return;
+
+  try {
+    const list = await FinanceApi.listAccountStatements(_activeWorkspaceAccountId);
+    if (!list || list.length === 0) {
+      tbody.innerHTML = "";
+      if (empty) empty.style.display = "block";
+      return;
+    }
+    if (empty) empty.style.display = "none";
+
+    tbody.innerHTML = list
+      .map(
+        (s) => `
+      <tr>
+        <td><strong>${s.period_month || "—"}</strong></td>
+        <td><i class="fa-regular fa-file-lines" style="color:var(--text3);margin-right:4px;"></i> ${s.file_name || s.filename || "Statement"}</td>
+        <td>${s.lines_count || s.total_lines || 0}</td>
+        <td>${s.matched_lines || s.resolved_lines || 0}</td>
+        <td><span class="badge ${s.status === 'reconciled' ? 'badge-approved' : 'badge-pending'}">${(s.status || 'PENDING').toUpperCase()}</span></td>
+        <td style="font-size:12px;color:var(--text3);">${s.created_at ? s.created_at.slice(0, 10) : '—'}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-sm btn-outline" onclick="switchWorkspaceTab('reconcile')">
+            <i class="fa-solid fa-scale-balanced"></i> Reconcile
+          </button>
+        </td>
+      </tr>
+    `
+      )
+      .join("");
+  } catch (err) {
+    console.error("Failed to load workspace statements:", err);
+  }
+}
+
+async function loadWorkspaceReconcile() {
+  if (!_activeWorkspaceAccountId) return;
+  const container = document.getElementById("workspaceReconcileContent");
+  if (!container) return;
+
+  try {
+    const list = await FinanceApi.listAccountStatements(_activeWorkspaceAccountId);
+    const pendingStmt = (list || []).find((s) => s.status !== "reconciled");
+    if (pendingStmt && typeof openReconciliationForStatement === "function") {
+      container.innerHTML = `
+        <div style="margin-bottom:14px; padding:12px 16px; background:var(--surface2); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong>Active Statement Period: ${pendingStmt.period_month}</strong>
+            <div style="font-size:12px; color:var(--text3);">${pendingStmt.file_name || "Bank Statement"} · ${pendingStmt.lines_count || 0} lines</div>
+          </div>
+          <button class="btn btn-sm btn-fill" onclick="openReconciliationForStatement(${pendingStmt.id})">
+            <i class="fa-solid fa-play"></i> Open Matcher
+          </button>
+        </div>
+        <div id="workspaceReconcileRunner"></div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="empty-state" style="padding:2.5rem 1rem;">
+          <i class="fa-solid fa-check-double" style="font-size:2rem; color:var(--success, #10b981); margin-bottom:10px;"></i>
+          <h4>Account In Balance</h4>
+          <p style="color:var(--text3); font-size:13px; max-width:480px; margin:0 auto 14px auto;">
+            All recent statement lines have been matched with ledger transactions or no pending statements require review.
+          </p>
+          <button class="btn btn-outline btn-sm" onclick="switchWorkspaceTab('statements')"><i class="fa-solid fa-file-invoice"></i> View Imported Statements</button>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load reconcile view:", err);
   }
 }
 
@@ -1166,7 +1678,7 @@ function renderFinanceTransfers(items) {
     .join("");
 }
 
-async function openRecordFinanceTransferModal() {
+async function openRecordFinanceTransferModal(presetFromAccountId = null) {
   FinanceForm.clearErrors("financeTransferModal");
   if (!FinanceState.accounts || !FinanceState.accounts.length) {
     FinanceState.accounts = await FinanceApi.getAccounts({ is_active: true });
@@ -1194,6 +1706,11 @@ async function openRecordFinanceTransferModal() {
   document.getElementById("transferNote").value = "";
   document.getElementById("transferFromBalanceHint").textContent = "";
   document.getElementById("transferToBalanceHint").textContent = "";
+
+  if (presetFromAccountId && fromSel) {
+    fromSel.value = String(presetFromAccountId);
+    onTransferAccountSelected("from");
+  }
 
   // Reset to Internal Move
   const internalRadio = document.querySelector('input[name="transferTypeRadio"][value="internal"]');
@@ -1407,3 +1924,13 @@ window.onTransferTypeChanged = onTransferTypeChanged;
 window.onTransferAccountSelected = onTransferAccountSelected;
 window.recalcTransferAmounts = recalcTransferAmounts;
 window.saveFinanceTransfer = saveFinanceTransfer;
+window.openAccountWorkspace = openAccountWorkspace;
+window.closeAccountWorkspace = closeAccountWorkspace;
+window.revealWorkspaceAccountNumber = revealWorkspaceAccountNumber;
+window.switchWorkspaceTab = switchWorkspaceTab;
+window.saveWorkspaceAccountSettings = saveWorkspaceAccountSettings;
+window.workspaceRecordTransaction = workspaceRecordTransaction;
+window.workspaceTransfer = workspaceTransfer;
+window.workspaceImportStatement = workspaceImportStatement;
+window.filterWorkspaceLedger = filterWorkspaceLedger;
+window.filterWorkspaceLedgerDirection = filterWorkspaceLedgerDirection;

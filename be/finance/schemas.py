@@ -15,6 +15,7 @@ class BankAccountBase(BaseModel):
     bank_name: Optional[str] = Field(None, max_length=100, description="Financial institution name (optional for cash accounts)")
     currency: str = Field("USD", min_length=3, max_length=10, description="ISO Currency code")
     opening_balance: float = Field(0.0, ge=0.0, description="Starting cash balance")
+    opening_balance_date: Optional[str] = Field(None, description="Opening balance date YYYY-MM-DD")
     account_type: str = Field("bank", description="Account type: bank or cash")
     country: Optional[str] = Field("Egypt", description="Country location, e.g. Egypt, US")
 
@@ -28,6 +29,8 @@ class BankAccountUpdate(BaseModel):
     bank_name: Optional[str] = Field(None, max_length=100)
     account_number: Optional[str] = Field(None, min_length=4, max_length=50)
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    opening_balance: Optional[float] = Field(None, ge=0.0)
+    opening_balance_date: Optional[str] = None
     account_type: Optional[str] = Field(None, description="Account type: bank or cash")
     country: Optional[str] = Field(None, description="Country location")
     is_active: Optional[bool] = None
@@ -35,10 +38,22 @@ class BankAccountUpdate(BaseModel):
 
 class BankAccountResponse(BankAccountBase):
     id: int
-    account_number: str = Field(..., description="Masked account number")
+    account_number: str = Field(..., description="Masked or revealed account number")
     current_balance: float
     is_active: bool
     created_at: Optional[datetime] = None
+
+    # Story 5.1 Balance Separation & Workspace Health
+    book_balance: float = 0.0
+    bank_balance: Optional[float] = None
+    available_balance: float = 0.0
+    reconciled_balance: Optional[float] = None
+    unreconciled_count: int = 0
+    last_reconciled_date: Optional[str] = None
+    last_import_date: Optional[str] = None
+    has_postings: bool = False
+    balance_definitions: Optional[Dict[str, str]] = None
+    balance_as_of: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -17,10 +17,10 @@ function _getIdempHeaders(explicitKey = null) {
 
 const FinanceMockState = {
   accounts: [
-    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", currency: "USD", opening_balance: 150000.0, current_balance: 150000.0, is_active: true },
-    { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", currency: "USD", opening_balance: 500000.0, current_balance: 500000.0, is_active: true },
-    { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", currency: "EGP", opening_balance: 450000.0, current_balance: 450000.0, is_active: true },
-    { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", currency: "EGP", opening_balance: 20000.0, current_balance: 20000.0, is_active: true },
+    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 150000.0, is_active: true },
+    { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
+    { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
+    { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
   ],
   customers: [
     { id: 1, name: "Apex Health Partners", legal_name: "Apex Healthcare Systems LLC", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", billing_address: "100 Medical Center Blvd", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Enterprise client", is_active: true },
@@ -196,6 +196,26 @@ const FinanceMockState = {
       matched_transaction_id: null,
       matched_cheque_id: null,
       suggested_matches: []
+    }
+  ],
+  transactions: [
+    {
+      id: 1,
+      account_id: 1,
+      date: "2026-09-02",
+      direction: "out",
+      amount: 4200.0,
+      currency: "USD",
+      category_id: 2,
+      category_name: "Infrastructure",
+      payment_type_id: 3,
+      payment_type_code: "OUTBOUND_TRANS",
+      payment_type_name: "Outbound Transfer",
+      reference: "AWS-SEPT-01",
+      description: "Payment for AWS Cloud Hosting",
+      source: "manual",
+      running_balance: 145800.0,
+      created_at: "2026-09-02T10:00:00"
     }
   ],
   attentionReviewed: new Set(),
@@ -1313,7 +1333,32 @@ const FinanceApi = {
   // Bank Accounts
   async getAccounts(params) {
     if (_isMock()) {
-      let list = [...FinanceMockState.accounts];
+      let list = [...FinanceMockState.accounts].map((a) => {
+        const book = Number(a.current_balance || a.opening_balance || 0);
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
+        const uncleared = (FinanceMockState.cheques || [])
+          .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
+          .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+        const available = book;
+        return {
+          ...a,
+          book_balance: book,
+          bank_balance: Math.round((book + uncleared) * 100) / 100,
+          available_balance: available,
+          reconciled_balance: book,
+          unreconciled_count: 0,
+          last_reconciled_date: "2026-09-01",
+          last_import_date: "2026-09-05",
+          has_postings: hasPostings,
+          balance_definitions: {
+            book_balance: "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
+            bank_balance: "Reported bank statement balance as of the latest statement upload or sync.",
+            available_balance: "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
+            reconciled_balance: "Portion of the ledger verified and reconciled against official bank statements."
+          },
+          balance_as_of: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
+        };
+      });
       if (params && params.is_active !== undefined) {
         list = list.filter((a) => a.is_active === (params.is_active === "true" || params.is_active === true));
       }
@@ -1329,21 +1374,56 @@ const FinanceApi = {
   async listAccounts(params) {
     return this.getAccounts(params);
   },
-  async getAccount(id) {
+  async getAccount(id, params) {
     if (_isMock()) {
       const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
       if (!acc) throw new Error("Account not found");
-      return acc;
+      const isReveal = params && (params.reveal === true || params.reveal === "true");
+      let acctNum = acc.account_number;
+      if (!isReveal) {
+        acctNum = `******${(acc.account_number || "").slice(-4)}`;
+      } else {
+        acctNum = acc.raw_account_number || acc.account_number.replace(/\*/g, "9");
+      }
+      const book = Number(acc.current_balance || acc.opening_balance || 0);
+      const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+      const uncleared = (FinanceMockState.cheques || [])
+        .filter((c) => c.account_id === acc.id && (c.status === "issued" || c.status === "outstanding"))
+        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+      return {
+        ...acc,
+        account_number: acctNum,
+        book_balance: book,
+        bank_balance: Math.round((book + uncleared) * 100) / 100,
+        available_balance: book,
+        reconciled_balance: book,
+        unreconciled_count: 0,
+        last_reconciled_date: "2026-09-01",
+        last_import_date: "2026-09-05",
+        has_postings: hasPostings,
+        balance_definitions: {
+          book_balance: "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
+          bank_balance: "Reported bank statement balance as of the latest statement upload or sync.",
+          available_balance: "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
+          reconciled_balance: "Portion of the ledger verified and reconciled against official bank statements."
+        },
+        balance_as_of: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
+      };
     }
-    return apiRequest("GET", `/api/finance/accounts/${id}`);
+    const q = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return apiRequest("GET", `/api/finance/accounts/${id}${q}`);
   },
   async createAccount(payload) {
     if (_isMock()) {
+      const rawNum = payload.account_number || "";
       const newAcc = {
         id: FinanceMockState.accounts.length + 1,
         ...payload,
         current_balance: payload.opening_balance || 0,
-        account_number: `******${(payload.account_number || "").slice(-4)}`,
+        raw_account_number: rawNum,
+        account_number: `******${rawNum.slice(-4)}`,
+        country: payload.country || "Egypt",
+        opening_balance_date: payload.opening_balance_date || null,
         is_active: true,
       };
       FinanceMockState.accounts.push(newAcc);
@@ -1355,6 +1435,12 @@ const FinanceApi = {
     if (_isMock()) {
       const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
       if (!acc) throw new Error("Account not found");
+      if (payload.currency && payload.currency.toUpperCase() !== (acc.currency || "").toUpperCase()) {
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+        if (hasPostings) {
+          throw new Error("Currency cannot be modified after transactions have been posted to this account.");
+        }
+      }
       Object.assign(acc, payload);
       return acc;
     }
