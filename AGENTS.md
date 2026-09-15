@@ -169,36 +169,52 @@ domain boundaries (intentional — makes cross-referencing FE/BE easier):
 
 ## Implementation Strategy & Engineering Protocol
 
-Every story / task in this repo (e.g., FUX stories, HR features) MUST follow this disciplined, repeatable lifecycle:
+Every story / task in this repo (e.g., FUX stories, HR features) MUST follow this strict 5-phase sequential lifecycle:
 
-1. **Understand & Plan First**:
-   - Inspect the story requirements in `docs/` (e.g. `docs/finance-module/`).
-   - Create or update `implementation_plan.md` covering Architecture, Models, Backend Services/Routers, Frontend UI/Mock, and Test Strategy.
-   - Do NOT rush to code before establishing clear contracts and edge cases.
-2. **Backend Architecture & Consistency**:
-   - Follow the 3-tier structure:
-     - `models.py` / `schemas.py` for database tables and Pydantic DTOs.
-     - `repositories/` for raw database queries and filtering.
-     - `services/` for business logic, validation, calculations, and error throwing.
-     - `routers/` for HTTP endpoints, parameter parsing, and RBAC permission checks (`require_permission(...)`).
-   - Defensively stringify sheet-backed IDs / codes if passing to frontend.
-   - Preserve singleton locks and idempotency where financial commands execute.
-3. **Frontend UI & Mock Mode Dual-Fidelity**:
-   - HRFlow supports dual mode: **Live backend** and **Mock mode** (`?mock=admin` or `?mock=employee`).
-   - Whenever backend routes/schemas change, update the corresponding `fe/finance-api.js` mock handler (`FinanceMockState` and `FinanceApi` methods) so tests and demo sessions work seamlessly in mock mode.
-   - Preserves component IDs and semantic CSS tokens.
-   - **MANDATORY BUILD STEP**: Whenever any file under `fe/` is modified (HTML partials, JS, CSS), **ALWAYS execute `npm run build` from `fe/`** before running UI tests or committing.
-4. **Automated Testing & Test Suite Preservation**:
-   - Write real tests that are committed directly into the test suite — NEVER use disposable/scratchpad test scripts for verification.
-   - Backend tests belong in `be/tests/test_*.py`. Run with Python venv:
-     ```powershell
-     D:\Voyance\DICOM_UTILITY\HR\.venv\Scripts\python.exe -m pytest be/tests/<test_file>.py -v
-     ```
-   - Frontend UI tests belong in `fe/tests/ui/<feature>.spec.js`.
-   - Run regression tests for touched domains before finishing.
-5. **Commit & Push**:
-   - Verify `git status` to ensure no temporary artifacts are staged.
-   - Stage relevant files, commit with descriptive message explaining **what** and **why**, and push to the active working branch (`origin/refactor/finance-ux`).
+### Phase 1: Feature Specification & Ingestion
+- Ingest the feature requirements from the user prompt or story spec in `docs/` (e.g. `docs/finance-module/`).
+- Identify all user roles, acceptance criteria, schema migrations, API endpoints, and UI touchpoints.
+- Clarify any ambiguities or edge cases upfront before designing solutions.
+
+### Phase 2: Derive Implementation Plan
+- Formulate a detailed `implementation_plan.md` before writing code:
+  - **Architecture & Schema**: Table definitions, Pydantic DTOs, database migration scripts.
+  - **Backend Pipeline**: Repository queries, domain validation & services, router endpoints with RBAC checks (`require_permission(...)`).
+  - **Frontend & Mock Mode**: HTML partials, UI state, handlers, and exact mock mutations in `fe/finance-api.js` (`FinanceMockState`).
+  - **Verification & Test Strategy**: Specific test cases mapped directly to acceptance criteria and verification goals.
+- Do NOT jump straight to code before establishing clear contracts, schemas, and edge cases.
+
+### Phase 3: Execute Implementation Plan
+- **Backend Implementation (3-Tier Consistency)**:
+  - `models.py` / `schemas.py` for database tables and Pydantic DTOs.
+  - `repositories/` for raw database queries and filtering.
+  - `services/` for business logic, validation, calculations, and error throwing.
+  - `routers/` for HTTP endpoints, parameter parsing, and RBAC permission checks.
+  - Defensively stringify sheet-backed IDs / codes if passing to frontend.
+  - Preserve singleton locks (`_instance_lock`) and financial command idempotency.
+- **Frontend Dual-Mode Implementation**:
+  - Update `fe/finance-api.js` (`FinanceMockState` and `FinanceApi`) so mock mode (`?mock=admin` or `?mock=employee`) mirrors live backend functionality with 100% fidelity.
+  - Preserve component IDs, layout structures, and semantic CSS tokens.
+  - **MANDATORY BUILD STEP**: Whenever any file under `fe/` is modified (HTML partials, JS, CSS), **ALWAYS execute `npm run build` from `fe/`** before running UI tests or browser verification.
+
+### Phase 4: Automated Verification & Test Suite Augmentation
+- Map every acceptance criterion and verification goal to automated tests.
+- **Save tests permanently into the existing test suite** (NEVER use one-off disposable scratch scripts):
+  - Backend tests belong in `be/tests/test_*.py`. Run with Python venv:
+    ```powershell
+    D:\Voyance\DICOM_UTILITY\HR\.venv\Scripts\python.exe -m pytest be/tests/<test_file>.py -v
+    ```
+  - Frontend UI tests belong in `fe/tests/ui/<feature>.spec.js`. Run with Playwright:
+    ```powershell
+    npx playwright test tests/ui/<feature>.spec.js --reporter=list
+    ```
+- Run full regression tests for touched domains and verify 100% pass before concluding work.
+
+### Phase 5: Clean Teardown, Commit & Push
+- Inspect `git status` to ensure zero temporary, scratch, or test-output files remain staged.
+- Stage relevant source and test files.
+- Commit with a descriptive message explaining **what** changed and **why** (referencing story ID e.g. FUX-XXX).
+- Push directly to the active working branch (`origin/refactor/finance-ux`).
 
 ## Playwright UI Testing Instructions (Efficient Workflow)
 
