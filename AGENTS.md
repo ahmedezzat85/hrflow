@@ -50,63 +50,48 @@ The common 401 issue is HRFlow's own JWT session expiry (`TOKEN_EXPIRY_HOURS`), 
 
 ### File and Document Handling
 - Follow existing Google Drive storage and retrieval patterns for employee documents and the Document Hub.
-- Store only repository-approved storage references; do not create public document links or bypass the authorization layer.
+- Store only repository-approved storage references; never use a publicly shareable Drive link as an authorization mechanism or bypass the backend authorization layer.
 - When serving a document, authorize the current user against the associated record before streaming the stored file.
 
-## Engineering Workflow & Story Lifecycle
+## Engineering Workflow
 
-For standard and high-risk features (including all FUX finance stories in `docs/finance-module/`), follow this strict 5-phase sequential lifecycle:
+Choose the lightest workflow that matches the task's risk and blast radius:
 
-### Phase 1: Feature Specification & Ingestion
-- Ingest feature requirements from user prompt or story specs in `docs/` (e.g. `docs/finance-module/FUX-XXX.md`).
-- Identify user roles, acceptance criteria, schema migrations, API endpoints, and UI touchpoints.
-- Clarify ambiguities or edge cases upfront before designing.
+### Small Changes
+Use for localized bug fixes, UI polish, copy changes, simple validation, focused tests, and mechanical cleanup:
+1. Inspect the relevant code and nearest existing pattern.
+2. Make the smallest correct change.
+3. Run targeted checks.
+4. Inspect the final diff and report results.
 
-### Phase 2: Derive Implementation Plan
-- Formulate a detailed `implementation_plan.md` before writing code:
-  - **Architecture & Schema**: Table definitions, Pydantic DTOs, database migration scripts.
-  - **Backend Pipeline**: Repository queries, domain validation & services, router endpoints with RBAC checks.
-  - **Frontend & Mock Mode**: HTML partials, UI state, handlers, and exact mock mutations in `fe/finance-api.js` (`FinanceMockState`).
-  - **Verification & Test Strategy**: Specific test cases mapped directly to acceptance criteria and verification goals.
-- Stop and align before executing code changes.
+### Standard Changes
+Use for bounded features or enhancements spanning a small number of modules:
+1. Inspect relevant modules, tests, and patterns.
+2. State a concise approach before editing: affected modules, data/API changes, compatibility or edge cases, and test plan.
+3. Implement using the established architecture.
+4. Add durable tests for changed behavior where practical, and run relevant checks.
 
-### Phase 3: Execute Implementation
-- **Backend (3-Tier Consistency)**:
-  - `models.py` / `schemas.py` for database tables and Pydantic DTOs.
-  - `repositories/` for raw database queries and filtering.
-  - `services/` for business logic, validation, calculations, and domain errors.
-  - `routers/` for HTTP endpoints, parameter parsing, and RBAC checks (`require_permission(...)`).
-  - Defensively stringify sheet-backed IDs / codes passing to frontend.
-  - Preserve singleton locks (`_instance_lock`) and financial command idempotency.
-- **Frontend Dual-Mode**:
-  - Update `fe/finance-api.js` (`FinanceMockState` and `FinanceApi`) so mock mode (`?mock=admin` or `?mock=employee`) mirrors live backend functionality with 100% fidelity.
-  - Preserve element IDs, layout structures, and semantic CSS tokens.
-  - **MANDATORY BUILD STEP**: Whenever any file under `fe/` is modified (HTML partials, JS, CSS), **ALWAYS execute `npm run build` from `fe/`** before running UI tests or browser verification.
+### High-Risk Changes
+Use for finance (e.g., FUX stories in `docs/finance-module/`), payroll, permissions, authentication, document storage, file retrieval, migrations, data lifecycle, workflow-state changes, or broad cross-module refactors. Follow this sequence:
 
-### Phase 4: Automated Verification & Test Suite Augmentation
-- Map every acceptance criterion and verification goal to automated tests.
-- **Save tests permanently into the repository test suite** (NEVER use disposable scratch scripts):
-  - Backend tests belong in `be/tests/test_*.py`. Run with Python venv:
-    ```powershell
-    D:\Voyance\DICOM_UTILITY\HR\.venv\Scripts\python.exe -m pytest be/tests/<test_file>.py -v
-    ```
-  - Frontend UI tests belong in `fe/tests/ui/<feature>.spec.js`. Run with Playwright:
-    ```powershell
-    npx playwright test tests/ui/<feature>.spec.js --reporter=list
-    ```
-- Run full regression tests for touched domains and verify 100% pass before concluding work.
+1. **Feature Specification & Ingestion**: Read story specs in `docs/finance-module/` or prompt. Identify user roles, acceptance criteria, schema changes, endpoints, and UI touchpoints. Resolve material ambiguities before implementation; use established local patterns for routine implementation choices.
+2. **Derive Implementation Plan**: Formulate a detailed `implementation_plan.md` covering architecture, schemas/DTOs, backend services & permissions, frontend UI & mock state, and test strategy mapped to acceptance criteria.
+3. **Execute Implementation**:
+   - Backend 3-tier consistency (`models/schemas` $\rightarrow$ `repositories` $\rightarrow$ `services` $\rightarrow$ `routers`).
+   - Frontend: update HTML partials, scripts, and mock handlers.
+   - **MANDATORY**: Run `npm run build` in `fe/` whenever any frontend files are touched before running UI tests.
+4. **Verification & Test Suite Augmentation**: Write durable tests (in `be/tests/` and `fe/tests/ui/`) for all acceptance criteria. Run targeted checks and required domain regressions. Report pre-existing or environment-related failures separately.
+5. **Clean Teardown & Delivery**: Inspect `git status` and `git diff` for zero scratch/temporary artifacts, stage cleanly, and commit with descriptive messages (`FUX-XXX`).
 
-### Phase 5: Clean Teardown, Commit & Push
-- Inspect `git status` to ensure zero temporary, scratch, or test-output files remain staged.
-- Stage relevant source and test files.
-- Commit with a descriptive message explaining **what** changed and **why** (referencing story ID e.g. `FUX-XXX`).
-- Push directly to the active working branch (verify branch with `git branch --show-current`, e.g. `origin/refactor/finance-ux`).
+## Frontend and Mock Mode
 
-*(Note: For trivial bug fixes or localized UI polish, agents may choose a lighter workflow: inspect -> make smallest correct change -> run targeted checks -> commit).*
+- For features supported in mock mode, update `FinanceMockState` and `FinanceApi` in `fe/finance-api.js` so mock mode reproduces the user-visible states, transitions, validations, and error scenarios needed for deterministic UI testing (`?mock=admin` or `?mock=employee`).
+- Do not claim mock mode validates backend-only behavior such as real authorization, Google Drive streaming, persistence, concurrency, or server-side data integrity; cover those with backend/integration tests.
+- Preserve element IDs, layout structures, and semantic CSS tokens.
 
 ## Playwright UI Testing Instructions
 
-The repository has a comprehensive Playwright test suite in `fe/tests/ui/` configured via `fe/playwright.config.js` (reusing port 8080 or launching Vite dev server).
+The repository has a comprehensive Playwright test suite in `fe/tests/ui/` configured via `fe/playwright.config.js`.
 
 ### How to Run Tests Efficiently
 From the `fe/` directory (or with `npx` inside `fe/`):
@@ -152,14 +137,23 @@ npx playwright test tests/ui/finance-bill-repository.spec.js --headed
 - **Clean Modal Teardown**:
   - Always close opened modals and drawers within the test so active overlay state cannot leak to subsequent tests.
 
+## Git and Delivery
+
+- Inspect `git status` and the final `git diff`; ensure no temporary, scratch, generated, or test-output files are included.
+- Stage only relevant source, documentation, and test files.
+- Use a descriptive commit message explaining what changed and why; include a story identifier such as `FUX-XXX` when applicable.
+- Determine the target branch from the current task, repository state, and user instruction.
+- Commit, push, create branches, or open pull requests only when explicitly authorized by the user or required by the active execution environment.
+- For large files or reconstructed patches, read back the resulting content or inspect the diff before and after committing.
+
 ## Definition of Done
 
 Before declaring a task complete:
 - Confirm implementation satisfies all accepted scope and acceptance criteria.
 - Inspect `git diff` and verify only intended files changed (verify no placeholder content).
-- Run relevant build (`npm run build`), unit, and UI tests.
+- Run the relevant build (`npm run build`) and applicable backend/unit/integration/UI tests for the touched area.
 - Add or update permanent tests for changed behavior.
-- Report: summary of changes, test commands run and results, and any assumptions.
+- Report: summary of changes, test commands run and results, any limitations, and unresolved assumptions.
 
 ## Maintaining This Guide
 
