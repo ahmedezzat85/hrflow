@@ -1,0 +1,129 @@
+name: Finance UX CI
+
+on:
+  push:
+    branches: [refactor/finance-ux]
+    paths:
+      - 'be/**'
+      - 'fe/**'
+      - '.github/workflows/finance-ux-ci.yml'
+  pull_request:
+    paths:
+      - 'be/**'
+      - 'fe/**'
+      - '.github/workflows/finance-ux-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-ux-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests (Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: be
+    env:
+      DB_TYPE: sqlite
+      DATABASE_URL: sqlite:///./ci.db
+      JWT_SECRET: ci-only-secret-not-for-production
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: be/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Verify application imports
+        run: python -c "import main; print('Backend import OK')"
+
+      - name: Verify Alembic migrations
+        run: alembic upgrade head
+
+      - name: Run backend test suite
+        run: python -m pytest -ra --junitxml=pytest-results.xml
+
+      - name: Upload backend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: be/pytest-results.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  frontend:
+    name: Frontend build and tests (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: fe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Create CI runtime config
+        run: |
+          cat > config.js <<'EOF'
+          window.HRFLOW_CONFIG = {
+            API_BASE_URL: "http://localhost:5000",
+            GOOGLE_CLIENT_ID: "ci-placeholder.apps.googleusercontent.com"
+          };
+          EOF
+
+      - name: Run frontend tests
+        run: npm test -- --run
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: fe/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  quality-gate:
+    name: Finance UX quality gate
+    if: always()
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce successful verification
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+        run: |
+          echo "Backend: $BACKEND_RESULT"
+          echo "Frontend: $FRONTEND_RESULT"
+          test "$BACKEND_RESULT" = "success"
+          test "$FRONTEND_RESULT" = "success"
