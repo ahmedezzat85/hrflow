@@ -628,8 +628,18 @@ class BillBase(BaseModel):
     amount_paid: float = 0.0
 
 
+class BillPaymentInline(BaseModel):
+    bank_account_id: int = Field(..., description="ID of bank account used for payment")
+    amount: Optional[float] = Field(None, ge=0.01, description="Payment amount. If omitted, defaults to bill total.")
+    payment_date: str = Field(..., description="Date payment was made (YYYY-MM-DD)")
+    method: Optional[str] = Field("bank_transfer", description="Payment method: bank_transfer, cash, card, other")
+    reference: Optional[str] = Field(None, max_length=100, description="Payment reference / check number")
+
+
 class BillCreate(BillBase):
     lines: List[BillLineCreate] = Field(default_factory=list)
+    is_paid_now: Optional[bool] = Field(False, description="Flag indicating bill is already paid upon creation")
+    payment: Optional[BillPaymentInline] = Field(None, description="Inline payment details when is_paid_now is True")
 
 
 class BillUpdate(BaseModel):

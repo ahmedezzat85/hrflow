@@ -453,9 +453,77 @@ async function handleBillFileSelected(event) {
   onBillFieldInput();
 }
 
+function toggleBillPaidNowSection(checked) {
+  const section = document.getElementById("billPaidNowSection");
+  if (section) section.style.display = checked ? "block" : "none";
+  if (checked) {
+    _populateBillPaidNowAccounts();
+    const totalEl = document.getElementById("billTotalDisplay");
+    const amountInput = document.getElementById("billPaidNowAmount");
+    if (amountInput && (!amountInput.value || amountInput.dataset.autofilled === "true")) {
+      const currentTotal = totalEl ? parseFloat(totalEl.textContent) || 0 : 0;
+      amountInput.value = currentTotal > 0 ? currentTotal.toFixed(2) : "";
+      amountInput.dataset.autofilled = "true";
+    }
+    const dateInput = document.getElementById("billPaidNowDate");
+    const issueDateInput = document.getElementById("billIssueDate");
+    if (dateInput && !dateInput.value) {
+      dateInput.value = (issueDateInput && issueDateInput.value) ? issueDateInput.value : new Date().toISOString().split("T")[0];
+    }
+  }
+}
+
+async function _populateBillPaidNowAccounts() {
+  const accSel = document.getElementById("billPaidNowBankAccountId");
+  if (!accSel) return;
+  if (accSel.options.length > 1) return; // already loaded
+  try {
+    const accounts = await FinanceApi.getAccounts({ is_active: true });
+    accSel.innerHTML = `<option value="">— Select account —</option>` + accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+  } catch (_) {
+    accSel.innerHTML = "<option value=''>— No accounts available —</option>";
+  }
+}
+
+function _resetBillPaidNowSection() {
+  const group = document.getElementById("billIsPaidNowGroup");
+  const chk = document.getElementById("billIsPaidNow");
+  const section = document.getElementById("billPaidNowSection");
+  const amtInput = document.getElementById("billPaidNowAmount");
+  if (group) group.style.display = "block";
+  if (chk) chk.checked = false;
+  if (section) section.style.display = "none";
+  if (amtInput) {
+    amtInput.value = "";
+    delete amtInput.dataset.autofilled;
+  }
+}
+
+function _resetBillStatusDisplay(bill = null) {
+  const statusSel = document.getElementById("billStatus");
+  const readOnlyContainer = document.getElementById("billStatusReadOnlyContainer");
+  const readOnlyBadge = document.getElementById("billStatusReadOnlyBadge");
+
+  // If editing a bill that has payments recorded or is in settled status, show read-only status badge
+  const isSettledOrPaid = bill && (bill.status === "paid" || bill.status === "partially_paid" || (bill.amount_paid && bill.amount_paid > 0));
+  if (isSettledOrPaid) {
+    if (statusSel) statusSel.style.display = "none";
+    if (readOnlyContainer) readOnlyContainer.style.display = "block";
+    if (readOnlyBadge) {
+      readOnlyBadge.textContent = bill.status === "paid" ? "Paid" : "Partially Paid";
+      readOnlyBadge.className = bill.status === "paid" ? "badge badge-success" : "badge badge-warning";
+    }
+  } else {
+    if (statusSel) statusSel.style.display = "block";
+    if (readOnlyContainer) readOnlyContainer.style.display = "none";
+  }
+}
+
 function openCaptureBillModal() {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillPaidNowSection();
+  _resetBillStatusDisplay();
   _populateBillVendorDropdown();
 
   document.getElementById("billModalTitleText").textContent = "Upload & Capture Vendor Bill";
@@ -483,6 +551,8 @@ function openCaptureBillModal() {
 function openAddBillModal() {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillPaidNowSection();
+  _resetBillStatusDisplay();
   _populateBillVendorDropdown();
 
   document.getElementById("billModalTitleText").textContent = "New Vendor Bill";
@@ -513,8 +583,14 @@ async function openEditBillModal(billId) {
   _resetBillCaptureSection();
   _populateBillVendorDropdown();
 
+  // Hide "Bill is already paid" on edit mode
+  const paidNowGroup = document.getElementById("billIsPaidNowGroup");
+  if (paidNowGroup) paidNowGroup.style.display = "none";
+
   try {
     const bill = await FinanceApi.getBill(billId);
+    _resetBillStatusDisplay(bill);
+
     document.getElementById("billModalTitleText").textContent = `Edit Bill ${bill.bill_number}`;
     document.getElementById("billModalId").value = bill.id;
     document.getElementById("billCaptureSource").value = bill.capture_source || "manual";
@@ -601,6 +677,14 @@ function _updateBillTotals() {
   const totalEl = document.getElementById("billTotalDisplay");
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
   if (totalEl) totalEl.textContent = subtotal.toFixed(2);
+
+  // FUX-408: Sync inline payment amount if checked
+  const isPaidNowCheckbox = document.getElementById("billIsPaidNow");
+  const paidNowAmount = document.getElementById("billPaidNowAmount");
+  if (isPaidNowCheckbox && isPaidNowCheckbox.checked && paidNowAmount && (!paidNowAmount.value || paidNowAmount.dataset.autofilled === "true")) {
+    paidNowAmount.value = subtotal.toFixed(2);
+    paidNowAmount.dataset.autofilled = "true";
+  }
 }
 
 async function saveBillModal() {
@@ -651,6 +735,37 @@ async function saveBillModal() {
     if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
   });
 
+  // FUX-408: Handle combined create-and-pay if isPaidNow is checked
+  const isPaidNowCheckbox = document.getElementById("billIsPaidNow");
+  const isPaidNow = !billId && isPaidNowCheckbox && isPaidNowCheckbox.checked;
+  let paymentData = null;
+  if (isPaidNow) {
+    const bankAccountId = document.getElementById("billPaidNowBankAccountId").value;
+    const paymentDate = document.getElementById("billPaidNowDate").value;
+    const paymentAmount = parseFloat(document.getElementById("billPaidNowAmount").value);
+    const paymentMethod = document.getElementById("billPaidNowMethod").value || "bank_transfer";
+    const paymentRef = document.getElementById("billPaidNowReference").value.trim() || null;
+
+    if (!bankAccountId) {
+      showToast("Please select a bank account for the payment.", "warning");
+      document.getElementById("billPaidNowBankAccountId").focus();
+      return;
+    }
+    if (!paymentDate) {
+      showToast("Please enter the payment date.", "warning");
+      document.getElementById("billPaidNowDate").focus();
+      return;
+    }
+
+    paymentData = {
+      bank_account_id: parseInt(bankAccountId, 10),
+      payment_date: paymentDate,
+      amount: !isNaN(paymentAmount) && paymentAmount > 0 ? paymentAmount : null,
+      method: paymentMethod,
+      reference: paymentRef,
+    };
+  }
+
   const payload = {
     vendor_id: parseInt(vendorId, 10),
     bill_number: billNumber,
@@ -669,6 +784,7 @@ async function saveBillModal() {
     is_duplicate_override: dupOverride,
     duplicate_override_reason: dupOverride ? dupReason : null,
     lines,
+    ...(isPaidNow ? { is_paid_now: true, payment: paymentData } : {}),
   };
 
   const btn = document.getElementById("billModalSaveBtn");
@@ -680,7 +796,7 @@ async function saveBillModal() {
       showToast("Bill updated", "success");
     } else {
       savedBill = await FinanceApi.createBill(payload);
-      showToast("Bill created", "success");
+      showToast(isPaidNow ? "Bill created and payment recorded" : "Bill created", "success");
     }
 
     // If a new physical file was chosen, upload it to durable attachment storage

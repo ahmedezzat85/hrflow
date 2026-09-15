@@ -186,9 +186,9 @@ def test_bill_payment_recording(app_client, admin_cookies):
     assert payment["direction"] == "outgoing"
     assert payment["related_bill_id"] == bill_id
 
-    # 3. Bill still 'unpaid' (not fully paid)
+    # 3. Bill is now 'partially_paid' (not fully paid)
     bill_check = app_client.get(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
-    assert bill_check.json()["status"] == "unpaid"
+    assert bill_check.json()["status"] == "partially_paid"
 
     # 4. Bank balance decreased by 500
     acc_check = app_client.get(f"/api/finance/accounts/{account_id}", cookies=admin_cookies)

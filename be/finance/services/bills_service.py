@@ -36,6 +36,7 @@ VALID_BILL_STATUSES = {
     "ready_to_pay",
     "scheduled",
     "paid",
+    "partially_paid",
     "exceptions",
     "void",
     "unpaid",
@@ -231,6 +232,26 @@ class BillsService:
                 detail="A valid reason is required when overriding a duplicate bill detection.",
             )
 
+        # FUX-408: Integrity Guard - Paid status cannot be set directly without settlement
+        if payload.status in ("paid", "partially_paid") and not payload.is_paid_now:
+            raise HTTPException(
+                status_code=400,
+                detail="Paid or partially paid status cannot be set directly. It is derived from recorded settlements.",
+            )
+
+        # FUX-408: Combined create-and-pay validation
+        if payload.is_paid_now:
+            if not payload.payment:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Payment details (bank account, payment date) are required when 'is_paid_now' is True.",
+                )
+            if payload.requires_approval and payload.approval_status != "approved":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bill requires approval before payment can be recorded.",
+                )
+
         # AC 1: Uploaded bills do not become payable until required fields are reviewed
         initial_status = payload.status
         is_rev = payload.is_reviewed if payload.is_reviewed is not None else True
@@ -238,8 +259,11 @@ class BillsService:
             is_rev = False
             if initial_status in ("ready_to_pay", "paid"):
                 initial_status = "inbox"
+        elif payload.is_paid_now:
+            # When creating and paying simultaneously, set initial working status to ready_to_pay
+            initial_status = "ready_to_pay"
 
-        data = payload.model_dump(exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines"})
+        data = payload.model_dump(exclude={"lines", "is_paid_now", "payment"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines", "is_paid_now", "payment"})
         data["status"] = initial_status
         data["is_reviewed"] = is_rev
 
@@ -252,6 +276,31 @@ class BillsService:
             for ln in payload.lines
         ]
         bill = self.repo.create(data, lines_data)
+
+        # FUX-408: Execute settlement atomically if is_paid_now is True
+        if payload.is_paid_now and payload.payment:
+            pay_amt = payload.payment.amount if payload.payment.amount is not None else bill.total
+            payment_dict = {
+                "bank_account_id": payload.payment.bank_account_id,
+                "amount": pay_amt,
+                "payment_date": payload.payment.payment_date,
+                "method": payload.payment.method or "bank_transfer",
+                "reference": payload.payment.reference or bill.bill_number,
+                "related_bill_id": bill.id,
+                "currency": bill.currency or "USD",
+                "direction": "outgoing",
+            }
+            try:
+                self.repo.record_payment(payment_dict)
+            except Exception as e:
+                # If payment fails, repo already raises or fails. Re-raise as HTTPException for clean client error
+                if isinstance(e, HTTPException):
+                    raise e
+                raise HTTPException(status_code=400, detail=f"Failed to record settlement: {str(e)}")
+
+            # Reload bill with updated amount_paid and status
+            bill = self.repo.get_by_id(bill.id)
+
         return self._bill_to_response(bill)
 
     def approve_bill(
@@ -346,6 +395,13 @@ class BillsService:
 
         if payload.status and payload.status not in VALID_BILL_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
+
+        # FUX-408: Integrity Guard - Paid status cannot be directly set via bill update
+        if payload.status in ("paid", "partially_paid"):
+            raise HTTPException(
+                status_code=400,
+                detail="Bill status cannot be directly updated to paid or partially paid. Record a payment via settlement instead.",
+            )
 
         # AC 1: Uploaded/unreviewed bills cannot move directly to ready_to_pay or paid without being reviewed
         target_status = payload.status or bill.status

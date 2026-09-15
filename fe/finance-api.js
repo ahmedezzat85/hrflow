@@ -882,16 +882,34 @@ const FinanceApi = {
         throw new Error("A valid reason is required when overriding a duplicate bill detection.");
       }
 
+      // FUX-408: Integrity guard
+      if ((payload.status === "paid" || payload.status === "partially_paid") && !payload.is_paid_now) {
+        throw new Error("Paid or partially paid status cannot be set directly. It is derived from recorded settlements.");
+      }
+
+      if (payload.is_paid_now) {
+        if (!payload.payment) {
+          throw new Error("Payment details (bank account, payment date) are required when 'is_paid_now' is True.");
+        }
+        if (payload.requires_approval && payload.approval_status !== "approved") {
+          throw new Error("Bill requires approval before payment can be recorded.");
+        }
+      }
+
       let st = payload.status || "inbox";
       let isRev = payload.is_reviewed !== undefined ? !!payload.is_reviewed : true;
       if (!isRev && (st === "ready_to_pay" || st === "paid")) {
         throw new Error("Unreviewed bills cannot be marked Ready to Pay or Paid.");
+      }
+      if (payload.is_paid_now) {
+        st = "ready_to_pay";
       }
 
       const newBill = {
         id: FinanceMockState.bills.length + 1,
         ...payload,
         status: st,
+        amount_paid: 0.0,
         is_reviewed: isRev,
         vendor_name: vend ? vend.name : null,
         subtotal, tax_amount: 0, total: subtotal,
@@ -899,6 +917,18 @@ const FinanceApi = {
         lines,
       };
       FinanceMockState.bills.push(newBill);
+
+      // FUX-408: Record settlement if is_paid_now is True
+      if (payload.is_paid_now && payload.payment) {
+        await this.recordBillPayment(newBill.id, {
+          bank_account_id: payload.payment.bank_account_id,
+          payment_date: payload.payment.payment_date,
+          amount: payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : newBill.total,
+          method: payload.payment.method || "bank_transfer",
+          reference: payload.payment.reference || newBill.bill_number,
+        });
+      }
+
       return newBill;
     }
     return apiRequest("POST", "/api/finance/bills", payload);
@@ -907,6 +937,11 @@ const FinanceApi = {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
+
+      // FUX-408: Integrity guard
+      if (payload.status === "paid" || payload.status === "partially_paid") {
+        throw new Error("Bill status cannot be directly updated to paid or partially paid. Record a payment via settlement instead.");
+      }
 
       const targetStatus = payload.status || bill.status;
       const isRev = payload.is_reviewed !== undefined ? payload.is_reviewed : bill.is_reviewed;
