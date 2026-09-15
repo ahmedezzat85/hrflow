@@ -35,8 +35,10 @@ document storage, and a company-wide "Document Hub".
   during this work.
 - `stabilization` — where bug fixes land (race conditions, session-expiry
   UX, etc.). Treat as the current "latest working state".
-- `refactor/frontend-modular` — **active branch for the frontend
-  modularization effort** described below. Branched from `stabilization`.
+- `refactor/frontend-modular` — completed migration of frontend modularization.
+- `refactor/finance-ux` — **active branch for finance UX & business logic
+  enhancements** (Stories FUX-401 through FUX-408, including settlement linking,
+  bill document repository, and AP lifecycle). Branched from `stabilization`.
 
 ## Key facts / gotchas learned the hard way
 
@@ -164,3 +166,96 @@ domain boundaries (intentional — makes cross-referencing FE/BE easier):
   what — match that style (see recent commits for tone/format).
 - Prioritize information from `github.com/ahmedezzat85/hrflow` itself
   (this repo) over generic web sources when making implementation choices.
+
+## Implementation Strategy & Engineering Protocol
+
+Every story / task in this repo (e.g., FUX stories, HR features) MUST follow this disciplined, repeatable lifecycle:
+
+1. **Understand & Plan First**:
+   - Inspect the story requirements in `docs/` (e.g. `docs/finance-module/`).
+   - Create or update `implementation_plan.md` covering Architecture, Models, Backend Services/Routers, Frontend UI/Mock, and Test Strategy.
+   - Do NOT rush to code before establishing clear contracts and edge cases.
+2. **Backend Architecture & Consistency**:
+   - Follow the 3-tier structure:
+     - `models.py` / `schemas.py` for database tables and Pydantic DTOs.
+     - `repositories/` for raw database queries and filtering.
+     - `services/` for business logic, validation, calculations, and error throwing.
+     - `routers/` for HTTP endpoints, parameter parsing, and RBAC permission checks (`require_permission(...)`).
+   - Defensively stringify sheet-backed IDs / codes if passing to frontend.
+   - Preserve singleton locks and idempotency where financial commands execute.
+3. **Frontend UI & Mock Mode Dual-Fidelity**:
+   - HRFlow supports dual mode: **Live backend** and **Mock mode** (`?mock=admin` or `?mock=employee`).
+   - Whenever backend routes/schemas change, update the corresponding `fe/finance-api.js` mock handler (`FinanceMockState` and `FinanceApi` methods) so tests and demo sessions work seamlessly in mock mode.
+   - Preserves component IDs and semantic CSS tokens.
+   - **MANDATORY BUILD STEP**: Whenever any file under `fe/` is modified (HTML partials, JS, CSS), **ALWAYS execute `npm run build` from `fe/`** before running UI tests or committing.
+4. **Automated Testing & Test Suite Preservation**:
+   - Write real tests that are committed directly into the test suite — NEVER use disposable/scratchpad test scripts for verification.
+   - Backend tests belong in `be/tests/test_*.py`. Run with Python venv:
+     ```powershell
+     D:\Voyance\DICOM_UTILITY\HR\.venv\Scripts\python.exe -m pytest be/tests/<test_file>.py -v
+     ```
+   - Frontend UI tests belong in `fe/tests/ui/<feature>.spec.js`.
+   - Run regression tests for touched domains before finishing.
+5. **Commit & Push**:
+   - Verify `git status` to ensure no temporary artifacts are staged.
+   - Stage relevant files, commit with descriptive message explaining **what** and **why**, and push to the active working branch (`origin/refactor/finance-ux`).
+
+## Playwright UI Testing Instructions (Efficient Workflow)
+
+The repository has a comprehensive Playwright test suite in `fe/tests/ui/` configured via `fe/playwright.config.js`.
+
+### 1. Where Tests Live
+- Store all UI test specs under `fe/tests/ui/` with descriptive names:
+  - `fe/tests/ui/finance-bills-inbox.spec.js` (AP Inbox, OCR capture, duplicates)
+  - `fe/tests/ui/finance-bills-approval.spec.js` (Approval limits, Segregation of Duties)
+  - `fe/tests/ui/finance-settlement-linking.spec.js` (Settlement link, auto-match, bills/invoices)
+  - `fe/tests/ui/finance-bill-repository.spec.js` (Attachment storage, paperclip actions, repository filters)
+  - Existing suite includes 40+ specs covering all finance, banking, drawer, and employee workflows.
+- Always add new test scenarios into existing or new `.spec.js` files in `fe/tests/ui/` rather than one-off scratch scripts.
+
+### 2. How to Run Tests Efficiently
+From the `fe/` directory (or with `npx` inside `fe/`):
+
+```powershell
+# Run a specific spec file (fastest and recommended during development):
+npx playwright test tests/ui/finance-bill-repository.spec.js
+
+# Run a specific test by title match:
+npx playwright test tests/ui/finance-bill-repository.spec.js -g "paperclip attachment action"
+
+# Run with verbose list reporter for real-time step output:
+npx playwright test tests/ui/finance-bill-repository.spec.js --reporter=list
+
+# Run multiple related regression specs:
+npx playwright test tests/ui/finance-bills-inbox.spec.js tests/ui/finance-bills-approval.spec.js
+
+# Run headed mode (for visual inspection when needed):
+npx playwright test tests/ui/finance-bill-repository.spec.js --headed
+```
+
+*Note: Playwright's config in `fe/` automatically reuses an existing server on port 8080 or launches `npm run dev` if needed.*
+
+### 3. Best Practices for Writing UI Tests in HRFlow
+- **Use Mock Mode for Deterministic State**:
+  ```javascript
+  await page.goto('/?mock=admin');
+  await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
+  ```
+- **Listen to Browser Logs**:
+  ```javascript
+  page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
+  page.on('pageerror', (err) => console.error('BROWSER ERROR:', err));
+  ```
+- **Z-Index & Modal Stacking**:
+  - Modals and drawers have high z-indexes (Detail drawer: `1050`, Confirmation: `9999`, Preview modal: `2000`).
+  - When testing nested modals (e.g. previewing an attachment from inside a drawer or edit modal), ensure the top modal is closed before interacting with the underlying modal/drawer.
+- **Robust Selectors**:
+  - Prefer explicit IDs (`#financeBillAttachmentFilter`, `#billModalSaveBtn`).
+  - Use scoped row lookups:
+    ```javascript
+    const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")');
+    await billRow.locator('.btn-bill-attachment').click();
+    ```
+- **Clean Modal Teardown**:
+  - Always close opened modals and drawers within the test to avoid leaking active overlay states to subsequent tests.
+
