@@ -100,6 +100,14 @@ def init_db():
     except Exception:
         pass
 
+    # Idempotently seed default finance lookup categories and payment types (FUX-409)
+    try:
+        from finance.seed_data import seed_finance_lookups
+        with get_db_context() as db:
+            seed_finance_lookups(db)
+    except Exception:
+        pass
+
 
 def reset_engine_for_testing(custom_url: str = None):
     """Utility for test fixtures to bind a fresh in-memory or temporary database."""

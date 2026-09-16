@@ -137,6 +137,7 @@ const titles = {
   'a-finance-bills':['Vendor Bills','Track supplier bills and accounts payable.'],
   'a-finance-accounts':['Company Bank Accounts','Manage company treasury and operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
+  'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],

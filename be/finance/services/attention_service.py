@@ -17,6 +17,7 @@ from finance.models import (
     BankStatementImportDB,
     FinanceChequeDB,
     FinanceAttentionReviewDB,
+    StatutoryObligationDB,
 )
 from finance.schemas import AttentionItem, AttentionQueueResponse
 
@@ -53,6 +54,7 @@ class AttentionQueueService:
         can_payroll = is_admin or "finance.payroll.read" in user_permissions
         can_statements = is_admin or "finance.statement.read" in user_permissions
         can_cheques = is_admin or "finance.cheque.read" in user_permissions or "finance.report.read" in user_permissions
+        can_statutory = is_admin or "finance.spend.read" in user_permissions or "finance.bill.read" in user_permissions
 
         # 1. Fetch reviewed items
         reviewed_query = self.db.query(FinanceAttentionReviewDB).all()
@@ -534,6 +536,84 @@ class AttentionQueueService:
                                 created_at=sub.created_at.isoformat() if sub.created_at else None,
                             )
                         )
+
+        # ----------------------------------------------------
+        # Domain 10: Statutory Obligations (Unconfirmed / Unremitted)
+        # ----------------------------------------------------
+        if can_statutory:
+            open_obligations = (
+                self.db.query(StatutoryObligationDB)
+                .filter(StatutoryObligationDB.status.in_(["estimated", "accrued", "partially_remitted"]))
+                .all()
+            )
+            for obl in open_obligations:
+                key = f"statutory:{obl.id}:{obl.status}"
+                is_rev = key in reviewed_dict
+                if not include_reviewed and is_rev:
+                    continue
+
+                type_label = obl.obligation_type.replace("_", " ").title()
+                rem = max(0.0, round(obl.amount_accrued - (obl.amount_remitted or 0.0), 2))
+
+                is_overdue = False
+                days_diff = 0
+                if obl.due_date:
+                    try:
+                        due_d = datetime.strptime(obl.due_date[:10], "%Y-%m-%d").date()
+                        days_diff = (today - due_d).days
+                        is_overdue = days_diff > 0
+                    except Exception:
+                        pass
+
+                if obl.status == "estimated":
+                    item_severity = "warning"
+                    title = f"Unconfirmed Obligation: {type_label} ({obl.period})"
+                    desc = f"Payroll-derived estimate of {obl.amount_accrued:,.2f} {obl.currency} for {obl.period} requires confirmation against government portal figures."
+                    due_state = "pending_confirmation"
+                    due_label = "Requires Portal Confirmation"
+                    score = 72
+                elif is_overdue:
+                    item_severity = "urgent"
+                    title = f"Overdue Obligation: {type_label} ({obl.period})"
+                    desc = f"Statutory obligation of {rem:,.2f} {obl.currency} is {days_diff} day(s) past due ({obl.due_date}). Immediate remittance required."
+                    due_state = "overdue"
+                    due_label = f"Overdue by {days_diff}d"
+                    score = min(95, 80 + days_diff)
+                else:
+                    item_severity = "warning"
+                    title = f"Pending Remittance: {type_label} ({obl.period})"
+                    desc = f"Confirmed statutory obligation of {rem:,.2f} {obl.currency} due on {obl.due_date or 'N/A'} is awaiting remittance."
+                    due_state = "due_soon"
+                    due_label = f"Due: {obl.due_date or 'N/A'}"
+                    score = 68
+
+                raw_items.append(
+                    AttentionItem(
+                        id=f"statutory-{obl.id}",
+                        deduplication_key=key,
+                        type="statutory_obligation",
+                        severity=item_severity,
+                        severity_label=item_severity.title(),
+                        title=title,
+                        description=desc,
+                        counterparty=f"Gov / {type_label}",
+                        amount=rem if obl.status != "estimated" else obl.amount_accrued,
+                        currency=obl.currency,
+                        due_date=obl.due_date or today_str,
+                        due_state=due_state,
+                        due_state_label=due_label,
+                        owner=None,
+                        target_route="a-finance-statutory",
+                        target_id=obl.id,
+                        target_filter={"obligation_id": obl.id},
+                        permission="finance.spend.read",
+                        priority_score=score,
+                        can_resolve=True,
+                        can_mark_reviewed=True,
+                        is_reviewed=is_rev,
+                        created_at=obl.created_at.isoformat() if obl.created_at else None,
+                    )
+                )
 
         # ----------------------------------------------------
         # Filtering & Deterministic Priority Ordering

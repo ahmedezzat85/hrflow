@@ -126,6 +126,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } else if (targetPage === "a-finance-subscriptions") {
       loadFinanceSubscriptions();
+    } else if (targetPage === "a-finance-statutory") {
+      loadFinanceStatutory();
     } else if (targetPage === "a-finance-reports") {
       loadFinanceReports();
     } else if (targetPage === "a-finance-settings") {

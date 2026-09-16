@@ -183,5 +183,10 @@ def get_idempotency_key(
     return idempotency_key
 
 
+def get_statutory_service(db: Session = Depends(get_db)):
+    from finance.services.statutory_service import StatutoryObligationsService
+    return StatutoryObligationsService(db)
+
+
 
 

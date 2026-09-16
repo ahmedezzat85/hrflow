@@ -30,6 +30,7 @@ const APP_SCRIPT_ORDER = [
   'finance-cheques.js',
   'finance-statements.js',
   'finance-subscriptions.js',
+  'finance-statutory.js',
   'finance-reports.js',
   'finance-nav.js',
   'app.js',

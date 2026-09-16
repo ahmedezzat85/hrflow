@@ -52,6 +52,7 @@ from finance.routers import statements as finance_statements_router
 from finance.routers import rules as finance_rules_router
 from finance.routers import activity as finance_activity_router
 from finance.routers import observability as finance_observability_router
+from finance.routers import statutory as finance_statutory_router
 
 
 # Re-exported here so existing code/tests that reach into main.py for
@@ -172,6 +173,7 @@ app.include_router(finance_statements_router.router)
 app.include_router(finance_rules_router.router)
 app.include_router(finance_activity_router.router)
 app.include_router(finance_observability_router.router)
+app.include_router(finance_statutory_router.router)
 
 
 

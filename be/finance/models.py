@@ -273,11 +273,12 @@ class LedgerTransactionDB(Base):
     cheque_number = Column(String(50), nullable=True, index=True)
     fx_rate = Column(Float, nullable=True)
     source = Column(String(50), nullable=False, index=True)
-    # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import
+    # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import | statutory_remittance
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_transfer_id = Column(Integer, ForeignKey("finance_account_transfers.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True, index=True)
+    linked_statutory_obligation_id = Column(Integer, ForeignKey("finance_statutory_obligations.id", ondelete="SET NULL"), nullable=True, index=True)
     destination_cash_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     running_balance = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -290,6 +291,7 @@ class LedgerTransactionDB(Base):
     linked_bill = relationship("BillDB")
     linked_transfer = relationship("AccountTransferDB", back_populates="ledger_transactions")
     linked_cheque = relationship("FinanceChequeDB", foreign_keys=[linked_cheque_id], back_populates="ledger_transactions")
+    linked_statutory_obligation = relationship("StatutoryObligationDB", foreign_keys=[linked_statutory_obligation_id], back_populates="ledger_transactions")
     destination_cash_account = relationship("FinanceBankAccountDB", foreign_keys=[destination_cash_account_id])
 
 
@@ -352,6 +354,7 @@ class PaymentDB(Base):
     direction = Column(String(20), nullable=False)  # incoming / outgoing
     related_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     related_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
+    related_statutory_obligation_id = Column(Integer, ForeignKey("finance_statutory_obligations.id", ondelete="SET NULL"), nullable=True, index=True)
     amount = Column(Float, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     payment_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
@@ -367,6 +370,7 @@ class PaymentDB(Base):
     sales_invoice = relationship("SalesInvoiceDB", back_populates="payments", foreign_keys=[related_invoice_id])
     bill = relationship("BillDB", back_populates="payments", foreign_keys=[related_bill_id])
     bank_account = relationship("FinanceBankAccountDB", back_populates="payments")
+    statutory_obligation = relationship("StatutoryObligationDB", back_populates="payments", foreign_keys=[related_statutory_obligation_id])
 
 
 class SubscriptionDB(Base):
@@ -725,4 +729,31 @@ class FinanceReportScheduleDB(Base):
 ReportScheduleDB = FinanceReportScheduleDB
 
 
+class StatutoryObligationDB(Base):
+    __tablename__ = "finance_statutory_obligations"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    obligation_type = Column(String(50), nullable=False, index=True)
+    # sales_tax | withholding_tax | income_tax | social_insurance_employee | social_insurance_employer | health_insurance | other_statutory
+    period = Column(String(20), nullable=False, index=True)  # YYYY-MM
+    amount_estimated = Column(Float, nullable=True)
+    amount_accrued = Column(Float, nullable=False)
+    amount_remitted = Column(Float, default=0.0, nullable=False)
+    variance_amount = Column(Float, default=0.0, nullable=False)
+    variance_note = Column(Text, nullable=True)
+    currency = Column(String(10), default="USD", nullable=False)
+    status = Column(String(30), default="estimated", nullable=False, index=True)
+    # estimated | accrued | partially_remitted | remitted
+    due_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD
+    source_type = Column(String(30), default="manual", nullable=False, index=True)
+    # payroll_run | invoice_tax_line | bill_tax_line | manual
+    source_id = Column(Integer, nullable=True, index=True)
+    notes = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    ledger_transactions = relationship("LedgerTransactionDB", back_populates="linked_statutory_obligation")
+    payments = relationship("PaymentDB", back_populates="statutory_obligation")
+
+
+FinanceStatutoryObligationDB = StatutoryObligationDB

@@ -14,6 +14,9 @@ from finance.models import (
     PaymentDB,
     FinanceBankAccountDB,
     LedgerTransactionDB,
+    StatutoryObligationDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
 )
 
 
@@ -143,6 +146,120 @@ class SettlementService:
             invoice.status = "partially_paid"
 
         return invoice, payment
+
+    def settle_statutory_obligation(
+        self,
+        obligation_id: int,
+        amount: float,
+        payment_date: str,
+        bank_account_id: int,
+        currency: str = "USD",
+        reference: str = "",
+        method: str = "bank_transfer",
+    ) -> Tuple[StatutoryObligationDB, PaymentDB, LedgerTransactionDB]:
+        """
+        Record a settlement against a statutory obligation.
+        Enforces status integrity (must be accrued or partially_remitted),
+        checks remaining balance, prevents overpayment, updates obligation amount_remitted,
+        transitions status to remitted or partially_remitted, adjusts bank account balance,
+        and creates linked PaymentDB and LedgerTransactionDB records atomically.
+        """
+        obligation = self.db.query(StatutoryObligationDB).filter(StatutoryObligationDB.id == obligation_id).first()
+        if not obligation:
+            raise ValueError(f"Statutory obligation #{obligation_id} not found")
+
+        if obligation.status == "estimated":
+            raise ValueError("Statutory obligation must be confirmed into accrued status before settlement")
+
+        if obligation.status == "remitted":
+            raise ValueError(f"Statutory obligation #{obligation_id} is already fully remitted")
+
+        bank_account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == bank_account_id)
+            .first()
+        )
+        if not bank_account:
+            raise ValueError(f"Bank account #{bank_account_id} not found")
+
+        existing_payments = (
+            self.db.query(PaymentDB)
+            .filter(PaymentDB.related_statutory_obligation_id == obligation.id, PaymentDB.is_reversed == False)
+            .all()
+        )
+        paid_so_far = sum(float(p.amount) for p in existing_payments)
+        remaining = max(0.0, round(obligation.amount_accrued - paid_so_far, 2))
+        payment_amount = float(amount)
+
+        if payment_amount <= 0:
+            raise ValueError("Payment amount must be greater than 0")
+
+        if payment_amount > remaining + 0.001:
+            raise ValueError(
+                f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
+            )
+
+        ref_str = reference or f"STAT-{obligation.obligation_type}-{obligation.period}"
+        payment = PaymentDB(
+            direction="outgoing",
+            related_bill_id=None,
+            related_invoice_id=None,
+            related_statutory_obligation_id=obligation.id,
+            amount=payment_amount,
+            currency=currency or obligation.currency,
+            payment_date=payment_date,
+            bank_account_id=bank_account.id,
+            method=method or "bank_transfer",
+            reference=ref_str,
+            is_reversed=False,
+        )
+        self.db.add(payment)
+
+        # Update obligation amounts and status
+        new_paid = round(paid_so_far + payment_amount, 2)
+        obligation.amount_remitted = new_paid
+        if new_paid >= obligation.amount_accrued - 0.001:
+            obligation.status = "remitted"
+        else:
+            obligation.status = "partially_remitted"
+
+        # Balance deduction: outgoing remittance debit
+        bank_account.current_balance = round(bank_account.current_balance - payment_amount, 4)
+
+        # Find category & payment type
+        tax_cat = (
+            self.db.query(TransactionCategoryDB)
+            .filter(TransactionCategoryDB.name.ilike("%Tax%") | TransactionCategoryDB.name.ilike("%Government%"))
+            .first()
+        )
+        if not tax_cat:
+            tax_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
+
+        outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
+
+        ledger_tx = LedgerTransactionDB(
+            account_id=bank_account.id,
+            date=payment.payment_date,
+            amount=payment.amount,
+            direction="out",
+            currency=payment.currency,
+            category_id=tax_cat.id if tax_cat else None,
+            payment_type_id=outbound_pt.id if outbound_pt else None,
+            reference=ref_str,
+            description=f"Statutory remittance: {obligation.obligation_type.replace('_', ' ').title()} for period {obligation.period}",
+            source="statutory_remittance",
+            linked_statutory_obligation_id=obligation.id,
+            running_balance=bank_account.current_balance,
+            created_at=payment.created_at,
+        )
+        self.db.add(ledger_tx)
+
+        self.db.commit()
+        self.db.refresh(obligation)
+        self.db.refresh(payment)
+        self.db.refresh(ledger_tx)
+
+        return obligation, payment, ledger_tx
 
     def check_duplicate_settlement(
         self,

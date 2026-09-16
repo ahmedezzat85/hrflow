@@ -3,7 +3,7 @@ be/finance/schemas.py
 Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -1967,6 +1967,88 @@ class EmployeePayslipResponse(BaseModel):
     paid_date: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
+
+
+# ============================================================================
+# FUX-410 Statutory Obligations Schemas
+# ============================================================================
+
+StatutoryObligationType = Literal[
+    "sales_tax",
+    "withholding_tax",
+    "income_tax",
+    "social_insurance_employee",
+    "social_insurance_employer",
+    "health_insurance",
+    "other_statutory",
+]
+
+StatutoryObligationStatus = Literal[
+    "estimated",
+    "accrued",
+    "partially_remitted",
+    "remitted",
+]
+
+StatutoryObligationSourceType = Literal[
+    "payroll_run",
+    "invoice_tax_line",
+    "bill_tax_line",
+    "manual",
+]
+
+
+class StatutoryObligationCreate(BaseModel):
+    obligation_type: StatutoryObligationType
+    period: str
+    amount_accrued: float
+    due_date: Optional[str] = None
+    currency: str = "USD"
+    notes: str = ""
+
+
+class StatutoryObligationConfirmAdjust(BaseModel):
+    amount_accrued: float
+    variance_note: Optional[str] = None
+
+
+class StatutoryObligationSettle(BaseModel):
+    amount: float
+    payment_date: str
+    bank_account_id: int
+    currency: str = "USD"
+    reference: str = ""
+    method: str = "bank_transfer"
+
+
+class StatutoryObligationUpdate(BaseModel):
+    due_date: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+    amount_accrued: Optional[float] = None
+
+
+class StatutoryObligationResponse(BaseModel):
+    id: int
+    obligation_type: str
+    period: str
+    amount_estimated: Optional[float] = None
+    amount_accrued: float
+    amount_remitted: float = 0.0
+    remaining_balance: float = 0.0
+    variance_amount: float = 0.0
+    variance_note: Optional[str] = None
+    currency: str = "USD"
+    status: str
+    due_date: Optional[str] = None
+    source_type: str = "manual"
+    source_id: Optional[int] = None
+    notes: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 
 

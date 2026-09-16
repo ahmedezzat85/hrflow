@@ -1,0 +1,232 @@
+        <section class="page-section" id="a-finance-statutory">
+          <div class="toolbar">
+            <div class="section-title-group">
+              <h2 class="section-title"><i class="fa-solid fa-landmark"></i> Statutory Obligations</h2>
+              <p class="section-subtitle">Track, confirm, and remit government tax and social insurance liabilities.</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeStatutorySearch" placeholder="Search obligations..." oninput="filterFinanceStatutorySearch(this.value)">
+              </div>
+              <div class="filter-group">
+                <select id="financeStatutoryTypeFilter" class="filter-select" onchange="filterFinanceStatutoryType(this.value)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); font-size: 13px;">
+                  <option value="all">All Types</option>
+                  <option value="sales_tax">Sales Tax / VAT</option>
+                  <option value="withholding_tax">Withholding Tax (WHT)</option>
+                  <option value="income_tax">Salary/Income Tax Withheld</option>
+                  <option value="social_insurance_employee">Social Insurance (Employee)</option>
+                  <option value="social_insurance_employer">Social Insurance (Employer)</option>
+                  <option value="health_insurance">Health Insurance</option>
+                  <option value="other_statutory">Other Statutory</option>
+                </select>
+              </div>
+              <div class="filter-tabs" id="financeStatutoryFilterTabs">
+                <button class="filter-tab active" data-filter="all" onclick="filterFinanceStatutoryStatus('all', this)">All</button>
+                <button class="filter-tab" data-filter="estimated" onclick="filterFinanceStatutoryStatus('estimated', this)">Estimated</button>
+                <button class="filter-tab" data-filter="accrued" onclick="filterFinanceStatutoryStatus('accrued', this)">Accrued</button>
+                <button class="filter-tab" data-filter="remitted" onclick="filterFinanceStatutoryStatus('remitted', this)">Remitted</button>
+              </div>
+              <button class="btn btn-fill" id="financeAddStatutoryBtn" onclick="openRecordStatutoryModal()"><i class="fa-solid fa-plus"></i> Record Obligation</button>
+            </div>
+          </div>
+
+          <!-- Summary Metric Cards -->
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+            <div class="card stat-card">
+              <div class="stat-label"><i class="fa-solid fa-hourglass-half" style="color:#d97706;"></i> Unconfirmed (Estimated)</div>
+              <div class="stat-val" id="statutorySummaryEstimated" style="color:#d97706;">$0.00</div>
+              <div class="stat-sub">Payroll draft figures awaiting portal confirmation</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label"><i class="fa-solid fa-calculator" style="color:#2563eb;"></i> Accrued (Payable)</div>
+              <div class="stat-val" id="statutorySummaryAccrued" style="color:#2563eb;">$0.00</div>
+              <div class="stat-sub">Confirmed obligations ready for remittance</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label"><i class="fa-solid fa-circle-check" style="color:#16a34a;"></i> Remitted (Paid)</div>
+              <div class="stat-val" id="statutorySummaryRemitted" style="color:#16a34a;">$0.00</div>
+              <div class="stat-sub">Total government remittances completed</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-label"><i class="fa-solid fa-scale-balanced" style="color:#64748b;"></i> Total Variance</div>
+              <div class="stat-val" id="statutorySummaryVariance" style="color:#64748b;">$0.00</div>
+              <div class="stat-sub">Government portal true-up differences &amp; fees</div>
+            </div>
+          </div>
+
+          <!-- Obligations Table -->
+          <div class="card">
+            <div class="section-loading-bar" id="financeStatutoryLoadingBar"><span></span></div>
+            <table class="responsive-card-table" id="financeStatutoryTable">
+              <thead>
+                <tr>
+                  <th>Obligation Type</th>
+                  <th>Period</th>
+                  <th class="cell-money">Estimated</th>
+                  <th class="cell-money">Accrued</th>
+                  <th class="cell-money">Remitted</th>
+                  <th class="cell-money">Remaining</th>
+                  <th class="cell-money">Variance</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeStatutoryTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="financeStatutoryEmpty" style="display: none;">
+              <i class="fa-solid fa-landmark"></i>
+              <p>No statutory obligations found matching criteria.</p>
+            </div>
+          </div>
+
+          <!-- Confirm / Adjust Modal -->
+          <div id="statutoryConfirmModal" class="modal-overlay">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="statConfirmModalTitle" style="max-width: 540px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-sliders"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="statConfirmModalTitle">Confirm / Adjust Accrued Amount</h3>
+                  <p>True-up payroll estimate against actual government portal figures and fees.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('statutoryConfirmModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="statConfirmId">
+                <div style="background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+                  <div style="font-size:12px; color:var(--text-muted, #64748b);">Original Payroll Estimate:</div>
+                  <div id="statConfirmEstimateDisplay" style="font-size:18px; font-weight:700; color:var(--text-primary, #0f172a);">$0.00</div>
+                </div>
+                <div class="form-grid" style="grid-template-columns:1fr; gap:14px;">
+                  <div class="form-group">
+                    <label for="statConfirmAccruedAmount">Confirmed / Accrued Amount *</label>
+                    <input type="number" id="statConfirmAccruedAmount" step="0.01" min="0" placeholder="0.00" oninput="calculateStatutoryConfirmVariance()" required>
+                    <span class="help-text">The authoritative figure computed by the government portal.</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:8px 12px; border-radius:6px;">
+                    <span style="font-size:12px; font-weight:600; color:#475569;">Resulting Variance:</span>
+                    <span id="statConfirmVarianceDisplay" style="font-size:14px; font-weight:700; color:#0f172a;">$0.00</span>
+                  </div>
+                  <div class="form-group">
+                    <label for="statConfirmVarianceNote">Variance Explanation / Note</label>
+                    <textarea id="statConfirmVarianceNote" rows="2" placeholder="e.g. Portal rounding + 20 USD government processing fee"></textarea>
+                    <span class="help-text">Explain discrepancies between the internal estimate and government assessment.</span>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('statutoryConfirmModal')">Cancel</button>
+                <button type="button" class="btn btn-fill" id="statConfirmSaveBtn" onclick="submitStatutoryConfirmAdjust()">Confirm Accrual</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settle / Remittance Modal -->
+          <div id="statutorySettleModal" class="modal-overlay">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="statSettleModalTitle" style="max-width: 560px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="statSettleModalTitle">Record Statutory Remittance</h3>
+                  <p>Execute payment and create linked ledger transaction atomically.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('statutorySettleModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="statSettleId">
+                <div id="statSettleObligationInfo" style="background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+                  <!-- Dynamically populated -->
+                </div>
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div class="form-group">
+                    <label for="statSettleAmount">Remittance Amount *</label>
+                    <input type="number" id="statSettleAmount" step="0.01" min="0.01" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="statSettleDate">Payment Date *</label>
+                    <input type="date" id="statSettleDate" required>
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="statSettleBankAccount">Paying Bank Account *</label>
+                    <select id="statSettleBankAccount" required>
+                      <!-- Dynamically populated with active bank accounts -->
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="statSettleMethod">Payment Method *</label>
+                    <select id="statSettleMethod">
+                      <option value="bank_transfer">Bank Transfer / ACH Wire</option>
+                      <option value="debit_card">Debit Card</option>
+                      <option value="cheque">Check</option>
+                      <option value="cash">Cash</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="statSettleReference">Government / Payment Ref</label>
+                    <input type="text" id="statSettleReference" placeholder="e.g. TAX-RECEIPT-9921">
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('statutorySettleModal')">Cancel</button>
+                <button type="button" class="btn btn-fill" id="statSettleSaveBtn" onclick="submitStatutorySettlement()">Record Remittance</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manual Record Modal -->
+          <div id="statutoryRecordModal" class="modal-overlay">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="statRecordModalTitle" style="max-width: 540px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="statRecordModalTitle">Record Statutory Obligation</h3>
+                  <p>Manually record a government liability directly in accrued status.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('statutoryRecordModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="statRecordType">Obligation Type *</label>
+                    <select id="statRecordType" required>
+                      <option value="sales_tax">Sales Tax / VAT</option>
+                      <option value="withholding_tax">Withholding Tax (WHT)</option>
+                      <option value="income_tax">Salary/Income Tax Withheld</option>
+                      <option value="social_insurance_employee">Social Insurance (Employee Portion)</option>
+                      <option value="social_insurance_employer">Social Insurance (Employer Portion)</option>
+                      <option value="health_insurance">Health Insurance</option>
+                      <option value="other_statutory">Other Statutory</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="statRecordPeriod">Tax Period (YYYY-MM) *</label>
+                    <input type="text" id="statRecordPeriod" placeholder="2026-09" pattern="^\d{4}-\d{2}$" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="statRecordAmount">Accrued Amount *</label>
+                    <input type="number" id="statRecordAmount" step="0.01" min="0.01" placeholder="0.00" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="statRecordDueDate">Due Date</label>
+                    <input type="date" id="statRecordDueDate">
+                  </div>
+                  <div class="form-group">
+                    <label for="statRecordCurrency">Currency</label>
+                    <input type="text" id="statRecordCurrency" value="USD" maxlength="10">
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="statRecordNotes">Notes / Filing Details</label>
+                    <textarea id="statRecordNotes" rows="2" placeholder="e.g. Q3 Sales tax declaration, Form 10"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('statutoryRecordModal')">Cancel</button>
+                <button type="button" class="btn btn-fill" id="statRecordSaveBtn" onclick="submitRecordStatutoryModal()">Save Obligation</button>
+              </div>
+            </div>
+          </div>
+
+        </section>

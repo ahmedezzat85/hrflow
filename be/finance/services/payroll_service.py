@@ -19,6 +19,7 @@ from finance.models import (
     LedgerTransactionDB,
     TransactionCategoryDB,
     PaymentTypeDB,
+    StatutoryObligationDB,
 )
 
 
@@ -368,6 +369,64 @@ class PayrollService:
         run.status = "finalized"
         run.finalized_at = datetime.utcnow()
         run.finalized_by = user_email or "admin@hrflow.test"
+
+        # FUX-410: Auto-generate estimated statutory obligations
+        existing_stat = (
+            self.db.query(StatutoryObligationDB)
+            .filter(StatutoryObligationDB.source_type == "payroll_run", StatutoryObligationDB.source_id == run.id)
+            .first()
+        )
+        if not existing_stat:
+            liabilities = {}
+            if run.liabilities_summary_json:
+                try:
+                    liabilities = json.loads(run.liabilities_summary_json)
+                except Exception:
+                    pass
+
+            emp_si = float(liabilities.get("social_insurance_employee", 0.0))
+            empr_si = float(liabilities.get("social_insurance_employer", 0.0))
+            tax_withheld = float(liabilities.get("income_tax_withheld", 0.0))
+
+            due_date = None
+            try:
+                parts = run.period_label.split("-")
+                year = int(parts[0])
+                month = int(parts[1])
+                if month == 12:
+                    due_date = f"{year+1}-01-15"
+                else:
+                    due_date = f"{year}-{month+1:02d}-15"
+            except Exception:
+                due_date = run.period_end
+
+            obligations_to_create = [
+                ("social_insurance_employee", emp_si, f"Payroll {run.period_label} - Employee Social Insurance"),
+                ("social_insurance_employer", empr_si, f"Payroll {run.period_label} - Employer Social Insurance"),
+                ("income_tax", tax_withheld, f"Payroll {run.period_label} - Salary Income Tax Withheld"),
+            ]
+
+            for obl_type, est_amt, note in obligations_to_create:
+                if est_amt > 0:
+                    obl_db = StatutoryObligationDB(
+                        obligation_type=obl_type,
+                        period=run.period_label,
+                        amount_estimated=est_amt,
+                        amount_accrued=est_amt,
+                        amount_remitted=0.0,
+                        variance_amount=0.0,
+                        variance_note=None,
+                        currency=run.currency or "USD",
+                        status="estimated",
+                        due_date=due_date,
+                        source_type="payroll_run",
+                        source_id=run.id,
+                        notes=note,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                    )
+                    self.db.add(obl_db)
+
         self.db.commit()
         self.db.refresh(run)
         return self._format_run_detail(run)

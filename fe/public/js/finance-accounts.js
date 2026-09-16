@@ -809,6 +809,12 @@ async function loadFinanceCategories() {
   const bar = document.getElementById("financeCategoriesLoadingBar");
   if (bar) bar.style.display = "block";
 
+  // Hide existing error banners when starting load
+  const errBanner = document.getElementById("financeCategoriesError");
+  if (errBanner) errBanner.style.display = "none";
+  const errBannerAccts = document.getElementById("financeCategoriesErrorAccts");
+  if (errBannerAccts) errBannerAccts.style.display = "none";
+
   try {
     let params = {};
     if (_currentCategoryStatusFilter === "active") params.is_active = true;
@@ -825,7 +831,23 @@ async function loadFinanceCategories() {
     renderFinanceCategories(filtered);
   } catch (err) {
     console.error("Failed to load categories:", err);
-    toast("Failed to load categories: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+    const errMsg = err.message || String(err);
+    toast("Failed to load categories: " + errMsg, "fa-solid fa-triangle-exclamation");
+
+    // Display visible error banner in settings and accounts
+    const msgEl = document.getElementById("financeCategoriesErrorMessage");
+    if (msgEl) msgEl.textContent = errMsg;
+    if (errBanner) errBanner.style.display = "flex";
+
+    const msgElAccts = document.getElementById("financeCategoriesErrorMessageAccts");
+    if (msgElAccts) msgElAccts.textContent = errMsg;
+    if (errBannerAccts) errBannerAccts.style.display = "flex";
+
+    // Hide empty state and clear table body on error
+    const tbody = document.getElementById("financeCategoriesTableBody");
+    if (tbody) tbody.innerHTML = "";
+    const empty = document.getElementById("financeCategoriesEmpty");
+    if (empty) empty.style.display = "none";
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -854,18 +876,18 @@ function _categoryKindBadge(kind) {
 }
 
 function renderFinanceCategories(items) {
-  const tbody = document.getElementById("financeCategoriesTableBody");
-  const empty = document.getElementById("financeCategoriesEmpty");
-  if (!tbody) return;
+  const tbodies = document.querySelectorAll("#financeCategoriesTableBody");
+  const empties = document.querySelectorAll("#financeCategoriesEmpty");
+  if (!tbodies.length) return;
 
   if (!items || items.length === 0) {
-    tbody.innerHTML = "";
-    if (empty) empty.style.display = "block";
+    tbodies.forEach((tb) => (tb.innerHTML = ""));
+    empties.forEach((em) => (em.style.display = "block"));
     return;
   }
-  if (empty) empty.style.display = "none";
+  empties.forEach((em) => (em.style.display = "none"));
 
-  tbody.innerHTML = items
+  const rowsHtml = items
     .map(
       (c) => `
     <tr>
@@ -893,6 +915,8 @@ function renderFinanceCategories(items) {
   `
     )
     .join("");
+
+  tbodies.forEach((tb) => (tb.innerHTML = rowsHtml));
 }
 
 function openAddFinanceCategoryModal() {
@@ -992,6 +1016,12 @@ async function loadFinancePaymentTypes() {
   const bar = document.getElementById("financePaymentTypesLoadingBar");
   if (bar) bar.style.display = "block";
 
+  // Hide existing error banners when starting load
+  const errBanner = document.getElementById("financePaymentTypesError");
+  if (errBanner) errBanner.style.display = "none";
+  const errBannerAccts = document.getElementById("financePaymentTypesErrorAccts");
+  if (errBannerAccts) errBannerAccts.style.display = "none";
+
   try {
     let params = {};
     if (_currentPaymentTypeStatusFilter === "active") params.is_active = true;
@@ -1002,7 +1032,23 @@ async function loadFinancePaymentTypes() {
     renderFinancePaymentTypes(items);
   } catch (err) {
     console.error("Failed to load payment types:", err);
-    toast("Failed to load payment types: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+    const errMsg = err.message || String(err);
+    toast("Failed to load payment types: " + errMsg, "fa-solid fa-triangle-exclamation");
+
+    // Display visible error banner in settings and accounts
+    const msgEl = document.getElementById("financePaymentTypesErrorMessage");
+    if (msgEl) msgEl.textContent = errMsg;
+    if (errBanner) errBanner.style.display = "flex";
+
+    const msgElAccts = document.getElementById("financePaymentTypesErrorMessageAccts");
+    if (msgElAccts) msgElAccts.textContent = errMsg;
+    if (errBannerAccts) errBannerAccts.style.display = "flex";
+
+    // Hide empty state and clear table body on error
+    const tbodies = document.querySelectorAll("#financePaymentTypesTableBody");
+    tbodies.forEach((tb) => (tb.innerHTML = ""));
+    const empties = document.querySelectorAll("#financePaymentTypesEmpty");
+    empties.forEach((em) => (em.style.display = "none"));
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -1010,25 +1056,25 @@ async function loadFinancePaymentTypes() {
 
 function filterFinancePaymentTypes(filterType, btn) {
   _currentPaymentTypeStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPanePaymentTypes .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSubPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinancePaymentTypes();
 }
 
 function renderFinancePaymentTypes(items) {
-  const tbody = document.getElementById("financePaymentTypesTableBody");
-  const empty = document.getElementById("financePaymentTypesEmpty");
-  if (!tbody) return;
+  const tbodies = document.querySelectorAll("#financePaymentTypesTableBody");
+  const empties = document.querySelectorAll("#financePaymentTypesEmpty");
+  if (!tbodies.length) return;
 
   if (!items || items.length === 0) {
-    tbody.innerHTML = "";
-    if (empty) empty.style.display = "block";
+    tbodies.forEach((tb) => (tb.innerHTML = ""));
+    empties.forEach((em) => (em.style.display = "block"));
     return;
   }
-  if (empty) empty.style.display = "none";
+  empties.forEach((em) => (em.style.display = "none"));
 
-  tbody.innerHTML = items
+  const rowsHtml = items
     .map(
       (pt) => `
     <tr>
@@ -1061,6 +1107,8 @@ function renderFinancePaymentTypes(items) {
   `
     )
     .join("");
+
+  tbodies.forEach((tb) => (tb.innerHTML = rowsHtml));
 }
 
 function openAddFinancePaymentTypeModal() {
@@ -1443,6 +1491,21 @@ async function _populateTransactionModalDropdowns() {
           .join("");
     }
 
+    // If modal is currently in bank_fee mode, apply auto-select
+    const activeEntryType = document.getElementById("fFinanceTxEntryType")?.value;
+    if (activeEntryType === "bank_fee") {
+      if (catSel && FinanceState.categories) {
+        const feeCat = FinanceState.categories.find((c) =>
+          c.name.toLowerCase().includes("bank fee") || c.name.toLowerCase().includes("bank charge")
+        );
+        if (feeCat) catSel.value = feeCat.id;
+      }
+      if (ptSel && FinanceState.paymentTypes) {
+        const feePt = FinanceState.paymentTypes.find((p) => p.requires_bank_fee_flag === true);
+        if (feePt) ptSel.value = feePt.id;
+      }
+    }
+
     // Populate Vendors
     try {
       if (!FinanceState.vendors || !FinanceState.vendors.length) {
@@ -1812,6 +1875,8 @@ function setTransactionEntryType(type, btn) {
   const reasonInput = document.getElementById("fFinanceTxReason");
   const catSel = document.getElementById("fFinanceTxCategory");
 
+  const ptSel = document.getElementById("fFinanceTxPaymentType");
+
   if (type === "money_out") {
     if (payeeTypeGroup) payeeTypeGroup.style.display = "block";
     if (payeeTypeSel && payeeTypeSel.value === "customer") payeeTypeSel.value = "none";
@@ -1821,6 +1886,12 @@ function setTransactionEntryType(type, btn) {
     if (directionGroup) directionGroup.style.display = "none";
     if (directionInput) directionInput.value = "out";
     if (paymentTypeGroup) paymentTypeGroup.style.display = "block";
+    if (ptSel && FinanceState.paymentTypes) {
+      const feePt = FinanceState.paymentTypes.find((p) => p.requires_bank_fee_flag === true);
+      if (feePt && ptSel.value === String(feePt.id)) {
+        ptSel.value = "";
+      }
+    }
     if (reasonGroup) reasonGroup.style.display = "none";
     if (reasonInput) reasonInput.required = false;
   } else if (type === "money_in") {
@@ -1834,6 +1905,12 @@ function setTransactionEntryType(type, btn) {
     if (directionGroup) directionGroup.style.display = "none";
     if (directionInput) directionInput.value = "in";
     if (paymentTypeGroup) paymentTypeGroup.style.display = "block";
+    if (ptSel && FinanceState.paymentTypes) {
+      const feePt = FinanceState.paymentTypes.find((p) => p.requires_bank_fee_flag === true);
+      if (feePt && ptSel.value === String(feePt.id)) {
+        ptSel.value = "";
+      }
+    }
     if (reasonGroup) reasonGroup.style.display = "none";
     if (reasonInput) reasonInput.required = false;
   } else if (type === "bank_fee") {
@@ -1847,7 +1924,7 @@ function setTransactionEntryType(type, btn) {
     if (taxGroup) taxGroup.style.display = "none";
     if (directionGroup) directionGroup.style.display = "none";
     if (directionInput) directionInput.value = "out";
-    if (paymentTypeGroup) paymentTypeGroup.style.display = "block";
+    if (paymentTypeGroup) paymentTypeGroup.style.display = "none";
     if (reasonGroup) reasonGroup.style.display = "none";
     if (reasonInput) reasonInput.required = false;
     // Auto-select Bank Fee category if available
@@ -1856,6 +1933,11 @@ function setTransactionEntryType(type, btn) {
         c.name.toLowerCase().includes("bank fee") || c.name.toLowerCase().includes("bank charge")
       );
       if (feeCat) catSel.value = feeCat.id;
+    }
+    // Auto-select Bank Fee payment type if available
+    if (ptSel && FinanceState.paymentTypes) {
+      const feePt = FinanceState.paymentTypes.find((p) => p.requires_bank_fee_flag === true);
+      if (feePt) ptSel.value = feePt.id;
     }
   } else if (type === "adjustment") {
     if (payeeTypeGroup) payeeTypeGroup.style.display = "none";
