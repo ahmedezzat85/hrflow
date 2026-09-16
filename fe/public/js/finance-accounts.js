@@ -15,6 +15,7 @@ function switchFinanceAccountsSubTab(tabName, btn) {
   });
   const activeEl = btn || document.getElementById(
     tabName === "accounts" ? "subtabFinanceAccounts" :
+    tabName === "ledger" ? "subtabFinanceLedger" :
     tabName === "statements" ? "subtabFinanceStatements" :
     tabName === "cheques" ? "subtabFinanceCheques" :
     tabName === "transfers" ? "subtabFinanceTransfers" :
@@ -32,6 +33,8 @@ function switchFinanceAccountsSubTab(tabName, btn) {
   const paneTransfers = document.getElementById("financeSubPaneTransfers");
   const paneCategories = document.getElementById("financeSubPaneCategories");
   const panePaymentTypes = document.getElementById("financeSubPanePaymentTypes");
+  const paneLedger = document.getElementById("financeSubPaneLedger");
+  const paneWorkspace = document.getElementById("financeSubPaneWorkspace");
 
   if (paneAccounts) paneAccounts.style.display = tabName === "accounts" ? "block" : "none";
   if (paneStatements) paneStatements.style.display = tabName === "statements" ? "block" : "none";
@@ -39,6 +42,8 @@ function switchFinanceAccountsSubTab(tabName, btn) {
   if (paneTransfers) paneTransfers.style.display = tabName === "transfers" ? "block" : "none";
   if (paneCategories) paneCategories.style.display = tabName === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = tabName === "payment_types" ? "block" : "none";
+  if (paneLedger) paneLedger.style.display = tabName === "ledger" ? "block" : "none";
+  if (paneWorkspace) paneWorkspace.style.display = "none";
 
   if (tabName === "accounts") {
     loadFinanceAccounts();
@@ -52,6 +57,9 @@ function switchFinanceAccountsSubTab(tabName, btn) {
     loadFinanceCategories();
   } else if (tabName === "payment_types") {
     loadFinancePaymentTypes();
+  } else if (tabName === "ledger") {
+    const accId = _currentLedgerAccountId || _activeWorkspaceAccountId || (FinanceState.accounts && FinanceState.accounts[0] ? FinanceState.accounts[0].id : 1);
+    viewAccountLedger(accId);
   }
 }
 
@@ -620,6 +628,8 @@ async function loadWorkspaceActivity() {
     }
 
     const items = await FinanceApi.getAccountTransactions(_activeWorkspaceAccountId, params);
+    FinanceState.ledgerTransactions = items;
+    _currentLedgerAccountId = _activeWorkspaceAccountId;
     renderWorkspaceLedger(items);
   } catch (err) {
     console.error("Failed to load workspace ledger activity:", err);
@@ -2200,9 +2210,25 @@ async function openAddFinanceTransactionModal(defaultType = "money_out", isGloba
 }
 
 async function openEditFinanceTransactionModal(txId) {
-  const tx = (FinanceState.ledgerTransactions || []).find((t) => t.id === txId);
+  if (!FinanceState.accounts || !FinanceState.accounts.length) {
+    try {
+      FinanceState.accounts = await FinanceApi.getAccounts();
+    } catch (_) {}
+  }
+
+  let tx = (FinanceState.ledgerTransactions || []).find((t) => t.id === txId);
+  if (!tx) {
+    try {
+      tx = await FinanceApi.getTransaction(txId);
+    } catch (err) {
+      console.error("Failed to load transaction:", err);
+      toast("Could not load transaction details", "fa-solid fa-triangle-exclamation");
+      return;
+    }
+  }
   if (!tx) return;
 
+  _currentLedgerAccountId = tx.account_id;
   await _populateTransactionModalDropdowns();
 
   const acctSelectGroup = document.getElementById("fFinanceTxAccountSelectGroup");
@@ -2219,7 +2245,8 @@ async function openEditFinanceTransactionModal(txId) {
     const accMetaEl = document.getElementById("fFinanceTxAccountMeta");
     const accBalEl = document.getElementById("fFinanceTxAccountBookBalance");
     if (accNameEl) accNameEl.textContent = acc.account_name || "Account";
-    if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${acc.institution_name || ""}`;
+    const inst = acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "");
+    if (accMetaEl) accMetaEl.textContent = `(${acc.currency}) · ${inst}`;
     if (accBalEl) accBalEl.textContent = window.formatMoney ? window.formatMoney(acc.book_balance || 0, acc.currency) : `$${(acc.book_balance || 0).toFixed(2)}`;
   }
   const currSelect = document.getElementById("fFinanceTxCurrency");
@@ -2449,7 +2476,11 @@ async function confirmDeleteFinanceTransaction(txId) {
     toast("Transaction deleted successfully", "fa-solid fa-circle-check");
     const accounts = await FinanceApi.getAccounts();
     FinanceState.accounts = accounts;
-    await loadAccountTransactions();
+    if (_activeWorkspaceAccountId) {
+      await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+    } else {
+      await loadAccountTransactions();
+    }
   } catch (err) {
     toast(err.message || "Failed to delete transaction", "fa-solid fa-triangle-exclamation");
   }

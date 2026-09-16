@@ -290,6 +290,24 @@ const FinanceMockState = {
       source: "manual",
       running_balance: 145800.0,
       created_at: "2026-09-02T10:00:00"
+    },
+    {
+      id: 2,
+      account_id: 4,
+      date: "2026-09-03",
+      direction: "out",
+      amount: 150.0,
+      currency: "EGP",
+      category_id: 4,
+      category_name: "Kitchen Supplies",
+      payment_type_id: 1,
+      payment_type_code: "CASH",
+      payment_type_name: "Cash Payment",
+      reference: "CSH-001",
+      description: "Office coffee and tea supplies",
+      source: "manual",
+      running_balance: 19850.0,
+      created_at: "2026-09-03T11:00:00"
     }
   ],
   attentionReviewed: new Set(),

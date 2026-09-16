@@ -139,4 +139,39 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
     await expect(page.locator('#workspacePaneStatements')).toBeVisible();
     await expect(page.locator('#workspacePaneReconcile')).not.toBeVisible();
   });
+
+  test('AC 5: Cash Account workspace displays cash transactions and opens edit modal', async ({ page }) => {
+    // Look for the cash account row in the accounts table (Cairo Office Petty Cash Drawer)
+    const cashRow = page.locator('#financeAccountsTableBody tr:has-text("Petty Cash Drawer")');
+    await expect(cashRow).toBeVisible();
+
+    // Click Workspace folder button for this cash account
+    await cashRow.locator('.btn-open-workspace').click();
+    await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
+    await expect(page.locator('#workspaceAccountName')).toContainText('Petty Cash Drawer');
+    await expect(page.locator('#workspaceAccountTypeBadge')).toHaveText('CASH');
+
+    // Verify activity ledger displays the cash transaction
+    const activityTable = page.locator('#workspaceLedgerTableBody');
+    await expect(activityTable).toBeVisible();
+    const txRow = activityTable.locator('tr:has-text("Office coffee and tea supplies")');
+    await expect(txRow).toBeVisible();
+
+    // Click Edit button on the transaction
+    const editBtn = txRow.locator('button[title="Edit Transaction"]');
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // Verify transaction modal pops up
+    const modal = page.locator('#financeTransactionModal');
+    await expect(modal).toBeVisible();
+    await expect(page.locator('#financeTransactionModalTitle')).toHaveText('Edit Transaction');
+    await expect(page.locator('#fFinanceTxAccountId')).toHaveValue('4');
+    await expect(page.locator('#fFinanceTxAmount')).toHaveValue('150');
+    await expect(page.locator('#fFinanceTxCurrency')).toHaveValue('EGP');
+
+    // Close modal
+    await page.click('#financeTransactionModal .modal-close');
+    await expect(modal).not.toBeVisible();
+  });
 });
