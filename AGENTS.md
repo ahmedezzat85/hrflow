@@ -80,7 +80,11 @@ Use for finance (e.g., FUX stories in `docs/finance-module/`), payroll, permissi
    - Backend 3-tier consistency (`models/schemas` $\rightarrow$ `repositories` $\rightarrow$ `services` $\rightarrow$ `routers`).
    - Frontend: update HTML partials, scripts, and mock handlers.
    - **MANDATORY**: Run `npm run build` in `fe/` whenever any frontend files are touched before running UI tests.
-4. **Verification & Test Suite Augmentation**: Write durable tests (in `be/tests/` and `fe/tests/ui/`) for all acceptance criteria. Run targeted checks and required domain regressions. Report pre-existing or environment-related failures separately.
+4. **Verification & Test Suite Augmentation**: Write durable tests (in `be/tests/` and `fe/tests/ui/`) for all acceptance criteria.
+   - **Token-Efficient Verification Protocol**:
+     - **Targeted First**: During implementation and debugging, run ONLY the single test or spec file directly addressing the change (e.g., `pytest be/tests/test_specific.py -q` or `npx playwright test tests/ui/specific.spec.js`).
+     - **Compact Output**: Pass `-q` or `--tb=short` to `pytest` to prevent large logs from inflating the conversation context window.
+     - **Defer Regressions**: Do NOT run broad directory-wide test suites during intermediate iteration. Run broader regression suites ONLY once, as the final validation step immediately before clean teardown and commit.
 5. **Clean Teardown & Delivery**: Inspect `git status` and `git diff` for zero scratch/temporary artifacts, stage cleanly, and commit with descriptive messages (`FUX-XXX`).
 
 ## Frontend and Mock Mode
