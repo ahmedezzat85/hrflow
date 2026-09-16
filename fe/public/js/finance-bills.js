@@ -266,13 +266,58 @@ function filterFinanceBills(query) {
   applyAndRenderBills();
 }
 
+async function _populateBillCategoryDropdown() {
+  const sel = document.getElementById("billCategoryId");
+  if (!sel) return;
+  if (sel.options.length > 1) return;
+  try {
+    const categories = await FinanceApi.getCategories({ is_active: true });
+    const sorted = (categories || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
+    sel.innerHTML = `<option value="">— Select Category —</option>` + sorted.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  } catch (_) {
+    sel.innerHTML = `<option value="">— Select Category —</option>`;
+  }
+}
+
 async function _populateBillVendorDropdown() {
   const sel = document.getElementById("billVendorId");
   if (!sel) return;
   try {
     const vendors = await FinanceApi.getVendors({ is_active: true });
-    sel.innerHTML = `<option value="">— Select vendor —</option>` + vendors.map((v) => `<option value="${v.id}">${v.name}</option>`).join("");
+    sel.innerHTML = `<option value="">— Select vendor —</option>` + vendors.map((v) => `<option value="${v.id}" data-default-category-id="${v.default_category_id || ''}">${v.name}</option>`).join("");
   } catch (_) {}
+}
+
+function onBillVendorChange() {
+  const vendorSel = document.getElementById("billVendorId");
+  const categorySel = document.getElementById("billCategoryId");
+  if (vendorSel && categorySel) {
+    const opt = vendorSel.selectedOptions[0];
+    const defaultCatId = opt?.dataset?.defaultCategoryId;
+    // FUX-411: Auto-select vendor's default category if available and not manually set by user
+    if (defaultCatId && (!categorySel.value || categorySel.dataset.userModified !== "true")) {
+      categorySel.value = defaultCatId;
+      categorySel.dataset.autoFilled = "true";
+      onBillCategoryChange(true);
+    }
+  }
+  onBillFieldInput();
+}
+
+function onBillCategoryChange(isAutoFill = false) {
+  const categorySel = document.getElementById("billCategoryId");
+  const hiddenCat = document.getElementById("billCategory");
+  if (categorySel) {
+    if (!isAutoFill) {
+      categorySel.dataset.userModified = "true";
+      delete categorySel.dataset.autoFilled;
+    }
+    const opt = categorySel.selectedOptions[0];
+    const text = (opt && opt.value) ? opt.textContent.trim() : "";
+    if (hiddenCat) hiddenCat.value = text;
+  }
+  _checkBillMissingFields();
+  onBillFieldInput();
 }
 
 let _currentModalPendingFile = null;
@@ -308,10 +353,11 @@ function _checkBillMissingFields() {
   if (!alertEl || !textEl) return;
 
   const dept = document.getElementById("billDepartment")?.value;
+  const catId = document.getElementById("billCategoryId")?.value;
   const cat = document.getElementById("billCategory")?.value.trim();
   const missing = [];
   if (!dept) missing.push("Department");
-  if (!cat) missing.push("Category");
+  if (!catId && !cat) missing.push("Category");
 
   if (missing.length > 0) {
     textEl.textContent = `Missing required coding: ${missing.join(", ")}. Bill cannot be marked Ready to Pay or Paid until coded.`;
@@ -525,6 +571,7 @@ function openCaptureBillModal() {
   _resetBillPaidNowSection();
   _resetBillStatusDisplay();
   _populateBillVendorDropdown();
+  _populateBillCategoryDropdown();
 
   document.getElementById("billModalTitleText").textContent = "Upload & Capture Vendor Bill";
   document.getElementById("billModalId").value = "";
@@ -533,6 +580,12 @@ function openCaptureBillModal() {
   document.getElementById("billVendorId").value = "";
   document.getElementById("billNumber").value = "";
   document.getElementById("billDepartment").value = "";
+  const catSel = document.getElementById("billCategoryId");
+  if (catSel) {
+    catSel.value = "";
+    delete catSel.dataset.userModified;
+    delete catSel.dataset.autoFilled;
+  }
   document.getElementById("billCategory").value = "";
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
@@ -554,6 +607,7 @@ function openAddBillModal() {
   _resetBillPaidNowSection();
   _resetBillStatusDisplay();
   _populateBillVendorDropdown();
+  _populateBillCategoryDropdown();
 
   document.getElementById("billModalTitleText").textContent = "New Vendor Bill";
   document.getElementById("billModalId").value = "";
@@ -562,6 +616,12 @@ function openAddBillModal() {
   document.getElementById("billVendorId").value = "";
   document.getElementById("billNumber").value = "";
   document.getElementById("billDepartment").value = "";
+  const catSel = document.getElementById("billCategoryId");
+  if (catSel) {
+    catSel.value = "";
+    delete catSel.dataset.userModified;
+    delete catSel.dataset.autoFilled;
+  }
   document.getElementById("billCategory").value = "";
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
@@ -582,6 +642,7 @@ async function openEditBillModal(billId) {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
   _populateBillVendorDropdown();
+  await _populateBillCategoryDropdown();
 
   // Hide "Bill is already paid" on edit mode
   const paidNowGroup = document.getElementById("billIsPaidNowGroup");
@@ -598,6 +659,20 @@ async function openEditBillModal(billId) {
     document.getElementById("billVendorId").value = bill.vendor_id || "";
     document.getElementById("billNumber").value = bill.bill_number || "";
     document.getElementById("billDepartment").value = bill.department || "";
+    const catSel = document.getElementById("billCategoryId");
+    if (catSel) {
+      if (bill.category_id) {
+        catSel.value = bill.category_id;
+      } else if (bill.category) {
+        const matchingOpt = Array.from(catSel.options).find(
+          (o) => o.textContent.trim().toLowerCase() === bill.category.trim().toLowerCase()
+        );
+        catSel.value = matchingOpt ? matchingOpt.value : "";
+      } else {
+        catSel.value = "";
+      }
+      catSel.dataset.userModified = "true";
+    }
     document.getElementById("billCategory").value = bill.category || "";
     document.getElementById("billLegalEntity").value = bill.legal_entity || "Voyance Health Inc";
     document.getElementById("billIssueDate").value = bill.issue_date || "";
@@ -771,7 +846,8 @@ async function saveBillModal() {
     bill_number: billNumber,
     department: document.getElementById("billDepartment").value || null,
     legal_entity: document.getElementById("billLegalEntity").value || "Voyance Health Inc",
-    category: document.getElementById("billCategory").value.trim() || null,
+    category_id: document.getElementById("billCategoryId")?.value ? parseInt(document.getElementById("billCategoryId").value, 10) : null,
+    category: document.getElementById("billCategory")?.value.trim() || null,
     issue_date: issueDate,
     due_date: dueDate,
     status: status,
@@ -1348,14 +1424,29 @@ async function saveVendorPaymentInstruction() {
 }
 window.saveVendorPaymentInstruction = saveVendorPaymentInstruction;
 
-function openAddVendorModal() {
+async function _populateVendorCategoryDropdown() {
+  const sel = document.getElementById("fVendorDefaultCategoryId");
+  if (!sel) return;
+  if (sel.options.length > 1) return;
+  try {
+    const categories = await FinanceApi.getCategories({ is_active: true });
+    const sorted = (categories || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
+    sel.innerHTML = `<option value="">— None (Select per bill) —</option>` + sorted.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  } catch (_) {
+    sel.innerHTML = `<option value="">— None (Select per bill) —</option>`;
+  }
+}
+
+async function openAddVendorModal() {
   FinanceForm.clearErrors("vendorModal");
   const banner = document.getElementById("vendorDuplicateBanner");
   if (banner) banner.style.display = "none";
+  await _populateVendorCategoryDropdown();
   document.getElementById("fVendorId").value = "";
   document.getElementById("fVendorName").value = "";
   if (document.getElementById("fVendorLegalName")) document.getElementById("fVendorLegalName").value = "";
   document.getElementById("fVendorCategory").value = "General";
+  if (document.getElementById("fVendorDefaultCategoryId")) document.getElementById("fVendorDefaultCategoryId").value = "";
   document.getElementById("fVendorEmail").value = "";
   document.getElementById("fVendorPhone").value = "";
   if (document.getElementById("fVendorContactName")) document.getElementById("fVendorContactName").value = "";
@@ -1377,16 +1468,20 @@ function openAddVendorModal() {
   openModal("vendorModal");
 }
 
-function openEditVendorModal(id) {
+async function openEditVendorModal(id) {
   FinanceForm.clearErrors("vendorModal");
   const banner = document.getElementById("vendorDuplicateBanner");
   if (banner) banner.style.display = "none";
+  await _populateVendorCategoryDropdown();
   const v = FinanceState.vendors.find((x) => x.id === id);
   if (!v) return;
   document.getElementById("fVendorId").value = v.id;
   document.getElementById("fVendorName").value = v.name || "";
   if (document.getElementById("fVendorLegalName")) document.getElementById("fVendorLegalName").value = v.legal_name || "";
   document.getElementById("fVendorCategory").value = v.category || "General";
+  if (document.getElementById("fVendorDefaultCategoryId")) {
+    document.getElementById("fVendorDefaultCategoryId").value = v.default_category_id ? String(v.default_category_id) : "";
+  }
   document.getElementById("fVendorEmail").value = v.contact_email || "";
   document.getElementById("fVendorPhone").value = v.contact_phone || "";
   if (document.getElementById("fVendorContactName")) document.getElementById("fVendorContactName").value = v.contact_name || "";
@@ -1423,6 +1518,7 @@ async function saveVendor() {
   const name = document.getElementById("fVendorName").value.trim();
   const legal_name = document.getElementById("fVendorLegalName") ? document.getElementById("fVendorLegalName").value.trim() : null;
   const category = document.getElementById("fVendorCategory").value.trim();
+  const default_cat_val = document.getElementById("fVendorDefaultCategoryId") ? document.getElementById("fVendorDefaultCategoryId").value : "";
   const contact_email = document.getElementById("fVendorEmail").value.trim();
   const contact_phone = document.getElementById("fVendorPhone").value.trim();
   const contact_name = document.getElementById("fVendorContactName") ? document.getElementById("fVendorContactName").value.trim() : null;
@@ -1442,6 +1538,7 @@ async function saveVendor() {
     name,
     legal_name: legal_name || null,
     category: category || "General",
+    default_category_id: default_cat_val ? parseInt(default_cat_val, 10) : null,
     contact_email: contact_email || null,
     contact_phone: contact_phone || null,
     contact_name: contact_name || null,
@@ -1515,6 +1612,8 @@ window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;
 window.handleBillFileSelected = handleBillFileSelected;
 window.onBillFieldInput = onBillFieldInput;
+window.onBillVendorChange = onBillVendorChange;
+window.onBillCategoryChange = onBillCategoryChange;
 window.toggleBillDuplicateOverrideReason = toggleBillDuplicateOverrideReason;
 window.openAddBillModal = openAddBillModal;
 window.openEditBillModal = openEditBillModal;

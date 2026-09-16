@@ -62,10 +62,12 @@ class VendorDB(Base):
     tax_treatment = Column(String(50), default="standard", nullable=True)
     withholding_tax_rate = Column(Float, default=0.0, nullable=True)
     onboarding_status = Column(String(50), default="active", nullable=False)
+    default_category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    default_category = relationship("TransactionCategoryDB", foreign_keys=[default_category_id])
     bills = relationship("BillDB", back_populates="vendor")
     subscriptions = relationship("SubscriptionDB", back_populates="vendor")
     payment_instructions = relationship("VendorPaymentInstructionDB", back_populates="vendor", cascade="all, delete-orphan")
@@ -138,6 +140,7 @@ class BillDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=False, index=True)
     bill_number = Column(String(50), nullable=False, index=True)
+    category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     category = Column(String(100), default="Operating Expense")
     issue_date = Column(String(20), nullable=False)
     due_date = Column(String(20), nullable=False)
@@ -169,6 +172,7 @@ class BillDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="bills")
+    transaction_category = relationship("TransactionCategoryDB", foreign_keys=[category_id])
     lines = relationship("BillLineDB", back_populates="bill", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="bill", foreign_keys="PaymentDB.related_bill_id")
 

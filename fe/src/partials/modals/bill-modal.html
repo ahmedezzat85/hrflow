@@ -79,7 +79,7 @@
         <div class="form-grid">
           <div class="form-field full">
             <label for="billVendorId">Vendor / Supplier <span class="req">*</span></label>
-            <select id="billVendorId" required onchange="onBillFieldInput()">
+            <select id="billVendorId" required onchange="onBillVendorChange()">
               <option value="">— Select vendor —</option>
             </select>
           </div>
@@ -106,8 +106,11 @@
             </select>
           </div>
           <div class="form-field">
-            <label for="billCategory">Expense Category</label>
-            <input type="text" id="billCategory" placeholder="e.g. Infrastructure, SaaS, Hosting" oninput="onBillFieldInput()">
+            <label for="billCategoryId">Expense Category <span class="req">*</span></label>
+            <select id="billCategoryId" onchange="onBillCategoryChange()">
+              <option value="">— Select Category —</option>
+            </select>
+            <input type="hidden" id="billCategory" value="">
           </div>
           <div class="form-field">
             <label for="billStatus">Work Queue & Status</label>

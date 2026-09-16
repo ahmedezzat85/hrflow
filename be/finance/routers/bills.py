@@ -19,6 +19,7 @@ from finance.schemas import (
     BillQueueCountsResponse,
     BillApprovalRequest,
     BillScheduleRequest,
+    BillCategoryQualityReportResponse,
     PaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
@@ -28,6 +29,15 @@ from finance.deps import get_bills_service, get_idempotency_key, get_idempotency
 from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/bills", tags=["Finance - Vendor Bills"])
+
+
+@router.get("/category-quality-report", response_model=BillCategoryQualityReportResponse)
+def get_bill_category_quality_report(
+    current_user: dict = Depends(require_permission("finance.bill.read")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """FUX-411: Audit report identifying bills whose category was historically unmatched or 'Other'."""
+    return service.get_category_quality_report()
 
 
 @router.get("/queue-counts", response_model=BillQueueCountsResponse)

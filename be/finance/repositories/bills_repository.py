@@ -8,6 +8,7 @@ Conventions (matches Phase 4.3 InvoicesRepository pattern):
  - No hard deletes — bills are voided, not deleted.
  - Balance adjustment on Payment is done here so it stays atomic with the Payment insert.
 """
+import logging
 from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
@@ -23,6 +24,8 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BillsRepository:
@@ -252,10 +255,22 @@ class BillsRepository:
     # ------------------------------------------------------------------
     def create(self, data: dict, lines_data: List[dict]) -> BillDB:
         """Create a bill with its lines. Totals are computed from lines."""
+        category_id = data.get("category_id")
+        category_name = data.get("category", "Operating Expense")
+        if category_id:
+            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == category_id).first()
+            if cat:
+                category_name = cat.name
+        elif category_name:
+            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(category_name.strip())).first()
+            if cat:
+                category_id = cat.id
+
         bill = BillDB(
             vendor_id=data["vendor_id"],
             bill_number=data["bill_number"].strip(),
-            category=data.get("category", "Operating Expense"),
+            category_id=category_id,
+            category=category_name,
             issue_date=data["issue_date"],
             due_date=data["due_date"],
             status=data.get("status", "inbox"),
@@ -324,8 +339,17 @@ class BillsRepository:
             bill.vendor_id = data["vendor_id"]
         if "bill_number" in data and data["bill_number"] is not None:
             bill.bill_number = data["bill_number"].strip()
-        if "category" in data and data["category"] is not None:
+        if "category_id" in data:
+            bill.category_id = data["category_id"]
+            if bill.category_id:
+                cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == bill.category_id).first()
+                if cat:
+                    bill.category = cat.name
+        elif "category" in data and data["category"] is not None:
             bill.category = data["category"]
+            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(data["category"].strip())).first()
+            if cat:
+                bill.category_id = cat.id
         if "issue_date" in data and data["issue_date"] is not None:
             bill.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:
@@ -456,11 +480,14 @@ class BillsRepository:
         else:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
 
-        # Record corresponding ledger transaction for single source of truth
+        # Record corresponding ledger transaction for single source of truth (FUX-411)
         bill_cat = None
-        if bill and bill.category:
-            bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(bill.category.strip())).first()
+        if bill and bill.category_id:
+            bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == bill.category_id).first()
         if not bill_cat:
+            logger.warning(
+                f"[FUX-411] Bill #{bill.id if bill else 'unknown'} ({bill.bill_number if bill else 'N/A'}) has missing or invalid category_id at payment time. Explicitly falling back to 'Other'."
+            )
             bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
         outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
 
@@ -563,3 +590,44 @@ class BillsRepository:
         self.db.commit()
         self.db.refresh(payment)
         return payment
+
+    # ------------------------------------------------------------------
+    # FUX-411: Category Data-Quality Report
+    # ------------------------------------------------------------------
+    def get_category_quality_report(self) -> dict:
+        """
+        Data-quality pass identifying bills whose category is unmatched
+        or miscategorized historically as 'Other', providing full audit visibility.
+        """
+        bills = (
+            self.db.query(BillDB)
+            .options(joinedload(BillDB.vendor), joinedload(BillDB.transaction_category))
+            .order_by(BillDB.id.asc())
+            .all()
+        )
+        matched_count = 0
+        unmatched_bills = []
+        for b in bills:
+            cat_name = b.transaction_category.name if b.transaction_category else None
+            if b.category_id is not None:
+                matched_count += 1
+            else:
+                v_name = b.vendor.name if b.vendor else None
+                unmatched_bills.append({
+                    "id": b.id,
+                    "bill_number": b.bill_number,
+                    "vendor_id": b.vendor_id,
+                    "vendor_name": v_name,
+                    "category_id": b.category_id,
+                    "category_name": cat_name,
+                    "raw_category": b.category,
+                    "issue_date": b.issue_date,
+                    "total": b.total,
+                    "status": b.status,
+                })
+        return {
+            "total_bills": len(bills),
+            "matched_count": matched_count,
+            "unmatched_count": len(unmatched_bills),
+            "unmatched_bills": unmatched_bills,
+        }

@@ -31,7 +31,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await page.selectOption('#billVendorId', { index: 1 });
     await page.fill('#billNumber', 'BILL-FUX408-001');
     await page.selectOption('#billDepartment', 'Engineering');
-    await page.fill('#billCategory', 'Cloud Services');
+    await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billIssueDate', '2026-03-10');
     await page.fill('#billDueDate', '2026-03-31');
 

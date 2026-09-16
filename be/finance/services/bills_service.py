@@ -22,6 +22,8 @@ from finance.schemas import (
     BillQueueCountsResponse,
     BillApprovalRequest,
     BillScheduleRequest,
+    BillCategoryQualityReportItem,
+    BillCategoryQualityReportResponse,
     PaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
@@ -72,6 +74,7 @@ class BillsService:
             for ln in (bill.lines or [])
         ]
         vendor_name = bill.vendor.name if bill.vendor else None
+        cat_name = bill.transaction_category.name if getattr(bill, "transaction_category", None) else bill.category
         paid = bill.amount_paid or 0.0
         remaining = max(0.0, round((bill.total or 0.0) - paid, 2))
         return BillResponse(
@@ -79,7 +82,9 @@ class BillsService:
             vendor_id=bill.vendor_id,
             vendor_name=vendor_name,
             bill_number=bill.bill_number,
-            category=bill.category,
+            category_id=bill.category_id,
+            category=cat_name,
+            category_name=cat_name,
             issue_date=bill.issue_date,
             due_date=bill.due_date,
             status=bill.status,
@@ -587,4 +592,18 @@ class BillsService:
 
         updated = self.repo.delete_attachment(bill_id)
         return self._bill_to_response(updated)
+
+    def get_category_quality_report(self) -> BillCategoryQualityReportResponse:
+        report_data = self.repo.get_category_quality_report()
+        items = [
+            BillCategoryQualityReportItem(**item)
+            for item in report_data["unmatched_bills"]
+        ]
+        return BillCategoryQualityReportResponse(
+            total_bills=report_data["total_bills"],
+            matched_count=report_data["matched_count"],
+            unmatched_count=report_data["unmatched_count"],
+            unmatched_bills=items,
+        )
+
 

@@ -27,7 +27,11 @@ SEED_CATEGORIES = [
     ("Computers", "cost", False, 14),
     ("Bank Fees", "cost", False, 15),
     ("Electricity", "cost", False, 16),
-    ("Other", "other", False, 17),
+    ("Infrastructure", "cost", False, 17),
+    ("SaaS", "cost", False, 18),
+    ("Facilities & Maintenance", "cost", False, 19),
+    ("Operating Expense", "cost", False, 20),
+    ("Other", "other", False, 99),
 ]
 
 SEED_PAYMENT_TYPES = [

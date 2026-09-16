@@ -27,7 +27,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await page.selectOption('#billVendorId', { index: 1 });
     await page.fill('#billNumber', 'BILL-CAPTURE-001');
     await page.selectOption('#billDepartment', 'Engineering');
-    await page.fill('#billCategory', 'Infrastructure');
+    await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billIssueDate', '2026-03-01');
     await page.fill('#billDueDate', '2026-03-31');
 
@@ -76,8 +76,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     expect(await missingAlert.innerText()).toContain('Category');
 
     // Populate Category, alert should hide
-    await page.fill('#billCategory', 'Facilities & Maintenance');
-    await page.dispatchEvent('#billCategory', 'input');
+    await page.selectOption('#billCategoryId', { label: 'Facilities & Maintenance' });
     await expect(missingAlert).not.toBeVisible();
 
     // Close modal
@@ -106,7 +105,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
 
     // Try to save without override -> should be blocked
     await page.selectOption('#billDepartment', 'Engineering');
-    await page.fill('#billCategory', 'Infrastructure');
+    await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.check('#billIsReviewed');
     await page.click('#billModalSaveBtn');
     await expect(page.locator('#billModal')).toBeVisible();

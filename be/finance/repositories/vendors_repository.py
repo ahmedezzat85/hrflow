@@ -85,6 +85,7 @@ class VendorsRepository:
             default_currency=data.get("default_currency", "EGP") or "EGP",
             category=data.get("category", "General").strip() if data.get("category") else "General",
             default_department=data.get("default_department", "").strip() if data.get("default_department") else None,
+            default_category_id=data.get("default_category_id"),
             tax_treatment=data.get("tax_treatment", "standard") or "standard",
             withholding_tax_rate=float(data.get("withholding_tax_rate", 0.0) or 0.0),
             onboarding_status=data.get("onboarding_status", "active") or "active",
@@ -125,6 +126,8 @@ class VendorsRepository:
             vendor.category = data["category"].strip()
         if "default_department" in data:
             vendor.default_department = data["default_department"].strip() if data["default_department"] else None
+        if "default_category_id" in data:
+            vendor.default_category_id = data["default_category_id"]
         if "tax_treatment" in data and data["tax_treatment"] is not None:
             vendor.tax_treatment = data["tax_treatment"].strip()
         if "withholding_tax_rate" in data and data["withholding_tax_rate"] is not None:

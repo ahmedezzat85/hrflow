@@ -59,6 +59,8 @@ class VendorsService:
             default_currency=vendor.default_currency,
             category=vendor.category,
             default_department=vendor.default_department,
+            default_category_id=vendor.default_category_id,
+            default_category_name=vendor.default_category.name if vendor.default_category else None,
             tax_treatment=vendor.tax_treatment,
             withholding_tax_rate=vendor.withholding_tax_rate,
             onboarding_status=vendor.onboarding_status,

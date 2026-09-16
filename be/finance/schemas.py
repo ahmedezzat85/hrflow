@@ -363,6 +363,7 @@ class VendorBase(BaseModel):
     default_currency: Optional[str] = Field("EGP", max_length=10)
     category: Optional[str] = Field("General", max_length=100)
     default_department: Optional[str] = Field(None, max_length=100)
+    default_category_id: Optional[int] = Field(None, description="Optional default bill category ID for this vendor")
     tax_treatment: Optional[str] = Field("standard", max_length=50)
     withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0)
     onboarding_status: Optional[str] = Field("active", max_length=50)
@@ -386,6 +387,7 @@ class VendorUpdate(BaseModel):
     default_currency: Optional[str] = Field(None, max_length=10)
     category: Optional[str] = Field(None, max_length=100)
     default_department: Optional[str] = Field(None, max_length=100)
+    default_category_id: Optional[int] = None
     tax_treatment: Optional[str] = Field(None, max_length=50)
     withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     onboarding_status: Optional[str] = Field(None, max_length=50)
@@ -397,6 +399,7 @@ class VendorResponse(VendorBase):
     id: int
     is_active: bool
     created_at: Optional[datetime] = None
+    default_category_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -601,6 +604,7 @@ class BillLineResponse(BillLineBase):
 class BillBase(BaseModel):
     vendor_id: int = Field(..., description="ID of the vendor")
     bill_number: str = Field(..., min_length=1, max_length=50, description="Unique bill reference number")
+    category_id: Optional[int] = Field(None, description="ID of the governed transaction category")
     category: Optional[str] = Field("Operating Expense", max_length=100)
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
@@ -645,6 +649,7 @@ class BillCreate(BillBase):
 class BillUpdate(BaseModel):
     vendor_id: Optional[int] = None
     bill_number: Optional[str] = Field(None, max_length=50)
+    category_id: Optional[int] = None
     category: Optional[str] = Field(None, max_length=100)
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
@@ -681,10 +686,31 @@ class BillResponse(BillBase):
     remaining_balance: float = 0.0
     created_at: Optional[datetime] = None
     vendor_name: Optional[str] = None
+    category_name: Optional[str] = None
     lines: List[BillLineResponse] = []
 
     class Config:
         from_attributes = True
+
+
+class BillCategoryQualityReportItem(BaseModel):
+    id: int
+    bill_number: str
+    vendor_id: int
+    vendor_name: Optional[str] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    raw_category: Optional[str] = None
+    issue_date: str
+    total: float
+    status: str
+
+
+class BillCategoryQualityReportResponse(BaseModel):
+    total_bills: int
+    matched_count: int
+    unmatched_count: int
+    unmatched_bills: List[BillCategoryQualityReportItem] = []
 
 
 class BillApprovalRequest(BaseModel):
