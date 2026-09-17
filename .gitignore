@@ -251,6 +251,6 @@ storage/
 uploads/
 /be/uploads/
 *.timestamp-*.mjs
-
-
-
+migration_report.csv
+*.db.bak
+*.db.pre_migration*

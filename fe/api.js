@@ -30,7 +30,10 @@ const SessionInfo = {
   getEmployeeId() { return this._employeeId; },
   getName() { return this._name; },
   getPermissions() { return this._permissions; },
-  hasPermission(key) { return this._permissions.includes(key); },
+  hasPermission(key) {
+    if (this._role === "admin" || this._role === "system_admin" || this._permissions.includes("*")) return true;
+    return this._permissions.includes(key);
+  },
   isKnown() { return this._role !== null; },
 };
 
@@ -56,8 +59,27 @@ function forceSessionExpiredLogout() {
   }
 }
 
-async function apiRequest(method, path, body = null, auth = true) {
-  const headers = { "Content-Type": "application/json" };
+let _lastCorrelationId = null;
+
+function generateCorrelationId() {
+  return (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `corr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+}
+
+function getLastCorrelationId() {
+  if (!_lastCorrelationId) {
+    _lastCorrelationId = generateCorrelationId();
+  }
+  return _lastCorrelationId;
+}
+
+async function apiRequest(method, path, body = null, auth = true, extraHeaders = {}) {
+  const correlationId = (extraHeaders && extraHeaders["X-Correlation-ID"]) || generateCorrelationId();
+  _lastCorrelationId = correlationId;
+  const headers = { 
+    "Content-Type": "application/json",
+    "X-Correlation-ID": correlationId,
+    ...(extraHeaders || {}) 
+  };
   const opts = { method, headers, credentials: "include" };
   if (body !== null) opts.body = JSON.stringify(body);
 
@@ -379,8 +401,10 @@ const Api = {
   downloadExportCsv(dataset, params = {}) {
     const q = new URLSearchParams();
     if (params && params.year) q.set("year", params.year);
+    if (params && params.month) q.set("month", params.month);
     if (params && params.start_date) q.set("start_date", params.start_date);
     if (params && params.end_date) q.set("end_date", params.end_date);
+    if (params && params.status) q.set("status", params.status);
     if (params && params.payment_year) q.set("payment_year", params.payment_year);
     if (params && params.payment_month) q.set("payment_month", params.payment_month);
     const qs = q.toString() ? `?${q.toString()}` : "";
@@ -388,4 +412,6 @@ const Api = {
     return _downloadDocumentViaFetch(`/api/export/${encodeURIComponent(dataset)}/csv${qs}`, filename);
   },
   health() { return apiRequest("GET", "/api/health", null, false); },
+  getLastCorrelationId() { return _lastCorrelationId; },
 };
+

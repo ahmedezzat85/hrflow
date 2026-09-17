@@ -19,6 +19,13 @@ def test_get_export_status(app_client, admin_cookies):
     assert "employees" in data["datasets"]
     assert "insurance" in data["datasets"]
     assert "salary" in data["datasets"]
+    assert "finance_ledger" in data["datasets"]
+    assert "finance_accounts" in data["datasets"]
+    assert "finance_invoices" in data["datasets"]
+    assert "finance_bills" in data["datasets"]
+    assert "finance_cheques" in data["datasets"]
+    assert "finance_transfers" in data["datasets"]
+    assert "finance_subscriptions" in data["datasets"]
 
 
 def test_export_employees_csv(app_client, admin_cookies):
@@ -161,3 +168,128 @@ def test_export_invalid_dataset(app_client, admin_cookies):
     res = app_client.get("/api/export/unknown_dataset/csv", cookies=admin_cookies)
     assert res.status_code == 400
     assert "Invalid dataset" in res.json()["detail"]
+
+
+def test_export_finance_ledger_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_ledger/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    assert "text/csv" in res.headers["content-type"]
+    assert "attachment; filename=\"hrflow_finance_ledger_" in res.headers["content-disposition"]
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Transaction ID" in header
+    assert "Account Name" in header
+    assert "Direction" in header
+    assert "Amount" in header
+    assert "Running Balance" in header
+
+
+def test_export_finance_accounts_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_accounts/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    assert "text/csv" in res.headers["content-type"]
+    assert "attachment; filename=\"hrflow_finance_accounts_" in res.headers["content-disposition"]
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Account ID" in header
+    assert "Account Name" in header
+    assert "Bank Name" in header
+    assert "Currency" in header
+    assert "Current Balance" in header
+
+
+def test_export_finance_invoices_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_invoices/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Invoice ID" in header
+    assert "Invoice Number" in header
+    assert "Customer Name" in header
+    assert "Total" in header
+    assert "Balance Due" in header
+
+
+def test_export_finance_bills_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_bills/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Bill ID" in header
+    assert "Bill Number" in header
+    assert "Vendor Name" in header
+    assert "Total" in header
+    assert "Balance Due" in header
+
+
+def test_export_finance_cheques_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_cheques/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Cheque ID" in header
+    assert "Cheque Number" in header
+    assert "Bank Account" in header
+    assert "Payee" in header
+    assert "Amount" in header
+
+
+def test_export_finance_transfers_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_transfers/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Transfer ID" in header
+    assert "From Account" in header
+    assert "To Account" in header
+    assert "Exchange Rate" in header
+
+
+def test_export_finance_subscriptions_csv(app_client, admin_cookies):
+    res = app_client.get("/api/export/finance_subscriptions/csv", cookies=admin_cookies)
+    assert res.status_code == 200
+    content = res.content.decode("utf-8-sig")
+    rows = list(csv.reader(io.StringIO(content)))
+    assert len(rows) >= 1
+    header = rows[0]
+    assert "Subscription ID" in header
+    assert "Tool / Name" in header
+    assert "Vendor" in header
+    assert "Monthly Equivalent" in header
+
+
+def test_export_finance_google_sheets(app_client, admin_cookies, monkeypatch):
+    import sheets_client
+
+    mock_client = MagicMock()
+    mock_client.export_to_worksheet.return_value = {
+        "worksheet_title": "Finance_Ledger_Export",
+        "rows_count": 5,
+        "spreadsheet_url": "https://docs.google.com/spreadsheets/d/test-sheet-id/edit#gid=9999",
+        "spreadsheet_id": "test-sheet-id",
+    }
+    monkeypatch.setattr(sheets_client, "get_client", lambda: mock_client)
+    monkeypatch.setattr(Config, "SPREADSHEET_ID", "test-sheet-id")
+
+    payload = {
+        "worksheet_title": "Finance_Ledger_Export",
+    }
+    res = app_client.post("/api/export/finance_ledger/sheets", json=payload, cookies=admin_cookies)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["worksheet_title"] == "Finance_Ledger_Export"
+    assert mock_client.export_to_worksheet.called
+

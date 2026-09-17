@@ -2,7 +2,8 @@
 be/finance/deps.py
 Dependency injection providers for Finance repositories and services.
 """
-from fastapi import Depends
+from typing import Optional
+from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -142,9 +143,49 @@ def get_statements_service(repo=Depends(get_statements_repo)):
     return StatementsService(repo)
 
 
+def get_rules_repo(db: Session = Depends(get_db)):
+    from finance.repositories.rules_repository import RulesRepository
+    return RulesRepository(db)
+
+
+def get_rules_service(
+    rules_repo=Depends(get_rules_repo),
+    statements_repo=Depends(get_statements_repo),
+):
+    from finance.services.rules_service import RulesService
+    return RulesService(rules_repo=rules_repo, statements_repo=statements_repo)
+
+
+
 def get_reports_service(db: Session = Depends(get_db)):
     from finance.services.reports_service import ReportsService
     return ReportsService(db)
+
+
+def get_attention_service(db: Session = Depends(get_db)):
+    from finance.services.attention_service import AttentionQueueService
+    return AttentionQueueService(db)
+
+
+def get_forecast_service(db: Session = Depends(get_db)):
+    from finance.services.forecast_service import CashForecastService
+    return CashForecastService(db)
+
+
+def get_idempotency_service():
+    from finance.services.idempotency import idempotency_service
+    return idempotency_service
+
+
+def get_idempotency_key(
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+) -> Optional[str]:
+    return idempotency_key
+
+
+def get_statutory_service(db: Session = Depends(get_db)):
+    from finance.services.statutory_service import StatutoryObligationsService
+    return StatutoryObligationsService(db)
 
 
 

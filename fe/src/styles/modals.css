@@ -59,14 +59,35 @@
   font-family: var(--font-head);
 }
 
+body.modal-open {
+  overflow: hidden !important;
+}
+
 .modal-close {
-  width: 32px;
-  height: 32px;
+  min-width: 40px;
+  min-height: 40px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   border: none;
   background: var(--surface2);
   color: var(--text2);
   font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.modal-close:hover {
+  background: var(--surface3, #e2e8f0);
+  color: var(--text);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .modal-body {

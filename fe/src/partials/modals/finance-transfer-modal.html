@@ -1,103 +1,210 @@
   <div class="modal-overlay" id="financeTransferModal">
-    <div class="modal modal-v2" style="max-width: 600px;">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeTransferModalTitle" style="max-width: 720px;">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
         <div class="modal-head-text">
-          <h3 id="financeTransferModalTitle">Record Account Transfer</h3>
-          <p id="financeTransferModalSubtitle">Move funds between accounts or execute an FX currency conversion.</p>
+          <h3 id="financeTransferModalTitle">Transfer &amp; Withdrawal Composer</h3>
+          <p id="financeTransferModalSubtitle">Transfer funds between accounts with explicit FX conversion, dual-leg preview, and in-transit tracking.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('financeTransferModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('financeTransferModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <!-- Transfer Type Selector -->
+        <!-- Section 1: Transfer Type -->
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-layer-group"></i> Transfer Type &amp; Date <span class="line"></span></div>
+          <div class="form-section-label"><i class="fa-solid fa-layer-group"></i> Transfer Mode <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Transfer Type <span class="req">*</span></label>
-              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
-                <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; cursor:pointer; font-size:12px; font-weight:500;">
-                  <input type="radio" name="transferTypeRadio" value="internal" checked onchange="onTransferTypeChanged(this.value)"> Internal Move
+              <div role="radiogroup" aria-labelledby="transferTypeLabel" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+                <label for="transferTypeInternal" style="display:flex; align-items:center; gap:6px; padding:10px; border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">
+                  <input type="radio" id="transferTypeInternal" name="transferTypeRadio" value="internal" checked onchange="onTransferTypeChanged(this.value)">
+                  <div>
+                    <div>Internal Move</div>
+                    <small style="color:var(--text3); font-weight:normal;">Same currency</small>
+                  </div>
                 </label>
-                <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; cursor:pointer; font-size:12px; font-weight:500;">
-                  <input type="radio" name="transferTypeRadio" value="same_bank_fx" onchange="onTransferTypeChanged(this.value)"> Same-Bank FX
+                <label for="transferTypeSameBankFx" style="display:flex; align-items:center; gap:6px; padding:10px; border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">
+                  <input type="radio" id="transferTypeSameBankFx" name="transferTypeRadio" value="same_bank_fx" onchange="onTransferTypeChanged(this.value)">
+                  <div>
+                    <div>Same-Bank FX</div>
+                    <small style="color:var(--text3); font-weight:normal;">Currency conversion</small>
+                  </div>
                 </label>
-                <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; cursor:pointer; font-size:12px; font-weight:500;">
-                  <input type="radio" name="transferTypeRadio" value="external_linked" onchange="onTransferTypeChanged(this.value)"> External-Linked
+                <label for="transferTypeExternalLinked" style="display:flex; align-items:center; gap:6px; padding:10px; border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">
+                  <input type="radio" id="transferTypeExternalLinked" name="transferTypeRadio" value="external_linked" onchange="onTransferTypeChanged(this.value)">
+                  <div>
+                    <div>External In-Transit</div>
+                    <small style="color:var(--text3); font-weight:normal;">Wire / Broker / Teller</small>
+                  </div>
                 </label>
               </div>
-            </div>
-            <div class="form-field full">
-              <label>Transfer Date <span class="req">*</span></label>
-              <input type="date" id="transferDate">
             </div>
           </div>
         </div>
 
-        <!-- Accounts -->
-        <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-building-columns"></i> Accounts &amp; Amounts <span class="line"></span></div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>From Account <span class="req">*</span></label>
-              <select id="transferFromAccount" onchange="onTransferAccountSelected('from')">
+        <!-- Same-Account Warning Alert -->
+        <div id="transferSameAccountAlert" style="display: none; margin-bottom: 14px;">
+          <div class="alert alert-danger" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 6px; font-size: 12.5px; color: var(--danger);">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <strong>Invalid Transfer:</strong> Source and destination accounts cannot be the same account.
+          </div>
+        </div>
+
+        <!-- Section 2: Source & Destination Accounts -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <!-- FROM SECTION -->
+          <div class="card" style="padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;">
+            <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+              <span><i class="fa-solid fa-arrow-up-right-from-square"></i> From (Source)</span>
+              <span id="transferFromCurrencyBadge" class="badge badge-info" style="font-size: 10px;">USD</span>
+            </div>
+            <div class="form-field" style="margin-bottom: 8px;">
+              <label for="transferFromAccount" style="font-size: 11px;">Source Account <span class="req">*</span></label>
+              <select id="transferFromAccount" onchange="onTransferAccountSelected('from')" style="width: 100%;">
                 <option value="">-- Select Source --</option>
               </select>
-              <small id="transferFromBalanceHint" style="font-size:11px; color:var(--text3); display:block; margin-top:2px;"></small>
+            </div>
+            <div style="font-size: 11.5px; color: var(--text3); margin-bottom: 8px; display: flex; justify-content: space-between;">
+              <span>Current Balance:</span>
+              <strong id="transferFromBalanceHint" style="color: var(--text);">$0.00</strong>
             </div>
             <div class="form-field">
-              <label>To Account <span class="req">*</span></label>
-              <select id="transferToAccount" onchange="onTransferAccountSelected('to')">
-                <option value="">-- Select Target --</option>
-              </select>
-              <small id="transferToBalanceHint" style="font-size:11px; color:var(--text3); display:block; margin-top:2px;"></small>
-            </div>
-
-            <!-- External-Linked Guidance -->
-            <div class="form-field full" id="transferExternalGroup" style="display:none; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.25); border-radius:8px; padding:10px 12px;">
-              <div style="font-size:12px; color:#d97706; font-weight:600; margin-bottom:4px;">
-                <i class="fa-solid fa-circle-info"></i> External Cross-Border / Broker Note
-              </div>
-              <p style="font-size:11px; color:var(--text2); margin:0 0 8px 0; line-height:1.4;">
-                This records the confirmed leg on your owned bank account. Use the <strong>Exchange Reference</strong> below so the paired counter leg can be linked when confirmed.
-              </p>
-              <label style="font-size:11px; font-weight:600;">Confirmed Leg to Post Now</label>
-              <select id="transferConfirmedLeg" style="margin-top:2px;">
-                <option value="both">Post Both Legs (if both accounts owned)</option>
-                <option value="from_only" selected>Outflow Only (Debit source account now)</option>
-                <option value="to_only">Inflow Only (Credit target account now)</option>
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label>Outflow Amount <span class="req">*</span> <span id="transferFromCurrencyBadge" class="badge badge-info" style="font-size:10px; margin-left:4px;">USD</span></label>
+              <label for="transferFromAmount" style="font-size: 11px;">Outflow Amount <span class="req">*</span></label>
               <input type="number" step="0.01" min="0.01" id="transferFromAmount" placeholder="0.00" oninput="recalcTransferAmounts('from')">
             </div>
-
-            <div class="form-field" id="transferFxGroup" style="display:none;">
-              <label>FX Rate <span class="req">*</span> <span class="opt">(1 From = X To)</span></label>
-              <input type="number" step="0.0001" min="0.0001" id="transferFxRate" placeholder="e.g. 48.50" oninput="recalcTransferAmounts('fx')">
+            <div style="font-size: 11px; color: var(--text2); margin-top: 6px; display: flex; justify-content: space-between;">
+              <span>Projected Balance:</span>
+              <strong id="transferFromProjectedHint" style="color: var(--text);">—</strong>
             </div>
+          </div>
 
+          <!-- TO SECTION -->
+          <div class="card" style="padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;">
+            <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--success); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+              <span><i class="fa-solid fa-arrow-down-left-and-up-to-right"></i> To (Destination)</span>
+              <span id="transferToCurrencyBadge" class="badge badge-info" style="font-size: 10px;">USD</span>
+            </div>
+            <div class="form-field" style="margin-bottom: 8px;">
+              <label for="transferToAccount" style="font-size: 11px;">Target Account <span class="req">*</span></label>
+              <select id="transferToAccount" onchange="onTransferAccountSelected('to')" style="width: 100%;">
+                <option value="">-- Select Target --</option>
+              </select>
+            </div>
+            <div style="font-size: 11.5px; color: var(--text3); margin-bottom: 8px; display: flex; justify-content: space-between;">
+              <span>Current Balance:</span>
+              <strong id="transferToBalanceHint" style="color: var(--text);">$0.00</strong>
+            </div>
             <div class="form-field">
-              <label>Inflow Amount <span class="req">*</span> <span id="transferToCurrencyBadge" class="badge badge-info" style="font-size:10px; margin-left:4px;">USD</span></label>
+              <label for="transferToAmount" style="font-size: 11px;">Inflow Amount <span class="req">*</span></label>
               <input type="number" step="0.01" min="0.01" id="transferToAmount" placeholder="0.00" oninput="recalcTransferAmounts('to')">
+            </div>
+            <div style="font-size: 11px; color: var(--text2); margin-top: 6px; display: flex; justify-content: space-between;">
+              <span>Projected Balance:</span>
+              <strong id="transferToProjectedHint" style="color: var(--text);">—</strong>
             </div>
           </div>
         </div>
 
-        <!-- Reference & Notes -->
+        <!-- Section 3: Conversion & FX Rates -->
+        <div class="form-section" id="transferFxSection" style="display:none;">
+          <div class="form-section-label"><i class="fa-solid fa-scale-balanced"></i> Conversion &amp; Fees <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="transferFxRate">Exchange Rate <span class="req">*</span></label>
+              <input type="number" step="0.0001" min="0.0001" id="transferFxRate" placeholder="e.g. 48.50" oninput="recalcTransferAmounts('fx')">
+            </div>
+            <div class="form-field">
+              <label for="transferFee">Transfer / Wire Fee <span class="opt">(Optional)</span></label>
+              <input type="number" step="0.01" min="0" id="transferFee" placeholder="0.00" oninput="recalcTransferAmounts('fee')">
+            </div>
+            <div class="form-field full" id="transferFxDirectionBanner">
+              <div style="padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <i class="fa-solid fa-arrow-right-arrow-left" style="color: var(--primary); margin-right: 6px;"></i>
+                  <strong id="transferFxDirectionText">Explicit Conversion: 1 USD = 1.00 USD</strong>
+                </div>
+                <span id="transferImpliedRateText" style="font-size: 11px; color: var(--text3);">Implied Rate: 1.0000</span>
+              </div>
+            </div>
+            <!-- Inconsistent combination warning -->
+            <div class="form-field full" id="transferFxMismatchAlert" style="display:none;">
+              <div class="alert alert-warning" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 11.5px; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); border-radius: 6px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning);"></i>
+                <span id="transferFxMismatchText">Conversion mismatch detected.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Timing & Settlement State -->
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-clock"></i> Timing &amp; Settlement <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="transferDate">Initiated Date <span class="req">*</span></label>
+              <input type="date" id="transferDate" onchange="updateTransferPreview()">
+            </div>
+            <div class="form-field">
+              <label for="transferExpectedDate">Expected Settlement Date <span class="opt">(Optional)</span></label>
+              <input type="date" id="transferExpectedDate">
+            </div>
+
+            <!-- In-Transit / Settlement State Model (Replaces confirmed leg) -->
+            <div class="form-field full" id="transferExternalGroup" style="display:none; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.25); border-radius:8px; padding:10px 12px;">
+              <div style="font-size:12px; color:#d97706; font-weight:600; margin-bottom:4px;">
+                <i class="fa-solid fa-truck-ramp-box"></i> In-Transit &amp; Matching Settlement State
+              </div>
+              <p style="font-size:11.5px; color:var(--text2); margin:0 0 8px 0; line-height:1.4;">
+                Record a single-leg external, broker, or teller withdrawal transfer. The movement will be marked <strong>In Transit</strong> until paired or matched with the recipient leg.
+              </p>
+              <label for="transferConfirmedLeg" style="font-size:11px; font-weight:600;">Settlement Posting Action</label>
+              <select id="transferConfirmedLeg" style="margin-top:2px;" onchange="updateTransferPreview()">
+                <option value="both" selected>Both Legs Settled (Internal / immediate delivery)</option>
+                <option value="from_only">Outflow In-Transit (Debit source now, await destination match)</option>
+                <option value="to_only">Inflow Awaiting Match (Credit destination now from external)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: Reference & Notes -->
         <div class="form-section">
           <div class="form-section-label"><i class="fa-solid fa-file-lines"></i> Reference &amp; Memo <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Exchange / Ref #</label>
-              <input type="text" id="transferExchangeRef" placeholder="e.g. CIB-FX-2026-004">
+              <label for="transferExchangeRef">Exchange / Wire Ref #</label>
+              <input type="text" id="transferExchangeRef" placeholder="e.g. CIB-FX-2026-004, WIRE-8812">
             </div>
             <div class="form-field">
-              <label>Description / Memo</label>
+              <label for="transferNote">Description / Memo</label>
               <input type="text" id="transferNote" placeholder="e.g. Monthly USD to EGP funding">
             </div>
+          </div>
+        </div>
+
+        <!-- Section 6: Review & Pre-Post Dual-Leg Verification -->
+        <div class="card" id="transferReviewCard" style="margin-top: 10px; padding: 12px 14px; background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--primary);">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Dual-Leg Ledger Preview
+            </span>
+            <span id="transferSettlementBadge" class="badge badge-info" style="font-size: 11px;">Settled (Dual Leg)</span>
+          </div>
+          <p id="transferPlainDesc" style="margin: 0; font-size: 12.5px; color: var(--text2);">
+            Select accounts and amounts to preview dual-leg continuous ledger effect.
+          </p>
+
+          <!-- Journal Table Preview -->
+          <div id="transferJournalWrapper" style="display: none; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px;">
+            <table class="responsive-card-table" style="font-size: 12px; width: 100%;">
+              <thead>
+                <tr>
+                  <th style="padding: 4px 6px;">Account / Item</th>
+                  <th style="padding: 4px 6px; text-align: right;">Debit</th>
+                  <th style="padding: 4px 6px; text-align: right;">Credit</th>
+                </tr>
+              </thead>
+              <tbody id="transferJournalTbody"></tbody>
+            </table>
           </div>
         </div>
       </div>

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from auth import get_current_user
 from models_db import UserDB
-from core.rbac_models import PermissionDB, RolePermissionDB, UserRoleDB
+from core.rbac_models import PermissionDB, RolePermissionDB, UserRoleDB, RoleDB
 
 
 def get_user_permissions(user_id: int, db: Session) -> Set[str]:
@@ -25,7 +25,19 @@ def get_user_permissions(user_id: int, db: Session) -> Set[str]:
         .filter(UserRoleDB.user_id == user_id)
         .all()
     )
-    return {r[0] for r in results}
+    perms = {r[0] for r in results}
+
+    roles = (
+        db.query(RoleDB.name)
+        .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
+        .filter(UserRoleDB.user_id == user_id)
+        .all()
+    )
+    user_roles = {r[0] for r in roles}
+    if "system_admin" in user_roles:
+        perms.add("*")
+
+    return perms
 
 
 def get_current_user_permissions(
@@ -43,6 +55,7 @@ def get_current_user_permissions(
     user_id: Optional[int] = current_user.get("user_id") or current_user.get("id")
     email: Optional[str] = current_user.get("email")
 
+    user_record = None
     if user_id is None and email:
         user_record = (
             db.query(UserDB)
@@ -51,16 +64,31 @@ def get_current_user_permissions(
         )
         if user_record:
             user_id = user_record.id
+    elif user_id is not None:
+        user_record = db.query(UserDB).filter(UserDB.id == user_id).first()
 
     perms: Set[str] = set()
+    user_roles: Set[str] = set()
     if user_id is not None:
         perms = get_user_permissions(user_id, db)
+        roles = (
+            db.query(RoleDB.name)
+            .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
+            .filter(UserRoleDB.user_id == user_id)
+            .all()
+        )
+        user_roles = {r[0] for r in roles}
 
-    # Backward compatibility / fallback:
-    # If the user has legacy 'admin' role and user_roles hasn't been populated (e.g. mock test),
-    # grant administrative wildcard.
-    if not perms and current_user.get("role") == "admin":
-        perms = {"*"}
+    # Super admin / Admin wildcard grant:
+    # If the user has role 'admin' / 'superadmin' / 'super_admin' in token claims or UserDB record,
+    # or has 'system_admin' role assigned in RBAC, always grant administrative wildcard '*'.
+    role_claims = {
+        str(current_user.get("role", "")).lower(),
+        str(getattr(user_record, "role", "")).lower() if user_record else "",
+    }
+    admin_indicators = {"admin", "superadmin", "super_admin", "system_admin"}
+    if role_claims.intersection(admin_indicators) or "system_admin" in user_roles:
+        perms.add("*")
 
     request.state.user_permissions = perms
     return perms

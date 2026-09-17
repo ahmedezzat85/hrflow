@@ -1,24 +1,42 @@
   <div class="modal-overlay" id="vendorModal">
-    <div class="modal modal-v2">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="vendorModalTitle" style="max-width: 720px;">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-truck-field"></i></div>
         <div class="modal-head-text">
           <h3 id="vendorModalTitle">Add Vendor</h3>
           <p>Register suppliers, software subscriptions, and service contractors for accounts payable.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('vendorModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('vendorModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
       </div>
+
+      <!-- Duplicate Candidate Warning Banner -->
+      <div id="vendorDuplicateBanner" class="alert alert-warning" style="display:none; margin: 12px 24px 0 24px; padding: 10px 14px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--warning-border, #f59e0b); background: var(--warning-bg, rgba(245,158,11,0.1));" role="status">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning, #f59e0b); margin-top:2px;"></i>
+          <div>
+            <div style="font-weight:700;">Potential Duplicate Vendor</div>
+            <div id="vendorDuplicateText" style="color:var(--text2); margin-top:2px;">A vendor with matching identity already exists.</div>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-body">
         <input type="hidden" id="fVendorId">
+        
+        <!-- General Vendor Profile -->
         <div class="form-section">
           <div class="form-section-label"><i class="fa-solid fa-store"></i> Vendor Profile <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Vendor / Supplier Name <span class="req">*</span></label>
-              <input id="fVendorName" placeholder="e.g. Amazon Web Services or Slack Technologies">
+              <label for="fVendorName">Vendor / Supplier Name <span class="req">*</span></label>
+              <input id="fVendorName" placeholder="e.g. Amazon Web Services or Slack Technologies" oninput="onVendorFieldInput()">
+            </div>
+            <div class="form-field full">
+              <label for="fVendorLegalName">Registered Legal Name</label>
+              <input id="fVendorLegalName" placeholder="e.g. Amazon Web Services Inc" oninput="onVendorFieldInput()">
             </div>
             <div class="form-field">
-              <label>Category</label>
+              <label for="fVendorCategory">Category</label>
               <select id="fVendorCategory">
                 <option value="General">General</option>
                 <option value="Infrastructure">Infrastructure / Cloud</option>
@@ -29,20 +47,121 @@
               </select>
             </div>
             <div class="form-field">
-              <label>Tax ID / Commercial Register</label>
-              <input id="fVendorTaxId" placeholder="e.g. VAT-1294819">
+              <label for="fVendorDefaultCategoryId">Default Bill Category</label>
+              <select id="fVendorDefaultCategoryId">
+                <option value="">— None (Select per bill) —</option>
+              </select>
             </div>
             <div class="form-field">
-              <label>Billing Email</label>
-              <input id="fVendorEmail" type="email" placeholder="e.g. billing@vendor.com">
+              <label for="fVendorTaxId">Tax ID / Commercial Register</label>
+              <input id="fVendorTaxId" placeholder="e.g. VAT-1294819" oninput="onVendorFieldInput()">
             </div>
             <div class="form-field">
-              <label>Phone</label>
+              <label for="fVendorEmail">Billing Email</label>
+              <input id="fVendorEmail" type="email" placeholder="e.g. billing@vendor.com" oninput="onVendorFieldInput()">
+            </div>
+            <div class="form-field">
+              <label for="fVendorPhone">Phone</label>
               <input id="fVendorPhone" placeholder="e.g. +1 800-555-0199">
             </div>
+            <div class="form-field">
+              <label for="fVendorContactName">Contact Person</label>
+              <input id="fVendorContactName" placeholder="e.g. Account Manager Name">
+            </div>
+            <div class="form-field">
+              <label for="fVendorCountry">Country</label>
+              <select id="fVendorCountry" class="form-control">
+                <option value="Egypt" selected>Egypt</option>
+                <option value="United States">United States</option>
+                <option value="United Arab Emirates">United Arab Emirates</option>
+                <option value="Saudi Arabia">Saudi Arabia</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="Germany">Germany</option>
+                <option value="France">France</option>
+                <option value="Canada">Canada</option>
+                <option value="Qatar">Qatar</option>
+                <option value="Kuwait">Kuwait</option>
+                <option value="Jordan">Jordan</option>
+                <option value="Bahrain">Bahrain</option>
+                <option value="Oman">Oman</option>
+                <option value="Netherlands">Netherlands</option>
+                <option value="Ireland">Ireland</option>
+                <option value="India">India</option>
+                <option value="China">China</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fVendorTerms">Payment Terms (Days)</label>
+              <input id="fVendorTerms" type="number" min="0" value="30" placeholder="e.g. 30">
+            </div>
+            <div class="form-field">
+              <label for="fVendorCurrency">Default Currency</label>
+              <select id="fVendorCurrency" class="form-control">
+                <option value="EGP" selected>EGP — Egyptian Pounds</option>
+                <option value="USD">USD — US Dollars</option>
+                <option value="EUR">EUR — Euros</option>
+                <option value="GBP">GBP — British Pounds</option>
+                <option value="SAR">SAR — Saudi Riyal</option>
+                <option value="AED">AED — UAE Dirham</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fVendorDepartment">Default Department</label>
+              <select id="fVendorDepartment" class="form-control">
+                <option value="Engineering">Engineering</option>
+                <option value="Operations">Operations</option>
+                <option value="Sales">Sales & Marketing</option>
+                <option value="Clinical">Clinical & Medical</option>
+                <option value="Executive">Executive</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fVendorWithholdingRate">Withholding Tax Rate (%)</label>
+              <input id="fVendorWithholdingRate" type="number" min="0" max="100" step="0.1" value="0.0" placeholder="0.0">
+            </div>
             <div class="form-field full">
-              <label>Notes</label>
+              <label for="fVendorAddress">Remit Address</label>
+              <input id="fVendorAddress" placeholder="e.g. 410 Terry Ave N, Seattle WA 98109">
+            </div>
+            <div class="form-field full">
+              <label for="fVendorNotes">Notes</label>
               <textarea id="fVendorNotes" rows="2" placeholder="Payment terms (Net 30), contract IDs, contact notes..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Instructions & Banking Security Section (Story 4.3) -->
+        <div class="form-section" id="vendorPaymentInstructionsSection" style="margin-top:16px;">
+          <div class="form-section-label" style="display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fa-solid fa-shield-halved"></i> Payment Instructions & Bank Details <span class="badge badge-grey" style="margin-left:6px; font-size:0.7rem;">Masked by Default</span></span>
+            <span class="line" style="flex:1; margin: 0 10px;"></span>
+          </div>
+
+          <div id="vendorPaymentInstructionsList" style="margin-bottom:12px;"></div>
+
+          <div class="card" style="padding:12px; background:var(--surface2, rgba(255,255,255,0.02)); border: 1px dashed var(--border);">
+            <div style="font-weight:600; font-size:0.85rem; margin-bottom:8px; color:var(--text);"><i class="fa-solid fa-plus-circle"></i> Add / Update Payment Instruction</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="fVendorPIBankName">Bank Name</label>
+                <input id="fVendorPIBankName" placeholder="e.g. JPMorgan Chase">
+              </div>
+              <div class="form-field">
+                <label for="fVendorPIAccountHolder">Account Holder Name</label>
+                <input id="fVendorPIAccountHolder" placeholder="e.g. Legal Entity Name">
+              </div>
+              <div class="form-field">
+                <label for="fVendorPIAccountNumber">Account Number / IBAN</label>
+                <input id="fVendorPIAccountNumber" placeholder="e.g. 98765432104821">
+              </div>
+              <div class="form-field">
+                <label for="fVendorPIRouting">Routing / SWIFT Code</label>
+                <input id="fVendorPIRouting" placeholder="e.g. 021000021 or CHASUS33">
+              </div>
+              <div class="form-field full" style="display:flex; justify-content:flex-end;">
+                <button type="button" class="btn btn-sm btn-outline" id="vendorAddPIBtn" onclick="saveVendorPaymentInstruction()"><i class="fa-solid fa-save"></i> Save Payment Instruction</button>
+              </div>
             </div>
           </div>
         </div>

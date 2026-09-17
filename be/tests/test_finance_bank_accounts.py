@@ -179,3 +179,142 @@ def test_account_transactions_and_petty_summary_api(app_client, admin_cookies, e
     )
     assert forbidden_resp.status_code == 403
 
+
+def test_bank_account_reveal_and_audit(app_client, admin_cookies, employee_cookies, monkeypatch):
+    # 1. Create account
+    create_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Reveal Security Test Account",
+            "bank_name": "Citibank",
+            "account_number": "CITI-US-9988776655",
+            "currency": "USD",
+            "opening_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    )
+    assert create_resp.status_code == 201
+    acc_id = create_resp.json()["id"]
+
+    # 2. Normal GET is masked by default
+    get_masked = app_client.get(f"/api/finance/accounts/{acc_id}", cookies=admin_cookies)
+    assert get_masked.status_code == 200
+    assert get_masked.json()["account_number"] == "**************6655"
+
+    # 3. GET with reveal=true as admin returns unmasked account identifier
+    get_revealed = app_client.get(f"/api/finance/accounts/{acc_id}?reveal=true", cookies=admin_cookies)
+    assert get_revealed.status_code == 200
+    assert get_revealed.json()["account_number"] == "CITI-US-9988776655"
+
+    # 4. GET with reveal=true for employee without finance.bank_account.reveal gets 403
+    from core import permissions as perm_module
+    def mock_employee_perms(request, current_user, db):
+        return {"finance.account.read"}
+
+    monkeypatch.setattr(perm_module, "get_current_user_permissions", mock_employee_perms)
+    unauthorized_reveal = app_client.get(f"/api/finance/accounts/{acc_id}?reveal=true", cookies=employee_cookies)
+    assert unauthorized_reveal.status_code == 403
+    assert "finance.bank_account.reveal" in unauthorized_reveal.json()["detail"]
+
+
+def test_bank_account_balance_separation_metrics(app_client, admin_cookies):
+    # 1. Create account with opening balance 25,000 USD
+    acc_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Balance Separation Test Account",
+            "bank_name": "Barclays",
+            "account_number": "BARC-UK-001122",
+            "currency": "USD",
+            "opening_balance": 25000.0,
+            "opening_balance_date": "2026-09-01",
+        },
+        cookies=admin_cookies,
+    )
+    assert acc_resp.status_code == 201
+    acc_id = acc_resp.json()["id"]
+    data = acc_resp.json()
+
+    # Verify Story 5.1 separated balances
+    assert data["book_balance"] == 25000.0
+    assert data["available_balance"] == 25000.0
+    assert data["opening_balance_date"] == "2026-09-01"
+    assert data["balance_definitions"] is not None
+    assert "book_balance" in data["balance_definitions"]
+    assert "available_balance" in data["balance_definitions"]
+    assert data["has_postings"] is False
+
+    # 2. Issue a cheque of 3,000 USD on this account
+    chq_resp = app_client.post(
+        "/api/finance/cheques",
+        json={
+            "account_id": acc_id,
+            "cheque_number": "009988",
+            "issue_date": "2026-09-10",
+            "amount": 3000.0,
+            "currency": "USD",
+            "payee": "Vendor Supplier",
+            "purpose_type": "vendor_payment",
+            "status": "issued",
+        },
+        cookies=admin_cookies,
+    )
+    assert chq_resp.status_code == 201
+
+    # 3. Query account again: book balance is 22,000 (cheque written), bank balance is 25,000 (uncleared by bank)!
+    acc_refreshed = app_client.get(f"/api/finance/accounts/{acc_id}", cookies=admin_cookies).json()
+    assert acc_refreshed["book_balance"] == 22000.0
+    assert acc_refreshed["bank_balance"] == 25000.0
+    assert acc_refreshed["available_balance"] == 22000.0
+
+
+def test_currency_change_prevented_after_postings(app_client, admin_cookies):
+    # 1. Create USD account
+    acc_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Currency Lock Test Account",
+            "bank_name": "JPMorgan",
+            "account_number": "JPM-LOCK-77",
+            "currency": "USD",
+            "opening_balance": 10000.0,
+        },
+        cookies=admin_cookies,
+    )
+    assert acc_resp.status_code == 201
+    acc_id = acc_resp.json()["id"]
+
+    # 2. Update currency to EUR before any postings -> Allowed!
+    upd_resp1 = app_client.put(
+        f"/api/finance/accounts/{acc_id}",
+        json={"currency": "EUR"},
+        cookies=admin_cookies,
+    )
+    assert upd_resp1.status_code == 200
+    assert upd_resp1.json()["currency"] == "EUR"
+
+    # 3. Post a transaction to the account
+    tx_resp = app_client.post(
+        f"/api/finance/accounts/{acc_id}/transactions",
+        json={
+            "date": "2026-09-12",
+            "amount": 500.0,
+            "direction": "in",
+            "currency": "EUR",
+            "reference": "POSTING-01",
+            "description": "Initial Euro Deposit",
+        },
+        cookies=admin_cookies,
+    )
+    assert tx_resp.status_code == 201
+
+    # 4. Attempting to change currency to USD after postings -> MUST BE PREVENTED (400 Bad Request)
+    upd_resp2 = app_client.put(
+        f"/api/finance/accounts/{acc_id}",
+        json={"currency": "USD"},
+        cookies=admin_cookies,
+    )
+    assert upd_resp2.status_code == 400
+    assert "Currency cannot be modified after transactions have been posted" in upd_resp2.json()["detail"]
+
+

@@ -20,7 +20,19 @@ const APP_SCRIPT_ORDER = [
   'dochub.js',
   'charts.js',
   'export.js',
-  'finance.js',
+  // Modular finance domains
+  'finance-core.js',
+  'finance-dashboard.js',
+  'finance-invoices.js',
+  'finance-bills.js',
+  'finance-payroll.js',
+  'finance-accounts.js',
+  'finance-cheques.js',
+  'finance-statements.js',
+  'finance-subscriptions.js',
+  'finance-statutory.js',
+  'finance-reports.js',
+  'finance-nav.js',
   'app.js',
 ];
 
@@ -77,21 +89,38 @@ function singleFileDeployBundle() {
       isBuild = config.command === 'build';
     },
     transformIndexHtml: {
-      order: 'pre',
+      order: 'post',
       handler(html) {
         let out = resolveHtmlPartials(html, resolve(__dirname, 'src'));
         const combined = APP_SCRIPT_ORDER
           .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
           .join('\n;\n');
         out = out.replace('</body>', () => `<script>\n${combined}\n</script>\n</body>`);
-        if (isBuild) {
-          out = out
-            .replace('src="../config.js"', 'src="./config.js"')
-            .replace('src="../api.js"', 'src="./api.js"')
-            .replace('src="../finance-api.js"', 'src="./finance-api.js"');
-        }
+        const deployScripts = isBuild
+          ? '<script src="./config.js"></script>\n<script src="./api.js"></script>\n<script src="./finance-api.js"></script>'
+          : '<script src="../config.js"></script>\n<script src="../api.js"></script>\n<script src="../finance-api.js"></script>';
+        out = out.replace('<!-- @deploy-scripts -->', deployScripts);
         return out;
       },
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url || '').split('?')[0].replace(/^\//, '');
+        const match = DEPLOY_SIBLING_FILES.find((f) => f.dest.toLowerCase() === url.toLowerCase());
+        if (match) {
+          const filePath = resolve(__dirname, match.src);
+          if (existsSync(filePath)) {
+            if (url.endsWith('.js')) {
+              res.setHeader('Content-Type', 'application/javascript');
+            } else if (url.endsWith('.png')) {
+              res.setHeader('Content-Type', 'image/png');
+            }
+            res.end(readFileSync(filePath));
+            return;
+          }
+        }
+        next();
+      });
     },
     handleHotUpdate({ file, server }) {
       if (file.endsWith('.html')) {

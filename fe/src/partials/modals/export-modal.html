@@ -3,8 +3,8 @@
       <div class="modal-head">
         <div class="modal-head-icon" style="background:rgba(59,130,246,0.12);color:var(--primary);"><i class="fa-solid fa-file-export"></i></div>
         <div class="modal-head-text">
-          <h3>Export HR Data</h3>
-          <p>Export operational records to local CSV or Google Sheets.</p>
+          <h3>Export Data</h3>
+          <p>Export operational and financial records to local CSV or Google Sheets.</p>
         </div>
         <button class="modal-close" onclick="closeExportModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -16,11 +16,22 @@
             <div class="form-field full">
               <label>Select Dataset <span class="req">*</span></label>
               <select id="exportDatasetSelect" onchange="onExportDatasetChange()">
-                <option value="employees">Employees (Full profiles, salaries, banking, contact)</option>
-                <option value="insurance">Medical Insurance (Claims, categories, providers &amp; amounts)</option>
-                <option value="salary">Salary History (Raises, revisions &amp; percentages)</option>
-                <option value="vacations">Vacation History (Leave tracking &amp; durations)</option>
-                <option value="invoices">Invoices (Generated contractor billing records)</option>
+                <optgroup label="HR &amp; People Operations">
+                  <option value="employees">Employees (Full profiles, salaries, banking, contact)</option>
+                  <option value="insurance">Medical Insurance (Claims, categories, providers &amp; amounts)</option>
+                  <option value="salary">Salary History (Raises, revisions &amp; percentages)</option>
+                  <option value="vacations">Vacation History (Leave tracking &amp; durations)</option>
+                  <option value="invoices">Contractor Invoices (Generated contractor billing records)</option>
+                </optgroup>
+                <optgroup label="Finance &amp; Accounting">
+                  <option value="finance_ledger">General Ledger (Journal entries, accounts, debits &amp; credits)</option>
+                  <option value="finance_accounts">Bank &amp; Treasury Accounts (Balances, currencies, IBANs)</option>
+                  <option value="finance_invoices">Sales Invoices (Client billing, VAT, collections)</option>
+                  <option value="finance_bills">Bills &amp; Payables (Vendor invoices, categories &amp; payments)</option>
+                  <option value="finance_cheques">Cheques &amp; Custody (Inward/outward status &amp; clearance)</option>
+                  <option value="finance_transfers">Transfers &amp; FX (Internal movements, fees &amp; conversions)</option>
+                  <option value="finance_subscriptions">Subscriptions (SaaS tools, billing cycle &amp; renewals)</option>
+                </optgroup>
               </select>
             </div>
           </div>

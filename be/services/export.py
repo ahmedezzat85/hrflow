@@ -18,6 +18,15 @@ from models_db import (
     VacationHistoryDB,
     InvoiceDB,
 )
+from finance.models import (
+    LedgerTransactionDB,
+    FinanceBankAccountDB,
+    SalesInvoiceDB,
+    BillDB,
+    FinanceChequeDB,
+    AccountTransferDB,
+    SubscriptionDB,
+)
 from logging_config import get_logger
 
 logger = get_logger("services.export")
@@ -320,12 +329,422 @@ def get_invoices_export_data(
     return headers, rows
 
 
+def get_finance_ledger_export_data(
+    year: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> Tuple[List[str], List[List[Any]]]:
+    """Extracts continuous general ledger transactions."""
+    headers = [
+        "Transaction ID",
+        "Date",
+        "Account Name",
+        "Account Type",
+        "Currency",
+        "Category",
+        "Payment Type",
+        "Description",
+        "Direction",
+        "Amount",
+        "Running Balance",
+        "Reference",
+        "Counterparty",
+        "Cheque Number",
+        "Source",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        query = db.query(LedgerTransactionDB)
+        if year:
+            query = query.filter(LedgerTransactionDB.date.like(f"{year}-%"))
+        if start_date:
+            query = query.filter(LedgerTransactionDB.date >= start_date)
+        if end_date:
+            query = query.filter(LedgerTransactionDB.date <= end_date)
+
+        txs = query.order_by(LedgerTransactionDB.date.asc(), LedgerTransactionDB.id.asc()).all()
+        for tx in txs:
+            acc_name = tx.account.account_name if tx.account else f"Account #{tx.account_id}"
+            acc_type = tx.account.account_type if tx.account else "bank"
+            cat_name = tx.category.name if tx.category else ""
+            pt_name = tx.payment_type.name if tx.payment_type else ""
+            created_str = tx.created_at.strftime("%Y-%m-%d %H:%M:%S") if tx.created_at else ""
+
+            row = [
+                tx.id,
+                tx.date or "",
+                acc_name,
+                acc_type.upper(),
+                tx.currency or "USD",
+                cat_name,
+                pt_name,
+                tx.description or "",
+                tx.direction or "",
+                float(tx.amount or 0.0),
+                float(tx.running_balance or 0.0),
+                tx.reference or "",
+                tx.counterparty or "",
+                tx.cheque_number or "",
+                tx.source or "",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_ledger export data: %d rows", len(rows))
+    return headers, rows
+
+
+def get_finance_accounts_export_data() -> Tuple[List[str], List[List[Any]]]:
+    """Extracts company bank and cash accounts."""
+    headers = [
+        "Account ID",
+        "Account Name",
+        "Account Type",
+        "Bank Name",
+        "Account Number",
+        "Currency",
+        "Country",
+        "Opening Balance",
+        "Opening Balance Date",
+        "Current Balance",
+        "Status",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        accs = db.query(FinanceBankAccountDB).order_by(FinanceBankAccountDB.id.asc()).all()
+        for a in accs:
+            created_str = a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else ""
+            row = [
+                a.id,
+                a.account_name or "",
+                (a.account_type or "bank").upper(),
+                a.bank_name or "",
+                a.account_number or "",
+                a.currency or "USD",
+                a.country or "",
+                float(a.opening_balance or 0.0),
+                a.opening_balance_date or "",
+                float(a.current_balance or 0.0),
+                "Active" if a.is_active else "Inactive",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_accounts export data: %d rows", len(rows))
+    return headers, rows
+
+
+def get_finance_invoices_export_data(
+    year: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+) -> Tuple[List[str], List[List[Any]]]:
+    """Extracts customer sales invoices."""
+    headers = [
+        "Invoice ID",
+        "Invoice Number",
+        "Customer Name",
+        "Issue Date",
+        "Due Date",
+        "Status",
+        "Currency",
+        "Subtotal",
+        "Tax Amount",
+        "Total",
+        "Amount Paid",
+        "Balance Due",
+        "Revenue Channel",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        query = db.query(SalesInvoiceDB)
+        if year:
+            query = query.filter(SalesInvoiceDB.issue_date.like(f"{year}-%"))
+        if start_date:
+            query = query.filter(SalesInvoiceDB.issue_date >= start_date)
+        if end_date:
+            query = query.filter(SalesInvoiceDB.issue_date <= end_date)
+        if status:
+            query = query.filter(SalesInvoiceDB.status == status.lower())
+
+        invoices = query.order_by(SalesInvoiceDB.issue_date.desc(), SalesInvoiceDB.id.desc()).all()
+        for inv in invoices:
+            cust_name = inv.customer.name if inv.customer else ""
+            created_str = inv.created_at.strftime("%Y-%m-%d %H:%M:%S") if inv.created_at else ""
+            balance = float((inv.total or 0.0) - (inv.amount_paid or 0.0))
+
+            row = [
+                inv.id,
+                inv.invoice_number or "",
+                cust_name,
+                inv.issue_date or "",
+                inv.due_date or "",
+                (inv.status or "draft").upper(),
+                inv.currency or "USD",
+                float(inv.subtotal or 0.0),
+                float(inv.tax_amount or 0.0),
+                float(inv.total or 0.0),
+                float(inv.amount_paid or 0.0),
+                balance,
+                inv.revenue_channel or "",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_invoices export data: %d rows", len(rows))
+    return headers, rows
+
+
+def get_finance_bills_export_data(
+    year: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+) -> Tuple[List[str], List[List[Any]]]:
+    """Extracts vendor bills and accounts payable."""
+    headers = [
+        "Bill ID",
+        "Bill Number",
+        "Vendor Name",
+        "Issue Date",
+        "Due Date",
+        "Status",
+        "Currency",
+        "Subtotal",
+        "Tax Amount",
+        "Total",
+        "Amount Paid",
+        "Balance Due",
+        "Payment Method",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        query = db.query(BillDB)
+        if year:
+            query = query.filter(BillDB.issue_date.like(f"{year}-%"))
+        if start_date:
+            query = query.filter(BillDB.issue_date >= start_date)
+        if end_date:
+            query = query.filter(BillDB.issue_date <= end_date)
+        if status:
+            query = query.filter(BillDB.status == status.lower())
+
+        bills = query.order_by(BillDB.issue_date.desc(), BillDB.id.desc()).all()
+        for b in bills:
+            vendor_name = b.vendor.name if b.vendor else ""
+            created_str = b.created_at.strftime("%Y-%m-%d %H:%M:%S") if b.created_at else ""
+            balance = float((b.total or 0.0) - (b.amount_paid or 0.0))
+
+            row = [
+                b.id,
+                b.bill_number or "",
+                vendor_name,
+                b.issue_date or "",
+                b.due_date or "",
+                (b.status or "draft").upper(),
+                b.currency or "USD",
+                float(b.subtotal or 0.0),
+                float(b.tax_amount or 0.0),
+                float(b.total or 0.0),
+                float(b.amount_paid or 0.0),
+                balance,
+                b.payment_method or "",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_bills export data: %d rows", len(rows))
+    return headers, rows
+
+
+def get_finance_cheques_export_data(
+    year: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+) -> Tuple[List[str], List[List[Any]]]:
+    """Extracts cheque register records."""
+    headers = [
+        "Cheque ID",
+        "Cheque Number",
+        "Bank Account",
+        "Payee",
+        "Issue Date",
+        "Clear Date",
+        "Amount",
+        "Currency",
+        "Status",
+        "Purpose Type",
+        "Signer",
+        "Notes",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        query = db.query(FinanceChequeDB)
+        if year:
+            query = query.filter(FinanceChequeDB.issue_date.like(f"{year}-%"))
+        if start_date:
+            query = query.filter(FinanceChequeDB.issue_date >= start_date)
+        if end_date:
+            query = query.filter(FinanceChequeDB.issue_date <= end_date)
+        if status:
+            query = query.filter(FinanceChequeDB.status == status.lower())
+
+        cheques = query.order_by(FinanceChequeDB.issue_date.desc(), FinanceChequeDB.id.desc()).all()
+        for c in cheques:
+            acc_name = c.account.account_name if c.account else ""
+            created_str = c.created_at.strftime("%Y-%m-%d %H:%M:%S") if c.created_at else ""
+
+            row = [
+                c.id,
+                c.cheque_number or "",
+                acc_name,
+                c.payee or "",
+                c.issue_date or "",
+                c.clear_date or "",
+                float(c.amount or 0.0),
+                c.currency or "USD",
+                (c.status or "issued").upper(),
+                c.purpose_type or "",
+                c.signer_name or "",
+                c.notes or "",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_cheques export data: %d rows", len(rows))
+    return headers, rows
+
+
+def get_finance_transfers_export_data(
+    year: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> Tuple[List[str], List[List[Any]]]:
+    """Extracts inter-account transfers."""
+    headers = [
+        "Transfer ID",
+        "Date",
+        "From Account",
+        "From Amount",
+        "From Currency",
+        "To Account",
+        "To Amount",
+        "To Currency",
+        "Exchange Rate",
+        "Fee",
+        "Transfer Type",
+        "Reference",
+        "Settlement Status",
+        "Note",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        query = db.query(AccountTransferDB)
+        if year:
+            query = query.filter(AccountTransferDB.date.like(f"{year}-%"))
+        if start_date:
+            query = query.filter(AccountTransferDB.date >= start_date)
+        if end_date:
+            query = query.filter(AccountTransferDB.date <= end_date)
+
+        transfers = query.order_by(AccountTransferDB.date.desc(), AccountTransferDB.id.desc()).all()
+        for t in transfers:
+            from_acc = t.from_account.account_name if t.from_account else ""
+            to_acc = t.to_account.account_name if t.to_account else ""
+            created_str = t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else ""
+
+            row = [
+                t.id,
+                t.date or "",
+                from_acc,
+                float(t.from_amount or 0.0),
+                t.from_currency or "USD",
+                to_acc,
+                float(t.to_amount or 0.0),
+                t.to_currency or "USD",
+                float(t.fx_rate) if t.fx_rate else 1.0,
+                float(t.fee or 0.0),
+                t.transfer_type or "internal",
+                t.exchange_reference or "",
+                (t.settlement_status or "settled").upper(),
+                t.note or "",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_transfers export data: %d rows", len(rows))
+    return headers, rows
+
+
+def get_finance_subscriptions_export_data() -> Tuple[List[str], List[List[Any]]]:
+    """Extracts software subscriptions and SaaS tools."""
+    headers = [
+        "Subscription ID",
+        "Tool / Name",
+        "Vendor",
+        "Amount",
+        "Currency",
+        "Billing Cycle",
+        "Monthly Equivalent",
+        "Department",
+        "Owner",
+        "Payment Method",
+        "Payment Account",
+        "Next Renewal Date",
+        "Status",
+        "Created At",
+    ]
+    rows = []
+    with get_db_context() as db:
+        subs = db.query(SubscriptionDB).order_by(SubscriptionDB.id.asc()).all()
+        for s in subs:
+            vendor_name = s.vendor.name if s.vendor else ""
+            acc_name = s.payment_account.account_name if s.payment_account else ""
+            created_str = s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else ""
+
+            row = [
+                s.id,
+                s.name or "",
+                vendor_name,
+                float(s.amount or 0.0),
+                s.currency or "USD",
+                s.billing_cycle or "monthly",
+                float(s.monthly_equivalent_amount or s.amount or 0.0),
+                s.department or "",
+                s.owner or "",
+                s.payment_method or "",
+                acc_name,
+                s.next_renewal_date or "",
+                "Active" if s.is_active else "Inactive",
+                created_str,
+            ]
+            rows.append(row)
+
+    logger.info("Generated finance_subscriptions export data: %d rows", len(rows))
+    return headers, rows
+
+
 DATASET_EXTRACTORS = {
     "employees": get_employees_export_data,
     "insurance": get_insurance_export_data,
     "salary": get_salary_history_export_data,
     "vacations": get_vacations_export_data,
     "invoices": get_invoices_export_data,
+    "finance_ledger": get_finance_ledger_export_data,
+    "finance_accounts": get_finance_accounts_export_data,
+    "finance_invoices": get_finance_invoices_export_data,
+    "finance_bills": get_finance_bills_export_data,
+    "finance_cheques": get_finance_cheques_export_data,
+    "finance_transfers": get_finance_transfers_export_data,
+    "finance_subscriptions": get_finance_subscriptions_export_data,
 }
 
 

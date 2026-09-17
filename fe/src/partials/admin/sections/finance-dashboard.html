@@ -1,51 +1,456 @@
         <section class="page-section" id="a-finance-dashboard">
-          <div class="toolbar">
+          <div class="toolbar" style="margin-bottom: 16px;">
             <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> Finance Overview</h2>
-              <p class="section-subtitle">Executive summary of company cash flow, revenue, and operating expenses.</p>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                <h2 class="section-title" style="margin-bottom:0;"><i class="fa-solid fa-chart-line"></i> Finance Overview</h2>
+                <span class="finance-meta-badge" id="financeDashboardScopeBadge"><i class="fa-solid fa-building-columns"></i> Scope: All Accounts</span>
+                <span class="finance-meta-badge" id="financeDashboardPeriodBadge"><i class="fa-solid fa-calendar"></i> Period: MTD</span>
+                <span class="finance-meta-badge" id="financeDashboardBasisBadge"><i class="fa-solid fa-scale-balanced"></i> Basis: Cash</span>
+                <span class="finance-meta-badge" id="financeDashboardCurrencyBadge"><i class="fa-solid fa-coins"></i> Currency: USD</span>
+                <span class="badge badge-warning" id="financeDashboardStaleBadge" style="display:none;" title="Data could not be updated"><i class="fa-solid fa-clock-rotate-left"></i> Stale Data</span>
+              </div>
+              <p class="section-subtitle">
+                Executive summary of company cash flow, revenue, and operating expenses.
+                <span id="financeDashboardLastUpdatedWrap" style="margin-left: 8px; font-size: 11px; opacity: 0.85;">
+                  <i class="fa-solid fa-clock"></i> <span id="financeDashboardLastUpdated">Last updated: —</span>
+                </span>
+              </p>
             </div>
-            <button class="btn" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+            <button class="btn" id="btnRefreshFinanceDashboard" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+          </div>
+
+          <!-- Story 2.1 Finance Context Bar -->
+          <div class="card finance-context-bar" id="financeContextBar" style="margin-bottom: 20px; padding: 14px 18px; border-left: 3px solid var(--primary, #3b82f6); background: var(--surface, #ffffff);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label for="financeContextEntity" style="font-size: 12px; font-weight: 600; color: var(--text2, #475569); text-transform: uppercase; letter-spacing: 0.03em;">Entity</label>
+                  <select id="financeContextEntity" class="form-input form-input-sm" style="width: auto; min-width: 135px; font-size: 13px;" onchange="onFinanceContextChanged()">
+                    <option value="all" selected>All Entities</option>
+                    <option value="Voyance Health">Voyance Health</option>
+                    <option value="Voyance US">Voyance US</option>
+                    <option value="Voyance Egypt">Voyance Egypt</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label for="financeContextPeriod" style="font-size: 12px; font-weight: 600; color: var(--text2, #475569); text-transform: uppercase; letter-spacing: 0.03em;">Period</label>
+                  <select id="financeContextPeriod" class="form-input form-input-sm" style="width: auto; min-width: 125px; font-size: 13px;" onchange="onFinanceContextChanged()">
+                    <option value="MTD" selected>Month to Date (MTD)</option>
+                    <option value="QTD">Quarter to Date (QTD)</option>
+                    <option value="YTD">Year to Date (YTD)</option>
+                    <option value="all">All Time</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label for="financeContextBasis" style="font-size: 12px; font-weight: 600; color: var(--text2, #475569); text-transform: uppercase; letter-spacing: 0.03em;">Basis</label>
+                  <select id="financeContextBasis" class="form-input form-input-sm" style="width: auto; min-width: 120px; font-size: 13px;" onchange="onFinanceContextChanged()">
+                    <option value="cash" selected>Cash Basis</option>
+                    <option value="accrual">Accrual Basis</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label for="financeContextCurrency" style="font-size: 12px; font-weight: 600; color: var(--text2, #475569); text-transform: uppercase; letter-spacing: 0.03em;">Currency</label>
+                  <select id="financeContextCurrency" class="form-input form-input-sm" style="width: auto; min-width: 105px; font-size: 13px;" onchange="onFinanceContextChanged()">
+                    <option value="USD" selected>USD ($)</option>
+                    <option value="EGP">EGP (E£)</option>
+                    <option value="all">All (Multi)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button class="btn btn-sm btn-outline" id="btnResetFinanceContext" onclick="resetFinanceContext()" title="Reset to standard defaults">
+                <i class="fa-solid fa-arrow-rotate-left"></i> Reset Defaults
+              </button>
+            </div>
+
+            <!-- Conversion policy notice when Multi-currency is selected -->
+            <div id="financeContextPolicyNotice" style="display: none; margin-top: 10px; font-size: 12px; color: var(--warning, #d97706); background: var(--warning-soft, rgba(245, 158, 11, 0.08)); padding: 6px 10px; border-radius: 6px;">
+              <i class="fa-solid fa-circle-info"></i> <span id="financeContextPolicyText">Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation.</span>
+            </div>
+          </div>
+
+          <!-- Reusable Inline Error & Retry Banner -->
+          <div id="financeDashboardErrorState" class="finance-inline-error card" style="display:none; margin-bottom: 18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:50%; background:var(--danger-soft, rgba(239, 68, 68, 0.1)); display:flex; align-items:center; justify-content:center; color:var(--danger, #ef4444); font-size:16px;">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                  <strong style="display:block; font-size:13.5px; color:var(--text, #1e293b);" id="financeDashboardErrorMessage">Unable to load finance overview</strong>
+                  <span style="font-size:12px; color:var(--text3, #64748b);">You can retry without reloading the application. Previous data remains visible below if available.</span>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-outline" id="financeDashboardRetryBtn" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-rotate-right"></i> Retry</button>
+            </div>
           </div>
 
           <div class="grid g4" style="margin-bottom:20px;">
-            <div class="card stat-card">
+            <!-- Card 1: Total Cash Balance -->
+            <div class="card stat-card" id="cardKpiCashBalance">
               <div class="stat-top">
-                <div class="stat-label">Total Cash Balance</div>
+                <div class="stat-label">
+                  <span id="labelKpiBalance">Total Cash Balance</span>
+                  <button type="button" class="btn-icon-xs" title="Consolidated book cash balance across all active bank and cash accounts." onclick="showKpiDefinition('total_cash')" style="margin-left:4px;border:none;background:none;cursor:pointer;color:var(--text3);"><i class="fa-solid fa-circle-info"></i></button>
+                </div>
                 <div class="stat-icon" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-vault"></i></div>
               </div>
-              <div class="stat-val" id="statFinanceBalance">$245,000.00</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-building-columns"></i> Across all accounts</span>
+              <div class="stat-val" id="statFinanceBalance"><span class="finance-skeleton">—</span></div>
+              <div class="stat-subtext" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                <span class="stat-trend" id="statFinanceBalanceSubtext" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-building-columns"></i> Active Accounts</span>
+                <a href="#accounts" class="kpi-drilldown-link" id="drilldownKpiCash" onclick="drilldownFinanceKPI('total_cash'); return false;" style="font-size:11.5px; text-decoration:none; color:var(--primary, #3b82f6); font-weight:500;">View Accounts <i class="fa-solid fa-arrow-right"></i></a>
               </div>
             </div>
-            <div class="card stat-card">
+
+            <!-- Card 2: Revenue -->
+            <div class="card stat-card" id="cardKpiRevenue">
               <div class="stat-top">
-                <div class="stat-label">Revenue (MTD)</div>
+                <div class="stat-label">
+                  <span id="labelKpiRevenue">Revenue (MTD)</span>
+                  <button type="button" class="btn-icon-xs" title="Actual cash inflows or recognized sales invoices according to basis." onclick="showKpiDefinition('revenue')" style="margin-left:4px;border:none;background:none;cursor:pointer;color:var(--text3);"><i class="fa-solid fa-circle-info"></i></button>
+                </div>
                 <div class="stat-icon" style="background:var(--info-soft);color:var(--info);"><i class="fa-solid fa-hand-holding-dollar"></i></div>
               </div>
-              <div class="stat-val" id="statFinanceRevenue">$48,200.00</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--info-soft);color:var(--info);"><i class="fa-solid fa-chart-line"></i> Month to date</span>
+              <div class="stat-val" id="statFinanceRevenue"><span class="finance-skeleton">—</span></div>
+              <div class="stat-subtext" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                <span class="stat-trend" id="statFinanceRevenueSubtext" style="background:var(--info-soft);color:var(--info);"><i class="fa-solid fa-chart-line"></i> Cash Inflows</span>
+                <a href="#revenue" class="kpi-drilldown-link" id="drilldownKpiRevenue" onclick="drilldownFinanceKPI('revenue'); return false;" style="font-size:11.5px; text-decoration:none; color:var(--primary, #3b82f6); font-weight:500;">View Records <i class="fa-solid fa-arrow-right"></i></a>
               </div>
             </div>
-            <div class="card stat-card">
+
+            <!-- Card 3: Operating Expenses -->
+            <div class="card stat-card" id="cardKpiCost">
               <div class="stat-top">
-                <div class="stat-label">Operating Expenses (MTD)</div>
+                <div class="stat-label">
+                  <span id="labelKpiCost">Operating Expenses (MTD)</span>
+                  <button type="button" class="btn-icon-xs" title="Actual cash outflows or recognized vendor bills according to basis." onclick="showKpiDefinition('operating_spend')" style="margin-left:4px;border:none;background:none;cursor:pointer;color:var(--text3);"><i class="fa-solid fa-circle-info"></i></button>
+                </div>
                 <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);"><i class="fa-solid fa-file-invoice-dollar"></i></div>
               </div>
-              <div class="stat-val" id="statFinanceCost">$31,400.00</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--danger-soft);color:var(--danger);"><i class="fa-solid fa-arrow-trend-down"></i> Month to date</span>
+              <div class="stat-val" id="statFinanceCost"><span class="finance-skeleton">—</span></div>
+              <div class="stat-subtext" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                <span class="stat-trend" id="statFinanceCostSubtext" style="background:var(--danger-soft);color:var(--danger);"><i class="fa-solid fa-arrow-trend-down"></i> Cash Outflows</span>
+                <a href="#costs" class="kpi-drilldown-link" id="drilldownKpiCost" onclick="drilldownFinanceKPI('operating_spend'); return false;" style="font-size:11.5px; text-decoration:none; color:var(--primary, #3b82f6); font-weight:500;">View Records <i class="fa-solid fa-arrow-right"></i></a>
               </div>
             </div>
-            <div class="card stat-card">
+
+            <!-- Card 4: Net Operating Result & Margin -->
+            <div class="card stat-card" id="cardKpiNet">
               <div class="stat-top">
-                <div class="stat-label">Net Operating Margin</div>
+                <div class="stat-label">
+                  <span id="labelKpiNet">Net Operating Result</span>
+                  <button type="button" class="btn-icon-xs" title="Net operating difference between Revenue and Operating Expenses." onclick="showKpiDefinition('net_result')" style="margin-left:4px;border:none;background:none;cursor:pointer;color:var(--text3);"><i class="fa-solid fa-circle-info"></i></button>
+                </div>
                 <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-scale-balanced"></i></div>
               </div>
-              <div class="stat-val" id="statFinanceNet">$16,800.00</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-circle-check"></i> Revenue minus expenses</span>
+              <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div class="stat-val" id="statFinanceNet"><span class="finance-skeleton">—</span></div>
+                <span class="badge" id="statFinanceMarginBadge" style="font-size:11.5px; font-weight:600; display:none;" title="Operating Margin: (Net Result / Revenue) * 100">Margin: —</span>
+              </div>
+              <div class="stat-subtext" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                <span class="stat-trend" id="statFinanceNetSubtext" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-circle-check"></i> Revenue minus expenses</span>
+                <a href="#reports" class="kpi-drilldown-link" id="drilldownKpiNet" onclick="drilldownFinanceKPI('net_result'); return false;" style="font-size:11.5px; text-decoration:none; color:var(--primary, #3b82f6); font-weight:500;">View Reports <i class="fa-solid fa-arrow-right"></i></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Story 2.2: Needs-Attention Queue -->
+          <div class="card" id="financeAttentionQueueCard" style="margin-top: 1.5rem;">
+            <div class="card-head" style="padding: 16px 20px; border-bottom: 1px solid var(--border, #e2e8f0); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-list-check" style="color: var(--primary, #3b82f6);"></i> Needs Attention
+                </h3>
+                <span class="badge" id="badgeAttentionTotalCount" style="background: var(--surface2, #f1f5f9); color: var(--text, #1e293b); font-size: 11.5px; font-weight: 600;">0 items</span>
+                <span class="badge badge-danger" id="badgeAttentionUrgentCount" style="display: none; font-size: 11.5px; font-weight: 600;" aria-label="Urgent items count">
+                  <i class="fa-solid fa-circle-exclamation"></i> <span id="textAttentionUrgentCount">0 Urgent</span>
+                </span>
+                <span class="badge badge-warning" id="badgeAttentionWarningCount" style="display: none; font-size: 11.5px; font-weight: 600;" aria-label="Warning items count">
+                  <i class="fa-solid fa-triangle-exclamation"></i> <span id="textAttentionWarningCount">0 Warning</span>
+                </span>
+              </div>
+
+              <!-- Controls: Severity, Type, Search, Refresh -->
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <select id="filterAttentionSeverity" class="form-input form-input-sm" style="width: auto; min-width: 120px; font-size: 12.5px;" onchange="onAttentionFilterChanged()" aria-label="Filter by severity">
+                  <option value="all" selected>All Severities</option>
+                  <option value="urgent">Urgent only</option>
+                  <option value="warning">Warning only</option>
+                  <option value="info">Info only</option>
+                </select>
+
+                <select id="filterAttentionType" class="form-input form-input-sm" style="width: auto; min-width: 140px; font-size: 12.5px;" onchange="onAttentionFilterChanged()" aria-label="Filter by item type">
+                  <option value="all" selected>All Categories</option>
+                  <option value="overdue_receivable">Overdue Invoices</option>
+                  <option value="bill_due">Bills Due & Overdue</option>
+                  <option value="negative_cash">Overdraft / Negative Cash</option>
+                  <option value="pending_approval">Pending Approvals</option>
+                  <option value="unreconciled_statement">Unreconciled Statements</option>
+                  <option value="bounced_cheque">Bounced Cheques</option>
+                </select>
+
+                <div style="position: relative; display: inline-block;">
+                  <input type="text" id="inputAttentionSearch" class="form-input form-input-sm" placeholder="Search exceptions..." style="width: 160px; font-size: 12.5px; padding-left: 26px;" oninput="onAttentionSearchInput(event)" aria-label="Search exceptions">
+                  <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text3, #94a3b8); pointer-events: none;"></i>
+                </div>
+
+                <button class="btn btn-sm btn-outline" id="btnRefreshAttentionQueue" onclick="loadFinanceAttentionQueue()" title="Refresh attention queue">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Queue Items List Container -->
+            <div id="financeAttentionQueueBody" style="padding: 0;">
+              <!-- Loading Skeleton -->
+              <div id="financeAttentionQueueSkeleton" style="display: none; padding: 20px;">
+                <div class="finance-skeleton" style="height: 52px; margin-bottom: 10px; border-radius: 6px;"></div>
+                <div class="finance-skeleton" style="height: 52px; margin-bottom: 10px; border-radius: 6px;"></div>
+                <div class="finance-skeleton" style="height: 52px; border-radius: 6px;"></div>
+              </div>
+
+              <!-- List of Items -->
+              <div id="financeAttentionQueueList" class="finance-attention-list"></div>
+
+              <!-- Empty State -->
+              <div id="financeAttentionQueueEmpty" class="empty-state" style="display: none; padding: 3rem 1.5rem; text-align: center;">
+                <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--success-soft, rgba(34, 197, 94, 0.1)); display: inline-flex; align-items: center; justify-content: center; color: var(--success, #16a34a); font-size: 24px; margin-bottom: 12px;">
+                  <i class="fa-solid fa-check-double"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 15px; color: var(--text, #1e293b);">No Attention Required</h4>
+                <p style="margin: 0; font-size: 13px; color: var(--text3, #64748b);">All invoices, bills, accounts, and bank reconciliations are currently up to date.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Story 2.3: Cash Position and Forecast -->
+          <div class="card" id="financeCashForecastCard" style="margin-top: 1.5rem;">
+            <div class="card-head" style="padding: 16px 20px; border-bottom: 1px solid var(--border, #e2e8f0); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-money-bill-trend-up" style="color: var(--success, #16a34a);"></i> Cash Position & Liquidity Forecast
+                </h3>
+                <span class="badge" id="badgeForecastAsOf" style="background: var(--surface2, #f1f5f9); color: var(--text, #1e293b); font-size: 11.5px; font-weight: 600;">As of Today</span>
+              </div>
+
+              <!-- Horizon and Option Controls -->
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div class="btn-group" id="forecastHorizonSelector" style="display: inline-flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border, #e2e8f0);">
+                  <button type="button" class="btn btn-sm btn-primary" id="btnForecastHorizon30" onclick="setForecastHorizon(30)" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">30 Days</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="btnForecastHorizon60" onclick="setForecastHorizon(60)" style="padding: 4px 10px; font-size: 12px; font-weight: 600; border-left: 1px solid var(--border, #e2e8f0); border-right: 1px solid var(--border, #e2e8f0);">60 Days</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="btnForecastHorizon90" onclick="setForecastHorizon(90)" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">90 Days</button>
+                </div>
+
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2, #475569); cursor: pointer; user-select: none;">
+                  <input type="checkbox" id="chkForecastIncludeExpected" checked onchange="toggleForecastExpected(this.checked)" style="cursor: pointer;"> Include Subscriptions
+                </label>
+
+                <button class="btn btn-sm btn-outline" id="btnRefreshCashForecast" onclick="loadFinanceCashForecast()" title="Refresh cash forecast">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Multi-Currency / FX Notice Banner -->
+            <div id="financeForecastFxWarning" style="display: none; margin: 16px 20px 0 20px; font-size: 12px; color: var(--warning-dark, #b45309); background: var(--warning-soft, rgba(245, 158, 11, 0.08)); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.25);">
+              <i class="fa-solid fa-triangle-exclamation"></i> <span id="textForecastFxWarning">Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.</span>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div id="financeCashForecastSkeleton" style="display: none; padding: 20px;">
+              <div class="grid g3" style="margin-bottom: 20px;">
+                <div class="finance-skeleton" style="height: 100px; border-radius: 8px;"></div>
+                <div class="finance-skeleton" style="height: 100px; border-radius: 8px;"></div>
+                <div class="finance-skeleton" style="height: 100px; border-radius: 8px;"></div>
+              </div>
+              <div class="finance-skeleton" style="height: 140px; border-radius: 8px; margin-bottom: 20px;"></div>
+              <div class="finance-skeleton" style="height: 180px; border-radius: 8px;"></div>
+            </div>
+
+            <!-- Main Forecast Content -->
+            <div id="financeCashForecastContent" style="padding: 20px;">
+              <!-- 3 Horizon Cards -->
+              <div class="grid g3" id="forecastHorizonGrid" style="margin-bottom: 24px; gap: 16px;">
+                <!-- 30 Days -->
+                <div class="card stat-card" id="cardHorizon30" style="padding: 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13.5px; color: var(--text, #1e293b);">Next 30 Days</strong>
+                    <span class="badge badge-success" id="badgeConfidence30" style="font-size: 11px;">High Confidence</span>
+                  </div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--text, #1e293b); margin-bottom: 10px;" id="valProjectedCash30">—</div>
+                  <div style="font-size: 11.5px; color: var(--text3, #64748b); display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Inflows:</span>
+                      <strong id="valInflows30" style="color: var(--success, #16a34a);">+0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valInflowsSplit30">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Outflows:</span>
+                      <strong id="valOutflows30" style="color: var(--danger, #ef4444);">-0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valOutflowsSplit30">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border, #e2e8f0); padding-top: 4px; margin-top: 2px;">
+                      <span>Net Cash Flow:</span>
+                      <strong id="valNetFlow30">0.00</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 60 Days -->
+                <div class="card stat-card" id="cardHorizon60" style="padding: 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13.5px; color: var(--text, #1e293b);">31 - 60 Days</strong>
+                    <span class="badge badge-info" id="badgeConfidence60" style="font-size: 11px;">Medium Confidence</span>
+                  </div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--text, #1e293b); margin-bottom: 10px;" id="valProjectedCash60">—</div>
+                  <div style="font-size: 11.5px; color: var(--text3, #64748b); display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Inflows:</span>
+                      <strong id="valInflows60" style="color: var(--success, #16a34a);">+0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valInflowsSplit60">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Outflows:</span>
+                      <strong id="valOutflows60" style="color: var(--danger, #ef4444);">-0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valOutflowsSplit60">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border, #e2e8f0); padding-top: 4px; margin-top: 2px;">
+                      <span>Net Cash Flow:</span>
+                      <strong id="valNetFlow60">0.00</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 90 Days -->
+                <div class="card stat-card" id="cardHorizon90" style="padding: 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13.5px; color: var(--text, #1e293b);">61 - 90 Days</strong>
+                    <span class="badge badge-warning" id="badgeConfidence90" style="font-size: 11px;">Low Confidence</span>
+                  </div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--text, #1e293b); margin-bottom: 10px;" id="valProjectedCash90">—</div>
+                  <div style="font-size: 11.5px; color: var(--text3, #64748b); display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Inflows:</span>
+                      <strong id="valInflows90" style="color: var(--success, #16a34a);">+0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valInflowsSplit90">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Total Outflows:</span>
+                      <strong id="valOutflows90" style="color: var(--danger, #ef4444);">-0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-left: 8px; font-size: 10.5px; color: var(--text3, #94a3b8);">
+                      <span>Confirmed vs Expected:</span>
+                      <span id="valOutflowsSplit90">0.00 / 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border, #e2e8f0); padding-top: 4px; margin-top: 2px;">
+                      <span>Net Cash Flow:</span>
+                      <strong id="valNetFlow90">0.00</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Multi-Account Cash Visibility (Bank vs Book) -->
+              <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                  <h4 style="margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-building-columns" style="color: var(--primary, #3b82f6);"></i> Bank vs. Book Balances by Account
+                  </h4>
+                  <span style="font-size: 11.5px; color: var(--text3, #64748b);">Available = Book Balance − Uncleared Cheques − Pending Transfers</span>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <table class="table" id="tableCashAccounts" style="margin: 0; font-size: 12.5px; width: 100%;">
+                    <thead>
+                      <tr style="background: var(--surface2, #f8fafc);">
+                        <th style="padding: 10px 14px; text-align: left;">Account</th>
+                        <th style="padding: 10px 14px; text-align: left;">Bank</th>
+                        <th style="padding: 10px 14px; text-align: center;">Curr</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="General ledger book balance">Book Balance</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="Issued cheques awaiting bank clearance">Uncleared Cheques</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="In-flight transfer legs not fully confirmed">Pending Transfers</th>
+                        <th style="padding: 10px 14px; text-align: right; font-weight: 700;" title="Book balance minus uncleared cheques and pending transfers">Available Balance</th>
+                        <th style="padding: 10px 14px; text-align: right;" title="Latest reconciled statement closing balance">Reconciled Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyCashAccounts">
+                      <tr>
+                        <td colspan="8" style="text-align: center; padding: 20px; color: var(--text3, #64748b);">Loading accounts...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Upcoming Material Inflows & Outflows -->
+              <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                      <i class="fa-solid fa-calendar-check" style="color: var(--accent, #8b5cf6);"></i> Material Inflows & Outflows
+                    </h4>
+                    <span class="badge badge-grey" style="font-size: 10.5px;">Drafts Excluded</span>
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn btn-xs btn-primary active" id="btnObligationsFilterAll" onclick="filterObligationsTable('all')">All (<span id="countObligationsAll">0</span>)</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterInflows" onclick="filterObligationsTable('inflow')">Inflows (<span id="countObligationsInflows">0</span>)</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterOutflows" onclick="filterObligationsTable('outflow')">Outflows (<span id="countObligationsOutflows">0</span>)</button>
+                  </div>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+                  <table class="table" id="tableForecastObligations" style="margin: 0; font-size: 12.5px; width: 100%;">
+                    <thead>
+                      <tr style="background: var(--surface2, #f8fafc);">
+                        <th style="padding: 10px 14px; text-align: left;">Due Date</th>
+                        <th style="padding: 10px 14px; text-align: center;">Flow</th>
+                        <th style="padding: 10px 14px; text-align: left;">Reference</th>
+                        <th style="padding: 10px 14px; text-align: left;">Counterparty</th>
+                        <th style="padding: 10px 14px; text-align: center;">Certainty</th>
+                        <th style="padding: 10px 14px; text-align: center;">Status</th>
+                        <th style="padding: 10px 14px; text-align: right;">Amount</th>
+                        <th style="padding: 10px 14px; text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyForecastObligations">
+                      <tr>
+                        <td colspan="8" style="text-align: center; padding: 20px; color: var(--text3, #64748b);">No obligations projected for this horizon.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Forecast Assumptions and Safeguards -->
+              <div id="forecastAssumptionsBox" style="padding: 12px 16px; background: var(--surface2, #f8fafc); border-radius: 8px; border: 1px solid var(--border, #e2e8f0); font-size: 12px; color: var(--text2, #475569);">
+                <div style="font-weight: 600; margin-bottom: 4px; color: var(--text, #1e293b); display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-circle-check" style="color: var(--primary, #3b82f6);"></i> Cash Forecast Assumptions & Safeguards
+                </div>
+                <ul id="listForecastAssumptions" style="margin: 0; padding-left: 18px; line-height: 1.6;">
+                  <li>Draft sales invoices and unapproved vendor bills are strictly excluded from cash projections.</li>
+                  <li>Contractual obligations with past-due dates are placed in the immediate 0-30 day horizon with an overdue status indicator.</li>
+                  <li>Active monthly subscriptions repeat every 30 days as estimated expected outflows.</li>
+                  <li>Book, available, and reconciled balances are tracked independently and never conflated.</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -55,10 +460,13 @@
               <div>
                 <h3><i class="fa-solid fa-clock-rotate-left"></i> Financial Activity Summary</h3>
               </div>
+              <div>
+                <span class="badge badge-grey"><i class="fa-solid fa-lock"></i> Visualizations in development</span>
+              </div>
             </div>
             <div class="empty-state" id="financeDashboardSummaryEmpty" style="padding: 2.5rem 1rem;">
               <i class="fa-solid fa-chart-pie"></i>
-              <p>Financial ledger connected. Live chart visualizers will activate in Phase 6.</p>
+              <p>Financial ledger connected. Live chart visualizers are currently unavailable and will be enabled in an upcoming release.</p>
             </div>
           </div>
         </section>

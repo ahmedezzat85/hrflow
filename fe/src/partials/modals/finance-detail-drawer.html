@@ -1,0 +1,85 @@
+<!-- Finance Detail Drawer & Activity Timeline (Story 1.3) -->
+<div id="financeDetailDrawerOverlay" class="finance-drawer-overlay" style="display: none;" role="presentation">
+  <div id="financeDetailDrawer" class="finance-drawer" role="dialog" aria-modal="true" aria-labelledby="financeDetailDrawerTitle" tabindex="-1">
+    <!-- Drawer Header -->
+    <div class="finance-drawer-head">
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span id="financeDetailDrawerBadge" class="badge badge-info" style="text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px;">Record</span>
+          <span id="financeDetailDrawerStatusBadge"></span>
+          <span id="financeDetailDrawerMaskedBadge" class="badge badge-grey" style="display: none;" title="Sensitive fields like account numbers or tax IDs are masked for privacy"><i class="fa-solid fa-shield-halved"></i> Masked</span>
+        </div>
+        <h3 id="financeDetailDrawerTitle" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Record Detail</h3>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <div id="financeDetailDrawerActions" style="display: flex; gap: 6px;"></div>
+        <button type="button" class="btn btn-sm btn-outline finance-drawer-close" id="financeDetailDrawerCloseBtn" aria-label="Close detail drawer" title="Close (Esc)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Drawer Tabs -->
+    <div class="finance-drawer-nav">
+      <div class="filter-tabs" role="tablist" aria-label="Record detail sections" id="financeDrawerTablist" style="margin-bottom: 0;">
+        <button type="button" class="filter-tab active" data-drawer-tab="summary" role="tab" aria-selected="true" id="tabDrawerSummary">
+          <i class="fa-solid fa-circle-info"></i> Overview
+        </button>
+        <button type="button" class="filter-tab" data-drawer-tab="timeline" role="tab" aria-selected="false" id="tabDrawerTimeline">
+          <i class="fa-solid fa-clock-rotate-left"></i> Activity Timeline
+        </button>
+        <button type="button" class="filter-tab" data-drawer-tab="related" role="tab" aria-selected="false" id="tabDrawerRelated">
+          <i class="fa-solid fa-link"></i> Related Records
+        </button>
+        <button type="button" class="filter-tab" data-drawer-tab="attachments" role="tab" aria-selected="false" id="tabDrawerAttachments">
+          <i class="fa-solid fa-paperclip"></i> Attachments
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading Bar -->
+    <div id="financeDrawerLoading" class="section-loading-bar"><span></span></div>
+
+    <!-- Drawer Body -->
+    <div class="finance-drawer-body" id="financeDrawerBody">
+      <!-- 1. Overview Panel -->
+      <div id="financeDrawerSummaryPanel" class="drawer-tab-panel active" role="tabpanel" aria-labelledby="tabDrawerSummary">
+        <div class="card" style="margin-bottom: 16px; background: rgba(59, 130, 246, 0.03); border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text3, #94a3b8); text-transform: uppercase; font-weight: 600;">Total Amount</div>
+              <div id="financeDrawerAmountDisplay" style="font-size: 1.75rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">—</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.8rem; color: var(--text3, #94a3b8); text-transform: uppercase; font-weight: 600;">Counterparty</div>
+              <div id="financeDrawerCounterpartyDisplay" style="font-size: 1.05rem; font-weight: 600; color: var(--text);">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="drawer-section-title" style="font-size: 0.88rem; font-weight: 700; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Key Attributes</div>
+        <div id="financeDrawerAttributesList" class="drawer-attributes-grid"></div>
+
+        <div id="financeDrawerNotesSection" style="margin-top: 16px; display: none;">
+          <div class="drawer-section-title" style="font-size: 0.88rem; font-weight: 700; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Notes & Memo</div>
+          <div id="financeDrawerNotesDisplay" style="padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); font-size: 0.9rem; color: var(--text); white-space: pre-wrap;"></div>
+        </div>
+      </div>
+
+      <!-- 2. Timeline Panel -->
+      <div id="financeDrawerTimelinePanel" class="drawer-tab-panel" role="tabpanel" aria-labelledby="tabDrawerTimeline" style="display: none;">
+        <div id="financeDrawerTimelineList" class="timeline-stream"></div>
+      </div>
+
+      <!-- 3. Related Records Panel -->
+      <div id="financeDrawerRelatedPanel" class="drawer-tab-panel" role="tabpanel" aria-labelledby="tabDrawerRelated" style="display: none;">
+        <div id="financeDrawerRelatedList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+      </div>
+
+      <!-- 4. Attachments Panel -->
+      <div id="financeDrawerAttachmentsPanel" class="drawer-tab-panel" role="tabpanel" aria-labelledby="tabDrawerAttachments" style="display: none;">
+        <div id="financeDrawerAttachmentsList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -372,6 +372,11 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                 rbac_stats = seed_rbac(db)
                 stats["rbac"] = rbac_stats
 
+            if not dry_run and target_domain in ("all", "finance", "categories", "payment_types"):
+                from finance.seed_data import seed_finance_lookups
+                finance_seed_stats = seed_finance_lookups(db)
+                stats["finance_lookups"] = finance_seed_stats
+
             if dry_run:
                 db.rollback()
     except Exception as exc:

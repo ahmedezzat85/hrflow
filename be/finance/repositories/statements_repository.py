@@ -10,6 +10,7 @@ from sqlalchemy import desc, and_
 from finance.models import (
     BankStatementImportDB,
     StatementLineDB,
+    StatementMappingTemplateDB,
     LedgerTransactionDB,
     FinanceChequeDB,
     FinanceBankAccountDB,
@@ -22,12 +23,51 @@ class StatementsRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    def find_import_by_fingerprint(
+        self, account_id: int, file_fingerprint: str
+    ) -> Optional[BankStatementImportDB]:
+        """Find an existing import with identical file hash on the target account."""
+        if not file_fingerprint:
+            return None
+        return (
+            self.db.query(BankStatementImportDB)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                BankStatementImportDB.file_fingerprint == file_fingerprint,
+            )
+            .first()
+        )
+
+    def find_existing_line_fingerprints(
+        self, account_id: int, fingerprints: List[str]
+    ) -> set:
+        """Find line fingerprints that already exist on statements for this account."""
+        if not fingerprints:
+            return set()
+        rows = (
+            self.db.query(StatementLineDB.line_fingerprint)
+            .join(BankStatementImportDB, StatementLineDB.import_id == BankStatementImportDB.id)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                StatementLineDB.line_fingerprint.in_(fingerprints),
+            )
+            .all()
+        )
+        return {r[0] for r in rows if r[0]}
+
     def create_import(
         self,
         account_id: int,
         period_month: str,
         file_type: str,
         uploaded_file_ref: str,
+        file_fingerprint: Optional[str] = None,
+        opening_balance: Optional[float] = None,
+        closing_balance: Optional[float] = None,
+        encoding: Optional[str] = "utf-8",
+        date_format: Optional[str] = "auto",
+        decimal_separator: Optional[str] = ".",
+        review_state: Optional[str] = "needs_review",
         created_by: Optional[str] = None,
     ) -> BankStatementImportDB:
         statement_import = BankStatementImportDB(
@@ -36,6 +76,13 @@ class StatementsRepository:
             file_type=file_type,
             status="needs_review",
             uploaded_file_ref=uploaded_file_ref,
+            file_fingerprint=file_fingerprint,
+            opening_balance=opening_balance,
+            closing_balance=closing_balance,
+            encoding=encoding,
+            date_format=date_format,
+            decimal_separator=decimal_separator,
+            review_state=review_state,
             total_lines_count=0,
             matched_lines_count=0,
             created_at=datetime.utcnow(),
@@ -45,6 +92,17 @@ class StatementsRepository:
         self.db.commit()
         self.db.refresh(statement_import)
         return statement_import
+
+    def delete_import(self, import_id: int) -> bool:
+        """Safely discard an import and its un-reconciled lines."""
+        imp = self.db.query(BankStatementImportDB).filter(BankStatementImportDB.id == import_id).first()
+        if not imp:
+            return False
+        if imp.status == "reconciled":
+            raise ValueError("Cannot discard an already reconciled statement import.")
+        self.db.delete(imp)
+        self.db.commit()
+        return True
 
     def get_import_by_id(self, import_id: int) -> Optional[BankStatementImportDB]:
         return (
@@ -77,6 +135,8 @@ class StatementsRepository:
         for d in lines_data:
             line = StatementLineDB(
                 import_id=import_id,
+                row_index=d.get("row_index"),
+                line_fingerprint=d.get("line_fingerprint"),
                 raw_date=d.get("raw_date", datetime.utcnow().strftime("%Y-%m-%d")),
                 raw_amount=float(d.get("raw_amount", 0.0)),
                 direction=d.get("direction", "out"),
@@ -102,6 +162,82 @@ class StatementsRepository:
         for l in lines:
             self.db.refresh(l)
         return lines
+
+    # Reusable Mapping Templates
+    def create_template(
+        self,
+        template_name: str,
+        bank_name: Optional[str] = None,
+        account_id: Optional[int] = None,
+        date_col: Optional[str] = None,
+        description_col: Optional[str] = None,
+        debit_col: Optional[str] = None,
+        credit_col: Optional[str] = None,
+        amount_col: Optional[str] = None,
+        reference_col: Optional[str] = None,
+        date_format: Optional[str] = "auto",
+        decimal_separator: Optional[str] = ".",
+        encoding: Optional[str] = "utf-8",
+    ) -> StatementMappingTemplateDB:
+        existing = (
+            self.db.query(StatementMappingTemplateDB)
+            .filter(StatementMappingTemplateDB.template_name == template_name)
+            .first()
+        )
+        if existing:
+            existing.bank_name = bank_name
+            existing.account_id = account_id
+            existing.date_col = date_col
+            existing.description_col = description_col
+            existing.debit_col = debit_col
+            existing.credit_col = credit_col
+            existing.amount_col = amount_col
+            existing.reference_col = reference_col
+            existing.date_format = date_format
+            existing.decimal_separator = decimal_separator
+            existing.encoding = encoding
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing
+
+        tmpl = StatementMappingTemplateDB(
+            template_name=template_name,
+            bank_name=bank_name,
+            account_id=account_id,
+            date_col=date_col,
+            description_col=description_col,
+            debit_col=debit_col,
+            credit_col=credit_col,
+            amount_col=amount_col,
+            reference_col=reference_col,
+            date_format=date_format,
+            decimal_separator=decimal_separator,
+            encoding=encoding,
+        )
+        self.db.add(tmpl)
+        self.db.commit()
+        self.db.refresh(tmpl)
+        return tmpl
+
+    def list_templates(self, account_id: Optional[int] = None) -> List[StatementMappingTemplateDB]:
+        query = self.db.query(StatementMappingTemplateDB)
+        if account_id:
+            query = query.filter(
+                (StatementMappingTemplateDB.account_id == account_id)
+                | (StatementMappingTemplateDB.account_id.is_(None))
+            )
+        return query.order_by(StatementMappingTemplateDB.template_name.asc()).all()
+
+    def get_template_by_id(self, template_id: int) -> Optional[StatementMappingTemplateDB]:
+        return self.db.query(StatementMappingTemplateDB).filter(StatementMappingTemplateDB.id == template_id).first()
+
+    def delete_template(self, template_id: int) -> bool:
+        tmpl = self.get_template_by_id(template_id)
+        if not tmpl:
+            return False
+        self.db.delete(tmpl)
+        self.db.commit()
+        return True
 
     def get_statement_lines(self, import_id: int) -> List[StatementLineDB]:
         return (
@@ -139,10 +275,32 @@ class StatementsRepository:
         except ValueError:
             line_dt = datetime.utcnow()
 
+        # Find transaction IDs and cheque IDs already matched across all non-ignored lines
+        matched_tx_ids = {
+            row[0]
+            for row in self.db.query(StatementLineDB.matched_transaction_id)
+            .filter(
+                StatementLineDB.matched_transaction_id.isnot(None),
+                StatementLineDB.status.in_(["matched", "created"]),
+                StatementLineDB.id != line.id,
+            )
+            .all()
+        }
+        matched_cheque_ids = {
+            row[0]
+            for row in self.db.query(StatementLineDB.matched_cheque_id)
+            .filter(
+                StatementLineDB.matched_cheque_id.isnot(None),
+                StatementLineDB.status.in_(["matched", "created"]),
+                StatementLineDB.id != line.id,
+            )
+            .all()
+        }
+
         # 1. Match against Ledger Transactions on same account and direction
-        # Look for transactions within 10 days before/after
-        min_date = (line_dt - timedelta(days=10)).strftime("%Y-%m-%d")
-        max_date = (line_dt + timedelta(days=10)).strftime("%Y-%m-%d")
+        # Look for transactions within 14 days before/after
+        min_date = (line_dt - timedelta(days=14)).strftime("%Y-%m-%d")
+        max_date = (line_dt + timedelta(days=14)).strftime("%Y-%m-%d")
 
         candidate_txs = (
             self.db.query(LedgerTransactionDB)
@@ -156,15 +314,18 @@ class StatementsRepository:
         )
 
         for tx in candidate_txs:
+            if tx.id in matched_tx_ids:
+                continue
+
             score = 0.0
             reasons = []
 
             # Check exact amount
             if abs(tx.amount - target_amount) < 0.01:
-                score += 0.6
+                score += 0.55
                 reasons.append("Exact amount match")
             elif abs(tx.amount - target_amount) / (target_amount or 1.0) < 0.05:
-                score += 0.3
+                score += 0.25
                 reasons.append("Proximity amount match")
             else:
                 continue
@@ -174,38 +335,67 @@ class StatementsRepository:
                 tx_dt = datetime.strptime(tx.date, "%Y-%m-%d")
                 day_diff = abs((tx_dt - line_dt).days)
                 if day_diff == 0:
-                    score += 0.4
-                    reasons.append("Exact date match")
+                    score += 0.35
+                    reasons.append("Same date")
                 elif day_diff <= 3:
-                    score += 0.3
+                    score += 0.25
                     reasons.append(f"Within {day_diff} day(s)")
                 elif day_diff <= 7:
-                    score += 0.1
+                    score += 0.15
+                    reasons.append(f"Within {day_diff} days")
+                else:
                     reasons.append(f"Within {day_diff} days")
             except ValueError:
                 pass
 
-            # Check reference / description text similarity
+            # Check reference similarity
             if (
                 line.raw_reference
                 and tx.reference
-                and line.raw_reference.lower() in tx.reference.lower()
+                and (
+                    line.raw_reference.lower() in tx.reference.lower()
+                    or tx.reference.lower() in line.raw_reference.lower()
+                )
             ):
                 score += 0.2
-                reasons.append("Reference match")
+                reasons.append(f"Ref match: {tx.reference}")
+
+            # Check counterparty / description match
+            if (
+                tx.counterparty
+                and tx.counterparty.lower() in line.raw_description.lower()
+            ):
+                score += 0.2
+                reasons.append(f"Counterparty: {tx.counterparty}")
+            elif (
+                tx.description
+                and len(tx.description) > 3
+                and tx.description.lower() in line.raw_description.lower()
+            ):
+                score += 0.15
+                reasons.append("Description similarity")
+
+            # Check source link (transfer pair / invoice / bill)
+            if tx.linked_transfer_id:
+                reasons.append("Internal Transfer pair")
+                score += 0.1
+            elif tx.linked_invoice_id:
+                reasons.append("Sales Invoice Payment")
+            elif tx.linked_bill_id:
+                reasons.append("Vendor Bill Payment")
 
             suggestions.append(
                 SuggestedMatch(
                     transaction_id=tx.id,
                     cheque_id=None,
-                    match_type="exact_transaction" if score >= 0.9 else "probable_transaction",
+                    match_type="exact_transaction" if score >= 0.85 else "probable_transaction",
                     score=min(round(score, 2), 1.0),
                     date=tx.date,
                     amount=tx.amount,
                     direction=tx.direction,
-                    description=tx.description or "Ledger Outflow" if tx.direction == "out" else "Ledger Inflow",
+                    description=tx.description or (f"{tx.counterparty} - Ledger Outflow" if tx.direction == "out" else f"{tx.counterparty} - Ledger Inflow"),
                     reference=tx.reference or "",
-                    reason=", ".join(reasons),
+                    reason=" · ".join(reasons) if reasons else "Ledger proximity candidate",
                 )
             )
 
@@ -220,15 +410,18 @@ class StatementsRepository:
                 .all()
             )
             for chq in candidate_cheques:
+                if chq.id in matched_cheque_ids:
+                    continue
+
                 if abs(chq.amount - target_amount) < 0.01:
-                    score = 0.7
-                    reasons = ["Cheque amount match", f"Cheque #{chq.cheque_number}"]
+                    score = 0.65
+                    reasons = [f"Cheque #{chq.cheque_number}", "Exact amount match"]
                     try:
                         chq_dt = datetime.strptime(chq.issue_date, "%Y-%m-%d")
                         diff = abs((line_dt - chq_dt).days)
                         if diff <= 7:
-                            score += 0.25
-                            reasons.append("Issued within 7 days")
+                            score += 0.2
+                            reasons.append(f"Issued {diff}d ago")
                     except ValueError:
                         pass
 
@@ -236,8 +429,12 @@ class StatementsRepository:
                     if chq.cheque_number in line.raw_description or (
                         line.raw_reference and chq.cheque_number in line.raw_reference
                     ):
-                        score += 0.2
-                        reasons.append("Cheque number found in statement")
+                        score += 0.25
+                        reasons.append("Cheque number present in statement")
+
+                    if chq.payee and chq.payee.lower() in line.raw_description.lower():
+                        score += 0.15
+                        reasons.append(f"Payee match: {chq.payee}")
 
                     suggestions.append(
                         SuggestedMatch(
@@ -250,7 +447,7 @@ class StatementsRepository:
                             direction="out",
                             description=f"Cheque #{chq.cheque_number} to {chq.payee}",
                             reference=chq.cheque_number,
-                            reason=", ".join(reasons),
+                            reason=" · ".join(reasons),
                         )
                     )
 
@@ -269,12 +466,40 @@ class StatementsRepository:
         description: Optional[str] = None,
         reference: Optional[str] = None,
         notes: Optional[str] = None,
+        splits: Optional[List[Dict[str, Any]]] = None,
         created_by: Optional[str] = None,
     ) -> StatementLineDB:
         account_id = line.statement_import.account_id
 
         if action == "match":
+            # Concurrency & double match prevention
+            if matched_transaction_id:
+                already_matched = (
+                    self.db.query(StatementLineDB)
+                    .filter(
+                        StatementLineDB.matched_transaction_id == matched_transaction_id,
+                        StatementLineDB.status.in_(["matched", "created"]),
+                        StatementLineDB.id != line.id,
+                    )
+                    .first()
+                )
+                if already_matched:
+                    raise ValueError(f"Ledger Transaction #{matched_transaction_id} is already matched to statement line #{already_matched.id}")
+                line.matched_transaction_id = matched_transaction_id
+
             if matched_cheque_id:
+                already_chq = (
+                    self.db.query(StatementLineDB)
+                    .filter(
+                        StatementLineDB.matched_cheque_id == matched_cheque_id,
+                        StatementLineDB.status.in_(["matched", "created"]),
+                        StatementLineDB.id != line.id,
+                    )
+                    .first()
+                )
+                if already_chq:
+                    raise ValueError(f"Cheque #{matched_cheque_id} is already matched to statement line #{already_chq.id}")
+
                 chq = (
                     self.db.query(FinanceChequeDB)
                     .filter(FinanceChequeDB.id == matched_cheque_id)
@@ -286,14 +511,12 @@ class StatementsRepository:
                     line.matched_cheque_id = chq.id
                     if chq.linked_transaction_id:
                         line.matched_transaction_id = chq.linked_transaction_id
-            elif matched_transaction_id:
-                line.matched_transaction_id = matched_transaction_id
 
             line.status = "matched"
             if notes:
                 line.notes = notes
 
-        elif action == "create":
+        elif action in ("create", "create_transaction"):
             # Auto-create ledger transaction
             account = (
                 self.db.query(FinanceBankAccountDB)
@@ -330,16 +553,90 @@ class StatementsRepository:
                 line.notes = notes
 
         elif action == "ignore":
+            if not notes or not notes.strip():
+                raise ValueError("A documented reason is mandatory to ignore a statement line.")
             line.status = "ignored"
-            if notes:
-                line.notes = notes
+            line.notes = notes.strip()
+
+        elif action == "split":
+            if not splits or len(splits) < 2:
+                raise ValueError("Split action requires at least two split portions.")
+
+            total_split = round(sum(float(s.get("amount", 0.0)) for s in splits), 2)
+            if abs(total_split - round(line.raw_amount, 2)) > 0.01:
+                raise ValueError(f"Split portions total ({total_split}) must equal line amount ({line.raw_amount}) within currency precision.")
+
+            account = (
+                self.db.query(FinanceBankAccountDB)
+                .filter(FinanceBankAccountDB.id == account_id)
+                .first()
+            )
+            curr = account.currency if account else "USD"
+            from finance.repositories.ledger_repository import LedgerRepository
+            ledger_repo = LedgerRepository(self.db)
+
+            for idx, s in enumerate(splits):
+                s_amt = round(float(s.get("amount", 0.0)), 2)
+                s_desc = s.get("description") or f"{line.raw_description} (Split {idx + 1})"
+                s_ref = s.get("reference") or line.raw_reference or ""
+                s_cat = s.get("category_id")
+                s_pt = s.get("payment_type_id")
+                s_tx_id = s.get("matched_transaction_id")
+                s_chq_id = s.get("matched_cheque_id")
+
+                # If no matched tx provided, auto-create a ledger transaction for this portion
+                if not s_tx_id and not s_chq_id:
+                    part_tx = LedgerTransactionDB(
+                        account_id=account_id,
+                        date=line.raw_date,
+                        amount=s_amt,
+                        direction=line.direction,
+                        currency=curr,
+                        category_id=s_cat,
+                        payment_type_id=s_pt,
+                        reference=s_ref,
+                        description=s_desc,
+                        source="statement_import",
+                        created_at=datetime.utcnow(),
+                        created_by=created_by,
+                    )
+                    self.db.add(part_tx)
+                    self.db.flush()
+                    s_tx_id = part_tx.id
+                elif s_chq_id:
+                    chq = self.db.query(FinanceChequeDB).filter(FinanceChequeDB.id == s_chq_id).first()
+                    if chq:
+                        chq.status = "cleared"
+                        chq.clear_date = line.raw_date
+                        if chq.linked_transaction_id:
+                            s_tx_id = chq.linked_transaction_id
+
+                child = StatementLineDB(
+                    import_id=line.import_id,
+                    parent_line_id=line.id,
+                    raw_date=line.raw_date,
+                    raw_amount=s_amt,
+                    direction=line.direction,
+                    raw_description=s_desc,
+                    raw_reference=s_ref,
+                    status="matched",
+                    matched_transaction_id=s_tx_id,
+                    matched_cheque_id=s_chq_id,
+                    notes=f"Split {idx + 1}/{len(splits)} from line #{line.id}",
+                    created_at=datetime.utcnow(),
+                )
+                self.db.add(child)
+
+            ledger_repo.recalculate_account_running_balances(account_id)
+            line.status = "split"
+            line.notes = notes or f"Split into {len(splits)} portions"
 
         # Update matched lines count on import
         matched_count = (
             self.db.query(StatementLineDB)
             .filter(
                 StatementLineDB.import_id == line.import_id,
-                StatementLineDB.status.in_(["matched", "created", "ignored"]),
+                StatementLineDB.status.in_(["matched", "created", "ignored", "split"]),
             )
             .count()
         )
@@ -375,3 +672,203 @@ class StatementsRepository:
         self.db.commit()
         self.db.refresh(statement_import)
         return statement_import
+
+    def close_period(
+        self,
+        import_id: int,
+        user_email: Optional[str] = None,
+        closing_notes: Optional[str] = None,
+        is_exception_override: bool = False,
+        exception_override_reason: Optional[str] = None,
+    ) -> BankStatementImportDB:
+        statement_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.id == import_id)
+            .first()
+        )
+        if not statement_import:
+            raise ValueError("Statement import not found")
+
+        # Idempotent check
+        if statement_import.status == "closed":
+            return statement_import
+
+        account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == statement_import.account_id)
+            .first()
+        )
+        book_balance = account.current_balance if account else 0.0
+        closing_balance = float(statement_import.closing_balance or 0.0)
+        diff = round(abs(closing_balance - float(book_balance)), 2)
+
+        unmatched_count = (
+            self.db.query(StatementLineDB)
+            .filter(
+                StatementLineDB.import_id == import_id,
+                StatementLineDB.status == "unmatched",
+            )
+            .count()
+        )
+
+        # Zero-difference gate
+        if diff > 0.01 or unmatched_count > 0:
+            if not is_exception_override or not (exception_override_reason and exception_override_reason.strip()):
+                raise ValueError(
+                    f"Cannot close period: balance difference (${diff:.2f}) is non-zero or "
+                    f"{unmatched_count} line(s) remain unresolved. A documented exception override reason is required."
+                )
+
+        resolved_count = (
+            self.db.query(StatementLineDB)
+            .filter(
+                StatementLineDB.import_id == import_id,
+                StatementLineDB.status.in_(["matched", "created", "ignored", "split"]),
+            )
+            .count()
+        )
+        statement_import.matched_lines_count = resolved_count
+        statement_import.status = "closed"
+        statement_import.reconciled_at = statement_import.reconciled_at or datetime.utcnow()
+        statement_import.reconciled_by = statement_import.reconciled_by or user_email
+        statement_import.closed_at = datetime.utcnow()
+        statement_import.closed_by = user_email
+        statement_import.closing_notes = closing_notes
+        statement_import.is_exception_override = is_exception_override
+        statement_import.exception_override_reason = (
+            exception_override_reason.strip() if exception_override_reason else None
+        )
+        self.db.commit()
+        self.db.refresh(statement_import)
+        return statement_import
+
+    def reopen_period(
+        self,
+        import_id: int,
+        user_email: Optional[str] = None,
+        reopen_reason: str = "",
+    ) -> BankStatementImportDB:
+        statement_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.id == import_id)
+            .first()
+        )
+        if not statement_import:
+            raise ValueError("Statement import not found")
+
+        if not reopen_reason or not reopen_reason.strip():
+            raise ValueError("A documented reason is mandatory to reopen a closed reconciliation period.")
+
+        statement_import.status = "reopened"
+        statement_import.reopened_at = datetime.utcnow()
+        statement_import.reopened_by = user_email
+        statement_import.reopen_reason = reopen_reason.strip()
+        self.db.commit()
+        self.db.refresh(statement_import)
+        return statement_import
+
+    def get_completion_report_data(self, import_id: int) -> Dict[str, Any]:
+        statement_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.id == import_id)
+            .first()
+        )
+        if not statement_import:
+            raise ValueError("Statement import not found")
+
+        account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == statement_import.account_id)
+            .first()
+        )
+        book_balance = account.current_balance if account else 0.0
+        closing_balance = float(statement_import.closing_balance or 0.0)
+        diff = round(closing_balance - float(book_balance), 2)
+        is_balanced = abs(diff) <= 0.01
+
+        lines = (
+            self.db.query(StatementLineDB)
+            .filter(StatementLineDB.import_id == import_id)
+            .all()
+        )
+
+        matched_lines = [l for l in lines if l.status == "matched"]
+        created_lines = [l for l in lines if l.status == "created"]
+        ignored_lines = [l for l in lines if l.status == "ignored"]
+        split_lines = [l for l in lines if l.status == "split"]
+
+        matched_amount = sum(l.raw_amount for l in matched_lines)
+        created_amount = sum(l.raw_amount for l in created_lines)
+        ignored_amount = sum(l.raw_amount for l in ignored_lines)
+
+        ignored_details = [
+            {
+                "line_id": l.id,
+                "date": l.raw_date,
+                "amount": l.raw_amount,
+                "description": l.raw_description,
+                "audit_reason": l.notes,
+            }
+            for l in ignored_lines
+        ]
+
+        period = statement_import.period_month
+        matched_tx_ids = {
+            row[0]
+            for row in self.db.query(StatementLineDB.matched_transaction_id)
+            .filter(StatementLineDB.matched_transaction_id.isnot(None))
+            .all()
+        }
+        tx_query = self.db.query(LedgerTransactionDB).filter(
+            LedgerTransactionDB.account_id == statement_import.account_id,
+            LedgerTransactionDB.date.like(f"{period}%"),
+        )
+        if matched_tx_ids:
+            tx_query = tx_query.filter(~LedgerTransactionDB.id.in_(matched_tx_ids))
+        uncleared_txs = tx_query.all()
+        uncleared_cheques = (
+            self.db.query(FinanceChequeDB)
+            .filter(
+                FinanceChequeDB.account_id == statement_import.account_id,
+                FinanceChequeDB.issue_date.like(f"{period}%"),
+                FinanceChequeDB.status == "issued",
+            )
+            .all()
+        )
+
+        return {
+            "statement_id": statement_import.id,
+            "account_id": statement_import.account_id,
+            "account_name": account.account_name if account else "Bank Account",
+            "period_month": statement_import.period_month,
+            "currency": account.currency if account else "USD",
+            "status": statement_import.status,
+            "opening_balance": statement_import.opening_balance or 0.0,
+            "closing_balance": closing_balance,
+            "book_balance": book_balance,
+            "balance_difference": diff,
+            "is_balanced": is_balanced,
+            "total_lines_count": len([l for l in lines if l.status != "split"]),
+            "matched_lines_count": len(matched_lines),
+            "matched_lines_amount": matched_amount,
+            "created_entries_count": len(created_lines),
+            "created_entries_amount": created_amount,
+            "ignored_lines_count": len(ignored_lines),
+            "ignored_lines_amount": ignored_amount,
+            "ignored_lines_details": ignored_details,
+            "split_lines_count": len(split_lines),
+            "uncleared_ledger_transactions_count": len(uncleared_txs),
+            "uncleared_ledger_transactions_amount": sum(t.amount for t in uncleared_txs),
+            "uncleared_cheques_count": len(uncleared_cheques),
+            "uncleared_cheques_amount": sum(c.amount for c in uncleared_cheques),
+            "closed_at": statement_import.closed_at,
+            "closed_by": statement_import.closed_by,
+            "reopened_at": statement_import.reopened_at,
+            "reopened_by": statement_import.reopened_by,
+            "reopen_reason": statement_import.reopen_reason,
+            "is_exception_override": statement_import.is_exception_override,
+            "exception_override_reason": statement_import.exception_override_reason,
+            "closing_notes": statement_import.closing_notes,
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+

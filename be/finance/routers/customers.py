@@ -13,11 +13,24 @@ from finance.schemas import (
     CustomerCreate,
     CustomerUpdate,
     CustomerResponse,
+    CustomerDuplicateCheckRequest,
+    CustomerDuplicateCandidate,
+    Customer360Summary,
 )
 from finance.services.customers_service import CustomersService
 from finance.deps import get_customers_service
 
 router = APIRouter(prefix="/api/finance/customers", tags=["Finance - Customers"])
+
+
+@router.post("/check-duplicate", response_model=List[CustomerDuplicateCandidate])
+def check_duplicate_customers(
+    payload: CustomerDuplicateCheckRequest,
+    current_user: dict = Depends(require_permission("finance.customer.read")),
+    service: CustomersService = Depends(get_customers_service),
+):
+    """Checks for duplicate customer candidates by normalized name, legal name, email, or tax ID."""
+    return service.check_duplicates(payload)
 
 
 @router.get("", response_model=List[CustomerResponse])
@@ -31,6 +44,16 @@ def list_customers(
 ):
     """Lists finance customers."""
     return service.list_customers(is_active=is_active, search=search, limit=limit, offset=offset)
+
+
+@router.get("/{customer_id}/360", response_model=Customer360Summary)
+def get_customer_360(
+    customer_id: int,
+    current_user: dict = Depends(require_permission("finance.customer.read")),
+    service: CustomersService = Depends(get_customers_service),
+):
+    """Fetches full Customer 360 profile including receivables summary, metrics, and timeline."""
+    return service.get_customer_360(customer_id)
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)

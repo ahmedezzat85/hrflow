@@ -1,23 +1,28 @@
-"""
-be/finance/services/cheques_service.py
-Service layer for Cheques and Cheque Register lifecycle.
-Validates accounts, purpose types, unique cheque numbers, and status transitions.
-"""
 from typing import List, Optional
 from datetime import datetime
 from fastapi import HTTPException, status
 
-from finance.repositories.cheques_repository import ChequesRepository
+from finance.repositories.cheques_repository import ChequesRepository, VALID_STATUS_TRANSITIONS, EXCEPTION_STATUSES
 from finance.schemas import (
     ChequeCreate,
     ChequeStatusUpdate,
+    ChequeReplaceRequest,
     ChequeResponse,
 )
 from finance.models import FinanceChequeDB, FinanceBankAccountDB, BillDB
 
 
 VALID_PURPOSE_TYPES = {"vendor_payment", "cash_withdrawal", "other"}
-VALID_CHEQUE_STATUSES = {"issued", "cleared", "bounced", "voided"}
+VALID_CHEQUE_STATUSES = {
+    "draft",
+    "issued",
+    "outstanding",
+    "cleared",
+    "bounced",
+    "stopped",
+    "voided",
+    "replaced",
+}
 
 
 class ChequesService:
@@ -31,6 +36,20 @@ class ChequesService:
             if cheque.destination_cash_account
             else None
         )
+
+        # Calculate stale-date check (standard bank validity is 180 days)
+        is_stale = False
+        stale_warning = None
+        try:
+            issue_dt = datetime.strptime(cheque.issue_date, "%Y-%m-%d").date()
+            today = datetime.utcnow().date()
+            diff_days = (today - issue_dt).days
+            if diff_days > 180 and cheque.status in ("draft", "issued", "outstanding"):
+                is_stale = True
+                stale_warning = f"Cheque is stale-dated ({diff_days} days old, exceeding standard 180-day validity)."
+        except Exception:
+            pass
+
         return ChequeResponse(
             id=cheque.id,
             cheque_number=cheque.cheque_number,
@@ -45,6 +64,16 @@ class ChequesService:
             destination_cash_account_name=dest_cash_name,
             linked_bill_id=cheque.linked_bill_id,
             status=cheque.status,
+            posting_policy=cheque.posting_policy or "at_issue",
+            signer_name=cheque.signer_name,
+            authorized_by=cheque.authorized_by,
+            attachment_url=cheque.attachment_url,
+            exception_reason=cheque.exception_reason,
+            exception_evidence=cheque.exception_evidence,
+            replacement_cheque_id=cheque.replacement_cheque_id,
+            replaced_cheque_id=cheque.replaced_cheque_id,
+            is_stale=is_stale,
+            stale_warning=stale_warning,
             clear_date=cheque.clear_date,
             fiscal_year=cheque.fiscal_year,
             linked_transaction_id=cheque.linked_transaction_id,
@@ -166,19 +195,34 @@ class ChequesService:
                 detail=f"Invalid status '{payload.status}'. Must be one of: {', '.join(sorted(VALID_CHEQUE_STATUSES))}",
             )
 
-        if cheque.status in ("bounced", "voided") and payload.status in ("cleared", "issued"):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot transition a {cheque.status} cheque back to {payload.status}",
-            )
-
         try:
             updated = self.repo.update_status(
                 cheque_id=cheque_id,
                 status=payload.status,
                 clear_date=payload.clear_date,
+                reason=payload.reason,
+                evidence=payload.evidence,
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
         return self._cheque_to_response(updated)
+
+    def replace_cheque(
+        self, cheque_id: int, payload: ChequeReplaceRequest, created_by: Optional[str] = None
+    ) -> ChequeResponse:
+        try:
+            new_cheque = self.repo.replace_cheque(
+                cheque_id=cheque_id,
+                new_cheque_number=payload.new_cheque_number,
+                new_issue_date=payload.new_issue_date,
+                reason=payload.reason,
+                evidence=payload.evidence,
+                signer_name=payload.signer_name,
+                notes=payload.notes,
+                created_by=created_by,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        return self._cheque_to_response(new_cheque)

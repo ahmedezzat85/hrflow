@@ -1,45 +1,82 @@
         <section class="page-section" id="a-finance-bills">
           <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div class="filter-tabs" id="financeBillSubNav">
-                <button class="filter-tab active" id="tabFinanceBills" onclick="switchBillSubTab('bills')"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
-                <button class="filter-tab" id="tabFinanceVendors" onclick="switchBillSubTab('vendors')"><i class="fa-solid fa-truck-field"></i> Vendors</button>
+              <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Vendor bills sub navigation">
+                <button class="filter-tab active" id="tabFinanceBills" role="tab" aria-selected="true" tabindex="0" onclick="switchBillSubTab('bills')"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
+                <button class="filter-tab" id="tabFinanceVendors" role="tab" aria-selected="false" tabindex="-1" onclick="switchBillSubTab('vendors')"><i class="fa-solid fa-truck-field"></i> Vendors</button>
               </div>
               <div class="search-box" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeBillSearch" placeholder="Search bills..." oninput="filterFinanceBills(this.value)">
+                <input id="financeBillSearch" placeholder="Search bills..." aria-label="Search bills" oninput="filterFinanceBills(this.value)">
               </div>
-              <select id="financeBillStatusFilter" class="form-control filter-select" onchange="loadFinanceBills()">
+              <select id="financeBillStatusFilter" class="form-control filter-select" aria-label="Filter bills by status" onchange="loadFinanceBills()">
                 <option value="">All Statuses</option>
                 <option value="unpaid">Unpaid</option>
                 <option value="paid">Paid</option>
                 <option value="overdue">Overdue</option>
                 <option value="void">Void</option>
               </select>
+              <select id="financeBillAttachmentFilter" class="form-control filter-select" aria-label="Filter bills by attachment" onchange="applyAndRenderBills()">
+                <option value="">All Documents</option>
+                <option value="with_attachment">Has Attachment</option>
+                <option value="no_attachment">No Attachment</option>
+              </select>
               <div class="search-box" id="financeVendorSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeVendorSearch" placeholder="Search vendors..." oninput="filterFinanceVendors(this.value)">
+                <input id="financeVendorSearch" placeholder="Search vendors..." aria-label="Search vendors" oninput="filterFinanceVendors(this.value)">
               </div>
+              <div id="financeBillDensityControl"></div>
             </div>
             <div style="display: flex; gap: 8px;">
               <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()"><i class="fa-solid fa-plus"></i> Add Vendor</button>
+              <button class="btn btn-outline" id="financeCaptureBillBtn" onclick="openCaptureBillModal()"><i class="fa-solid fa-file-arrow-up"></i> Upload / Capture</button>
               <button class="btn btn-fill" id="financeRecordBillBtn" onclick="openAddBillModal()"><i class="fa-solid fa-plus"></i> Record Bill</button>
             </div>
+          </div>
+
+          <!-- AP Inbox Work Queue Tabs -->
+          <div class="filter-tabs" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues" style="margin: 10px 0 12px 0; overflow-x: auto; white-space: nowrap;">
+            <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">
+              <i class="fa-solid fa-list-ul"></i> All <span class="badge badge-grey" id="badgeBillQueueAll">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueueInbox" role="tab" aria-selected="false" onclick="setBillWorkQueue('inbox')">
+              <i class="fa-solid fa-inbox"></i> Inbox <span class="badge badge-grey" id="badgeBillQueueInbox">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueueCoding" role="tab" aria-selected="false" onclick="setBillWorkQueue('needs_coding')">
+              <i class="fa-solid fa-tags"></i> Needs Coding <span class="badge badge-grey" id="badgeBillQueueCoding">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueueApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('needs_approval')">
+              <i class="fa-solid fa-user-check"></i> Needs Approval <span class="badge badge-grey" id="badgeBillQueueApproval">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueueReady" role="tab" aria-selected="false" onclick="setBillWorkQueue('ready_to_pay')">
+              <i class="fa-solid fa-money-check-dollar"></i> Ready to Pay <span class="badge badge-grey" id="badgeBillQueueReady">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">
+              <i class="fa-solid fa-calendar-check"></i> Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">
+              <i class="fa-solid fa-circle-check"></i> Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span>
+            </button>
+            <button type="button" class="filter-tab" id="tabBillQueueExceptions" role="tab" aria-selected="false" onclick="setBillWorkQueue('exceptions')">
+              <i class="fa-solid fa-triangle-exclamation"></i> Exceptions <span class="badge badge-grey" id="badgeBillQueueExceptions">0</span>
+            </button>
           </div>
 
           <!-- 1. Bills Sub-View -->
           <div class="card" id="financeBillsContainer">
             <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
+            <div id="financeBillFilterChips" style="display: none;"></div>
+            <table class="responsive-card-table" id="financeBillsTable">
               <thead>
                 <tr>
-                  <th>Bill #</th>
-                  <th>Vendor</th>
-                  <th>Category</th>
-                  <th>Issue Date</th>
-                  <th>Due Date</th>
-                  <th>Total</th>
-                  <th>Status</th>
+                  <th data-sort="bill_number">Bill #</th>
+                  <th data-sort="vendor_name">Vendor</th>
+                  <th data-sort="category">Category & Dept</th>
+                  <th data-sort="issue_date">Issue Date</th>
+                  <th data-sort="due_date">Due Date</th>
+                  <th class="cell-money" data-sort="total">Total</th>
+                  <th data-sort="status">Queue / Status</th>
+                  <th>Capture & Review</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -49,20 +86,22 @@
               <i class="fa-solid fa-receipt"></i>
               <p>No vendor bills recorded yet.</p>
             </div>
+            <div id="financeBillsPagination" class="pagination-bar" style="display: none;"></div>
           </div>
 
           <!-- 2. Vendors Sub-View -->
           <div class="card" id="financeVendorsContainer" style="display: none;">
             <div class="section-loading-bar" id="financeVendorsLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
+            <div id="financeVendorFilterChips" style="display: none;"></div>
+            <table class="responsive-card-table" id="financeVendorsTable">
               <thead>
                 <tr>
-                  <th>Vendor / Supplier Name</th>
-                  <th>Category</th>
-                  <th>Billing Email</th>
-                  <th>Phone</th>
-                  <th>Tax ID</th>
-                  <th>Status</th>
+                  <th data-sort="name">Vendor / Supplier Name</th>
+                  <th data-sort="category">Category</th>
+                  <th data-sort="email">Billing Email</th>
+                  <th data-sort="phone">Phone</th>
+                  <th data-sort="tax_id">Tax ID</th>
+                  <th data-sort="status">Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -72,5 +111,6 @@
               <i class="fa-solid fa-truck-field"></i>
               <p>No vendors registered yet. Click "Add Vendor" to register suppliers.</p>
             </div>
+            <div id="financeVendorsPagination" class="pagination-bar" style="display: none;"></div>
           </div>
         </section>

@@ -3,7 +3,7 @@ be/finance/schemas.py
 Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -15,6 +15,7 @@ class BankAccountBase(BaseModel):
     bank_name: Optional[str] = Field(None, max_length=100, description="Financial institution name (optional for cash accounts)")
     currency: str = Field("USD", min_length=3, max_length=10, description="ISO Currency code")
     opening_balance: float = Field(0.0, ge=0.0, description="Starting cash balance")
+    opening_balance_date: Optional[str] = Field(None, description="Opening balance date YYYY-MM-DD")
     account_type: str = Field("bank", description="Account type: bank or cash")
     country: Optional[str] = Field("Egypt", description="Country location, e.g. Egypt, US")
 
@@ -28,6 +29,8 @@ class BankAccountUpdate(BaseModel):
     bank_name: Optional[str] = Field(None, max_length=100)
     account_number: Optional[str] = Field(None, min_length=4, max_length=50)
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    opening_balance: Optional[float] = Field(None, ge=0.0)
+    opening_balance_date: Optional[str] = None
     account_type: Optional[str] = Field(None, description="Account type: bank or cash")
     country: Optional[str] = Field(None, description="Country location")
     is_active: Optional[bool] = None
@@ -35,10 +38,22 @@ class BankAccountUpdate(BaseModel):
 
 class BankAccountResponse(BankAccountBase):
     id: int
-    account_number: str = Field(..., description="Masked account number")
+    account_number: str = Field(..., description="Masked or revealed account number")
     current_balance: float
     is_active: bool
     created_at: Optional[datetime] = None
+
+    # Story 5.1 Balance Separation & Workspace Health
+    book_balance: float = 0.0
+    bank_balance: Optional[float] = None
+    available_balance: float = 0.0
+    reconciled_balance: Optional[float] = None
+    unreconciled_count: int = 0
+    last_reconciled_date: Optional[str] = None
+    last_import_date: Optional[str] = None
+    has_postings: bool = False
+    balance_definitions: Optional[Dict[str, str]] = None
+    balance_as_of: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -112,6 +127,14 @@ class LedgerTransactionBase(BaseModel):
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency code")
     category_id: Optional[int] = Field(None, description="FK to TransactionCategory")
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
+    entry_type: Optional[str] = Field("standard", description="Guided entry type: standard, money_in, money_out, bank_fee, adjustment")
+    counterparty: Optional[str] = Field(None, description="Counterparty name (payer, vendor, client)")
+    payee_type: Optional[str] = Field("none", description="Payee classification: none, vendor, employee, customer")
+    payee_id: Optional[int] = Field(None, description="Payee ID (vendor_id, employee_id, customer_id)")
+    payee_name: Optional[str] = Field(None, description="Payee name")
+    tax_amount: Optional[float] = Field(0.0, description="Included tax portion")
+    base_amount: Optional[float] = Field(None, description="Converted amount in base/account currency")
+    reason: Optional[str] = Field(None, description="Explanation or mandatory reason for adjustments")
     reference: Optional[str] = Field("", max_length=255, description="Reference, e.g. invoice # or note")
     description: Optional[str] = Field("", max_length=255, description="Description / memo")
     fx_rate: Optional[float] = Field(None, description="Applied daily exchange rate if applicable")
@@ -150,11 +173,78 @@ class LedgerTransactionUpdate(BaseModel):
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     category_id: Optional[int] = Field(None, description="FK to TransactionCategory")
     payment_type_id: Optional[int] = Field(None, description="FK to PaymentType")
+    entry_type: Optional[str] = None
+    counterparty: Optional[str] = None
+    payee_type: Optional[str] = None
+    payee_id: Optional[int] = None
+    payee_name: Optional[str] = None
+    tax_amount: Optional[float] = None
+    base_amount: Optional[float] = None
+    reason: Optional[str] = None
     reference: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=255)
     cheque_number: Optional[str] = Field(None, max_length=50)
     destination_cash_account_id: Optional[int] = None
     fx_rate: Optional[float] = None
+    linked_invoice_id: Optional[int] = None
+    linked_bill_id: Optional[int] = None
+
+
+class DuplicateSettlementCheckResponse(BaseModel):
+    has_match: bool = False
+    match_type: Optional[str] = None  # "bill" or "invoice"
+    document_id: Optional[int] = None
+    document_number: Optional[str] = None
+    document_total: Optional[float] = None
+    remaining_balance: Optional[float] = None
+    currency: Optional[str] = None
+    due_date: Optional[str] = None
+    message: Optional[str] = None
+
+
+class UnlinkedSettlementCandidateResponse(BaseModel):
+    transaction_id: int
+    date: str
+    amount: float
+    currency: str
+    payee_type: str
+    payee_id: Optional[int] = None
+    payee_name: Optional[str] = None
+    matching_bill_id: Optional[int] = None
+    matching_bill_number: Optional[str] = None
+    bill_total: Optional[float] = None
+    bill_remaining: Optional[float] = None
+    bill_due_date: Optional[str] = None
+
+
+
+class TransactionPreviewRequest(BaseModel):
+    account_id: int
+    entry_type: str = Field("money_out", description="money_in, money_out, bank_fee, adjustment")
+    direction: str = Field("out", description="in or out")
+    amount: float = Field(..., gt=0.0)
+    currency: str = Field("USD")
+    fx_rate: Optional[float] = None
+    category_id: Optional[int] = None
+    counterparty: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class TransactionPreviewResponse(BaseModel):
+    account_id: int
+    account_name: str
+    account_currency: str
+    entry_type: str
+    direction: str
+    transaction_amount: float
+    transaction_currency: str
+    fx_rate: Optional[float] = None
+    converted_amount: float
+    current_book_balance: float
+    projected_book_balance: float
+    plain_description: str
+    journal_preview: List[dict]
+
 
 
 class PettySummaryItem(BaseModel):
@@ -183,10 +273,16 @@ class PettySummaryResponse(BaseModel):
 # Customer Schemas
 # ==========================================
 class CustomerBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="Customer or company name")
+    name: str = Field(..., min_length=1, max_length=255, description="Customer or company display name")
+    legal_name: Optional[str] = Field(None, max_length=255, description="Registered legal name")
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    billing_address: Optional[str] = None
+    country: Optional[str] = Field("Egypt", max_length=100)
+    default_currency: Optional[str] = Field("USD", max_length=10)
+    payment_terms_days: Optional[int] = Field(30, ge=0)
+    owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
 
 
@@ -196,9 +292,15 @@ class CustomerCreate(CustomerBase):
 
 class CustomerUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    legal_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    billing_address: Optional[str] = None
+    country: Optional[str] = Field(None, max_length=100)
+    default_currency: Optional[str] = Field(None, max_length=10)
+    payment_terms_days: Optional[int] = Field(None, ge=0)
+    owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -212,15 +314,59 @@ class CustomerResponse(CustomerBase):
         from_attributes = True
 
 
+class CustomerDuplicateCheckRequest(BaseModel):
+    name: Optional[str] = None
+    legal_name: Optional[str] = None
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    exclude_id: Optional[int] = None
+
+
+class CustomerDuplicateCandidate(BaseModel):
+    id: int
+    name: str
+    legal_name: Optional[str] = None
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    matched_field: str
+    is_active: bool
+
+
+class Customer360Summary(BaseModel):
+    customer: CustomerResponse
+    total_invoiced: float = 0.0
+    total_paid: float = 0.0
+    outstanding_balance: float = 0.0
+    overdue_balance: float = 0.0
+    open_invoices_count: int = 0
+    overdue_invoices_count: int = 0
+    average_days_to_pay: Optional[float] = None
+    invoices: List[dict] = []
+    timeline: List[dict] = []
+
+
+# ==========================================
+# Vendor Schemas
 # ==========================================
 # Vendor Schemas
 # ==========================================
 class VendorBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Vendor or supplier name")
+    legal_name: Optional[str] = Field(None, max_length=255)
+    contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    remit_address: Optional[str] = None
+    country: Optional[str] = Field("Egypt", max_length=100)
+    payment_terms_days: Optional[int] = Field(30, ge=0, le=365)
+    default_currency: Optional[str] = Field("EGP", max_length=10)
     category: Optional[str] = Field("General", max_length=100)
+    default_department: Optional[str] = Field(None, max_length=100)
+    default_category_id: Optional[int] = Field(None, description="Optional default bill category ID for this vendor")
+    tax_treatment: Optional[str] = Field("standard", max_length=50)
+    withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0)
+    onboarding_status: Optional[str] = Field("active", max_length=50)
     notes: Optional[str] = None
 
 
@@ -230,10 +376,21 @@ class VendorCreate(VendorBase):
 
 class VendorUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    legal_name: Optional[str] = Field(None, max_length=255)
+    contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     tax_id: Optional[str] = Field(None, max_length=100)
+    remit_address: Optional[str] = None
+    country: Optional[str] = Field(None, max_length=100)
+    payment_terms_days: Optional[int] = Field(None, ge=0, le=365)
+    default_currency: Optional[str] = Field(None, max_length=10)
     category: Optional[str] = Field(None, max_length=100)
+    default_department: Optional[str] = Field(None, max_length=100)
+    default_category_id: Optional[int] = None
+    tax_treatment: Optional[str] = Field(None, max_length=50)
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
+    onboarding_status: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -242,9 +399,105 @@ class VendorResponse(VendorBase):
     id: int
     is_active: bool
     created_at: Optional[datetime] = None
+    default_category_name: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+# ==========================================
+# Vendor Payment Instruction Schemas
+# ==========================================
+class VendorPaymentInstructionBase(BaseModel):
+    payment_method: str = Field("bank_transfer", description="bank_transfer | ach | wire | check | cash | other")
+    bank_name: Optional[str] = Field(None, max_length=150)
+    account_holder_name: Optional[str] = Field(None, max_length=255)
+    account_number: str = Field(..., min_length=4, max_length=100)
+    routing_number: Optional[str] = Field(None, max_length=50)
+    swift_code: Optional[str] = Field(None, max_length=50)
+    iban: Optional[str] = Field(None, max_length=100)
+    effective_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class VendorPaymentInstructionCreate(VendorPaymentInstructionBase):
+    pass
+
+
+class VendorPaymentInstructionUpdate(BaseModel):
+    payment_method: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    routing_number: Optional[str] = None
+    swift_code: Optional[str] = None
+    iban: Optional[str] = None
+    effective_date: Optional[str] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class VendorPaymentInstructionResponse(BaseModel):
+    id: int
+    vendor_id: int
+    payment_method: str
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: str
+    routing_number: Optional[str] = None
+    swift_code: Optional[str] = None
+    iban: Optional[str] = None
+    verification_status: str
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    is_active: bool
+    effective_date: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class VendorPaymentInstructionVerifyRequest(BaseModel):
+    decision: str = Field("verified", description="verified | rejected")
+    comment: Optional[str] = None
+
+
+# ==========================================
+# Vendor Duplicate & 360 Profile Schemas
+# ==========================================
+class VendorDuplicateCheckRequest(BaseModel):
+    name: Optional[str] = None
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    exclude_id: Optional[int] = None
+
+
+class VendorDuplicateCandidate(BaseModel):
+    id: int
+    name: str
+    tax_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    matched_field: str
+    matching_value: str
+
+
+class VendorSpendMetric(BaseModel):
+    total_spend: float = 0.0
+    open_bills_count: int = 0
+    open_bills_total: float = 0.0
+    last_payment_date: Optional[str] = None
+    last_payment_amount: Optional[float] = None
+    active_subscriptions_count: int = 0
+
+
+class Vendor360Response(BaseModel):
+    vendor: VendorResponse
+    payment_instructions: List[VendorPaymentInstructionResponse] = []
+    metrics: VendorSpendMetric
+    recent_bills: List[dict] = []
 
 
 # ==========================================
@@ -290,6 +543,7 @@ class SalesInvoiceCreate(SalesInvoiceBase):
 
 class SalesInvoiceUpdate(BaseModel):
     customer_id: Optional[int] = None
+    invoice_number: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     status: Optional[str] = None
@@ -305,8 +559,15 @@ class SalesInvoiceResponse(SalesInvoiceBase):
     subtotal: float
     tax_amount: float
     total: float
+    amount_paid: float = 0.0
+    balance: float = 0.0
+    is_overdue: bool = False
+    days_overdue: int = 0
+    payment_status: str = "unpaid"  # unpaid | partially_paid | paid
+    next_action: Optional[str] = None
     created_at: Optional[datetime] = None
     customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
     expected_bank_account_name: Optional[str] = None
     has_bank_discrepancy: bool = False
     lines: List[SalesInvoiceLineResponse] = []
@@ -343,26 +604,77 @@ class BillLineResponse(BillLineBase):
 class BillBase(BaseModel):
     vendor_id: int = Field(..., description="ID of the vendor")
     bill_number: str = Field(..., min_length=1, max_length=50, description="Unique bill reference number")
+    category_id: Optional[int] = Field(None, description="ID of the governed transaction category")
     category: Optional[str] = Field("Operating Expense", max_length=100)
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    status: str = Field("unpaid", description="unpaid|paid|overdue|void")
+    status: str = Field("unpaid", description="inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void|unpaid")
     currency: str = Field("USD", min_length=3, max_length=10)
     notes: Optional[str] = None
+    capture_source: Optional[str] = Field("manual", max_length=20)
+    extraction_confidence: Optional[float] = None
+    missing_fields: Optional[str] = None
+    department: Optional[str] = Field(None, max_length=100)
+    legal_entity: Optional[str] = Field("Voyance Health Inc", max_length=100)
+    attachment_url: Optional[str] = None
+    attachment_name: Optional[str] = None
+    file_fingerprint: Optional[str] = None
+    is_reviewed: Optional[bool] = True
+    is_duplicate_override: Optional[bool] = False
+    duplicate_override_reason: Optional[str] = None
+    created_by: Optional[str] = None
+    requires_approval: Optional[bool] = False
+    approval_status: Optional[str] = None  # pending | approved | rejected
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_comment: Optional[str] = None
+    scheduled_payment_date: Optional[str] = None
+    amount_paid: float = 0.0
+
+
+class BillPaymentInline(BaseModel):
+    bank_account_id: int = Field(..., description="ID of bank account used for payment")
+    amount: Optional[float] = Field(None, ge=0.01, description="Payment amount. If omitted, defaults to bill total.")
+    payment_date: str = Field(..., description="Date payment was made (YYYY-MM-DD)")
+    method: Optional[str] = Field("bank_transfer", description="Payment method: bank_transfer, cash, card, other")
+    reference: Optional[str] = Field(None, max_length=100, description="Payment reference / check number")
 
 
 class BillCreate(BillBase):
     lines: List[BillLineCreate] = Field(default_factory=list)
+    is_paid_now: Optional[bool] = Field(False, description="Flag indicating bill is already paid upon creation")
+    payment: Optional[BillPaymentInline] = Field(None, description="Inline payment details when is_paid_now is True")
 
 
 class BillUpdate(BaseModel):
     vendor_id: Optional[int] = None
+    bill_number: Optional[str] = Field(None, max_length=50)
+    category_id: Optional[int] = None
     category: Optional[str] = Field(None, max_length=100)
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     notes: Optional[str] = None
+    capture_source: Optional[str] = None
+    extraction_confidence: Optional[float] = None
+    missing_fields: Optional[str] = None
+    department: Optional[str] = None
+    legal_entity: Optional[str] = None
+    attachment_url: Optional[str] = None
+    attachment_name: Optional[str] = None
+    file_fingerprint: Optional[str] = None
+    is_reviewed: Optional[bool] = None
+    is_duplicate_override: Optional[bool] = None
+    duplicate_override_reason: Optional[str] = None
+    created_by: Optional[str] = None
+    requires_approval: Optional[bool] = None
+    approval_status: Optional[str] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_comment: Optional[str] = None
+    scheduled_payment_date: Optional[str] = None
+    amount_paid: Optional[float] = None
     lines: Optional[List[BillLineCreate]] = None
 
 
@@ -371,12 +683,87 @@ class BillResponse(BillBase):
     subtotal: float
     tax_amount: float
     total: float
+    remaining_balance: float = 0.0
     created_at: Optional[datetime] = None
     vendor_name: Optional[str] = None
+    category_name: Optional[str] = None
     lines: List[BillLineResponse] = []
 
     class Config:
         from_attributes = True
+
+
+class BillCategoryQualityReportItem(BaseModel):
+    id: int
+    bill_number: str
+    vendor_id: int
+    vendor_name: Optional[str] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    raw_category: Optional[str] = None
+    issue_date: str
+    total: float
+    status: str
+
+
+class BillCategoryQualityReportResponse(BaseModel):
+    total_bills: int
+    matched_count: int
+    unmatched_count: int
+    unmatched_bills: List[BillCategoryQualityReportItem] = []
+
+
+class BillApprovalRequest(BaseModel):
+    decision: str = Field(..., description="approve | reject")
+    comment: Optional[str] = Field(None, max_length=500, description="Optional comment, required on rejection")
+    approver_limit: Optional[float] = Field(None, description="Optional maximum approval authority for the approver")
+
+
+class BillScheduleRequest(BaseModel):
+    scheduled_payment_date: str = Field(..., description="Scheduled payment date (YYYY-MM-DD)")
+    payment_method: Optional[str] = Field("bank_transfer")
+    bank_account_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class PaymentReversalRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500, description="Reason for reversing payment")
+
+
+class BillDuplicateCheckRequest(BaseModel):
+    vendor_id: Optional[int] = None
+    bill_number: Optional[str] = None
+    issue_date: Optional[str] = None
+    total: Optional[float] = None
+    file_fingerprint: Optional[str] = None
+    exclude_id: Optional[int] = None
+
+
+class BillDuplicateCandidate(BaseModel):
+    id: int
+    bill_number: str
+    vendor_id: int
+    vendor_name: Optional[str] = None
+    issue_date: str
+    total: float
+    status: str
+    matched_field: str
+    matching_value: str
+
+
+class BillDuplicateCheckResponse(BaseModel):
+    candidates: List[BillDuplicateCandidate] = []
+
+
+class BillQueueCountsResponse(BaseModel):
+    inbox: int = 0
+    needs_coding: int = 0
+    needs_approval: int = 0
+    ready_to_pay: int = 0
+    scheduled: int = 0
+    paid: int = 0
+    exceptions: int = 0
+    all: int = 0
 
 
 # ==========================================
@@ -406,6 +793,10 @@ class PaymentResponse(PaymentBase):
     account_discrepancy: bool = False
     expected_bank_account_id: Optional[int] = None
     expected_bank_account_name: Optional[str] = None
+    is_reversed: bool = False
+    reversed_at: Optional[datetime] = None
+    reversed_by: Optional[str] = None
+    reversal_reason: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -424,6 +815,9 @@ class AccountTransferBase(BaseModel):
     transfer_type: str = Field("internal", description="same_bank_fx | internal | external_linked")
     exchange_reference: Optional[str] = Field(None, max_length=100, description="Exchange/transaction reference")
     confirmed_leg: str = Field("both", description="both | from_only | to_only")
+    settlement_status: Optional[str] = Field(None, description="settled | in_transit | awaiting_match")
+    fee: Optional[float] = Field(0.0, description="Transfer or wire fee")
+    expected_date: Optional[str] = Field(None, description="Expected settlement date (YYYY-MM-DD)")
     note: Optional[str] = Field("", description="Transfer notes or memo")
 
 
@@ -438,6 +832,9 @@ class AccountTransferResponse(AccountTransferBase):
     to_account_id: Optional[int] = None
     from_account_name: Optional[str] = None
     to_account_name: Optional[str] = None
+    settlement_status: str = "settled"
+    fee: Optional[float] = 0.0
+    expected_date: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
     outflow_transaction_id: Optional[int] = None
@@ -445,6 +842,44 @@ class AccountTransferResponse(AccountTransferBase):
 
     class Config:
         from_attributes = True
+
+
+class TransferMatchRequest(BaseModel):
+    target_account_id: int = Field(..., description="Destination account ID receiving the in-transit transfer")
+    received_amount: Optional[float] = Field(None, gt=0.0, description="Amount credited (defaults to transfer to_amount)")
+    settled_date: Optional[str] = Field(None, description="Date funds cleared/settled (YYYY-MM-DD)")
+    note: Optional[str] = Field(None, description="Settlement note")
+
+
+class TransferPreviewRequest(BaseModel):
+    transfer_type: str = Field("internal", description="same_bank_fx | internal | external_linked")
+    from_account_id: Optional[int] = None
+    to_account_id: Optional[int] = None
+    from_amount: float = Field(..., gt=0.0)
+    to_amount: Optional[float] = None
+    fx_rate: Optional[float] = None
+    fee: Optional[float] = 0.0
+    date: Optional[str] = None
+    confirmed_leg: str = "both"
+    settlement_status: Optional[str] = None
+
+
+class TransferPreviewResponse(BaseModel):
+    from_account_name: Optional[str] = None
+    from_currency: str = "USD"
+    from_current_balance: float = 0.0
+    from_projected_balance: float = 0.0
+    to_account_name: Optional[str] = None
+    to_currency: Optional[str] = None
+    to_current_balance: Optional[float] = None
+    to_projected_balance: Optional[float] = None
+    explicit_fx_direction: Optional[str] = None
+    implied_rate: Optional[float] = None
+    settlement_status: str = "settled"
+    is_valid: bool = True
+    validation_error: Optional[str] = None
+    plain_description: str = ""
+    journal_preview: List[dict] = []
 
 
 # ==========================================
@@ -459,17 +894,33 @@ class ChequeBase(BaseModel):
     purpose_type: str = Field("other", description="vendor_payment | cash_withdrawal | other")
     destination_cash_account_id: Optional[int] = Field(None, description="Required for cash_withdrawal")
     linked_bill_id: Optional[int] = Field(None, description="Optional vendor bill to pay")
+    posting_policy: str = Field("at_issue", description="at_issue | at_clearing")
+    signer_name: Optional[str] = Field(None, description="Authorized cheque signer")
+    authorized_by: Optional[str] = Field(None, description="Approver / authorizing officer")
+    attachment_url: Optional[str] = Field(None, description="Attachment / scan reference")
     notes: Optional[str] = Field("", description="Memo or internal notes")
 
 
 class ChequeCreate(ChequeBase):
     account_id: int = Field(..., description="Bank account from which cheque is drawn")
     fiscal_year: Optional[int] = Field(None, description="Fiscal year (defaults to issue year)")
+    status: Optional[str] = Field("issued", description="draft | issued")
 
 
 class ChequeStatusUpdate(BaseModel):
-    status: str = Field(..., description="cleared | bounced | voided")
+    status: str = Field(..., description="draft | issued | outstanding | cleared | bounced | stopped | voided | replaced")
     clear_date: Optional[str] = Field(None, description="Date cleared (YYYY-MM-DD)")
+    reason: Optional[str] = Field(None, description="Reason required for exceptions (bounced, stopped, voided, replaced)")
+    evidence: Optional[str] = Field(None, description="Evidence or bank notice reference")
+
+
+class ChequeReplaceRequest(BaseModel):
+    new_cheque_number: str = Field(..., min_length=1, max_length=50, description="New replacement cheque serial number")
+    new_issue_date: str = Field(..., description="Issue date for replacement cheque (YYYY-MM-DD)")
+    reason: str = Field(..., min_length=1, description="Mandatory reason for replacement")
+    evidence: Optional[str] = Field(None, description="Evidence, slip ref, or memo")
+    signer_name: Optional[str] = Field(None, description="Authorized cheque signer")
+    notes: Optional[str] = Field(None, description="Internal notes for replacement cheque")
 
 
 class ChequeResponse(ChequeBase):
@@ -478,6 +929,16 @@ class ChequeResponse(ChequeBase):
     account_name: Optional[str] = None
     destination_cash_account_name: Optional[str] = None
     status: str
+    posting_policy: str = "at_issue"
+    signer_name: Optional[str] = None
+    authorized_by: Optional[str] = None
+    attachment_url: Optional[str] = None
+    exception_reason: Optional[str] = None
+    exception_evidence: Optional[str] = None
+    replacement_cheque_id: Optional[int] = None
+    replaced_cheque_id: Optional[int] = None
+    is_stale: bool = False
+    stale_warning: Optional[str] = None
     clear_date: Optional[str] = None
     fiscal_year: int
     linked_transaction_id: Optional[int] = None
@@ -515,7 +976,15 @@ class SubscriptionBase(BaseModel):
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
     billing_cycle: str = Field("monthly", description="monthly | quarterly | yearly")
     next_renewal_date: str = Field(..., description="Next renewal / billing date (YYYY-MM-DD)")
-    auto_generate_bill: bool = Field(True, description="Whether to auto-generate vendor bills")
+    contract_start_date: Optional[str] = Field(None, description="Contract start date (YYYY-MM-DD)")
+    contract_end_date: Optional[str] = Field(None, description="Contract end date (YYYY-MM-DD)")
+    notice_period_days: Optional[int] = Field(30, ge=0, description="Notice period for renewal/cancellation in days")
+    owner: Optional[str] = Field(None, max_length=255, description="Owner / DRI for this tool or contract")
+    department: Optional[str] = Field(None, max_length=100, description="Department (Engineering, Operations, etc.)")
+    payment_method: Optional[str] = Field("card", description="Payment method: card | bank_transfer | other")
+    payment_account_id: Optional[int] = Field(None, description="Linked bank/card account for charges")
+    seats_count: Optional[int] = Field(None, ge=0, description="Allocated user seats / licenses count")
+    auto_generate_bill: bool = Field(False, description="Whether to auto-generate vendor bills on renewal")
     is_active: bool = Field(True, description="Whether subscription is currently active")
 
 
@@ -530,6 +999,14 @@ class SubscriptionUpdate(BaseModel):
     currency: Optional[str] = None
     billing_cycle: Optional[str] = None
     next_renewal_date: Optional[str] = None
+    contract_start_date: Optional[str] = None
+    contract_end_date: Optional[str] = None
+    notice_period_days: Optional[int] = None
+    owner: Optional[str] = None
+    department: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_account_id: Optional[int] = None
+    seats_count: Optional[int] = None
     auto_generate_bill: Optional[bool] = None
     is_active: Optional[bool] = None
 
@@ -537,6 +1014,9 @@ class SubscriptionUpdate(BaseModel):
 class SubscriptionResponse(SubscriptionBase):
     id: int
     vendor_name: Optional[str] = None
+    monthly_equivalent_amount: float = 0.0
+    notice_deadline_date: Optional[str] = None
+    is_renewal_imminent: bool = False
     created_at: Optional[datetime] = None
     charges_count: int = 0
     last_charge_date: Optional[str] = None
@@ -551,6 +1031,8 @@ class SubscriptionChargeBase(BaseModel):
     billing_date: str = Field(..., description="Date of charge (YYYY-MM-DD)")
     amount: float = Field(..., gt=0.0, description="Actual amount charged")
     currency: str = Field("USD", min_length=3, max_length=10, description="Currency")
+    create_bill: bool = Field(False, description="Whether to also create a matched vendor bill")
+    variance_reason: Optional[str] = Field(None, description="Explanation if charged amount differs from base expected rate")
     note: Optional[str] = Field("", description="Usage notes or invoice memo")
 
 
@@ -563,6 +1045,9 @@ class SubscriptionChargeResponse(SubscriptionChargeBase):
     subscription_name: Optional[str] = None
     vendor_name: Optional[str] = None
     linked_transaction_id: Optional[int] = None
+    linked_bill_id: Optional[int] = None
+    variance_amount: float = 0.0
+    variance_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
     attachments: List[FinanceAttachmentResponse] = []
@@ -583,6 +1068,83 @@ class CSVColumnMapping(BaseModel):
     reference_col: Optional[str] = None
 
 
+class StatementMappingTemplateBase(BaseModel):
+    template_name: str = Field(..., min_length=1, max_length=100, description="Unique template identifier")
+    bank_name: Optional[str] = None
+    account_id: Optional[int] = None
+    date_col: Optional[str] = None
+    description_col: Optional[str] = None
+    debit_col: Optional[str] = None
+    credit_col: Optional[str] = None
+    amount_col: Optional[str] = None
+    reference_col: Optional[str] = None
+    date_format: Optional[str] = "auto"
+    decimal_separator: Optional[str] = "."
+    encoding: Optional[str] = "utf-8"
+
+
+class StatementMappingTemplateCreate(StatementMappingTemplateBase):
+    pass
+
+
+class StatementMappingTemplateResponse(StatementMappingTemplateBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StatementValidationErrorItem(BaseModel):
+    row_index: int
+    column: str
+    value: Optional[str] = ""
+    message: str
+    correction_path: Optional[str] = ""
+
+
+class StatementLinePreviewItem(BaseModel):
+    row_index: int
+    raw_date: str
+    raw_amount: float
+    direction: str  # in | out
+    raw_description: str
+    raw_reference: Optional[str] = ""
+    line_fingerprint: str
+    is_duplicate: bool = False
+    is_valid: bool = True
+    error_message: Optional[str] = None
+
+
+class StatementValidationSummary(BaseModel):
+    total_rows: int = 0
+    valid_count: int = 0
+    error_count: int = 0
+    warning_count: int = 0
+    duplicate_lines_count: int = 0
+    opening_balance: Optional[float] = None
+    closing_balance: Optional[float] = None
+    total_debit: float = 0.0
+    total_credit: float = 0.0
+    calculated_net: float = 0.0
+    expected_closing_balance: Optional[float] = None
+    balance_delta: Optional[float] = None
+    balance_matches: bool = False
+
+
+class StatementPreviewResponse(BaseModel):
+    file_fingerprint: str
+    duplicate_file_detected: bool = False
+    duplicate_import_id: Optional[int] = None
+    detected_format: str  # csv | pdf
+    detected_headers: List[str] = []
+    suggested_mapping: Optional[CSVColumnMapping] = None
+    preview_rows: List[StatementLinePreviewItem] = []
+    validation_summary: StatementValidationSummary
+    errors: List[StatementValidationErrorItem] = []
+    is_review_required: bool = False  # Always true for PDF imports
+
+
 class StatementImportBase(BaseModel):
     account_id: int = Field(..., description="Target bank account ID")
     period_month: str = Field(..., description="Statement period month (YYYY-MM)")
@@ -590,7 +1152,13 @@ class StatementImportBase(BaseModel):
 
 
 class StatementImportCreate(StatementImportBase):
-    pass
+    opening_balance: Optional[float] = None
+    closing_balance: Optional[float] = None
+    encoding: Optional[str] = "utf-8"
+    date_format: Optional[str] = "auto"
+    decimal_separator: Optional[str] = "."
+    allow_duplicate: bool = False
+    review_state: Optional[str] = "needs_review"
 
 
 class StatementImportResponse(StatementImportBase):
@@ -598,10 +1166,25 @@ class StatementImportResponse(StatementImportBase):
     account_name: Optional[str] = None
     status: str
     uploaded_file_ref: str
+    file_fingerprint: Optional[str] = None
+    opening_balance: Optional[float] = None
+    closing_balance: Optional[float] = None
+    encoding: Optional[str] = "utf-8"
+    date_format: Optional[str] = "auto"
+    decimal_separator: Optional[str] = "."
+    review_state: Optional[str] = "needs_review"
     total_lines_count: int = 0
     matched_lines_count: int = 0
     reconciled_at: Optional[datetime] = None
     reconciled_by: Optional[str] = None
+    closed_at: Optional[datetime] = None
+    closed_by: Optional[str] = None
+    closing_notes: Optional[str] = None
+    reopened_at: Optional[datetime] = None
+    reopened_by: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    is_exception_override: bool = False
+    exception_override_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
     attachments: List[FinanceAttachmentResponse] = []
@@ -634,19 +1217,33 @@ class StatementLineBase(BaseModel):
     notes: Optional[str] = ""
 
 
+class StatementLineSplitPortion(BaseModel):
+    amount: float = Field(..., gt=0.0, description="Portion amount")
+    description: Optional[str] = Field(None, description="Description for split portion")
+    reference: Optional[str] = Field(None, description="Reference for split portion")
+    category_id: Optional[int] = None
+    payment_type_id: Optional[int] = None
+    matched_transaction_id: Optional[int] = None
+    matched_cheque_id: Optional[int] = None
+
+
 class StatementLineResponse(StatementLineBase):
     id: int
     matched_transaction_id: Optional[int] = None
     matched_cheque_id: Optional[int] = None
+    applied_rule_id: Optional[int] = None
+    is_auto_applied: bool = False
+    parent_line_id: Optional[int] = None
     created_at: Optional[datetime] = None
     suggested_matches: List[SuggestedMatch] = []
+    child_lines: List["StatementLineResponse"] = []
 
     class Config:
         from_attributes = True
 
 
 class StatementLineResolveRequest(BaseModel):
-    action: str = Field(..., description="match | create | ignore")
+    action: str = Field(..., description="match | create | ignore | split")
     matched_transaction_id: Optional[int] = Field(None, description="Existing ledger transaction ID to link")
     matched_cheque_id: Optional[int] = Field(None, description="Existing cheque ID to link & auto-clear")
     # Fields required when action == 'create'
@@ -654,6 +1251,836 @@ class StatementLineResolveRequest(BaseModel):
     payment_type_id: Optional[int] = Field(None, description="Payment Type ID when auto-creating transaction")
     description: Optional[str] = Field(None, description="Custom description for created transaction")
     reference: Optional[str] = Field(None, description="Reference for created transaction")
-    notes: Optional[str] = Field(None, description="Resolution notes")
+    notes: Optional[str] = Field(None, description="Resolution notes (mandatory for ignore)")
+    # Fields required when action == 'split'
+    splits: Optional[List[StatementLineSplitPortion]] = Field(None, description="Child line portions for split")
+
+
+class ReconciliationWorkspaceSummary(BaseModel):
+    statement_id: int
+    account_id: int
+    account_name: str
+    currency: str
+    period_month: str
+    statement_opening_balance: Optional[float] = None
+    statement_closing_balance: Optional[float] = None
+    book_balance: float = 0.0
+    difference: Optional[float] = None
+    total_lines_count: int = 0
+    resolved_lines_count: int = 0
+    unmatched_lines_count: int = 0
+    resolved_amount: float = 0.0
+    unresolved_amount: float = 0.0
+    status: str = "needs_review"
+
+
+# ==========================================
+# Entity Detail & Activity Timeline (Story 1.3)
+# ==========================================
+class TimelineEvent(BaseModel):
+    id: str
+    timestamp: str
+    event: str
+    plain_text: str
+    actor: str = ""
+    state_transition: Optional[Dict[str, Optional[str]]] = None
+    before_after: Optional[Dict[str, Any]] = None
+    linked_record: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = ""
+
+
+class EntitySummaryAttribute(BaseModel):
+    label: str
+    value: str
+
+
+class EntitySummary(BaseModel):
+    reference: Optional[str] = ""
+    counterparty: Optional[str] = ""
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = ""
+    sensitive_masked: bool = False
+    attributes: List[EntitySummaryAttribute] = []
+
+
+class RelatedRecordItem(BaseModel):
+    entity_type: str
+    entity_id: int
+    title: str
+    badge: Optional[str] = ""
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    date: Optional[str] = None
+
+
+class EntityActivityResponse(BaseModel):
+    entity_type: str
+    entity_id: int
+    title: str
+    status: str
+    summary: EntitySummary
+    related_records: List[RelatedRecordItem] = []
+    attachments: List[FinanceAttachmentResponse] = []
+    timeline: List[TimelineEvent] = []
+
+
+# ==========================================
+# Needs-Attention Queue Schemas (Story 2.2)
+# ==========================================
+class AttentionItem(BaseModel):
+    id: str = Field(..., description="Unique item identifier, e.g. rec-inv-12")
+    deduplication_key: str = Field(..., description="Deterministic key e.g. invoice:12:overdue")
+    type: str = Field(..., description="overdue_receivable | bill_due | pending_approval | unreconciled_statement | negative_cash | bounced_cheque")
+    severity: str = Field(..., description="urgent | warning | info")
+    severity_label: str = Field(..., description="User-friendly text label: Urgent | Warning | Info")
+    title: str = Field(..., description="Short title describing the exception")
+    description: str = Field(..., description="Human-readable explanation of required action")
+    counterparty: Optional[str] = Field(None, description="Customer name, vendor name, or institution")
+    amount: Optional[float] = Field(None, description="Outstanding or impacted monetary amount")
+    currency: Optional[str] = Field(None, description="Currency code, e.g. USD, EGP")
+    due_date: Optional[str] = Field(None, description="Due date YYYY-MM-DD or relevant event date")
+    due_state: str = Field(..., description="overdue | due_today | due_soon | immediate | pending_review | needs_reconciliation | bounced")
+    due_state_label: str = Field(..., description="Accessible text, e.g. 'Overdue by 12 days', 'Due today', 'Action Required'")
+    owner: Optional[str] = Field(None, description="Assignee or responsible contact")
+    target_route: str = Field(..., description="UI navigation route e.g. a-finance-invoices")
+    target_id: Optional[int] = Field(None, description="ID of primary record")
+    target_filter: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Filter parameters for deep linking")
+    permission: str = Field(..., description="Required RBAC permission to view this item")
+    priority_score: int = Field(0, description="Computed priority score for deterministic sorting")
+    can_resolve: bool = Field(True, description="Whether operator can open/resolve this item")
+    can_mark_reviewed: bool = Field(True, description="Whether operator can mark as reviewed")
+    is_reviewed: bool = Field(False, description="Whether item has been marked reviewed")
+    created_at: Optional[str] = Field(None, description="Timestamp when entity was created")
+
+
+class AttentionQueueResponse(BaseModel):
+    total_count: int
+    urgent_count: int
+    warning_count: int
+    info_count: int
+    total_amount_by_currency: Dict[str, float]
+    items: List[AttentionItem]
+    generated_at: str
+
+
+class AttentionReviewRequest(BaseModel):
+    status: str = Field("reviewed", pattern="^(reviewed|resolved|dismissed)$")
+    notes: Optional[str] = Field("", max_length=500)
+
+
+# ==========================================
+# Cash Position & Forecast Schemas (Story 2.3)
+# ==========================================
+class CashPositionAccount(BaseModel):
+    account_id: int
+    account_name: str
+    bank_name: Optional[str] = None
+    account_type: str = "bank"
+    currency: str = "USD"
+    book_balance: float = Field(0.0, description="Book balance per financial ledger")
+    available_balance: float = Field(0.0, description="Available balance factoring uncleared cheques/pending legs")
+    reconciled_balance: Optional[float] = Field(None, description="Matched balance per reconciled bank statements")
+    uncleared_cheques_amount: float = Field(0.0, description="Total issued uncleared cheques")
+    pending_transfers_amount: float = Field(0.0, description="Pending outgoing transfers")
+    is_active: bool = True
+
+
+class HorizonProjection(BaseModel):
+    period_label: str
+    days: int
+    confirmed_inflows: float = 0.0
+    expected_inflows: float = 0.0
+    total_inflows: float = 0.0
+    confirmed_outflows: float = 0.0
+    expected_outflows: float = 0.0
+    total_outflows: float = 0.0
+    net_cash_flow: float = 0.0
+    projected_ending_cash: float = 0.0
+    confidence: str = Field("high", description="high | medium | low")
+
+
+class ForecastObligationItem(BaseModel):
+    id: str
+    entity_type: str = Field(..., description="invoice | bill | subscription | payroll | transfer")
+    entity_id: int
+    reference: str
+    counterparty: str
+    type: str = Field(..., description="inflow | outflow")
+    amount: float
+    currency: str
+    due_date: str
+    status: str = Field("confirmed", description="confirmed | expected")
+    certainty: str = Field("contractual", description="contractual | estimated | overdue")
+    target_route: str
+    notes: Optional[str] = ""
+
+
+class CashForecastResponse(BaseModel):
+    as_of_date: str
+    currency: str
+    accounts: List[CashPositionAccount]
+    current_cash_by_currency: Dict[str, float]
+    total_current_cash: float
+    horizons: Dict[str, HorizonProjection]
+    material_obligations: List[ForecastObligationItem]
+    assumptions: List[str]
+    fx_warnings: List[str]
+    generated_at: str
+
+
+# =========================================================================
+# Story 6.3: Reconciliation Rules Schemas
+# =========================================================================
+
+class ReconciliationRuleBase(BaseModel):
+    name: str = Field(..., max_length=100)
+    description: Optional[str] = ""
+    priority: int = Field(10, ge=1, le=100, description="Rule evaluation priority (1 = highest)")
+    is_active: bool = True
+    mode: str = Field("suggestion", description="suggestion | auto_apply")
+    account_id: Optional[int] = Field(None, description="Optional bank account scope (null = global)")
+    
+    # Conditions
+    description_pattern: Optional[str] = Field(None, description="Substring or regex pattern for line description")
+    direction: Optional[str] = Field(None, description="in | out")
+    min_amount: Optional[float] = Field(None, ge=0.0)
+    max_amount: Optional[float] = Field(None, ge=0.0)
+    counterparty: Optional[str] = None
+    
+    # Actions
+    action: str = Field("suggest_category", description="suggest_category | auto_create | auto_ignore")
+    target_category: Optional[str] = None
+    target_vendor_id: Optional[int] = None
+    payment_method: Optional[str] = "bank_transfer"
+    audit_reason: Optional[str] = None
+
+
+class ReconciliationRuleCreate(ReconciliationRuleBase):
+    creator: Optional[str] = None
+    is_approved: Optional[bool] = False
+    approved_by: Optional[str] = None
+
+
+class ReconciliationRuleUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
+    mode: Optional[str] = None
+    account_id: Optional[int] = None
+    description_pattern: Optional[str] = None
+    direction: Optional[str] = None
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    counterparty: Optional[str] = None
+    action: Optional[str] = None
+    target_category: Optional[str] = None
+    target_vendor_id: Optional[int] = None
+    payment_method: Optional[str] = None
+    audit_reason: Optional[str] = None
+    is_approved: Optional[bool] = None
+    approved_by: Optional[str] = None
+
+
+class ReconciliationRuleResponse(ReconciliationRuleBase):
+    id: int
+    creator: Optional[str] = None
+    approved_by: Optional[str] = None
+    is_approved: bool = False
+    last_used_at: Optional[datetime] = None
+    times_applied: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RuleMatchConflict(BaseModel):
+    winning_rule_id: int
+    winning_rule_name: str
+    conflicting_rule_id: int
+    conflicting_rule_name: str
+    line_id: int
+    conflict_reason: str
+
+
+class ReconciliationRulePreviewRequest(BaseModel):
+    rule: ReconciliationRuleCreate
+    statement_id: Optional[int] = None
+    account_id: Optional[int] = None
+
+
+class ReconciliationRulePreviewResponse(BaseModel):
+    matched_lines_count: int
+    sample_matched_lines: List[StatementLineResponse] = []
+    conflicts: List[RuleMatchConflict] = []
+    mode: str
+    is_approved: bool
+    summary: str
+
+
+class StatementApplyRulesResponse(BaseModel):
+    statement_id: int
+    evaluated_lines_count: int
+    suggestions_count: int
+    auto_applied_count: int
+    conflicts: List[RuleMatchConflict] = []
+    updated_lines: List[StatementLineResponse] = []
+
+
+# =========================================================================
+# Story 6.4: Period Close, Reopen & Completion Report Schemas
+# =========================================================================
+
+class ReconciliationCloseRequest(BaseModel):
+    closing_notes: Optional[str] = Field(None, description="Optional reconciliation closing comments")
+    is_exception_override: bool = Field(False, description="Authorize exception override for non-zero difference")
+    exception_override_reason: Optional[str] = Field(None, description="Documented justification for closing with variance")
+
+
+class ReconciliationReopenRequest(BaseModel):
+    reopen_reason: str = Field(..., min_length=5, description="Documented reason explaining why period is being reopened")
+
+
+class ReconciliationCompletionReport(BaseModel):
+    statement_id: int
+    account_id: int
+    account_name: str
+    period_month: str
+    currency: str
+    status: str
+    opening_balance: float
+    closing_balance: float
+    book_balance: float
+    balance_difference: float
+    is_balanced: bool
+    total_lines_count: int
+    matched_lines_count: int
+    matched_lines_amount: float
+    created_entries_count: int
+    created_entries_amount: float
+    ignored_lines_count: int
+    ignored_lines_amount: float
+    ignored_lines_details: List[Dict[str, Any]] = []
+    split_lines_count: int = 0
+    uncleared_ledger_transactions_count: int = 0
+    uncleared_ledger_transactions_amount: float = 0.0
+    uncleared_cheques_count: int = 0
+    uncleared_cheques_amount: float = 0.0
+    closed_at: Optional[datetime] = None
+    closed_by: Optional[str] = None
+    reopened_at: Optional[datetime] = None
+    reopened_by: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    is_exception_override: bool = False
+    exception_override_reason: Optional[str] = None
+    generated_at: str
+
+
+# =========================================================================
+# Story 7.1: Standard Report Library, Shell & Drill-Down Schemas
+# =========================================================================
+
+class ReportMetadataResponse(BaseModel):
+    key: str
+    title: str
+    category: str
+    business_question: str
+    description: str
+    icon: str
+    supported_basis: List[str] = ["cash"]
+    supported_formats: List[str] = ["json", "xlsx"]
+    required_permission: str = "finance.report.read"
+    badge: Optional[str] = "Standard"
+
+
+class ReportLibraryResponse(BaseModel):
+    categories: List[str]
+    reports: List[ReportMetadataResponse]
+
+
+class SavedReportViewCreate(BaseModel):
+    report_key: str = Field(..., description="Unique key of the target report")
+    view_name: str = Field(..., min_length=2, max_length=150, description="User friendly name for saved view")
+    filters: Dict[str, Any] = Field(default_factory=dict, description="Saved filter definitions (period, basis, currency, etc)")
+    is_default: bool = Field(False, description="Set as default view when loading this report")
+
+
+class SavedReportViewResponse(BaseModel):
+    id: int
+    report_key: str
+    view_name: str
+    filters: Dict[str, Any]
+    created_by: Optional[str] = None
+    created_at: datetime
+    is_default: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class ReportDrilldownResponse(BaseModel):
+    report_key: str
+    drilldown_type: str
+    target_title: str
+    total_records: int
+    total_amount: float
+    currency: str
+    records: List[Dict[str, Any]] = []
+
+
+# ==========================================
+# Core Accounting & Aging Reports (Story 7.2)
+# ==========================================
+class ProfitAndLossItem(BaseModel):
+    category_id: Optional[int] = None
+    category_name: str
+    amount: float
+    percentage: float = 0.0
+    prior_amount: Optional[float] = None
+    variance_amount: Optional[float] = None
+    variance_pct: Optional[float] = None
+
+
+class ProfitAndLossResponse(BaseModel):
+    report_title: str = "Profit & Loss Statement"
+    entity: str
+    basis: str
+    currency: str
+    period_start: str
+    period_end: str
+    comparison_type: str = "none"
+    comparison_start: Optional[str] = None
+    comparison_end: Optional[str] = None
+    revenue_items: List[ProfitAndLossItem] = []
+    total_revenue: float
+    prior_revenue: Optional[float] = None
+    expense_items: List[ProfitAndLossItem] = []
+    total_expenses: float
+    prior_expenses: Optional[float] = None
+    net_income: float
+    prior_net_income: Optional[float] = None
+    net_margin_pct: float = 0.0
+
+
+class BalanceSheetSectionItem(BaseModel):
+    name: str
+    account_id: Optional[int] = None
+    account_number: Optional[str] = None
+    amount: float
+    note: Optional[str] = None
+
+
+class BalanceSheetSection(BaseModel):
+    title: str
+    items: List[BalanceSheetSectionItem] = []
+    total: float
+
+
+class BalanceSheetResponse(BaseModel):
+    report_title: str = "Balance Sheet"
+    entity: str
+    as_of_date: str
+    currency: str
+    basis: str = "accrual"
+    assets: BalanceSheetSection
+    liabilities: BalanceSheetSection
+    equity: BalanceSheetSection
+    total_assets: float
+    total_liabilities_and_equity: float
+    is_balanced: bool = True
+    variance: float = 0.0
+
+
+class TrialBalanceLine(BaseModel):
+    code: str
+    name: str
+    type: str  # asset, liability, equity, revenue, expense
+    debit: float
+    credit: float
+
+
+class TrialBalanceResponse(BaseModel):
+    report_title: str = "Trial Balance"
+    entity: str
+    as_of_date: str
+    currency: str
+    lines: List[TrialBalanceLine] = []
+    total_debits: float
+    total_credits: float
+    variance: float = 0.0
+    is_balanced: bool = True
+
+
+class CashFlowActivityItem(BaseModel):
+    name: str
+    amount: float
+    activity_type: str  # operating, investing, financing
+
+
+class CashFlowStatementResponse(BaseModel):
+    report_title: str = "Statement of Cash Flows"
+    entity: str
+    currency: str
+    date_from: str
+    date_to: str
+    operating_activities: List[CashFlowActivityItem] = []
+    net_cash_operating: float
+    investing_activities: List[CashFlowActivityItem] = []
+    net_cash_investing: float
+    financing_activities: List[CashFlowActivityItem] = []
+    net_cash_financing: float
+    net_change_in_cash: float
+    beginning_cash_balance: float
+    ending_cash_balance: float
+    is_reconciled: bool = True
+
+
+class AgingBucketBreakdown(BaseModel):
+    current: float = 0.0
+    days_1_30: float = 0.0
+    days_31_60: float = 0.0
+    days_61_90: float = 0.0
+    days_over_90: float = 0.0
+    total: float = 0.0
+
+
+class AgingRowItem(BaseModel):
+    id: int
+    name: str
+    buckets: AgingBucketBreakdown
+    outstanding_count: int = 0
+
+
+class AgingReportResponse(BaseModel):
+    report_title: str
+    aging_type: str  # "ar" | "ap"
+    entity: str
+    as_of_date: str
+    currency: str
+    rows: List[AgingRowItem] = []
+    totals: AgingBucketBreakdown
+    total_open_count: int = 0
+
+
+# ==========================================
+# Story 7.3: Controlled Exports & Schedules
+# ==========================================
+
+class ReportExportRequest(BaseModel):
+    report_key: str
+    format: str = "xlsx"  # xlsx, csv, pdf
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ReportExportAuditResponse(BaseModel):
+    id: int
+    report_key: str
+    export_format: str
+    user_email: Optional[str] = None
+    row_count: int = 0
+    file_name: str
+    filters_json: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReportScheduleCreate(BaseModel):
+    report_key: str
+    report_title: str
+    frequency: str  # daily | weekly | monthly
+    recipients: List[str]  # list of email addresses
+    export_format: str = "xlsx"
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ReportScheduleResponse(BaseModel):
+    id: int
+    report_key: str
+    report_title: str
+    frequency: str
+    recipients: List[str]
+    export_format: str
+    filters: Dict[str, Any]
+    is_active: bool
+    created_by: Optional[str] = None
+    created_at: datetime
+
+
+# ==========================================
+# Story 8.1: Guided Payroll Run Schemas
+# ==========================================
+
+class PayrollExceptionItem(BaseModel):
+    id: str
+    employee_id: int
+    employee_name: str
+    severity: str  # "blocking" | "warning"
+    title: str
+    description: str
+    correction_path: Optional[str] = None
+    is_resolved: bool = False
+
+
+class PayrollVarianceSummary(BaseModel):
+    prior_period_label: Optional[str] = None
+    headcount_delta: int = 0
+    gross_delta: float = 0.0
+    net_delta: float = 0.0
+    pct_change: float = 0.0
+    joiners_count: int = 0
+    leavers_count: int = 0
+    raises_count: int = 0
+
+
+class PayrollLiabilitiesSummary(BaseModel):
+    net_pay_payable: float = 0.0
+    income_tax_withheld: float = 0.0
+    social_insurance_employee: float = 0.0
+    social_insurance_employer: float = 0.0
+    total_liabilities: float = 0.0
+
+
+class PayrollJournalItem(BaseModel):
+    account: str
+    account_code: str
+    direction: str  # "debit" | "credit"
+    amount: float
+    description: str
+
+
+class PayrollJournalPreview(BaseModel):
+    debits: List[PayrollJournalItem] = []
+    credits: List[PayrollJournalItem] = []
+    total_debit: float = 0.0
+    total_credit: float = 0.0
+    is_balanced: bool = True
+
+
+class PayrollLineCreate(BaseModel):
+    employee_id: int
+    base_salary: float
+    allowances_total: float = 0.0
+    deductions_total: float = 0.0
+    tax_amount: float = 0.0
+    employer_cost_extra: float = 0.0
+    snapshot_notes: Optional[str] = ""
+
+
+class PayrollLineResponse(BaseModel):
+    id: int
+    payroll_run_id: int
+    employee_id: int
+    employee_name: Optional[str] = None
+    department: Optional[str] = None
+    base_salary: float
+    allowances_total: float
+    deductions_total: float
+    tax_amount: float
+    net_pay: float
+    employer_cost_extra: float
+    bank_name: Optional[str] = None
+    bank_account_masked: Optional[str] = None
+    payment_status: str = "pending"  # pending | paid | failed
+    failure_reason: Optional[str] = None
+    snapshot_notes: Optional[str] = ""
+    created_at: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayrollRunPreviewRequest(BaseModel):
+    period_label: str  # e.g. "2026-09"
+    period_start: str  # YYYY-MM-DD
+    period_end: str    # YYYY-MM-DD
+    bank_account_id: Optional[int] = None
+
+
+class PayrollRunPreviewResponse(BaseModel):
+    period_label: str
+    period_start: str
+    period_end: str
+    bank_account_id: Optional[int] = None
+    bank_account_name: Optional[str] = None
+    headcount: int = 0
+    total_gross: float = 0.0
+    total_tax: float = 0.0
+    total_deductions: float = 0.0
+    total_net: float = 0.0
+    total_employer_cost: float = 0.0
+    has_blocking_exceptions: bool = False
+    exceptions: List[PayrollExceptionItem] = []
+    variance_summary: PayrollVarianceSummary
+    liabilities_summary: PayrollLiabilitiesSummary
+    journal_preview: PayrollJournalPreview
+    lines: List[PayrollLineResponse] = []
+
+
+class PayrollRunCreate(BaseModel):
+    period_label: str
+    period_start: str
+    period_end: str
+    bank_account_id: Optional[int] = None
+    currency: str = "USD"
+    lines: Optional[List[PayrollLineCreate]] = None
+
+
+class PayrollRunResponse(BaseModel):
+    id: int
+    period_label: str
+    period_start: str
+    period_end: str
+    status: str  # draft | approved | finalized | paid | partially_paid | cancelled
+    total_gross: float
+    total_tax: float
+    total_deductions: float
+    total_net: float
+    total_employer_cost: float
+    headcount: int = 0
+    currency: str = "USD"
+    bank_account_id: Optional[int] = None
+    bank_account_name: Optional[str] = None
+    created_at: datetime
+    created_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    finalized_at: Optional[datetime] = None
+    finalized_by: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    paid_by: Optional[str] = None
+    journal_transaction_id: Optional[int] = None
+    has_blocking_exceptions: bool = False
+    exceptions: List[PayrollExceptionItem] = []
+    variance_summary: Optional[PayrollVarianceSummary] = None
+    liabilities_summary: Optional[PayrollLiabilitiesSummary] = None
+    lines: List[PayrollLineResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PayrollPaymentRequest(BaseModel):
+    bank_account_id: Optional[int] = None
+    retry_failed_only: bool = False
+    simulate_partial_failure_ids: Optional[List[int]] = None
+
+
+class EmployeePayslipResponse(BaseModel):
+    id: int
+    payroll_run_id: int
+    period_label: str
+    period_start: str
+    period_end: str
+    employee_id: int
+    employee_name: str
+    department: str
+    base_salary: float
+    allowances_total: float
+    deductions_total: float
+    tax_amount: float
+    net_pay: float
+    currency: str = "USD"
+    status: str
+    paid_date: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_masked: Optional[str] = None
+
+
+# ============================================================================
+# FUX-410 Statutory Obligations Schemas
+# ============================================================================
+
+StatutoryObligationType = Literal[
+    "sales_tax",
+    "withholding_tax",
+    "income_tax",
+    "social_insurance_employee",
+    "social_insurance_employer",
+    "health_insurance",
+    "other_statutory",
+]
+
+StatutoryObligationStatus = Literal[
+    "estimated",
+    "accrued",
+    "partially_remitted",
+    "remitted",
+]
+
+StatutoryObligationSourceType = Literal[
+    "payroll_run",
+    "invoice_tax_line",
+    "bill_tax_line",
+    "manual",
+]
+
+
+class StatutoryObligationCreate(BaseModel):
+    obligation_type: StatutoryObligationType
+    period: str
+    amount_accrued: float
+    due_date: Optional[str] = None
+    currency: str = "USD"
+    notes: str = ""
+
+
+class StatutoryObligationConfirmAdjust(BaseModel):
+    amount_accrued: float
+    variance_note: Optional[str] = None
+
+
+class StatutoryObligationSettle(BaseModel):
+    amount: float
+    payment_date: str
+    bank_account_id: int
+    currency: str = "USD"
+    reference: str = ""
+    method: str = "bank_transfer"
+
+
+class StatutoryObligationUpdate(BaseModel):
+    due_date: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+    amount_accrued: Optional[float] = None
+
+
+class StatutoryObligationResponse(BaseModel):
+    id: int
+    obligation_type: str
+    period: str
+    amount_estimated: Optional[float] = None
+    amount_accrued: float
+    amount_remitted: float = 0.0
+    remaining_balance: float = 0.0
+    variance_amount: float = 0.0
+    variance_note: Optional[str] = None
+    currency: str = "USD"
+    status: str
+    due_date: Optional[str] = None
+    source_type: str = "manual"
+    source_id: Optional[int] = None
+    notes: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+
+
+
+
+
 
 

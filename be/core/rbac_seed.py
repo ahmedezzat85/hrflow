@@ -31,6 +31,9 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "finance.customer.write", "description": "Create, update, and manage customers"},
     {"key": "finance.vendor.read", "description": "View vendors"},
     {"key": "finance.vendor.write", "description": "Create, update, and manage vendors"},
+    {"key": "finance.vendor_payment.reveal", "description": "Reveal sensitive vendor payment and bank instructions"},
+    {"key": "finance.vendor_payment.manage", "description": "Add and update sensitive vendor payment details"},
+    {"key": "finance.vendor_payment.verify", "description": "Verify and approve vendor payment instructions"},
     {"key": "finance.invoice.read", "description": "View sales invoices"},
     {"key": "finance.invoice.write", "description": "Create, update, and void sales invoices"},
     {"key": "finance.bill.read", "description": "View vendor bills"},
@@ -39,9 +42,12 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "finance.payroll.write", "description": "Create and manage company payroll runs"},
     {"key": "finance.account.read", "description": "View company bank accounts"},
     {"key": "finance.account.write", "description": "Manage company bank accounts and balances"},
+    {"key": "finance.bank_account.reveal", "description": "Reveal unmasked company bank account identifiers"},
+    {"key": "finance.adjustment.manage", "description": "Authorize and record manual balance adjustments and journal corrections"},
     {"key": "finance.subscription.read", "description": "View vendor subscriptions"},
     {"key": "finance.subscription.write", "description": "Create and manage vendor subscriptions"},
     {"key": "finance.report.read", "description": "View finance summary reports and metrics"},
+    {"key": "finance.settings.write", "description": "Manage finance settings, feature flags, and rollout controls"},
 ]
 
 SEED_ROLES: List[Dict[str, str]] = [

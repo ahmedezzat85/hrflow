@@ -5,10 +5,12 @@ Full CRUD wired to AccountsService and gated with RBAC permissions:
 - finance.account.read (list, get)
 - finance.account.write (create, update, deactivate)
 """
+from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from core.permissions import require_permission
+from core.permissions import require_permission, get_current_user_permissions
+from models_db import AuditLogDB
 from finance.schemas import (
     BankAccountCreate,
     BankAccountUpdate,
@@ -16,6 +18,8 @@ from finance.schemas import (
     LedgerTransactionCreate,
     LedgerTransactionResponse,
     PettySummaryResponse,
+    TransactionPreviewRequest,
+    TransactionPreviewResponse,
 )
 from finance.services.accounts_service import AccountsService
 from finance.services.ledger_service import LedgerService
@@ -32,18 +36,39 @@ def list_company_bank_accounts(
     current_user: dict = Depends(require_permission("finance.account.read")),
     service: AccountsService = Depends(get_accounts_service),
 ):
-    """Lists company bank accounts with masked account numbers."""
+    """Lists company bank accounts with masked account numbers and balance metrics."""
     return service.list_accounts(is_active=is_active, limit=limit, offset=offset)
 
 
 @router.get("/{account_id}", response_model=BankAccountResponse)
 def get_company_bank_account(
     account_id: int,
+    request: Request,
+    reveal: bool = Query(False, description="Reveal unmasked account identifier if authorized"),
     current_user: dict = Depends(require_permission("finance.account.read")),
     service: AccountsService = Depends(get_accounts_service),
 ):
-    """Fetches a specific company bank account by ID."""
-    return service.get_account(account_id)
+    """Fetches a specific company bank account by ID. Masked by default unless reveal is authorized."""
+    if reveal:
+        perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
+        if "*" not in perms and "finance.bank_account.reveal" not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied: 'finance.bank_account.reveal' required to reveal unmasked account identifier",
+            )
+        user_email = current_user.get("email") or current_user.get("sub") or "user"
+        audit = AuditLogDB(
+            timestamp=datetime.utcnow().isoformat(),
+            actor_email=user_email,
+            action="bank_account_revealed",
+            target_type="bank_account",
+            target_id=str(account_id),
+            details=f"Unmasked account identifier revealed for bank account #{account_id}",
+        )
+        service.repo.db.add(audit)
+        service.repo.db.commit()
+
+    return service.get_account(account_id, reveal=reveal)
 
 
 @router.post("", response_model=BankAccountResponse, status_code=status.HTTP_201_CREATED)
@@ -120,8 +145,30 @@ def create_account_transaction(
     service: LedgerService = Depends(get_ledger_service),
 ):
     """Records a manual continuous ledger transaction and recomputes running balances."""
+    if (payload.entry_type or "").lower() == "adjustment":
+        perms = set(current_user.get("permissions", [])) if isinstance(current_user, dict) else set()
+        role = (current_user.get("role") or "").lower() if isinstance(current_user, dict) else ""
+        if "*" not in perms and "finance.adjustment.manage" not in perms and role not in ("admin", "system_admin"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Manual balance adjustments require 'finance.adjustment.manage' authorization",
+            )
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.record_manual_transaction(account_id, payload, user_email=user_email)
+
+
+@router.post(
+    "/{account_id}/transactions/preview",
+    response_model=TransactionPreviewResponse,
+)
+def preview_account_transaction(
+    account_id: int,
+    payload: TransactionPreviewRequest,
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    service: LedgerService = Depends(get_ledger_service),
+):
+    """Generates plain-language balance effect and journal preview without posting."""
+    return service.preview_transaction(account_id, payload)
 
 
 @router.get(

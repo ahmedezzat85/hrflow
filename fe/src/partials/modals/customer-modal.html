@@ -1,36 +1,83 @@
   <div class="modal-overlay" id="customerModal">
-    <div class="modal modal-v2">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="customerModalTitle">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-users"></i></div>
         <div class="modal-head-text">
           <h3 id="customerModalTitle">Add Customer</h3>
-          <p>Register client organizations for sales billing and invoice generation.</p>
+          <p>Register client organizations for sales billing, invoice generation, and receivables tracking.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('customerModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('customerModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
       </div>
+
+      <!-- Duplicate Candidate Warning Banner -->
+      <div id="customerDuplicateBanner" class="alert alert-warning" style="display:none; margin: 12px 24px 0 24px; padding: 10px 14px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--warning-border, #f59e0b); background: var(--warning-bg, rgba(245,158,11,0.1));" role="status">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning, #f59e0b); margin-top:2px;"></i>
+          <div>
+            <div style="font-weight:700;">Potential Duplicate Customer</div>
+            <div id="customerDuplicateText" style="color:var(--text2); margin-top:2px;">A customer with matching identity already exists.</div>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-body">
         <input type="hidden" id="fCustomerId">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Customer Information <span class="line"></span></div>
+          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Identity & Legal Information <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Company / Customer Name <span class="req">*</span></label>
-              <input id="fCustomerName" placeholder="e.g. Apex Health Partners">
+              <label for="fCustomerName">Company / Display Name <span class="req">*</span></label>
+              <input id="fCustomerName" placeholder="e.g. Apex Health Partners" oninput="onCustomerFieldInput()">
+            </div>
+            <div class="form-field full">
+              <label for="fCustomerLegalName">Registered Legal Name</label>
+              <input id="fCustomerLegalName" placeholder="e.g. Apex Healthcare Systems LLC" oninput="onCustomerFieldInput()">
             </div>
             <div class="form-field">
-              <label>Billing Email</label>
-              <input id="fCustomerEmail" type="email" placeholder="e.g. billing@apexhealth.com">
+              <label for="fCustomerEmail">Billing Email</label>
+              <input id="fCustomerEmail" type="email" placeholder="e.g. billing@apexhealth.com" oninput="onCustomerFieldInput()">
             </div>
             <div class="form-field">
-              <label>Phone</label>
+              <label for="fCustomerPhone">Phone</label>
               <input id="fCustomerPhone" placeholder="e.g. +1 555-0120">
             </div>
             <div class="form-field full">
-              <label>Tax Identification / VAT Number</label>
-              <input id="fCustomerTaxId" placeholder="e.g. US-88992211 or EG-44021">
+              <label for="fCustomerTaxId">Tax Identification / VAT Number</label>
+              <input id="fCustomerTaxId" placeholder="e.g. US-88992211 or EG-44021" oninput="onCustomerFieldInput()">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section" style="margin-top:16px;">
+          <div class="form-section-label"><i class="fa-solid fa-file-contract"></i> Billing Terms & Operations <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="fCustomerTerms">Payment Terms (Days)</label>
+              <input id="fCustomerTerms" type="number" min="0" value="30" placeholder="e.g. 30">
+            </div>
+            <div class="form-field">
+              <label for="fCustomerCurrency">Default Currency</label>
+              <select id="fCustomerCurrency" class="form-control">
+                <option value="USD" selected>USD — US Dollars</option>
+                <option value="EGP">EGP — Egyptian Pounds</option>
+                <option value="EUR">EUR — Euros</option>
+                <option value="GBP">GBP — British Pounds</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fCustomerCountry">Country</label>
+              <input id="fCustomerCountry" value="Egypt" placeholder="e.g. Egypt, United States">
+            </div>
+            <div class="form-field">
+              <label for="fCustomerOwner">Account Owner</label>
+              <input id="fCustomerOwner" placeholder="e.g. Sarah Connor">
             </div>
             <div class="form-field full">
-              <label>Notes</label>
+              <label for="fCustomerAddress">Billing Address</label>
+              <input id="fCustomerAddress" placeholder="e.g. 100 Medical Center Blvd, Suite 400">
+            </div>
+            <div class="form-field full">
+              <label for="fCustomerNotes">Notes</label>
               <textarea id="fCustomerNotes" rows="2" placeholder="Payment terms, special instructions, or contract notes..."></textarea>
             </div>
           </div>

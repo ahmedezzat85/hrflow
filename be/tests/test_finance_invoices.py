@@ -375,3 +375,448 @@ def test_invoice_bank_routing_and_discrepancy(app_client, admin_cookies):
     assert inv_check_2["has_bank_discrepancy"] is True
     assert inv_check_2["status"] == "paid"  # Fully paid 2000 + 2000 = 4000
 
+
+def test_invoice_work_queue_and_derived_status(app_client, admin_cookies):
+    """Phase 3 Story 3.1: Work queue filters, balance derivation, overdue calculation, and next action."""
+    # 1. Setup customer and bank account
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Queue Test Customer"},
+        cookies=admin_cookies,
+    )
+    customer_id = cust_resp.json()["id"]
+
+    acc_resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Queue USD Bank",
+            "bank_name": "Chase Bank",
+            "account_number": "CHASE-9999",
+            "currency": "USD",
+            "opening_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    )
+    account_id = acc_resp.json()["id"]
+
+    # 2. Create a Draft invoice
+    draft_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-DRAFT",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "currency": "USD",
+            "lines": [{"description": "Draft item", "quantity": 1.0, "unit_price": 1000.0, "line_total": 1000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    draft_data = draft_resp.json()
+    assert draft_data["status"] == "draft"
+    assert draft_data["balance"] == 1000.0
+    assert draft_data["amount_paid"] == 0.0
+    assert draft_data["payment_status"] == "unpaid"
+    assert "Send" in draft_data["next_action"]
+
+    # 3. Create an Overdue invoice (due_date in past, status='sent')
+    overdue_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-OVERDUE",
+            "issue_date": "2026-08-01",
+            "due_date": "2026-08-15",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Overdue item", "quantity": 1.0, "unit_price": 2500.0, "line_total": 2500.0}],
+        },
+        cookies=admin_cookies,
+    )
+    overdue_data = overdue_resp.json()
+    assert overdue_data["is_overdue"] is True
+    assert overdue_data["status"] == "overdue"
+    assert overdue_data["days_overdue"] > 0
+    assert overdue_data["balance"] == 2500.0
+    assert "overdue" in overdue_data["next_action"].lower()
+
+    # 4. Create a Paid invoice
+    paid_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-PAID",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Paid item", "quantity": 1.0, "unit_price": 3000.0, "line_total": 3000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    paid_id = paid_resp.json()["id"]
+    # Pay in full
+    app_client.post(
+        f"/api/finance/invoices/{paid_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 3000.0,
+            "currency": "USD",
+            "payment_date": "2026-09-05",
+            "bank_account_id": account_id,
+        },
+        cookies=admin_cookies,
+    )
+    paid_data = app_client.get(f"/api/finance/invoices/{paid_id}", cookies=admin_cookies).json()
+    assert paid_data["status"] == "paid"
+    assert paid_data["balance"] == 0.0
+    assert paid_data["amount_paid"] == 3000.0
+    assert paid_data["payment_status"] == "paid"
+
+    # 5. Create a Void invoice
+    void_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-QUEUE-VOID",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    void_id = void_resp.json()["id"]
+    app_client.delete(f"/api/finance/invoices/{void_id}", cookies=admin_cookies)
+
+    # 6. Test default 'open' filter: excludes Paid and Void
+    open_list = app_client.get("/api/finance/invoices?status=open", cookies=admin_cookies).json()
+    open_numbers = [inv["invoice_number"] for inv in open_list]
+    assert "INV-QUEUE-DRAFT" in open_numbers
+    assert "INV-QUEUE-OVERDUE" in open_numbers
+    assert "INV-QUEUE-PAID" not in open_numbers
+    assert "INV-QUEUE-VOID" not in open_numbers
+
+    # 7. Test status=paid filter
+    paid_list = app_client.get("/api/finance/invoices?status=paid", cookies=admin_cookies).json()
+    paid_numbers = [inv["invoice_number"] for inv in paid_list]
+    assert "INV-QUEUE-PAID" in paid_numbers
+    assert "INV-QUEUE-DRAFT" not in paid_numbers
+
+    # 8. Test status=overdue filter
+    od_list = app_client.get("/api/finance/invoices?status=overdue", cookies=admin_cookies).json()
+    od_numbers = [inv["invoice_number"] for inv in od_list]
+    assert "INV-QUEUE-OVERDUE" in od_numbers
+    assert "INV-QUEUE-DRAFT" not in od_numbers
+
+
+def test_invoice_editor_lifecycle_and_validation(app_client, admin_cookies):
+    """
+    Story 3.2 validations:
+    - Creator cannot manually set status to 'paid' or 'overdue' on create/update.
+    - Due date cannot precede issue date.
+    - Invoice number is immutable once issued (sent/paid).
+    - Line items cannot be modified on paid or void invoices.
+    - POST /{invoice_id}/send transitions a draft invoice to 'sent'.
+    """
+    # 1. Customer setup
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Lifecycle Customer"},
+        cookies=admin_cookies,
+    )
+    customer_id = cust_resp.json()["id"]
+
+    # 2. Rejection of manual status='paid' or 'overdue' on create
+    bad_paid = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "paid",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_paid.status_code == 400
+    assert "Cannot manually set status to 'paid'" in bad_paid.json()["detail"]
+
+    bad_overdue = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "overdue",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_overdue.status_code == 400
+    assert "Cannot manually set status to 'overdue'" in bad_overdue.json()["detail"]
+
+    # 3. Due date precedes issue date rejection on create
+    bad_date = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-30",
+            "due_date": "2026-09-01",
+            "status": "draft",
+            "lines": [],
+        },
+        cookies=admin_cookies,
+    )
+    assert bad_date.status_code == 400
+    assert "Due date cannot precede issue date" in bad_date.json()["detail"]
+
+    # 4. Create valid draft invoice
+    draft_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": customer_id,
+            "invoice_number": "INV-LIFE-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-30",
+            "status": "draft",
+            "lines": [{"description": "Initial service", "quantity": 1.0, "unit_price": 1000.0, "line_total": 1000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    assert draft_resp.status_code == 201
+    inv_id = draft_resp.json()["id"]
+
+    # 5. Reject manual status='paid' on update
+    up_bad_paid = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"status": "paid"},
+        cookies=admin_cookies,
+    )
+    assert up_bad_paid.status_code == 400
+
+    # 6. Reject invalid due date on update
+    up_bad_date = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"due_date": "2026-08-01"},
+        cookies=admin_cookies,
+    )
+    assert up_bad_date.status_code == 400
+
+    # 7. Draft invoice number CAN be edited before issue
+    up_num = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"invoice_number": "INV-LIFE-001-REV"},
+        cookies=admin_cookies,
+    )
+    assert up_num.status_code == 200
+    assert up_num.json()["invoice_number"] == "INV-LIFE-001-REV"
+
+    # 8. Send invoice via POST /{invoice_id}/send
+    send_resp = app_client.post(
+        f"/api/finance/invoices/{inv_id}/send",
+        cookies=admin_cookies,
+    )
+    assert send_resp.status_code == 200
+    assert send_resp.json()["status"] == "sent"
+
+    # 9. Invoice number is now IMMUTABLE
+    imm_resp = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"invoice_number": "INV-LIFE-002"},
+        cookies=admin_cookies,
+    )
+    assert imm_resp.status_code == 400
+    assert "immutable once issued" in imm_resp.json()["detail"]
+
+    # 10. Void invoice and verify line modification rejection
+    app_client.delete(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies)
+    void_line_resp = app_client.put(
+        f"/api/finance/invoices/{inv_id}",
+        json={"lines": [{"description": "New", "quantity": 1.0, "unit_price": 500.0, "line_total": 500.0}]},
+        cookies=admin_cookies,
+    )
+    assert void_line_resp.status_code == 400
+
+
+def test_collections_and_payment_recording(app_client, admin_cookies):
+    """
+    Story 3.3 validations:
+    - Partial payment updates balance and payment state atomically.
+    - Overpayment is prevented by default.
+    - Duplicate payment references trigger rejection.
+    - Reversing a payment restores the correct outstanding balance and status.
+    - Reminder actions explain missing/invalid email address blocking issue.
+    """
+    # 1. Customer with NO email
+    no_email_cust = app_client.post(
+        "/api/finance/customers",
+        json={"name": "No Email Customer", "contact_email": ""},
+        cookies=admin_cookies,
+    ).json()
+
+    # 2. Customer with valid email
+    email_cust = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Remind Customer", "contact_email": "billing@remindcorp.test"},
+        cookies=admin_cookies,
+    ).json()
+
+    # 3. Bank Account
+    bank = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Collections Checking",
+            "bank_name": "Test Bank",
+            "account_number": "COL-987654321",
+            "currency": "USD",
+            "opening_balance": 50000.0,
+        },
+        cookies=admin_cookies,
+    ).json()
+    bank_id = bank["id"]
+
+    # 4. Create an invoice for $1,000 for no-email customer
+    inv_resp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": no_email_cust["id"],
+            "invoice_number": "INV-COL-001",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-10",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Service A", "quantity": 1.0, "unit_price": 1000.0, "line_total": 1000.0}],
+        },
+        cookies=admin_cookies,
+    )
+    assert inv_resp.status_code == 201
+    inv_id = inv_resp.json()["id"]
+
+    # 5. Reminder fails with blocking explanation if customer has no email
+    remind_fail = app_client.post(f"/api/finance/invoices/{inv_id}/remind", cookies=admin_cookies)
+    assert remind_fail.status_code == 400
+    assert "no contact email address on file" in remind_fail.json()["detail"]
+
+    # 6. Record partial payment of $400
+    pay1 = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 400.0,
+            "currency": "USD",
+            "payment_date": "2026-09-05",
+            "bank_account_id": bank_id,
+            "reference": "CHK-COL-001",
+        },
+        cookies=admin_cookies,
+    )
+    assert pay1.status_code == 201
+    pay1_id = pay1.json()["id"]
+
+    # Verify atomic update of balance and status
+    inv_after_pay1 = app_client.get(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies).json()
+    assert inv_after_pay1["amount_paid"] == 400.0
+    assert inv_after_pay1["balance"] == 600.0
+    assert inv_after_pay1["payment_status"] == "partially_paid"
+    assert inv_after_pay1["status"] in ("sent", "overdue")
+
+    # 7. Overpayment prevention: trying to pay $700 when balance is $600
+    overpay = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 700.0,
+            "currency": "USD",
+            "payment_date": "2026-09-06",
+            "bank_account_id": bank_id,
+            "reference": "CHK-OVERPAY",
+        },
+        cookies=admin_cookies,
+    )
+    assert overpay.status_code == 400
+    assert "exceeds remaining balance" in overpay.json()["detail"]
+
+    # 8. Duplicate reference check: trying to reuse "CHK-COL-001"
+    dup_ref = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 200.0,
+            "currency": "USD",
+            "payment_date": "2026-09-06",
+            "bank_account_id": bank_id,
+            "reference": "CHK-COL-001",
+        },
+        cookies=admin_cookies,
+    )
+    assert dup_ref.status_code == 400
+    assert "Duplicate payment reference" in dup_ref.json()["detail"]
+
+    # 9. Complete payment: pay remaining $600 with new reference
+    pay2 = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 600.0,
+            "currency": "USD",
+            "payment_date": "2026-09-07",
+            "bank_account_id": bank_id,
+            "reference": "CHK-COL-002",
+        },
+        cookies=admin_cookies,
+    )
+    assert pay2.status_code == 201
+    pay2_id = pay2.json()["id"]
+
+    inv_paid = app_client.get(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies).json()
+    assert inv_paid["balance"] == 0.0
+    assert inv_paid["amount_paid"] == 1000.0
+    assert inv_paid["payment_status"] == "paid"
+
+    # 10. Reverse the $600 payment: verify balance and status restored
+    rev_resp = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments/{pay2_id}/reverse?reason=Bounced%20cheque",
+        cookies=admin_cookies,
+    )
+    assert rev_resp.status_code == 200
+    assert rev_resp.json()["is_reversed"] is True
+
+    inv_after_rev = app_client.get(f"/api/finance/invoices/{inv_id}", cookies=admin_cookies).json()
+    assert inv_after_rev["amount_paid"] == 400.0
+    assert inv_after_rev["balance"] == 600.0
+    assert inv_after_rev["payment_status"] == "partially_paid"
+
+    # Cannot reverse the same payment twice
+    rev_again = app_client.post(
+        f"/api/finance/invoices/{inv_id}/payments/{pay2_id}/reverse",
+        cookies=admin_cookies,
+    )
+    assert rev_again.status_code == 400
+
+    # 11. Create invoice with customer who HAS an email and verify reminder dispatch
+    email_inv = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": email_cust["id"],
+            "invoice_number": "INV-COL-REMIND",
+            "issue_date": "2026-09-01",
+            "due_date": "2026-09-05",
+            "status": "sent",
+            "currency": "USD",
+            "lines": [{"description": "Service B", "quantity": 1.0, "unit_price": 500.0, "line_total": 500.0}],
+        },
+        cookies=admin_cookies,
+    ).json()
+
+    remind_ok = app_client.post(f"/api/finance/invoices/{email_inv['id']}/remind", cookies=admin_cookies)
+    assert remind_ok.status_code == 200
+    assert remind_ok.json()["success"] is True
+    assert remind_ok.json()["recipient"] == "billing@remindcorp.test"
+
+
+

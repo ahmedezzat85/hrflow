@@ -1,45 +1,136 @@
 <!-- fe/src/partials/modals/bill-modal.html -->
 <div id="billModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 780px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billModalTitleText" style="max-width: 780px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-receipt"></i></div>
       <div class="modal-head-text">
         <h3 id="billModalTitleText">New Vendor Bill</h3>
         <p>Record a bill received from a vendor and track its payment.</p>
       </div>
-      <button class="modal-close" onclick="closeBillModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeBillModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billModalId">
+      <input type="hidden" id="billCaptureSource" value="manual">
+      <input type="hidden" id="billFileFingerprint">
+
+      <!-- 1. Document Upload & Extraction Dropzone -->
+      <div class="form-section" id="billCaptureSection" style="margin-bottom: 14px;">
+        <div class="form-section-label"><i class="fa-solid fa-file-arrow-up"></i> Document Capture & OCR <span class="line"></span></div>
+        <div id="billDropzone" style="border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; background: var(--surface2, rgba(0,0,0,0.02)); cursor: pointer; transition: all 0.2s ease;" onclick="document.getElementById('billFileInput').click()">
+          <input type="file" id="billFileInput" accept="application/pdf,image/*" style="display: none;" onclick="event.stopPropagation()" onchange="handleBillFileSelected(event)">
+          <div style="font-size: 1.8rem; color: var(--primary, #3b82f6); margin-bottom: 6px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div style="font-weight: 600; font-size: 0.92rem;">Drop vendor invoice PDF or click to browse</div>
+          <div style="font-size: 0.78rem; color: var(--text3); margin-top: 3px;">Supports multi-page PDFs, scans, and images (Max 15MB)</div>
+          <div class="mobile-camera-capture-wrap" style="margin-top: 10px;">
+            <button type="button" class="btn btn-outline btn-sm" id="btnMobileCameraCapture" onclick="event.stopPropagation(); document.getElementById('billCameraInput').click();" style="display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:6px 14px;">
+              <i class="fa-solid fa-camera"></i> Take Photo / Scan Receipt
+            </button>
+            <input type="file" id="billCameraInput" accept="image/*" capture="environment" style="display: none;" onclick="event.stopPropagation()" onchange="handleBillFileSelected(event)">
+          </div>
+          <div id="billFileAttachedInfo" style="display:none; margin-top:10px; font-size:0.85rem; font-weight:600; color:var(--success, #10b981);">
+            <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <i class="fa-solid fa-circle-check"></i> <span id="billAttachedFileName">document.pdf</span>
+              <span id="billExtractionConfidenceBadge" class="badge badge-info" style="margin-left: 8px;">Confidence: 94%</span>
+              <button type="button" class="btn btn-sm btn-outline" id="billAttachedFilePreviewBtn" onclick="event.stopPropagation(); previewCurrentModalBillDocument();" style="margin-left:8px; padding:2px 8px; font-size:0.75rem;">
+                <i class="fa-solid fa-eye"></i> Preview
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="billAttachedFileDownloadBtn" onclick="event.stopPropagation(); downloadCurrentModalBillDocument();" style="padding:2px 8px; font-size:0.75rem;">
+                <i class="fa-solid fa-download"></i> Download
+              </button>
+              <button type="button" class="btn btn-sm btn-outline btn-danger" id="billAttachedFileRemoveBtn" onclick="event.stopPropagation(); removeBillModalAttachment();" style="padding:2px 8px; font-size:0.75rem;">
+                <i class="fa-solid fa-trash-can"></i> Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Duplicate Detection Warning Banner -->
+      <div id="billDuplicateBanner" class="alert alert-warning" style="display:none; margin-bottom: 14px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--warning-border, #f59e0b); background: var(--warning-bg, rgba(245,158,11,0.1));" role="status">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning, #f59e0b); margin-top:2px;"></i>
+          <div style="flex:1;">
+            <div style="font-weight:700;">Potential Duplicate Bill Detected</div>
+            <div id="billDuplicateText" style="color:var(--text2); margin-top:2px; font-size: 0.85rem;">A bill from this supplier with matching details already exists.</div>
+            <div style="margin-top: 8px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:600; cursor:pointer;">
+                <input type="checkbox" id="billDuplicateOverrideCheckbox" onchange="toggleBillDuplicateOverrideReason(this.checked)">
+                Request authorized override for legitimate recurring / secondary charge
+              </label>
+              <div id="billDuplicateOverrideReasonGroup" style="display:none; margin-top:6px;">
+                <input type="text" id="billDuplicateOverrideReason" class="form-control" placeholder="Required override reason for financial audit..." style="font-size:0.85rem;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Missing Fields / Needs Coding Alert -->
+      <div id="billMissingFieldsAlert" class="alert alert-info" style="display:none; margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--primary); background: rgba(59,130,246,0.08);" role="alert">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-circle-info" style="color:var(--primary);"></i>
+          <div style="font-size:0.85rem;"><span style="font-weight:700;">Review Required:</span> <span id="billMissingFieldsText">This bill requires categorization and department coding before payment.</span></div>
+        </div>
+      </div>
+
       <div class="form-section">
-        <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Bill Details <span class="line"></span></div>
+        <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Bill Details & Coding <span class="line"></span></div>
         <div class="form-grid">
           <div class="form-field full">
-            <label for="billVendorId">Vendor <span class="req">*</span></label>
-            <select id="billVendorId" required>
+            <label for="billVendorId">Vendor / Supplier <span class="req">*</span></label>
+            <select id="billVendorId" required onchange="onBillVendorChange()">
               <option value="">— Select vendor —</option>
             </select>
           </div>
           <div class="form-field">
             <label for="billNumber">Bill # <span class="req">*</span></label>
-            <input type="text" id="billNumber" placeholder="BILL-2026-001" required>
+            <input type="text" id="billNumber" placeholder="BILL-2026-001" required oninput="onBillFieldInput()">
           </div>
           <div class="form-field">
-            <label for="billCategory">Category</label>
-            <input type="text" id="billCategory" placeholder="e.g. Infrastructure, SaaS">
-          </div>
-          <div class="form-field">
-            <label for="billStatus">Status</label>
-            <select id="billStatus">
-              <option value="unpaid">Unpaid</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="void">Void</option>
+            <label for="billLegalEntity">Legal Entity</label>
+            <select id="billLegalEntity">
+              <option value="Voyance Health Inc" selected>Voyance Health Inc (US)</option>
+              <option value="Voyance Egypt LLC">Voyance Egypt LLC (EG)</option>
             </select>
           </div>
           <div class="form-field">
+            <label for="billDepartment">Department / Cost Center</label>
+            <select id="billDepartment" onchange="onBillFieldInput()">
+              <option value="">— Select Department —</option>
+              <option value="Engineering">Engineering & Product</option>
+              <option value="Operations">Operations & Facilities</option>
+              <option value="Clinical">Clinical & Medical</option>
+              <option value="Marketing">Growth & Marketing</option>
+              <option value="Finance">Finance & Legal</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="billCategoryId">Expense Category <span class="req">*</span></label>
+            <select id="billCategoryId" onchange="onBillCategoryChange()">
+              <option value="">— Select Category —</option>
+            </select>
+            <input type="hidden" id="billCategory" value="">
+          </div>
+          <div class="form-field">
+            <label for="billStatus">Work Queue & Status</label>
+            <select id="billStatus">
+              <option value="inbox">Inbox (Unreviewed)</option>
+              <option value="needs_coding">Needs Coding</option>
+              <option value="needs_approval">Needs Approval</option>
+              <option value="ready_to_pay">Ready to Pay</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="exceptions">Exceptions</option>
+              <option value="void">Void</option>
+            </select>
+            <div id="billStatusReadOnlyContainer" style="display:none; margin-top: 4px;">
+              <span id="billStatusReadOnlyBadge" class="badge badge-success" style="font-size:0.85rem; padding: 6px 12px;">Paid</span>
+              <span style="font-size:0.78rem; color:var(--text3); margin-left:6px;">(Status derived from payments)</span>
+            </div>
+          </div>
+          <div class="form-field">
             <label for="billIssueDate">Issue Date <span class="req">*</span></label>
-            <input type="date" id="billIssueDate" required>
+            <input type="date" id="billIssueDate" required onchange="onBillFieldInput()">
           </div>
           <div class="form-field">
             <label for="billDueDate">Due Date <span class="req">*</span></label>
@@ -56,9 +147,56 @@
               <option value="AED">AED — UAE Dirham</option>
             </select>
           </div>
+          <div class="form-field full" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:600;">
+              <input type="checkbox" id="billIsReviewed" checked>
+              <span id="billIsReviewedLabel">Mark verified and reviewed (required before scheduling or payment)</span>
+            </label>
+          </div>
+
+          <!-- FUX-408: Combined Create-and-Pay Section -->
+          <div class="form-field full" id="billIsPaidNowGroup" style="margin-top: 4px; padding: 10px 12px; background: rgba(16, 185, 129, 0.05); border: 1px dashed var(--success, #10b981); border-radius: 6px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:700; color:var(--success, #10b981); margin-bottom: 0;">
+              <input type="checkbox" id="billIsPaidNow" onchange="toggleBillPaidNowSection(this.checked)">
+              <span><i class="fa-solid fa-money-bill-check"></i> Bill is already paid</span>
+            </label>
+            <div id="billPaidNowSection" style="display:none; margin-top:12px; border-top: 1px solid rgba(16, 185, 129, 0.2); padding-top: 10px;">
+              <div style="font-size:0.78rem; color:var(--text2); margin-bottom:8px;">Record bill creation and full settlement as one atomic action:</div>
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-field">
+                  <label for="billPaidNowBankAccountId">Paid From Bank Account <span class="req">*</span></label>
+                  <select id="billPaidNowBankAccountId">
+                    <option value="">— Select account —</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="billPaidNowDate">Payment Date <span class="req">*</span></label>
+                  <input type="date" id="billPaidNowDate">
+                </div>
+                <div class="form-field">
+                  <label for="billPaidNowAmount">Payment Amount</label>
+                  <input type="number" id="billPaidNowAmount" placeholder="0.00" min="0.01" step="0.01">
+                </div>
+                <div class="form-field">
+                  <label for="billPaidNowMethod">Payment Method</label>
+                  <select id="billPaidNowMethod">
+                    <option value="bank_transfer" selected>Bank Transfer</option>
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="form-field full">
+                  <label for="billPaidNowReference">Payment Reference / Note</label>
+                  <input type="text" id="billPaidNowReference" placeholder="e.g. Wire confirmation, receipt #">
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-field full">
             <label for="billNotes">Notes</label>
-            <textarea id="billNotes" rows="2" placeholder="Optional notes for this bill..."></textarea>
+            <textarea id="billNotes" rows="2" placeholder="Optional notes, PO reference, or internal comments..."></textarea>
           </div>
         </div>
       </div>
@@ -99,17 +237,34 @@
 
 <!-- Payment Modal (record outgoing payment against a bill) -->
 <div id="billPaymentModal" class="modal-overlay">
-  <div class="modal modal-v2" style="max-width: 520px;">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billPaymentTitleText" style="max-width: 520px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
       <div class="modal-head-text">
-        <h3>Record Payment</h3>
+        <h3 id="billPaymentTitleText">Record Payment</h3>
         <p>Apply an outgoing payment against this vendor bill.</p>
       </div>
-      <button class="modal-close" onclick="closeBillPaymentModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeBillPaymentModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billPaymentBillId">
+
+      <!-- Balance Breakdown Cards -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+        <div style="background: var(--surface2, rgba(0,0,0,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center;">
+          <div style="font-size: 0.72rem; color: var(--text3); font-weight: 600; text-transform: uppercase;">Bill Total</div>
+          <div id="billPaymentTotalDisplay" style="font-weight: 700; font-size: 1.05rem; margin-top: 3px;">$0.00</div>
+        </div>
+        <div style="background: var(--surface2, rgba(0,0,0,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center;">
+          <div style="font-size: 0.72rem; color: var(--text3); font-weight: 600; text-transform: uppercase;">Prior Paid</div>
+          <div id="billPaymentPaidDisplay" style="font-weight: 700; font-size: 1.05rem; color: var(--success, #10b981); margin-top: 3px;">$0.00</div>
+        </div>
+        <div style="background: rgba(59,130,246,0.08); border: 1px solid var(--primary, #3b82f6); border-radius: 6px; padding: 10px; text-align: center;">
+          <div style="font-size: 0.72rem; color: var(--primary, #3b82f6); font-weight: 600; text-transform: uppercase;">Remaining</div>
+          <div id="billPaymentRemainingDisplay" style="font-weight: 700; font-size: 1.05rem; color: var(--primary, #3b82f6); margin-top: 3px;">$0.00</div>
+        </div>
+      </div>
+
       <p id="billPaymentBillInfo" style="font-size: 13px; color: var(--text2); margin-bottom: 12px;"></p>
       <div class="form-grid">
         <div class="form-field">
@@ -143,8 +298,121 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeBillPaymentModal()">Cancel</button>
-      <button class="btn btn-fill" onclick="saveBillPayment()">
+      <button class="btn btn-fill" id="billPaymentSubmitBtn" onclick="saveBillPayment()">
         <i class="fa-solid fa-circle-check"></i> Record Payment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Approval Modal (maker-checker authorization and policy enforcement) -->
+<div id="billApprovalModal" class="modal-overlay">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billApprovalTitleText" style="max-width: 540px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-stamp"></i></div>
+      <div class="modal-head-text">
+        <h3 id="billApprovalTitleText">Bill Approval & Authorization</h3>
+        <p>Review invoice authorization and record approval decision.</p>
+      </div>
+      <button class="modal-close" onclick="closeBillApprovalModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="billApprovalBillId">
+
+      <!-- Creator / Maker-Checker Policy Warning Banner -->
+      <div id="billApprovalSelfWarningBanner" class="alert alert-warning" style="display:none; margin-bottom: 14px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--danger, #ef4444); background: rgba(239,68,68,0.08);" role="status">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger, #ef4444); margin-top:2px;"></i>
+          <div style="flex:1;">
+            <div style="font-weight:700; color:var(--danger, #ef4444);">Segregation of Duties Enforced</div>
+            <div style="color:var(--text2); margin-top:2px; font-size: 0.85rem;">
+              You created this bill (<span id="billApprovalCreatorEmail" style="font-weight:600;"></span>). The creator cannot approve their own bill. Another authorized manager must approve it.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bill Overview Summary Card -->
+      <div style="background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:700; font-size:1.05rem;" id="billApprovalBillNumber">BILL-2026-005</div>
+            <div style="font-size:0.85rem; color:var(--text3); margin-top:2px;" id="billApprovalVendor">Amazon Web Services</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.75rem; color:var(--text3); font-weight:600; text-transform:uppercase;">Invoice Amount</div>
+            <div style="font-weight:800; font-size:1.2rem; color:var(--text);" id="billApprovalAmount">$8,900.00</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:16px; font-size:0.82rem; color:var(--text2); margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
+          <div><span>Department:</span> <strong id="billApprovalDepartment">Engineering</strong></div>
+          <div><span>Created By:</span> <strong id="billApprovalCreatedBy">ap@voyance.health</strong></div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="billApprovalDecision">Approval Decision <span class="req">*</span></label>
+          <select id="billApprovalDecision" required onchange="onBillApprovalDecisionChange()">
+            <option value="approve">Approve Bill (Move to Ready to Pay)</option>
+            <option value="reject">Reject Bill (Move to Exceptions)</option>
+          </select>
+        </div>
+        <div class="form-field full" id="billApproverLimitField">
+          <label for="billApproverLimit">Approver Authorization Limit ($)</label>
+          <input type="number" id="billApproverLimit" placeholder="e.g. 50000" min="0" step="1000" value="50000">
+          <div style="font-size:0.78rem; color:var(--text3); margin-top:3px;">Bills exceeding your authorization threshold will be escalated to executive approval.</div>
+        </div>
+        <div class="form-field full">
+          <label for="billApprovalComment">Approval / Rejection Comment <span id="billApprovalCommentReq" style="display:none;" class="req">*</span></label>
+          <textarea id="billApprovalComment" rows="3" placeholder="Add justification, PO approval notes, or reason for rejection..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeBillApprovalModal()">Cancel</button>
+      <button class="btn btn-fill btn-warning" id="billApprovalSubmitBtn" onclick="saveBillApproval()">
+        <i class="fa-solid fa-stamp"></i> Submit Decision
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Modal (schedule payment for an approved bill) -->
+<div id="billScheduleModal" class="modal-overlay">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billScheduleTitleText" style="max-width: 480px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-calendar-plus"></i></div>
+      <div class="modal-head-text">
+        <h3 id="billScheduleTitleText">Schedule Bill Payment</h3>
+        <p>Queue this approved bill for automatic or future batch payment.</p>
+      </div>
+      <button class="modal-close" onclick="closeBillScheduleModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="billScheduleBillId">
+
+      <div style="background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+        <div style="font-weight:700;" id="billScheduleBillNumber">BILL-2026-001</div>
+        <div style="font-size:0.85rem; color:var(--text3);" id="billScheduleVendor">Amazon Web Services</div>
+        <div style="font-weight:800; font-size:1.1rem; margin-top:6px; color:var(--primary);" id="billScheduleAmount">$4,200.00</div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="billScheduledPaymentDate">Scheduled Payment Date <span class="req">*</span></label>
+          <input type="date" id="billScheduledPaymentDate" required>
+        </div>
+        <div class="form-field full">
+          <label for="billScheduleNotes">Payment Instructions / Notes</label>
+          <textarea id="billScheduleNotes" rows="2" placeholder="e.g. Schedule via JPMorgan Chase ACH on 25th"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeBillScheduleModal()">Cancel</button>
+      <button class="btn btn-fill" id="billScheduleSubmitBtn" onclick="saveBillSchedule()">
+        <i class="fa-solid fa-calendar-check"></i> Schedule Payment
       </button>
     </div>
   </div>

@@ -1,116 +1,328 @@
 <!-- fe/src/partials/modals/finance-statement-upload-modal.html -->
 
 <div id="financeStatementUploadModal" class="modal-overlay">
-  <div class="modal modal-v2 modal-v2-box" style="max-width: 620px;">
+  <div class="modal modal-v2 modal-v2-box" role="dialog" aria-modal="true" aria-labelledby="stmtUploadModalTitleText" style="max-width: 820px; width: 95vw;">
     <div class="modal-head">
-      <div class="modal-head-icon"><i class="fa-solid fa-file-arrow-up"></i></div>
+      <div class="modal-head-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
       <div class="modal-head-text">
-        <h3>Upload Bank Statement</h3>
-        <p>Import official bank statements in CSV or PDF format for automated parsing and review-driven reconciliation.</p>
+        <h3 id="stmtUploadModalTitleText">Statement Import Wizard</h3>
+        <p>Preview, validate, map, and reconcile official bank statements with recoverable review steps.</p>
       </div>
-      <button class="modal-close" data-modal-dismiss onclick="closeUploadStatementModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" data-modal-dismiss onclick="closeUploadStatementModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <form id="financeStatementUploadForm" onsubmit="handleStatementUploadSubmit(event)">
-      <div class="modal-body">
-        <div class="form-section">
-          <div class="form-grid">
-            <div class="form-field full">
-              <label for="stmtUploadAccountId">Target Bank Account <span class="req">*</span></label>
-              <select id="stmtUploadAccountId" required class="form-control">
-                <option value="">— Select company bank account —</option>
-              </select>
-            </div>
 
-            <div class="form-field full">
-              <label>Statement Period (Month &amp; Year) <span class="req">*</span></label>
-              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:flex-end;">
-                <div>
-                  <label for="stmtUploadMonth" style="display:block; font-size:11px; color:var(--text3); margin-bottom:4px; font-weight:500;">Select Month</label>
-                  <select id="stmtUploadMonth" class="form-control" onchange="syncStatementUploadPeriod('select')" style="width:100%;">
-                    <option value="01">01 - January</option>
-                    <option value="02">02 - February</option>
-                    <option value="03">03 - March</option>
-                    <option value="04">04 - April</option>
-                    <option value="05">05 - May</option>
-                    <option value="06">06 - June</option>
-                    <option value="07">07 - July</option>
-                    <option value="08">08 - August</option>
-                    <option value="09">09 - September</option>
-                    <option value="10">10 - October</option>
-                    <option value="11">11 - November</option>
-                    <option value="12">12 - December</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="stmtUploadYear" style="display:block; font-size:11px; color:var(--text3); margin-bottom:4px; font-weight:500;">Select Year</label>
-                  <select id="stmtUploadYear" class="form-control" onchange="syncStatementUploadPeriod('select')" style="width:100%;">
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
-                    <option value="2029">2029</option>
-                    <option value="2030">2030</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="stmtUploadPeriodMonth" style="display:block; font-size:11px; color:var(--text3); margin-bottom:4px; font-weight:500;">Period (YYYY-MM)</label>
-                  <input type="month" id="stmtUploadPeriodMonth" class="form-control" required onchange="syncStatementUploadPeriod('input')" style="width:100%;">
-                </div>
-              </div>
-            </div>
+    <!-- Wizard Step Indicator Progress Bar -->
+    <div class="wizard-steps-bar" style="display: flex; background: var(--bg2, #f8fafc); border-bottom: 1px solid var(--border); padding: 12px 20px; gap: 8px; justify-content: space-between;">
+      <div class="wizard-step active" id="stmtStepIndicator1" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--primary);">
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">1</span>
+        <span>1. Choose &amp; Details</span>
+      </div>
+      <div class="wizard-step" id="stmtStepIndicator2" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3, #e2e8f0); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">2</span>
+        <span>2. Map &amp; Preview</span>
+      </div>
+      <div class="wizard-step" id="stmtStepIndicator3" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3, #e2e8f0); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">3</span>
+        <span>3. Validate</span>
+      </div>
+      <div class="wizard-step" id="stmtStepIndicator4" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3, #e2e8f0); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">4</span>
+        <span>4. Import</span>
+      </div>
+    </div>
 
-            <div class="form-field">
-              <label for="stmtUploadFileType">File Format</label>
-              <select id="stmtUploadFileType" onchange="onStatementFileTypeChange()">
-                <option value="csv" selected>CSV (Spreadsheet export)</option>
-                <option value="pdf">PDF (Electronic Bank Statement)</option>
-              </select>
-            </div>
-
-            <div class="form-field full">
-              <label for="stmtUploadFile">Statement File (.csv, .pdf) <span class="req">*</span></label>
-              <input type="file" id="stmtUploadFile" accept=".csv,.pdf" required style="padding: 8px 12px;">
-              <small style="color:var(--text-muted);font-size:11px;margin-top:4px;display:block;">
-                CSV auto-detects Date, Description, Debit/Withdrawal, and Credit/Deposit. PDFs are parsed via best-effort text extraction.
-              </small>
-            </div>
+    <!-- STEP 1: Choose & Details -->
+    <div id="stmtWizardStep1" class="wizard-pane">
+      <div class="modal-body" style="padding: 20px;">
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-field full">
+            <label for="stmtUploadAccountId">Target Bank Account <span class="req">*</span></label>
+            <select id="stmtUploadAccountId" required class="form-control" onchange="onStatementAccountSelected()">
+              <option value="">— Select company bank account —</option>
+            </select>
           </div>
-        </div>
 
-        <!-- Optional CSV Column Mapper Section -->
-        <div id="stmtCsvMappingSection" style="margin-top:12px;border:1px solid var(--border-color);border-radius:8px;padding:12px;background:var(--bg-card-subtle, rgba(0,0,0,0.02));">
-          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleCsvMappingFields()">
-            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);"><i class="fa-solid fa-sliders"></i> Custom Column Mapping (Optional)</span>
-            <i class="fa-solid fa-chevron-down" id="stmtCsvMappingChevron" style="font-size:11px;transition:transform 0.2s;"></i>
+          <div class="form-field">
+            <!-- Single accessible month/period control -->
+            <label for="stmtUploadPeriodMonth">Statement Period (Month &amp; Year) <span class="req">*</span></label>
+            <input type="month" id="stmtUploadPeriodMonth" class="form-control" required style="width:100%; height:38px;">
           </div>
-          <div id="stmtCsvMappingFields" style="display:none;margin-top:12px;">
-            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
-              <div class="form-field">
-                <label style="font-size:11px;">Date Column Name</label>
-                <input type="text" id="mapDateCol" placeholder="e.g. Booking Date" style="font-size:12px;">
-              </div>
-              <div class="form-field">
-                <label style="font-size:11px;">Description Column Name</label>
-                <input type="text" id="mapDescCol" placeholder="e.g. Narrative" style="font-size:12px;">
-              </div>
-              <div class="form-field">
-                <label style="font-size:11px;">Debit / Outflow Column</label>
-                <input type="text" id="mapDebitCol" placeholder="e.g. Paid Out" style="font-size:12px;">
-              </div>
-              <div class="form-field">
-                <label style="font-size:11px;">Credit / Inflow Column</label>
-                <input type="text" id="mapCreditCol" placeholder="e.g. Paid In" style="font-size:12px;">
-              </div>
-            </div>
+
+          <div class="form-field">
+            <label for="stmtWizardTemplateSelect">Mapping Template (Optional)</label>
+            <select id="stmtWizardTemplateSelect" class="form-control" onchange="onStatementTemplateSelected()" style="width:100%; height:38px;">
+              <option value="">— Auto-detect from file —</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="stmtOpeningBalance">Opening Statement Balance</label>
+            <input type="number" id="stmtOpeningBalance" class="form-control" step="0.01" placeholder="0.00" style="width:100%; height:38px;">
+          </div>
+
+          <div class="form-field">
+            <label for="stmtClosingBalance">Closing Statement Balance</label>
+            <input type="number" id="stmtClosingBalance" class="form-control" step="0.01" placeholder="0.00" style="width:100%; height:38px;">
+          </div>
+
+          <div class="form-field">
+            <label for="stmtUploadFileType">File Format</label>
+            <select id="stmtUploadFileType" class="form-control" onchange="onStatementFileTypeChange()" style="width:100%; height:38px;">
+              <option value="csv" selected>CSV (Bank export spreadsheet)</option>
+              <option value="pdf">PDF (Electronic statement document)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="stmtEncoding">Character Encoding</label>
+            <select id="stmtEncoding" class="form-control" style="width:100%; height:38px;">
+              <option value="utf-8" selected>UTF-8 (Standard)</option>
+              <option value="iso-8859-1">ISO-8859-1 (Latin 1)</option>
+              <option value="windows-1252">Windows-1252 (Western European)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="stmtDateFormat">Date Format Convention</label>
+            <select id="stmtDateFormat" class="form-control" style="width:100%; height:38px;">
+              <option value="auto" selected>Auto-detect format</option>
+              <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-09-14)</option>
+              <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 14/09/2026)</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 09/14/2026)</option>
+              <option value="DD.MM.YYYY">DD.MM.YYYY (e.g. 14.09.2026)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="stmtDecimalSeparator">Decimal Separator</label>
+            <select id="stmtDecimalSeparator" class="form-control" style="width:100%; height:38px;">
+              <option value="." selected>Dot (1,250.50)</option>
+              <option value=",">Comma (1.250,50)</option>
+            </select>
+          </div>
+
+          <div class="form-field full">
+            <label for="stmtUploadFile">Statement File (.csv, .pdf) <span class="req">*</span></label>
+            <input type="file" id="stmtUploadFile" accept=".csv,.pdf" required style="padding: 8px 12px; width: 100%;" class="form-control" onchange="onStatementFileSelected()">
+            <small style="color:var(--text3); font-size:11.5px; margin-top:4px; display:block;">
+              <i class="fa-solid fa-circle-info"></i> No statement lines are committed until preview and validation are confirmed.
+            </small>
           </div>
         </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" data-modal-dismiss onclick="closeUploadStatementModal()">Cancel</button>
-        <button type="submit" class="btn btn-fill" id="btnSubmitStatementUpload"><i class="fa-solid fa-upload"></i> Upload &amp; Parse</button>
+        <button type="button" class="btn btn-fill" id="btnStmtWizardStep1Next" onclick="executeStatementPreview()"><i class="fa-solid fa-arrow-right"></i> Next: Upload &amp; Preview</button>
       </div>
-    </form>
+    </div>
+
+    <!-- STEP 2: Map & Preview -->
+    <div id="stmtWizardStep2" class="wizard-pane" style="display: none;">
+      <div class="modal-body" style="padding: 20px;">
+        <!-- Duplicate File Warning Banner -->
+        <div id="stmtWizardDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 14px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:#dc2626; font-size:18px;"></i>
+          <div class="alert-content" style="font-size:12.5px; color:#991b1b;">
+            <strong>Duplicate Statement Detected:</strong> An identical file was already imported for this account. Re-importing may cause duplicate records unless intentionally replacing an existing statement.
+            <div style="margin-top: 6px;">
+              <label style="font-weight: 600; cursor: pointer;">
+                <input type="checkbox" id="stmtAllowDuplicateCheck"> Permit re-import of this duplicate file
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div id="stmtFileMetaBanner" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12.5px;">
+          <div>
+            <strong id="stmtMetaFileName">statement.csv</strong> · <span id="stmtMetaFormat">CSV</span> · <span id="stmtMetaTotalFound">0 rows</span>
+          </div>
+          <div style="font-family: monospace; font-size: 11px; color: var(--text3);" id="stmtMetaFingerprintBadge">
+            Fingerprint: <span id="stmtMetaFingerprint">--</span>
+          </div>
+        </div>
+
+        <!-- CSV Column Mapping Dropdowns -->
+        <div id="stmtWizardMappingContainer" style="background: var(--bg-card-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-table-columns" style="color: var(--primary);"></i> Column Mapping
+          </h4>
+          <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div class="form-field">
+              <label style="font-size: 11px;">Date Column <span class="req">*</span></label>
+              <select id="wizardMapDateCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
+            </div>
+            <div class="form-field">
+              <label style="font-size: 11px;">Description / Narrative <span class="req">*</span></label>
+              <select id="wizardMapDescCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
+            </div>
+            <div class="form-field">
+              <label style="font-size: 11px;">Reference / Check #</label>
+              <select id="wizardMapRefCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
+            </div>
+            <div class="form-field">
+              <label style="font-size: 11px;">Debit / Outflow Column</label>
+              <select id="wizardMapDebitCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
+            </div>
+            <div class="form-field">
+              <label style="font-size: 11px;">Credit / Inflow Column</label>
+              <select id="wizardMapCreditCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
+            </div>
+            <div class="form-field">
+              <label style="font-size: 11px;">Combined Net Amount Column</label>
+              <select id="wizardMapAmountCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+            <label style="font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="stmtSaveTemplateCheck" onchange="toggleSaveTemplateInput()"> Save as reusable template for this bank
+            </label>
+            <input type="text" id="stmtSaveTemplateName" placeholder="Template name (e.g. HSBC USD Standard)" class="form-control" style="display: none; height: 32px; font-size: 12px; max-width: 280px;">
+          </div>
+        </div>
+
+        <!-- Data Preview Table -->
+        <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600;">Data Preview (First Extracted Rows)</h4>
+        <div style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+          <table class="table" style="font-size: 12px; margin: 0;">
+            <thead>
+              <tr style="background: var(--bg2); position: sticky; top: 0;">
+                <th style="width: 45px;">Row</th>
+                <th style="width: 100px;">Date</th>
+                <th>Description</th>
+                <th style="width: 110px;">Reference</th>
+                <th style="width: 90px; text-align: center;">Direction</th>
+                <th style="width: 110px; text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="stmtWizardPreviewTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" onclick="goToWizardStep(1)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+        <button type="button" class="btn btn-fill" onclick="goToWizardStep(3)"><i class="fa-solid fa-arrow-right"></i> Next: Validate</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Validate & Check Balances -->
+    <div id="stmtWizardStep3" class="wizard-pane" style="display: none;">
+      <div class="modal-body" style="padding: 20px;">
+        <!-- PDF Review Required Warning -->
+        <div id="stmtPdfReviewAlert" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 14px;">
+          <i class="fa-solid fa-shield-halved" style="color: #d97706; font-size: 16px;"></i>
+          <div class="alert-content" style="font-size: 12.5px; color: #92400e;">
+            <strong>PDF Extraction Review Required:</strong> Electronic PDF extractions must be reviewed and line-by-line confirmed before finalizing close.
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: #166534; font-weight: 600;">Valid Lines</div>
+            <div style="font-size: 20px; font-weight: 700; color: #15803d;" id="stmtKpiValid">0</div>
+          </div>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: #991b1b; font-weight: 600;">Parsing Errors</div>
+            <div style="font-size: 20px; font-weight: 700; color: #b91c1c;" id="stmtKpiErrors">0</div>
+          </div>
+          <div style="background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: #92400e; font-weight: 600;">Duplicate Rows</div>
+            <div style="font-size: 20px; font-weight: 700; color: #b45309;" id="stmtKpiDuplicates">0</div>
+          </div>
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: var(--text3); font-weight: 600;">Net Statement Activity</div>
+            <div style="font-size: 18px; font-weight: 700;" id="stmtKpiNetActivity">$0.00</div>
+          </div>
+        </div>
+
+        <!-- Balance Delta Reconciliation Math Box -->
+        <div id="stmtBalanceMathBox" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600;"><i class="fa-solid fa-scale-balanced"></i> Statement Balance Delta Check</span>
+            <span id="stmtBalanceStatusBadge" class="badge badge-approved" style="font-size: 11.5px;">Balanced</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 12px;">
+            <div>Opening: <strong id="stmtMathOpening">$0.00</strong></div>
+            <div>+ Net Activity: <strong id="stmtMathNet">$0.00</strong></div>
+            <div>= Calc Closing: <strong id="stmtMathCalcClosing">$0.00</strong></div>
+            <div>Stated Closing: <strong id="stmtMathStatedClosing">$0.00</strong></div>
+          </div>
+          <div id="stmtMathDeltaRow" style="margin-top: 6px; font-size: 12px; color: var(--danger); font-weight: 600; display: none;">
+            Unreconciled Difference: <span id="stmtMathDeltaVal">$0.00</span>
+          </div>
+        </div>
+
+        <!-- Malformed Row Error Diagnosis / Rejected Rows -->
+        <div id="stmtErrorsContainer" style="display: none; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h5 style="margin: 0; font-size: 12.5px; color: var(--danger);"><i class="fa-solid fa-circle-xmark"></i> Rejected / Malformed Lines</h5>
+            <button class="btn btn-sm btn-outline" onclick="exportStatementRejectedRows()"><i class="fa-solid fa-download"></i> Export Rejected Rows (CSV)</button>
+          </div>
+          <div style="max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+            <table class="table" style="font-size: 11.5px; margin: 0;">
+              <thead>
+                <tr style="background: var(--bg2);">
+                  <th style="width: 50px;">Row</th>
+                  <th style="width: 110px;">Column</th>
+                  <th>Value</th>
+                  <th>Error Diagnostic &amp; Correction Path</th>
+                </tr>
+              </thead>
+              <tbody id="stmtErrorsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" onclick="goToWizardStep(2)"><i class="fa-solid fa-arrow-left"></i> Back to Mapping</button>
+        <button type="button" class="btn btn-danger btn-outline" onclick="closeUploadStatementModal()"><i class="fa-solid fa-trash-can"></i> Discard</button>
+        <button type="button" class="btn btn-fill" id="btnStmtWizardStep3Next" onclick="goToWizardStep(4)"><i class="fa-solid fa-arrow-right"></i> Next: Confirm &amp; Import</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Confirm & Import -->
+    <div id="stmtWizardStep4" class="wizard-pane" style="display: none;">
+      <div class="modal-body" style="padding: 24px; text-align: center;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: #ecfdf5; color: #10b981; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;">
+          <i class="fa-solid fa-check"></i>
+        </div>
+        <h3 style="margin: 0 0 6px 0; font-size: 18px;">Ready to Commit Bank Statement</h3>
+        <p style="color: var(--text3); font-size: 13px; max-width: 480px; margin: 0 auto 20px auto;">
+          The statement file has been verified and validated against format, duplicate, and balance integrity checks.
+        </p>
+
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; max-width: 500px; margin: 0 auto 20px auto; text-align: left; font-size: 12.5px;">
+          <div style="margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span style="color: var(--text3);">Account:</span>
+            <strong id="stmtConfirmAccountName">—</strong>
+          </div>
+          <div style="margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span style="color: var(--text3);">Statement Period:</span>
+            <strong id="stmtConfirmPeriod">—</strong>
+          </div>
+          <div style="margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span style="color: var(--text3);">Valid Lines to Commit:</span>
+            <strong id="stmtConfirmLinesCount" style="color: #10b981;">0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text3);">Initial Review State:</span>
+            <span class="badge badge-info" id="stmtConfirmReviewStateBadge">Needs Review</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button type="button" class="btn btn-outline" onclick="commitStatementImport('resumable')">
+            <i class="fa-solid fa-clock-rotate-left"></i> Save as Resumable Draft
+          </button>
+          <button type="button" class="btn btn-fill" id="btnConfirmCommitStatement" onclick="commitStatementImport('needs_review')">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Confirm &amp; Commit Import
+          </button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" onclick="goToWizardStep(3)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+      </div>
+    </div>
   </div>
 </div>

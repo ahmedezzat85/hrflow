@@ -1,12 +1,12 @@
   <div class="modal-overlay" id="companyBankAccountModal">
-    <div class="modal modal-v2">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="companyBankAccountModalTitle">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
         <div class="modal-head-text">
           <h3 id="companyBankAccountModalTitle">Add Company Bank Account</h3>
           <p>Configure corporate accounts for receivables, vendor disbursements, and payroll funding.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('companyBankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('companyBankAccountModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="fCompanyAccountId">
@@ -14,41 +14,59 @@
           <div class="form-section-label"><i class="fa-solid fa-landmark"></i> Account Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Account Label / Name <span class="req">*</span></label>
+              <label for="fCompanyAccountName">Account Label / Name <span class="req">*</span></label>
               <input id="fCompanyAccountName" placeholder="e.g. Primary Operating USD or Office Safe (EGP)">
             </div>
             <div class="form-field">
-              <label>Account Type <span class="req">*</span></label>
+              <label for="fCompanyAccountType">Account Type <span class="req">*</span></label>
               <select id="fCompanyAccountType" onchange="onCompanyAccountTypeChange()">
                 <option value="bank">Bank Account</option>
                 <option value="cash">Cash Account / Safe</option>
               </select>
             </div>
             <div class="form-field">
-              <label>Country</label>
-              <input id="fCompanyCountry" placeholder="e.g. EG, US">
+              <label for="fCompanyCountry">Country</label>
+              <select id="fCompanyCountry" class="filter-select">
+                <option value="United States">United States</option>
+                <option value="Egypt">Egypt</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="United Arab Emirates">United Arab Emirates</option>
+                <option value="Saudi Arabia">Saudi Arabia</option>
+                <option value="Germany">Germany</option>
+                <option value="Canada">Canada</option>
+                <option value="Switzerland">Switzerland</option>
+                <option value="France">France</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
             <div class="form-field full" id="fCompanyBankNameField">
-              <label id="fCompanyBankNameLabel">Bank Name <span class="req">*</span></label>
+              <label for="fCompanyBankName" id="fCompanyBankNameLabel">Bank / Custodian Name <span class="req">*</span></label>
               <input id="fCompanyBankName" placeholder="e.g. JPMorgan Chase or CIB">
             </div>
             <div class="form-field full">
-              <label id="fCompanyAccountNumberLabel">Account Number / IBAN <span class="req">*</span></label>
-              <input id="fCompanyAccountNumber" placeholder="e.g. 12345678904821 or EG..." style="font-family:monospace;">
-              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stored securely and masked in reporting tables.</span>
+              <label for="fCompanyAccountNumber" id="fCompanyAccountNumberLabel">Account Number / IBAN <span class="req">*</span></label>
+              <input id="fCompanyAccountNumber" aria-describedby="fCompanyAccountNumberHelp" placeholder="e.g. 12345678904821 or EG..." style="font-family:monospace;">
+              <span id="fCompanyAccountNumberHelp" style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Stored securely and masked by default in reporting tables.</span>
             </div>
             <div class="form-field">
-              <label>Currency <span class="req">*</span></label>
+              <label for="fCompanyCurrency">Currency <span class="req">*</span></label>
               <select id="fCompanyCurrency">
                 <option value="USD">USD ($)</option>
                 <option value="EGP">EGP (E£)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
               </select>
+              <div id="fCompanyCurrencyWarning" class="alert alert-warning" style="display:none;font-size:11.5px;padding:6px 10px;margin-top:4px;">
+                <i class="fa-solid fa-lock"></i> Currency cannot be modified after transactions have been posted.
+              </div>
             </div>
             <div class="form-field" id="fCompanyOpeningBalanceField">
-              <label>Opening Balance <span class="req">*</span></label>
+              <label for="fCompanyOpeningBalance">Opening Balance <span class="req">*</span></label>
               <input type="number" id="fCompanyOpeningBalance" step="0.01" min="0" value="0.00">
+            </div>
+            <div class="form-field" id="fCompanyOpeningDateField">
+              <label for="fCompanyOpeningBalanceDate">Opening Balance Date</label>
+              <input type="date" id="fCompanyOpeningBalanceDate">
             </div>
           </div>
         </div>

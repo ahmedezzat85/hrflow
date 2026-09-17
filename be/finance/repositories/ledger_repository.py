@@ -106,6 +106,22 @@ class LedgerRepository:
         if not bank_account:
             raise ValueError(f"Account with ID {account_id} not found")
 
+        # Closed Period Lock Check
+        from finance.models import BankStatementImportDB
+        tx_date = data["date"]
+        period = tx_date[:7]
+        closed_stmt = (
+            self.db.query(BankStatementImportDB)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                BankStatementImportDB.period_month == period,
+                BankStatementImportDB.status == "closed",
+            )
+            .first()
+        )
+        if closed_stmt:
+            raise ValueError(f"Cannot post or modify transactions in closed reconciliation period '{period}'. The period must be reopened first.")
+
         amount = float(data["amount"])
         direction = data["direction"]
         if direction not in ("in", "out"):
@@ -121,6 +137,14 @@ class LedgerRepository:
             payment_type_id=data.get("payment_type_id"),
             reference=data.get("reference", "") or "",
             description=data.get("description", "") or "",
+            entry_type=data.get("entry_type", "standard") or "standard",
+            counterparty=data.get("counterparty"),
+            payee_type=data.get("payee_type", "none") or "none",
+            payee_id=data.get("payee_id"),
+            payee_name=data.get("payee_name"),
+            tax_amount=float(data.get("tax_amount") or 0.0),
+            base_amount=float(data["base_amount"]) if data.get("base_amount") is not None else None,
+            reason=data.get("reason"),
             cheque_number=data.get("cheque_number"),
             fx_rate=float(data["fx_rate"]) if data.get("fx_rate") is not None else None,
             source=data.get("source", "manual"),
@@ -167,12 +191,15 @@ class LedgerRepository:
             raise ValueError(f"Transaction with ID {tx_id} not found")
 
         for key, value in data.items():
-            if hasattr(tx, key) and value is not None:
-                if key == "amount":
-                    value = float(value)
-                elif key == "fx_rate" and value is not None:
-                    value = float(value)
-                setattr(tx, key, value)
+            if hasattr(tx, key):
+                if value is not None:
+                    if key == "amount":
+                        value = float(value)
+                    elif key == "fx_rate" and value is not None:
+                        value = float(value)
+                    setattr(tx, key, value)
+                elif key in ("payee_id", "payee_name", "counterparty", "description", "reference", "cheque_number", "reason", "base_amount"):
+                    setattr(tx, key, None)
 
         self.db.flush()
         self.recalculate_account_running_balances(tx.account_id)

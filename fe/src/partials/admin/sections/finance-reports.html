@@ -1,308 +1,862 @@
         <section class="page-section" id="a-finance-reports">
-          <!-- Reports Sub Navigation -->
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-            <div class="filter-tabs" id="financeReportsSubNav">
-              <button class="filter-tab active" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
-              <button class="filter-tab" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
-              <button class="filter-tab" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
-              <button class="filter-tab" data-report-tab="transactions" onclick="switchFinanceReportsTab('transactions', this)"><i class="fa-solid fa-list-check"></i> Transaction Ledger</button>
-              <button class="filter-tab" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
+          <!-- VIEW 1: Report Library Directory View -->
+          <div id="reportLibraryDirectoryView">
+            <div class="toolbar" style="margin-bottom:20px;">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-book-bookmark"></i> Standard Report Library</h2>
+                <p class="section-subtitle">Financial intelligence, operational reporting, and compliance audits across all business domains.</p>
+              </div>
+              <div style="display:flex; gap:12px; align-items:center;">
+                <div class="search-box" style="position:relative; min-width:280px;">
+                  <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                  <input type="text" id="reportLibrarySearch" class="form-input" placeholder="Search reports by title or domain..." style="padding-left:36px; width:100%;" oninput="filterReportLibraryCatalog()" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Domain Category Pills -->
+            <div class="filter-tabs" id="reportLibraryCategoryPills" style="margin-bottom:20px; overflow-x:auto;">
+              <button class="filter-tab active" data-domain="all" onclick="filterReportLibraryByDomain('all', this)"><i class="fa-solid fa-layer-group"></i> All Domains</button>
+              <button class="filter-tab" data-domain="Performance" onclick="filterReportLibraryByDomain('Performance', this)"><i class="fa-solid fa-chart-line"></i> Performance</button>
+              <button class="filter-tab" data-domain="Cash & Banking" onclick="filterReportLibraryByDomain('Cash & Banking', this)"><i class="fa-solid fa-building-columns"></i> Cash & Banking</button>
+              <button class="filter-tab" data-domain="Sales & Receivables" onclick="filterReportLibraryByDomain('Sales & Receivables', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Sales & Receivables</button>
+              <button class="filter-tab" data-domain="Spend & Payables" onclick="filterReportLibraryByDomain('Spend & Payables', this)"><i class="fa-solid fa-money-bill-transfer"></i> Spend & Payables</button>
+              <button class="filter-tab" data-domain="Payroll" onclick="filterReportLibraryByDomain('Payroll', this)"><i class="fa-solid fa-users"></i> Payroll</button>
+              <button class="filter-tab" data-domain="Audit & Compliance" onclick="filterReportLibraryByDomain('Audit & Compliance', this)"><i class="fa-solid fa-shield-halved"></i> Audit & Compliance</button>
+            </div>
+
+            <!-- Library Cards Grid -->
+            <div id="reportLibraryGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px;">
+              <!-- Dynamically populated by finance-reports.js -->
             </div>
           </div>
 
-          <!-- PANE 1: Category Spend Rollup (SPENT Block) -->
-          <div id="reportPaneCategorySummary">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</h2>
-                <p class="section-subtitle">Monthly expense aggregation and budget percentage allocation mirroring the SPENT block.</p>
-              </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <input type="date" id="reportCatSumDateFrom" class="form-input" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCategorySummary()">
-                  <span style="color:var(--text-muted); font-size:0.85rem;">to</span>
-                  <input type="date" id="reportCatSumDateTo" class="form-input" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCategorySummary()">
+          <!-- VIEW 2: Shared Report Shell Container -->
+          <div id="reportShellContainer" style="display:none;">
+            <!-- Mobile Desktop Advisory Banner for Multi-Column Matrices -->
+            <div class="mobile-desktop-advisory" id="reportMatrixMobileAdvisory" style="display:none;">
+              <div class="card" style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); padding:12px 14px; margin-bottom:14px; border-radius:8px; display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-display" style="font-size:1.3rem; color:var(--primary, #2563EB); flex-shrink:0;"></i>
+                <div style="font-size:0.82rem; color:var(--text-main, #0F172A); line-height:1.4;">
+                  <strong>Wide Layout Note:</strong> Detailed accounting matrices and multi-column ledger statements are optimized for desktop viewing. Swipe horizontally or use desktop for full drill-down analysis.
                 </div>
-                <select id="reportCatSumCurrency" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCategorySummary()">
-                  <option value="">All Currencies</option>
-                  <option value="USD">USD</option>
-                  <option value="EGP">EGP</option>
-                </select>
-                <button class="btn btn-outline" onclick="exportCategorySummaryExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
               </div>
             </div>
 
-            <!-- KPI Banner -->
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-              <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-                  <i class="fa-solid fa-money-bill-transfer"></i>
-                </div>
+            <!-- Shell Top Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+              <div style="display:flex; align-items:flex-start; gap:14px;">
+                <button class="btn btn-outline" id="reportShellBackBtn" onclick="backToReportLibrary()" style="padding:8px 14px; display:inline-flex; align-items:center; gap:8px;">
+                  <i class="fa-solid fa-arrow-left"></i> Report Library
+                </button>
                 <div>
-                  <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows (Spent)</div>
-                  <div id="reportCatSumTotalSpent" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <h2 class="section-title" id="reportShellTitle" style="margin:0;"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</h2>
+                    <span class="badge badge-info" id="reportShellCategoryBadge">Spend & Payables</span>
+                    <span class="badge badge-neutral" id="reportShellBasisBadge">Cash & Accrual</span>
+                  </div>
+                  <p class="section-subtitle" id="reportShellQuestion" style="margin-top:4px; font-style:italic; color:var(--text-muted);">
+                    Answers: Where did company money go this period and which categories dominate?
+                  </p>
                 </div>
               </div>
-              <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                <div style="width:42px; height:42px; border-radius:10px; background:rgba(59,130,246,0.12); color:#3B82F6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-                  <i class="fa-solid fa-tags"></i>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span id="reportShellFreshness" style="font-size:0.8rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-clock"></i> Fresh as of: Just now
+                </span>
+                <button class="btn btn-sm btn-outline" id="reportShellRefreshBtn" onclick="refreshActiveReport()" title="Refresh Report Data">
+                  <i class="fa-solid fa-rotate-right"></i> Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Universal Filter Bar -->
+            <div class="card" style="padding:12px 16px; margin-bottom:18px; background:var(--bg-secondary, #F8FAFC);">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:10px; font-size:0.85rem;">
+                  <!-- Entity -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label for="reportShellEntity" style="font-weight:600; color:var(--text-muted);">Entity:</label>
+                    <select id="reportShellEntity" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                      <option value="all">All Entities</option>
+                      <option value="voyance_main" selected>Voyance Health (HQ)</option>
+                    </select>
+                  </div>
+
+                  <!-- Period Preset -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label for="reportShellPeriodPreset" style="font-weight:600; color:var(--text-muted);">Period:</label>
+                    <select id="reportShellPeriodPreset" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellPeriodPresetChanged(this.value)">
+                      <option value="this_month">This Month</option>
+                      <option value="last_month">Last Month</option>
+                      <option value="this_quarter">This Quarter</option>
+                      <option value="ytd">Year to Date (YTD)</option>
+                      <option value="trailing_12m">Trailing 12M</option>
+                      <option value="custom" selected>Custom</option>
+                    </select>
+                  </div>
+
+                  <!-- Date Range -->
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <input type="date" id="reportShellDateFrom" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()" />
+                    <span style="color:var(--text-muted);">to</span>
+                    <input type="date" id="reportShellDateTo" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()" />
+                  </div>
+
+                  <!-- Accounting Basis -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label for="reportShellBasis" style="font-weight:600; color:var(--text-muted);">Basis:</label>
+                    <select id="reportShellBasis" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                      <option value="cash" selected>Cash Basis</option>
+                      <option value="accrual">Accrual Basis</option>
+                    </select>
+                  </div>
+
+                  <!-- Currency -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label for="reportShellCurrency" style="font-weight:600; color:var(--text-muted);">Currency:</label>
+                    <select id="reportShellCurrency" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                      <option value="">All Currencies</option>
+                      <option value="USD">USD</option>
+                      <option value="EGP">EGP</option>
+                    </select>
+                  </div>
+
+                  <!-- Comparison -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label for="reportShellComparison" style="font-weight:600; color:var(--text-muted);">Comparison:</label>
+                    <select id="reportShellComparison" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                      <option value="none" selected>None</option>
+                      <option value="prior_period">vs. Prior Period</option>
+                      <option value="prior_year">vs. Prior Year</option>
+                    </select>
+                  </div>
+
+                  <!-- Include Internal Payments -->
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-weight:600; color:var(--text-muted); font-size:0.85rem;" title="Include internal employee disbursements (salaries, medical, reimbursements)">
+                      <input type="checkbox" id="reportShellIncludeInternal" checked onchange="onReportShellFilterChanged()" style="cursor:pointer;" />
+                      <span>Internal Payments</span>
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Active Cost Categories</div>
-                  <div id="reportCatSumCategoryCount" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">0</div>
+
+                <!-- Saved Views & Export Actions -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <label for="reportShellSavedViews" style="font-size:0.85rem; font-weight:600; color:var(--text-muted);"><i class="fa-solid fa-bookmark"></i> View:</label>
+                    <select id="reportShellSavedViews" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem; max-width:160px;" onchange="applySelectedSavedView(this.value)">
+                      <option value="">Standard View</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline" id="reportShellSaveViewBtn" title="Save current filter view" onclick="openSaveReportViewModal()">
+                      <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline" id="reportShellDeleteViewBtn" title="Delete this view" onclick="deleteActiveReportView()" style="display:none; color:#EF4444;">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+
+                  <div style="border-left:1px solid var(--border-color, #CBD5E1); height:24px; margin:0 4px;"></div>
+
+                  <!-- Export Dropdown -->
+                  <div style="position:relative; display:inline-block;">
+                    <button class="btn btn-sm btn-primary" id="reportShellExportBtn" onclick="toggleReportExportMenu(event)">
+                      <i class="fa-solid fa-download"></i> Export <i class="fa-solid fa-caret-down" style="font-size:0.75rem;"></i>
+                    </button>
+                    <div id="reportShellExportMenu" class="card" style="display:none; position:absolute; right:0; top:110%; z-index:50; min-width:180px; padding:6px 0; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
+                      <a href="javascript:void(0)" onclick="exportActiveReport('excel')" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-file-excel" style="color:#10B981;"></i> Excel (.xlsx)
+                      </a>
+                      <a href="javascript:void(0)" onclick="exportActiveReport('csv')" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-file-csv" style="color:#3B82F6;"></i> CSV
+                      </a>
+                      <a href="javascript:void(0)" onclick="exportActiveReport('pdf')" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-file-pdf" style="color:#EF4444;"></i> PDF Summary
+                      </a>
+                      <div style="border-top:1px solid var(--border-color, #E2E8F0); margin:4px 0;"></div>
+                      <a href="javascript:void(0)" id="menuItemScheduleReport" onclick="openScheduleReportModal()" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-clock-rotate-left" style="color:#8B5CF6;"></i> Schedule Delivery...
+                      </a>
+                      <a href="javascript:void(0)" id="menuItemScheduledDeliveries" onclick="openScheduledDeliveriesModal()" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-list-check" style="color:#64748B;"></i> View Schedules & Audits
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="card">
-              <div class="section-loading-bar" id="reportCatSumLoadingBar" style="display:none;"><span></span></div>
-              <table class="responsive-card-table" id="reportCategorySummaryTable">
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Classification</th>
-                    <th style="text-align:center;">Transactions</th>
-                    <th style="text-align:right;">Total Spent</th>
-                    <th style="width:280px;">% of Total Spend</th>
-                  </tr>
-                </thead>
-                <tbody id="reportCategorySummaryTableBody"></tbody>
-              </table>
-              <div class="empty-state" id="reportCatSumEmpty" style="display:none;">
-                <i class="fa-solid fa-chart-pie"></i>
-                <p>No expense transactions recorded in this date range.</p>
+            <!-- Optional Sub Navigation Tabs for Fast Switching -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+              <div class="filter-tabs" id="financeReportsSubNav" role="tablist" aria-label="Financial reports sub navigation" style="overflow-x:auto;">
+                <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="profit-and-loss" onclick="switchFinanceReportsTab('profit-and-loss', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Profit & Loss</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balance-sheet" onclick="switchFinanceReportsTab('balance-sheet', this)"><i class="fa-solid fa-building-columns"></i> Balance Sheet</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="trial-balance" onclick="switchFinanceReportsTab('trial-balance', this)"><i class="fa-solid fa-scale-unbalanced"></i> Trial Balance</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="cash-flow" onclick="switchFinanceReportsTab('cash-flow', this)"><i class="fa-solid fa-money-bill-trend-up"></i> Cash Flow</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="ar-aging" onclick="switchFinanceReportsTab('ar-aging', this)"><i class="fa-solid fa-user-clock"></i> AR Aging</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="ap-aging" onclick="switchFinanceReportsTab('ap-aging', this)"><i class="fa-solid fa-receipt"></i> AP Aging</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="transactions" onclick="switchFinanceReportsTab('transactions', this)"><i class="fa-solid fa-list-check"></i> Transaction Ledger</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
               </div>
             </div>
-          </div>
 
-          <!-- PANE 2: Annual Category × Period Matrix -->
-          <div id="reportPaneMatrix" style="display:none;">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</h2>
-                <p class="section-subtitle">Comprehensive cross-tabulation of category expenses across months or quarters with row totals.</p>
+            <!-- PANE 1: Category Spend Rollup (SPENT Block) -->
+            <div id="reportPaneCategorySummary">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows (Spent)</div>
+                    <div id="reportCatSumTotalSpent" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(59,130,246,0.12); color:#3B82F6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-tags"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Active Cost Categories</div>
+                    <div id="reportCatSumCategoryCount" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">0</div>
+                  </div>
+                </div>
               </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <label for="reportMatrixYear" style="font-size:0.85rem; color:var(--text-muted);">Year:</label>
-                  <select id="reportMatrixYear" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportMatrix()">
-                    <option value="2026" selected>2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
+
+              <div class="card">
+                <div class="section-loading-bar" id="reportCatSumLoadingBar" style="display:none;"><span></span></div>
+                <table class="responsive-card-table" id="reportCategorySummaryTable">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Classification</th>
+                      <th style="text-align:center;">Transactions</th>
+                      <th class="cell-money" style="text-align:right;">Total Spent</th>
+                      <th style="width:280px;">% of Total Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportCategorySummaryTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="reportCatSumEmpty" style="display:none;">
+                  <i class="fa-solid fa-chart-pie"></i>
+                  <p>No expense transactions recorded in this date range.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANE 2: Annual Category × Period Matrix -->
+            <div id="reportPaneMatrix" style="display:none;">
+              <div class="toolbar" style="margin-bottom:14px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <label for="reportMatrixYear" style="font-size:0.85rem; color:var(--text-muted);">Year:</label>
+                    <select id="reportMatrixYear" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportMatrix()">
+                      <option value="2026" selected>2026</option>
+                      <option value="2025">2025</option>
+                      <option value="2024">2024</option>
+                    </select>
+                  </div>
+                  <div class="filter-tabs" id="reportMatrixPeriodTabs">
+                    <button class="filter-tab active" data-period-group="month" onclick="setMatrixPeriodGroup('month', this)">Monthly</button>
+                    <button class="filter-tab" data-period-group="quarter" onclick="setMatrixPeriodGroup('quarter', this)">Quarterly</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-loading-bar" id="reportMatrixLoadingBar" style="display:none;"><span></span></div>
+                <div style="overflow-x:auto;">
+                  <table class="responsive-card-table" id="reportMatrixTable" style="min-width:1100px;">
+                    <thead id="reportMatrixTableHead"></thead>
+                    <tbody id="reportMatrixTableBody"></tbody>
+                    <tfoot id="reportMatrixTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  </table>
+                </div>
+                <div class="empty-state" id="reportMatrixEmpty" style="display:none;">
+                  <i class="fa-solid fa-table-cells"></i>
+                  <p>No matrix data available for this year.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANE 3: Point-in-Time Account Balances -->
+            <div id="reportPaneBalances" style="display:none;">
+              <div class="toolbar" style="margin-bottom:14px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <label for="reportBalancesAsOfDate" style="font-size:0.85rem; color:var(--text-muted);">Balances As Of:</label>
+                    <input type="date" id="reportBalancesAsOfDate" class="form-input" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportBalances()">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Currency Rollup Summary Cards -->
+              <div id="reportBalancesCurrencyCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:16px;">
+                <!-- Dynamically rendered -->
+              </div>
+
+              <div class="card">
+                <div class="section-loading-bar" id="reportBalancesLoadingBar" style="display:none;"><span></span></div>
+                <table class="responsive-card-table" id="reportBalancesTable">
+                  <thead>
+                    <tr>
+                      <th>Account Name</th>
+                      <th>Type</th>
+                      <th>Bank / Provider</th>
+                      <th>Account #</th>
+                      <th>Country</th>
+                      <th>Currency</th>
+                      <th class="cell-money" style="text-align:right;">Opening Balance</th>
+                      <th class="cell-money" style="text-align:right;">Balance As Of Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportBalancesTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE 4: Transaction Ledger Report -->
+            <div id="reportPaneTransactions" style="display:none;">
+              <div class="toolbar" style="margin-bottom:14px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <select id="reportTxAccount" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                      <option value="">All Accounts</option>
+                    </select>
+                    <select id="reportTxCategory" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                      <option value="">All Categories</option>
+                    </select>
+                    <select id="reportTxDirection" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                      <option value="">All Directions</option>
+                      <option value="in">Inflow (IN)</option>
+                      <option value="out">Outflow (OUT)</option>
+                    </select>
+                    <input type="text" id="reportTxSearch" class="form-input" placeholder="Search payee, desc..." style="padding:6px 10px; font-size:0.85rem; width:160px;" oninput="debounceReportTxSearch()">
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-loading-bar" id="reportTxLoadingBar" style="display:none;"><span></span></div>
+                <table class="responsive-card-table" id="reportTxTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Account</th>
+                      <th>Category</th>
+                      <th>Payee / Source</th>
+                      <th>Description</th>
+                      <th style="text-align:center;">Direction</th>
+                      <th class="cell-money" style="text-align:right;">Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportTxTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="reportTxEmpty" style="display:none;">
+                  <i class="fa-solid fa-list-check"></i>
+                  <p>No transactions match the selected criteria.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANE 5: Cheque Register Report -->
+            <div id="reportPaneCheques" style="display:none;">
+              <div class="toolbar" style="margin-bottom:14px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <label for="reportChequesFiscalYear" style="font-size:0.85rem; color:var(--text-muted);">Fiscal Year:</label>
+                    <select id="reportChequesFiscalYear" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCheques()">
+                      <option value="2026" selected>FY 2026</option>
+                      <option value="2025">FY 2025</option>
+                      <option value="2024">FY 2024</option>
+                    </select>
+                  </div>
+                  <select id="reportChequesStatus" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCheques()">
+                    <option value="">All Statuses</option>
+                    <option value="issued">Issued</option>
+                    <option value="cleared">Cleared</option>
+                    <option value="bounced">Bounced</option>
+                    <option value="voided">Voided</option>
                   </select>
                 </div>
-                <div class="filter-tabs" id="reportMatrixPeriodTabs">
-                  <button class="filter-tab active" data-period-group="month" onclick="setMatrixPeriodGroup('month', this)">Monthly</button>
-                  <button class="filter-tab" data-period-group="quarter" onclick="setMatrixPeriodGroup('quarter', this)">Quarterly</button>
+              </div>
+
+              <!-- Status Breakdown Summary Cards -->
+              <div id="reportChequesStatusCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:14px; border-left:4px solid #6366F1; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'all', 'All Registered Cheques')">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Cheques</div>
+                  <div id="reportChequesTotalCount" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">0</div>
+                  <div id="reportChequesTotalAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
                 </div>
-                <button class="btn btn-outline" onclick="exportMatrixExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
-              </div>
-            </div>
-
-            <div class="card" style="overflow-x:auto;">
-              <div class="section-loading-bar" id="reportMatrixLoadingBar" style="display:none;"><span></span></div>
-              <table class="responsive-card-table" id="reportMatrixTable" style="min-width:980px;">
-                <thead id="reportMatrixTableHead"></thead>
-                <tbody id="reportMatrixTableBody"></tbody>
-                <tfoot id="reportMatrixTableFoot"></tfoot>
-              </table>
-              <div class="empty-state" id="reportMatrixEmpty" style="display:none;">
-                <i class="fa-solid fa-table-cells"></i>
-                <p>No annual spend data recorded for the selected year.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- PANE 3: Point-in-Time Balances -->
-          <div id="reportPaneBalances" style="display:none;">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</h2>
-                <p class="section-subtitle">Account ledger balances evaluated as of a specific date, excluding subsequent transactions.</p>
-              </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <label for="reportBalancesAsOfDate" style="font-size:0.85rem; color:var(--text-muted);">As of Date:</label>
-                  <input type="date" id="reportBalancesAsOfDate" class="form-input" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportBalances()">
+                <div class="card" style="padding:14px; border-left:4px solid #F59E0B; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'issued', 'Issued (Pending) Cheques')">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Issued (Pending)</div>
+                  <div id="reportChequesIssuedCount" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">0</div>
+                  <div id="reportChequesIssuedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
                 </div>
-                <button class="btn btn-outline" onclick="exportBalancesExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
-              </div>
-            </div>
-
-            <!-- Currency summary cards -->
-            <div id="reportBalancesCurrencyCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:16px;"></div>
-
-            <div class="card">
-              <div class="section-loading-bar" id="reportBalancesLoadingBar" style="display:none;"><span></span></div>
-              <table class="responsive-card-table" id="reportBalancesTable">
-                <thead>
-                  <tr>
-                    <th>Account Name</th>
-                    <th>Type</th>
-                    <th>Bank / Custodian</th>
-                    <th>Account # / IBAN</th>
-                    <th>Country</th>
-                    <th>Currency</th>
-                    <th style="text-align:right;">Opening Balance</th>
-                    <th style="text-align:right;">Balance as of Date</th>
-                  </tr>
-                </thead>
-                <tbody id="reportBalancesTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- PANE 4: Transaction Ledger Report -->
-          <div id="reportPaneTransactions" style="display:none;">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Transaction Ledger Report</h2>
-                <p class="section-subtitle">Arbitrary-range financial ledger with multi-criteria filtering and running balance tracking.</p>
-              </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <button class="btn btn-outline" onclick="exportTransactionsExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
-              </div>
-            </div>
-
-            <!-- Advanced Filter Strip -->
-            <div class="card" style="padding:14px; margin-bottom:16px;">
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <span style="font-size:0.85rem; color:var(--text-muted);">Dates:</span>
-                  <input type="date" id="reportTxDateFrom" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="loadReportTransactions()">
-                  <span style="color:var(--text-muted); font-size:0.85rem;">–</span>
-                  <input type="date" id="reportTxDateTo" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                <div class="card" style="padding:14px; border-left:4px solid #10B981; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'cleared', 'Cleared Cheques')">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cleared</div>
+                  <div id="reportChequesClearedCount" style="font-size:1.3rem; font-weight:700; color:#10B981;">0</div>
+                  <div id="reportChequesClearedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
                 </div>
-                <select id="reportTxAccount" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
-                  <option value="">All Accounts</option>
-                </select>
-                <select id="reportTxCategory" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
-                  <option value="">All Categories</option>
-                </select>
-                <select id="reportTxDirection" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
-                  <option value="">All Directions</option>
-                  <option value="in">Inflow (+)</option>
-                  <option value="out">Outflow (-)</option>
-                </select>
-                <div class="search-box" style="max-width:240px;">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                  <input id="reportTxSearch" placeholder="Search reference, memo..." oninput="debounceReportTxSearch()">
+                <div class="card" style="padding:14px; border-left:4px solid #EF4444; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'bounced', 'Bounced / Voided Cheques')">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Bounced / Voided</div>
+                  <div id="reportChequesBouncedVoidedCount" style="font-size:1.3rem; font-weight:700; color:#EF4444;">0</div>
+                  <div id="reportChequesBouncedVoidedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-loading-bar" id="reportChequesLoadingBar" style="display:none;"><span></span></div>
+                <table class="responsive-card-table" id="reportChequesTable">
+                  <thead>
+                    <tr>
+                      <th>Cheque #</th>
+                      <th>Issue Date</th>
+                      <th>Clear Date</th>
+                      <th>Bank Account</th>
+                      <th>Payee</th>
+                      <th>Purpose</th>
+                      <th class="cell-money" style="text-align:right;">Amount</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportChequesTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="reportChequesEmpty" style="display:none;">
+                  <i class="fa-solid fa-money-check"></i>
+                  <p>No cheques recorded for this fiscal year.</p>
                 </div>
               </div>
             </div>
 
-            <!-- Inflows / Outflows / Net Change KPI cards -->
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
-              <div class="card" style="padding:14px; border-left:4px solid #10B981;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Inflows</div>
-                <div id="reportTxTotalInflows" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
-              </div>
-              <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows</div>
-                <div id="reportTxTotalOutflows" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00</div>
-              </div>
-              <div class="card" style="padding:14px; border-left:4px solid #3B82F6;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Cash Change</div>
-                <div id="reportTxNetChange" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">$0.00</div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-loading-bar" id="reportTxLoadingBar" style="display:none;"><span></span></div>
-              <table class="responsive-card-table" id="reportTransactionsTable">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Account</th>
-                    <th>Direction</th>
-                    <th>Category</th>
-                    <th>Payment Type</th>
-                    <th>Reference &amp; Memo</th>
-                    <th style="text-align:right;">Amount</th>
-                    <th style="text-align:right;">Running Balance</th>
-                  </tr>
-                </thead>
-                <tbody id="reportTransactionsTableBody"></tbody>
-              </table>
-              <div class="empty-state" id="reportTxEmpty" style="display:none;">
-                <i class="fa-solid fa-list-check"></i>
-                <p>No transactions match the selected filters.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- PANE 5: Cheque Register Report -->
-          <div id="reportPaneCheques" style="display:none;">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-money-check"></i> Cheque Register Report</h2>
-                <p class="section-subtitle">Fiscal year summary of issued, cleared, and voided company cheques with status totals.</p>
-              </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <label for="reportChequesFiscalYear" style="font-size:0.85rem; color:var(--text-muted);">Fiscal Year:</label>
-                  <select id="reportChequesFiscalYear" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportCheques()">
-                    <option value="2026" selected>2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                  </select>
+            <!-- PANE: Profit & Loss Statement -->
+            <div id="reportPaneProfitAndLoss" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Revenue</div>
+                    <div id="reportPnlTotalRevenue" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                  </div>
                 </div>
-                <select id="reportChequesStatus" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportCheques()">
-                  <option value="">All Statuses</option>
-                  <option value="issued">Issued</option>
-                  <option value="cleared">Cleared</option>
-                  <option value="bounced">Bounced</option>
-                  <option value="voided">Voided</option>
-                </select>
-                <button class="btn btn-outline" onclick="exportChequesExcel()"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #EF4444;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Expenses</div>
+                    <div id="reportPnlTotalExpenses" style="font-size:1.4rem; font-weight:700; color:#EF4444;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Income</div>
+                    <div id="reportPnlNetIncome" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #8B5CF6;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(139,92,246,0.12); color:#8B5CF6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-percent"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Profit Margin</div>
+                    <div id="reportPnlNetMargin" style="font-size:1.4rem; font-weight:700; color:#8B5CF6;">0.0%</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Revenue Section Card -->
+              <div class="card" style="margin-bottom:16px;">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                  <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#10B981; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-circle-arrow-up"></i> Operating Revenue & Inflows
+                  </h3>
+                  <span id="reportPnlRevenueSubtotalBadge" class="badge badge-success" style="font-size:0.85rem; font-weight:700;">$0.00</span>
+                </div>
+                <table class="responsive-card-table" id="reportPnlRevenueTable">
+                  <thead>
+                    <tr>
+                      <th>Revenue Stream / Category</th>
+                      <th style="width:160px; text-align:right;">Amount</th>
+                      <th style="width:220px;">% of Revenue</th>
+                      <th style="width:100px; text-align:center;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportPnlRevenueTableBody"></tbody>
+                </table>
+              </div>
+
+              <!-- Expense Section Card -->
+              <div class="card" style="margin-bottom:16px;">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                  <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#EF4444; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-circle-arrow-down"></i> Operating Expenses & Cost Allocations
+                  </h3>
+                  <span id="reportPnlExpenseSubtotalBadge" class="badge badge-danger" style="font-size:0.85rem; font-weight:700;">$0.00</span>
+                </div>
+                <table class="responsive-card-table" id="reportPnlExpenseTable">
+                  <thead>
+                    <tr>
+                      <th>Expense Category</th>
+                      <th style="width:160px; text-align:right;">Amount</th>
+                      <th style="width:220px;">% of Expenses</th>
+                      <th style="width:100px; text-align:center;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportPnlExpenseTableBody"></tbody>
+                </table>
               </div>
             </div>
 
-            <!-- Status Breakdown Summary Cards -->
-            <div id="reportChequesStatusCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
-              <div class="card" style="padding:14px; border-left:4px solid #6366F1;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Cheques</div>
-                <div id="reportChequesTotalCount" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">0</div>
-                <div id="reportChequesTotalAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+            <!-- PANE: Balance Sheet -->
+            <div id="reportPaneBalanceSheet" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-vault"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Assets</div>
+                    <div id="reportBsTotalAssets" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #F59E0B;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(245,158,11,0.12); color:#F59E0B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-receipt"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Liabilities</div>
+                    <div id="reportBsTotalLiabilities" style="font-size:1.4rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-coins"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Owners' Equity</div>
+                    <div id="reportBsTotalEquity" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-check-double"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Accounting Equation</div>
+                    <div id="reportBsBalancedBadge" style="font-size:1.1rem; font-weight:700; color:#10B981;">BALANCED ✓</div>
+                  </div>
+                </div>
               </div>
-              <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Issued (Pending)</div>
-                <div id="reportChequesIssuedCount" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">0</div>
-                <div id="reportChequesIssuedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
-              </div>
-              <div class="card" style="padding:14px; border-left:4px solid #10B981;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cleared</div>
-                <div id="reportChequesClearedCount" style="font-size:1.3rem; font-weight:700; color:#10B981;">0</div>
-                <div id="reportChequesClearedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
-              </div>
-              <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Bounced / Voided</div>
-                <div id="reportChequesBouncedVoidedCount" style="font-size:1.3rem; font-weight:700; color:#EF4444;">0</div>
-                <div id="reportChequesBouncedVoidedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00</div>
+
+              <!-- Assets & (Liabilities + Equity) Split Grid -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:18px;">
+                <!-- Assets Card -->
+                <div class="card">
+                  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                    <h3 style="margin:0; font-size:1rem; font-weight:700; color:#2563EB;">1. Assets</h3>
+                    <span id="reportBsAssetsSubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                  </div>
+                  <table class="responsive-card-table" id="reportBsAssetsTable">
+                    <thead>
+                      <tr>
+                        <th>Asset Account</th>
+                        <th>Classification / Note</th>
+                        <th style="text-align:right;">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody id="reportBsAssetsTableBody"></tbody>
+                  </table>
+                </div>
+
+                <!-- Liabilities & Equity Card -->
+                <div style="display:flex; flex-direction:column; gap:18px;">
+                  <!-- Liabilities -->
+                  <div class="card">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                      <h3 style="margin:0; font-size:1rem; font-weight:700; color:#F59E0B;">2. Liabilities</h3>
+                      <span id="reportBsLiabilitiesSubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                    </div>
+                    <table class="responsive-card-table" id="reportBsLiabilitiesTable">
+                      <thead>
+                        <tr>
+                          <th>Liability Account</th>
+                          <th>Classification / Note</th>
+                          <th style="text-align:right;">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody id="reportBsLiabilitiesTableBody"></tbody>
+                    </table>
+                  </div>
+
+                  <!-- Equity -->
+                  <div class="card">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                      <h3 style="margin:0; font-size:1rem; font-weight:700; color:#10B981;">3. Equity</h3>
+                      <span id="reportBsEquitySubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                    </div>
+                    <table class="responsive-card-table" id="reportBsEquityTable">
+                      <thead>
+                        <tr>
+                          <th>Equity Item</th>
+                          <th>Classification / Note</th>
+                          <th style="text-align:right;">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody id="reportBsEquityTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="card">
-              <div class="section-loading-bar" id="reportChequesLoadingBar" style="display:none;"><span></span></div>
-              <table class="responsive-card-table" id="reportChequesTable">
-                <thead>
-                  <tr>
-                    <th>Cheque #</th>
-                    <th>Issue Date</th>
-                    <th>Clear Date</th>
-                    <th>Bank Account</th>
-                    <th>Payee</th>
-                    <th>Purpose</th>
-                    <th style="text-align:right;">Amount</th>
-                    <th>Status</th>
-                    <th>Notes</th>
-                  </tr>
-                </thead>
-                <tbody id="reportChequesTableBody"></tbody>
-              </table>
-              <div class="empty-state" id="reportChequesEmpty" style="display:none;">
-                <i class="fa-solid fa-money-check"></i>
-                <p>No cheques recorded for this fiscal year.</p>
+            <!-- PANE: Trial Balance -->
+            <div id="reportPaneTrialBalance" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-plus-minus"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Debits</div>
+                    <div id="reportTbTotalDebits" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #8B5CF6;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(139,92,246,0.12); color:#8B5CF6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-scale-unbalanced"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Credits</div>
+                    <div id="reportTbTotalCredits" style="font-size:1.4rem; font-weight:700; color:#8B5CF6;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-circle-check"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Balance Check</div>
+                    <div id="reportTbBalancedBadge" style="font-size:1.1rem; font-weight:700; color:#10B981;">DEBITS = CREDITS ✓</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(100,116,139,0.12); color:#64748B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-calculator"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Variance</div>
+                    <div id="reportTbVariance" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Trial Balance Table -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportTbTable">
+                  <thead>
+                    <tr>
+                      <th style="width:120px;">Account Code</th>
+                      <th>Account Name</th>
+                      <th>Type</th>
+                      <th style="width:160px; text-align:right;">Debit</th>
+                      <th style="width:160px; text-align:right;">Credit</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportTbTableBody"></tbody>
+                  <tfoot id="reportTbTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: Statement of Cash Flows -->
+            <div id="reportPaneCashFlow" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #64748B;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(100,116,139,0.12); color:#64748B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-hourglass-start"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Beginning Cash</div>
+                    <div id="reportCfBeginningCash" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-briefcase"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Operating Net Cash</div>
+                    <div id="reportCfOperatingCash" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Change in Cash</div>
+                    <div id="reportCfNetChange" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                  </div>
+                </div>
+                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #059669;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(5,150,105,0.12); color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    <i class="fa-solid fa-flag-checkered"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Ending Cash Balance</div>
+                    <div id="reportCfEndingCash" style="font-size:1.4rem; font-weight:700; color:#059669;">$0.00</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cash Flow Statement Card -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportCfTable">
+                  <thead>
+                    <tr>
+                      <th>Activity / Line Item</th>
+                      <th style="width:180px; text-align:right;">Cash Impact</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportCfTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: AR Aging Report -->
+            <div id="reportPaneArAging" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:14px; border-left:4px solid #2563EB;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outstanding</div>
+                  <div id="reportArTotalOutstanding" style="font-size:1.3rem; font-weight:700; color:#2563EB;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #10B981;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Current (Not Due)</div>
+                  <div id="reportArCurrent" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">1 - 30 Days</div>
+                  <div id="reportArDays130" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #EA580C;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">31 - 60 Days</div>
+                  <div id="reportArDays3160" style="font-size:1.3rem; font-weight:700; color:#EA580C;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #DC2626;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">61 - 90 Days</div>
+                  <div id="reportArDays6190" style="font-size:1.3rem; font-weight:700; color:#DC2626;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #7F1D1D;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">90+ Days (Severe)</div>
+                  <div id="reportArDaysOver90" style="font-size:1.3rem; font-weight:700; color:#7F1D1D;">$0.00</div>
+                </div>
+              </div>
+
+              <!-- AR Aging Table -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportArAgingTable">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th style="text-align:center; width:90px;">Invoices</th>
+                      <th style="text-align:right;">Current</th>
+                      <th style="text-align:right;">1 - 30</th>
+                      <th style="text-align:right;">31 - 60</th>
+                      <th style="text-align:right;">61 - 90</th>
+                      <th style="text-align:right;">90+ Days</th>
+                      <th style="text-align:right; width:130px;">Total Due</th>
+                      <th style="text-align:center; width:90px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportArAgingTableBody"></tbody>
+                  <tfoot id="reportArAgingTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: AP Aging Report -->
+            <div id="reportPaneApAging" style="display:none;">
+              <!-- KPI Banner -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
+                <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Payable</div>
+                  <div id="reportApTotalOutstanding" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #10B981;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Current (Not Due)</div>
+                  <div id="reportApCurrent" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">1 - 30 Days</div>
+                  <div id="reportApDays130" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #EA580C;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">31 - 60 Days</div>
+                  <div id="reportApDays3160" style="font-size:1.3rem; font-weight:700; color:#EA580C;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #DC2626;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">61 - 90 Days</div>
+                  <div id="reportApDays6190" style="font-size:1.3rem; font-weight:700; color:#DC2626;">$0.00</div>
+                </div>
+                <div class="card" style="padding:14px; border-left:4px solid #7F1D1D;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">90+ Days (Severe)</div>
+                  <div id="reportApDaysOver90" style="font-size:1.3rem; font-weight:700; color:#7F1D1D;">$0.00</div>
+                </div>
+              </div>
+
+              <!-- AP Aging Table -->
+              <div class="card">
+                <table class="responsive-card-table" id="reportApAgingTable">
+                  <thead>
+                    <tr>
+                      <th>Vendor</th>
+                      <th style="text-align:center; width:90px;">Bills</th>
+                      <th style="text-align:right;">Current</th>
+                      <th style="text-align:right;">1 - 30</th>
+                      <th style="text-align:right;">31 - 60</th>
+                      <th style="text-align:right;">61 - 90</th>
+                      <th style="text-align:right;">90+ Days</th>
+                      <th style="text-align:right; width:130px;">Total Due</th>
+                      <th style="text-align:center; width:90px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportApAgingTableBody"></tbody>
+                  <tfoot id="reportApAgingTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: Generic Report Shell Placeholder (for catalog reports wired in 7.2) -->
+            <div id="reportPanePlaceholder" style="display:none;">
+              <div class="card" style="padding:36px; text-align:center;">
+                <div style="width:64px; height:64px; margin:0 auto 16px; border-radius:50%; background:rgba(37,99,235,0.1); color:var(--primary, #2563EB); display:flex; align-items:center; justify-content:center; font-size:1.8rem;">
+                  <i class="fa-solid fa-chart-line" id="reportPlaceholderIcon"></i>
+                </div>
+                <h3 id="reportPlaceholderTitle" style="font-size:1.25rem; font-weight:700; margin-bottom:8px;">Financial Report</h3>
+                <p id="reportPlaceholderDesc" style="color:var(--text-muted); max-width:540px; margin:0 auto 20px; font-size:0.9rem;">
+                  This report's ledger calculation engine is configured and ready to generate.
+                </p>
+                <div style="display:flex; justify-content:center; gap:12px;">
+                  <button class="btn btn-primary" onclick="loadReportTransactions()"><i class="fa-solid fa-list-check"></i> View Underlying Ledger</button>
+                  <button class="btn btn-outline" onclick="backToReportLibrary()"><i class="fa-solid fa-arrow-left"></i> Back to Library</button>
+                </div>
               </div>
             </div>
           </div>

@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 from db import Base
 import models_db  # noqa: F401 - load all models into Base.metadata
+import finance.models  # noqa: F401 - load finance models into Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

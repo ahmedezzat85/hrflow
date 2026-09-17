@@ -140,3 +140,4 @@ def test_db_get_engine_postgres_kwargs(monkeypatch):
         assert kwargs["max_overflow"] == 25
         assert kwargs["pool_recycle"] == 900
         assert kwargs["pool_pre_ping"] is True
+    db._engine = None

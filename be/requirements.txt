@@ -22,6 +22,10 @@ google-auth-httplib2==0.2.0
 # PostgreSQL driver (used when DB_TYPE=postgres)
 psycopg2-binary>=2.9.9
 
+# Excel & PDF processing (Finance module reports & bank statement imports)
+openpyxl>=3.1.2
+pypdf>=5.0.0
+
 # Test dependencies (Phase 5 - docs/analysis/security-analysis-plan.md).
 # Only needed to run `pytest` from be/, not to run the app itself.
 pytest==8.3.2

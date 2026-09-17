@@ -25,7 +25,7 @@
                 <tr>
                   <th>Service / Subscription</th>
                   <th>Vendor</th>
-                  <th>Base Rate</th>
+                  <th class="cell-money">Base Rate</th>
                   <th>Billing Cycle</th>
                   <th>Next Renewal</th>
                   <th>Auto-Bill</th>
@@ -44,14 +44,14 @@
 
           <!-- Add / Edit Subscription Modal -->
           <div id="subscriptionModal" class="modal-overlay">
-            <div class="modal modal-v2" style="max-width: 680px;">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="subModalTitle" style="max-width: 680px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-repeat"></i></div>
                 <div class="modal-head-text">
                   <h3 id="subModalTitle">New Subscription</h3>
                   <p>Configure recurring software, infrastructure, or vendor service.</p>
                 </div>
-                <button class="modal-close" onclick="closeModal('subscriptionModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="modal-close" onclick="closeModal('subscriptionModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
               </div>
               <div class="modal-body">
                 <input type="hidden" id="subId">
@@ -93,6 +93,36 @@
                       <label for="subNextRenewal">Next Renewal Date <span class="req">*</span></label>
                       <input type="date" id="subNextRenewal" required>
                     </div>
+                    <div class="form-field">
+                      <label for="subOwner">Contract Owner / DRI</label>
+                      <input type="text" id="subOwner" placeholder="e.g. Sarah Connor, Tech Lead">
+                    </div>
+                    <div class="form-field">
+                      <label for="subDepartment">Department</label>
+                      <select id="subDepartment" class="filter-select">
+                        <option value="Engineering">Engineering</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Clinical">Clinical</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Finance">Finance</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subNoticeDays">Notice Period (Days)</label>
+                      <input type="number" id="subNoticeDays" value="30" min="0" placeholder="30">
+                    </div>
+                    <div class="form-field">
+                      <label for="subSeats">Seats / Licenses</label>
+                      <input type="number" id="subSeats" min="1" placeholder="e.g. 40">
+                    </div>
+                    <div class="form-field">
+                      <label for="subContractStart">Contract Start Date</label>
+                      <input type="date" id="subContractStart">
+                    </div>
+                    <div class="form-field">
+                      <label for="subContractEnd">Contract End Date</label>
+                      <input type="date" id="subContractEnd">
+                    </div>
                     <div class="form-field full">
                       <div class="toggle-row">
                         <div>
@@ -100,7 +130,7 @@
                           <div class="t-sub">Automatically queue an accounts payable bill on each renewal date</div>
                         </div>
                         <label class="switch">
-                          <input type="checkbox" id="subAutoBill" checked>
+                          <input type="checkbox" id="subAutoBill">
                           <span class="slider"></span>
                         </label>
                       </div>
@@ -117,14 +147,14 @@
 
           <!-- Log Subscription Charge Modal -->
           <div id="subscriptionChargeModal" class="modal-overlay">
-            <div class="modal modal-v2" style="max-width: 640px;">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chargeModalTitle" style="max-width: 640px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-credit-card"></i></div>
                 <div class="modal-head-text">
                   <h3 id="chargeModalTitle">Log Subscription Charge</h3>
                   <p id="chargeModalSub">Record an actual charge or usage-based invoice with receipt files.</p>
                 </div>
-                <button class="modal-close" onclick="closeModal('subscriptionChargeModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="modal-close" onclick="closeModal('subscriptionChargeModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
               </div>
               <div class="modal-body">
                 <input type="hidden" id="chargeSubId">
@@ -133,7 +163,7 @@
                   <div class="form-grid">
                     <div class="form-field">
                       <label for="chargeAmount">Charged Amount <span class="req">*</span></label>
-                      <input type="number" id="chargeAmount" step="0.01" min="0.01" placeholder="0.00" required>
+                      <input type="number" id="chargeAmount" step="0.01" min="0.01" placeholder="0.00" required oninput="onChargeAmountInput()">
                     </div>
                     <div class="form-field">
                       <label for="chargeCurrency">Currency</label>
@@ -155,6 +185,25 @@
                       </select>
                     </div>
                     <div class="form-field full">
+                      <div class="toggle-row">
+                        <div>
+                          <div class="t-label">Link or Create Payable Bill</div>
+                          <div class="t-sub">Automatically records a matched Vendor Bill in AP queue</div>
+                        </div>
+                        <label class="switch">
+                          <input type="checkbox" id="chargeCreateBill" checked>
+                          <span class="slider"></span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="form-field full" id="chargeVarianceGroup" style="display:none;">
+                      <div class="alert alert-warning" style="margin-bottom:8px; padding:8px 12px; font-size:0.85rem;" id="chargeVarianceAlert">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Amount differs from base expected rate.
+                      </div>
+                      <label for="chargeVarianceReason">Variance Explanation</label>
+                      <input type="text" id="chargeVarianceReason" placeholder="e.g. Extra compute overage, addition of 5 seats">
+                    </div>
+                    <div class="form-field full">
                       <label for="chargeFile">Receipt / Invoice File <span class="opt">(Private Accounting Storage)</span></label>
                       <input type="file" id="chargeFile" class="form-control" accept=".pdf,.png,.jpg,.jpeg,.csv">
                     </div>
@@ -174,14 +223,14 @@
 
           <!-- Subscription Charge History Modal -->
           <div id="subscriptionHistoryModal" class="modal-overlay">
-            <div class="modal modal-v2" style="max-width: 780px;">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="subHistoryTitle" style="max-width: 780px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
                 <div class="modal-head-text">
                   <h3 id="subHistoryTitle">Subscription Charge History</h3>
                   <p id="subHistorySubtitle">All recorded charges, ledger links, and invoice attachments.</p>
                 </div>
-                <button class="modal-close" onclick="closeModal('subscriptionHistoryModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="modal-close" onclick="closeModal('subscriptionHistoryModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
               </div>
               <div class="modal-body">
                 <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">

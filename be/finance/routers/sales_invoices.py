@@ -17,24 +17,43 @@ from finance.schemas import (
     PaymentResponse,
 )
 from finance.services.invoices_service import InvoicesService
-from finance.deps import get_invoices_service
+from finance.deps import get_invoices_service, get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/invoices", tags=["Finance - Sales Invoices"])
 
 
 @router.get("", response_model=List[SalesInvoiceResponse])
 def list_sales_invoices(
-    status: Optional[str] = Query(None, description="Filter by status: draft|sent|paid|overdue|void"),
+    status: Optional[str] = Query(None, description="Filter by status: open|draft|sent|awaiting_payment|paid|overdue|void|all"),
     customer_id: Optional[int] = Query(None, description="Filter by customer ID"),
     search: Optional[str] = Query(None, description="Search by invoice number or customer name"),
+    currency: Optional[str] = Query(None, description="Filter by currency: USD, EGP, all"),
+    revenue_channel: Optional[str] = Query(None, description="Filter by revenue channel"),
+    date_from: Optional[str] = Query(None, description="Issue date from (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Issue date to (YYYY-MM-DD)"),
+    due_date_from: Optional[str] = Query(None, description="Due date from (YYYY-MM-DD)"),
+    due_date_to: Optional[str] = Query(None, description="Due date to (YYYY-MM-DD)"),
+    payment_state: Optional[str] = Query(None, description="Filter by payment state: unpaid|partially_paid|paid|all"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_permission("finance.invoice.read")),
     service: InvoicesService = Depends(get_invoices_service),
 ):
-    """List sales invoices with optional status, customer, and search filters."""
+    """List sales invoices with status, work queue, and date filters."""
     return service.list_invoices(
-        status=status, customer_id=customer_id, search=search, limit=limit, offset=offset
+        status=status,
+        customer_id=customer_id,
+        search=search,
+        currency=currency,
+        revenue_channel=revenue_channel,
+        date_from=date_from,
+        date_to=date_to,
+        due_date_from=due_date_from,
+        due_date_to=due_date_to,
+        payment_state=payment_state,
+        limit=limit,
+        offset=offset,
     )
 
 
@@ -53,9 +72,17 @@ def create_sales_invoice(
     payload: SalesInvoiceCreate,
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Create a new sales invoice with optional line items."""
-    return service.create_invoice(payload)
+    user_email = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path="/api/finance/invoices:create",
+        operation_fn=lambda: service.create_invoice(payload),
+    )
 
 
 @router.put("/{invoice_id}", response_model=SalesInvoiceResponse)
@@ -69,14 +96,25 @@ def update_sales_invoice(
     return service.update_invoice(invoice_id, payload)
 
 
-@router.delete("/{invoice_id}", response_model=SalesInvoiceResponse)
-def void_sales_invoice(
+@router.post("/{invoice_id}/send", response_model=SalesInvoiceResponse)
+def send_sales_invoice(
     invoice_id: int,
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
 ):
+    """Transition an invoice to sent/issued status."""
+    return service.send_invoice(invoice_id)
+
+
+@router.delete("/{invoice_id}", response_model=SalesInvoiceResponse)
+def void_sales_invoice(
+    invoice_id: int,
+    reason: Optional[str] = Query(None, description="Reason for voiding the invoice"),
+    current_user: dict = Depends(require_permission("finance.invoice.write")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
     """Void an invoice (irreversible soft-delete via status change)."""
-    return service.void_invoice(invoice_id)
+    return service.void_invoice(invoice_id, reason=reason)
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────
@@ -101,10 +139,41 @@ def record_invoice_payment(
     payload: PaymentCreate,
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Record an incoming payment against a sales invoice.
     Automatically adjusts the bank account balance and marks the invoice
     as 'paid' once total payments >= invoice total.
     """
-    return service.record_payment(invoice_id, payload)
+    user_email = current_user.get("email") or current_user.get("sub") or "user"
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=user_email,
+        endpoint_path=f"/api/finance/invoices:{invoice_id}:payments",
+        operation_fn=lambda: service.record_payment(invoice_id, payload),
+    )
+
+
+@router.post("/{invoice_id}/payments/{payment_id}/reverse", response_model=PaymentResponse)
+def reverse_invoice_payment(
+    invoice_id: int,
+    payment_id: int,
+    reason: Optional[str] = Query(None, description="Reason for reversal"),
+    current_user: dict = Depends(require_permission("finance.invoice.write")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    """Reverse a previously recorded payment against an invoice."""
+    return service.reverse_payment(invoice_id, payment_id, reason=reason)
+
+
+@router.post("/{invoice_id}/remind")
+def send_invoice_reminder(
+    invoice_id: int,
+    current_user: dict = Depends(require_permission("finance.invoice.write")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    """Send payment reminder to customer for an overdue/awaiting payment invoice."""
+    return service.send_reminder(invoice_id)
+

@@ -1,0 +1,113 @@
+        <section class="page-section" id="a-finance-settings">
+          <!-- Sub Navigation for Settings: Categories & Payment Types -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <div class="filter-tabs" id="financeSettingsSubNav" role="tablist" aria-label="Finance settings sub navigation">
+              <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
+              <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
+            </div>
+          </div>
+
+          <!-- PANE 1: Transaction Categories -->
+          <div id="financeSettingsPaneCategories">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-tags"></i> Transaction Categories</h2>
+                <p class="section-subtitle">Extensible taxonomy for ledger entries, cash book classification, and recurring spend rollups.</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <select id="financeCategoryKindFilter" class="form-control" style="width:auto;min-width:140px;height:38px;padding:4px 10px;font-size:13px;" onchange="filterFinanceCategoriesByKind(this.value)">
+                  <option value="all">All Kinds</option>
+                  <option value="cost">Cost / Expense</option>
+                  <option value="revenue">Revenue / Income</option>
+                  <option value="transfer">Transfer</option>
+                  <option value="other">Other</option>
+                </select>
+                <div class="filter-tabs">
+                  <button class="filter-tab active" onclick="filterFinanceCategories('all', this)">All</button>
+                  <button class="filter-tab" onclick="filterFinanceCategories('active', this)">Active</button>
+                  <button class="filter-tab" onclick="filterFinanceCategories('inactive', this)">Inactive</button>
+                  <button class="filter-tab" onclick="filterFinanceCategories('petty', this)">Petty Spend</button>
+                </div>
+                <button class="btn btn-fill" onclick="openAddFinanceCategoryModal()"><i class="fa-solid fa-plus"></i> Add Category</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-loading-bar" id="financeCategoriesLoadingBar"><span></span></div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th style="width:60px;">#</th>
+                    <th>Category Name</th>
+                    <th>Reporting Kind</th>
+                    <th>Petty / Recurring Spend</th>
+                    <th>Status</th>
+                    <th style="width:120px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="financeCategoriesTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="financeCategoriesEmpty" style="display: none;">
+                <i class="fa-solid fa-tags"></i>
+                <p>No transaction categories found.</p>
+              </div>
+              <div class="alert alert-danger" id="financeCategoriesError" style="display: none; margin: 16px; padding: 14px 18px; border-radius: 8px; align-items: center; justify-content: space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;"></i>
+                  <div>
+                    <strong style="display:block;">Failed to load transaction categories</strong>
+                    <span id="financeCategoriesErrorMessage" style="font-size: 13px;">An unexpected error occurred while fetching categories.</span>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="loadFinanceCategories()"><i class="fa-solid fa-rotate"></i> Retry</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 2: Payment Types -->
+          <div id="financeSettingsPanePaymentTypes" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-credit-card"></i> Payment Types</h2>
+                <p class="section-subtitle">Payment methods and rule triggers (cheque registers, bank fee prompts, transfer codes).</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <div class="filter-tabs">
+                  <button class="filter-tab active" onclick="filterFinancePaymentTypes('all', this)">All</button>
+                  <button class="filter-tab" onclick="filterFinancePaymentTypes('active', this)">Active</button>
+                  <button class="filter-tab" onclick="filterFinancePaymentTypes('inactive', this)">Inactive</button>
+                </div>
+                <button class="btn btn-fill" onclick="openAddFinancePaymentTypeModal()"><i class="fa-solid fa-plus"></i> Add Payment Type</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-loading-bar" id="financePaymentTypesLoadingBar"><span></span></div>
+              <table class="responsive-card-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Machine Code</th>
+                    <th>Requires Cheque #</th>
+                    <th>Requires Bank Fee Flag</th>
+                    <th>Status</th>
+                    <th style="width:120px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="financePaymentTypesTableBody"></tbody>
+              </table>
+              <div class="empty-state" id="financePaymentTypesEmpty" style="display: none;">
+                <i class="fa-solid fa-credit-card"></i>
+                <p>No payment types configured yet.</p>
+              </div>
+              <div class="alert alert-danger" id="financePaymentTypesError" style="display: none; margin: 16px; padding: 14px 18px; border-radius: 8px; align-items: center; justify-content: space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;"></i>
+                  <div>
+                    <strong style="display:block;">Failed to load payment types</strong>
+                    <span id="financePaymentTypesErrorMessage" style="font-size: 13px;">An unexpected error occurred while fetching payment types.</span>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="loadFinancePaymentTypes()"><i class="fa-solid fa-rotate"></i> Retry</button>
+              </div>
+            </div>
+          </div>
+        </section>

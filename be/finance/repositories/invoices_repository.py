@@ -8,6 +8,7 @@ Conventions (matches Phase 4.1 / 4.2 pattern):
  - No hard deletes — invoices are voided, not deleted.
  - Balance adjustment on Payment is done here so it stays atomic with the Payment insert.
 """
+from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
@@ -59,6 +60,12 @@ class InvoicesRepository:
         status: Optional[str] = None,
         customer_id: Optional[int] = None,
         search: Optional[str] = None,
+        currency: Optional[str] = None,
+        revenue_channel: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        due_date_from: Optional[str] = None,
+        due_date_to: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[SalesInvoiceDB]:
@@ -72,9 +79,38 @@ class InvoicesRepository:
             )
         )
         if status:
-            query = query.filter(SalesInvoiceDB.status == status)
+            st = status.lower().strip()
+            if st == "open":
+                query = query.filter(~SalesInvoiceDB.status.in_(["paid", "void"]))
+            elif st == "awaiting_payment":
+                query = query.filter(SalesInvoiceDB.status == "sent")
+            elif st == "overdue":
+                today_str = datetime.utcnow().strftime("%Y-%m-%d")
+                query = query.filter(
+                    ~SalesInvoiceDB.status.in_(["paid", "void"]),
+                    or_(
+                        SalesInvoiceDB.status == "overdue",
+                        SalesInvoiceDB.due_date < today_str,
+                    ),
+                )
+            elif st != "all":
+                query = query.filter(SalesInvoiceDB.status == st)
+
         if customer_id is not None:
             query = query.filter(SalesInvoiceDB.customer_id == customer_id)
+        if currency and currency.upper() != "ALL":
+            query = query.filter(SalesInvoiceDB.currency == currency.upper())
+        if revenue_channel and revenue_channel != "all":
+            query = query.filter(SalesInvoiceDB.revenue_channel == revenue_channel)
+        if date_from:
+            query = query.filter(SalesInvoiceDB.issue_date >= date_from)
+        if date_to:
+            query = query.filter(SalesInvoiceDB.issue_date <= date_to)
+        if due_date_from:
+            query = query.filter(SalesInvoiceDB.due_date >= due_date_from)
+        if due_date_to:
+            query = query.filter(SalesInvoiceDB.due_date <= due_date_to)
+
         if search:
             s = f"%{search.strip()}%"
             query = query.join(CustomerDB, isouter=True).filter(
@@ -157,6 +193,8 @@ class InvoicesRepository:
 
         if "customer_id" in data and data["customer_id"] is not None:
             invoice.customer_id = data["customer_id"]
+        if "invoice_number" in data and data["invoice_number"] is not None:
+            invoice.invoice_number = data["invoice_number"].strip()
         if "issue_date" in data and data["issue_date"] is not None:
             invoice.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:
@@ -217,36 +255,49 @@ class InvoicesRepository:
         if not bank_account:
             raise ValueError(f"Bank account {data['bank_account_id']} not found")
 
-        payment = PaymentDB(
-            direction=data.get("direction", "incoming"),
-            related_invoice_id=data.get("related_invoice_id"),
-            related_bill_id=data.get("related_bill_id"),
-            amount=data["amount"],
-            currency=data.get("currency", "USD"),
-            payment_date=data["payment_date"],
-            bank_account_id=data["bank_account_id"],
-            method=data.get("method", "bank_transfer"),
-            reference=data.get("reference", ""),
-        )
-        self.db.add(payment)
+        ref = (data.get("reference") or "").strip()
+        if ref:
+            dup = (
+                self.db.query(PaymentDB)
+                .filter(PaymentDB.reference == ref, PaymentDB.is_reversed == False)
+                .first()
+            )
+            if dup:
+                raise ValueError(f"Duplicate payment reference '{ref}' detected. Please review.")
+
+        invoice = None
+        if data.get("related_invoice_id"):
+            from finance.services.settlement_service import SettlementService
+            settlement_svc = SettlementService(self.db)
+            invoice, payment = settlement_svc.settle_invoice(
+                invoice_id=data["related_invoice_id"],
+                amount=data["amount"],
+                payment_date=data["payment_date"],
+                bank_account_id=bank_account.id,
+                currency=data.get("currency", "USD"),
+                reference=ref,
+                method=data.get("method", "bank_transfer"),
+            )
+        else:
+            payment = PaymentDB(
+                direction=data.get("direction", "incoming"),
+                related_invoice_id=data.get("related_invoice_id"),
+                related_bill_id=data.get("related_bill_id"),
+                amount=data["amount"],
+                currency=data.get("currency", "USD"),
+                payment_date=data["payment_date"],
+                bank_account_id=data["bank_account_id"],
+                method=data.get("method", "bank_transfer"),
+                reference=ref,
+                is_reversed=False,
+            )
+            self.db.add(payment)
 
         # Adjust balance: incoming → credit, outgoing → debit
         if payment.direction == "incoming":
             bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
         else:
             bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
-
-        # Auto-mark invoice as paid if this payment covers remaining total
-        invoice = None
-        if data.get("related_invoice_id"):
-            invoice = self.db.query(SalesInvoiceDB).filter(
-                SalesInvoiceDB.id == data["related_invoice_id"]
-            ).first()
-            if invoice and invoice.status not in ("void", "paid"):
-                existing_payments = self.list_payments(invoice.id)
-                paid_so_far = sum(p.amount for p in existing_payments)
-                if paid_so_far + payment.amount >= invoice.total:
-                    invoice.status = "paid"
 
         # Record corresponding ledger transaction for single source of truth
         rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
@@ -266,6 +317,64 @@ class InvoicesRepository:
             linked_invoice_id=payment.related_invoice_id,
             running_balance=bank_account.current_balance,
             created_at=payment.created_at,
+        )
+        self.db.add(ledger_tx)
+
+        self.db.commit()
+        self.db.refresh(payment)
+        return payment
+
+    def reverse_payment(self, payment_id: int, reason: Optional[str] = None) -> PaymentDB:
+        payment = self.db.query(PaymentDB).filter(PaymentDB.id == payment_id).first()
+        if not payment:
+            raise ValueError(f"Payment {payment_id} not found")
+        if payment.is_reversed:
+            raise ValueError(f"Payment {payment_id} has already been reversed")
+
+        bank_account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == payment.bank_account_id)
+            .first()
+        )
+        if not bank_account:
+            raise ValueError(f"Bank account {payment.bank_account_id} not found")
+
+        payment.is_reversed = True
+
+        # Reverse bank balance: incoming was credited, so now debit
+        if payment.direction == "incoming":
+            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
+        else:
+            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
+
+        # If related to an invoice, restore invoice status if unpaid balance exists
+        if payment.related_invoice_id:
+            invoice = (
+                self.db.query(SalesInvoiceDB)
+                .filter(SalesInvoiceDB.id == payment.related_invoice_id)
+                .first()
+            )
+            if invoice and invoice.status != "void":
+                existing_payments = self.list_payments(invoice.id)
+                active_paid = sum(p.amount for p in existing_payments if not p.is_reversed)
+                if active_paid < invoice.total:
+                    invoice.status = "sent"
+
+        # Create reversing ledger transaction
+        rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
+        ledger_tx = LedgerTransactionDB(
+            account_id=bank_account.id,
+            date=datetime.utcnow().strftime("%Y-%m-%d"),
+            amount=payment.amount,
+            direction="out" if payment.direction == "incoming" else "in",
+            currency=payment.currency,
+            category_id=rev_cat.id if rev_cat else None,
+            reference=f"REV-{payment.reference or payment.id}",
+            description=f"Reversal of payment #{payment.id}" + (f": {reason.strip()}" if reason else ""),
+            source="payment_reversal",
+            linked_invoice_id=payment.related_invoice_id,
+            running_balance=bank_account.current_balance,
+            created_at=datetime.utcnow(),
         )
         self.db.add(ledger_tx)
 

@@ -12,6 +12,8 @@ from finance.repositories.payment_types_repository import PaymentTypesRepository
 from finance.schemas import (
     LedgerTransactionCreate,
     LedgerTransactionResponse,
+    TransactionPreviewRequest,
+    TransactionPreviewResponse,
 )
 from finance.models import LedgerTransactionDB
 
@@ -62,6 +64,14 @@ class LedgerService:
             currency=tx.currency,
             category_id=tx.category_id,
             payment_type_id=tx.payment_type_id,
+            entry_type=getattr(tx, "entry_type", "standard") or "standard",
+            payee_type=getattr(tx, "payee_type", "none") or "none",
+            payee_id=getattr(tx, "payee_id", None),
+            payee_name=getattr(tx, "payee_name", None),
+            counterparty=getattr(tx, "counterparty", None),
+            tax_amount=float(getattr(tx, "tax_amount", 0.0) or 0.0),
+            base_amount=getattr(tx, "base_amount", None),
+            reason=getattr(tx, "reason", None),
             category_name=cat_name,
             payment_type_code=pt_code,
             payment_type_name=pt_name,
@@ -80,6 +90,79 @@ class LedgerService:
             created_at=tx.created_at,
             created_by=tx.created_by,
         )
+
+    def _validate_and_resolve_payee(self, data: dict) -> None:
+        """
+        Validates payee_type, payee_id, payee_name and ensures mutual exclusivity:
+        - payee_type in ('none', 'vendor', 'employee', 'customer')
+        - payee_type 'none': payee_id must be None
+        - payee_type 'vendor': payee_id must resolve to VendorDB if present
+        - payee_type 'employee': payee_id must resolve to EmployeeDB if present
+        - payee_type 'customer': payee_id must resolve to CustomerDB if present
+        - Synchronizes payee_name and counterparty
+        """
+        payee_type = (data.get("payee_type") or "none").lower()
+        if payee_type not in ("none", "vendor", "employee", "customer"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid payee_type '{payee_type}'. Must be one of 'none', 'vendor', 'employee', 'customer'.",
+            )
+        data["payee_type"] = payee_type
+        payee_id = data.get("payee_id")
+        payee_name = data.get("payee_name")
+
+        if payee_type == "none":
+            if payee_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="payee_id cannot be provided when payee_type is 'none'",
+                )
+            data["payee_id"] = None
+        elif payee_type == "vendor":
+            if payee_id:
+                from finance.models import VendorDB
+                vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payee_id).first()
+                if not vendor:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Vendor with ID {payee_id} not found",
+                    )
+                if not payee_name:
+                    data["payee_name"] = vendor.name
+                if not data.get("counterparty"):
+                    data["counterparty"] = vendor.name
+        elif payee_type == "employee":
+            if payee_id:
+                from models_db import EmployeeDB
+                emp = self.repo.db.query(EmployeeDB).filter(EmployeeDB.id == payee_id).first()
+                if not emp:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Employee with ID {payee_id} not found",
+                    )
+                if not payee_name:
+                    data["payee_name"] = emp.name
+                if not data.get("counterparty"):
+                    data["counterparty"] = emp.name
+        elif payee_type == "customer":
+            if payee_id:
+                from finance.models import CustomerDB
+                cust = self.repo.db.query(CustomerDB).filter(CustomerDB.id == payee_id).first()
+                if not cust:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Customer with ID {payee_id} not found",
+                    )
+                if not payee_name:
+                    data["payee_name"] = cust.name
+                if not data.get("counterparty"):
+                    data["counterparty"] = cust.name
+
+        # Sync counterparty and payee_name if one is present and the other is not
+        if not data.get("counterparty") and data.get("payee_name"):
+            data["counterparty"] = data["payee_name"]
+        if not data.get("payee_name") and data.get("counterparty"):
+            data["payee_name"] = data["counterparty"]
 
     def list_transactions(
         self,
@@ -129,6 +212,7 @@ class LedgerService:
         payload: LedgerTransactionCreate,
         user_email: Optional[str] = None,
     ) -> LedgerTransactionResponse:
+        account = None
         if self.accounts_repo:
             account = self.accounts_repo.get_by_id(account_id)
             if not account:
@@ -149,8 +233,33 @@ class LedgerService:
                 detail="Transaction amount must be strictly greater than 0",
             )
 
+        # Currency mismatch validation: transaction currency vs account currency
+        tx_curr = (payload.currency or "USD").upper()
+        acct_curr = (account.currency if account else "USD").upper()
+        if tx_curr != acct_curr:
+            if not payload.fx_rate or payload.fx_rate <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Currency mismatch between transaction ({tx_curr}) and account ({acct_curr}). An exchange rate (fx_rate) is required.",
+                )
+
+        # Guided entry type validation
+        entry_type = (payload.entry_type or "standard").lower()
+        if entry_type == "bank_fee":
+            payload.direction = "out"
+        elif entry_type == "adjustment":
+            if not payload.reason or not payload.reason.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A specific reason is required when recording an adjustment.",
+                )
+
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
         data["source"] = "manual"
+
+        # Auto-compute base_amount if foreign currency
+        if tx_curr != acct_curr and payload.fx_rate:
+            data["base_amount"] = self.compute_equivalent_amount(payload.amount, tx_curr, payload.fx_rate, acct_curr)
 
         # Resolve category string fallback if category_id not provided
         if not data.get("category_id") and payload.category and self.categories_repo:
@@ -176,6 +285,41 @@ class LedgerService:
                     detail=f"Payment type with ID {data['payment_type_id']} not found",
                 )
 
+        # Validate and resolve payee information
+        self._validate_and_resolve_payee(data)
+
+        # Unified settlement linking (FUX-406)
+        if data.get("linked_bill_id"):
+            from finance.services.settlement_service import SettlementService
+            settlement_svc = SettlementService(self.repo.db)
+            try:
+                settlement_svc.settle_bill(
+                    bill_id=data["linked_bill_id"],
+                    amount=data["amount"],
+                    payment_date=data["date"],
+                    bank_account_id=account_id,
+                    currency=data.get("currency", account.currency if account else "USD"),
+                    reference=data.get("reference", ""),
+                )
+                data["source"] = "bill_payment"
+            except ValueError as e:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        elif data.get("linked_invoice_id"):
+            from finance.services.settlement_service import SettlementService
+            settlement_svc = SettlementService(self.repo.db)
+            try:
+                settlement_svc.settle_invoice(
+                    invoice_id=data["linked_invoice_id"],
+                    amount=data["amount"],
+                    payment_date=data["date"],
+                    bank_account_id=account_id,
+                    currency=data.get("currency", account.currency if account else "USD"),
+                    reference=data.get("reference", ""),
+                )
+                data["source"] = "invoice_payment"
+            except ValueError as e:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
         try:
             tx = self.repo.create_transaction(account_id, data, created_by=user_email)
             return self.to_response(tx)
@@ -184,6 +328,81 @@ class LedgerService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
             )
+
+    def preview_transaction(
+        self,
+        account_id: int,
+        payload: TransactionPreviewRequest,
+    ) -> TransactionPreviewResponse:
+        if not self.accounts_repo:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Accounts repo unavailable")
+        account = self.accounts_repo.get_by_id(account_id)
+        if not account:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Bank account with ID {account_id} not found")
+
+        tx_curr = (payload.currency or account.currency or "USD").upper()
+        acct_curr = (account.currency or "USD").upper()
+        fx_rate = payload.fx_rate
+
+        if tx_curr != acct_curr:
+            if not fx_rate or fx_rate <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Currency mismatch between transaction ({tx_curr}) and account ({acct_curr}). An exchange rate (fx_rate) is required.",
+                )
+            converted = self.compute_equivalent_amount(payload.amount, tx_curr, fx_rate, acct_curr) or payload.amount
+        else:
+            converted = payload.amount
+
+        cur_bal = float(account.current_balance or 0.0)
+        direction = "out" if payload.entry_type == "bank_fee" else payload.direction.lower()
+        if direction == "in":
+            proj_bal = round(cur_bal + converted, 2)
+            effect_word = "increase"
+        else:
+            proj_bal = round(cur_bal - converted, 2)
+            effect_word = "decrease"
+
+        sym = "$" if tx_curr == "USD" else ("E£" if tx_curr == "EGP" else tx_curr)
+        acct_sym = "$" if acct_curr == "USD" else ("E£" if acct_curr == "EGP" else acct_curr)
+
+        plain = f"This will {effect_word} the Book Balance of {account.account_name} by {sym}{payload.amount:,.2f} {tx_curr}."
+        if tx_curr != acct_curr:
+            plain += f" (Converted @ {fx_rate}: {acct_sym}{converted:,.2f} {acct_curr})."
+        plain += f" Projected Book Balance: {acct_sym}{proj_bal:,.2f} {acct_curr}."
+
+        # Journal preview lines
+        journal = []
+        acct_label = f"Cash / Bank: {account.account_name}"
+        if direction == "in":
+            journal.append({"type": "debit", "account": acct_label, "amount": converted, "currency": acct_curr})
+            offset_label = "Revenue / Accounts Receivable" if payload.entry_type == "money_in" else "Retained Earnings (Adjustment)"
+            journal.append({"type": "credit", "account": offset_label, "amount": converted, "currency": acct_curr})
+        else:
+            if payload.entry_type == "bank_fee":
+                offset_label = "Bank & Financing Fees Expense"
+            elif payload.entry_type == "adjustment":
+                offset_label = "Retained Earnings / Variance Adjustment"
+            else:
+                offset_label = "Expense / Accounts Payable"
+            journal.append({"type": "debit", "account": offset_label, "amount": converted, "currency": acct_curr})
+            journal.append({"type": "credit", "account": acct_label, "amount": converted, "currency": acct_curr})
+
+        return TransactionPreviewResponse(
+            account_id=account.id,
+            account_name=account.account_name,
+            account_currency=acct_curr,
+            entry_type=payload.entry_type,
+            direction=direction,
+            transaction_amount=payload.amount,
+            transaction_currency=tx_curr,
+            fx_rate=fx_rate,
+            converted_amount=converted,
+            current_book_balance=cur_bal,
+            projected_book_balance=proj_bal,
+            plain_description=plain,
+            journal_preview=journal,
+        )
 
     def update_manual_transaction(
         self,
@@ -233,6 +452,16 @@ class LedgerService:
                     detail=f"Payment type with ID {data['payment_type_id']} not found",
                 )
 
+        if any(k in data for k in ("payee_type", "payee_id", "payee_name", "counterparty")):
+            merged_payee_data = {
+                "payee_type": data.get("payee_type", getattr(tx, "payee_type", "none")),
+                "payee_id": data.get("payee_id", getattr(tx, "payee_id", None)),
+                "payee_name": data.get("payee_name", getattr(tx, "payee_name", None)),
+                "counterparty": data.get("counterparty", getattr(tx, "counterparty", None)),
+            }
+            self._validate_and_resolve_payee(merged_payee_data)
+            data.update(merged_payee_data)
+
         try:
             updated = self.repo.update_transaction(tx_id, data)
             return self.to_response(updated)
@@ -242,7 +471,7 @@ class LedgerService:
                 detail=str(e),
             )
 
-    def delete_manual_transaction(self, tx_id: int) -> dict:
+    def delete_manual_transaction(self, tx_id: int, reason: Optional[str] = None) -> dict:
         tx = self.repo.get_by_id(tx_id)
         if not tx:
             raise HTTPException(
@@ -256,9 +485,15 @@ class LedgerService:
                 detail=f"Only manual transactions can be deleted. Transaction source is '{tx.source}'.",
             )
 
+        if getattr(tx, "linked_invoice_id", None) or getattr(tx, "linked_bill_id", None) or getattr(tx, "linked_transfer_id", None) or getattr(tx, "linked_cheque_id", None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete transaction {tx_id}: it is linked to a posted financial document.",
+            )
+
         try:
             self.repo.delete_transaction(tx_id)
-            return {"message": "Transaction deleted successfully", "id": tx_id}
+            return {"message": "Transaction deleted successfully", "id": tx_id, "reason": reason or ""}
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

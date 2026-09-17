@@ -92,6 +92,8 @@ async def log_subscription_charge(
     amount: float = Form(..., description="Actual charge amount"),
     billing_date: str = Form(..., description="Charge date (YYYY-MM-DD)"),
     currency: str = Form("USD", description="Currency"),
+    create_bill: Optional[bool] = Form(False, description="Whether to generate/match a vendor bill"),
+    variance_reason: Optional[str] = Form(None, description="Explanation for price or usage variance"),
     note: Optional[str] = Form("", description="Charge notes or memo"),
     bank_account_id: Optional[int] = Form(None, description="Bank account paying the charge"),
     file: Optional[UploadFile] = File(None, description="Receipt or invoice attachment"),
@@ -100,13 +102,15 @@ async def log_subscription_charge(
 ):
     """
     Log an actual subscription charge (fixed or variable), optionally recording
-    a bank ledger outflow and attaching supporting invoice/receipt files.
+    a bank ledger outflow, generating a linked bill, and attaching supporting invoice/receipt files.
     """
     charge_data = SubscriptionChargeCreate(
         subscription_id=subscription_id,
         amount=amount,
         billing_date=billing_date,
         currency=currency,
+        create_bill=create_bill or False,
+        variance_reason=variance_reason,
         note=note or "",
         bank_account_id=bank_account_id,
     )

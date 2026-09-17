@@ -2,11 +2,18 @@
 be/finance/repositories/accounts_repository.py
 SQLAlchemy-backed repository for company bank accounts.
 """
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func, case
 
-from finance.models import FinanceBankAccountDB, LedgerTransactionDB
+from finance.models import (
+    FinanceBankAccountDB,
+    LedgerTransactionDB,
+    FinanceChequeDB,
+    BankStatementImportDB,
+    StatementLineDB,
+)
 
 
 class AccountsRepository:
@@ -32,6 +39,10 @@ class AccountsRepository:
             FinanceBankAccountDB.account_name.ilike(account_name.strip())
         ).first()
 
+    def has_transactions(self, account_id: int) -> bool:
+        """Returns whether any ledger transactions exist for this account."""
+        return self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.account_id == account_id).count() > 0
+
     def create(self, data: dict) -> FinanceBankAccountDB:
         account = FinanceBankAccountDB(
             account_name=data["account_name"].strip(),
@@ -39,6 +50,7 @@ class AccountsRepository:
             account_number=data["account_number"].strip(),
             currency=data.get("currency", "USD").upper(),
             opening_balance=float(data.get("opening_balance", 0.0)),
+            opening_balance_date=data.get("opening_balance_date"),
             current_balance=float(data.get("opening_balance", 0.0)),
             account_type=data.get("account_type", "bank"),
             country=data.get("country", "Egypt"),
@@ -66,6 +78,12 @@ class AccountsRepository:
             account.account_type = data["account_type"]
         if "country" in data and data["country"] is not None:
             account.country = data["country"]
+        if "opening_balance_date" in data:
+            account.opening_balance_date = data["opening_balance_date"]
+        if "opening_balance" in data and data["opening_balance"] is not None:
+            account.opening_balance = float(data["opening_balance"])
+            if not self.has_transactions(account_id):
+                account.current_balance = float(data["opening_balance"])
         if "is_active" in data and data["is_active"] is not None:
             account.is_active = bool(data["is_active"])
 
@@ -106,3 +124,102 @@ class AccountsRepository:
         self.db.commit()
         self.db.refresh(account)
         return balance
+
+    def get_balance_metrics(self, account: FinanceBankAccountDB) -> Dict[str, Any]:
+        """
+        Computes separated Book, Available, Bank, and Reconciled balances along with
+        reconciliation status and balance definitions for Story 5.1.
+        """
+        book_balance = float(account.current_balance or 0.0)
+        available_balance = book_balance
+
+        # Uncleared cheques (issued or outstanding)
+        uncleared_sum = (
+            self.db.query(func.coalesce(func.sum(FinanceChequeDB.amount), 0.0))
+            .filter(FinanceChequeDB.account_id == account.id, FinanceChequeDB.status.in_(["issued", "outstanding"]))
+            .scalar()
+            or 0.0
+        )
+        bank_balance = round(book_balance + float(uncleared_sum), 2)
+
+        # Statement imports
+        latest_import = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.account_id == account.id)
+            .order_by(BankStatementImportDB.created_at.desc())
+            .first()
+        )
+        last_import_date = (
+            latest_import.created_at.strftime("%Y-%m-%d")
+            if latest_import and latest_import.created_at
+            else None
+        )
+
+        latest_reconciled = (
+            self.db.query(BankStatementImportDB)
+            .filter(BankStatementImportDB.account_id == account.id, BankStatementImportDB.status == "reconciled")
+            .order_by(BankStatementImportDB.reconciled_at.desc())
+            .first()
+        )
+        last_reconciled_date = (
+            latest_reconciled.reconciled_at.strftime("%Y-%m-%d")
+            if latest_reconciled and latest_reconciled.reconciled_at
+            else None
+        )
+
+        unreconciled_count = (
+            self.db.query(StatementLineDB)
+            .join(BankStatementImportDB, StatementLineDB.import_id == BankStatementImportDB.id)
+            .filter(BankStatementImportDB.account_id == account.id, StatementLineDB.status == "unmatched")
+            .count()
+        )
+
+        if not latest_import:
+            bank_balance = round(book_balance + float(uncleared_sum), 2)
+        else:
+            bank_balance = book_balance
+        reconciled_balance = round(float(account.opening_balance or 0.0), 2)
+        if latest_import:
+            matched_sum = (
+                self.db.query(
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (StatementLineDB.direction == "in", StatementLineDB.raw_amount),
+                                else_=-StatementLineDB.raw_amount,
+                            )
+                        ),
+                        0.0,
+                    )
+                )
+                .join(BankStatementImportDB, StatementLineDB.import_id == BankStatementImportDB.id)
+                .filter(
+                    BankStatementImportDB.account_id == account.id,
+                    StatementLineDB.status.in_(["matched", "created"]),
+                )
+                .scalar()
+                or 0.0
+            )
+            reconciled_balance = round(reconciled_balance + float(matched_sum), 2)
+        else:
+            reconciled_balance = book_balance
+
+        has_postings = self.has_transactions(account.id)
+
+        return {
+            "book_balance": book_balance,
+            "bank_balance": bank_balance,
+            "available_balance": available_balance,
+            "reconciled_balance": reconciled_balance,
+            "unreconciled_count": unreconciled_count,
+            "last_reconciled_date": last_reconciled_date,
+            "last_import_date": last_import_date,
+            "has_postings": has_postings,
+            "balance_definitions": {
+                "book_balance": "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
+                "bank_balance": "Reported bank statement balance as of the latest statement upload or sync.",
+                "available_balance": "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
+                "reconciled_balance": "Portion of the ledger verified and reconciled against official bank statements.",
+            },
+            "balance_as_of": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        }

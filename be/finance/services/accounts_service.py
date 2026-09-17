@@ -22,19 +22,33 @@ class AccountsService:
             return f"******{clean}"
         return f"{'*' * (len(clean) - 4)}{clean[-4:]}"
 
-    def to_response(self, account: FinanceBankAccountDB) -> BankAccountResponse:
+    def to_response(self, account: FinanceBankAccountDB, reveal: bool = False) -> BankAccountResponse:
+        metrics = self.repo.get_balance_metrics(account)
+        account_num = account.account_number if reveal else self.mask_account_number(account.account_number)
+
         return BankAccountResponse(
             id=account.id,
             account_name=account.account_name,
             bank_name=account.bank_name,
-            account_number=self.mask_account_number(account.account_number),
+            account_number=account_num,
             currency=account.currency,
             opening_balance=account.opening_balance,
+            opening_balance_date=account.opening_balance_date,
             current_balance=account.current_balance,
             account_type=getattr(account, "account_type", "bank"),
             country=getattr(account, "country", "Egypt"),
             is_active=account.is_active,
             created_at=account.created_at,
+            book_balance=metrics["book_balance"],
+            bank_balance=metrics["bank_balance"],
+            available_balance=metrics["available_balance"],
+            reconciled_balance=metrics["reconciled_balance"],
+            unreconciled_count=metrics["unreconciled_count"],
+            last_reconciled_date=metrics["last_reconciled_date"],
+            last_import_date=metrics["last_import_date"],
+            has_postings=metrics["has_postings"],
+            balance_definitions=metrics["balance_definitions"],
+            balance_as_of=metrics["balance_as_of"],
         )
 
     def list_accounts(
@@ -46,14 +60,14 @@ class AccountsService:
         accounts = self.repo.list_all(is_active=is_active, limit=limit, offset=offset)
         return [self.to_response(acc) for acc in accounts]
 
-    def get_account(self, account_id: int) -> BankAccountResponse:
+    def get_account(self, account_id: int, reveal: bool = False) -> BankAccountResponse:
         account = self.repo.get_by_id(account_id)
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Bank account with ID {account_id} not found",
             )
-        return self.to_response(account)
+        return self.to_response(account, reveal=reveal)
 
     def create_account(self, payload: BankAccountCreate) -> BankAccountResponse:
         existing = self.repo.get_by_name(payload.account_name)
@@ -75,6 +89,7 @@ class AccountsService:
                 detail=f"Bank account with ID {account_id} not found",
             )
 
+        # Name collision check
         if payload.account_name and payload.account_name.lower() != existing.account_name.lower():
             name_clash = self.repo.get_by_name(payload.account_name)
             if name_clash and name_clash.id != account_id:
@@ -83,7 +98,19 @@ class AccountsService:
                     detail=f"A bank account with name '{payload.account_name}' already exists",
                 )
 
-        data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
+        # Story 5.1 Acceptance Criteria: Prevent ordinary currency changes after postings
+        if payload.currency and payload.currency.upper() != existing.currency.upper():
+            if self.repo.has_transactions(account_id):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Currency cannot be modified after transactions have been posted to this account.",
+                )
+
+        data = (
+            payload.model_dump(exclude_unset=True)
+            if hasattr(payload, "model_dump")
+            else payload.dict(exclude_unset=True)
+        )
         updated = self.repo.update(account_id, data)
         return self.to_response(updated)
 
