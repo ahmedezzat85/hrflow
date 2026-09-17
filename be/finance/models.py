@@ -621,7 +621,7 @@ class PayrollLineDB(Base):
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     employee_name = Column(String(255), nullable=True)
     department = Column(String(100), nullable=True)
-    compensation_type = Column(String(50), default="internal_usd_cash", nullable=True)  # external_usd / internal_usd_cash
+    compensation_type = Column(String(50), default="internal_usd_cash", nullable=True)  # external_usd / internal_usd_cash / commission_sales / commission_support / bonus
     is_taxable_local = Column(Boolean, default=True, nullable=True)
     is_insurable = Column(Boolean, default=True, nullable=True)
     base_salary = Column(Float, default=0.0)

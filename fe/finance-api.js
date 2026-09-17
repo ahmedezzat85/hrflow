@@ -6420,6 +6420,145 @@ const FinanceApi = {
     return apiRequest("POST", `/api/finance/payroll/runs/${id}/post-journal`);
   },
 
+  async addPayrollLine(runId, payload) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+      if (!run) throw new Error(`Payroll run #${runId} not found`);
+      if (run.status !== "draft") {
+        throw new Error(`Cannot add lines to payroll run #${runId}: Run is in '${run.status}' status and locked against modification.`);
+      }
+
+      const cType = payload.compensation_type || "commission_sales";
+      const amt = Number(payload.amount !== undefined ? payload.amount : payload.base_salary);
+      if (!amt || amt <= 0) {
+        throw new Error("Line amount must be greater than 0");
+      }
+
+      const isTaxable = payload.is_taxable_local !== undefined ? Boolean(payload.is_taxable_local) : (cType !== "external_usd");
+      const isInsurable = payload.is_insurable !== undefined ? Boolean(payload.is_insurable) : (cType !== "external_usd");
+
+      const deductions = isInsurable ? Math.round(amt * 0.05 * 100) / 100 : 0.0;
+      const taxAmt = isTaxable ? Math.round(amt * 0.10 * 100) / 100 : 0.0;
+      const employerExtra = isInsurable ? Math.round(amt * 0.12 * 100) / 100 : 0.0;
+      const netPay = Math.round((amt - deductions - taxAmt) * 100) / 100;
+
+      const empId = parseInt(payload.employee_id, 10);
+      let empName = payload.employee_name;
+      let dept = payload.department;
+      let bankName = "Commercial Bank";
+      let bankAcc = "••••4821";
+
+      const existingLine = (run.lines || []).find(l => l.employee_id === empId);
+      if (existingLine) {
+        empName = empName || existingLine.employee_name;
+        dept = dept || existingLine.department;
+        bankName = existingLine.bank_name || bankName;
+        bankAcc = existingLine.bank_account_masked || bankAcc;
+      } else {
+        const emp = (FinanceMockState.employees || []).find(e => e.id === empId);
+        if (emp) {
+          empName = empName || emp.name;
+          dept = dept || emp.department || emp.dept;
+        }
+      }
+
+      const newLine = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        payroll_run_id: run.id,
+        employee_id: empId,
+        employee_name: empName || `Employee #${empId}`,
+        department: dept || "General",
+        compensation_type: cType,
+        is_taxable_local: isTaxable,
+        is_insurable: isInsurable,
+        base_salary: amt,
+        allowances_total: 0.0,
+        deductions_total: deductions,
+        tax_amount: taxAmt,
+        tax_withheld: taxAmt,
+        net_pay: netPay,
+        employer_cost_extra: employerExtra,
+        employer_taxes: employerExtra,
+        bank_name: bankName,
+        bank_account_masked: bankAcc,
+        payment_status: "pending",
+        failure_reason: null,
+        snapshot_notes: payload.notes || payload.snapshot_notes || `${cType.replace(/_/g, ' ')} - ${run.period_label}`,
+        created_at: new Date().toISOString(),
+        paid_at: null,
+      };
+
+      if (!run.lines) run.lines = [];
+      run.lines.push(newLine);
+
+      const lines = run.lines;
+      run.total_gross = Math.round(lines.reduce((s, l) => s + Number(l.base_salary || 0), 0) * 100) / 100;
+      run.total_net = Math.round(lines.reduce((s, l) => s + Number(l.net_pay || 0), 0) * 100) / 100;
+      run.total_deductions = Math.round(lines.reduce((s, l) => s + Number(l.deductions_total || 0), 0) * 100) / 100;
+      run.total_tax = Math.round(lines.reduce((s, l) => s + Number(l.tax_amount || l.tax_withheld || 0), 0) * 100) / 100;
+      const totalEmpExtra = Math.round(lines.reduce((s, l) => s + Number(l.employer_cost_extra || l.employer_taxes || 0), 0) * 100) / 100;
+      run.total_employer_cost = Math.round((run.total_gross + totalEmpExtra) * 100) / 100;
+      run.headcount = new Set(lines.map(l => l.employee_id)).size;
+
+      const taxableLines = lines.filter(l => l.is_taxable_local);
+      const insurableLines = lines.filter(l => l.is_insurable);
+      const empSi = Math.round(insurableLines.reduce((s, l) => s + Number(l.deductions_total || 0), 0) * 100) / 100;
+      const emprSi = Math.round(insurableLines.reduce((s, l) => s + Number(l.employer_cost_extra || l.employer_taxes || 0), 0) * 100) / 100;
+      const taxWithheld = Math.round(taxableLines.reduce((s, l) => s + Number(l.tax_amount || l.tax_withheld || 0), 0) * 100) / 100;
+
+      run.liabilities_summary = {
+        net_pay_payable: run.total_net,
+        income_tax_withheld: taxWithheld,
+        social_insurance_employee: empSi,
+        social_insurance_employer: emprSi,
+        total_liabilities: Math.round((run.total_net + taxWithheld + empSi + emprSi) * 100) / 100,
+      };
+
+      return newLine;
+    }
+    return apiRequest("POST", `/api/finance/payroll/runs/${runId}/lines`, payload);
+  },
+
+  async deletePayrollLine(runId, lineId) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+      if (!run) throw new Error(`Payroll run #${runId} not found`);
+      if (run.status !== "draft") {
+        throw new Error(`Cannot delete lines from payroll run #${runId}: Run is in '${run.status}' status and locked against modification.`);
+      }
+
+      const idx = (run.lines || []).findIndex(l => l.id === parseInt(lineId, 10));
+      if (idx === -1) throw new Error(`Payroll line #${lineId} not found in run #${runId}`);
+      run.lines.splice(idx, 1);
+
+      const lines = run.lines || [];
+      run.total_gross = Math.round(lines.reduce((s, l) => s + Number(l.base_salary || 0), 0) * 100) / 100;
+      run.total_net = Math.round(lines.reduce((s, l) => s + Number(l.net_pay || 0), 0) * 100) / 100;
+      run.total_deductions = Math.round(lines.reduce((s, l) => s + Number(l.deductions_total || 0), 0) * 100) / 100;
+      run.total_tax = Math.round(lines.reduce((s, l) => s + Number(l.tax_amount || l.tax_withheld || 0), 0) * 100) / 100;
+      const totalEmpExtra = Math.round(lines.reduce((s, l) => s + Number(l.employer_cost_extra || l.employer_taxes || 0), 0) * 100) / 100;
+      run.total_employer_cost = Math.round((run.total_gross + totalEmpExtra) * 100) / 100;
+      run.headcount = new Set(lines.map(l => l.employee_id)).size;
+
+      const taxableLines = lines.filter(l => l.is_taxable_local);
+      const insurableLines = lines.filter(l => l.is_insurable);
+      const empSi = Math.round(insurableLines.reduce((s, l) => s + Number(l.deductions_total || 0), 0) * 100) / 100;
+      const emprSi = Math.round(insurableLines.reduce((s, l) => s + Number(l.employer_cost_extra || l.employer_taxes || 0), 0) * 100) / 100;
+      const taxWithheld = Math.round(taxableLines.reduce((s, l) => s + Number(l.tax_amount || l.tax_withheld || 0), 0) * 100) / 100;
+
+      run.liabilities_summary = {
+        net_pay_payable: run.total_net,
+        income_tax_withheld: taxWithheld,
+        social_insurance_employee: empSi,
+        social_insurance_employer: emprSi,
+        total_liabilities: Math.round((run.total_net + taxWithheld + empSi + emprSi) * 100) / 100,
+      };
+
+      return { success: true };
+    }
+    return apiRequest("DELETE", `/api/finance/payroll/runs/${runId}/lines/${lineId}`);
+  },
+
   async getMyPayslips() {
     if (_isMock()) {
       const runs = FinanceMockState.payrollRuns || [];

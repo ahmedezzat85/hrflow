@@ -17,6 +17,8 @@ from finance.schemas import (
     PayrollRunGenerateRequest,
     PayrollPaymentRequest,
     EmployeePayslipResponse,
+    PayrollLineCreate,
+    PayrollLineResponse,
 )
 from finance.services.payroll_service import PayrollService
 
@@ -107,6 +109,36 @@ def get_payroll_run_detail(
 ):
     """Returns complete payroll run detail including employee lines, liabilities, exceptions, and journal info."""
     return service.get_run(run_id=run_id)
+
+
+@router.post("/runs/{run_id}/lines", response_model=PayrollLineResponse, status_code=status.HTTP_201_CREATED)
+def add_payroll_line(
+    run_id: int = Path(..., description="Payroll Run ID"),
+    req: PayrollLineCreate = ...,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Adds an ad-hoc commission or bonus line to a draft payroll run (FUX-418)."""
+    return service.add_ad_hoc_line(
+        run_id=run_id,
+        employee_id=req.employee_id,
+        compensation_type=req.compensation_type,
+        amount=req.amount or req.base_salary,
+        notes=req.notes or req.snapshot_notes,
+        is_taxable_local=req.is_taxable_local,
+        is_insurable=req.is_insurable,
+    )
+
+
+@router.delete("/runs/{run_id}/lines/{line_id}")
+def delete_payroll_line(
+    run_id: int = Path(..., description="Payroll Run ID"),
+    line_id: int = Path(..., description="Payroll Line ID to delete"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Removes an ad-hoc or mistakenly added line from a draft payroll run (FUX-418)."""
+    return service.delete_line(run_id=run_id, line_id=line_id)
 
 
 @router.post("/runs/{run_id}/approve", response_model=PayrollRunResponse)

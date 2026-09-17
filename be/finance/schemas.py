@@ -5,7 +5,7 @@ Pydantic request and response schemas for Finance domain resources.
 from datetime import date, datetime
 from enum import Enum
 from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ==========================================
@@ -1894,17 +1894,70 @@ class PayrollJournalPreview(BaseModel):
     is_balanced: bool = True
 
 
+VALID_PAYROLL_COMPENSATION_TYPES = {
+    "external_usd",
+    "internal_usd_cash",
+    "commission_sales",
+    "commission_support",
+    "bonus",
+}
+
+
 class PayrollLineCreate(BaseModel):
     employee_id: int
     compensation_type: Optional[str] = "internal_usd_cash"
-    is_taxable_local: Optional[bool] = True
-    is_insurable: Optional[bool] = True
-    base_salary: float
-    allowances_total: float = 0.0
-    deductions_total: float = 0.0
-    tax_amount: float = 0.0
-    employer_cost_extra: float = 0.0
+    amount: Optional[float] = None
+    base_salary: Optional[float] = None
+    notes: Optional[str] = None
     snapshot_notes: Optional[str] = ""
+    is_taxable_local: Optional[bool] = None
+    is_insurable: Optional[bool] = None
+    allowances_total: Optional[float] = 0.0
+    deductions_total: Optional[float] = 0.0
+    tax_amount: Optional[float] = 0.0
+    employer_cost_extra: Optional[float] = 0.0
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_and_validate_fields(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            # Normalize amount / base_salary
+            amt = values.get("amount")
+            base = values.get("base_salary")
+            if amt is None and base is not None:
+                amt = base
+                values["amount"] = amt
+            elif base is None and amt is not None:
+                base = amt
+                values["base_salary"] = base
+
+            if amt is None:
+                raise ValueError("Either amount or base_salary must be provided")
+            if float(amt) <= 0:
+                raise ValueError("Amount must be greater than 0")
+
+            # Validate compensation_type
+            ctype = values.get("compensation_type") or "internal_usd_cash"
+            if ctype not in VALID_PAYROLL_COMPENSATION_TYPES:
+                raise ValueError(
+                    f"Invalid compensation_type '{ctype}'. Must be one of: {', '.join(sorted(VALID_PAYROLL_COMPENSATION_TYPES))}"
+                )
+            values["compensation_type"] = ctype
+
+            # Tax / Insurable defaults
+            if values.get("is_taxable_local") is None:
+                values["is_taxable_local"] = (ctype != "external_usd")
+            if values.get("is_insurable") is None:
+                values["is_insurable"] = (ctype != "external_usd")
+
+            # Normalize notes / snapshot_notes
+            notes = values.get("notes")
+            s_notes = values.get("snapshot_notes")
+            if notes and not s_notes:
+                values["snapshot_notes"] = notes
+            elif s_notes and not notes:
+                values["notes"] = s_notes
+        return values
 
 
 class PayrollLineResponse(BaseModel):

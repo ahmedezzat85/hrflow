@@ -309,7 +309,9 @@
                 <div id="runDetailMetaText" style="font-size:0.85rem; color:var(--text-muted);">
                   Cycle: <strong id="runDetailCycleDates">—</strong> · Funding: <strong id="runDetailBankName">—</strong>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
+                  <button class="btn btn-sm btn-outline" id="btnRunDetailAddBonus" onclick="openAddBonusModal()" style="display:none; color:var(--primary, #2563EB); border-color:var(--primary, #2563EB);">
+                    <i class="fa-solid fa-plus-circle"></i> Add Commission / Bonus
+                  </button>
                   <button class="btn btn-sm btn-outline" id="btnRunDetailApprove" onclick="approveCurrentPayrollRun()" style="display:none; color:#10B981; border-color:#10B981;">
                     <i class="fa-solid fa-check"></i> Approve
                   </button>
@@ -368,7 +370,7 @@
                         <th style="text-align:right;">Net Pay</th>
                         <th>Bank Account</th>
                         <th style="text-align:center;">Payment</th>
-                        <th style="text-align:center; width:90px;">Payslip</th>
+                        <th style="text-align:center; width:120px;">Actions</th>
                       </tr>
                     </thead>
                     <tbody id="runDetailLinesTableBody"></tbody>
@@ -434,6 +436,56 @@
                 <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Payslip</button>
                 <button class="btn btn-secondary" onclick="closeEmployeePayslipModal()">Close</button>
               </div>
+            </div>
+          </div>
+
+          <!-- MODAL 4: Add Commission / Bonus Modal (FUX-418) -->
+          <div class="modal-overlay" id="payrollAddBonusModal" style="display:none; z-index:1060;">
+            <div class="modal modal-md" style="max-width:500px; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden;">
+              <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                <h3 class="modal-title" style="margin:0; font-size:1.15rem;"><i class="fa-solid fa-plus-circle" style="color:var(--primary, #2563EB);"></i> Add Commission / Bonus</h3>
+                <button class="modal-close" onclick="closeAddBonusModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+              </div>
+              <form id="payrollAddBonusForm" onsubmit="submitAddPayrollBonus(event)">
+                <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="bonusEmployeeSelect">Staff Member *</label>
+                    <select id="bonusEmployeeSelect" class="form-control" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" required>
+                      <option value="">Select Employee...</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="bonusCompensationType">Type *</label>
+                    <select id="bonusCompensationType" class="form-control" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" required>
+                      <option value="commission_sales">Sales Commission</option>
+                      <option value="commission_support">Support Commission</option>
+                      <option value="bonus">Discretionary Bonus</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="bonusAmount">Amount (USD) *</label>
+                    <input type="number" id="bonusAmount" step="0.01" min="0.01" class="form-control" placeholder="0.00" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" required />
+                  </div>
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="bonusNotes">Description / Note</label>
+                    <input type="text" id="bonusNotes" class="form-control" placeholder="e.g. September sales commission — Client X deal" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" />
+                  </div>
+                  <div style="display:flex; gap:16px; margin-top:4px;">
+                    <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                      <input type="checkbox" id="bonusIsTaxableLocal" checked />
+                      <span>Subject to Income Tax (10%)</span>
+                    </label>
+                    <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                      <input type="checkbox" id="bonusIsInsurable" checked />
+                      <span>Subject to Social Insurance (5%/12%)</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px; padding:12px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                  <button type="button" class="btn btn-secondary" onclick="closeAddBonusModal()">Cancel</button>
+                  <button type="submit" class="btn btn-primary" id="btnSubmitAddBonus"><i class="fa-solid fa-plus"></i> Add Line</button>
+                </div>
+              </form>
             </div>
           </div>
         </section>

@@ -612,6 +612,200 @@ class PayrollService:
         self.db.refresh(run)
         return self._format_run_detail(run)
 
+    def _recalculate_run_aggregates(self, run: PayrollRunDB) -> None:
+        """Recalculates totals, headcount, and liabilities for a payroll run from its lines (FUX-418)."""
+        lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
+
+        tot_gross = round(sum(float(l.base_salary or 0.0) + float(l.allowances_total or 0.0) for l in lines), 2)
+        tot_tax = round(sum(float(l.tax_amount or 0.0) for l in lines), 2)
+        tot_deductions = round(sum(float(l.deductions_total or 0.0) for l in lines), 2)
+        tot_net = round(sum(float(l.net_pay or 0.0) for l in lines), 2)
+        tot_employer_extra = round(sum(float(l.employer_cost_extra or 0.0) for l in lines), 2)
+        tot_employer_cost = round(tot_gross + tot_employer_extra, 2)
+        distinct_headcount = len(set(l.employee_id for l in lines))
+
+        taxable_lines = [l for l in lines if l.is_taxable_local]
+        insurable_lines = [l for l in lines if l.is_insurable]
+
+        emp_si = round(sum(float(l.deductions_total or 0.0) for l in insurable_lines), 2)
+        empr_si = round(sum(float(l.employer_cost_extra or 0.0) for l in insurable_lines), 2)
+        tax_withheld = round(sum(float(l.tax_amount or 0.0) for l in taxable_lines), 2)
+        net_payable = tot_net
+
+        liabilities_summary = {
+            "net_pay_payable": net_payable,
+            "income_tax_withheld": tax_withheld,
+            "social_insurance_employee": emp_si,
+            "social_insurance_employer": empr_si,
+            "total_liabilities": round(net_payable + tax_withheld + emp_si + empr_si, 2),
+        }
+
+        run.total_gross = tot_gross
+        run.total_tax = tot_tax
+        run.total_deductions = tot_deductions
+        run.total_net = tot_net
+        run.total_employer_cost = tot_employer_cost
+        run.headcount = distinct_headcount
+        run.liabilities_summary_json = json.dumps(liabilities_summary)
+
+        # Update variance summary if present
+        prior_run = (
+            self.db.query(PayrollRunDB)
+            .filter(PayrollRunDB.id != run.id)
+            .filter(PayrollRunDB.status.in_(["approved", "finalized", "paid"]))
+            .order_by(desc(PayrollRunDB.id))
+            .first()
+        )
+        if prior_run:
+            try:
+                var = json.loads(run.variance_summary_json or "{}")
+            except Exception:
+                var = {}
+            var["prior_period_label"] = prior_run.period_label
+            var["headcount_delta"] = distinct_headcount - (prior_run.headcount or 0)
+            var["gross_delta"] = round(tot_gross - (prior_run.total_gross or 0.0), 2)
+            var["net_delta"] = round(tot_net - (prior_run.total_net or 0.0), 2)
+            var["pct_change"] = (
+                round(((tot_gross - prior_run.total_gross) / prior_run.total_gross * 100), 1)
+                if prior_run.total_gross and prior_run.total_gross > 0
+                else 0.0
+            )
+            run.variance_summary_json = json.dumps(var)
+
+    def add_ad_hoc_line(
+        self,
+        run_id: int,
+        employee_id: int,
+        compensation_type: str,
+        amount: float,
+        notes: Optional[str] = None,
+        is_taxable_local: Optional[bool] = None,
+        is_insurable: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        """
+        Adds an ad-hoc commission or bonus line to an existing draft payroll run (FUX-418).
+        Validates the run is in 'draft' status, validates employee and amount,
+        creates the line with appropriate tax/insurance deductions,
+        and recalculates the run's aggregate totals and liabilities.
+        """
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+
+        # Guard: Run must be in draft status
+        if run.status != "draft":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot add lines to payroll run #{run_id}: Run is in '{run.status}' status and locked against modification.",
+            )
+
+        # Validate compensation type
+        valid_types = {"external_usd", "internal_usd_cash", "commission_sales", "commission_support", "bonus"}
+        if compensation_type not in valid_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid compensation_type '{compensation_type}'. Must be one of: {', '.join(sorted(valid_types))}",
+            )
+
+        # Validate amount
+        if amount is None or float(amount) <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Line amount must be greater than 0.",
+            )
+        amount = float(amount)
+
+        # Fetch employee
+        emp = self.db.query(EmployeeDB).filter(EmployeeDB.id == employee_id).first()
+        if not emp:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee #{employee_id} not found.",
+            )
+
+        # Tax & insurable defaults (matching internal cash wage unless explicitly overridden)
+        if is_taxable_local is None:
+            is_taxable_local = (compensation_type != "external_usd")
+        if is_insurable is None:
+            is_insurable = (compensation_type != "external_usd")
+
+        deductions = round(amount * 0.05, 2) if is_insurable else 0.0
+        tax_amt = round(amount * 0.10, 2) if is_taxable_local else 0.0
+        employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
+        net = round(amount - deductions - tax_amt, 2)
+
+        bank_rec = emp.bank_account
+        bank_name = bank_rec.bank_name if bank_rec else None
+        iban = bank_rec.iban if bank_rec else None
+        masked_acc = f"••••{iban[-4:]}" if iban and len(iban) >= 4 else None
+
+        line_notes = notes or f"{compensation_type.replace('_', ' ').title()} - {run.period_label}"
+
+        line_db = PayrollLineDB(
+            payroll_run_id=run.id,
+            employee_id=emp.id,
+            employee_name=emp.name,
+            department=emp.dept or "General",
+            compensation_type=compensation_type,
+            is_taxable_local=is_taxable_local,
+            is_insurable=is_insurable,
+            base_salary=amount,
+            allowances_total=0.0,
+            deductions_total=deductions,
+            tax_amount=tax_amt,
+            net_pay=net,
+            employer_cost_extra=employer_extra,
+            bank_name=bank_name or "Unassigned",
+            bank_account_masked=masked_acc or "Not Provided",
+            payment_status="pending",
+            snapshot_notes=line_notes,
+            created_at=datetime.utcnow(),
+        )
+        self.db.add(line_db)
+        self.db.flush()
+
+        # Recalculate run aggregates
+        self._recalculate_run_aggregates(run)
+        self.db.commit()
+        self.db.refresh(line_db)
+
+        return self._format_line_dict(line_db)
+
+    def delete_line(self, run_id: int, line_id: int) -> Dict[str, Any]:
+        """
+        Removes a line from a draft payroll run (FUX-418).
+        Validates the run is in 'draft' status and recalculates totals.
+        """
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+
+        if run.status != "draft":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete lines from payroll run #{run_id}: Run is in '{run.status}' status and locked against modification.",
+            )
+
+        line = (
+            self.db.query(PayrollLineDB)
+            .filter(PayrollLineDB.id == line_id, PayrollLineDB.payroll_run_id == run_id)
+            .first()
+        )
+        if not line:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Payroll line #{line_id} not found in run #{run_id}.",
+            )
+
+        self.db.delete(line)
+        self.db.flush()
+
+        # Recalculate run aggregates
+        self._recalculate_run_aggregates(run)
+        self.db.commit()
+
+        return {"success": True, "message": f"Payroll line #{line_id} removed successfully"}
+
     def approve_run(self, run_id: int, user_email: Optional[str] = None, allow_self_approval: bool = False) -> Dict[str, Any]:
         """Maker-checker approval for payroll run. Enforces blocking exception verification."""
         run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
@@ -988,36 +1182,35 @@ class PayrollService:
             "has_blocking_exceptions": has_blocking,
         }
 
+    def _format_line_dict(self, l: PayrollLineDB) -> Dict[str, Any]:
+        return {
+            "id": l.id,
+            "payroll_run_id": l.payroll_run_id,
+            "employee_id": l.employee_id,
+            "employee_name": l.employee_name,
+            "department": l.department,
+            "compensation_type": l.compensation_type or "internal_usd_cash",
+            "is_taxable_local": bool(l.is_taxable_local) if l.is_taxable_local is not None else True,
+            "is_insurable": bool(l.is_insurable) if l.is_insurable is not None else True,
+            "base_salary": l.base_salary,
+            "allowances_total": l.allowances_total or 0.0,
+            "deductions_total": l.deductions_total or 0.0,
+            "tax_amount": l.tax_amount or 0.0,
+            "net_pay": l.net_pay or 0.0,
+            "employer_cost_extra": l.employer_cost_extra or 0.0,
+            "bank_name": l.bank_name,
+            "bank_account_masked": l.bank_account_masked,
+            "payment_status": l.payment_status or "pending",
+            "failure_reason": l.failure_reason,
+            "snapshot_notes": l.snapshot_notes,
+            "created_at": l.created_at,
+            "paid_at": l.paid_at,
+        }
+
     def _format_run_detail(self, run: PayrollRunDB) -> Dict[str, Any]:
         summary = self._format_run_summary(run)
         summary["exceptions"] = json.loads(run.exceptions_json or "[]")
         summary["variance_summary"] = json.loads(run.variance_summary_json or "{}")
         summary["liabilities_summary"] = json.loads(run.liabilities_summary_json or "{}")
-
-        lines_out = []
-        for l in run.lines:
-            lines_out.append({
-                "id": l.id,
-                "payroll_run_id": l.payroll_run_id,
-                "employee_id": l.employee_id,
-                "employee_name": l.employee_name,
-                "department": l.department,
-                "compensation_type": l.compensation_type or "internal_usd_cash",
-                "is_taxable_local": bool(l.is_taxable_local) if l.is_taxable_local is not None else True,
-                "is_insurable": bool(l.is_insurable) if l.is_insurable is not None else True,
-                "base_salary": l.base_salary,
-                "allowances_total": l.allowances_total,
-                "deductions_total": l.deductions_total,
-                "tax_amount": l.tax_amount,
-                "net_pay": l.net_pay,
-                "employer_cost_extra": l.employer_cost_extra,
-                "bank_name": l.bank_name,
-                "bank_account_masked": l.bank_account_masked,
-                "payment_status": l.payment_status or "pending",
-                "failure_reason": l.failure_reason,
-                "snapshot_notes": l.snapshot_notes,
-                "created_at": l.created_at,
-                "paid_at": l.paid_at,
-            })
-        summary["lines"] = lines_out
+        summary["lines"] = [self._format_line_dict(l) for l in run.lines]
         return summary

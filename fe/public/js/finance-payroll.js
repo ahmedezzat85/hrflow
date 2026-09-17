@@ -575,7 +575,7 @@ function renderPayrollRunDetail(run) {
 
   if (titleEl) titleEl.textContent = `Payroll Run #${run.period_label}`;
   if (badgeEl) {
-    badgeEl.outerHTML = getStatusBadge(run.status);
+    badgeEl.outerHTML = getStatusBadge(run.status).replace('<span class="badge', '<span class="badge" id="runDetailStatusBadge"');
   }
   if (cycleDatesEl) cycleDatesEl.textContent = `${run.period_start} to ${run.period_end}`;
   if (bankNameEl) bankNameEl.textContent = run.funding_account_name || "Operating Account";
@@ -601,6 +601,8 @@ function renderPayrollRunDetail(run) {
   const btnRetry = document.getElementById("btnRunDetailRetryFailed");
   const btnJournal = document.getElementById("btnRunDetailPostJournal");
 
+  const btnAddBonus = document.getElementById("btnRunDetailAddBonus");
+  if (btnAddBonus) btnAddBonus.style.display = status === "draft" ? "inline-block" : "none";
   if (btnApprove) btnApprove.style.display = status === "draft" ? "inline-block" : "none";
   if (btnFinalize) btnFinalize.style.display = status === "approved" ? "inline-block" : "none";
   if (btnDisburse) btnDisburse.style.display = status === "finalized" ? "inline-block" : "none";
@@ -637,6 +639,34 @@ function renderPayrollRunDetail(run) {
           typeBadge = '<span class="badge" style="background:#0284C7; color:#fff; font-size:0.75rem; padding:2px 6px;">External USD</span>';
         } else if (line.compensation_type === "internal_usd_cash") {
           typeBadge = '<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem; padding:2px 6px;">Internal USD Cash</span>';
+        } else if (line.compensation_type === "commission_sales") {
+          typeBadge = '<span class="badge" style="background:#8B5CF6; color:#fff; font-size:0.75rem; padding:2px 6px;">Sales Commission</span>';
+        } else if (line.compensation_type === "commission_support") {
+          typeBadge = '<span class="badge" style="background:#EC4899; color:#fff; font-size:0.75rem; padding:2px 6px;">Support Commission</span>';
+        } else if (line.compensation_type === "bonus") {
+          typeBadge = '<span class="badge" style="background:#F59E0B; color:#fff; font-size:0.75rem; padding:2px 6px;">Bonus</span>';
+        }
+
+        const isDraft = status === "draft";
+        let actionsHtml = `
+          <button class="btn btn-sm btn-outline" onclick="openEmployeePayslipModal('${run.id}', '${line.employee_id}')" title="View Payslip">
+            <i class="fa-solid fa-file-invoice"></i>
+          </button>
+        `;
+        if (isDraft) {
+          actionsHtml = `
+            <div style="display:flex; gap:4px; justify-content:center; align-items:center;">
+              <button class="btn btn-sm btn-outline btn-add-bonus" onclick="openAddBonusModal('${line.employee_id}')" title="Add Commission/Bonus">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+              <button class="btn btn-sm btn-outline" onclick="openEmployeePayslipModal('${run.id}', '${line.employee_id}')" title="View Payslip">
+                <i class="fa-solid fa-file-invoice"></i>
+              </button>
+              <button class="btn btn-sm btn-outline btn-delete-line" onclick="deletePayrollLineItem('${run.id}', '${line.id}')" title="Delete Line" style="color:#EF4444; border-color:#EF4444;">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          `;
         }
 
         return `
@@ -646,15 +676,11 @@ function renderPayrollRunDetail(run) {
             <td>${line.department || '—'}</td>
             <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_withheld || line.tax_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444;">Missing</span>'}</td>
             <td style="text-align:center;">${payBadge}</td>
-            <td style="text-align:center;">
-              <button class="btn btn-sm btn-outline" onclick="openEmployeePayslipModal('${run.id}', '${line.employee_id}')" title="View Payslip">
-                <i class="fa-solid fa-file-invoice"></i>
-              </button>
-            </td>
+            <td style="text-align:center;">${actionsHtml}</td>
           </tr>
         `;
       }).join("");
@@ -913,6 +939,145 @@ function refreshMyPayslips() {
   showToast("Payslip records refreshed", "success");
 }
 
+function openAddBonusModal(employeeId) {
+  const modal = document.getElementById("payrollAddBonusModal");
+  if (!modal) return;
+
+  const empSelect = document.getElementById("bonusEmployeeSelect");
+  if (empSelect) {
+    empSelect.innerHTML = '<option value="">Select Employee...</option>';
+    const seen = new Set();
+    const run = currentDetailRun;
+    if (run && run.lines) {
+      run.lines.forEach(l => {
+        if (!seen.has(l.employee_id)) {
+          seen.add(l.employee_id);
+          const opt = document.createElement("option");
+          opt.value = l.employee_id;
+          opt.textContent = `${l.employee_name || ('Employee #' + l.employee_id)} (${l.department || 'General'})`;
+          empSelect.appendChild(opt);
+        }
+      });
+    }
+
+    if (window.FinanceMockState && window.FinanceMockState.employees) {
+      window.FinanceMockState.employees.forEach(e => {
+        if (!seen.has(e.id)) {
+          seen.add(e.id);
+          const opt = document.createElement("option");
+          opt.value = e.id;
+          opt.textContent = `${e.name} (${e.department || e.dept || 'General'})`;
+          empSelect.appendChild(opt);
+        }
+      });
+    }
+
+    if (employeeId) {
+      empSelect.value = String(employeeId);
+    }
+  }
+
+  const typeSelect = document.getElementById("bonusCompensationType");
+  if (typeSelect) typeSelect.value = "commission_sales";
+
+  const amtInput = document.getElementById("bonusAmount");
+  if (amtInput) amtInput.value = "";
+
+  const notesInput = document.getElementById("bonusNotes");
+  if (notesInput) notesInput.value = "";
+
+  const taxCb = document.getElementById("bonusIsTaxableLocal");
+  if (taxCb) taxCb.checked = true;
+
+  const insCb = document.getElementById("bonusIsInsurable");
+  if (insCb) insCb.checked = true;
+
+  modal.style.display = "flex";
+}
+
+function closeAddBonusModal() {
+  const modal = document.getElementById("payrollAddBonusModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function submitAddPayrollBonus(e) {
+  if (e) e.preventDefault();
+  if (!currentDetailRun) return;
+
+  const empSelect = document.getElementById("bonusEmployeeSelect");
+  const typeSelect = document.getElementById("bonusCompensationType");
+  const amtInput = document.getElementById("bonusAmount");
+  const notesInput = document.getElementById("bonusNotes");
+  const taxCb = document.getElementById("bonusIsTaxableLocal");
+  const insCb = document.getElementById("bonusIsInsurable");
+
+  const empId = empSelect ? parseInt(empSelect.value, 10) : null;
+  const compType = typeSelect ? typeSelect.value : "commission_sales";
+  const amount = amtInput ? parseFloat(amtInput.value) : 0;
+  const notes = notesInput ? notesInput.value.trim() : "";
+  const isTaxable = taxCb ? taxCb.checked : true;
+  const isInsurable = insCb ? insCb.checked : true;
+
+  if (!empId) {
+    showToast("Please select an employee.", "warning");
+    return;
+  }
+  if (!amount || amount <= 0) {
+    showToast("Amount must be greater than 0.", "warning");
+    return;
+  }
+
+  const submitBtn = document.getElementById("btnSubmitAddBonus");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Adding...`;
+  }
+
+  try {
+    await FinanceApi.addPayrollLine(currentDetailRun.id, {
+      employee_id: empId,
+      compensation_type: compType,
+      amount: amount,
+      notes: notes,
+      is_taxable_local: isTaxable,
+      is_insurable: isInsurable,
+    });
+
+    showToast("Commission / bonus line added successfully!", "success");
+    closeAddBonusModal();
+
+    const updated = await FinanceApi.getPayrollRun(currentDetailRun.id);
+    currentDetailRun = updated;
+    renderPayrollRunDetail(updated);
+    await loadFinancePayroll();
+  } catch (err) {
+    console.error("Failed to add commission/bonus:", err);
+    showToast("Failed to add line: " + (err.message || err), "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Add Line`;
+    }
+  }
+}
+
+async function deletePayrollLineItem(runId, lineId) {
+  if (!confirm("Are you sure you want to remove this payroll line?")) return;
+
+  try {
+    await FinanceApi.deletePayrollLine(runId, lineId);
+    showToast("Payroll line removed successfully.", "success");
+
+    const updated = await FinanceApi.getPayrollRun(runId);
+    currentDetailRun = updated;
+    renderPayrollRunDetail(updated);
+    await loadFinancePayroll();
+  } catch (err) {
+    console.error("Failed to delete line:", err);
+    showToast("Failed to delete line: " + (err.message || err), "error");
+  }
+}
+
 // Window exports for Payroll Runs & Payslips
 window.loadFinancePayroll = loadFinancePayroll;
 window.renderFinancePayroll = renderFinancePayroll;
@@ -935,3 +1100,7 @@ window.closeEmployeePayslipModal = closeEmployeePayslipModal;
 window.loadMyPayslips = loadMyPayslips;
 window.renderMyPayslips = renderMyPayslips;
 window.refreshMyPayslips = refreshMyPayslips;
+window.openAddBonusModal = openAddBonusModal;
+window.closeAddBonusModal = closeAddBonusModal;
+window.submitAddPayrollBonus = submitAddPayrollBonus;
+window.deletePayrollLineItem = deletePayrollLineItem;
