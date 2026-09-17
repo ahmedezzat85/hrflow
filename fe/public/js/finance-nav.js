@@ -22,15 +22,24 @@ function switchFinanceSettingsSubTab(subTab, btn) {
 
   const paneCategories = document.getElementById("financeSettingsPaneCategories");
   const panePaymentTypes = document.getElementById("financeSettingsPanePaymentTypes");
+  const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
+
+  if (paneCategories) paneCategories.style.display = subTab === "categories" ? "block" : "none";
+  if (panePaymentTypes) panePaymentTypes.style.display = subTab === "payment_types" ? "block" : "none";
+  if (paneDisplay) paneDisplay.style.display = subTab === "display" ? "block" : "none";
 
   if (subTab === "payment_types") {
-    if (paneCategories) paneCategories.style.display = "none";
-    if (panePaymentTypes) panePaymentTypes.style.display = "block";
     loadFinancePaymentTypes();
+  } else if (subTab === "display") {
+    loadFinanceDisplaySettings();
   } else {
-    if (paneCategories) paneCategories.style.display = "block";
-    if (panePaymentTypes) panePaymentTypes.style.display = "none";
     loadFinanceCategories();
+  }
+}
+
+function loadFinanceDisplaySettings() {
+  if (typeof FinanceTable !== "undefined" && typeof FinanceTable.renderDensityControl === "function") {
+    FinanceTable.renderDensityControl("financeGlobalDensityControl");
   }
 }
 
@@ -135,6 +144,10 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (targetPage === "e-payslips") {
       loadMyPayslips();
     }
+
+    if (targetPage && targetPage.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {
+      FinanceTable.initAllTablesDensity();
+    }
   });
 
   updateFinanceNavVisibility();
@@ -145,4 +158,5 @@ document.addEventListener("DOMContentLoaded", () => {
 window.updateFinanceNavVisibility = updateFinanceNavVisibility;
 window.updateFinanceBadges = updateFinanceBadges;
 window.switchFinanceSettingsSubTab = switchFinanceSettingsSubTab;
+window.loadFinanceDisplaySettings = loadFinanceDisplaySettings;
 

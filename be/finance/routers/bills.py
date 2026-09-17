@@ -20,6 +20,7 @@ from finance.schemas import (
     BillApprovalRequest,
     BillScheduleRequest,
     BillCategoryQualityReportResponse,
+    BillDocumentExtractionResponse,
     PaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
@@ -29,6 +30,19 @@ from finance.deps import get_bills_service, get_idempotency_key, get_idempotency
 from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/bills", tags=["Finance - Vendor Bills"])
+
+
+@router.post("/extract", response_model=BillDocumentExtractionResponse)
+async def extract_bill_document(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    FUX-413: Extract text, dates, amounts, bill number, vendor, and lines from an uploaded PDF.
+    Does not auto-promote or approve the bill. Reviews are strictly required.
+    """
+    return await service.extract_document(file=file)
 
 
 @router.get("/category-quality-report", response_model=BillCategoryQualityReportResponse)

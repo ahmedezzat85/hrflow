@@ -24,11 +24,13 @@ from finance.schemas import (
     BillScheduleRequest,
     BillCategoryQualityReportItem,
     BillCategoryQualityReportResponse,
+    BillDocumentExtractionResponse,
     PaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
 )
 from finance.models import BillDB, PaymentDB, VendorDB
+from finance.services.bill_extractor import BillPdfExtractor
 
 
 VALID_BILL_STATUSES = {
@@ -605,5 +607,47 @@ class BillsService:
             unmatched_count=report_data["unmatched_count"],
             unmatched_bills=items,
         )
+
+    # ------------------------------------------------------------------
+    # Document Text & Structured Field Extraction (FUX-413)
+    # ------------------------------------------------------------------
+    async def extract_document(self, file: UploadFile) -> BillDocumentExtractionResponse:
+        """
+        Extract text, dates, amounts, bill number, vendor, and line items from a PDF.
+        Returns extraction confidence and missing fields. If document is unreadable (scanned),
+        returns is_readable=False without fabricating mock values.
+        """
+        if not file or not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A valid document file is required for extraction.",
+            )
+
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty.",
+            )
+
+        known_vendors = []
+        try:
+            if hasattr(self.repo, "db") and self.repo.db:
+                vendors = self.repo.db.query(VendorDB).all()
+                known_vendors = [{"id": v.id, "name": v.name} for v in vendors if v.name]
+        except Exception:
+            pass
+
+        try:
+            return BillPdfExtractor.parse_document(
+                content=content,
+                filename=file.filename,
+                known_vendors=known_vendors,
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
 
 

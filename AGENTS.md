@@ -28,6 +28,7 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 - Do not silently weaken validation, authorization, idempotency, duplicate detection, audit behavior, financial controls, or workflow safeguards to make a feature pass.
 - Analyze compatibility before changing an API contract, Google Sheet schema, financial calculation, permission meaning, workflow state, or persisted-data format.
 - Keep changes scoped to the task. Do not mix unrelated refactoring, formatting churn, dependency upgrades, or generated-file changes into a feature fix.
+- Maintain strict token efficiency: NEVER poll background commands or tasks in loops (`manage_task(status)`). Rely on reactive system notifications, execute single targeted tests during development, and use compact output reporters (`--reporter=line`, `-q`).
 - Never commit secrets, local configuration, temporary scripts, test output, traces, screenshots, coverage artifacts, or generated files unless the repository explicitly tracks them.
 
 ## Repository Facts and Gotchas
@@ -82,8 +83,9 @@ Use for finance (e.g., FUX stories in `docs/finance-module/`), payroll, permissi
    - **MANDATORY**: Run `npm run build` in `fe/` whenever any frontend files are touched before running UI tests.
 4. **Verification & Test Suite Augmentation**: Write durable tests (in `be/tests/` and `fe/tests/ui/`) for all acceptance criteria.
    - **Token-Efficient Verification Protocol**:
-     - **Targeted First**: During implementation and debugging, run ONLY the single test or spec file directly addressing the change (e.g., `pytest be/tests/test_specific.py -q` or `npx playwright test tests/ui/specific.spec.js`).
-     - **Compact Output**: Pass `-q` or `--tb=short` to `pytest` to prevent large logs from inflating the conversation context window.
+     - **Zero Polling Loops**: NEVER poll `manage_task(status)` or loop in shell checks waiting for running background commands. Each polling step resends the entire conversation context window (often 50k–150k+ tokens), consuming massive credit quotas within minutes. Launch commands with adequate `WaitMsBeforeAsync` or let background tasks run and stop calling tools—the reactive system automatically wakes up on task completion.
+     - **Targeted First**: During implementation and debugging, run ONLY the single test or spec file directly addressing the change (e.g., `pytest be/tests/test_specific.py -q` or `npx playwright test tests/ui/specific.spec.js --reporter=line`).
+     - **Compact Output**: Use concise reporters (`--reporter=line` for Playwright, `-q` or `--tb=short` for `pytest`) to prevent voluminous terminal output from bloating context. Avoid `--reporter=list` or trace dumps unless diagnosing a stubborn failure.
      - **Defer Regressions**: Do NOT run broad directory-wide test suites during intermediate iteration. Run broader regression suites ONLY once, as the final validation step immediately before clean teardown and commit.
 5. **Clean Teardown & Delivery**: Inspect `git status` and `git diff` for zero scratch/temporary artifacts, stage cleanly, and commit with descriptive messages (`FUX-XXX`).
 
@@ -101,17 +103,14 @@ The repository has a comprehensive Playwright test suite in `fe/tests/ui/` confi
 From the `fe/` directory (or with `npx` inside `fe/`):
 
 ```powershell
-# Run a specific spec file (fastest and recommended during development):
-npx playwright test tests/ui/finance-bill-repository.spec.js
+# Run a specific spec file with compact output (fastest and token-efficient):
+npx playwright test tests/ui/finance-bill-repository.spec.js --reporter=line
 
 # Run a specific test by title match:
-npx playwright test tests/ui/finance-bill-repository.spec.js -g "paperclip attachment action"
+npx playwright test tests/ui/finance-bill-repository.spec.js -g "paperclip attachment action" --reporter=line
 
-# Run with verbose list reporter for real-time step output:
-npx playwright test tests/ui/finance-bill-repository.spec.js --reporter=list
-
-# Run multiple related regression specs:
-npx playwright test tests/ui/finance-bills-inbox.spec.js tests/ui/finance-bills-approval.spec.js
+# Run multiple related regression specs (final verification only):
+npx playwright test tests/ui/finance-bills-inbox.spec.js tests/ui/finance-bills-approval.spec.js --reporter=line
 
 # Run headed mode (for visual inspection when needed):
 npx playwright test tests/ui/finance-bill-repository.spec.js --headed

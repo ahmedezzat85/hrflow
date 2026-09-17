@@ -1279,6 +1279,141 @@ const FinanceApi = {
     return URL.createObjectURL(blob);
   },
 
+  async extractBillDocument(file) {
+    if (!file) throw new Error("A file is required for extraction");
+    if (_isMock()) {
+      const fileName = file.name || "document.pdf";
+      const isUnreadable =
+        fileName.toLowerCase().includes("unreadable") ||
+        fileName.toLowerCase().includes("scanned") ||
+        fileName.toLowerCase().includes("blank") ||
+        fileName.toLowerCase().includes("raster");
+
+      if (fileName.toLowerCase().includes("corrupt")) {
+        throw new Error("Invalid or corrupted PDF document");
+      }
+
+      if (isUnreadable) {
+        return {
+          is_readable: false,
+          unreadable_reason: "No machine-readable text layer was detected in this file (scanned image or raster PDF). Manual entry required.",
+          extraction_confidence: 0.0,
+          field_confidence: {},
+          missing_fields: ["vendor", "bill_number", "issue_date", "due_date", "total", "line_items", "department", "category"],
+          vendor_id: null,
+          vendor_name: null,
+          bill_number: null,
+          issue_date: null,
+          due_date: null,
+          currency: "USD",
+          subtotal: null,
+          tax_amount: null,
+          total: null,
+          lines: [],
+          file_fingerprint: "sha256-mock-unreadable-" + Date.now(),
+          raw_text_snippet: null,
+        };
+      }
+
+      // Try reading text if available (e.g. from Blob or text file created in tests)
+      let textContent = "";
+      try {
+        if (typeof file.text === "function") {
+          textContent = await file.text();
+        }
+      } catch (_) {}
+
+      let vendorName = null;
+      let vendorId = null;
+      let billNumber = null;
+      let issueDate = null;
+      let dueDate = null;
+      let total = null;
+      let currency = "USD";
+      const lines = [];
+
+      if (textContent && textContent.length > 20) {
+        const vMatch = textContent.match(/(?:Vendor|From|Supplier):\s*([^\r\n]+)/i);
+        if (vMatch) {
+          vendorName = vMatch[1].trim();
+          const matchV = (FinanceMockState.vendors || []).find((v) =>
+            v.name.toLowerCase().includes(vendorName.toLowerCase()) || vendorName.toLowerCase().includes(v.name.toLowerCase())
+          );
+          if (matchV) {
+            vendorId = matchV.id;
+            vendorName = matchV.name;
+          }
+        }
+        const bMatch = textContent.match(/(?:Invoice\s*Number|Bill\s*#?|Invoice\s*#?):\s*([A-Za-z0-9\-_]+)/i);
+        if (bMatch) billNumber = bMatch[1].trim();
+        const dMatch = textContent.match(/(?:Date|Issue\s*Date):\s*(\d{4}-\d{2}-\d{2})/i);
+        if (dMatch) issueDate = dMatch[1];
+        const ddMatch = textContent.match(/(?:Due\s*Date):\s*(\d{4}-\d{2}-\d{2})/i);
+        if (ddMatch) dueDate = ddMatch[1];
+        const tMatch = textContent.match(/(?:Total):\s*(?:[$€£])?\s*([\d,]+(?:\.\d{2})?)/i);
+        if (tMatch) total = parseFloat(tMatch[1].replace(/,/g, ""));
+      }
+
+      if (!vendorName && !vendorId) {
+        vendorId = 1;
+        vendorName = "Amazon Web Services";
+      }
+      if (!billNumber) {
+        billNumber = "INV-2026-991";
+      }
+      if (!issueDate) {
+        issueDate = "2026-09-10";
+      }
+      if (!dueDate) {
+        dueDate = "2026-10-10";
+      }
+      if (!total) {
+        total = 450.0;
+      }
+      if (lines.length === 0) {
+        lines.push({
+          description: "Cloud Hosting & Compute Services",
+          quantity: 1,
+          unit_price: total,
+          line_total: total,
+        });
+      }
+
+      const isLow = fileName.toLowerCase().includes("blur") || fileName.toLowerCase().includes("low");
+      const confidence = isLow ? 0.68 : 0.94;
+
+      return {
+        is_readable: true,
+        unreadable_reason: null,
+        extraction_confidence: confidence,
+        field_confidence: {
+          vendor: 0.95,
+          bill_number: 0.95,
+          issue_date: 0.90,
+          due_date: 0.85,
+          total: 0.95,
+        },
+        missing_fields: ["category", "department"],
+        vendor_id: vendorId,
+        vendor_name: vendorName,
+        bill_number: billNumber,
+        issue_date: issueDate,
+        due_date: dueDate,
+        currency: currency,
+        subtotal: total,
+        tax_amount: 0.0,
+        total: total,
+        lines: lines,
+        file_fingerprint: "sha256-mock-" + Date.now(),
+        raw_text_snippet: textContent.slice(0, 300) || "Sample readable PDF invoice text...",
+      };
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiRequest("POST", "/api/finance/bills/extract", formData);
+  },
+
   getPayrollRuns() {
     return apiRequest("GET", "/api/finance/payroll/runs");
   },

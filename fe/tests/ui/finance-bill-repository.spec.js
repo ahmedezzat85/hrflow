@@ -110,6 +110,12 @@ test.describe('FUX-407 — Bill document storage and repository view', () => {
   });
 
   test('4. Repository toolbar filter "Has Attachment" / "No Attachment" toggles table rows correctly', async ({ page }) => {
+    const toggleBtn = page.locator('#financeBillFilterToggleBtn');
+    if (await toggleBtn.isVisible()) {
+      if (await toggleBtn.getAttribute('aria-expanded') !== 'true') {
+        await toggleBtn.click();
+      }
+    }
     const filterSelect = page.locator('#financeBillAttachmentFilter');
     await expect(filterSelect).toBeVisible();
 
