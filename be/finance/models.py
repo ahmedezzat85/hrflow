@@ -602,6 +602,8 @@ class PayrollRunDB(Base):
     paid_at = Column(DateTime, nullable=True)
     paid_by = Column(String(255), nullable=True)
     journal_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
+    fx_rate_source = Column(String(30), default="first_of_month", nullable=True)  # first_of_month / payment_date
+    fx_rate_value = Column(Float, nullable=True)
     liabilities_summary_json = Column(Text, default="{}")
     exceptions_json = Column(Text, default="[]")
     variance_summary_json = Column(Text, default="{}")
@@ -619,6 +621,9 @@ class PayrollLineDB(Base):
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     employee_name = Column(String(255), nullable=True)
     department = Column(String(100), nullable=True)
+    compensation_type = Column(String(50), default="internal_usd_cash", nullable=True)  # external_usd / internal_usd_cash
+    is_taxable_local = Column(Boolean, default=True, nullable=True)
+    is_insurable = Column(Boolean, default=True, nullable=True)
     base_salary = Column(Float, default=0.0)
     allowances_total = Column(Float, default=0.0)
     deductions_total = Column(Float, default=0.0)

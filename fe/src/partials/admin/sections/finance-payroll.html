@@ -128,15 +128,30 @@
                       <input type="date" id="wizardPeriodEnd" class="form-input" style="width:100%;" required>
                     </div>
                   </div>
-                  <div class="form-group" style="margin-bottom:18px;">
-                    <label for="wizardFundingAccount" class="form-label" style="font-weight:600; font-size:0.85rem;">Funding Bank Account *</label>
-                    <select id="wizardFundingAccount" class="form-input filter-select" style="width:100%;"></select>
-                    <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Account from which salary direct deposits and wires will disburse.</span>
+                  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:16px;">
+                    <div class="form-group">
+                      <label for="wizardFundingAccount" class="form-label" style="font-weight:600; font-size:0.85rem;">Funding Bank Account *</label>
+                      <select id="wizardFundingAccount" class="form-input filter-select" style="width:100%;"></select>
+                      <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Account from which salary disbursements disburse.</span>
+                    </div>
+                    <div class="form-group">
+                      <label for="wizardFxRateSource" class="form-label" style="font-weight:600; font-size:0.85rem;">FX Rate Policy *</label>
+                      <select id="wizardFxRateSource" class="form-input filter-select" style="width:100%;">
+                        <option value="first_of_month" selected>First of Month (1st of Cycle)</option>
+                        <option value="payment_date">Payment Date (Disbursement)</option>
+                      </select>
+                      <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Source policy for USD to EGP evaluation.</span>
+                    </div>
+                    <div class="form-group">
+                      <label for="wizardFxRateValue" class="form-label" style="font-weight:600; font-size:0.85rem;">Locked FX Rate (USD/EGP)</label>
+                      <input type="number" step="0.0001" id="wizardFxRateValue" class="form-input" placeholder="e.g. 48.50 (Auto if blank)" style="width:100%;">
+                      <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Captured and audited upon run creation.</span>
+                    </div>
                   </div>
                   <div style="background:rgba(37,99,235,0.05); border:1px solid rgba(37,99,235,0.2); padding:14px; border-radius:8px; display:flex; gap:12px; align-items:flex-start;">
                     <i class="fa-solid fa-circle-info" style="color:var(--primary, #2563EB); font-size:1.1rem; margin-top:2px;"></i>
                     <div style="font-size:0.85rem; color:var(--text-main); line-height:1.4;">
-                      Advancing to the next step evaluates active staff, salary adjustments, and detects missing bank details or blocking exceptions automatically.
+                      Advancing to the next step evaluates active staff, employee compensation plans (External / Internal split), and detects missing bank details or blocking exceptions automatically.
                     </div>
                   </div>
                 </div>
@@ -168,10 +183,11 @@
                       <thead>
                         <tr>
                           <th>Employee</th>
+                          <th>Component</th>
                           <th>Department</th>
-                          <th style="text-align:right;">Base Salary</th>
-                          <th style="text-align:right;">Deductions (5%)</th>
-                          <th style="text-align:right;">Tax Withheld (10%)</th>
+                          <th style="text-align:right;">Amount</th>
+                          <th style="text-align:right;">Deductions</th>
+                          <th style="text-align:right;">Tax</th>
                           <th style="text-align:right;">Net Pay</th>
                           <th>Bank Wire Target</th>
                         </tr>
@@ -315,7 +331,7 @@
 
               <div class="modal-body" style="flex:1; overflow-y:auto; padding:20px;">
                 <!-- Summary Tiles -->
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:18px;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
                   <div class="card" style="padding:12px;">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Total Gross</div>
                     <div id="runDetailGross" style="font-size:1.2rem; font-weight:700;">$0.00</div>
@@ -332,6 +348,10 @@
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Employer Taxes</div>
                     <div id="runDetailEmployerCost" style="font-size:1.2rem; font-weight:700; color:#10B981;">$0.00</div>
                   </div>
+                  <div class="card" style="padding:12px;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Locked FX Rate</div>
+                    <div id="runDetailFxRate" style="font-size:1.1rem; font-weight:700; color:#0284C7;">—</div>
+                  </div>
                 </div>
 
                 <!-- Composing Employee Payroll Lines Table -->
@@ -340,6 +360,7 @@
                     <thead>
                       <tr>
                         <th>Staff Member</th>
+                        <th>Component</th>
                         <th>Department</th>
                         <th style="text-align:right;">Base</th>
                         <th style="text-align:right;">Deductions</th>

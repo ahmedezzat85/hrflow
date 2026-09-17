@@ -41,6 +41,24 @@ class CompensationPlanRepository:
             .first()
         )
 
+    def get_components_for_period(
+        self, employee_id: int, period_start: str, period_end: str
+    ) -> List[EmployeeCompensationPlanDB]:
+        """Fetch active components for an employee overlapping the specified period."""
+        return (
+            self.db.query(EmployeeCompensationPlanDB)
+            .filter(
+                EmployeeCompensationPlanDB.employee_id == employee_id,
+                EmployeeCompensationPlanDB.effective_start_date <= period_end,
+                (
+                    EmployeeCompensationPlanDB.effective_end_date.is_(None)
+                    | (EmployeeCompensationPlanDB.effective_end_date >= period_start)
+                ),
+            )
+            .order_by(EmployeeCompensationPlanDB.component_type.asc())
+            .all()
+        )
+
     def get_history(self, employee_id: int) -> List[EmployeeCompensationPlanDB]:
         """Fetch full effective-dated history of compensation rows for an employee."""
         return (

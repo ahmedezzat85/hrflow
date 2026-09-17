@@ -20,7 +20,9 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
     StatutoryObligationDB,
+    AccountTransferDB,
 )
+from finance.repositories.compensation_plan_repository import CompensationPlanRepository
 
 
 class PayrollService:
@@ -52,16 +54,45 @@ class PayrollService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
         return self._format_run_detail(run)
 
+    def _resolve_fx_rate(
+        self,
+        fx_rate_source: Optional[str],
+        fx_rate_value: Optional[float],
+        period_start: str,
+        period_end: str,
+    ) -> float:
+        """Resolves the FX rate (USD to EGP) per policy or manual override, locked for the run."""
+        if fx_rate_value is not None and fx_rate_value > 0:
+            return round(float(fx_rate_value), 4)
+
+        tx_query = self.db.query(AccountTransferDB).filter(
+            AccountTransferDB.from_currency == "USD",
+            AccountTransferDB.to_currency == "EGP",
+        )
+        if fx_rate_source == "payment_date":
+            transfer = tx_query.filter(AccountTransferDB.date <= period_end).order_by(desc(AccountTransferDB.date)).first()
+        else:
+            transfer = tx_query.filter(AccountTransferDB.date <= period_start).order_by(desc(AccountTransferDB.date)).first()
+            if not transfer:
+                transfer = tx_query.order_by(desc(AccountTransferDB.date)).first()
+
+        if transfer and transfer.from_amount and transfer.from_amount > 0:
+            return round(transfer.to_amount / transfer.from_amount, 4)
+
+        return 50.0
+
     def preview_run(
         self,
         period_label: str,
         period_start: str,
         period_end: str,
         bank_account_id: Optional[int] = None,
+        fx_rate_source: Optional[str] = "first_of_month",
+        fx_rate_value: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
-        Evaluates active employee records to preview payroll calculations,
-        detect readiness exceptions (e.g. missing bank accounts, zero salaries),
+        Evaluates active employee records and active compensation plans to preview payroll calculations,
+        detect readiness exceptions (e.g. missing bank accounts, zero salaries, missing plans),
         compare vs prior period variance, compute liabilities, and preview the balanced GL journal.
         """
         # 1. Resolve Bank Account
@@ -71,13 +102,18 @@ class PayrollService:
         if not bank_account:
             bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
 
-        # 2. Fetch Active Employees
+        # Resolve FX rate
+        resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
+
+        # 2. Fetch Active Employees & Plans
         employees = (
             self.db.query(EmployeeDB)
             .filter(EmployeeDB.status.ilike("active"))
             .order_by(EmployeeDB.name.asc())
             .all()
         )
+
+        comp_repo = CompensationPlanRepository(self.db)
 
         lines: List[Dict[str, Any]] = []
         exceptions: List[Dict[str, Any]] = []
@@ -90,21 +126,6 @@ class PayrollService:
         tot_employer_cost = 0.0
 
         for emp in employees:
-            base_salary = float(emp.salary or 0.0)
-            allowances = 0.0
-            # 5% standard deductions (employee social/pension), 10% income tax withholding
-            deductions = round(base_salary * 0.05, 2)
-            tax_amt = round(base_salary * 0.10, 2)
-            net = round(base_salary + allowances - deductions - tax_amt, 2)
-            employer_extra = round(base_salary * 0.12, 2)
-
-            tot_gross += base_salary + allowances
-            tot_tax += tax_amt
-            tot_deductions += deductions
-            tot_net += net
-            tot_employer_cost += base_salary + allowances + employer_extra
-
-            # Check exceptions
             bank_rec = emp.bank_account
             bank_name = bank_rec.bank_name if bank_rec else None
             iban = bank_rec.iban if bank_rec else None
@@ -123,39 +144,109 @@ class PayrollService:
                     "is_resolved": False,
                 })
 
-            if base_salary <= 0:
-                has_blocking = True
-                exceptions.append({
-                    "id": f"exc-salary-{emp.id}",
+            comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
+            if comps:
+                for comp in comps:
+                    comp_type = comp.component_type
+                    amount = float(comp.amount or 0.0)
+                    is_taxable = (comp_type == "internal_usd_cash")
+                    is_insurable = (comp_type == "internal_usd_cash")
+
+                    deductions = round(amount * 0.05, 2) if is_insurable else 0.0
+                    tax_amt = round(amount * 0.10, 2) if is_taxable else 0.0
+                    employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
+                    net = round(amount - deductions - tax_amt, 2)
+
+                    tot_gross += amount
+                    tot_tax += tax_amt
+                    tot_deductions += deductions
+                    tot_net += net
+                    tot_employer_cost += amount + employer_extra
+
+                    lines.append({
+                        "id": emp.id,
+                        "payroll_run_id": 0,
+                        "employee_id": emp.id,
+                        "employee_name": emp.name,
+                        "department": emp.dept or "General",
+                        "compensation_type": comp_type,
+                        "is_taxable_local": is_taxable,
+                        "is_insurable": is_insurable,
+                        "base_salary": amount,
+                        "allowances_total": 0.0,
+                        "deductions_total": deductions,
+                        "tax_amount": tax_amt,
+                        "net_pay": net,
+                        "employer_cost_extra": employer_extra,
+                        "bank_name": bank_name or "Unassigned",
+                        "bank_account_masked": masked_acc or "Not Provided",
+                        "payment_status": "pending",
+                        "failure_reason": None,
+                        "snapshot_notes": f"{comp_type.replace('_', ' ').title()} - {period_label}",
+                        "created_at": datetime.utcnow().isoformat(),
+                        "paid_at": None,
+                    })
+            else:
+                base_salary = float(emp.salary or 0.0)
+                if base_salary <= 0:
+                    has_blocking = True
+                    exceptions.append({
+                        "id": f"exc-salary-{emp.id}",
+                        "employee_id": emp.id,
+                        "employee_name": emp.name,
+                        "severity": "blocking",
+                        "title": "Zero or Invalid Salary",
+                        "description": f"{emp.name} has a recorded salary of $0.00 and no active compensation plan.",
+                        "correction_path": f"/admin?section=salary&employee_id={emp.id}",
+                        "is_resolved": False,
+                    })
+                else:
+                    exceptions.append({
+                        "id": f"exc-plan-{emp.id}",
+                        "employee_id": emp.id,
+                        "employee_name": emp.name,
+                        "severity": "warning",
+                        "title": "Unconfigured Compensation Plan",
+                        "description": f"{emp.name} has a legacy base salary (${base_salary:,.2f}) but no active compensation plan configured.",
+                        "correction_path": f"/admin?section=salary&employee_id={emp.id}",
+                        "is_resolved": False,
+                    })
+
+                allowances = 0.0
+                deductions = round(base_salary * 0.05, 2)
+                tax_amt = round(base_salary * 0.10, 2)
+                net = round(base_salary + allowances - deductions - tax_amt, 2)
+                employer_extra = round(base_salary * 0.12, 2)
+
+                tot_gross += base_salary + allowances
+                tot_tax += tax_amt
+                tot_deductions += deductions
+                tot_net += net
+                tot_employer_cost += base_salary + allowances + employer_extra
+
+                lines.append({
+                    "id": emp.id,
+                    "payroll_run_id": 0,
                     "employee_id": emp.id,
                     "employee_name": emp.name,
-                    "severity": "blocking",
-                    "title": "Zero or Invalid Salary",
-                    "description": f"{emp.name} has a recorded salary of $0.00.",
-                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                    "is_resolved": False,
+                    "department": emp.dept or "General",
+                    "compensation_type": "internal_usd_cash",
+                    "is_taxable_local": True,
+                    "is_insurable": True,
+                    "base_salary": base_salary,
+                    "allowances_total": allowances,
+                    "deductions_total": deductions,
+                    "tax_amount": tax_amt,
+                    "net_pay": net,
+                    "employer_cost_extra": employer_extra,
+                    "bank_name": bank_name or "Unassigned",
+                    "bank_account_masked": masked_acc or "Not Provided",
+                    "payment_status": "pending",
+                    "failure_reason": None,
+                    "snapshot_notes": f"Legacy unconfigured plan - {period_label}",
+                    "created_at": datetime.utcnow().isoformat(),
+                    "paid_at": None,
                 })
-
-            lines.append({
-                "id": emp.id,
-                "payroll_run_id": 0,
-                "employee_id": emp.id,
-                "employee_name": emp.name,
-                "department": emp.dept or "General",
-                "base_salary": base_salary,
-                "allowances_total": allowances,
-                "deductions_total": deductions,
-                "tax_amount": tax_amt,
-                "net_pay": net,
-                "employer_cost_extra": employer_extra,
-                "bank_name": bank_name or "Unassigned",
-                "bank_account_masked": masked_acc or "Not Provided",
-                "payment_status": "pending",
-                "failure_reason": None,
-                "snapshot_notes": f"Standard {period_label} regular payroll",
-                "created_at": datetime.utcnow().isoformat(),
-                "paid_at": None,
-            })
 
         # 3. Variance Comparison vs Prior Run
         prior_run = (
@@ -176,7 +267,7 @@ class PayrollService:
             "raises_count": 0,
         }
 
-        # 4. Liabilities Summary
+        # 4. Liabilities Summary (Taxable and Insurable Only)
         liabilities_summary = {
             "net_pay_payable": round(tot_net, 2),
             "income_tax_withheld": round(tot_tax, 2),
@@ -230,6 +321,8 @@ class PayrollService:
             "period_end": period_end,
             "bank_account_id": bank_account.id if bank_account else None,
             "bank_account_name": bank_account.account_name if bank_account else "Operating Account",
+            "fx_rate_source": fx_rate_source or "first_of_month",
+            "fx_rate_value": resolved_fx,
             "headcount": len(employees),
             "total_gross": round(tot_gross, 2),
             "total_tax": round(tot_tax, 2),
@@ -244,6 +337,189 @@ class PayrollService:
             "lines": lines,
         }
 
+    def generate_run_from_compensation_plans(
+        self,
+        period_label: str,
+        period_start: str,
+        period_end: str,
+        fx_rate_source: str = "first_of_month",
+        fx_rate_value: Optional[float] = None,
+        bank_account_id: Optional[int] = None,
+        user_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Generates a draft payroll run with split typed lines from active employee compensation plans (FUX-417)."""
+        existing = (
+            self.db.query(PayrollRunDB)
+            .filter(PayrollRunDB.period_label == period_label)
+            .filter(PayrollRunDB.status != "cancelled")
+            .first()
+        )
+        if existing:
+            if existing.status != "draft":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot regenerate payroll run for period {period_label}: Run #{existing.id} is in '{existing.status}' status and locked against modification."
+                )
+            # Delete existing lines for draft run to regenerate cleanly
+            self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == existing.id).delete()
+            run = existing
+        else:
+            run = PayrollRunDB(
+                period_label=period_label,
+                period_start=period_start,
+                period_end=period_end,
+                status="draft",
+                currency="USD",
+                created_by=user_email,
+                created_at=datetime.utcnow(),
+            )
+            self.db.add(run)
+            self.db.flush()
+
+        # Resolve Bank Account
+        bank_account = None
+        if bank_account_id:
+            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
+        if not bank_account:
+            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
+        run.bank_account_id = bank_account.id if bank_account else None
+
+        # Lock FX rate policy and value
+        resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
+        run.fx_rate_source = fx_rate_source or "first_of_month"
+        run.fx_rate_value = resolved_fx
+
+        # Fetch Active Employees
+        employees = (
+            self.db.query(EmployeeDB)
+            .filter(EmployeeDB.status.ilike("active"))
+            .order_by(EmployeeDB.name.asc())
+            .all()
+        )
+
+        comp_repo = CompensationPlanRepository(self.db)
+
+        # Validation: Verify all active employees have at least one active compensation plan component
+        missing_plans = []
+        for emp in employees:
+            comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
+            if not comps:
+                missing_plans.append(emp)
+
+        if missing_plans:
+            emp_names = ", ".join(f"'{e.name}' (ID #{e.id})" for e in missing_plans)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot generate payroll run: Active employee(s) without active compensation plan: {emp_names}. Please configure compensation plans before generating run."
+            )
+
+        tot_gross = 0.0
+        tot_tax = 0.0
+        tot_deductions = 0.0
+        tot_net = 0.0
+        tot_employer_cost = 0.0
+        exceptions = []
+
+        for emp in employees:
+            comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
+            bank_rec = emp.bank_account
+            bank_name = bank_rec.bank_name if bank_rec else None
+            iban = bank_rec.iban if bank_rec else None
+            masked_acc = f"••••{iban[-4:]}" if iban and len(iban) >= 4 else None
+
+            if not bank_rec or not iban:
+                exceptions.append({
+                    "id": f"exc-bank-{emp.id}",
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "severity": "blocking",
+                    "title": "Missing Bank Wire Details",
+                    "description": f"{emp.name} does not have verified bank transfer / IBAN details on file.",
+                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
+                    "is_resolved": False,
+                })
+
+            for comp in comps:
+                comp_type = comp.component_type
+                amount = float(comp.amount)
+                is_taxable = (comp_type == "internal_usd_cash")
+                is_insurable = (comp_type == "internal_usd_cash")
+
+                deductions = round(amount * 0.05, 2) if is_insurable else 0.0
+                tax_amt = round(amount * 0.10, 2) if is_taxable else 0.0
+                employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
+                net = round(amount - deductions - tax_amt, 2)
+
+                tot_gross += amount
+                tot_tax += tax_amt
+                tot_deductions += deductions
+                tot_net += net
+                tot_employer_cost += amount + employer_extra
+
+                line_db = PayrollLineDB(
+                    payroll_run_id=run.id,
+                    employee_id=emp.id,
+                    employee_name=emp.name,
+                    department=emp.dept or "General",
+                    compensation_type=comp_type,
+                    is_taxable_local=is_taxable,
+                    is_insurable=is_insurable,
+                    base_salary=amount,
+                    allowances_total=0.0,
+                    deductions_total=deductions,
+                    tax_amount=tax_amt,
+                    net_pay=net,
+                    employer_cost_extra=employer_extra,
+                    bank_name=bank_name or "Unassigned",
+                    bank_account_masked=masked_acc or "Not Provided",
+                    payment_status="pending",
+                    snapshot_notes=f"{comp_type.replace('_', ' ').title()} - {period_label}",
+                    created_at=datetime.utcnow(),
+                )
+                self.db.add(line_db)
+
+        # Insurable / taxable liabilities summary
+        liabilities_summary = {
+            "net_pay_payable": round(tot_net, 2),
+            "income_tax_withheld": round(tot_tax, 2),
+            "social_insurance_employee": round(tot_deductions, 2),
+            "social_insurance_employer": round(tot_employer_cost - tot_gross, 2),
+            "total_liabilities": round(tot_net + tot_tax + tot_deductions + (tot_employer_cost - tot_gross), 2),
+        }
+
+        # Variance comparison
+        prior_run = (
+            self.db.query(PayrollRunDB)
+            .filter(PayrollRunDB.id != run.id)
+            .filter(PayrollRunDB.status.in_(["approved", "finalized", "paid"]))
+            .order_by(desc(PayrollRunDB.id))
+            .first()
+        )
+        variance_summary = {
+            "prior_period_label": prior_run.period_label if prior_run else None,
+            "headcount_delta": len(employees) - (prior_run.headcount if prior_run else len(employees)),
+            "gross_delta": round(tot_gross - (prior_run.total_gross if prior_run else tot_gross), 2),
+            "net_delta": round(tot_net - (prior_run.total_net if prior_run else tot_net), 2),
+            "pct_change": round(((tot_gross - prior_run.total_gross) / prior_run.total_gross * 100), 1) if prior_run and prior_run.total_gross > 0 else 0.0,
+            "joiners_count": 0,
+            "leavers_count": 0,
+            "raises_count": 0,
+        }
+
+        run.total_gross = round(tot_gross, 2)
+        run.total_tax = round(tot_tax, 2)
+        run.total_deductions = round(tot_deductions, 2)
+        run.total_net = round(tot_net, 2)
+        run.total_employer_cost = round(tot_employer_cost, 2)
+        run.headcount = len(employees)
+        run.liabilities_summary_json = json.dumps(liabilities_summary)
+        run.exceptions_json = json.dumps(exceptions)
+        run.variance_summary_json = json.dumps(variance_summary)
+
+        self.db.commit()
+        self.db.refresh(run)
+        return self._format_run_detail(run)
+
     def create_run(
         self,
         period_label: str,
@@ -253,6 +529,8 @@ class PayrollService:
         currency: str = "USD",
         user_email: Optional[str] = None,
         custom_lines: Optional[List[Dict[str, Any]]] = None,
+        fx_rate_source: Optional[str] = "first_of_month",
+        fx_rate_value: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Creates a guided payroll run and snapshots all composing employee lines."""
         # Check duplicate period run that is active
@@ -273,7 +551,11 @@ class PayrollService:
             period_start=period_start,
             period_end=period_end,
             bank_account_id=bank_account_id,
+            fx_rate_source=fx_rate_source,
+            fx_rate_value=fx_rate_value,
         )
+
+        resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
 
         run = PayrollRunDB(
             period_label=period_label,
@@ -288,6 +570,8 @@ class PayrollService:
             headcount=preview["headcount"],
             currency=currency or "USD",
             bank_account_id=preview["bank_account_id"],
+            fx_rate_source=fx_rate_source or "first_of_month",
+            fx_rate_value=resolved_fx,
             created_by=user_email,
             created_at=datetime.utcnow(),
             liabilities_summary_json=json.dumps(preview["liabilities_summary"]),
@@ -297,22 +581,29 @@ class PayrollService:
         self.db.add(run)
         self.db.flush()
 
-        for pl in preview["lines"]:
+        lines_to_add = custom_lines if custom_lines is not None else preview["lines"]
+        for pl in lines_to_add:
+            c_type = pl.get("compensation_type", "internal_usd_cash")
+            is_tax = pl.get("is_taxable_local", c_type == "internal_usd_cash")
+            is_ins = pl.get("is_insurable", c_type == "internal_usd_cash")
             line_db = PayrollLineDB(
                 payroll_run_id=run.id,
                 employee_id=pl["employee_id"],
-                employee_name=pl["employee_name"],
-                department=pl["department"],
+                employee_name=pl.get("employee_name"),
+                department=pl.get("department"),
+                compensation_type=c_type,
+                is_taxable_local=is_tax,
+                is_insurable=is_ins,
                 base_salary=pl["base_salary"],
-                allowances_total=pl["allowances_total"],
-                deductions_total=pl["deductions_total"],
-                tax_amount=pl["tax_amount"],
-                net_pay=pl["net_pay"],
-                employer_cost_extra=pl["employer_cost_extra"],
-                bank_name=pl["bank_name"],
-                bank_account_masked=pl["bank_account_masked"],
+                allowances_total=pl.get("allowances_total", 0.0),
+                deductions_total=pl.get("deductions_total", 0.0),
+                tax_amount=pl.get("tax_amount", 0.0),
+                net_pay=pl.get("net_pay", pl["base_salary"]),
+                employer_cost_extra=pl.get("employer_cost_extra", 0.0),
+                bank_name=pl.get("bank_name", "Unassigned"),
+                bank_account_masked=pl.get("bank_account_masked", "Not Provided"),
                 payment_status="pending",
-                snapshot_notes=pl["snapshot_notes"],
+                snapshot_notes=pl.get("snapshot_notes", ""),
                 created_at=datetime.utcnow(),
             )
             self.db.add(line_db)
@@ -370,6 +661,36 @@ class PayrollService:
         run.finalized_at = datetime.utcnow()
         run.finalized_by = user_email or "admin@hrflow.test"
 
+        # FUX-417: Compute liabilities exclusively from taxable and insurable lines
+        lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
+        if lines:
+            taxable_lines = [l for l in lines if l.is_taxable_local]
+            insurable_lines = [l for l in lines if l.is_insurable]
+
+            emp_si = round(sum(l.deductions_total for l in insurable_lines), 2)
+            empr_si = round(sum(l.employer_cost_extra for l in insurable_lines), 2)
+            tax_withheld = round(sum(l.tax_amount for l in taxable_lines), 2)
+            net_payable = round(sum(l.net_pay for l in lines), 2)
+
+            liabilities = {
+                "net_pay_payable": net_payable,
+                "income_tax_withheld": tax_withheld,
+                "social_insurance_employee": emp_si,
+                "social_insurance_employer": empr_si,
+                "total_liabilities": round(net_payable + tax_withheld + emp_si + empr_si, 2),
+            }
+            run.liabilities_summary_json = json.dumps(liabilities)
+        else:
+            liabilities = {}
+            if run.liabilities_summary_json:
+                try:
+                    liabilities = json.loads(run.liabilities_summary_json)
+                except Exception:
+                    pass
+            emp_si = float(liabilities.get("social_insurance_employee", 0.0))
+            empr_si = float(liabilities.get("social_insurance_employer", 0.0))
+            tax_withheld = float(liabilities.get("income_tax_withheld", 0.0))
+
         # FUX-410: Auto-generate estimated statutory obligations
         existing_stat = (
             self.db.query(StatutoryObligationDB)
@@ -377,16 +698,6 @@ class PayrollService:
             .first()
         )
         if not existing_stat:
-            liabilities = {}
-            if run.liabilities_summary_json:
-                try:
-                    liabilities = json.loads(run.liabilities_summary_json)
-                except Exception:
-                    pass
-
-            emp_si = float(liabilities.get("social_insurance_employee", 0.0))
-            empr_si = float(liabilities.get("social_insurance_employer", 0.0))
-            tax_withheld = float(liabilities.get("income_tax_withheld", 0.0))
 
             due_date = None
             try:
@@ -654,6 +965,8 @@ class PayrollService:
             "period_start": run.period_start,
             "period_end": run.period_end,
             "status": run.status,
+            "fx_rate_source": run.fx_rate_source or "first_of_month",
+            "fx_rate_value": run.fx_rate_value,
             "total_gross": run.total_gross,
             "total_tax": run.total_tax,
             "total_deductions": run.total_deductions,
@@ -689,6 +1002,9 @@ class PayrollService:
                 "employee_id": l.employee_id,
                 "employee_name": l.employee_name,
                 "department": l.department,
+                "compensation_type": l.compensation_type or "internal_usd_cash",
+                "is_taxable_local": bool(l.is_taxable_local) if l.is_taxable_local is not None else True,
+                "is_insurable": bool(l.is_insurable) if l.is_insurable is not None else True,
                 "base_salary": l.base_salary,
                 "allowances_total": l.allowances_total,
                 "deductions_total": l.deductions_total,

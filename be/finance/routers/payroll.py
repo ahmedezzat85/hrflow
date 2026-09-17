@@ -14,6 +14,7 @@ from finance.schemas import (
     PayrollRunPreviewRequest,
     PayrollRunPreviewResponse,
     PayrollRunCreate,
+    PayrollRunGenerateRequest,
     PayrollPaymentRequest,
     EmployeePayslipResponse,
 )
@@ -54,6 +55,27 @@ def preview_payroll_run(
         period_start=req.period_start,
         period_end=req.period_end,
         bank_account_id=req.bank_account_id,
+        fx_rate_source=req.fx_rate_source,
+        fx_rate_value=req.fx_rate_value,
+    )
+
+
+@router.post("/runs/generate", response_model=PayrollRunResponse, status_code=status.HTTP_201_CREATED)
+def generate_payroll_run_from_plans(
+    req: PayrollRunGenerateRequest,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Generates a payroll run and split lines directly from active employee compensation plans (FUX-417)."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.generate_run_from_compensation_plans(
+        period_label=req.period_label,
+        period_start=req.period_start,
+        period_end=req.period_end,
+        fx_rate_source=req.fx_rate_source or "first_of_month",
+        fx_rate_value=req.fx_rate_value,
+        bank_account_id=req.bank_account_id,
+        user_email=user_email,
     )
 
 
@@ -72,6 +94,8 @@ def create_payroll_run(
         bank_account_id=req.bank_account_id,
         currency=req.currency,
         user_email=user_email,
+        fx_rate_source=req.fx_rate_source,
+        fx_rate_value=req.fx_rate_value,
     )
 
 

@@ -5271,18 +5271,22 @@ const FinanceApi = {
 
   async previewPayrollRun(payload) {
     if (_isMock()) {
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
       return {
         period_label: payload.period_label || "2026-10",
         period_start: payload.period_start || "2026-10-01",
         period_end: payload.period_end || "2026-10-31",
         bank_account_id: payload.bank_account_id || 1,
         bank_account_name: "Voyance Operating USD",
-        headcount: 4,
-        total_gross: 48500.0,
-        total_tax: 4850.0,
-        total_deductions: 2425.0,
-        total_net: 41225.0,
-        total_employer_cost: 54320.0,
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
+        headcount: 3,
+        total_gross: 29000.0,
+        total_tax: 1900.0,
+        total_deductions: 950.0,
+        total_net: 26150.0,
+        total_employer_cost: 31280.0,
         has_blocking_exceptions: false,
         exceptions: [],
         variance_summary: {
@@ -5296,11 +5300,11 @@ const FinanceApi = {
           raises_count: 1,
         },
         liabilities_summary: {
-          net_pay_payable: 41225.0,
-          income_tax_withheld: 4850.0,
-          social_insurance_employee: 2425.0,
-          social_insurance_employer: 5820.0,
-          total_liabilities: 54320.0,
+          net_pay_payable: 26150.0,
+          income_tax_withheld: 1900.0,
+          social_insurance_employee: 950.0,
+          social_insurance_employer: 2280.0,
+          total_liabilities: 31280.0,
         },
         journal_preview: {
           debits: [
@@ -5308,14 +5312,14 @@ const FinanceApi = {
               account: "Salaries & Wages Expense",
               account_code: "5000-SAL",
               direction: "debit",
-              amount: 48500.0,
+              amount: 29000.0,
               description: `Gross employee earnings for ${payload.period_label || "2026-10"}`,
             },
             {
               account: "Employer Payroll Tax & Insurance Expense",
               account_code: "5010-ETAX",
               direction: "debit",
-              amount: 5820.0,
+              amount: 2280.0,
               description: `Employer statutory contributions for ${payload.period_label || "2026-10"}`,
             },
           ],
@@ -5324,19 +5328,19 @@ const FinanceApi = {
               account: "Voyance Operating USD",
               account_code: "1000-BANK",
               direction: "credit",
-              amount: 41225.0,
+              amount: 26150.0,
               description: "Net salary disbursements from funding account",
             },
             {
               account: "Payroll Taxes & Statutory Liabilities Payable",
               account_code: "2100-PAYLIAB",
               direction: "credit",
-              amount: 13095.0,
+              amount: 5130.0,
               description: "Employee withholdings & employer taxes payable",
             },
           ],
-          total_debit: 54320.0,
-          total_credit: 54320.0,
+          total_debit: 31280.0,
+          total_credit: 31280.0,
           is_balanced: true,
         },
         lines: [
@@ -5346,26 +5350,55 @@ const FinanceApi = {
             employee_id: 1,
             employee_name: "Sarah Connor",
             department: "Engineering",
-            base_salary: 15000.0,
+            compensation_type: "external_usd",
+            is_taxable_local: false,
+            is_insurable: false,
+            base_salary: 10000.0,
             allowances_total: 0.0,
-            deductions_total: 750.0,
-            tax_amount: 1500.0,
-            net_pay: 12750.0,
-            employer_cost_extra: 1800.0,
+            deductions_total: 0.0,
+            tax_amount: 0.0,
+            net_pay: 10000.0,
+            employer_cost_extra: 0.0,
             bank_name: "Chase",
             bank_account_masked: "••••4821",
             payment_status: "pending",
             failure_reason: null,
-            snapshot_notes: "October regular payroll",
+            snapshot_notes: "External USD - October",
             created_at: new Date().toISOString(),
             paid_at: null,
           },
           {
             id: 102,
             payroll_run_id: 0,
+            employee_id: 1,
+            employee_name: "Sarah Connor",
+            department: "Engineering",
+            compensation_type: "internal_usd_cash",
+            is_taxable_local: true,
+            is_insurable: true,
+            base_salary: 5000.0,
+            allowances_total: 0.0,
+            deductions_total: 250.0,
+            tax_amount: 500.0,
+            net_pay: 4250.0,
+            employer_cost_extra: 600.0,
+            bank_name: "Chase",
+            bank_account_masked: "••••4821",
+            payment_status: "pending",
+            failure_reason: null,
+            snapshot_notes: "Internal Cash - October",
+            created_at: new Date().toISOString(),
+            paid_at: null,
+          },
+          {
+            id: 103,
+            payroll_run_id: 0,
             employee_id: 2,
             employee_name: "John DevOps",
             department: "Operations",
+            compensation_type: "internal_usd_cash",
+            is_taxable_local: true,
+            is_insurable: true,
             base_salary: 14000.0,
             allowances_total: 0.0,
             deductions_total: 700.0,
@@ -5376,7 +5409,7 @@ const FinanceApi = {
             bank_account_masked: "••••9102",
             payment_status: "pending",
             failure_reason: null,
-            snapshot_notes: "October regular payroll",
+            snapshot_notes: "Internal Cash - October",
             created_at: new Date().toISOString(),
             paid_at: null,
           },
@@ -5386,15 +5419,19 @@ const FinanceApi = {
     return apiRequest("POST", "/api/finance/payroll/runs/preview", payload);
   },
 
-  async createPayrollRun(payload) {
+  async generatePayrollRun(payload) {
     if (_isMock()) {
       const prev = await this.previewPayrollRun(payload);
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
       const newRun = {
         id: (FinanceMockState.payrollRuns || []).length + 1,
         period_label: payload.period_label,
         period_start: payload.period_start,
         period_end: payload.period_end,
         status: "draft",
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
         total_gross: prev.total_gross,
         total_tax: prev.total_tax,
         total_deductions: prev.total_deductions,
@@ -5418,6 +5455,50 @@ const FinanceApi = {
         variance_summary: prev.variance_summary,
         liabilities_summary: prev.liabilities_summary,
         lines: prev.lines.map((l, idx) => ({ ...l, id: Date.now() + idx, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
+      };
+      if (!FinanceMockState.payrollRuns) FinanceMockState.payrollRuns = [];
+      FinanceMockState.payrollRuns.unshift(newRun);
+      return newRun;
+    }
+    return apiRequest("POST", "/api/finance/payroll/runs/generate", payload);
+  },
+
+  async createPayrollRun(payload) {
+    if (_isMock()) {
+      const prev = await this.previewPayrollRun(payload);
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
+      const newRun = {
+        id: (FinanceMockState.payrollRuns || []).length + 1,
+        period_label: payload.period_label,
+        period_start: payload.period_start,
+        period_end: payload.period_end,
+        status: "draft",
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
+        total_gross: prev.total_gross,
+        total_tax: prev.total_tax,
+        total_deductions: prev.total_deductions,
+        total_net: prev.total_net,
+        total_employer_cost: prev.total_employer_cost,
+        headcount: prev.headcount,
+        currency: payload.currency || "USD",
+        bank_account_id: payload.bank_account_id || 1,
+        bank_account_name: prev.bank_account_name,
+        created_at: new Date().toISOString(),
+        created_by: "payroll@voyance.health",
+        approved_at: null,
+        approved_by: null,
+        finalized_at: null,
+        finalized_by: null,
+        paid_at: null,
+        paid_by: null,
+        journal_transaction_id: null,
+        has_blocking_exceptions: false,
+        exceptions: [],
+        variance_summary: prev.variance_summary,
+        liabilities_summary: prev.liabilities_summary,
+        lines: (payload.lines && payload.lines.length > 0 ? payload.lines : prev.lines).map((l, idx) => ({ ...l, id: Date.now() + idx, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
       };
       if (!FinanceMockState.payrollRuns) FinanceMockState.payrollRuns = [];
       FinanceMockState.payrollRuns.unshift(newRun);
@@ -6037,52 +6118,165 @@ const FinanceApi = {
 
   async previewPayrollRun(payload) {
     if (_isMock()) {
+      if (payload.period_label === "2026-09") {
+        const lines = [
+          {
+            employee_id: 1,
+            employee_name: "Sarah Connor",
+            department: "Engineering",
+            base_salary: 15000.0,
+            allowances_total: 0.0,
+            deductions_total: 750.0,
+            tax_withheld: 1500.0,
+            net_pay: 12750.0,
+            employer_taxes: 1800.0,
+            bank_name: "Chase",
+            bank_account_masked: "••••4821"
+          },
+          {
+            employee_id: 2,
+            employee_name: "John DevOps",
+            department: "Operations",
+            base_salary: 12000.0,
+            allowances_total: 0.0,
+            deductions_total: 600.0,
+            tax_withheld: 1200.0,
+            net_pay: 10200.0,
+            employer_taxes: 1440.0,
+            bank_name: "Wells Fargo",
+            bank_account_masked: "••••1192"
+          }
+        ];
+
+        return {
+          period_label: "2026-09",
+          period_start: payload.period_start || "2026-09-01",
+          period_end: payload.period_end || "2026-09-30",
+          headcount: lines.length,
+          currency: "USD",
+          funding_account_id: payload.funding_account_id || 1,
+          fx_rate_source: payload.fx_rate_source || "first_of_month",
+          fx_rate_value: payload.fx_rate_value || 48.5,
+          total_gross: 27000.0,
+          total_net: 22950.0,
+          total_deductions: 1350.0,
+          total_tax: 2700.0,
+          total_employer_cost: 30240.0,
+          variance_summary: {
+            prior_period_label: "2026-08",
+            headcount_delta: 0,
+            gross_delta: 0.0,
+            net_delta: 0.0,
+            pct_change: 0.0,
+            joiners_count: 0,
+            leavers_count: 0,
+            raises_count: 0
+          },
+          exceptions: [],
+          liabilities_summary: {
+            net_salaries_payable: 22950.0,
+            tax_withheld: 2700.0,
+            social_insurance_staff: 1350.0,
+            social_insurance_employer: 3240.0,
+            total_liabilities: 30240.0
+          },
+          journal_preview: {
+            is_balanced: true,
+            total_debit: 30240.0,
+            total_credit: 30240.0,
+            items: [
+              { account_code: "5010", account_name: "Salaries Expense", description: "Gross Employee Salaries", debit: 27000.0, credit: 0.0 },
+              { account_code: "5020", account_name: "Employer Payroll Taxes", description: "Employer Statutory Contribution", debit: 3240.0, credit: 0.0 },
+              { account_code: "2110", account_name: "Salaries Payable", description: "Net Take-Home Pay Outflow", debit: 0.0, credit: 22950.0 },
+              { account_code: "2120", account_name: "Payroll Taxes Payable", description: "Withholding & Employer Taxes", debit: 0.0, credit: 5940.0 },
+              { account_code: "2130", account_name: "Social Security Payable", description: "Staff Pension & Social Security", debit: 0.0, credit: 1350.0 }
+            ]
+          },
+          lines: lines
+        };
+      }
+
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
       const lines = [
         {
+          id: 101,
           employee_id: 1,
           employee_name: "Sarah Connor",
           department: "Engineering",
-          base_salary: 15000.0,
+          compensation_type: "external_usd",
+          is_taxable_local: false,
+          is_insurable: false,
+          base_salary: 10000.0,
           allowances_total: 0.0,
-          deductions_total: 750.0,
-          tax_withheld: 1500.0,
-          net_pay: 12750.0,
-          employer_taxes: 1800.0,
+          deductions_total: 0.0,
+          tax_withheld: 0.0,
+          tax_amount: 0.0,
+          net_pay: 10000.0,
+          employer_taxes: 0.0,
+          employer_cost_extra: 0.0,
           bank_name: "Chase",
           bank_account_masked: "••••4821"
         },
         {
+          id: 102,
+          employee_id: 1,
+          employee_name: "Sarah Connor",
+          department: "Engineering",
+          compensation_type: "internal_usd_cash",
+          is_taxable_local: true,
+          is_insurable: true,
+          base_salary: 5000.0,
+          allowances_total: 0.0,
+          deductions_total: 750.0,
+          tax_withheld: 1500.0,
+          tax_amount: 1500.0,
+          net_pay: 2750.0,
+          employer_taxes: 1800.0,
+          employer_cost_extra: 1800.0,
+          bank_name: "Chase",
+          bank_account_masked: "••••4821"
+        },
+        {
+          id: 103,
           employee_id: 2,
           employee_name: "John DevOps",
           department: "Operations",
+          compensation_type: "internal_usd_cash",
+          is_taxable_local: true,
+          is_insurable: true,
           base_salary: 12000.0,
           allowances_total: 0.0,
           deductions_total: 600.0,
           tax_withheld: 1200.0,
+          tax_amount: 1200.0,
           net_pay: 10200.0,
           employer_taxes: 1440.0,
+          employer_cost_extra: 1440.0,
           bank_name: "Wells Fargo",
           bank_account_masked: "••••1192"
         }
       ];
 
       return {
-        period_label: payload.period_label || "2026-09",
-        period_start: payload.period_start || "2026-09-01",
-        period_end: payload.period_end || "2026-09-30",
+        period_label: payload.period_label || "2026-10",
+        period_start: payload.period_start || "2026-10-01",
+        period_end: payload.period_end || "2026-10-31",
         headcount: lines.length,
         currency: "USD",
         funding_account_id: payload.funding_account_id || 1,
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
         total_gross: 27000.0,
         total_net: 22950.0,
         total_deductions: 1350.0,
         total_tax: 2700.0,
         total_employer_cost: 30240.0,
         variance_summary: {
-          prior_period_label: "2026-08",
-          headcount_delta: 0,
+          prior_period_label: "2026-09",
+          headcount_delta: 1,
           gross_delta: 0.0,
-          net_delta: 0.0,
+          net_delta: 1500.0,
           pct_change: 0.0,
           joiners_count: 0,
           leavers_count: 0,
@@ -6090,22 +6284,22 @@ const FinanceApi = {
         },
         exceptions: [],
         liabilities_summary: {
-          net_salaries_payable: 22950.0,
-          tax_withheld: 2700.0,
-          social_insurance_staff: 1350.0,
-          social_insurance_employer: 3240.0,
-          total_liabilities: 30240.0
+          net_salaries_payable: 24450.0,
+          tax_withheld: 1700.0,
+          social_insurance_staff: 850.0,
+          social_insurance_employer: 2040.0,
+          total_liabilities: 29040.0
         },
         journal_preview: {
           is_balanced: true,
-          total_debit: 30240.0,
-          total_credit: 30240.0,
+          total_debit: 29040.0,
+          total_credit: 29040.0,
           items: [
             { account_code: "5010", account_name: "Salaries Expense", description: "Gross Employee Salaries", debit: 27000.0, credit: 0.0 },
-            { account_code: "5020", account_name: "Employer Payroll Taxes", description: "Employer Statutory Contribution", debit: 3240.0, credit: 0.0 },
-            { account_code: "2110", account_name: "Salaries Payable", description: "Net Take-Home Pay Outflow", debit: 0.0, credit: 22950.0 },
-            { account_code: "2120", account_name: "Payroll Taxes Payable", description: "Withholding & Employer Taxes", debit: 0.0, credit: 5940.0 },
-            { account_code: "2130", account_name: "Social Security Payable", description: "Staff Pension & Social Security", debit: 0.0, credit: 1350.0 }
+            { account_code: "5020", account_name: "Employer Payroll Taxes", description: "Employer Statutory Contribution", debit: 2040.0, credit: 0.0 },
+            { account_code: "2110", account_name: "Salaries Payable", description: "Net Take-Home Pay Outflow", debit: 0.0, credit: 24450.0 },
+            { account_code: "2120", account_name: "Payroll Taxes Payable", description: "Withholding & Employer Taxes", debit: 0.0, credit: 3740.0 },
+            { account_code: "2130", account_name: "Social Security Payable", description: "Staff Pension & Social Security", debit: 0.0, credit: 850.0 }
           ]
         },
         lines: lines
@@ -6123,6 +6317,9 @@ const FinanceApi = {
         employee_id: l.employee_id,
         employee_name: l.employee_name,
         department: l.department,
+        compensation_type: l.compensation_type || "internal_usd_cash",
+        is_taxable_local: l.is_taxable_local !== undefined ? l.is_taxable_local : true,
+        is_insurable: l.is_insurable !== undefined ? l.is_insurable : true,
         base_salary: l.base_salary,
         allowances_total: l.allowances_total || 0.0,
         deductions_total: l.deductions_total || 0.0,
@@ -6154,6 +6351,8 @@ const FinanceApi = {
         currency: payload.currency || "USD",
         funding_account_id: payload.funding_account_id || 1,
         funding_account_name: "Voyance Operating USD",
+        fx_rate_source: payload.fx_rate_source || "first_of_month",
+        fx_rate_value: payload.fx_rate_value || (payload.fx_rate_source === "payment_date" ? 49.5 : 48.5),
         total_gross: totalGross,
         total_net: totalNet,
         total_deductions: totalDed,
@@ -6256,8 +6455,15 @@ const FinanceApi = {
     if (_isMock()) {
       const run = (FinanceMockState.payrollRuns || []).find(r => r.id === parseInt(runId, 10));
       if (!run) throw new Error(`Payroll run #${runId} not found`);
-      const line = (run.lines || []).find(l => l.employee_id === parseInt(employeeId, 10));
-      if (!line) throw new Error(`Employee #${employeeId} not found in run #${runId}`);
+      const empLines = (run.lines || []).filter(l => l.employee_id === parseInt(employeeId, 10));
+      if (empLines.length === 0) throw new Error(`Employee #${employeeId} not found in run #${runId}`);
+      const line = empLines[0];
+      const baseSalary = empLines.reduce((sum, l) => sum + Number(l.base_salary || 0), 0);
+      const allowances = empLines.reduce((sum, l) => sum + Number(l.allowances_total || 0), 0);
+      const deductions = empLines.reduce((sum, l) => sum + Number(l.deductions_total || 0), 0);
+      const taxWithheld = empLines.reduce((sum, l) => sum + Number(l.tax_withheld || l.tax_amount || 0), 0);
+      const netPay = empLines.reduce((sum, l) => sum + Number(l.net_pay || 0), 0);
+      const employerTaxes = empLines.reduce((sum, l) => sum + Number(l.employer_taxes || l.employer_cost_extra || 0), 0);
       return {
         payroll_run_id: run.id,
         employee_id: line.employee_id,
@@ -6267,12 +6473,12 @@ const FinanceApi = {
         period_start: run.period_start,
         period_end: run.period_end,
         currency: run.currency || "USD",
-        base_salary: line.base_salary,
-        allowances_total: line.allowances_total || 0,
-        deductions_total: line.deductions_total || 0,
-        tax_withheld: line.tax_withheld || line.tax_amount || 0,
-        net_pay: line.net_pay,
-        employer_taxes: line.employer_taxes || line.employer_cost_extra || 0,
+        base_salary: baseSalary,
+        allowances_total: allowances,
+        deductions_total: deductions,
+        tax_withheld: taxWithheld,
+        net_pay: netPay,
+        employer_taxes: employerTaxes,
         bank_name: line.bank_name,
         bank_account_masked: line.bank_account_masked,
         payment_status: line.payment_status || "paid",

@@ -1896,6 +1896,9 @@ class PayrollJournalPreview(BaseModel):
 
 class PayrollLineCreate(BaseModel):
     employee_id: int
+    compensation_type: Optional[str] = "internal_usd_cash"
+    is_taxable_local: Optional[bool] = True
+    is_insurable: Optional[bool] = True
     base_salary: float
     allowances_total: float = 0.0
     deductions_total: float = 0.0
@@ -1910,6 +1913,9 @@ class PayrollLineResponse(BaseModel):
     employee_id: int
     employee_name: Optional[str] = None
     department: Optional[str] = None
+    compensation_type: Optional[str] = "internal_usd_cash"
+    is_taxable_local: Optional[bool] = True
+    is_insurable: Optional[bool] = True
     base_salary: float
     allowances_total: float
     deductions_total: float
@@ -1933,6 +1939,17 @@ class PayrollRunPreviewRequest(BaseModel):
     period_start: str  # YYYY-MM-DD
     period_end: str    # YYYY-MM-DD
     bank_account_id: Optional[int] = None
+    fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
+    fx_rate_value: Optional[float] = None
+
+
+class PayrollRunGenerateRequest(BaseModel):
+    period_label: str  # e.g. "2026-09"
+    period_start: str  # YYYY-MM-DD
+    period_end: str    # YYYY-MM-DD
+    fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
+    fx_rate_value: Optional[float] = None
+    bank_account_id: Optional[int] = None
 
 
 class PayrollRunPreviewResponse(BaseModel):
@@ -1941,6 +1958,8 @@ class PayrollRunPreviewResponse(BaseModel):
     period_end: str
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
+    fx_rate_source: Optional[str] = "first_of_month"
+    fx_rate_value: Optional[float] = None
     headcount: int = 0
     total_gross: float = 0.0
     total_tax: float = 0.0
@@ -1961,6 +1980,8 @@ class PayrollRunCreate(BaseModel):
     period_end: str
     bank_account_id: Optional[int] = None
     currency: str = "USD"
+    fx_rate_source: Optional[str] = "first_of_month"
+    fx_rate_value: Optional[float] = None
     lines: Optional[List[PayrollLineCreate]] = None
 
 
@@ -1979,6 +2000,8 @@ class PayrollRunResponse(BaseModel):
     currency: str = "USD"
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
+    fx_rate_source: Optional[str] = "first_of_month"
+    fx_rate_value: Optional[float] = None
     created_at: datetime
     created_by: Optional[str] = None
     approved_at: Optional[datetime] = None

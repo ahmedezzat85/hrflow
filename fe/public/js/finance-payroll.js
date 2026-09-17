@@ -210,11 +210,18 @@ async function navigateWizardStep(direction) {
     }
 
     try {
+      const fxRateSource = document.getElementById("wizardFxRateSource")?.value || "first_of_month";
+      const fxRateValStr = document.getElementById("wizardFxRateValue")?.value;
+      const fxRateValue = fxRateValStr ? parseFloat(fxRateValStr) : null;
+
       wizardPreviewData = await FinanceApi.previewPayrollRun({
         period_label: periodLabel,
         period_start: periodStart,
         period_end: periodEnd,
-        funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null
+        funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
+        bank_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
       });
       populateWizardData(wizardPreviewData);
     } catch (err) {
@@ -307,17 +314,25 @@ function populateWizardData(preview) {
   const empTableBody = document.getElementById("wizardEmployeesPreviewTableBody");
   if (empTableBody && preview.lines) {
     empTableBody.innerHTML = preview.lines
-      .map(line => `
-        <tr>
-          <td><strong>${line.employee_name}</strong></td>
-          <td>${line.department}</td>
-          <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank</span>'}</td>
-        </tr>
-      `)
+      .map(line => {
+        const compType = line.compensation_type || "internal_usd_cash";
+        const isExt = compType === "external_usd";
+        const typeBadge = isExt
+          ? `<span class="badge" style="background:#0284C7; color:#fff; font-size:0.75rem; padding:2px 6px;">External USD</span>`
+          : `<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem; padding:2px 6px;">Internal USD Cash</span>`;
+        return `
+          <tr>
+            <td><strong>${line.employee_name}</strong></td>
+            <td>${typeBadge}</td>
+            <td>${line.department}</td>
+            <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_amount || line.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank</span>'}</td>
+          </tr>
+        `;
+      })
       .join("");
   }
 
@@ -461,23 +476,36 @@ async function submitWizardCreateRun(autoApprove = false) {
   }
 
   try {
+    const fxRateSource = document.getElementById("wizardFxRateSource")?.value || "first_of_month";
+    const fxRateValStr = document.getElementById("wizardFxRateValue")?.value;
+    const fxRateValue = fxRateValStr ? parseFloat(fxRateValStr) : null;
+
     const payload = {
       period_label: periodLabel,
       period_start: periodStart,
       period_end: periodEnd,
       currency: "USD",
       funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
+      bank_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
+      fx_rate_source: fxRateSource,
+      fx_rate_value: fxRateValue,
       lines: (wizardPreviewData.lines || []).map(l => ({
         employee_id: l.employee_id,
         employee_name: l.employee_name,
         department: l.department,
+        compensation_type: l.compensation_type || "internal_usd_cash",
+        is_taxable_local: l.is_taxable_local !== undefined ? l.is_taxable_local : true,
+        is_insurable: l.is_insurable !== undefined ? l.is_insurable : true,
         base_salary: l.base_salary,
-        allowances_total: l.allowances_total,
-        deductions_total: l.deductions_total,
-        tax_withheld: l.tax_withheld,
-        employer_taxes: l.employer_taxes,
+        allowances_total: l.allowances_total || 0,
+        deductions_total: l.deductions_total || 0,
+        tax_amount: l.tax_amount || l.tax_withheld || 0,
+        tax_withheld: l.tax_amount || l.tax_withheld || 0,
+        employer_taxes: l.employer_cost_extra || l.employer_taxes || 0,
+        employer_cost_extra: l.employer_cost_extra || l.employer_taxes || 0,
+        net_pay: l.net_pay || l.base_salary,
         bank_name: l.bank_name,
-        bank_account_masked: l.bank_account_masked
+        bank_account_masked: l.bank_account_masked,
       }))
     };
 
@@ -542,6 +570,7 @@ function renderPayrollRunDetail(run) {
   const netEl = document.getElementById("runDetailNet");
   const dedEl = document.getElementById("runDetailDeductions");
   const empCostEl = document.getElementById("runDetailEmployerCost");
+  const fxRateEl = document.getElementById("runDetailFxRate");
   const linesTbody = document.getElementById("runDetailLinesTableBody");
 
   if (titleEl) titleEl.textContent = `Payroll Run #${run.period_label}`;
@@ -555,6 +584,14 @@ function renderPayrollRunDetail(run) {
   if (netEl) netEl.textContent = `$${Number(run.total_net || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   if (dedEl) dedEl.textContent = `$${Number(run.total_deductions || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   if (empCostEl) empCostEl.textContent = `$${Number(run.total_employer_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (fxRateEl) {
+    if (run.fx_rate_value) {
+      const srcText = run.fx_rate_source === "payment_date" ? "Payment Date" : "1st of Month";
+      fxRateEl.textContent = `${Number(run.fx_rate_value).toFixed(4)} (${srcText})`;
+    } else {
+      fxRateEl.textContent = "—";
+    }
+  }
 
   // Update Action Buttons based on status
   const status = (run.status || "draft").toLowerCase();
@@ -585,7 +622,7 @@ function renderPayrollRunDetail(run) {
   if (linesTbody) {
     const lines = run.lines || [];
     if (lines.length === 0) {
-      linesTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-muted);">No employee records found in this run.</td></tr>`;
+      linesTbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:var(--text-muted);">No employee records found in this run.</td></tr>`;
     } else {
       linesTbody.innerHTML = lines.map(line => {
         let payBadge = `<span class="badge" style="background:#94A3B8; color:#fff;">PENDING</span>`;
@@ -595,9 +632,17 @@ function renderPayrollRunDetail(run) {
           payBadge = `<span class="badge" style="background:#EF4444; color:#fff;" title="${line.failure_reason || 'Failed'}"><i class="fa-solid fa-triangle-exclamation"></i> FAILED</span>`;
         }
 
+        let typeBadge = '<span class="badge" style="background:#64748B; color:#fff; font-size:0.75rem; padding:2px 6px;">Standard</span>';
+        if (line.compensation_type === "external_usd") {
+          typeBadge = '<span class="badge" style="background:#0284C7; color:#fff; font-size:0.75rem; padding:2px 6px;">External USD</span>';
+        } else if (line.compensation_type === "internal_usd_cash") {
+          typeBadge = '<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem; padding:2px 6px;">Internal USD Cash</span>';
+        }
+
         return `
           <tr>
             <td><strong>${line.employee_name || ('Employee #' + line.employee_id)}</strong></td>
+            <td>${typeBadge}</td>
             <td>${line.department || '—'}</td>
             <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
