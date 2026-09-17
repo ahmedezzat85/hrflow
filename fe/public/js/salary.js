@@ -27,7 +27,39 @@ function renderSalaryPage(filter=''){
   const upcoming = employees.filter(e=>{ if (!e.nextRaise || isNaN(new Date(e.nextRaise).getTime())) return false; const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
   const body = document.getElementById('salaryTableBody');
-  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f)).map(e=>{ const last = (e.salaryHistory && e.salaryHistory.length) ? e.salaryHistory[e.salaryHistory.length-1] : null; return `<tr><td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td><td>${e.dept || e.department || '—'}</td><td>${fmtMoney(e.salary)}</td><td>${e.nextRaise || '—'}</td><td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td><td><button class="btn btn-sm btn-fill" onclick="openRaiseModal(${e.id})"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button></td></tr>`; }).join('') || renderEmptyTableRow(6, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
+  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f)).map(e=>{
+    const last = (e.salaryHistory && e.salaryHistory.length) ? e.salaryHistory[e.salaryHistory.length-1] : null;
+    const ext = Number(e.externalSalaryUsd || 0);
+    const intCash = Number(e.internalSalaryUsd || 0);
+    const total = ext + intCash;
+    return `<tr>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td>
+      <td>${e.dept || e.department || '—'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="comp-val-external">${fmtUSD(ext)}</span>
+          <button class="action-btn btn-comp-ext" title="Edit External USD" onclick="openCompPlanModal('${e.id}', 'external_usd')"><i class="fa-solid fa-pen"></i></button>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="comp-val-internal">${fmtUSD(intCash)}</span>
+          <button class="action-btn btn-comp-int" title="Edit Internal USD Cash" onclick="openCompPlanModal('${e.id}', 'internal_usd_cash')"><i class="fa-solid fa-pen"></i></button>
+        </div>
+      </td>
+      <td><strong>${fmtUSD(total)}</strong></td>
+      <td>${e.nextRaise || '—'}</td>
+      <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-sm btn-fill" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>
+          <button class="btn btn-sm btn-comp-plan" onclick="openCompPlanModal('${e.id}')"><i class="fa-solid fa-file-contract"></i> Plan</button>
+        </div>
+      </td>
+    </tr>`;
+
+  }).join('') || renderEmptyTableRow(8, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
+
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   histBody.innerHTML = sortedHist.map((h, idx) => {
@@ -108,3 +140,147 @@ async function applyRaise(evt){
   finally { setButtonLoading(btn, false); }
 }
 function updateSalaryChart(){ const emp = employees.find(e=>e.id===window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee; const ch = window._charts.salary; if(!ch) return; ch.data.labels = emp.salaryHistory.map(s=>s.date.slice(0,7)); ch.data.datasets[0].data = emp.salaryHistory.map(s=>s.next); ch.update(); }
+
+// ==========================================
+// Employee Compensation Plan (FUX-416)
+// ==========================================
+let currentCompPlanEmpId = null;
+
+async function openCompPlanModal(empId, preselectType = null) {
+  currentCompPlanEmpId = String(empId);
+  const emp = employees.find(e => String(e.id) === currentCompPlanEmpId);
+  if (!emp) return;
+
+  document.getElementById('compPlanEmpName').textContent = `${emp.name} — ${emp.job_role || emp.role || ''}`;
+  document.getElementById('compPlanActiveExternal').textContent = fmtUSD(emp.externalSalaryUsd || 0);
+  document.getElementById('compPlanActiveInternal').textContent = fmtUSD(emp.internalSalaryUsd || 0);
+  document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD((emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0))} / month`;
+
+  const typeSelect = document.getElementById('compPlanComponentType');
+  if (preselectType) {
+    typeSelect.value = preselectType;
+  }
+  onCompPlanTypeChange();
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('compPlanStartDate').value = today;
+  document.getElementById('compPlanNotes').value = '';
+
+  openModal('compensationPlanModal');
+
+  await reloadCompPlanData(currentCompPlanEmpId);
+}
+
+
+function onCompPlanTypeChange() {
+  const type = document.getElementById('compPlanComponentType').value;
+  const emp = employees.find(e => String(e.id) === currentCompPlanEmpId);
+  const amtInput = document.getElementById('compPlanAmount');
+  if (emp) {
+    if (type === 'external_usd') {
+      amtInput.value = emp.externalSalaryUsd || '';
+    } else {
+      amtInput.value = emp.internalSalaryUsd || '';
+    }
+  }
+}
+
+async function reloadCompPlanData(empId) {
+  const histTbody = document.getElementById('compPlanHistoryBody');
+  if (!histTbody) return;
+  histTbody.innerHTML = renderEmptyTableRow(6, 'Loading history...', 'fa-solid fa-spinner fa-spin');
+  try {
+    const [plan, history] = await Promise.all([
+      FinanceApi.getEmployeeCompensationPlan(empId),
+      FinanceApi.getEmployeeCompensationPlanHistory(empId)
+    ]);
+
+    if (plan) {
+      if (plan.external_usd) {
+        document.getElementById('compPlanActiveExternal').textContent = fmtUSD(plan.external_usd.amount);
+        document.getElementById('compPlanExtEffective').textContent = `Effective: ${plan.external_usd.effective_start_date}`;
+      } else {
+        document.getElementById('compPlanActiveExternal').textContent = '$0.00';
+        document.getElementById('compPlanExtEffective').textContent = 'No active plan';
+      }
+
+      if (plan.internal_usd_cash) {
+        document.getElementById('compPlanActiveInternal').textContent = fmtUSD(plan.internal_usd_cash.amount);
+        document.getElementById('compPlanIntEffective').textContent = `Effective: ${plan.internal_usd_cash.effective_start_date}`;
+      } else {
+        document.getElementById('compPlanActiveInternal').textContent = '$0.00';
+        document.getElementById('compPlanIntEffective').textContent = 'No active plan';
+      }
+
+      document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD(plan.total_monthly_usd || 0)} / month`;
+    }
+
+    if (history && history.length > 0) {
+      histTbody.innerHTML = history.map(h => {
+        const isExternal = h.component_type === 'external_usd';
+        const typeBadge = isExternal
+          ? '<span class="badge-pill pill-primary"><i class="fa-solid fa-building-columns"></i> External USD</span>'
+          : '<span class="badge-pill pill-success"><i class="fa-solid fa-money-bill-wave"></i> Internal USD Cash</span>';
+        const statusBadge = !h.effective_end_date
+          ? '<span class="badge-pill pill-success">Active</span>'
+          : '<span class="badge-pill pill-neutral">Closed</span>';
+        return `<tr>
+          <td>${typeBadge}</td>
+          <td><strong>${fmtUSD(h.amount)}</strong></td>
+          <td>${h.effective_start_date}</td>
+          <td>${h.effective_end_date || '—'}</td>
+          <td>${statusBadge}</td>
+          <td>${h.notes || '—'}</td>
+        </tr>`;
+      }).join('');
+    } else {
+      histTbody.innerHTML = renderEmptyTableRow(6, 'No compensation history recorded yet.', 'fa-solid fa-clock');
+    }
+  } catch (err) {
+    console.warn('Failed to load compensation plan details:', err);
+    histTbody.innerHTML = renderEmptyTableRow(6, 'Could not load history.', 'fa-solid fa-triangle-exclamation');
+  }
+}
+
+async function saveCompPlanComponent(evt) {
+  const btn = (evt && evt.currentTarget) || document.getElementById('compPlanSaveBtn');
+  const type = document.getElementById('compPlanComponentType').value;
+  const amountVal = document.getElementById('compPlanAmount').value;
+  const startDate = document.getElementById('compPlanStartDate').value;
+  const notes = document.getElementById('compPlanNotes').value;
+
+  if (!amountVal || Number(amountVal) <= 0) {
+    toast('Please specify a valid amount greater than 0.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  if (!startDate) {
+    toast('Please specify an effective start date.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+
+  setButtonLoading(btn, true, 'Saving…');
+  try {
+    await FinanceApi.setEmployeeCompensationPlanComponent(currentCompPlanEmpId, type, {
+      amount: Number(amountVal),
+      effective_start_date: startDate,
+      notes: notes
+    });
+
+    toast('Compensation component updated successfully.', 'fa-solid fa-check');
+
+    const emp = employees.find(e => String(e.id) === String(currentCompPlanEmpId));
+    if (emp) {
+      if (type === 'external_usd') emp.externalSalaryUsd = Number(amountVal);
+      if (type === 'internal_usd_cash') emp.internalSalaryUsd = Number(amountVal);
+      emp.salary = (emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0);
+    }
+
+
+    await reloadCompPlanData(currentCompPlanEmpId);
+    renderSalaryPage(document.getElementById('salarySearch')?.value || '');
+  } catch (err) {
+    toast(err.message || 'Failed to update component', 'fa-solid fa-triangle-exclamation');
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}

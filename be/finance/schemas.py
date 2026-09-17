@@ -3,6 +3,7 @@ be/finance/schemas.py
 Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import date, datetime
+from enum import Enum
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
@@ -2104,6 +2105,41 @@ class StatutoryObligationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CompensationComponentType(str, Enum):
+    external_usd = "external_usd"
+    internal_usd_cash = "internal_usd_cash"
+
+
+class CompensationComponentSetRequest(BaseModel):
+    amount: float = Field(..., gt=0, description="Component amount in USD, must be greater than 0")
+    effective_start_date: str = Field(..., description="Effective start date in YYYY-MM-DD format")
+    notes: Optional[str] = Field("", description="Optional notes or rationale")
+
+
+class CompensationComponentResponse(BaseModel):
+    id: int
+    employee_id: int
+    component_type: str
+    amount: float
+    currency: str = "USD"
+    effective_start_date: str
+    effective_end_date: Optional[str] = None
+    notes: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class EmployeeCompensationPlanResponse(BaseModel):
+    employee_id: int
+    external_usd: Optional[CompensationComponentResponse] = None
+    internal_usd_cash: Optional[CompensationComponentResponse] = None
+    total_monthly_usd: float = 0.0
+
 
 
 

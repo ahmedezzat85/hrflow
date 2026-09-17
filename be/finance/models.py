@@ -761,3 +761,28 @@ class StatutoryObligationDB(Base):
 
 
 FinanceStatutoryObligationDB = StatutoryObligationDB
+
+
+class EmployeeCompensationPlanDB(Base):
+    __tablename__ = "finance_employee_compensation_plans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
+    component_type = Column(String(50), nullable=False, index=True)  # external_usd | internal_usd_cash
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), default="USD", nullable=False)
+    effective_start_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    effective_end_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD, null when active
+    notes = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    employee = relationship("EmployeeDB", foreign_keys=[employee_id])
+
+    __table_args__ = (
+        Index("ix_emp_comp_plan_lookup", "employee_id", "component_type", "effective_end_date"),
+    )
+
+
+FinanceEmployeeCompensationPlanDB = EmployeeCompensationPlanDB
+

@@ -59,6 +59,8 @@ from finance.models import (  # noqa: E402, F401
     SavedReportViewDB,
     StatutoryObligationDB,
     FinanceStatutoryObligationDB,
+    EmployeeCompensationPlanDB,
+    FinanceEmployeeCompensationPlanDB,
 )
 
 
@@ -95,10 +97,12 @@ class EmployeeDB(Base):
     requests = relationship("RequestDB", back_populates="employee", cascade="all, delete-orphan")
     vacations = relationship("VacationHistoryDB", back_populates="employee", cascade="all, delete-orphan")
     salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
+    compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="all, delete-orphan")
 
     @property
     def invoices(self):
         return self.salary_payment_docs
+
 
 
 class SalaryHistoryDB(Base):

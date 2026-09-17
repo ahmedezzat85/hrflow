@@ -630,7 +630,83 @@ const FinanceMockState = {
       updated_at: "2026-08-31T16:00:00Z",
     },
   ],
+  compensationPlans: [
+    {
+      id: 1,
+      employee_id: "EMP001",
+      component_type: "external_usd",
+      amount: 8000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "US account direct deposit",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 2,
+      employee_id: "EMP001",
+      component_type: "internal_usd_cash",
+      amount: 4500.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "Cairo monthly cash payout",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 3,
+      employee_id: 1,
+      component_type: "external_usd",
+      amount: 10000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "US account direct deposit",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 4,
+      employee_id: 1,
+      component_type: "internal_usd_cash",
+      amount: 5000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "Cairo monthly cash payout",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 5,
+      employee_id: 2,
+      component_type: "external_usd",
+      amount: 8000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "US account wire",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 6,
+      employee_id: 2,
+      component_type: "internal_usd_cash",
+      amount: 4000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "Local cash component",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+  ],
 };
+
+
 
 const FinanceApi = {
   // Customers
@@ -6400,6 +6476,95 @@ const FinanceApi = {
     }
     return apiRequest("PATCH", `/api/finance/statutory-obligations/${id}`, data);
   },
+
+  // Employee Compensation Plans (FUX-416)
+  async getEmployeeCompensationPlan(employeeId) {
+    if (_isMock()) {
+      const plans = (FinanceMockState.compensationPlans || []).filter(
+        (p) => String(p.employee_id) === String(employeeId) && !p.effective_end_date
+      );
+      const ext = plans.find((p) => p.component_type === "external_usd") || null;
+      const intCash = plans.find((p) => p.component_type === "internal_usd_cash") || null;
+      const total = round((ext ? Number(ext.amount) : 0) + (intCash ? Number(intCash.amount) : 0));
+      return {
+        employee_id: employeeId,
+        external_usd: ext,
+        internal_usd_cash: intCash,
+        total_monthly_usd: total,
+      };
+    }
+    return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan`);
+  },
+
+  async getEmployeeCompensationPlanHistory(employeeId) {
+    if (_isMock()) {
+      const history = (FinanceMockState.compensationPlans || [])
+        .filter((p) => String(p.employee_id) === String(employeeId))
+        .sort((a, b) => new Date(b.effective_start_date) - new Date(a.effective_start_date) || b.id - a.id);
+      return history;
+    }
+    return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan/history`);
+  },
+
+  async setEmployeeCompensationPlanComponent(employeeId, componentType, data) {
+    if (_isMock()) {
+      const amt = Number(data.amount);
+      if (isNaN(amt) || amt <= 0) {
+        throw new Error("Component amount must be greater than 0");
+      }
+      if (!data.effective_start_date) {
+        throw new Error("effective_start_date is required");
+      }
+      if (!["external_usd", "internal_usd_cash"].includes(componentType)) {
+        throw new Error(`Invalid component_type '${componentType}'`);
+      }
+
+      const plans = FinanceMockState.compensationPlans || [];
+      const activeIdx = plans.findIndex(
+        (p) => String(p.employee_id) === String(employeeId) && p.component_type === componentType && !p.effective_end_date
+      );
+
+      if (activeIdx >= 0) {
+        const active = plans[activeIdx];
+        if (data.effective_start_date <= active.effective_start_date) {
+          throw new Error(`New effective_start_date must be strictly after current component start date (${active.effective_start_date})`);
+        }
+        const d = new Date(data.effective_start_date);
+        d.setDate(d.getDate() - 1);
+        active.effective_end_date = d.toISOString().slice(0, 10);
+        active.updated_at = new Date().toISOString();
+      }
+
+      const newId = plans.length > 0 ? Math.max(...plans.map((p) => p.id)) + 1 : 1;
+      const newRow = {
+        id: newId,
+        employee_id: employeeId,
+        component_type: componentType,
+        amount: round(amt),
+        currency: "USD",
+        effective_start_date: data.effective_start_date,
+        effective_end_date: null,
+        notes: data.notes || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      plans.push(newRow);
+
+      if (typeof employees !== "undefined" && Array.isArray(employees)) {
+        const emp = employees.find((e) => String(e.id) === String(employeeId));
+        if (emp) {
+          if (componentType === "external_usd") emp.externalSalaryUsd = round(amt);
+          if (componentType === "internal_usd_cash") emp.internalSalaryUsd = round(amt);
+          emp.salary = round((emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0));
+        }
+      }
+
+      return newRow;
+    }
+    return apiRequest("PUT", `/api/finance/employees/${employeeId}/compensation-plan/${componentType}`, data);
+  },
+
+
 
   getLastCorrelationId() {
     return typeof window.Api !== "undefined" && window.Api.getLastCorrelationId
