@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 
+async function selectBillQueue(page, tabSelector) {
+  const panel = page.locator('#financeBillStatusPanel');
+  if (!(await panel.isVisible())) {
+    await page.click('#financeBillChangeViewBtn');
+    await expect(panel).toBeVisible();
+  }
+  await page.click(tabSelector);
+}
+
 test.describe('Story 4.2 — Bill approval and payment', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
@@ -16,7 +25,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
 
   test('AC 1: Bill in needs_approval cannot be scheduled or paid before approval', async ({ page }) => {
     // Switch to Needs Approval queue tab
-    await page.click('#tabBillQueueApproval');
+    await selectBillQueue(page, '#tabBillQueueApproval');
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(billRow).toBeVisible();
 
@@ -33,7 +42,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
 
   test('AC 2: Maker-checker segregation of duties and approval workflow', async ({ page }) => {
     // Filter to BILL-2026-005 in Needs Approval queue
-    await page.click('#tabBillQueueApproval');
+    await selectBillQueue(page, '#tabBillQueueApproval');
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(billRow).toBeVisible();
 
@@ -84,7 +93,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     await expect(page.locator('#billApprovalModal')).not.toBeVisible();
 
     // Switch to Ready to Pay queue and verify the bill transitioned
-    await page.click('#tabBillQueueReady');
+    await selectBillQueue(page, '#tabBillQueueReady');
     const approvedRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(approvedRow).toBeVisible();
 
@@ -95,7 +104,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
 
   test('AC 3: Overpayment prevention, partial payment, and balance tracking', async ({ page }) => {
     // Switch to All queue and locate BILL-2026-001 (total: $4,200.00)
-    await page.click('#tabBillQueueAll');
+    await selectBillQueue(page, '#tabBillQueueAll');
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(billRow).toBeVisible();
 
@@ -137,7 +146,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
 
   test('AC 4: Schedule approved bill and reverse recorded payment', async ({ page }) => {
     // 1. Schedule BILL-2026-001
-    await page.click('#tabBillQueueAll');
+    await selectBillQueue(page, '#tabBillQueueAll');
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(billRow).toBeVisible();
 

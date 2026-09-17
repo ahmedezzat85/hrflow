@@ -74,6 +74,17 @@
         </div>
       </div>
 
+      <!-- 4. Unreadable / Scanned Document Alert (FUX-413) -->
+      <div id="billUnreadableAlert" class="alert alert-warning" style="display:none; margin-bottom: 14px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--warning-border, #f59e0b); background: var(--warning-bg, rgba(245,158,11,0.12));" role="alert">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <i class="fa-solid fa-file-circle-exclamation" style="color:var(--warning, #f59e0b); font-size:1.1rem; margin-top:2px;"></i>
+          <div style="flex:1;">
+            <div style="font-weight:700; color:var(--text, #1f2937);">Unreadable Document — Manual Entry Required</div>
+            <div id="billUnreadableText" style="color:var(--text2, #4b5563); margin-top:2px; font-size: 0.85rem;">No machine-readable text layer was detected in this file (scanned image or raster PDF). Please enter vendor, invoice number, dates, and amounts manually.</div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-section">
         <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Bill Details & Coding <span class="line"></span></div>
         <div class="form-grid">

@@ -53,7 +53,13 @@ test.describe('Finance Module UI Testing', () => {
     await expect(subNav).toBeVisible();
     await expect(page.locator('#tabFinanceBills')).toHaveClass(/active/);
 
-    // Verify filter-select dropdown
+    // Verify filter toggle & filter-select dropdown
+    const toggleBtn = page.locator('#financeBillFilterToggleBtn');
+    if (await toggleBtn.isVisible()) {
+      if (await toggleBtn.getAttribute('aria-expanded') !== 'true') {
+        await toggleBtn.click();
+      }
+    }
     const filterSelect = page.locator('#financeBillStatusFilter');
     await expect(filterSelect).toBeVisible();
     await expect(filterSelect).toHaveClass(/filter-select/);

@@ -109,8 +109,6 @@ function applyAndRenderInvoices() {
 
   renderFinanceInvoices(meta.items, items.length);
 
-  FinanceTable.renderDensityControl("financeInvoiceDensityControl");
-
   FinanceTable.bindSortHeaders("financeInvoicesTable", (col, dir) => {
     state.sortBy = col;
     state.sortDir = dir;

@@ -2,7 +2,7 @@
 be/finance/schemas.py
 Pydantic request and response schemas for Finance domain resources.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
@@ -691,6 +691,35 @@ class BillResponse(BillBase):
 
     class Config:
         from_attributes = True
+
+
+# ── Bill Document Extraction (FUX-413) ──────────────────────────────────────
+
+class BillExtractedLine(BaseModel):
+    description: str = Field(..., description="Extracted line item description")
+    quantity: float = Field(1.0, ge=0.0001, description="Extracted quantity")
+    unit_price: float = Field(0.0, description="Extracted unit price")
+    line_total: float = Field(0.0, description="Extracted line total")
+
+
+class BillDocumentExtractionResponse(BaseModel):
+    is_readable: bool = Field(True, description="False if scanned image with no text layer")
+    unreadable_reason: Optional[str] = Field(None, description="Explanation when document is unreadable")
+    extraction_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Overall extraction confidence score (0-1)")
+    field_confidence: Dict[str, float] = Field(default_factory=dict, description="Per-field confidence map")
+    missing_fields: List[str] = Field(default_factory=list, description="Fields that could not be confidently extracted")
+    vendor_id: Optional[int] = Field(None, description="Matched vendor ID if found in database")
+    vendor_name: Optional[str] = Field(None, description="Extracted vendor name")
+    bill_number: Optional[str] = Field(None, description="Extracted invoice/bill number")
+    issue_date: Optional[str] = Field(None, description="Extracted issue date (YYYY-MM-DD)")
+    due_date: Optional[str] = Field(None, description="Extracted due date (YYYY-MM-DD)")
+    currency: Optional[str] = Field("USD", description="Extracted or default currency code")
+    subtotal: Optional[float] = Field(None, description="Extracted subtotal before taxes")
+    tax_amount: Optional[float] = Field(None, description="Extracted tax/VAT amount")
+    total: Optional[float] = Field(None, description="Extracted total payable amount")
+    lines: List[BillExtractedLine] = Field(default_factory=list, description="Extracted line items")
+    file_fingerprint: Optional[str] = Field(None, description="SHA-256 fingerprint of the file")
+    raw_text_snippet: Optional[str] = Field(None, description="First 500 chars of extracted text for debugging")
 
 
 class BillCategoryQualityReportItem(BaseModel):

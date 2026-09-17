@@ -8,35 +8,25 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
     await expect(page.locator('#financeInvoicesTable tbody tr').first()).toBeVisible();
   });
 
-  test('Acceptance Criteria 1: Table density toggle updates class and persists to localStorage', async ({ page }) => {
-    const densityGroup = page.locator('#financeInvoiceDensityControl .density-toggle-group');
-    await expect(densityGroup).toBeVisible();
+  test('Acceptance Criteria 1: Table density reads from global setting and per-page control is removed', async ({ page }) => {
+    // FUX-415: Per-page density controls are deleted from toolbars
+    await expect(page.locator('#financeInvoiceDensityControl')).toHaveCount(0);
 
-    const compactBtn = densityGroup.locator('button[data-density="compact"]');
-    const regularBtn = densityGroup.locator('button[data-density="regular"]');
-    const spaciousBtn = densityGroup.locator('button[data-density="spacious"]');
-
-    await expect(compactBtn).toBeVisible();
-    await expect(regularBtn).toBeVisible();
-    await expect(spaciousBtn).toBeVisible();
-
-    // Click Compact
-    await compactBtn.click();
+    // Verify invoice table respects global density
+    await page.evaluate(() => FinanceTable.setDensity('compact'));
     await expect(page.locator('#financeInvoicesTable')).toHaveClass(/density-compact/);
-    const compactStorage = await page.evaluate(() => localStorage.getItem('hrflow_finance_table_density'));
-    expect(compactStorage).toBe('compact');
+    let storageVal = await page.evaluate(() => localStorage.getItem('hrflow_finance_table_density'));
+    expect(storageVal).toBe('compact');
 
-    // Click Spacious
-    await spaciousBtn.click();
+    await page.evaluate(() => FinanceTable.setDensity('spacious'));
     await expect(page.locator('#financeInvoicesTable')).toHaveClass(/density-spacious/);
-    const spaciousStorage = await page.evaluate(() => localStorage.getItem('hrflow_finance_table_density'));
-    expect(spaciousStorage).toBe('spacious');
+    storageVal = await page.evaluate(() => localStorage.getItem('hrflow_finance_table_density'));
+    expect(storageVal).toBe('spacious');
 
-    // Click Regular
-    await regularBtn.click();
+    await page.evaluate(() => FinanceTable.setDensity('regular'));
     await expect(page.locator('#financeInvoicesTable')).toHaveClass(/density-regular/);
-    const regularStorage = await page.evaluate(() => localStorage.getItem('hrflow_finance_table_density'));
-    expect(regularStorage).toBe('regular');
+    storageVal = await page.evaluate(() => localStorage.getItem('hrflow_finance_table_density'));
+    expect(storageVal).toBe('regular');
   });
 
   test('Acceptance Criteria 2: Column sorting toggles ascending/descending with aria-sort and keyboard support', async ({ page }) => {

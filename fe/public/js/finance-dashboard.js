@@ -488,7 +488,7 @@ function openAttentionItem(targetRoute, targetId, targetFilterEncoded) {
   if (target === "a-finance-invoices") {
     if (typeof loadFinanceInvoices === "function") loadFinanceInvoices();
   } else if (target === "a-finance-bills") {
-    if (typeof loadFinanceBills === "function") loadFinanceBills();
+    if (typeof loadFinanceBills === "function") loadFinanceBills(filter);
   } else if (target === "a-finance-accounts") {
     if (typeof loadFinanceAccounts === "function") loadFinanceAccounts();
   } else if (target === "a-finance-transfers") {

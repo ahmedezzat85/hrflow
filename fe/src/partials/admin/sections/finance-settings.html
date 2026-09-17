@@ -4,6 +4,7 @@
             <div class="filter-tabs" id="financeSettingsSubNav" role="tablist" aria-label="Finance settings sub navigation">
               <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
               <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
+              <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)"><i class="fa-solid fa-sliders"></i> Display</button>
             </div>
           </div>
 
@@ -107,6 +108,25 @@
                   </div>
                 </div>
                 <button class="btn btn-sm btn-outline" onclick="loadFinancePaymentTypes()"><i class="fa-solid fa-rotate"></i> Retry</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 3: Display Settings (FUX-415) -->
+          <div id="financeSettingsPaneDisplay" style="display:none;">
+            <div class="toolbar">
+              <div class="section-title-group">
+                <h2 class="section-title"><i class="fa-solid fa-sliders"></i> Display Settings</h2>
+                <p class="section-subtitle">Customize table density and display preferences across all finance workspaces.</p>
+              </div>
+            </div>
+            <div class="card" style="padding: 24px;">
+              <div class="settings-row" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                <div>
+                  <label id="financeTableDensityLabel" style="font-weight: 600; font-size: 14px; color: var(--text); display: block; margin-bottom: 4px;">Table row density</label>
+                  <p style="margin: 0; font-size: 13px; color: var(--text3);">Adjust the row height and padding of tables across all finance pages.</p>
+                </div>
+                <div id="financeGlobalDensityControl"></div>
               </div>
             </div>
           </div>

@@ -1175,8 +1175,9 @@ table.density-spacious td {
   font-size: 0.98rem;
 }
 
-/* Density control button group */
-.density-toggle-group {
+/* Density control button group / Segmented control (Story 1.2 / FUX-415) */
+.density-toggle-group,
+.segmented {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border);
@@ -1185,9 +1186,10 @@ table.density-spacious td {
   background: var(--surface);
 }
 
-.density-btn {
-  padding: 5px 9px;
-  font-size: 0.78rem;
+.density-btn,
+.segmented-btn {
+  padding: 6px 12px;
+  font-size: 0.82rem;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1195,18 +1197,28 @@ table.density-spacious td {
   transition: background 0.15s ease, color 0.15s ease;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
-.density-btn:not(:last-child) {
+.density-btn:not(:last-child),
+.segmented-btn:not(:last-child) {
   border-right: 1px solid var(--border);
 }
 
 .density-btn.active,
-.density-btn[aria-pressed="true"] {
+.density-btn[aria-pressed="true"],
+.segmented-btn.active,
+.segmented-btn[aria-pressed="true"] {
   background: var(--accent);
   color: #fff;
   font-weight: 600;
+}
+
+.density-btn:focus-visible,
+.segmented-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
 }
 
 /* Sortable table headers */

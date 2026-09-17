@@ -735,12 +735,12 @@ const FinanceTable = {
 
     const current = this.getDensity();
     container.innerHTML = `
-      <div class="density-toggle-group" role="group" aria-label="Table density">
-        <button type="button" class="density-btn ${current === 'compact' ? 'active' : ''}" data-density="compact" aria-pressed="${current === 'compact'}" title="Compact view">
-          <i class="fa-solid fa-align-justify"></i> Compact
-        </button>
+      <div class="density-toggle-group segmented" role="group" aria-label="Table row density">
         <button type="button" class="density-btn ${current === 'regular' ? 'active' : ''}" data-density="regular" aria-pressed="${current === 'regular'}" title="Regular view">
           <i class="fa-solid fa-bars"></i> Regular
+        </button>
+        <button type="button" class="density-btn ${current === 'compact' ? 'active' : ''}" data-density="compact" aria-pressed="${current === 'compact'}" title="Compact view">
+          <i class="fa-solid fa-align-justify"></i> Compact
         </button>
         <button type="button" class="density-btn ${current === 'spacious' ? 'active' : ''}" data-density="spacious" aria-pressed="${current === 'spacious'}" title="Spacious view">
           <i class="fa-solid fa-grip-lines"></i> Spacious
@@ -748,9 +748,24 @@ const FinanceTable = {
       </div>
     `;
 
-    container.querySelectorAll(".density-btn").forEach((btn) => {
+    const btns = Array.from(container.querySelectorAll(".density-btn"));
+    btns.forEach((btn, idx) => {
       btn.addEventListener("click", () => {
         this.setDensity(btn.dataset.density);
+      });
+      btn.addEventListener("keydown", (e) => {
+        let targetBtn = null;
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          e.preventDefault();
+          targetBtn = btns[(idx + 1) % btns.length];
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          e.preventDefault();
+          targetBtn = btns[(idx - 1 + btns.length) % btns.length];
+        }
+        if (targetBtn) {
+          targetBtn.focus();
+          this.setDensity(targetBtn.dataset.density);
+        }
       });
     });
   },
@@ -1344,9 +1359,13 @@ window.FinanceDetailDrawer = FinanceDrawer;
 
 if (typeof document !== "undefined") {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => FinanceDrawer.init());
+    document.addEventListener("DOMContentLoaded", () => {
+      FinanceDrawer.init();
+      FinanceTable.initAllTablesDensity();
+    });
   } else {
     FinanceDrawer.init();
+    FinanceTable.initAllTablesDensity();
   }
 }
 
