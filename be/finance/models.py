@@ -593,6 +593,8 @@ class PayrollRunDB(Base):
     headcount = Column(Integer, default=0)
     currency = Column(String(10), default="USD")
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
     approved_at = Column(DateTime, nullable=True)
@@ -609,7 +611,9 @@ class PayrollRunDB(Base):
     variance_summary_json = Column(Text, default="{}")
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
-    bank_account = relationship("FinanceBankAccountDB")
+    bank_account = relationship("FinanceBankAccountDB", foreign_keys=[bank_account_id])
+    external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
+    internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
     journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
 
 

@@ -87,6 +87,8 @@ class PayrollService:
         period_start: str,
         period_end: str,
         bank_account_id: Optional[int] = None,
+        external_funding_account_id: Optional[int] = None,
+        internal_funding_account_id: Optional[int] = None,
         fx_rate_source: Optional[str] = "first_of_month",
         fx_rate_value: Optional[float] = None,
     ) -> Dict[str, Any]:
@@ -101,6 +103,14 @@ class PayrollService:
             bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
         if not bank_account:
             bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
+
+        ext_account = None
+        if external_funding_account_id:
+            ext_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == external_funding_account_id).first()
+
+        int_account = None
+        if internal_funding_account_id:
+            int_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == internal_funding_account_id).first()
 
         # Resolve FX rate
         resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
@@ -132,12 +142,11 @@ class PayrollService:
             masked_acc = f"••••{iban[-4:]}" if iban and len(iban) >= 4 else None
 
             if not bank_rec or not iban:
-                has_blocking = True
                 exceptions.append({
                     "id": f"exc-bank-{emp.id}",
                     "employee_id": emp.id,
                     "employee_name": emp.name,
-                    "severity": "blocking",
+                    "severity": "warning",
                     "title": "Missing Bank Wire Details",
                     "description": f"{emp.name} does not have verified bank transfer / IBAN details on file.",
                     "correction_path": f"/admin?section=employees&employee_id={emp.id}",
@@ -165,10 +174,10 @@ class PayrollService:
                 is_taxable = (comp_type == "internal_usd_cash")
                 is_insurable = (comp_type == "internal_usd_cash")
 
-                deductions = round(amount * 0.05, 2) if is_insurable else 0.0
-                tax_amt = round(amount * 0.10, 2) if is_taxable else 0.0
-                employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
-                net = round(amount - deductions - tax_amt, 2)
+                deductions = 0.0
+                tax_amt = 0.0
+                employer_extra = 0.0
+                net = round(amount, 2)
 
                 tot_gross += amount
                 tot_tax += tax_amt
@@ -273,6 +282,10 @@ class PayrollService:
             "period_end": period_end,
             "bank_account_id": bank_account.id if bank_account else None,
             "bank_account_name": bank_account.account_name if bank_account else "Operating Account",
+            "external_funding_account_id": ext_account.id if ext_account else (bank_account.id if bank_account else None),
+            "external_funding_account_name": ext_account.account_name if ext_account else (bank_account.account_name if bank_account else "Operating Account"),
+            "internal_funding_account_id": int_account.id if int_account else (bank_account.id if bank_account else None),
+            "internal_funding_account_name": int_account.account_name if int_account else (bank_account.account_name if bank_account else "Operating Account"),
             "fx_rate_source": fx_rate_source or "first_of_month",
             "fx_rate_value": resolved_fx,
             "headcount": len(employees),
@@ -297,6 +310,8 @@ class PayrollService:
         fx_rate_source: str = "first_of_month",
         fx_rate_value: Optional[float] = None,
         bank_account_id: Optional[int] = None,
+        external_funding_account_id: Optional[int] = None,
+        internal_funding_account_id: Optional[int] = None,
         user_email: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generates a draft payroll run with split typed lines from active employee compensation plans (FUX-417)."""
@@ -335,6 +350,8 @@ class PayrollService:
         if not bank_account:
             bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
         run.bank_account_id = bank_account.id if bank_account else None
+        run.external_funding_account_id = external_funding_account_id or run.bank_account_id
+        run.internal_funding_account_id = internal_funding_account_id or run.bank_account_id
 
         # Lock FX rate policy and value
         resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
@@ -384,7 +401,7 @@ class PayrollService:
                     "id": f"exc-bank-{emp.id}",
                     "employee_id": emp.id,
                     "employee_name": emp.name,
-                    "severity": "blocking",
+                    "severity": "warning",
                     "title": "Missing Bank Wire Details",
                     "description": f"{emp.name} does not have verified bank transfer / IBAN details on file.",
                     "correction_path": f"/admin?section=employees&employee_id={emp.id}",
@@ -397,10 +414,10 @@ class PayrollService:
                 is_taxable = (comp_type == "internal_usd_cash")
                 is_insurable = (comp_type == "internal_usd_cash")
 
-                deductions = round(amount * 0.05, 2) if is_insurable else 0.0
-                tax_amt = round(amount * 0.10, 2) if is_taxable else 0.0
-                employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
-                net = round(amount - deductions - tax_amt, 2)
+                deductions = 0.0
+                tax_amt = 0.0
+                employer_extra = 0.0
+                net = round(amount, 2)
 
                 tot_gross += amount
                 tot_tax += tax_amt
@@ -478,6 +495,8 @@ class PayrollService:
         period_start: str,
         period_end: str,
         bank_account_id: Optional[int] = None,
+        external_funding_account_id: Optional[int] = None,
+        internal_funding_account_id: Optional[int] = None,
         currency: str = "USD",
         user_email: Optional[str] = None,
         custom_lines: Optional[List[Dict[str, Any]]] = None,
@@ -503,11 +522,16 @@ class PayrollService:
             period_start=period_start,
             period_end=period_end,
             bank_account_id=bank_account_id,
+            external_funding_account_id=external_funding_account_id,
+            internal_funding_account_id=internal_funding_account_id,
             fx_rate_source=fx_rate_source,
             fx_rate_value=fx_rate_value,
         )
 
         resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
+
+        resolved_ext_id = external_funding_account_id or preview.get("external_funding_account_id") or preview["bank_account_id"]
+        resolved_int_id = internal_funding_account_id or preview.get("internal_funding_account_id") or preview["bank_account_id"]
 
         run = PayrollRunDB(
             period_label=period_label,
@@ -522,6 +546,8 @@ class PayrollService:
             headcount=preview["headcount"],
             currency=currency or "USD",
             bank_account_id=preview["bank_account_id"],
+            external_funding_account_id=resolved_ext_id,
+            internal_funding_account_id=resolved_int_id,
             fx_rate_source=fx_rate_source or "first_of_month",
             fx_rate_value=resolved_fx,
             created_by=user_email,
@@ -683,10 +709,10 @@ class PayrollService:
         if is_insurable is None:
             is_insurable = (compensation_type != "external_usd")
 
-        deductions = round(amount * 0.05, 2) if is_insurable else 0.0
-        tax_amt = round(amount * 0.10, 2) if is_taxable_local else 0.0
-        employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
-        net = round(amount - deductions - tax_amt, 2)
+        deductions = 0.0
+        tax_amt = 0.0
+        employer_extra = 0.0
+        net = round(amount, 2)
 
         bank_rec = emp.bank_account
         bank_name = bank_rec.bank_name if bank_rec else None
@@ -845,7 +871,8 @@ class PayrollService:
             .filter(StatutoryObligationDB.source_type == "payroll_run", StatutoryObligationDB.source_id == run.id)
             .first()
         )
-        if not existing_stat:
+        has_local_statutory = bool(taxable_lines or insurable_lines) if lines else False
+        if not existing_stat and has_local_statutory:
 
             due_date = None
             try:
@@ -866,25 +893,24 @@ class PayrollService:
             ]
 
             for obl_type, est_amt, note in obligations_to_create:
-                if est_amt > 0:
-                    obl_db = StatutoryObligationDB(
-                        obligation_type=obl_type,
-                        period=run.period_label,
-                        amount_estimated=est_amt,
-                        amount_accrued=est_amt,
-                        amount_remitted=0.0,
-                        variance_amount=0.0,
-                        variance_note=None,
-                        currency=run.currency or "USD",
-                        status="estimated",
-                        due_date=due_date,
-                        source_type="payroll_run",
-                        source_id=run.id,
-                        notes=note,
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
-                    )
-                    self.db.add(obl_db)
+                obl_db = StatutoryObligationDB(
+                    obligation_type=obl_type,
+                    period=run.period_label,
+                    amount_estimated=est_amt,
+                    amount_accrued=est_amt,
+                    amount_remitted=0.0,
+                    variance_amount=0.0,
+                    variance_note=None,
+                    currency=run.currency or "USD",
+                    status="estimated",
+                    due_date=due_date,
+                    source_type="payroll_run",
+                    source_id=run.id,
+                    notes=note,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                self.db.add(obl_db)
 
         self.db.commit()
         self.db.refresh(run)
@@ -995,35 +1021,89 @@ class PayrollService:
         )
         pt_id = pt.id if pt else 5
 
-        # Create balanced ledger outflow transaction
-        tx = LedgerTransactionDB(
-            account_id=run.bank_account_id or 1,
-            date=run.paid_at.strftime("%Y-%m-%d") if run.paid_at else datetime.utcnow().strftime("%Y-%m-%d"),
-            amount=run.total_net,
-            direction="out",
-            currency=run.currency or "USD",
-            category_id=cat_id,
-            payment_type_id=pt_id,
-            reference=f"PAYROLL-{run.period_label}",
-            description=f"Payroll Disbursement for {run.period_label} (Gross: ${run.total_gross:,.2f}, Net: ${run.total_net:,.2f})",
-            entry_type="money_out",
-            counterparty=f"Voyance Staff Payroll ({run.headcount} employees)",
-            source="manual",
-            created_at=datetime.utcnow(),
-            created_by=user_email or "system",
-        )
-        self.db.add(tx)
+        # Create balanced ledger outflow transaction(s) - split by compensation type (Fix 3)
+        lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
+        ext_net = round(sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type == "external_usd"), 2)
+        int_net = round(sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type != "external_usd"), 2)
+
+        date_str = run.paid_at.strftime("%Y-%m-%d") if run.paid_at else datetime.utcnow().strftime("%Y-%m-%d")
+        ext_account_id = run.external_funding_account_id or run.bank_account_id or 1
+        int_account_id = run.internal_funding_account_id or run.bank_account_id or 1
+
+        created_txs = []
+
+        if ext_net > 0:
+            tx_ext = LedgerTransactionDB(
+                account_id=ext_account_id,
+                date=date_str,
+                amount=ext_net,
+                direction="out",
+                currency=run.currency or "USD",
+                category_id=cat_id,
+                payment_type_id=pt_id,
+                reference=f"PAYROLL-{run.period_label}-EXT",
+                description=f"Payroll Disbursement (External USD) for {run.period_label} (Net: ${ext_net:,.2f})",
+                entry_type="money_out",
+                counterparty=f"Voyance Staff Payroll - External USD ({run.headcount} employees)",
+                source="manual",
+                created_at=datetime.utcnow(),
+                created_by=user_email or "system",
+            )
+            self.db.add(tx_ext)
+            created_txs.append(tx_ext)
+
+        if int_net > 0:
+            tx_int = LedgerTransactionDB(
+                account_id=int_account_id,
+                date=date_str,
+                amount=int_net,
+                direction="out",
+                currency=run.currency or "USD",
+                category_id=cat_id,
+                payment_type_id=pt_id,
+                reference=f"PAYROLL-{run.period_label}-INT",
+                description=f"Payroll Disbursement (Internal/Commissions) for {run.period_label} (Net: ${int_net:,.2f})",
+                entry_type="money_out",
+                counterparty=f"Voyance Staff Payroll - Internal USD Cash ({run.headcount} employees)",
+                source="manual",
+                created_at=datetime.utcnow(),
+                created_by=user_email or "system",
+            )
+            self.db.add(tx_int)
+            created_txs.append(tx_int)
+
+        if not created_txs:
+            tx_fallback = LedgerTransactionDB(
+                account_id=run.bank_account_id or 1,
+                date=date_str,
+                amount=run.total_net,
+                direction="out",
+                currency=run.currency or "USD",
+                category_id=cat_id,
+                payment_type_id=pt_id,
+                reference=f"PAYROLL-{run.period_label}",
+                description=f"Payroll Disbursement for {run.period_label} (Gross: ${run.total_gross:,.2f}, Net: ${run.total_net:,.2f})",
+                entry_type="money_out",
+                counterparty=f"Voyance Staff Payroll ({run.headcount} employees)",
+                source="manual",
+                created_at=datetime.utcnow(),
+                created_by=user_email or "system",
+            )
+            self.db.add(tx_fallback)
+            created_txs.append(tx_fallback)
+
         self.db.flush()
 
-        run.journal_transaction_id = tx.id
+        primary_tx = created_txs[0]
+        run.journal_transaction_id = primary_tx.id
         self.db.commit()
 
         return {
             "success": True,
-            "journal_transaction_id": tx.id,
-            "reference": tx.reference,
-            "amount": tx.amount,
-            "date": tx.date,
+            "journal_transaction_id": primary_tx.id,
+            "reference": primary_tx.reference,
+            "amount": sum(tx.amount for tx in created_txs),
+            "date": primary_tx.date,
             "is_already_posted": False,
         }
 
@@ -1106,6 +1186,8 @@ class PayrollService:
         exceptions = json.loads(run.exceptions_json or "[]")
         has_blocking = any(e.get("severity") == "blocking" and not e.get("is_resolved") for e in exceptions)
         bank_name = run.bank_account.account_name if run.bank_account else "Operating Account"
+        ext_bank_name = run.external_funding_account.account_name if run.external_funding_account else bank_name
+        int_bank_name = run.internal_funding_account.account_name if run.internal_funding_account else bank_name
 
         return {
             "id": run.id,
@@ -1124,6 +1206,10 @@ class PayrollService:
             "currency": run.currency or "USD",
             "bank_account_id": run.bank_account_id,
             "bank_account_name": bank_name,
+            "external_funding_account_id": run.external_funding_account_id,
+            "external_funding_account_name": ext_bank_name,
+            "internal_funding_account_id": run.internal_funding_account_id,
+            "internal_funding_account_name": int_bank_name,
             "created_at": run.created_at,
             "created_by": run.created_by,
             "approved_at": run.approved_at,

@@ -21,6 +21,8 @@ from finance.models import (
     PayrollLineDB,
     EmployeeCompensationPlanDB,
     StatutoryObligationDB,
+    FinanceBankAccountDB,
+    LedgerTransactionDB,
 )
 
 
@@ -136,10 +138,10 @@ def test_generate_payroll_run_split_lines(app_client, admin_cookies):
     assert int_line["base_salary"] == 1500.0
     assert int_line["is_taxable_local"] is True
     assert int_line["is_insurable"] is True
-    assert int_line["tax_amount"] == 150.0  # 10%
-    assert int_line["deductions_total"] == 75.0  # 5%
-    assert int_line["employer_cost_extra"] == 180.0  # 12%
-    assert int_line["net_pay"] == 1275.0
+    assert int_line["tax_amount"] == 0.0
+    assert int_line["deductions_total"] == 0.0
+    assert int_line["employer_cost_extra"] == 0.0
+    assert int_line["net_pay"] == 1500.0
 
     bob_lines = [l for l in lines if l["employee_id"] == emp2_id]
     assert len(bob_lines) == 1
@@ -272,16 +274,13 @@ def test_finalize_run_excludes_external_usd_from_statutory_obligations(app_clien
     assert resp_fin.status_code == 200
     fin_data = resp_fin.json()
 
-    # Check liabilities summary:
-    # Eve internal = 1500 -> 10% tax = 150, 5% ee SI = 75, 12% er SI = 180
-    # Frank external = 4000 -> 0 tax, 0 SI
-    # Total tax withheld must be 150.0, NOT 10% of total gross (850.0)
+    # Check liabilities summary (0.0 without automatic statutory calculation):
     liab = fin_data["liabilities_summary"]
-    assert liab["income_tax_withheld"] == 150.0
-    assert liab["social_insurance_employee"] == 75.0
-    assert liab["social_insurance_employer"] == 180.0
+    assert liab["income_tax_withheld"] == 0.0
+    assert liab["social_insurance_employee"] == 0.0
+    assert liab["social_insurance_employer"] == 0.0
 
-    # Check auto-generated StatutoryObligationDB rows
+    # Check auto-generated StatutoryObligationDB rows (0.0 estimated amounts)
     with get_db_context() as db:
         obligations = db.query(StatutoryObligationDB).filter(
             StatutoryObligationDB.source_type == "payroll_run",
@@ -289,6 +288,89 @@ def test_finalize_run_excludes_external_usd_from_statutory_obligations(app_clien
         ).all()
         assert len(obligations) == 3
         obl_map = {o.obligation_type: o.amount_estimated for o in obligations}
-        assert obl_map["income_tax"] == 150.0
-        assert obl_map["social_insurance_employee"] == 75.0
-        assert obl_map["social_insurance_employer"] == 180.0
+        assert obl_map["income_tax"] == 0.0
+        assert obl_map["social_insurance_employee"] == 0.0
+        assert obl_map["social_insurance_employer"] == 0.0
+
+
+def test_dual_funding_accounts_split_journal_posting(app_client, admin_cookies):
+    """Payroll run with distinct external and internal funding accounts produces split ledger transactions upon posting."""
+    _cleanup_test_payroll_data()
+
+    # Create two distinct bank accounts: Account A (US bank) and Account B (Cash USD)
+    with get_db_context() as db:
+        acc_us = FinanceBankAccountDB(
+            account_name="US Operating Wire",
+            account_type="bank",
+            currency="USD",
+            bank_name="Mercury US",
+            account_number="111122223333",
+            is_active=True,
+        )
+        acc_cash = FinanceBankAccountDB(
+            account_name="Cairo USD Cash Vault",
+            account_type="cash",
+            currency="USD",
+            bank_name="Cash Drawer",
+            account_number="999988887777",
+            is_active=True,
+        )
+        db.add_all([acc_us, acc_cash])
+        db.commit()
+        db.refresh(acc_us)
+        db.refresh(acc_cash)
+        us_id = acc_us.id
+        cash_id = acc_cash.id
+
+    # Setup employee with split: $3,500 external and $1,500 internal
+    _setup_employee_with_plan("Dual Funded", "dual.funded@hrflow.test", ext_amount=3500.0, int_amount=1500.0)
+
+    resp_gen = app_client.post(
+        "/api/finance/payroll/runs/generate",
+        json={
+            "period_label": "2026-11",
+            "period_start": "2026-11-01",
+            "period_end": "2026-11-30",
+            "external_funding_account_id": us_id,
+            "internal_funding_account_id": cash_id,
+            "bank_account_id": us_id,
+            "fx_rate_value": 50.0,
+        },
+        cookies=admin_cookies,
+    )
+    assert resp_gen.status_code == 201
+    run_data = resp_gen.json()
+    run_id = run_data["id"]
+    assert run_data["external_funding_account_id"] == us_id
+    assert run_data["internal_funding_account_id"] == cash_id
+
+    # Approve, Finalize, and Disburse
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/pay", json={}, cookies=admin_cookies).status_code == 200
+
+    # Post GL Journal
+    resp_journal = app_client.post(f"/api/finance/payroll/runs/{run_id}/post-journal", cookies=admin_cookies)
+    assert resp_journal.status_code == 200
+    j_data = resp_journal.json()
+    assert j_data["success"] is True
+    assert j_data["amount"] == 5000.0
+
+    # Verify separate ledger transactions
+    with get_db_context() as db:
+        txs = db.query(LedgerTransactionDB).filter(
+            LedgerTransactionDB.reference.like("PAYROLL-2026-11%")
+        ).all()
+        assert len(txs) == 2
+
+        tx_ext = next(t for t in txs if t.reference.endswith("-EXT"))
+        tx_int = next(t for t in txs if t.reference.endswith("-INT"))
+
+        assert tx_ext.account_id == us_id
+        assert tx_ext.amount == 3500.0
+        assert tx_ext.direction == "out"
+
+        assert tx_int.account_id == cash_id
+        assert tx_int.amount == 1500.0
+        assert tx_int.direction == "out"
+

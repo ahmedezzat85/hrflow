@@ -109,7 +109,13 @@ class Config:
     POSTGRES_DB = os.getenv("POSTGRES_DB", "hrflow")
 
     # SQLite file path when DB_TYPE="sqlite"
-    SQLITE_PATH = os.getenv("SQLITE_PATH", "./hrflow.db")
+    _raw_sqlite_path = os.getenv("SQLITE_PATH", "./hrflow.db")
+    if not os.path.isabs(_raw_sqlite_path):
+        _base_dir = os.path.dirname(os.path.abspath(__file__))
+        _clean_rel = _raw_sqlite_path[2:] if _raw_sqlite_path.startswith("./") else _raw_sqlite_path
+        SQLITE_PATH = os.path.normpath(os.path.join(_base_dir, _clean_rel))
+    else:
+        SQLITE_PATH = _raw_sqlite_path
 
     # Database connection pool tuning (PostgreSQL)
     DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))

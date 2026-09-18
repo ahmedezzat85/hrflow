@@ -33,15 +33,15 @@ test.describe('FUX-417: Payroll Run Compensation Split & FX Rate Policy', () => 
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep2')).toBeVisible();
 
-    // Verify split lines and Component badges in preview
+    // Verify aggregated employee rows with EXT and INT in preview (Fix 1)
     const previewRows = page.locator('#wizardEmployeesPreviewTableBody tr');
-    await expect(previewRows).toHaveCount(3);
+    await expect(previewRows).toHaveCount(2);
 
-    // Sarah Connor should have an External USD line and an Internal USD Cash line
-    const externalBadge = page.locator('#wizardEmployeesPreviewTableBody tr:has-text("Sarah Connor") .badge:has-text("External USD")');
-    const internalBadge = page.locator('#wizardEmployeesPreviewTableBody tr:has-text("Sarah Connor") .badge:has-text("Internal USD Cash")');
-    await expect(externalBadge).toBeVisible();
-    await expect(internalBadge).toBeVisible();
+    // Sarah Connor should have aggregated row with EXT ($10,000.00) and INT ($5,000.00)
+    const sarahRow = page.locator('#wizardEmployeesPreviewTableBody tr:has-text("Sarah Connor")');
+    await expect(sarahRow).toBeVisible();
+    await expect(sarahRow).toContainText('$10,000.00');
+    await expect(sarahRow).toContainText('$5,000.00');
 
     // Step 3 -> 4 -> 5
     await page.click('#wizardNextBtn');

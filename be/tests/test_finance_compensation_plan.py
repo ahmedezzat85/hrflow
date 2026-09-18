@@ -229,3 +229,102 @@ def test_finalized_payroll_run_boundary_guard(app_client, admin_cookies):
         cookies=admin_cookies,
     )
     assert resp_open.status_code == 200
+
+
+def test_employee_creation_and_update_syncs_compensation_plan(app_client, admin_cookies):
+    """Creating an employee with salary components writes through to CompensationPlan, and updating profile syncs."""
+    unique_email = f"sync_test_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test"
+
+    # 1. Create employee with internal and external salary components
+    create_resp = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Sync Candidate",
+            "email": unique_email,
+            "dept": "Design",
+            "job_role": "UI Designer",
+            "internal_salary_usd": 1200.0,
+            "external_salary_usd": 800.0,
+            "join_date": "2026-01-15",
+        },
+        cookies=admin_cookies,
+    )
+    assert create_resp.status_code == 201
+    emp_id = create_resp.json()["id"]
+
+    # 2. Verify active compensation plan endpoint returns both components automatically
+    plan_resp = app_client.get(
+        f"/api/finance/employees/{emp_id}/compensation-plan",
+        cookies=admin_cookies,
+    )
+    assert plan_resp.status_code == 200
+    plan_data = plan_resp.json()
+    assert plan_data["employee_id"] == emp_id
+    assert plan_data["internal_usd_cash"] is not None
+    assert plan_data["internal_usd_cash"]["amount"] == 1200.0
+    assert plan_data["external_usd"] is not None
+    assert plan_data["external_usd"]["amount"] == 800.0
+    assert plan_data["total_monthly_usd"] == 2000.0
+
+    # 3. Update employee profile via PUT /api/employees/{id}
+    upd_resp = app_client.put(
+        f"/api/employees/{emp_id}",
+        json={"internal_salary_usd": 1500.0},
+        cookies=admin_cookies,
+    )
+    assert upd_resp.status_code == 200
+
+    # 4. Verify compensation plan reflects the updated amount
+    updated_plan_resp = app_client.get(
+        f"/api/finance/employees/{emp_id}/compensation-plan",
+        cookies=admin_cookies,
+    )
+    assert updated_plan_resp.status_code == 200
+    updated_plan = updated_plan_resp.json()
+    assert updated_plan["internal_usd_cash"]["amount"] == 1500.0
+    assert updated_plan["external_usd"]["amount"] == 800.0
+    assert updated_plan["total_monthly_usd"] == 2300.0
+
+
+def test_backfill_compensation_plans_script(app_client, admin_cookies):
+    """Verifies backfill_compensation_plans_from_employee_fields.py creates missing components and is idempotent."""
+    from scripts.backfill_compensation_plans_from_employee_fields import run as run_backfill
+
+    # Create employee directly with salary fields but no compensation plan rows
+    with get_db_context() as db:
+        unique_email = f"backfill_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test"
+        emp = EmployeeDB(
+            name="Legacy Employee",
+            email=unique_email,
+            role="employee",
+            dept="Support",
+            job_role="Specialist",
+            salary=3500.0,
+            internal_salary_usd=2000.0,
+            external_salary_usd=1500.0,
+            join_date="2026-02-01",
+            status="Active",
+        )
+        db.add(emp)
+        db.commit()
+        db.refresh(emp)
+        legacy_id = emp.id
+
+    # Run backfill
+    created = run_backfill()
+    assert created >= 2
+
+    # Verify plan is now populated
+    plan_resp = app_client.get(
+        f"/api/finance/employees/{legacy_id}/compensation-plan",
+        cookies=admin_cookies,
+    )
+    assert plan_resp.status_code == 200
+    plan_data = plan_resp.json()
+    assert plan_data["internal_usd_cash"]["amount"] == 2000.0
+    assert plan_data["external_usd"]["amount"] == 1500.0
+    assert plan_data["total_monthly_usd"] == 3500.0
+
+    # Run backfill again (idempotency check: should not duplicate active rows)
+    second_run = run_backfill()
+    assert second_run == 0

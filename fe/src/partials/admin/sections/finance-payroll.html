@@ -130,10 +130,16 @@
                   </div>
                   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:16px;">
                     <div class="form-group">
-                      <label for="wizardFundingAccount" class="form-label" style="font-weight:600; font-size:0.85rem;">Funding Bank Account *</label>
-                      <select id="wizardFundingAccount" class="form-input filter-select" style="width:100%;"></select>
-                      <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Account from which salary disbursements disburse.</span>
+                      <label for="wizardExternalFundingAccount" class="form-label" style="font-weight:600; font-size:0.85rem;">External Funding Account (US) *</label>
+                      <select id="wizardExternalFundingAccount" class="form-input filter-select" style="width:100%;"></select>
+                      <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Draws external USD wire salaries.</span>
                     </div>
+                    <div class="form-group">
+                      <label for="wizardInternalFundingAccount" class="form-label" style="font-weight:600; font-size:0.85rem;">Internal Funding Account (Cash USD) *</label>
+                      <select id="wizardInternalFundingAccount" class="form-input filter-select" style="width:100%;"></select>
+                      <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block;">Draws internal USD cash and commissions.</span>
+                    </div>
+                    <select id="wizardFundingAccount" style="display:none;"></select>
                     <div class="form-group">
                       <label for="wizardFxRateSource" class="form-label" style="font-weight:600; font-size:0.85rem;">FX Rate Policy *</label>
                       <select id="wizardFxRateSource" class="form-input filter-select" style="width:100%;">
@@ -179,17 +185,13 @@
                   </div>
                   <div class="card" style="padding:14px; margin-bottom:14px;">
                     <h5 style="margin:0 0 8px; font-size:0.9rem;">Cycle Employee Preview</h5>
-                    <table class="responsive-card-table" style="font-size:0.85rem;">
+                    <table class="responsive-card-table" style="font-size:0.8rem;">
                       <thead>
                         <tr>
                           <th>Employee</th>
-                          <th>Component</th>
-                          <th>Department</th>
-                          <th style="text-align:right;">Amount</th>
-                          <th style="text-align:right;">Deductions</th>
-                          <th style="text-align:right;">Tax</th>
+                          <th style="text-align:right;">EXT</th>
+                          <th style="text-align:right;">INT</th>
                           <th style="text-align:right;">Net Pay</th>
-                          <th>Bank Wire Target</th>
                         </tr>
                       </thead>
                       <tbody id="wizardEmployeesPreviewTableBody"></tbody>
@@ -365,8 +367,6 @@
                         <th>Component</th>
                         <th>Department</th>
                         <th style="text-align:right;">Base</th>
-                        <th style="text-align:right;">Deductions</th>
-                        <th style="text-align:right;">Tax</th>
                         <th style="text-align:right;">Net Pay</th>
                         <th>Bank Account</th>
                         <th style="text-align:center;">Payment</th>

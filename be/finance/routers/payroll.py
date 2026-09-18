@@ -57,6 +57,8 @@ def preview_payroll_run(
         period_start=req.period_start,
         period_end=req.period_end,
         bank_account_id=req.bank_account_id,
+        external_funding_account_id=req.external_funding_account_id,
+        internal_funding_account_id=req.internal_funding_account_id,
         fx_rate_source=req.fx_rate_source,
         fx_rate_value=req.fx_rate_value,
     )
@@ -77,6 +79,8 @@ def generate_payroll_run_from_plans(
         fx_rate_source=req.fx_rate_source or "first_of_month",
         fx_rate_value=req.fx_rate_value,
         bank_account_id=req.bank_account_id,
+        external_funding_account_id=req.external_funding_account_id,
+        internal_funding_account_id=req.internal_funding_account_id,
         user_email=user_email,
     )
 
@@ -94,6 +98,8 @@ def create_payroll_run(
         period_start=req.period_start,
         period_end=req.period_end,
         bank_account_id=req.bank_account_id,
+        external_funding_account_id=req.external_funding_account_id,
+        internal_funding_account_id=req.internal_funding_account_id,
         currency=req.currency,
         user_email=user_email,
         fx_rate_source=req.fx_rate_source,

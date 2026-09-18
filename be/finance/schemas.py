@@ -1993,6 +1993,8 @@ class PayrollRunPreviewRequest(BaseModel):
     period_start: str  # YYYY-MM-DD
     period_end: str    # YYYY-MM-DD
     bank_account_id: Optional[int] = None
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
     fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
     fx_rate_value: Optional[float] = None
 
@@ -2004,6 +2006,8 @@ class PayrollRunGenerateRequest(BaseModel):
     fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
     fx_rate_value: Optional[float] = None
     bank_account_id: Optional[int] = None
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
 
 
 class PayrollRunPreviewResponse(BaseModel):
@@ -2012,6 +2016,10 @@ class PayrollRunPreviewResponse(BaseModel):
     period_end: str
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
+    external_funding_account_id: Optional[int] = None
+    external_funding_account_name: Optional[str] = None
+    internal_funding_account_id: Optional[int] = None
+    internal_funding_account_name: Optional[str] = None
     fx_rate_source: Optional[str] = "first_of_month"
     fx_rate_value: Optional[float] = None
     headcount: int = 0
@@ -2033,6 +2041,8 @@ class PayrollRunCreate(BaseModel):
     period_start: str
     period_end: str
     bank_account_id: Optional[int] = None
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
     currency: str = "USD"
     fx_rate_source: Optional[str] = "first_of_month"
     fx_rate_value: Optional[float] = None
@@ -2054,6 +2064,10 @@ class PayrollRunResponse(BaseModel):
     currency: str = "USD"
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
+    external_funding_account_id: Optional[int] = None
+    external_funding_account_name: Optional[str] = None
+    internal_funding_account_id: Optional[int] = None
+    internal_funding_account_name: Optional[str] = None
     fx_rate_source: Optional[str] = "first_of_month"
     fx_rate_value: Optional[float] = None
     created_at: datetime

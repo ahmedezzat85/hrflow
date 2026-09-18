@@ -115,7 +115,12 @@ class CompensationPlanService:
 
         active_row = self.repo.get_active_component(employee_id, component_type)
         if active_row:
-            if effective_start_date <= active_row.effective_start_date:
+            if effective_start_date == active_row.effective_start_date:
+                active_row.amount = amt
+                if notes:
+                    active_row.notes = notes
+                new_row = active_row
+            elif effective_start_date < active_row.effective_start_date:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
@@ -123,18 +128,27 @@ class CompensationPlanService:
                         f"current component's start date ({active_row.effective_start_date})"
                     ),
                 )
-            # Close previous row: effective_end_date = effective_start_date - 1 day
-            end_date_str = (start_dt - timedelta(days=1)).strftime("%Y-%m-%d")
-            self.repo.close_component(active_row, end_date_str)
-
-        new_row = self.repo.create_component(
-            employee_id=employee_id,
-            component_type=component_type,
-            amount=amt,
-            effective_start_date=effective_start_date,
-            notes=notes or "",
-            currency="USD",
-        )
+            else:
+                # Close previous row: effective_end_date = effective_start_date - 1 day
+                end_date_str = (start_dt - timedelta(days=1)).strftime("%Y-%m-%d")
+                self.repo.close_component(active_row, end_date_str)
+                new_row = self.repo.create_component(
+                    employee_id=employee_id,
+                    component_type=component_type,
+                    amount=amt,
+                    effective_start_date=effective_start_date,
+                    notes=notes or "",
+                    currency="USD",
+                )
+        else:
+            new_row = self.repo.create_component(
+                employee_id=employee_id,
+                component_type=component_type,
+                amount=amt,
+                effective_start_date=effective_start_date,
+                notes=notes or "",
+                currency="USD",
+            )
 
         # Synchronize employee split fields on EmployeeDB
         if component_type == "external_usd":

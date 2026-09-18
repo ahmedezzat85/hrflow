@@ -176,10 +176,15 @@ def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed
     assert "Missing Bank Wire Details" in titles
     assert "No Active Compensation Plan" in titles
 
-    # Verify liabilities summary
+    bank_exc = next(e for e in excs if e["title"] == "Missing Bank Wire Details")
+    assert bank_exc["severity"] == "warning"
+    plan_exc = next(e for e in excs if e["title"] == "No Active Compensation Plan")
+    assert plan_exc["severity"] == "blocking"
+
+    # Verify liabilities summary (0.0 statutory tax/deductions per Fix 2)
     liab = data["liabilities_summary"]
     assert liab["net_pay_payable"] > 0
-    assert liab["income_tax_withheld"] > 0
+    assert liab["income_tax_withheld"] == 0.0
     assert liab["total_liabilities"] > 0
 
     # Verify balanced journal preview
@@ -208,6 +213,54 @@ def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_
     app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
     assert app_res.status_code == 400
     assert "blocking exception" in app_res.json()["detail"].lower()
+
+
+def test_payroll_approval_allowed_with_warning_only_exceptions(app_client, admin_cookies, db_session, seed_payroll_env):
+    """Verifies that non-blocking warnings (such as Missing Bank Wire Details) do not prevent payroll creation or approval."""
+    # Charlie has no compensation plan, which is blocking. Give Charlie a compensation plan so only Bob's missing bank warning remains.
+    p3 = EmployeeCompensationPlanDB(
+        employee_id=seed_payroll_env["emp3_id"],
+        component_type="internal_usd_cash",
+        amount=2500.0,
+        currency="USD",
+        effective_start_date="2026-01-01",
+    )
+    db_session.add(p3)
+    db_session.commit()
+
+    # Preview run - should have no blocking exceptions despite Bob missing bank wire details
+    prev_res = app_client.post(
+        "/api/finance/payroll/runs/preview",
+        json={
+            "period_label": "2026-11",
+            "period_start": "2026-11-01",
+            "period_end": "2026-11-30",
+            "bank_account_id": seed_payroll_env["bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert prev_res.status_code == 200
+    prev_data = prev_res.json()
+    assert prev_data["has_blocking_exceptions"] is False
+    assert any(e["title"] == "Missing Bank Wire Details" and e["severity"] == "warning" for e in prev_data["exceptions"])
+
+    # Create run and approve - should succeed
+    create_res = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2026-11",
+            "period_start": "2026-11-01",
+            "period_end": "2026-11-30",
+            "bank_account_id": seed_payroll_env["bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert create_res.status_code == 201
+    run_id = create_res.json()["id"]
+
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    assert app_res.status_code == 200
+    assert app_res.json()["status"] == "approved"
 
 
 def test_payroll_approval_finalization_immutability(app_client, admin_cookies, db_session, seed_payroll_env):
@@ -385,7 +438,7 @@ def test_payroll_gl_journal_posting_and_payslips(app_client, admin_cookies, empl
     ps_data = ps_res.json()
     assert ps_data["employee_name"] == "Alice Engineer"
     assert ps_data["base_salary"] == 10000.0
-    assert ps_data["net_pay"] == 8500.0  # 10000 - 500 (5%) - 1000 (10%)
+    assert ps_data["net_pay"] == 10000.0  # Equal to base_salary with deductions/tax calculations removed
     assert ps_data["status"] == "paid"
 
 

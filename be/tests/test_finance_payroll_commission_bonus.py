@@ -126,10 +126,10 @@ def test_add_commission_and_bonus_lines(app_client, admin_cookies):
     assert c1["base_salary"] == 500.0
     assert c1["is_taxable_local"] is True
     assert c1["is_insurable"] is True
-    assert c1["tax_amount"] == 50.0  # 10%
-    assert c1["deductions_total"] == 25.0  # 5%
-    assert c1["employer_cost_extra"] == 60.0  # 12%
-    assert c1["net_pay"] == 425.0  # 500 - 50 - 25
+    assert c1["tax_amount"] == 0.0
+    assert c1["deductions_total"] == 0.0
+    assert c1["employer_cost_extra"] == 0.0
+    assert c1["net_pay"] == 500.0
 
     # 3. Add support commission: $200
     c2_resp = app_client.post(
@@ -146,9 +146,9 @@ def test_add_commission_and_bonus_lines(app_client, admin_cookies):
     c2 = c2_resp.json()
     assert c2["compensation_type"] == "commission_support"
     assert c2["base_salary"] == 200.0
-    assert c2["tax_amount"] == 20.0
-    assert c2["deductions_total"] == 10.0
-    assert c2["net_pay"] == 170.0
+    assert c2["tax_amount"] == 0.0
+    assert c2["deductions_total"] == 0.0
+    assert c2["net_pay"] == 200.0
 
     # 4. Verify run totals updated
     run_detail = app_client.get(f"/api/finance/payroll/runs/{run_id}", cookies=admin_cookies).json()
@@ -290,16 +290,13 @@ def test_commissions_participate_in_statutory_obligations(app_client, admin_cook
     assert fin_resp.status_code == 200
     fin_data = fin_resp.json()
 
-    # Total taxable/insurable wage = 1000 (internal) + 500 (bonus) = 1500 (3000 external is exempt)
-    # Income tax (10%) = 150.0
-    # Employee SI (5%) = 75.0
-    # Employer SI (12%) = 180.0
+    # Check liabilities summary (0.0 without automatic statutory calculation):
     liab = fin_data["liabilities_summary"]
-    assert liab["income_tax_withheld"] == 150.0
-    assert liab["social_insurance_employee"] == 75.0
-    assert liab["social_insurance_employer"] == 180.0
+    assert liab["income_tax_withheld"] == 0.0
+    assert liab["social_insurance_employee"] == 0.0
+    assert liab["social_insurance_employer"] == 0.0
 
-    # Verify StatutoryObligationDB records
+    # Verify StatutoryObligationDB records (0.0 estimated amounts)
     with get_db_context() as db:
         obligations = db.query(StatutoryObligationDB).filter(
             StatutoryObligationDB.source_type == "payroll_run",
@@ -307,9 +304,9 @@ def test_commissions_participate_in_statutory_obligations(app_client, admin_cook
         ).all()
         assert len(obligations) == 3
         obl_map = {o.obligation_type: o.amount_estimated for o in obligations}
-        assert obl_map["income_tax"] == 150.0
-        assert obl_map["social_insurance_employee"] == 75.0
-        assert obl_map["social_insurance_employer"] == 180.0
+        assert obl_map["income_tax"] == 0.0
+        assert obl_map["social_insurance_employee"] == 0.0
+        assert obl_map["social_insurance_employer"] == 0.0
 
 
 def test_reject_modifications_on_locked_run(app_client, admin_cookies):

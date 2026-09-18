@@ -143,22 +143,28 @@ async function openRunPayrollWizardModal() {
     onWizardPeriodChanged(`${year}-${month}`);
   }
 
-  // Populate Funding Bank Accounts
+  // Populate Funding Bank Accounts (Dual Accounts for External US and Internal Cash USD - Fix 3)
+  const extSelect = document.getElementById("wizardExternalFundingAccount");
+  const intSelect = document.getElementById("wizardInternalFundingAccount");
   const fundingSelect = document.getElementById("wizardFundingAccount");
-  if (fundingSelect) {
-    fundingSelect.innerHTML = `<option value="">Loading accounts...</option>`;
-    try {
-      const accounts = await FinanceApi.getBankAccounts();
-      if (accounts && accounts.length > 0) {
-        fundingSelect.innerHTML = accounts
-          .map(acc => `<option value="${acc.id}">${acc.bank_name || 'Bank'} - ${acc.account_name} (${acc.account_number_masked || '••••'}) [${acc.currency}]</option>`)
-          .join("");
-      } else {
-        fundingSelect.innerHTML = `<option value="1">Primary Treasury Operating Account (USD)</option>`;
+  const selects = [extSelect, intSelect, fundingSelect].filter(Boolean);
+  selects.forEach(s => s.innerHTML = `<option value="">Loading accounts...</option>`);
+  try {
+    const accounts = await FinanceApi.getBankAccounts();
+    if (accounts && accounts.length > 0) {
+      const optionsHtml = accounts
+        .map(acc => `<option value="${acc.id}">${acc.bank_name || 'Bank'} - ${acc.account_name} (${acc.account_number_masked || '••••'}) [${acc.currency}]</option>`)
+        .join("");
+      selects.forEach(s => s.innerHTML = optionsHtml);
+      if (intSelect) {
+        const cashAcc = accounts.find(a => (a.account_name || '').toLowerCase().includes("cash") || (a.account_type || '').toLowerCase().includes("cash"));
+        if (cashAcc) intSelect.value = cashAcc.id;
       }
-    } catch (e) {
-      fundingSelect.innerHTML = `<option value="1">Primary Treasury Operating Account (USD)</option>`;
+    } else {
+      selects.forEach(s => s.innerHTML = `<option value="1">Primary Treasury Operating Account (USD)</option>`);
     }
+  } catch (e) {
+    selects.forEach(s => s.innerHTML = `<option value="1">Primary Treasury Operating Account (USD)</option>`);
   }
 
   updateWizardStepView();
@@ -196,7 +202,9 @@ async function navigateWizardStep(direction) {
     const periodLabel = document.getElementById("wizardPeriodLabel")?.value;
     const periodStart = document.getElementById("wizardPeriodStart")?.value;
     const periodEnd = document.getElementById("wizardPeriodEnd")?.value;
-    const fundingAccountId = document.getElementById("wizardFundingAccount")?.value;
+    const extFundingAccountId = document.getElementById("wizardExternalFundingAccount")?.value;
+    const intFundingAccountId = document.getElementById("wizardInternalFundingAccount")?.value;
+    const fundingAccountId = document.getElementById("wizardFundingAccount")?.value || extFundingAccountId;
 
     if (!periodLabel || !periodStart || !periodEnd) {
       showToast("Please fill in cycle period and dates.", "warning");
@@ -220,6 +228,8 @@ async function navigateWizardStep(direction) {
         period_end: periodEnd,
         funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
         bank_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
+        external_funding_account_id: extFundingAccountId ? parseInt(extFundingAccountId, 10) : null,
+        internal_funding_account_id: intFundingAccountId ? parseInt(intFundingAccountId, 10) : null,
         fx_rate_source: fxRateSource,
         fx_rate_value: fxRateValue,
       });
@@ -313,35 +323,38 @@ function populateWizardData(preview) {
 
   const empTableBody = document.getElementById("wizardEmployeesPreviewTableBody");
   if (empTableBody && preview.lines) {
-    empTableBody.innerHTML = preview.lines
-      .map(line => {
-        const compType = line.compensation_type || "internal_usd_cash";
-        let typeBadge;
-        if (compType === "external_usd") {
-          typeBadge = `<span class="badge" style="background:#0284C7; color:#fff; font-size:0.75rem; padding:2px 6px;">External USD</span>`;
-        } else if (compType === "internal_usd_cash") {
-          typeBadge = `<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem; padding:2px 6px;">Internal USD Cash</span>`;
-        } else if (compType.startsWith("commission")) {
-          typeBadge = `<span class="badge" style="background:#8B5CF6; color:#fff; font-size:0.75rem; padding:2px 6px;">Commission</span>`;
-        } else if (compType === "bonus") {
-          typeBadge = `<span class="badge" style="background:#F59E0B; color:#fff; font-size:0.75rem; padding:2px 6px;">Bonus</span>`;
-        } else {
-          typeBadge = `<span class="badge" style="background:#6B7280; color:#fff; font-size:0.75rem; padding:2px 6px;">${compType.replace('_', ' ').toUpperCase()}</span>`;
-        }
-        return `
-          <tr>
-            <td><strong>${line.employee_name}</strong></td>
-            <td>${typeBadge}</td>
-            <td>${line.department}</td>
-            <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_amount || line.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank</span>'}</td>
-          </tr>
-        `;
-      })
-      .join("");
+    const linesByEmployee = {};
+    (preview.lines || []).forEach(line => {
+      if (!linesByEmployee[line.employee_id]) {
+        linesByEmployee[line.employee_id] = {
+          employee_name: line.employee_name,
+          department: line.department,
+          bank_name: line.bank_name,
+          bank_account_masked: line.bank_account_masked,
+          external: 0,
+          internal: 0,
+          commission: 0,
+          bonus: 0,
+          net_pay: 0,
+        };
+      }
+      const row = linesByEmployee[line.employee_id];
+      const amt = Number(line.base_salary || 0);
+      if (line.compensation_type === "external_usd") row.external += amt;
+      else if (line.compensation_type === "internal_usd_cash") row.internal += amt;
+      else if (line.compensation_type && line.compensation_type.startsWith("commission")) row.commission += amt;
+      else if (line.compensation_type === "bonus") row.bonus += amt;
+      row.net_pay += Number(line.net_pay || 0);
+    });
+
+    empTableBody.innerHTML = Object.values(linesByEmployee).map(row => `
+      <tr style="font-size:0.8rem;">
+        <td><strong>${row.employee_name}</strong></td>
+        <td style="text-align:right;">$${row.external.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+        <td style="text-align:right;">$${row.internal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+        <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${row.net_pay.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `).join("");
   }
 
   // Step 3: Exceptions & Readiness
@@ -482,7 +495,9 @@ async function submitWizardCreateRun(autoApprove = false) {
   const periodLabel = document.getElementById("wizardPeriodLabel")?.value;
   const periodStart = document.getElementById("wizardPeriodStart")?.value;
   const periodEnd = document.getElementById("wizardPeriodEnd")?.value;
-  const fundingAccountId = document.getElementById("wizardFundingAccount")?.value;
+  const extFundingAccountId = document.getElementById("wizardExternalFundingAccount")?.value;
+  const intFundingAccountId = document.getElementById("wizardInternalFundingAccount")?.value;
+  const fundingAccountId = document.getElementById("wizardFundingAccount")?.value || extFundingAccountId;
 
   const btn = autoApprove ? document.getElementById("btnWizardCreateAndApprove") : document.getElementById("btnWizardCreateDraftOnly");
   if (btn) {
@@ -502,6 +517,8 @@ async function submitWizardCreateRun(autoApprove = false) {
       currency: "USD",
       funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
       bank_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
+      external_funding_account_id: extFundingAccountId ? parseInt(extFundingAccountId, 10) : null,
+      internal_funding_account_id: intFundingAccountId ? parseInt(intFundingAccountId, 10) : null,
       fx_rate_source: fxRateSource,
       fx_rate_value: fxRateValue,
       lines: (wizardPreviewData.lines || []).map(l => ({
@@ -639,7 +656,7 @@ function renderPayrollRunDetail(run) {
   if (linesTbody) {
     const lines = run.lines || [];
     if (lines.length === 0) {
-      linesTbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:var(--text-muted);">No employee records found in this run.</td></tr>`;
+      linesTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">No employee records found in this run.</td></tr>`;
     } else {
       linesTbody.innerHTML = lines.map(line => {
         let payBadge = `<span class="badge" style="background:#94A3B8; color:#fff;">PENDING</span>`;
@@ -690,8 +707,6 @@ function renderPayrollRunDetail(run) {
             <td>${typeBadge}</td>
             <td>${line.department || '—'}</td>
             <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_withheld || line.tax_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444;">Missing</span>'}</td>
             <td style="text-align:center;">${payBadge}</td>
