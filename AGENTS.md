@@ -147,8 +147,8 @@ npx playwright test tests/ui/finance-bill-repository.spec.js --headed
 - Inspect `git status` and the final `git diff`; ensure no temporary, scratch, generated, or test-output files are included.
 - Stage only relevant source, documentation, and test files.
 - Use a descriptive commit message explaining what changed and why; include a story identifier such as `FUX-XXX` when applicable.
-- Determine the target branch from the current task, repository state, and user instruction.
-- Commit, push, create branches, or open pull requests only when explicitly authorized by the user or required by the active execution environment.
+- Determine the target branch from the current task, repository state, and active feature branch.
+- Once implementation passes all checks, automatically stage relevant files, commit with a descriptive message (including story ID where applicable), and push to the active remote branch without waiting for a separate prompt.
 - For large files or reconstructed patches, read back the resulting content or inspect the diff before and after committing.
 
 ## Definition of Done
@@ -158,6 +158,7 @@ Before declaring a task complete:
 - Inspect `git diff` and verify only intended files changed (verify no placeholder content).
 - Run the relevant build (`npm run build`) and applicable backend/unit/integration/UI tests for the touched area.
 - Add or update permanent tests for changed behavior.
+- Cleanly stage, commit, and push changes to the active branch.
 - Report: summary of changes, test commands run and results, any limitations, and unresolved assumptions.
 
 ## Maintaining This Guide
