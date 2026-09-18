@@ -1982,6 +1982,7 @@ class PayrollLineResponse(BaseModel):
     snapshot_notes: Optional[str] = ""
     created_at: Optional[datetime] = None
     paid_at: Optional[datetime] = None
+    linked_payment_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -2215,6 +2216,134 @@ class EmployeeCompensationPlanResponse(BaseModel):
     external_usd: Optional[CompensationComponentResponse] = None
     internal_usd_cash: Optional[CompensationComponentResponse] = None
     total_monthly_usd: float = 0.0
+
+
+# =========================================================================
+# FUX-419: Compensation Spend & Variance Reporting
+# =========================================================================
+
+class EmployeeCompensationLineItem(BaseModel):
+    id: int
+    payroll_run_id: int
+    period_label: str
+    compensation_type: str
+    base_salary: float
+    allowances_total: float = 0.0
+    deductions_total: float = 0.0
+    tax_amount: float = 0.0
+    net_pay: float
+    employer_cost_extra: float = 0.0
+    payment_status: str = "pending"
+    paid_at: Optional[datetime] = None
+    linked_payment_id: Optional[int] = None
+
+
+class EmployeeCompensationReportResponse(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    by_compensation_type: Dict[str, float] = {}
+    total_external: float = 0.0
+    total_internal: float = 0.0
+    total_commission: float = 0.0
+    total_bonus: float = 0.0
+    grand_total: float = 0.0
+    payroll_runs_count: int = 0
+    lines: List[EmployeeCompensationLineItem] = []
+
+
+class CompanyEmployeeCompensationItem(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = None
+    by_compensation_type: Dict[str, float] = {}
+    total_external: float = 0.0
+    total_internal: float = 0.0
+    total_commission: float = 0.0
+    total_bonus: float = 0.0
+    grand_total: float = 0.0
+    lines_count: int = 0
+
+
+class CompanyCompensationReportResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    by_compensation_type: Dict[str, float] = {}
+    total_external: float = 0.0
+    total_internal: float = 0.0
+    total_commission: float = 0.0
+    total_bonus: float = 0.0
+    grand_total: float = 0.0
+    total_headcount: int = 0
+    payroll_runs_count: int = 0
+    employees: List[CompanyEmployeeCompensationItem] = []
+
+
+class StatutoryRemittedItem(BaseModel):
+    id: int
+    period: str
+    obligation_type: str
+    amount_remitted: float
+    amount_accrued: float = 0.0
+    currency: str = "USD"
+    status: str
+    due_date: Optional[str] = None
+    source_type: Optional[str] = None
+    source_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class StatutoryRemittedReportResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    total_remitted: float = 0.0
+    by_obligation_type: Dict[str, float] = {}
+    by_period: Dict[str, float] = {}
+    items: List[StatutoryRemittedItem] = []
+    obligations_count: int = 0
+
+
+class MoneyFlowStatusItem(BaseModel):
+    flow_type: str  # external_transfer | internal_cash | tax_obligation | insurance_obligation
+    label: str
+    pending_amount: float = 0.0
+    settled_amount: float = 0.0
+    total_amount: float = 0.0
+    status: str = "pending"  # pending | settled | partially_settled
+
+
+class EmployeePayableStatusItem(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = None
+    external_pending: float = 0.0
+    external_settled: float = 0.0
+    internal_pending: float = 0.0
+    internal_settled: float = 0.0
+    tax_pending: float = 0.0
+    tax_settled: float = 0.0
+    insurance_pending: float = 0.0
+    insurance_settled: float = 0.0
+    total_pending: float = 0.0
+    total_settled: float = 0.0
+
+
+class PayableStatusReportResponse(BaseModel):
+    period: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    employee_id: Optional[int] = None
+    currency: str = "USD"
+    flows: List[MoneyFlowStatusItem] = []
+    total_pending: float = 0.0
+    total_settled: float = 0.0
+    grand_total: float = 0.0
+    employee_breakdown: Optional[List[EmployeePayableStatusItem]] = None
 
 
 

@@ -30,6 +30,10 @@ from finance.schemas import (
     ReportExportAuditResponse,
     ReportScheduleCreate,
     ReportScheduleResponse,
+    EmployeeCompensationReportResponse,
+    CompanyCompensationReportResponse,
+    StatutoryRemittedReportResponse,
+    PayableStatusReportResponse,
 )
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
@@ -607,6 +611,95 @@ def delete_report_schedule(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report schedule not found")
     return {"success": True, "id": schedule_id}
+
+
+# =========================================================================
+# FUX-419: Compensation & Spend Reporting Endpoints
+# =========================================================================
+
+@router.get("/compensation/employee/{employee_id}", response_model=EmployeeCompensationReportResponse)
+def get_employee_compensation_report(
+    employee_id: int = Path(..., description="Employee ID"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Per-employee compensation report: total external, internal, commission, bonus,
+    and grand total for a given employee across an arbitrary date range.
+    """
+    return service.get_employee_compensation_report(
+        employee_id=employee_id,
+        start_date=start_date,
+        end_date=end_date,
+        currency=currency,
+    )
+
+
+@router.get("/compensation/company", response_model=CompanyCompensationReportResponse)
+def get_company_compensation_report(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    breakdown_employees: bool = Query(True, description="Include per-employee breakdown"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Company salary spend report: aggregate total compensation across all employees
+    for a selected period, broken down by compensation type, with per-employee breakdown.
+    """
+    return service.get_company_compensation_report(
+        start_date=start_date,
+        end_date=end_date,
+        currency=currency,
+        breakdown_employees=breakdown_employees,
+    )
+
+
+@router.get("/statutory/remitted", response_model=StatutoryRemittedReportResponse)
+def get_statutory_remitted_report(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Statutory obligations paid report: sums StatutoryObligationDB.amount_remitted
+    grouped by obligation_type and period, filtered to periods within range.
+    """
+    return service.get_statutory_remitted_report(
+        start_date=start_date,
+        end_date=end_date,
+        currency=currency,
+    )
+
+
+@router.get("/payroll/payable-status", response_model=PayableStatusReportResponse)
+def get_payroll_payable_status_report(
+    period: Optional[str] = Query(None, description="Payroll period (e.g. 2026-09)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    employee_id: Optional[int] = Query(None, description="Optional employee filter"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Payable/paid status view: one row per money-flow type (external, internal, tax, insurance)
+    per employee/company with pending/settled amounts.
+    """
+    return service.get_payroll_payable_status_report(
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+        employee_id=employee_id,
+        currency=currency,
+    )
+
 
 
 

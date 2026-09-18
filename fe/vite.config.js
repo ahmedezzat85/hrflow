@@ -3,6 +3,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, copyFileSync, existsSync } from 'fs';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { writeFinanceApiBundle } from './scripts/assemble-finance-api.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -87,6 +88,7 @@ function singleFileDeployBundle() {
     configResolved(config) {
       outDir = config.build.outDir;
       isBuild = config.command === 'build';
+      writeFinanceApiBundle();
     },
     transformIndexHtml: {
       order: 'post',
@@ -124,6 +126,12 @@ function singleFileDeployBundle() {
     },
     handleHotUpdate({ file, server }) {
       if (file.endsWith('.html')) {
+        server.ws.send({
+          type: 'full-reload',
+          path: '*',
+        });
+      } else if (file.includes('api/finance') || file.includes('api\\finance')) {
+        writeFinanceApiBundle();
         server.ws.send({
           type: 'full-reload',
           path: '*',

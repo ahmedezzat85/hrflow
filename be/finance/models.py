@@ -637,9 +637,11 @@ class PayrollLineDB(Base):
     snapshot_notes = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
     paid_at = Column(DateTime, nullable=True)
+    linked_payment_id = Column(Integer, ForeignKey("finance_payments.id", ondelete="SET NULL"), nullable=True, index=True)
 
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
+    linked_payment = relationship("PaymentDB", foreign_keys=[linked_payment_id])
 
 
 class AccountTransferDB(Base):

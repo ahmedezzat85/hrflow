@@ -1,81 +1,45 @@
 /**
  * fe/finance-api.js
- * API client for Finance module endpoints (/api/finance/*).
- * Mirrors fe/api.js conventions and uses the shared apiRequest helper.
- * Includes graceful mock-mode fallback when ?mock=admin is in URL.
+ *
+ * Aggregated Finance API client bundled from domain modules in fe/api/finance/:
+ *   - fe/api/finance/core.js
+ *   - fe/api/finance/invoices-api.js
+ *   - fe/api/finance/bills-api.js
+ *   - fe/api/finance/accounts-api.js
+ *   - fe/api/finance/cheques-api.js
+ *   - fe/api/finance/subscriptions-api.js
+ *   - fe/api/finance/statements-api.js
+ *   - fe/api/finance/reports-api.js
+ *   - fe/api/finance/dashboard-api.js
+ *   - fe/api/finance/payroll-api.js
+ *   - fe/api/finance/statutory-api.js
+ *
+ * DO NOT EDIT THIS BUNDLED FILE DIRECTLY.
+ * Make changes inside the corresponding domain file in fe/api/finance/.
  */
-const _isMock = () => typeof window !== "undefined" && window.location && window.location.search.includes("mock=");
-function round(val, decimals = 2) {
-  return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
-}
-window.round = round;
 
-function _getIdempHeaders(explicitKey = null) {
-  const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
-  return key ? { "Idempotency-Key": key } : {};
-}
+/**
+ * fe/api/finance/core.js
+ * Finance API - Core configuration, shared helpers, base mock state and observability.
+ */
+(function (root) {
+  const _isMock = () => typeof window !== "undefined" && window.location && window.location.search.includes("mock=");
+  root._isMock = _isMock;
 
-const FinanceMockState = {
-  accounts: [
-    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 150000.0, is_active: true },
-    { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
-    { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
-    { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
-  ],
-  customers: [
-    { id: 1, name: "Apex Health Partners", legal_name: "Apex Healthcare Systems LLC", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", billing_address: "100 Medical Center Blvd", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Enterprise client", is_active: true },
-    { id: 2, name: "BioCare Diagnostics", legal_name: "BioCare International Inc", contact_email: "ap@biocare.org", contact_phone: "+1 555-0144", tax_id: "US-33441199", billing_address: "450 Lab Parkway", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Monthly billing", is_active: true },
-    { id: 3, name: "CareFirst Health", legal_name: "CareFirst Regional Health Corp", contact_email: "ap@carefirst.org", contact_phone: "+1 555-0199", tax_id: "US-77889900", billing_address: "770 Care Ave", country: "United States", default_currency: "USD", payment_terms_days: 15, owner: "Sarah Connor", notes: "Overdue account", is_active: true },
-    { id: 4, name: "Delta Medical", legal_name: "Delta Medical Equipment Ltd", contact_email: "finance@deltamed.com", contact_phone: "+1 555-0177", tax_id: "US-55443322", billing_address: "12 Nile St, Maadi", country: "Egypt", default_currency: "USD", payment_terms_days: 45, owner: "Sarah Connor", notes: "Consulting client", is_active: true },
-    { id: 5, name: "Echo Clinics", legal_name: "Echo Clinics Network SAE", contact_email: "billing@echoclinics.com", contact_phone: "+1 555-0155", tax_id: "EG-11223344", billing_address: "5 Tahrir Sq, Cairo", country: "Egypt", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Clinical partner", is_active: true },
-    { id: 6, name: "Frontier Labs", legal_name: "Frontier Diagnostics Research", contact_email: "info@frontierlabs.com", contact_phone: "+1 555-0111", tax_id: "US-99887766", billing_address: "88 Science Park", country: "United States", default_currency: "USD", payment_terms_days: 60, owner: "Sarah Connor", notes: "Research lab", is_active: true },
-  ],
-  vendors: [
-    { id: 1, name: "Amazon Web Services", legal_name: "Amazon Web Services Inc", category: "Infrastructure", default_category_id: 8, contact_name: "AWS Accounts Team", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", remit_address: "410 Terry Ave N, Seattle WA", country: "United States", payment_terms_days: 30, default_currency: "USD", default_department: "Engineering", tax_treatment: "standard", onboarding_status: "active", notes: "Hosting & compute", is_active: true },
-    { id: 2, name: "Slack Technologies", legal_name: "Slack Technologies LLC", category: "SaaS", default_category_id: 9, contact_name: "Sales Billing", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", remit_address: "500 Howard St, San Francisco CA", country: "United States", payment_terms_days: 15, default_currency: "USD", default_department: "Operations", tax_treatment: "standard", onboarding_status: "active", notes: "Team communication", is_active: true },
-    { id: 3, name: "Google Workspace", legal_name: "Google LLC", category: "Software", default_category_id: null, contact_name: "Google Cloud Sales", contact_email: "billing@google.com", contact_phone: "+1 800-555-0100", tax_id: "VAT-5544332", remit_address: "1600 Amphitheatre Pkwy, Mountain View CA", country: "United States", payment_terms_days: 30, default_currency: "USD", default_department: "Engineering", tax_treatment: "standard", onboarding_status: "active", notes: "Productivity suite", is_active: true },
-  ],
-  vendorPaymentInstructions: [
-    { id: 1, vendor_id: 1, payment_method: "bank_transfer", bank_name: "JPMorgan Chase Bank", account_holder_name: "Amazon Web Services Inc", account_number: "98765432104821", routing_number: "021000021", swift_code: "CHASUS33", iban: "US99CHAS021000021987654321", verification_status: "verified", verified_by: "admin@hrflow.test", verified_at: "2026-09-01T10:00:00", is_active: true, effective_date: "2026-01-01", notes: "Direct ACH Wire Instructions" },
-    { id: 2, vendor_id: 2, payment_method: "bank_transfer", bank_name: "Silicon Valley Bank", account_holder_name: "Slack Technologies LLC", account_number: "12345678901122", routing_number: "121140399", swift_code: "SVBKUS6S", iban: "US44SVBK121140399123456789", verification_status: "unverified", verified_by: null, verified_at: null, is_active: true, effective_date: "2026-01-01", notes: "Pending vendor bank verification" },
-  ],
-  invoices: [
-    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, amount_paid: 0.0, balance: 12500.0, is_overdue: false, days_overdue: 0, next_action: "Awaiting Due Date / Payment", notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
-    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, amount_paid: 0.0, balance: 8400.0, is_overdue: false, days_overdue: 0, next_action: "Review & Send to Customer", notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
-    { id: 3, customer_id: 3, customer_name: "CareFirst Health", invoice_number: "INV-2026-003", issue_date: "2026-08-01", due_date: "2026-08-15", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 10000.0, tax_amount: 0.0, total: 10000.0, amount_paid: 0.0, balance: 10000.0, is_overdue: true, days_overdue: 29, next_action: "Send Payment Reminder (29d overdue)", notes: "Prior cycle maintenance", created_at: "2026-08-01T08:00:00", lines: [{ id: 3, invoice_id: 3, description: "System Maintenance", quantity: 1, unit_price: 10000.0, line_total: 10000.0 }] },
-    { id: 4, customer_id: 4, customer_name: "Delta Medical", invoice_number: "INV-2026-004", issue_date: "2026-09-02", due_date: "2026-09-25", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 11000.0, tax_amount: 0.0, total: 11000.0, amount_paid: 4000.0, balance: 7000.0, is_overdue: false, days_overdue: 0, next_action: "Collect Remaining Balance", notes: "Consulting Retainer Q3", created_at: "2026-09-02T09:00:00", lines: [{ id: 4, invoice_id: 4, description: "Consulting Hours", quantity: 10, unit_price: 1100.0, line_total: 11000.0 }] },
-    { id: 5, customer_id: 5, customer_name: "Echo Clinics", invoice_number: "INV-2026-005", issue_date: "2026-08-10", due_date: "2026-09-10", status: "paid", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 20000.0, tax_amount: 0.0, total: 20000.0, amount_paid: 20000.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Completed (Paid in Full)", notes: "Setup & Onboarding", created_at: "2026-08-10T10:00:00", lines: [{ id: 5, invoice_id: 5, description: "Setup Fee", quantity: 1, unit_price: 20000.0, line_total: 20000.0 }] },
-    { id: 6, customer_id: 6, customer_name: "Frontier Labs", invoice_number: "INV-2026-006", issue_date: "2026-08-20", due_date: "2026-09-20", status: "void", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "other", has_bank_discrepancy: false, subtotal: 25000.0, tax_amount: 0.0, total: 25000.0, amount_paid: 0.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Archived (Voided)", notes: "Canceled service request", created_at: "2026-08-20T11:00:00", lines: [{ id: 6, invoice_id: 6, description: "Canceled item", quantity: 1, unit_price: 25000.0, line_total: 25000.0 }] },
-  ],
-  bills: [
-    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
-    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
-    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category_id: null, category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
-    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category_id: 9, category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
-    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
-    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
-  ],
-  payments: [],
-  billPayments: [
-    { id: 1, related_bill_id: 2, amount: 320.0, currency: "USD", payment_date: "2026-09-04", bank_account_id: 1, method: "bank_transfer", reference: "ACH-SLACK-01", is_reversed: false, created_at: "2026-09-04T10:00:00" },
-  ],
-  categories: [
-    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, is_petty: false },
-    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, is_petty: false },
-    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, is_petty: false },
-    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, is_petty: true },
-    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, is_petty: true },
-    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, is_petty: false },
-    { id: 7, name: "Bank Fees", kind: "cost", is_active: true, sort_order: 7, is_petty: false },
-    { id: 8, name: "Infrastructure", kind: "cost", is_active: true, sort_order: 8, is_petty: false },
-    { id: 9, name: "SaaS", kind: "cost", is_active: true, sort_order: 9, is_petty: false },
-    { id: 10, name: "Facilities & Maintenance", kind: "cost", is_active: true, sort_order: 10, is_petty: false },
-    { id: 11, name: "Electricity", kind: "cost", is_active: true, sort_order: 11, is_petty: false },
-    { id: 12, name: "Internet", kind: "cost", is_active: true, sort_order: 12, is_petty: false },
-    { id: 13, name: "Operating Expense", kind: "cost", is_active: true, sort_order: 13, is_petty: false },
-    { id: 14, name: "Other", kind: "other", is_active: true, sort_order: 99, is_petty: false },
-  ],
-  featureFlags: {
+  function round(val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  }
+  root.round = round;
+
+  function _getIdempHeaders(explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  }
+  root._getIdempHeaders = _getIdempHeaders;
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+  if (!FinanceMockState.featureFlags) {
+    FinanceMockState.featureFlags = {
     phase1_navigation: true,
     phase2_dashboard_kpis: true,
     phase3_sales_invoicing: true,
@@ -85,631 +49,116 @@ const FinanceMockState = {
     phase7_financial_reports: true,
     phase8_guided_payroll: true,
     mobile_priority_ui: true,
+  };
+  }
+
+  const CoreApi = {
+async getFeatureFlags() {
+    if (_isMock()) {
+      const flags = FinanceMockState.featureFlags || {};
+      return {
+        status: "success",
+        flags: { ...flags },
+        rollout_stage: Object.values(flags).every(Boolean) ? "general_availability" : "pilot",
+        active_count: Object.values(flags).filter(Boolean).length,
+        total_count: Object.keys(flags).length,
+      };
+    }
+    return apiRequest("GET", "/api/finance/feature-flags");
   },
-  paymentTypes: [
-    { id: 1, name: "Cash Payment", code: "CASH", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 2, name: "ATM Withdrawal", code: "CASHWITHDRAW", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 3, name: "Check Payment", code: "CHK", requires_cheque_number: true, requires_bank_fee_flag: false, is_active: true },
-    { id: 4, name: "Internal Transfer", code: "INTTRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 5, name: "Incoming Transfer", code: "INBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 6, name: "Outgoing Transfer", code: "OUTBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 7, name: "Currency Exchange", code: "USDTOEGP", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 8, name: "Debit Card Payment", code: "DEBIT_CARD", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
-    { id: 9, name: "Bank Fee", code: "BANK_FEES", requires_cheque_number: false, requires_bank_fee_flag: true, is_active: true },
-  ],
-  transfers: [],
-  cheques: [
-    {
-      id: 1,
-      cheque_number: "001011",
-      account_id: 1,
-      account_name: "Voyance Operating USD",
-      issue_date: "2026-09-02",
-      amount: 4200.0,
-      currency: "USD",
-      payee: "Amazon Web Services",
-      purpose_type: "vendor_payment",
-      linked_bill_id: 1,
-      status: "cleared",
-      clear_date: "2026-09-05",
-      fiscal_year: 2026,
-      notes: "AWS cloud hosting payment",
-      created_at: "2026-09-02T10:00:00",
-    },
-    {
-      id: 2,
-      cheque_number: "001012",
-      account_id: 1,
-      account_name: "Voyance Operating USD",
-      issue_date: "2026-09-06",
-      amount: 15000.0,
-      currency: "USD",
-      payee: "Voyance Health (Cash Drawer)",
-      purpose_type: "cash_withdrawal",
-      destination_cash_account_id: 2,
-      destination_cash_account_name: "Voyance Treasury Reserve",
-      status: "issued",
-      clear_date: null,
-      fiscal_year: 2026,
-      notes: "Petty cash replenishment",
-      created_at: "2026-09-06T11:00:00",
-    },
-  ],
-  subscriptions: [
-    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", name: "AWS Cloud Infrastructure", amount: 4200.0, currency: "USD", billing_cycle: "monthly", next_renewal_date: "2026-10-01", contract_start_date: "2025-10-01", contract_end_date: "2026-10-01", notice_period_days: 30, owner: "Sarah Connor", department: "Engineering", payment_method: "card", seats_count: null, monthly_equivalent_amount: 4200.0, auto_generate_bill: false, is_active: true, charges_count: 1, last_charge_date: "2026-09-01", last_charge_amount: 4200.0 },
-    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", name: "Slack Business+", amount: 320.0, currency: "USD", billing_cycle: "monthly", next_renewal_date: "2026-09-20", contract_start_date: "2025-09-20", contract_end_date: "2026-09-20", notice_period_days: 15, owner: "John DevOps", department: "Operations", payment_method: "card", seats_count: 40, monthly_equivalent_amount: 320.0, auto_generate_bill: false, is_active: true, charges_count: 1, last_charge_date: "2026-09-03", last_charge_amount: 320.0 },
-  ],
-  subscriptionCharges: [
-    { id: 1, subscription_id: 1, subscription_name: "AWS Cloud Infrastructure", vendor_name: "Amazon Web Services", billing_date: "2026-09-01", amount: 4200.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 1, variance_amount: 0.0, variance_reason: null, note: "Monthly cloud compute charges", created_at: "2026-09-01T08:00:00", attachments: [] },
-    { id: 2, subscription_id: 2, subscription_name: "Slack Business+", vendor_name: "Slack Technologies", billing_date: "2026-09-03", amount: 320.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 2, variance_amount: 0.0, variance_reason: null, note: "40 user licenses renewal", created_at: "2026-09-03T09:00:00", attachments: [] },
-  ],
-  statementImports: [
-    {
-      id: 1,
-      account_id: 1,
-      account_name: "Voyance Operating USD",
-      period_month: "2026-09",
-      file_type: "csv",
-      status: "needs_review",
-      uploaded_file_ref: "uploads/finance_attachments/stmt_sept_sample.csv",
-      total_lines_count: 3,
-      matched_lines_count: 1,
-      reconciled_at: null,
-      reconciled_by: null,
-      created_at: "2026-09-10T10:00:00",
-      created_by: "admin@hrflow.test",
-      attachments: [{ id: 1, file_name: "chase_sept_statement.csv", file_size: 4210, storage_ref: "uploads/..." }]
+
+  async updateFeatureFlags(flags) {
+    if (_isMock()) {
+      FinanceMockState.featureFlags = { ...(FinanceMockState.featureFlags || {}), ...flags };
+      return {
+        status: "success",
+        flags: { ...FinanceMockState.featureFlags },
+        message: `Updated ${Object.keys(flags).length} feature flag(s) safely`,
+      };
     }
-  ],
-  statementLines: [
-    {
-      id: 1,
-      import_id: 1,
-      raw_date: "2026-09-02",
-      raw_amount: 4200.0,
-      direction: "out",
-      raw_description: "AMAZON WEB SERVICES AWS.AMAZON.CO WA",
-      raw_reference: "AWS-BILL-01",
-      status: "matched",
-      notes: "Auto-matched with Bill BILL-2026-001 payment",
-      matched_transaction_id: 1,
-      matched_cheque_id: null,
-      suggested_matches: []
-    },
-    {
-      id: 2,
-      import_id: 1,
-      raw_date: "2026-09-08",
-      raw_amount: 12500.0,
-      direction: "in",
-      raw_description: "INWARD WIRE APEX HEALTH PARTNERS",
-      raw_reference: "WIRE-INV-001",
-      status: "unmatched",
-      notes: "",
-      matched_transaction_id: null,
-      matched_cheque_id: null,
-      suggested_matches: [
-        {
-          transaction_id: 101,
-          cheque_id: null,
-          match_type: "exact_transaction",
-          score: 0.95,
-          date: "2026-09-08",
-          amount: 12500.0,
-          direction: "in",
-          description: "Customer Invoice Settlement INV-2026-001",
-          reference: "INV-2026-001",
-          reason: "Exact amount match, date proximity"
-        }
-      ]
-    },
-    {
-      id: 3,
-      import_id: 1,
-      raw_date: "2026-09-15",
-      raw_amount: 15.0,
-      direction: "out",
-      raw_description: "MONTHLY SERVICE FEE CHASE BANK",
-      raw_reference: "FEE-0926",
-      status: "unmatched",
-      notes: "",
-      matched_transaction_id: null,
-      matched_cheque_id: null,
-      suggested_matches: []
+    return apiRequest("PATCH", "/api/finance/feature-flags", { flags });
+  },
+
+  async isFeatureEnabled(flagKey) {
+    try {
+      const res = await this.getFeatureFlags();
+      return !!(res && res.flags && res.flags[flagKey]);
+    } catch (_) {
+      return true;
     }
-  ],
-  reconciliationRules: [
-    {
-      id: 1,
-      name: "Auto-Categorize Cloud Services",
-      description: "Suggest Hosting category for Amazon Web Services",
-      priority: 10,
-      is_active: true,
-      mode: "suggestion",
-      account_id: null,
-      description_pattern: "AMAZON|AWS",
-      direction: "out",
-      min_amount: null,
-      max_amount: null,
-      counterparty: "Amazon",
-      action: "suggest_category",
-      target_category: "Hosting Cloud Infrastructure",
-      target_vendor_id: 1,
-      payment_method: "card",
-      audit_reason: null,
-      creator: "admin@hrflow.test",
-      approved_by: null,
-      is_approved: false,
-      last_used_at: "2026-09-02T10:00:00",
-      times_applied: 4,
-      created_at: "2026-08-01T10:00:00",
-      updated_at: "2026-08-01T10:00:00"
-    },
-    {
-      id: 2,
-      name: "Bank Monthly Maintenance Fees",
-      description: "Auto-ignore routine monthly checking account service charges",
-      priority: 5,
-      is_active: true,
-      mode: "auto_apply",
-      account_id: null,
-      description_pattern: "SERVICE FEE|MAINTENANCE",
-      direction: "out",
-      min_amount: 1.0,
-      max_amount: 50.0,
-      counterparty: "Chase",
-      action: "auto_ignore",
-      target_category: "Bank Charges",
-      target_vendor_id: null,
-      payment_method: "bank_transfer",
-      audit_reason: "Standard recurring bank maintenance charge covered by corporate policy",
-      creator: "admin@hrflow.test",
-      approved_by: "controller@voyancehealth.com",
-      is_approved: true,
-      last_used_at: "2026-09-01T09:00:00",
-      times_applied: 2,
-      created_at: "2026-08-10T10:00:00",
-      updated_at: "2026-08-10T10:00:00"
+  },
+
+  async getObservabilityMetrics() {
+    if (_isMock()) {
+      return {
+        status: "success",
+        uptime_seconds: 3600.0,
+        total_commands: 42,
+        failed_commands: 0,
+        idempotency_hits: 5,
+        avg_latency_ms: 18.5,
+        reconciliation_throughput_items_per_sec: 120.0,
+        timestamp: new Date().toISOString(),
+      };
     }
-  ],
-  transactions: [
-    {
-      id: 1,
-      account_id: 1,
-      date: "2026-09-02",
-      direction: "out",
-      amount: 4200.0,
-      currency: "USD",
-      category_id: 2,
-      category_name: "Infrastructure",
-      payment_type_id: 3,
-      payment_type_code: "OUTBOUND_TRANS",
-      payment_type_name: "Outbound Transfer",
-      reference: "AWS-SEPT-01",
-      description: "Payment for AWS Cloud Hosting",
-      source: "manual",
-      running_balance: 145800.0,
-      created_at: "2026-09-02T10:00:00"
-    },
-    {
-      id: 2,
-      account_id: 4,
-      date: "2026-09-03",
-      direction: "out",
-      amount: 150.0,
-      currency: "EGP",
-      category_id: 4,
-      category_name: "Kitchen Supplies",
-      payment_type_id: 1,
-      payment_type_code: "CASH",
-      payment_type_name: "Cash Payment",
-      reference: "CSH-001",
-      description: "Office coffee and tea supplies",
-      source: "manual",
-      running_balance: 19850.0,
-      created_at: "2026-09-03T11:00:00"
-    }
-  ],
-  attentionReviewed: new Set(),
-  reportExportAudits: [
-    {
-      id: 1,
-      report_key: "profit-and-loss",
-      export_format: "xlsx",
-      user_email: "admin@hrflow.test",
-      row_count: 18,
-      file_name: "profit_and_loss_2026-09-01_to_2026-09-30.xlsx",
-      filters: { basis: "accrual", currency: "USD", period: "this_month" },
-      created_at: "2026-09-14T08:30:00Z",
-    },
-    {
-      id: 2,
-      report_key: "balance-sheet",
-      export_format: "csv",
-      user_email: "admin@hrflow.test",
-      row_count: 12,
-      file_name: "balance_sheet_2026-09-14.csv",
-      filters: { basis: "accrual", as_of_date: "2026-09-14" },
-      created_at: "2026-09-14T09:00:00Z",
-    },
-  ],
-  reportSchedules: [
-    {
-      id: 1,
-      report_key: "profit-and-loss",
-      report_title: "Profit & Loss Statement (P&L)",
-      frequency: "monthly",
-      recipients: ["finance-team@voyance.health", "cfo@voyance.health"],
-      export_format: "xlsx",
-      filters: { basis: "accrual", currency: "USD" },
-      is_active: true,
-      created_by: "admin@hrflow.test",
-      created_at: "2026-09-01T08:00:00Z",
-    },
-    {
-      id: 2,
-      report_key: "ar-aging",
-      report_title: "Accounts Receivable (AR) Aging",
-      frequency: "weekly",
-      recipients: ["collections@voyance.health"],
-      export_format: "csv",
-      filters: { currency: "USD" },
-      is_active: true,
-      created_by: "admin@hrflow.test",
-      created_at: "2026-09-02T11:00:00Z",
-    },
-  ],
-  payrollRuns: [
-    {
-      id: 1,
-      period_label: "2026-08",
-      period_start: "2026-08-01",
-      period_end: "2026-08-31",
-      status: "paid",
-      total_gross: 45000.0,
-      total_tax: 4500.0,
-      total_deductions: 2250.0,
-      total_net: 38250.0,
-      total_employer_cost: 50400.0,
-      headcount: 4,
-      currency: "USD",
-      bank_account_id: 1,
-      bank_account_name: "Voyance Operating USD",
-      created_at: "2026-08-25T09:00:00Z",
-      created_by: "payroll@voyance.health",
-      approved_at: "2026-08-28T10:00:00Z",
-      approved_by: "cfo@voyance.health",
-      finalized_at: "2026-08-29T11:00:00Z",
-      finalized_by: "payroll@voyance.health",
-      paid_at: "2026-08-31T14:30:00Z",
-      paid_by: "payroll@voyance.health",
-      journal_transaction_id: 101,
-      has_blocking_exceptions: false,
-      exceptions: [],
-      variance_summary: {
-        prior_period_label: "2026-07",
-        headcount_delta: 0,
-        gross_delta: 0.0,
-        net_delta: 0.0,
-        pct_change: 0.0,
-        joiners_count: 0,
-        leavers_count: 0,
-        raises_count: 0,
-      },
-      liabilities_summary: {
-        net_pay_payable: 38250.0,
-        income_tax_withheld: 4500.0,
-        social_insurance_employee: 2250.0,
-        social_insurance_employer: 5400.0,
-        total_liabilities: 50400.0,
-      },
-      lines: [
-        {
-          id: 1,
-          payroll_run_id: 1,
-          employee_id: 1,
-          employee_name: "Sarah Connor",
-          department: "Engineering",
-          base_salary: 15000.0,
-          allowances_total: 0.0,
-          deductions_total: 750.0,
-          tax_amount: 1500.0,
-          net_pay: 12750.0,
-          employer_cost_extra: 1800.0,
-          bank_name: "Chase",
-          bank_account_masked: "••••4821",
-          payment_status: "paid",
-          failure_reason: null,
-          snapshot_notes: "August regular payroll",
-          created_at: "2026-08-25T09:00:00Z",
-          paid_at: "2026-08-31T14:30:00Z",
-        },
-        {
-          id: 2,
-          payroll_run_id: 1,
-          employee_id: 2,
-          employee_name: "John DevOps",
-          department: "Operations",
-          base_salary: 12000.0,
-          allowances_total: 0.0,
-          deductions_total: 600.0,
-          tax_amount: 1200.0,
-          net_pay: 10200.0,
-          employer_cost_extra: 1440.0,
-          bank_name: "SVB",
-          bank_account_masked: "••••9102",
-          payment_status: "paid",
-          failure_reason: null,
-          snapshot_notes: "August regular payroll",
-          created_at: "2026-08-25T09:00:00Z",
-          paid_at: "2026-08-31T14:30:00Z",
-        },
-      ],
-    },
-    {
-      id: 2,
-      period_label: "2026-09",
-      period_start: "2026-09-01",
-      period_end: "2026-09-30",
-      status: "draft",
-      total_gross: 47000.0,
-      total_tax: 4700.0,
-      total_deductions: 2350.0,
-      total_net: 39950.0,
-      total_employer_cost: 52640.0,
-      headcount: 4,
-      currency: "USD",
-      bank_account_id: 1,
-      bank_account_name: "Voyance Operating USD",
-      created_at: "2026-09-10T10:00:00Z",
-      created_by: "payroll@voyance.health",
-      approved_at: null,
-      approved_by: null,
-      finalized_at: null,
-      finalized_by: null,
-      paid_at: null,
-      paid_by: null,
-      journal_transaction_id: null,
-      has_blocking_exceptions: false,
-      exceptions: [],
-      variance_summary: {
-        prior_period_label: "2026-08",
-        headcount_delta: 0,
-        gross_delta: 2000.0,
-        net_delta: 1700.0,
-        pct_change: 4.4,
-        joiners_count: 0,
-        leavers_count: 0,
-        raises_count: 1,
-      },
-      liabilities_summary: {
-        net_pay_payable: 39950.0,
-        income_tax_withheld: 4700.0,
-        social_insurance_employee: 2350.0,
-        social_insurance_employer: 5640.0,
-        total_liabilities: 52640.0,
-      },
-      lines: [
-        {
-          id: 3,
-          payroll_run_id: 2,
-          employee_id: 1,
-          employee_name: "Sarah Connor",
-          department: "Engineering",
-          base_salary: 15000.0,
-          allowances_total: 0.0,
-          deductions_total: 750.0,
-          tax_amount: 1500.0,
-          net_pay: 12750.0,
-          employer_cost_extra: 1800.0,
-          bank_name: "Chase",
-          bank_account_masked: "••••4821",
-          payment_status: "pending",
-          failure_reason: null,
-          snapshot_notes: "September regular payroll",
-          created_at: "2026-09-10T10:00:00Z",
-          paid_at: null,
-        },
-        {
-          id: 4,
-          payroll_run_id: 2,
-          employee_id: 2,
-          employee_name: "John DevOps",
-          department: "Operations",
-          base_salary: 14000.0,
-          allowances_total: 0.0,
-          deductions_total: 700.0,
-          tax_amount: 1400.0,
-          net_pay: 11900.0,
-          employer_cost_extra: 1680.0,
-          bank_name: "SVB",
-          bank_account_masked: "••••9102",
-          payment_status: "pending",
-          failure_reason: null,
-          snapshot_notes: "September regular payroll (promotion adjustment)",
-          created_at: "2026-09-10T10:00:00Z",
-          paid_at: null,
-        },
-      ],
-    },
-  ],
-  statutoryObligations: [
-    {
-      id: 1,
-      obligation_type: "social_insurance_employee",
-      period: "2026-08",
-      amount_estimated: 1250.0,
-      amount_accrued: 1250.0,
-      amount_remitted: 0.0,
-      remaining_balance: 1250.0,
-      variance_amount: 0.0,
-      variance_note: null,
-      currency: "USD",
-      status: "estimated",
-      due_date: "2026-09-15",
-      source_type: "payroll_run",
-      source_id: 1,
-      notes: "August payroll social insurance employee portion",
-      created_at: "2026-09-01T10:00:00Z",
-      updated_at: "2026-09-01T10:00:00Z",
-    },
-    {
-      id: 2,
-      obligation_type: "social_insurance_employer",
-      period: "2026-08",
-      amount_estimated: 3000.0,
-      amount_accrued: 3000.0,
-      amount_remitted: 0.0,
-      remaining_balance: 3000.0,
-      variance_amount: 0.0,
-      variance_note: null,
-      currency: "USD",
-      status: "estimated",
-      due_date: "2026-09-15",
-      source_type: "payroll_run",
-      source_id: 1,
-      notes: "August payroll social insurance employer contribution",
-      created_at: "2026-09-01T10:00:00Z",
-      updated_at: "2026-09-01T10:00:00Z",
-    },
-    {
-      id: 3,
-      obligation_type: "income_tax",
-      period: "2026-08",
-      amount_estimated: 2500.0,
-      amount_accrued: 2500.0,
-      amount_remitted: 0.0,
-      remaining_balance: 2500.0,
-      variance_amount: 0.0,
-      variance_note: null,
-      currency: "USD",
-      status: "estimated",
-      due_date: "2026-09-15",
-      source_type: "payroll_run",
-      source_id: 1,
-      notes: "August payroll salary income tax withheld",
-      created_at: "2026-09-01T10:00:00Z",
-      updated_at: "2026-09-01T10:00:00Z",
-    },
-    {
-      id: 4,
-      obligation_type: "sales_tax",
-      period: "2026-08",
-      amount_estimated: null,
-      amount_accrued: 4500.0,
-      amount_remitted: 4500.0,
-      remaining_balance: 0.0,
-      variance_amount: 0.0,
-      variance_note: null,
-      currency: "USD",
-      status: "remitted",
-      due_date: "2026-09-10",
-      source_type: "invoice_tax_line",
-      source_id: null,
-      notes: "August sales tax / VAT remittance",
-      created_at: "2026-08-31T15:00:00Z",
-      updated_at: "2026-09-05T11:00:00Z",
-    },
-    {
-      id: 5,
-      obligation_type: "withholding_tax",
-      period: "2026-08",
-      amount_estimated: null,
-      amount_accrued: 850.0,
-      amount_remitted: 0.0,
-      remaining_balance: 850.0,
-      variance_amount: 0.0,
-      variance_note: null,
-      currency: "USD",
-      status: "accrued",
-      due_date: "2026-09-25",
-      source_type: "bill_tax_line",
-      source_id: null,
-      notes: "August vendor withholding tax",
-      created_at: "2026-08-31T16:00:00Z",
-      updated_at: "2026-08-31T16:00:00Z",
-    },
-  ],
-  compensationPlans: [
-    {
-      id: 1,
-      employee_id: "EMP001",
-      component_type: "external_usd",
-      amount: 8000.0,
-      currency: "USD",
-      effective_start_date: "2026-01-01",
-      effective_end_date: null,
-      notes: "US account direct deposit",
-      created_at: "2026-01-01T09:00:00Z",
-      updated_at: "2026-01-01T09:00:00Z",
-    },
-    {
-      id: 2,
-      employee_id: "EMP001",
-      component_type: "internal_usd_cash",
-      amount: 4500.0,
-      currency: "USD",
-      effective_start_date: "2026-01-01",
-      effective_end_date: null,
-      notes: "Cairo monthly cash payout",
-      created_at: "2026-01-01T09:00:00Z",
-      updated_at: "2026-01-01T09:00:00Z",
-    },
-    {
-      id: 3,
-      employee_id: 1,
-      component_type: "external_usd",
-      amount: 10000.0,
-      currency: "USD",
-      effective_start_date: "2026-01-01",
-      effective_end_date: null,
-      notes: "US account direct deposit",
-      created_at: "2026-01-01T09:00:00Z",
-      updated_at: "2026-01-01T09:00:00Z",
-    },
-    {
-      id: 4,
-      employee_id: 1,
-      component_type: "internal_usd_cash",
-      amount: 5000.0,
-      currency: "USD",
-      effective_start_date: "2026-01-01",
-      effective_end_date: null,
-      notes: "Cairo monthly cash payout",
-      created_at: "2026-01-01T09:00:00Z",
-      updated_at: "2026-01-01T09:00:00Z",
-    },
-    {
-      id: 5,
-      employee_id: 2,
-      component_type: "external_usd",
-      amount: 8000.0,
-      currency: "USD",
-      effective_start_date: "2026-01-01",
-      effective_end_date: null,
-      notes: "US account wire",
-      created_at: "2026-01-01T09:00:00Z",
-      updated_at: "2026-01-01T09:00:00Z",
-    },
-    {
-      id: 6,
-      employee_id: 2,
-      component_type: "internal_usd_cash",
-      amount: 4000.0,
-      currency: "USD",
-      effective_start_date: "2026-01-01",
-      effective_end_date: null,
-      notes: "Local cash component",
-      created_at: "2026-01-01T09:00:00Z",
-      updated_at: "2026-01-01T09:00:00Z",
-    },
-  ],
-};
+    return apiRequest("GET", "/api/finance/observability/metrics");
+  }
+  };
+
+  root.FinanceCoreApi = CoreApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, CoreApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = CoreApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
 
 
+/**
+ * fe/api/finance/invoices-api.js
+ * Finance API - Invoices & Receivables domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
 
-const FinanceApi = {
-  // Customers
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.customers) {
+    FinanceMockState.customers = [
+    { id: 1, name: "Apex Health Partners", legal_name: "Apex Healthcare Systems LLC", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", billing_address: "100 Medical Center Blvd", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Enterprise client", is_active: true },
+    { id: 2, name: "BioCare Diagnostics", legal_name: "BioCare International Inc", contact_email: "ap@biocare.org", contact_phone: "+1 555-0144", tax_id: "US-33441199", billing_address: "450 Lab Parkway", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Monthly billing", is_active: true },
+    { id: 3, name: "CareFirst Health", legal_name: "CareFirst Regional Health Corp", contact_email: "ap@carefirst.org", contact_phone: "+1 555-0199", tax_id: "US-77889900", billing_address: "770 Care Ave", country: "United States", default_currency: "USD", payment_terms_days: 15, owner: "Sarah Connor", notes: "Overdue account", is_active: true },
+    { id: 4, name: "Delta Medical", legal_name: "Delta Medical Equipment Ltd", contact_email: "finance@deltamed.com", contact_phone: "+1 555-0177", tax_id: "US-55443322", billing_address: "12 Nile St, Maadi", country: "Egypt", default_currency: "USD", payment_terms_days: 45, owner: "Sarah Connor", notes: "Consulting client", is_active: true },
+    { id: 5, name: "Echo Clinics", legal_name: "Echo Clinics Network SAE", contact_email: "billing@echoclinics.com", contact_phone: "+1 555-0155", tax_id: "EG-11223344", billing_address: "5 Tahrir Sq, Cairo", country: "Egypt", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Clinical partner", is_active: true },
+    { id: 6, name: "Frontier Labs", legal_name: "Frontier Diagnostics Research", contact_email: "info@frontierlabs.com", contact_phone: "+1 555-0111", tax_id: "US-99887766", billing_address: "88 Science Park", country: "United States", default_currency: "USD", payment_terms_days: 60, owner: "Sarah Connor", notes: "Research lab", is_active: true },
+  ];
+  }
+
+  if (!FinanceMockState.invoices) {
+    FinanceMockState.invoices = [
+    { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, amount_paid: 0.0, balance: 12500.0, is_overdue: false, days_overdue: 0, next_action: "Awaiting Due Date / Payment", notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
+    { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, amount_paid: 0.0, balance: 8400.0, is_overdue: false, days_overdue: 0, next_action: "Review & Send to Customer", notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
+    { id: 3, customer_id: 3, customer_name: "CareFirst Health", invoice_number: "INV-2026-003", issue_date: "2026-08-01", due_date: "2026-08-15", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 10000.0, tax_amount: 0.0, total: 10000.0, amount_paid: 0.0, balance: 10000.0, is_overdue: true, days_overdue: 29, next_action: "Send Payment Reminder (29d overdue)", notes: "Prior cycle maintenance", created_at: "2026-08-01T08:00:00", lines: [{ id: 3, invoice_id: 3, description: "System Maintenance", quantity: 1, unit_price: 10000.0, line_total: 10000.0 }] },
+    { id: 4, customer_id: 4, customer_name: "Delta Medical", invoice_number: "INV-2026-004", issue_date: "2026-09-02", due_date: "2026-09-25", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 11000.0, tax_amount: 0.0, total: 11000.0, amount_paid: 4000.0, balance: 7000.0, is_overdue: false, days_overdue: 0, next_action: "Collect Remaining Balance", notes: "Consulting Retainer Q3", created_at: "2026-09-02T09:00:00", lines: [{ id: 4, invoice_id: 4, description: "Consulting Hours", quantity: 10, unit_price: 1100.0, line_total: 11000.0 }] },
+    { id: 5, customer_id: 5, customer_name: "Echo Clinics", invoice_number: "INV-2026-005", issue_date: "2026-08-10", due_date: "2026-09-10", status: "paid", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 20000.0, tax_amount: 0.0, total: 20000.0, amount_paid: 20000.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Completed (Paid in Full)", notes: "Setup & Onboarding", created_at: "2026-08-10T10:00:00", lines: [{ id: 5, invoice_id: 5, description: "Setup Fee", quantity: 1, unit_price: 20000.0, line_total: 20000.0 }] },
+    { id: 6, customer_id: 6, customer_name: "Frontier Labs", invoice_number: "INV-2026-006", issue_date: "2026-08-20", due_date: "2026-09-20", status: "void", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "other", has_bank_discrepancy: false, subtotal: 25000.0, tax_amount: 0.0, total: 25000.0, amount_paid: 0.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Archived (Voided)", notes: "Canceled service request", created_at: "2026-08-20T11:00:00", lines: [{ id: 6, invoice_id: 6, description: "Canceled item", quantity: 1, unit_price: 25000.0, line_total: 25000.0 }] },
+  ];
+  }
+
+  if (!FinanceMockState.payments) {
+    FinanceMockState.payments = [];
+  }
+
+  const FinanceInvoicesApi = {
+// Customers
   async getCustomers(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.customers || [])];
@@ -939,7 +388,260 @@ const FinanceApi = {
     return apiRequest("POST", `/api/finance/invoices/${invoiceId}/remind`);
   },
 
-  // Vendor Bills
+// Customers
+  async getCustomers(params) {
+    if (_isMock()) {
+      let list = [...FinanceMockState.customers];
+      if (params && params.is_active !== undefined) {
+        list = list.filter((c) => c.is_active === (params.is_active === "true" || params.is_active === true));
+      }
+      return list;
+    }
+    let url = "/api/finance/customers";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async getCustomer(id) {
+    if (_isMock()) {
+      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
+      if (!cust) throw new Error("Customer not found");
+      return cust;
+    }
+    return apiRequest("GET", `/api/finance/customers/${id}`);
+  },
+  async createCustomer(payload) {
+    if (_isMock()) {
+      const newCust = {
+        id: FinanceMockState.customers.length + 1,
+        ...payload,
+        is_active: true,
+      };
+      FinanceMockState.customers.push(newCust);
+      return newCust;
+    }
+    return apiRequest("POST", "/api/finance/customers", payload);
+  },
+  async updateCustomer(id, payload) {
+    if (_isMock()) {
+      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
+      if (!cust) throw new Error("Customer not found");
+      Object.assign(cust, payload);
+      return cust;
+    }
+    return apiRequest("PUT", `/api/finance/customers/${id}`, payload);
+  },
+  async deleteCustomer(id) {
+    if (_isMock()) {
+      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
+      if (!cust) throw new Error("Customer not found");
+      cust.is_active = false;
+      return cust;
+    }
+    return apiRequest("DELETE", `/api/finance/customers/${id}`);
+  },
+  async checkDuplicateCustomers(payload) {
+    if (_isMock()) {
+      const cleanStr = (v) => {
+        if (!v) return "";
+        let s = String(v).toLowerCase().trim();
+        const sfxs = [/\binc\b/g, /\bllc\b/g, /\bcorp\b/g, /\bcorporation\b/g, /\bltd\b/g, /\blimited\b/g, /\bco\b/g, /\bpartners\b/g];
+        sfxs.forEach((rx) => { s = s.replace(rx, ""); });
+        return s.replace(/[^a-z0-9]/g, "");
+      };
+      const cleanTax = (v) => (!v ? "" : String(v).toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const normName = cleanStr(payload.name);
+      const normLegal = cleanStr(payload.legal_name);
+      const normTax = cleanTax(payload.tax_id);
+      const normEmail = (payload.contact_email || "").toLowerCase().trim();
+
+      const candidates = [];
+      const seen = new Set();
+      for (const c of FinanceMockState.customers) {
+        if (payload.exclude_id && c.id === parseInt(payload.exclude_id, 10)) continue;
+        const cName = cleanStr(c.name);
+        const cLegal = cleanStr(c.legal_name);
+        const cTax = cleanTax(c.tax_id);
+        const cEmail = (c.contact_email || "").toLowerCase().trim();
+
+        let matched_field = null;
+        if (normName && (normName === cName || (cLegal && normName === cLegal))) matched_field = "name";
+        else if (normLegal && ((cLegal && normLegal === cLegal) || normLegal === cName)) matched_field = "legal_name";
+        else if (normTax && cTax && normTax === cTax) matched_field = "tax_id";
+        else if (normEmail && cEmail && normEmail === cEmail) matched_field = "contact_email";
+
+        if (matched_field && !seen.has(c.id)) {
+          seen.add(c.id);
+          candidates.push({
+            id: c.id,
+            name: c.name,
+            legal_name: c.legal_name,
+            tax_id: c.tax_id,
+            contact_email: c.contact_email,
+            matched_field,
+            is_active: c.is_active,
+          });
+        }
+      }
+      return { candidates };
+    }
+    return apiRequest("POST", "/api/finance/customers/check-duplicate", payload);
+  },
+  async getCustomer360(id) {
+    if (_isMock()) {
+      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
+      if (!cust) throw new Error("Customer not found");
+
+      const invoices = (FinanceMockState.invoices || []).filter((i) => i.customer_id === cust.id);
+      let total_invoiced = 0.0;
+      let total_paid = 0.0;
+      let outstanding_balance = 0.0;
+      let overdue_balance = 0.0;
+      let open_invoices_count = 0;
+      let overdue_invoices_count = 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const daysToPay = [];
+      const invList = [];
+      const timeline = [];
+
+      for (const inv of invoices) {
+        const isVoid = inv.status === "void";
+        const payments = (FinanceMockState.payments || []).filter((p) => p.related_invoice_id === inv.id && !p.is_reversed);
+        const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+        const bal = isVoid ? 0 : Math.max(0, (inv.total || 0) - paid);
+        const isOverdue = !isVoid && bal > 0.001 && inv.due_date && inv.due_date < today;
+
+        if (!isVoid) {
+          total_invoiced += (inv.total || 0);
+          total_paid += paid;
+          outstanding_balance += bal;
+          if (isOverdue) {
+            overdue_balance += bal;
+            overdue_invoices_count++;
+          }
+          if (bal > 0.001) open_invoices_count++;
+          if (bal <= 0.001 && paid > 0 && payments.length > 0) {
+            const lastP = payments[payments.length - 1];
+            if (lastP.payment_date && inv.issue_date) {
+              const diff = Math.round((new Date(lastP.payment_date) - new Date(inv.issue_date)) / (86400000));
+              if (diff >= 0) daysToPay.push(diff);
+            }
+          }
+        }
+
+        const derivedStatus = isVoid ? "void" : (bal <= 0.001 && inv.total > 0 ? "paid" : (isOverdue ? "overdue" : (inv.status || "sent")));
+        invList.push({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          issue_date: inv.issue_date,
+          due_date: inv.due_date,
+          currency: inv.currency || "USD",
+          total: inv.total,
+          amount_paid: paid,
+          balance: bal,
+          status: derivedStatus,
+          is_overdue: isOverdue,
+        });
+
+        timeline.push({
+          event_type: "invoice_created",
+          date: inv.issue_date || inv.created_at,
+          description: `Invoice ${inv.invoice_number} created for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+          invoice_id: inv.id,
+        });
+
+        for (const p of payments) {
+          timeline.push({
+            event_type: "payment_received",
+            date: p.payment_date || p.created_at,
+            description: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
+            invoice_id: inv.id,
+          });
+        }
+      }
+
+      timeline.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      const avgDays = daysToPay.length > 0 ? Math.round((daysToPay.reduce((s, d) => s + d, 0) / daysToPay.length) * 10) / 10 : null;
+
+      return {
+        customer: cust,
+        total_invoiced,
+        total_paid,
+        outstanding_balance,
+        overdue_balance,
+        open_invoices_count,
+        overdue_invoices_count,
+        average_days_to_pay: avgDays,
+        invoices: invList,
+        timeline,
+      };
+    }
+    return apiRequest("GET", `/api/finance/customers/${id}/360`);
+  }
+  };
+
+  root.FinanceInvoicesApi = FinanceInvoicesApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceInvoicesApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceInvoicesApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/bills-api.js
+ * Finance API - Bills & Payables domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.vendors) {
+    FinanceMockState.vendors = [
+    { id: 1, name: "Amazon Web Services", legal_name: "Amazon Web Services Inc", category: "Infrastructure", default_category_id: 8, contact_name: "AWS Accounts Team", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", remit_address: "410 Terry Ave N, Seattle WA", country: "United States", payment_terms_days: 30, default_currency: "USD", default_department: "Engineering", tax_treatment: "standard", onboarding_status: "active", notes: "Hosting & compute", is_active: true },
+    { id: 2, name: "Slack Technologies", legal_name: "Slack Technologies LLC", category: "SaaS", default_category_id: 9, contact_name: "Sales Billing", contact_email: "billing@slack.com", contact_phone: "+1 800-555-0188", tax_id: "VAT-9988112", remit_address: "500 Howard St, San Francisco CA", country: "United States", payment_terms_days: 15, default_currency: "USD", default_department: "Operations", tax_treatment: "standard", onboarding_status: "active", notes: "Team communication", is_active: true },
+    { id: 3, name: "Google Workspace", legal_name: "Google LLC", category: "Software", default_category_id: null, contact_name: "Google Cloud Sales", contact_email: "billing@google.com", contact_phone: "+1 800-555-0100", tax_id: "VAT-5544332", remit_address: "1600 Amphitheatre Pkwy, Mountain View CA", country: "United States", payment_terms_days: 30, default_currency: "USD", default_department: "Engineering", tax_treatment: "standard", onboarding_status: "active", notes: "Productivity suite", is_active: true },
+  ];
+  }
+
+  if (!FinanceMockState.vendorPaymentInstructions) {
+    FinanceMockState.vendorPaymentInstructions = [
+    { id: 1, vendor_id: 1, payment_method: "bank_transfer", bank_name: "JPMorgan Chase Bank", account_holder_name: "Amazon Web Services Inc", account_number: "98765432104821", routing_number: "021000021", swift_code: "CHASUS33", iban: "US99CHAS021000021987654321", verification_status: "verified", verified_by: "admin@hrflow.test", verified_at: "2026-09-01T10:00:00", is_active: true, effective_date: "2026-01-01", notes: "Direct ACH Wire Instructions" },
+    { id: 2, vendor_id: 2, payment_method: "bank_transfer", bank_name: "Silicon Valley Bank", account_holder_name: "Slack Technologies LLC", account_number: "12345678901122", routing_number: "121140399", swift_code: "SVBKUS6S", iban: "US44SVBK121140399123456789", verification_status: "unverified", verified_by: null, verified_at: null, is_active: true, effective_date: "2026-01-01", notes: "Pending vendor bank verification" },
+  ];
+  }
+
+  if (!FinanceMockState.bills) {
+    FinanceMockState.bills = [
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
+    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category_id: null, category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
+    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category_id: 9, category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
+    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
+    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
+  ];
+  }
+
+  if (!FinanceMockState.billPayments) {
+    FinanceMockState.billPayments = [
+    { id: 1, related_bill_id: 2, amount: 320.0, currency: "USD", payment_date: "2026-09-04", bank_account_id: 1, method: "bank_transfer", reference: "ACH-SLACK-01", is_reversed: false, created_at: "2026-09-04T10:00:00" },
+  ];
+  }
+
+  const FinanceBillsApi = {
+// Vendor Bills
   async getBills(params) {
     if (_isMock()) {
       let list = [...FinanceMockState.bills];
@@ -1499,902 +1201,8 @@ const FinanceApi = {
   getSubscriptions() {
     return apiRequest("GET", "/api/finance/subscriptions");
   },
-  async getFinanceSummary(params = {}) {
-    if (_isMock()) {
-      const period = (params.period || "MTD").toUpperCase();
-      const basis = (params.basis || "cash").toLowerCase();
-      const currency = (params.currency || "USD").toUpperCase();
-      const entity = (params.entity || "all").toLowerCase();
 
-      let accounts = [...(FinanceMockState.accounts || [])];
-      if (currency !== "ALL") {
-        accounts = accounts.filter((a) => (a.currency || "USD").toUpperCase() === currency);
-      }
-
-      let balance = 245000.0;
-      if (currency === "EGP") {
-        balance = 470000.0;
-      } else if (currency === "ALL") {
-        balance = 715000.0;
-      }
-
-      let revenue = 0;
-      let cost = 0;
-
-      if (basis === "accrual") {
-        let invs = [...(FinanceMockState.invoices || [])].filter((i) => i.status !== "void" && i.status !== "draft");
-        if (currency !== "ALL") invs = invs.filter((i) => (i.currency || "USD").toUpperCase() === currency);
-        revenue = invs.reduce((acc, i) => acc + (i.total || 0), 0) || 30000.0;
-
-        let bills = [...(FinanceMockState.bills || [])].filter((b) => b.status !== "void");
-        if (currency !== "ALL") bills = bills.filter((b) => (b.currency || "USD").toUpperCase() === currency);
-        cost = bills.reduce((acc, b) => acc + (b.total || 0), 0) || 10000.0;
-      } else {
-        if (currency === "EGP") {
-          revenue = 0.0;
-          cost = 0.0;
-        } else {
-          revenue = 48200.0;
-          cost = 31400.0;
-        }
-      }
-
-      const net = Math.round((revenue - cost) * 100) / 100;
-      const marginValid = revenue > 0;
-      const marginPct = marginValid ? Math.round((net / revenue) * 1000) / 10 : null;
-      const displayCurrency = currency !== "ALL" ? currency : "USD";
-
-      return {
-        balance: balance || 245000.0,
-        revenue_mtd: revenue,
-        cost_mtd: cost,
-        net_mtd: net,
-        margin_pct: marginPct,
-        margin_valid: marginValid,
-        currency: displayCurrency,
-        base_currency: displayCurrency,
-        period: period,
-        basis: basis,
-        entity: entity,
-        conversion_policy: currency === "ALL"
-          ? "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
-          : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
-        data_scope: `${entity}_${currency.toLowerCase()}`,
-        open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,
-        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => b.status === "unpaid").length,
-        active_subscriptions_count: (FinanceMockState.subscriptions || []).filter((s) => s.is_active).length,
-        generated_at: new Date().toISOString(),
-        kpis: {
-          total_cash: {
-            id: "statFinanceBalance",
-            value: balance || 245000.0,
-            currency: displayCurrency,
-            label: "Total Cash Balance",
-            period: "Current (Real-time)",
-            definition: "Consolidated book cash balance across all active bank and cash accounts matching scope.",
-            formula: "SUM(finance_bank_accounts.current_balance WHERE is_active=True)",
-            source_coverage: `${accounts.length} active bank & cash accounts`,
-            drilldown_section: "finance-accounts",
-            drilldown_filter: { is_active: "true" },
-          },
-          revenue: {
-            id: "statFinanceRevenue",
-            value: revenue,
-            currency: displayCurrency,
-            label: `Revenue (${period})`,
-            period: period,
-            definition: basis === "cash" ? "Actual cash inflows received and categorized as revenue" : "Recognized revenue from all non-void sales invoices issued in period",
-            formula: basis === "cash" ? "SUM(ledger_inflows WHERE source!='transfer')" : "SUM(sales_invoices.total WHERE status NOT IN ('void', 'draft'))",
-            source_coverage: basis === "cash" ? "Bank & cash ledger transactions" : "Sales invoices register",
-            drilldown_section: basis === "cash" ? "finance-transactions" : "finance-invoices",
-            drilldown_filter: basis === "cash" ? { direction: "in" } : { status: "all" },
-          },
-          operating_spend: {
-            id: "statFinanceCost",
-            value: cost,
-            currency: displayCurrency,
-            label: `Operating Expenses (${period})`,
-            period: period,
-            definition: basis === "cash" ? "Actual cash outflows paid for expenses, bills, and charges" : "Recognized costs from all non-void vendor bills issued in period",
-            formula: basis === "cash" ? "SUM(ledger_outflows WHERE source!='transfer')" : "SUM(bills.total WHERE status!='void')",
-            source_coverage: basis === "cash" ? "Bank & cash ledger transactions" : "Vendor bills register",
-            drilldown_section: basis === "cash" ? "finance-transactions" : "finance-bills",
-            drilldown_filter: basis === "cash" ? { direction: "out" } : { status: "all" },
-          },
-          net_result: {
-            id: "statFinanceNet",
-            value: net,
-            currency: displayCurrency,
-            label: `Net Operating Result (${period})`,
-            period: period,
-            definition: "Net operating difference: Revenue minus Operating Expenses for the period.",
-            formula: "Revenue - Operating Expenses",
-            source_coverage: basis === "cash" ? "Ledger operating delta" : "Invoices minus Bills",
-            drilldown_section: "finance-reports",
-            drilldown_filter: {},
-          },
-          operating_margin: {
-            id: "statFinanceMargin",
-            value: marginPct,
-            is_valid: marginValid,
-            unit: "%",
-            label: `Operating Margin (${period})`,
-            period: period,
-            definition: marginValid ? "Operating profitability percentage: (Net Result / Revenue) * 100." : "Margin is undefined when Revenue is zero or negative.",
-            formula: "(Net Operating Result / Revenue) * 100",
-            source_coverage: "Derived from Revenue and Spend",
-            drilldown_section: "finance-reports",
-            drilldown_filter: {},
-          },
-        },
-      };
-    }
-    let url = "/api/finance/reports/summary";
-    if (params && Object.keys(params).length > 0) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
-  },
-  async getDashboardSummary(params = {}) {
-    return this.getFinanceSummary(params);
-  },
-
-  async getAttentionQueue(params = {}) {
-    if (_isMock()) {
-      const severity = (params.severity || "all").toLowerCase();
-      const itemType = (params.item_type || params.type || "all").toLowerCase();
-      const search = (params.search || "").toLowerCase();
-      const includeReviewed = params.include_reviewed === true || params.include_reviewed === "true";
-
-      const reviewedSet = FinanceMockState.attentionReviewed || new Set();
-
-      const allMockItems = [
-        {
-          id: "rec-inv-1",
-          deduplication_key: "invoice:1:overdue",
-          type: "overdue_receivable",
-          severity: "urgent",
-          severity_label: "Urgent",
-          title: "Overdue Invoice: INV-2026-001",
-          description: "Invoice INV-2026-001 to Apex Health Partners is overdue by 13 days. Outstanding balance: $12,500.00 USD.",
-          counterparty: "Apex Health Partners",
-          amount: 12500.0,
-          currency: "USD",
-          due_date: "2026-09-01",
-          due_state: "overdue",
-          due_state_label: "Overdue by 13d",
-          owner: "billing@apexhealth.com",
-          target_route: "a-finance-invoices",
-          target_id: 1,
-          target_filter: { status: "overdue", invoice_id: 1 },
-          permission: "finance.invoice.read",
-          priority_score: 95,
-          can_resolve: true,
-          can_mark_reviewed: true,
-          is_reviewed: reviewedSet.has("invoice:1:overdue"),
-          created_at: "2026-09-01T08:00:00",
-        },
-        {
-          id: "bill-1",
-          deduplication_key: "bill:1:due",
-          type: "bill_due",
-          severity: "urgent",
-          severity_label: "Urgent",
-          title: "Overdue Bill: BILL-2026-001",
-          description: "Bill BILL-2026-001 from Amazon Web Services is overdue by 5 days. Payable balance: $4,200.00 USD.",
-          counterparty: "Amazon Web Services",
-          amount: 4200.0,
-          currency: "USD",
-          due_date: "2026-09-08",
-          due_state: "overdue",
-          due_state_label: "Overdue by 5d",
-          owner: "aws-receivables@amazon.com",
-          target_route: "a-finance-bills",
-          target_id: 1,
-          target_filter: { bill_id: 1 },
-          permission: "finance.bill.read",
-          priority_score: 88,
-          can_resolve: true,
-          can_mark_reviewed: true,
-          is_reviewed: reviewedSet.has("bill:1:due"),
-          created_at: "2026-09-01T08:00:00",
-        },
-        {
-          id: "cash-acc-4",
-          deduplication_key: "account:4:negative_balance",
-          type: "negative_cash",
-          severity: "urgent",
-          severity_label: "Urgent",
-          title: "Negative Balance: Cairo Office Petty Cash Drawer",
-          description: "Petty cash drawer has an overdraft balance of 2,500.00 EGP. Replenishment transfer required.",
-          counterparty: "Cairo Office Petty Cash",
-          amount: 2500.0,
-          currency: "EGP",
-          due_date: "2026-09-13",
-          due_state: "immediate",
-          due_state_label: "Action Required (Overdraft)",
-          owner: null,
-          target_route: "a-finance-accounts",
-          target_id: 4,
-          target_filter: { is_active: "true" },
-          permission: "finance.account.read",
-          priority_score: 110,
-          can_resolve: true,
-          can_mark_reviewed: true,
-          is_reviewed: reviewedSet.has("account:4:negative_balance"),
-          created_at: "2026-09-10T12:00:00",
-        },
-        {
-          id: "transfer-1",
-          deduplication_key: "transfer:1:incomplete",
-          type: "pending_approval",
-          severity: "warning",
-          severity_label: "Warning",
-          title: "Incomplete Transfer #1",
-          description: "Transfer of $50,000.00 USD from Voyance Operating USD to Voyance Treasury Reserve has confirmed leg 'from_only'. Second leg requires confirmation.",
-          counterparty: "Voyance Operating USD → Treasury Reserve",
-          amount: 50000.0,
-          currency: "USD",
-          due_date: "2026-09-12",
-          due_state: "pending_review",
-          due_state_label: "Pending Second Leg",
-          owner: "finance.admin@example.com",
-          target_route: "a-finance-transfers",
-          target_id: 1,
-          target_filter: { transfer_id: 1 },
-          permission: "finance.transfer.read",
-          priority_score: 75,
-          can_resolve: true,
-          can_mark_reviewed: true,
-          is_reviewed: reviewedSet.has("transfer:1:incomplete"),
-          created_at: "2026-09-12T15:30:00",
-        },
-        {
-          id: "stmt-1",
-          deduplication_key: "statement:1:unmatched",
-          type: "unreconciled_statement",
-          severity: "warning",
-          severity_label: "Warning",
-          title: "Unreconciled Statement: JPMorgan Chase (2026-08)",
-          description: "Statement import for 2026-08 contains 3 unmatched statement lines requiring ledger matching.",
-          counterparty: "JPMorgan Chase",
-          amount: 3850.0,
-          currency: "USD",
-          due_date: "2026-09-01",
-          due_state: "needs_reconciliation",
-          due_state_label: "3 Unmatched Lines",
-          owner: null,
-          target_route: "a-finance-statements",
-          target_id: 1,
-          target_filter: { import_id: 1 },
-          permission: "finance.statement.read",
-          priority_score: 65,
-          can_resolve: true,
-          can_mark_reviewed: true,
-          is_reviewed: reviewedSet.has("statement:1:unmatched"),
-          created_at: "2026-09-01T14:00:00",
-        },
-      ];
-
-      let filtered = allMockItems.filter((it) => {
-        if (!includeReviewed && it.is_reviewed) return false;
-        if (severity !== "all" && it.severity !== severity) return false;
-        if (itemType !== "all" && it.type !== itemType) return false;
-        if (search) {
-          const s = search.toLowerCase();
-          const match =
-            it.title.toLowerCase().includes(s) ||
-            it.description.toLowerCase().includes(s) ||
-            (it.counterparty && it.counterparty.toLowerCase().includes(s));
-          if (!match) return false;
-        }
-        return true;
-      });
-
-      filtered.sort((a, b) => b.priority_score - a.priority_score);
-
-      const urgentCount = filtered.filter((i) => i.severity === "urgent").length;
-      const warningCount = filtered.filter((i) => i.severity === "warning").length;
-      const infoCount = filtered.filter((i) => i.severity === "info").length;
-
-      const currencyTotals = {};
-      filtered.forEach((it) => {
-        if (it.amount && it.currency) {
-          currencyTotals[it.currency] = round((currencyTotals[it.currency] || 0) + it.amount, 2);
-        }
-      });
-
-      return {
-        total_count: filtered.length,
-        urgent_count: urgentCount,
-        warning_count: warningCount,
-        info_count: infoCount,
-        total_amount_by_currency: currencyTotals,
-        items: filtered,
-        generated_at: new Date().toISOString(),
-      };
-    }
-
-    let url = "/api/finance/reports/attention-queue";
-    if (params && Object.keys(params).length > 0) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
-  },
-
-  async reviewAttentionItem(itemKey, payload = {}) {
-    if (_isMock()) {
-      if (!FinanceMockState.attentionReviewed) {
-        FinanceMockState.attentionReviewed = new Set();
-      }
-      FinanceMockState.attentionReviewed.add(itemKey);
-      return { success: true, deduplication_key: itemKey, status: payload.status || "reviewed" };
-    }
-    const encodedKey = encodeURIComponent(itemKey);
-    return apiRequest("POST", `/api/finance/reports/attention-queue/${encodedKey}/review`, payload);
-  },
-
-  async getCashForecast(params = {}) {
-    if (_isMock()) {
-      const currency = (params.currency || "all").toUpperCase();
-      const horizonDays = parseInt(params.horizon_days || "90", 10);
-      const includeExpected = params.include_expected !== false && params.include_expected !== "false";
-
-      let rawAccounts = FinanceMockState.accounts || [];
-      if (currency !== "ALL") {
-        rawAccounts = rawAccounts.filter((a) => (a.currency || "").toUpperCase() === currency);
-      }
-
-      const cheques = FinanceMockState.cheques || [];
-      const transfers = FinanceMockState.transfers || [];
-
-      let totalCurrentCash = 0;
-      const currentCashByCurrency = {};
-
-      const accounts = rawAccounts.map((acc) => {
-        const bookBal = round(acc.current_balance || 0, 2);
-        const curr = (acc.currency || "USD").toUpperCase();
-        currentCashByCurrency[curr] = round((currentCashByCurrency[curr] || 0) + bookBal, 2);
-        totalCurrentCash = round(totalCurrentCash + bookBal, 2);
-
-        // Uncleared issued cheques
-        let uncleared = 0;
-        cheques.forEach((chq) => {
-          if (chq.account_id === acc.id && chq.status === "issued") {
-            uncleared += (chq.amount || 0);
-          }
-        });
-        uncleared = round(uncleared, 2);
-
-        // Pending outgoing transfers
-        let pending = 0;
-        transfers.forEach((tr) => {
-          if (tr.from_account_id === acc.id && tr.confirmed_leg !== "both") {
-            pending += (tr.from_amount || 0);
-          }
-        });
-        pending = round(pending, 2);
-
-        const availableBal = round(bookBal - uncleared - pending, 2);
-        const reconciledBal = bookBal > 0 ? round(bookBal * 0.95, 2) : bookBal;
-
-        return {
-          account_id: acc.id,
-          account_name: acc.account_name,
-          bank_name: acc.bank_name,
-          account_type: acc.account_type || "bank",
-          currency: acc.currency,
-          book_balance: bookBal,
-          available_balance: availableBal,
-          reconciled_balance: reconciledBal,
-          uncleared_cheques_amount: uncleared,
-          pending_transfers_amount: pending,
-          is_active: acc.is_active,
-        };
-      });
-
-      // Obligations
-      const obligations = [];
-      const todayStr = "2026-09-13";
-      const today = new Date("2026-09-13T00:00:00");
-
-      // (a) Invoices
-      (FinanceMockState.invoices || []).forEach((inv) => {
-        if (["void", "draft"].includes((inv.status || "").toLowerCase())) return;
-        if (currency !== "ALL" && (inv.currency || "").toUpperCase() !== currency) return;
-        const total = inv.total || 0;
-        const paid = (inv.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-        const bal = round(total - paid, 2);
-        if (bal <= 0) return;
-
-        const isOverdue = inv.due_date && inv.due_date < todayStr;
-        obligations.push({
-          id: `inflow-inv-${inv.id}`,
-          entity_type: "invoice",
-          entity_id: inv.id,
-          reference: inv.invoice_number,
-          counterparty: inv.customer_name || "Customer",
-          type: "inflow",
-          amount: bal,
-          currency: inv.currency,
-          due_date: isOverdue ? todayStr : (inv.due_date || todayStr),
-          status: isOverdue ? "expected" : "confirmed",
-          certainty: isOverdue ? "overdue" : "contractual",
-          target_route: "a-finance-invoices",
-          notes: `Sales Invoice balance: ${bal.toLocaleString()} ${inv.currency}`,
-        });
-      });
-
-      // (b) Bills
-      (FinanceMockState.bills || []).forEach((bill) => {
-        if (["void", "draft"].includes((bill.status || "").toLowerCase())) return;
-        if (currency !== "ALL" && (bill.currency || "").toUpperCase() !== currency) return;
-        const total = bill.total || 0;
-        const paid = (bill.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-        const bal = round(total - paid, 2);
-        if (bal <= 0) return;
-
-        const isOverdue = bill.due_date && bill.due_date < todayStr;
-        obligations.push({
-          id: `outflow-bill-${bill.id}`,
-          entity_type: "bill",
-          entity_id: bill.id,
-          reference: bill.bill_number,
-          counterparty: bill.vendor_name || "Vendor",
-          type: "outflow",
-          amount: bal,
-          currency: bill.currency,
-          due_date: isOverdue ? todayStr : (bill.due_date || todayStr),
-          status: "confirmed",
-          certainty: isOverdue ? "overdue" : "contractual",
-          target_route: "a-finance-bills",
-          notes: `Vendor payable balance: ${bal.toLocaleString()} ${bill.currency}`,
-        });
-      });
-
-      // (c) Subscriptions
-      if (includeExpected) {
-        (FinanceMockState.subscriptions || []).forEach((sub) => {
-          if (!sub.is_active) return;
-          if (currency !== "ALL" && (sub.currency || "").toUpperCase() !== currency) return;
-          const amt = round(sub.amount || 0, 2);
-          if (amt <= 0) return;
-
-          [0, 1, 2].forEach((cycle) => {
-            const d = new Date(today);
-            d.setDate(d.getDate() + 15 + cycle * 30);
-            const cycleDateStr = d.toISOString().split("T")[0];
-            obligations.push({
-              id: `outflow-sub-${sub.id}-c${cycle}`,
-              entity_type: "subscription",
-              entity_id: sub.id,
-              reference: `${sub.name} (Renewal #${cycle + 1})`,
-              counterparty: sub.vendor_name || sub.name,
-              type: "outflow",
-              amount: amt,
-              currency: sub.currency,
-              due_date: cycleDateStr,
-              status: "expected",
-              certainty: "estimated",
-              target_route: "a-finance-spend",
-              notes: `Recurring ${sub.billing_cycle || "monthly"} subscription charge`,
-            });
-          });
-        });
-      }
-
-      // Horizons calculations
-      const horizonsMeta = [
-        { key: "30_days", days: 30, label: "Next 30 Days", minDays: 0, maxDays: 30 },
-        { key: "60_days", days: 60, label: "31 - 60 Days", minDays: 31, maxDays: 60 },
-        { key: "90_days", days: 90, label: "61 - 90 Days", minDays: 61, maxDays: 90 },
-      ];
-
-      let runningCash = totalCurrentCash;
-      const horizons = {};
-
-      horizonsMeta.forEach((h) => {
-        let confIn = 0;
-        let expIn = 0;
-        let confOut = 0;
-        let expOut = 0;
-
-        obligations.forEach((ob) => {
-          const obDate = new Date(ob.due_date + "T00:00:00");
-          const diffDays = Math.round((obDate - today) / (1000 * 60 * 60 * 24));
-          const inRange = (h.key === "30_days" && diffDays <= 30) || (diffDays >= h.minDays && diffDays <= h.maxDays);
-          if (inRange) {
-            if (ob.type === "inflow") {
-              if (ob.status === "confirmed") confIn += ob.amount;
-              else expIn += ob.amount;
-            } else {
-              if (ob.status === "confirmed") confOut += ob.amount;
-              else expOut += ob.amount;
-            }
-          }
-        });
-
-        confIn = round(confIn, 2);
-        expIn = round(expIn, 2);
-        confOut = round(confOut, 2);
-        expOut = round(expOut, 2);
-
-        const totIn = round(confIn + expIn, 2);
-        const totOut = round(confOut + expOut, 2);
-        const netFlow = round(totIn - totOut, 2);
-        runningCash = round(runningCash + netFlow, 2);
-
-        horizons[h.key] = {
-          period_label: h.label,
-          days: h.days,
-          confirmed_inflows: confIn,
-          expected_inflows: expIn,
-          total_inflows: totIn,
-          confirmed_outflows: confOut,
-          expected_outflows: expOut,
-          total_outflows: totOut,
-          net_cash_flow: netFlow,
-          projected_ending_cash: runningCash,
-          confidence: h.key === "30_days" ? "high" : (h.key === "60_days" ? "medium" : "low"),
-        };
-      });
-
-      obligations.sort((a, b) => a.due_date.localeCompare(b.due_date));
-
-      const fxWarnings = [];
-      if (currency === "ALL") {
-        fxWarnings.push("Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.");
-      }
-
-      return {
-        as_of_date: todayStr,
-        currency: currency,
-        accounts: accounts,
-        current_cash_by_currency: currentCashByCurrency,
-        total_current_cash: totalCurrentCash,
-        horizons: horizons,
-        material_obligations: obligations.slice(0, 50),
-        assumptions: [
-          "Draft sales invoices and unapproved vendor bills are strictly excluded from cash projections.",
-          "Contractual obligations with past-due dates are placed in the immediate 0-30 day horizon with an overdue status indicator.",
-          "Active monthly subscriptions repeat every 30 days as estimated expected outflows.",
-          "Book, available, and reconciled balances are tracked independently and never conflated.",
-        ],
-        fx_warnings: fxWarnings,
-        generated_at: new Date().toISOString(),
-      };
-    }
-
-    let url = "/api/finance/reports/cash-forecast";
-    if (params && Object.keys(params).length > 0) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
-  },
-
-  // Bank Accounts
-  async getAccounts(params) {
-    if (_isMock()) {
-      let list = [...FinanceMockState.accounts].map((a) => {
-        const book = Number(a.current_balance || a.opening_balance || 0);
-        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
-        const uncleared = (FinanceMockState.cheques || [])
-          .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
-          .reduce((sum, c) => sum + Number(c.amount || 0), 0);
-        const available = book;
-        return {
-          ...a,
-          book_balance: book,
-          bank_balance: Math.round((book + uncleared) * 100) / 100,
-          available_balance: available,
-          reconciled_balance: book,
-          unreconciled_count: 0,
-          last_reconciled_date: "2026-09-01",
-          last_import_date: "2026-09-05",
-          has_postings: hasPostings,
-          balance_definitions: {
-            book_balance: "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
-            bank_balance: "Reported bank statement balance as of the latest statement upload or sync.",
-            available_balance: "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
-            reconciled_balance: "Portion of the ledger verified and reconciled against official bank statements."
-          },
-          balance_as_of: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
-        };
-      });
-      if (params && params.is_active !== undefined) {
-        list = list.filter((a) => a.is_active === (params.is_active === "true" || params.is_active === true));
-      }
-      return list;
-    }
-    let url = "/api/finance/accounts";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
-  },
-  async listAccounts(params) {
-    return this.getAccounts(params);
-  },
-  async getAccount(id, params) {
-    if (_isMock()) {
-      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
-      if (!acc) throw new Error("Account not found");
-      const isReveal = params && (params.reveal === true || params.reveal === "true");
-      let acctNum = acc.account_number;
-      if (!isReveal) {
-        acctNum = `******${(acc.account_number || "").slice(-4)}`;
-      } else {
-        acctNum = acc.raw_account_number || acc.account_number.replace(/\*/g, "9");
-      }
-      const book = Number(acc.current_balance || acc.opening_balance || 0);
-      const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
-      const uncleared = (FinanceMockState.cheques || [])
-        .filter((c) => c.account_id === acc.id && (c.status === "issued" || c.status === "outstanding"))
-        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
-      return {
-        ...acc,
-        account_number: acctNum,
-        book_balance: book,
-        bank_balance: Math.round((book + uncleared) * 100) / 100,
-        available_balance: book,
-        reconciled_balance: book,
-        unreconciled_count: 0,
-        last_reconciled_date: "2026-09-01",
-        last_import_date: "2026-09-05",
-        has_postings: hasPostings,
-        balance_definitions: {
-          book_balance: "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
-          bank_balance: "Reported bank statement balance as of the latest statement upload or sync.",
-          available_balance: "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
-          reconciled_balance: "Portion of the ledger verified and reconciled against official bank statements."
-        },
-        balance_as_of: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
-      };
-    }
-    const q = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return apiRequest("GET", `/api/finance/accounts/${id}${q}`);
-  },
-  async createAccount(payload) {
-    if (_isMock()) {
-      const rawNum = payload.account_number || "";
-      const newAcc = {
-        id: FinanceMockState.accounts.length + 1,
-        ...payload,
-        current_balance: payload.opening_balance || 0,
-        raw_account_number: rawNum,
-        account_number: `******${rawNum.slice(-4)}`,
-        country: payload.country || "Egypt",
-        opening_balance_date: payload.opening_balance_date || null,
-        is_active: true,
-      };
-      FinanceMockState.accounts.push(newAcc);
-      return newAcc;
-    }
-    return apiRequest("POST", "/api/finance/accounts", payload);
-  },
-  async updateAccount(id, payload) {
-    if (_isMock()) {
-      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
-      if (!acc) throw new Error("Account not found");
-      if (payload.currency && payload.currency.toUpperCase() !== (acc.currency || "").toUpperCase()) {
-        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
-        if (hasPostings) {
-          throw new Error("Currency cannot be modified after transactions have been posted to this account.");
-        }
-      }
-      Object.assign(acc, payload);
-      return acc;
-    }
-    return apiRequest("PUT", `/api/finance/accounts/${id}`, payload);
-  },
-  async deleteAccount(id) {
-    if (_isMock()) {
-      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
-      if (!acc) throw new Error("Account not found");
-      acc.is_active = false;
-      return acc;
-    }
-    return apiRequest("DELETE", `/api/finance/accounts/${id}`);
-  },
-
-  // Customers
-  async getCustomers(params) {
-    if (_isMock()) {
-      let list = [...FinanceMockState.customers];
-      if (params && params.is_active !== undefined) {
-        list = list.filter((c) => c.is_active === (params.is_active === "true" || params.is_active === true));
-      }
-      return list;
-    }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
-  },
-  async getCustomer(id) {
-    if (_isMock()) {
-      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
-      if (!cust) throw new Error("Customer not found");
-      return cust;
-    }
-    return apiRequest("GET", `/api/finance/customers/${id}`);
-  },
-  async createCustomer(payload) {
-    if (_isMock()) {
-      const newCust = {
-        id: FinanceMockState.customers.length + 1,
-        ...payload,
-        is_active: true,
-      };
-      FinanceMockState.customers.push(newCust);
-      return newCust;
-    }
-    return apiRequest("POST", "/api/finance/customers", payload);
-  },
-  async updateCustomer(id, payload) {
-    if (_isMock()) {
-      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
-      if (!cust) throw new Error("Customer not found");
-      Object.assign(cust, payload);
-      return cust;
-    }
-    return apiRequest("PUT", `/api/finance/customers/${id}`, payload);
-  },
-  async deleteCustomer(id) {
-    if (_isMock()) {
-      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
-      if (!cust) throw new Error("Customer not found");
-      cust.is_active = false;
-      return cust;
-    }
-    return apiRequest("DELETE", `/api/finance/customers/${id}`);
-  },
-  async checkDuplicateCustomers(payload) {
-    if (_isMock()) {
-      const cleanStr = (v) => {
-        if (!v) return "";
-        let s = String(v).toLowerCase().trim();
-        const sfxs = [/\binc\b/g, /\bllc\b/g, /\bcorp\b/g, /\bcorporation\b/g, /\bltd\b/g, /\blimited\b/g, /\bco\b/g, /\bpartners\b/g];
-        sfxs.forEach((rx) => { s = s.replace(rx, ""); });
-        return s.replace(/[^a-z0-9]/g, "");
-      };
-      const cleanTax = (v) => (!v ? "" : String(v).toLowerCase().replace(/[^a-z0-9]/g, ""));
-      const normName = cleanStr(payload.name);
-      const normLegal = cleanStr(payload.legal_name);
-      const normTax = cleanTax(payload.tax_id);
-      const normEmail = (payload.contact_email || "").toLowerCase().trim();
-
-      const candidates = [];
-      const seen = new Set();
-      for (const c of FinanceMockState.customers) {
-        if (payload.exclude_id && c.id === parseInt(payload.exclude_id, 10)) continue;
-        const cName = cleanStr(c.name);
-        const cLegal = cleanStr(c.legal_name);
-        const cTax = cleanTax(c.tax_id);
-        const cEmail = (c.contact_email || "").toLowerCase().trim();
-
-        let matched_field = null;
-        if (normName && (normName === cName || (cLegal && normName === cLegal))) matched_field = "name";
-        else if (normLegal && ((cLegal && normLegal === cLegal) || normLegal === cName)) matched_field = "legal_name";
-        else if (normTax && cTax && normTax === cTax) matched_field = "tax_id";
-        else if (normEmail && cEmail && normEmail === cEmail) matched_field = "contact_email";
-
-        if (matched_field && !seen.has(c.id)) {
-          seen.add(c.id);
-          candidates.push({
-            id: c.id,
-            name: c.name,
-            legal_name: c.legal_name,
-            tax_id: c.tax_id,
-            contact_email: c.contact_email,
-            matched_field,
-            is_active: c.is_active,
-          });
-        }
-      }
-      return { candidates };
-    }
-    return apiRequest("POST", "/api/finance/customers/check-duplicate", payload);
-  },
-  async getCustomer360(id) {
-    if (_isMock()) {
-      const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
-      if (!cust) throw new Error("Customer not found");
-
-      const invoices = (FinanceMockState.invoices || []).filter((i) => i.customer_id === cust.id);
-      let total_invoiced = 0.0;
-      let total_paid = 0.0;
-      let outstanding_balance = 0.0;
-      let overdue_balance = 0.0;
-      let open_invoices_count = 0;
-      let overdue_invoices_count = 0;
-      const today = new Date().toISOString().slice(0, 10);
-      const daysToPay = [];
-      const invList = [];
-      const timeline = [];
-
-      for (const inv of invoices) {
-        const isVoid = inv.status === "void";
-        const payments = (FinanceMockState.payments || []).filter((p) => p.related_invoice_id === inv.id && !p.is_reversed);
-        const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
-        const bal = isVoid ? 0 : Math.max(0, (inv.total || 0) - paid);
-        const isOverdue = !isVoid && bal > 0.001 && inv.due_date && inv.due_date < today;
-
-        if (!isVoid) {
-          total_invoiced += (inv.total || 0);
-          total_paid += paid;
-          outstanding_balance += bal;
-          if (isOverdue) {
-            overdue_balance += bal;
-            overdue_invoices_count++;
-          }
-          if (bal > 0.001) open_invoices_count++;
-          if (bal <= 0.001 && paid > 0 && payments.length > 0) {
-            const lastP = payments[payments.length - 1];
-            if (lastP.payment_date && inv.issue_date) {
-              const diff = Math.round((new Date(lastP.payment_date) - new Date(inv.issue_date)) / (86400000));
-              if (diff >= 0) daysToPay.push(diff);
-            }
-          }
-        }
-
-        const derivedStatus = isVoid ? "void" : (bal <= 0.001 && inv.total > 0 ? "paid" : (isOverdue ? "overdue" : (inv.status || "sent")));
-        invList.push({
-          id: inv.id,
-          invoice_number: inv.invoice_number,
-          issue_date: inv.issue_date,
-          due_date: inv.due_date,
-          currency: inv.currency || "USD",
-          total: inv.total,
-          amount_paid: paid,
-          balance: bal,
-          status: derivedStatus,
-          is_overdue: isOverdue,
-        });
-
-        timeline.push({
-          event_type: "invoice_created",
-          date: inv.issue_date || inv.created_at,
-          description: `Invoice ${inv.invoice_number} created for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-          invoice_id: inv.id,
-        });
-
-        for (const p of payments) {
-          timeline.push({
-            event_type: "payment_received",
-            date: p.payment_date || p.created_at,
-            description: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
-            invoice_id: inv.id,
-          });
-        }
-      }
-
-      timeline.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-      const avgDays = daysToPay.length > 0 ? Math.round((daysToPay.reduce((s, d) => s + d, 0) / daysToPay.length) * 10) / 10 : null;
-
-      return {
-        customer: cust,
-        total_invoiced,
-        total_paid,
-        outstanding_balance,
-        overdue_balance,
-        open_invoices_count,
-        overdue_invoices_count,
-        average_days_to_pay: avgDays,
-        invoices: invList,
-        timeline,
-      };
-    }
-    return apiRequest("GET", `/api/finance/customers/${id}/360`);
-  },
-
-  // Vendors
+// Vendors
   async getVendors(params) {
     if (_isMock()) {
       let list = [...FinanceMockState.vendors];
@@ -2550,9 +1358,250 @@ const FinanceApi = {
       return { ...inst, account_number: "******" + (inst.account_number ? inst.account_number.slice(-4) : "0000") };
     }
     return apiRequest("POST", `/api/finance/vendors/${vendorId}/payment-instructions/${instructionId}/verify`, payload);
+  }
+  };
+
+  root.FinanceBillsApi = FinanceBillsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceBillsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceBillsApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/accounts-api.js
+ * Finance API - Accounts & Banking domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.accounts) {
+    FinanceMockState.accounts = [
+    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 150000.0, is_active: true },
+    { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
+    { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
+    { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
+  ];
+  }
+
+  if (!FinanceMockState.categories) {
+    FinanceMockState.categories = [
+    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, is_petty: false },
+    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, is_petty: false },
+    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, is_petty: false },
+    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, is_petty: true },
+    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, is_petty: true },
+    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, is_petty: false },
+    { id: 7, name: "Bank Fees", kind: "cost", is_active: true, sort_order: 7, is_petty: false },
+    { id: 8, name: "Infrastructure", kind: "cost", is_active: true, sort_order: 8, is_petty: false },
+    { id: 9, name: "SaaS", kind: "cost", is_active: true, sort_order: 9, is_petty: false },
+    { id: 10, name: "Facilities & Maintenance", kind: "cost", is_active: true, sort_order: 10, is_petty: false },
+    { id: 11, name: "Electricity", kind: "cost", is_active: true, sort_order: 11, is_petty: false },
+    { id: 12, name: "Internet", kind: "cost", is_active: true, sort_order: 12, is_petty: false },
+    { id: 13, name: "Operating Expense", kind: "cost", is_active: true, sort_order: 13, is_petty: false },
+    { id: 14, name: "Other", kind: "other", is_active: true, sort_order: 99, is_petty: false },
+  ];
+  }
+
+  if (!FinanceMockState.paymentTypes) {
+    FinanceMockState.paymentTypes = [
+    { id: 1, name: "Cash Payment", code: "CASH", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 2, name: "ATM Withdrawal", code: "CASHWITHDRAW", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 3, name: "Check Payment", code: "CHK", requires_cheque_number: true, requires_bank_fee_flag: false, is_active: true },
+    { id: 4, name: "Internal Transfer", code: "INTTRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 5, name: "Incoming Transfer", code: "INBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 6, name: "Outgoing Transfer", code: "OUTBOUND_TRANS", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 7, name: "Currency Exchange", code: "USDTOEGP", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 8, name: "Debit Card Payment", code: "DEBIT_CARD", requires_cheque_number: false, requires_bank_fee_flag: false, is_active: true },
+    { id: 9, name: "Bank Fee", code: "BANK_FEES", requires_cheque_number: false, requires_bank_fee_flag: true, is_active: true },
+  ];
+  }
+
+  if (!FinanceMockState.transactions) {
+    FinanceMockState.transactions = [
+    {
+      id: 1,
+      account_id: 1,
+      date: "2026-09-02",
+      direction: "out",
+      amount: 4200.0,
+      currency: "USD",
+      category_id: 2,
+      category_name: "Infrastructure",
+      payment_type_id: 3,
+      payment_type_code: "OUTBOUND_TRANS",
+      payment_type_name: "Outbound Transfer",
+      reference: "AWS-SEPT-01",
+      description: "Payment for AWS Cloud Hosting",
+      source: "manual",
+      running_balance: 145800.0,
+      created_at: "2026-09-02T10:00:00"
+    },
+    {
+      id: 2,
+      account_id: 4,
+      date: "2026-09-03",
+      direction: "out",
+      amount: 150.0,
+      currency: "EGP",
+      category_id: 4,
+      category_name: "Kitchen Supplies",
+      payment_type_id: 1,
+      payment_type_code: "CASH",
+      payment_type_name: "Cash Payment",
+      reference: "CSH-001",
+      description: "Office coffee and tea supplies",
+      source: "manual",
+      running_balance: 19850.0,
+      created_at: "2026-09-03T11:00:00"
+    }
+  ];
+  }
+
+  if (!FinanceMockState.transfers) {
+    FinanceMockState.transfers = [];
+  }
+
+  const FinanceAccountsApi = {
+// Bank Accounts
+  async getAccounts(params) {
+    if (_isMock()) {
+      let list = [...FinanceMockState.accounts].map((a) => {
+        const book = Number(a.current_balance || a.opening_balance || 0);
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
+        const uncleared = (FinanceMockState.cheques || [])
+          .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
+          .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+        const available = book;
+        return {
+          ...a,
+          book_balance: book,
+          bank_balance: Math.round((book + uncleared) * 100) / 100,
+          available_balance: available,
+          reconciled_balance: book,
+          unreconciled_count: 0,
+          last_reconciled_date: "2026-09-01",
+          last_import_date: "2026-09-05",
+          has_postings: hasPostings,
+          balance_definitions: {
+            book_balance: "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
+            bank_balance: "Reported bank statement balance as of the latest statement upload or sync.",
+            available_balance: "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
+            reconciled_balance: "Portion of the ledger verified and reconciled against official bank statements."
+          },
+          balance_as_of: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
+        };
+      });
+      if (params && params.is_active !== undefined) {
+        list = list.filter((a) => a.is_active === (params.is_active === "true" || params.is_active === true));
+      }
+      return list;
+    }
+    let url = "/api/finance/accounts";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async listAccounts(params) {
+    return this.getAccounts(params);
+  },
+  async getAccount(id, params) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
+      if (!acc) throw new Error("Account not found");
+      const isReveal = params && (params.reveal === true || params.reveal === "true");
+      let acctNum = acc.account_number;
+      if (!isReveal) {
+        acctNum = `******${(acc.account_number || "").slice(-4)}`;
+      } else {
+        acctNum = acc.raw_account_number || acc.account_number.replace(/\*/g, "9");
+      }
+      const book = Number(acc.current_balance || acc.opening_balance || 0);
+      const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+      const uncleared = (FinanceMockState.cheques || [])
+        .filter((c) => c.account_id === acc.id && (c.status === "issued" || c.status === "outstanding"))
+        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+      return {
+        ...acc,
+        account_number: acctNum,
+        book_balance: book,
+        bank_balance: Math.round((book + uncleared) * 100) / 100,
+        available_balance: book,
+        reconciled_balance: book,
+        unreconciled_count: 0,
+        last_reconciled_date: "2026-09-01",
+        last_import_date: "2026-09-05",
+        has_postings: hasPostings,
+        balance_definitions: {
+          book_balance: "Current posted ledger balance reflecting all recorded accounting inflows and outflows.",
+          bank_balance: "Reported bank statement balance as of the latest statement upload or sync.",
+          available_balance: "Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).",
+          reconciled_balance: "Portion of the ledger verified and reconciled against official bank statements."
+        },
+        balance_as_of: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
+      };
+    }
+    const q = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return apiRequest("GET", `/api/finance/accounts/${id}${q}`);
+  },
+  async createAccount(payload) {
+    if (_isMock()) {
+      const rawNum = payload.account_number || "";
+      const newAcc = {
+        id: FinanceMockState.accounts.length + 1,
+        ...payload,
+        current_balance: payload.opening_balance || 0,
+        raw_account_number: rawNum,
+        account_number: `******${rawNum.slice(-4)}`,
+        country: payload.country || "Egypt",
+        opening_balance_date: payload.opening_balance_date || null,
+        is_active: true,
+      };
+      FinanceMockState.accounts.push(newAcc);
+      return newAcc;
+    }
+    return apiRequest("POST", "/api/finance/accounts", payload);
+  },
+  async updateAccount(id, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
+      if (!acc) throw new Error("Account not found");
+      if (payload.currency && payload.currency.toUpperCase() !== (acc.currency || "").toUpperCase()) {
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+        if (hasPostings) {
+          throw new Error("Currency cannot be modified after transactions have been posted to this account.");
+        }
+      }
+      Object.assign(acc, payload);
+      return acc;
+    }
+    return apiRequest("PUT", `/api/finance/accounts/${id}`, payload);
+  },
+  async deleteAccount(id) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(id, 10));
+      if (!acc) throw new Error("Account not found");
+      acc.is_active = false;
+      return acc;
+    }
+    return apiRequest("DELETE", `/api/finance/accounts/${id}`);
   },
 
-  // Categories (Phase 0)
+// Categories (Phase 0)
   async getCategories(params) {
     if (_isMock()) {
       let list = [...FinanceMockState.categories];
@@ -2666,7 +1715,7 @@ const FinanceApi = {
     return apiRequest("DELETE", `/api/finance/payment-types/${id}`);
   },
 
-  // Transactions & Continuous Ledger (Phase 2)
+// Transactions & Continuous Ledger (Phase 2)
   async getAccountTransactions(accountId, params) {
     if (_isMock()) {
       let list = (FinanceMockState.transactions || []).filter((t) => t.account_id === parseInt(accountId, 10));
@@ -3056,7 +2105,7 @@ const FinanceApi = {
     return apiRequest("GET", url);
   },
 
-  // Transfers (Phase 3)
+// Transfers (Phase 3)
   async getTransfers(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.transfers || [])];
@@ -3328,9 +2377,77 @@ const FinanceApi = {
       return transfer;
     }
     return apiRequest("POST", `/api/finance/transfers/${transferId}/match`, payload);
-  },
+  }
+  };
 
-  // Cheques (Phase 5)
+  root.FinanceAccountsApi = FinanceAccountsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceAccountsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceAccountsApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/cheques-api.js
+ * Finance API - Cheques domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.cheques) {
+    FinanceMockState.cheques = [
+    {
+      id: 1,
+      cheque_number: "001011",
+      account_id: 1,
+      account_name: "Voyance Operating USD",
+      issue_date: "2026-09-02",
+      amount: 4200.0,
+      currency: "USD",
+      payee: "Amazon Web Services",
+      purpose_type: "vendor_payment",
+      linked_bill_id: 1,
+      status: "cleared",
+      clear_date: "2026-09-05",
+      fiscal_year: 2026,
+      notes: "AWS cloud hosting payment",
+      created_at: "2026-09-02T10:00:00",
+    },
+    {
+      id: 2,
+      cheque_number: "001012",
+      account_id: 1,
+      account_name: "Voyance Operating USD",
+      issue_date: "2026-09-06",
+      amount: 15000.0,
+      currency: "USD",
+      payee: "Voyance Health (Cash Drawer)",
+      purpose_type: "cash_withdrawal",
+      destination_cash_account_id: 2,
+      destination_cash_account_name: "Voyance Treasury Reserve",
+      status: "issued",
+      clear_date: null,
+      fiscal_year: 2026,
+      notes: "Petty cash replenishment",
+      created_at: "2026-09-06T11:00:00",
+    },
+  ];
+  }
+
+  const FinanceChequesApi = {
+// Cheques (Phase 5)
   async getCheques(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.cheques || [])];
@@ -3511,9 +2628,51 @@ const FinanceApi = {
       return newCheque;
     }
     return apiRequest("POST", `/api/finance/cheques/${id}/replace`, payload);
-  },
+  }
+  };
 
-  // Subscriptions & Charges (Phase 6)
+  root.FinanceChequesApi = FinanceChequesApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceChequesApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceChequesApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/subscriptions-api.js
+ * Finance API - Subscriptions domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.subscriptions) {
+    FinanceMockState.subscriptions = [
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", name: "AWS Cloud Infrastructure", amount: 4200.0, currency: "USD", billing_cycle: "monthly", next_renewal_date: "2026-10-01", contract_start_date: "2025-10-01", contract_end_date: "2026-10-01", notice_period_days: 30, owner: "Sarah Connor", department: "Engineering", payment_method: "card", seats_count: null, monthly_equivalent_amount: 4200.0, auto_generate_bill: false, is_active: true, charges_count: 1, last_charge_date: "2026-09-01", last_charge_amount: 4200.0 },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", name: "Slack Business+", amount: 320.0, currency: "USD", billing_cycle: "monthly", next_renewal_date: "2026-09-20", contract_start_date: "2025-09-20", contract_end_date: "2026-09-20", notice_period_days: 15, owner: "John DevOps", department: "Operations", payment_method: "card", seats_count: 40, monthly_equivalent_amount: 320.0, auto_generate_bill: false, is_active: true, charges_count: 1, last_charge_date: "2026-09-03", last_charge_amount: 320.0 },
+  ];
+  }
+
+  if (!FinanceMockState.subscriptionCharges) {
+    FinanceMockState.subscriptionCharges = [
+    { id: 1, subscription_id: 1, subscription_name: "AWS Cloud Infrastructure", vendor_name: "Amazon Web Services", billing_date: "2026-09-01", amount: 4200.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 1, variance_amount: 0.0, variance_reason: null, note: "Monthly cloud compute charges", created_at: "2026-09-01T08:00:00", attachments: [] },
+    { id: 2, subscription_id: 2, subscription_name: "Slack Business+", vendor_name: "Slack Technologies", billing_date: "2026-09-03", amount: 320.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 2, variance_amount: 0.0, variance_reason: null, note: "40 user licenses renewal", created_at: "2026-09-03T09:00:00", attachments: [] },
+  ];
+  }
+
+  const FinanceSubscriptionsApi = {
+// Subscriptions & Charges (Phase 6)
   async getSubscriptions(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.subscriptions || [])];
@@ -3733,7 +2892,174 @@ const FinanceApi = {
   },
 
   // ==========================================
-  // Bank Statement Imports & Reconciliation (Phase 7)
+  };
+
+  root.FinanceSubscriptionsApi = FinanceSubscriptionsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceSubscriptionsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceSubscriptionsApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/statements-api.js
+ * Finance API - Bank Statements & Reconciliation domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.statementImports) {
+    FinanceMockState.statementImports = [
+    {
+      id: 1,
+      account_id: 1,
+      account_name: "Voyance Operating USD",
+      period_month: "2026-09",
+      file_type: "csv",
+      status: "needs_review",
+      uploaded_file_ref: "uploads/finance_attachments/stmt_sept_sample.csv",
+      total_lines_count: 3,
+      matched_lines_count: 1,
+      reconciled_at: null,
+      reconciled_by: null,
+      created_at: "2026-09-10T10:00:00",
+      created_by: "admin@hrflow.test",
+      attachments: [{ id: 1, file_name: "chase_sept_statement.csv", file_size: 4210, storage_ref: "uploads/..." }]
+    }
+  ];
+  }
+
+  if (!FinanceMockState.statementLines) {
+    FinanceMockState.statementLines = [
+    {
+      id: 1,
+      import_id: 1,
+      raw_date: "2026-09-02",
+      raw_amount: 4200.0,
+      direction: "out",
+      raw_description: "AMAZON WEB SERVICES AWS.AMAZON.CO WA",
+      raw_reference: "AWS-BILL-01",
+      status: "matched",
+      notes: "Auto-matched with Bill BILL-2026-001 payment",
+      matched_transaction_id: 1,
+      matched_cheque_id: null,
+      suggested_matches: []
+    },
+    {
+      id: 2,
+      import_id: 1,
+      raw_date: "2026-09-08",
+      raw_amount: 12500.0,
+      direction: "in",
+      raw_description: "INWARD WIRE APEX HEALTH PARTNERS",
+      raw_reference: "WIRE-INV-001",
+      status: "unmatched",
+      notes: "",
+      matched_transaction_id: null,
+      matched_cheque_id: null,
+      suggested_matches: [
+        {
+          transaction_id: 101,
+          cheque_id: null,
+          match_type: "exact_transaction",
+          score: 0.95,
+          date: "2026-09-08",
+          amount: 12500.0,
+          direction: "in",
+          description: "Customer Invoice Settlement INV-2026-001",
+          reference: "INV-2026-001",
+          reason: "Exact amount match, date proximity"
+        }
+      ]
+    },
+    {
+      id: 3,
+      import_id: 1,
+      raw_date: "2026-09-15",
+      raw_amount: 15.0,
+      direction: "out",
+      raw_description: "MONTHLY SERVICE FEE CHASE BANK",
+      raw_reference: "FEE-0926",
+      status: "unmatched",
+      notes: "",
+      matched_transaction_id: null,
+      matched_cheque_id: null,
+      suggested_matches: []
+    }
+  ];
+  }
+
+  if (!FinanceMockState.reconciliationRules) {
+    FinanceMockState.reconciliationRules = [
+    {
+      id: 1,
+      name: "Auto-Categorize Cloud Services",
+      description: "Suggest Hosting category for Amazon Web Services",
+      priority: 10,
+      is_active: true,
+      mode: "suggestion",
+      account_id: null,
+      description_pattern: "AMAZON|AWS",
+      direction: "out",
+      min_amount: null,
+      max_amount: null,
+      counterparty: "Amazon",
+      action: "suggest_category",
+      target_category: "Hosting Cloud Infrastructure",
+      target_vendor_id: 1,
+      payment_method: "card",
+      audit_reason: null,
+      creator: "admin@hrflow.test",
+      approved_by: null,
+      is_approved: false,
+      last_used_at: "2026-09-02T10:00:00",
+      times_applied: 4,
+      created_at: "2026-08-01T10:00:00",
+      updated_at: "2026-08-01T10:00:00"
+    },
+    {
+      id: 2,
+      name: "Bank Monthly Maintenance Fees",
+      description: "Auto-ignore routine monthly checking account service charges",
+      priority: 5,
+      is_active: true,
+      mode: "auto_apply",
+      account_id: null,
+      description_pattern: "SERVICE FEE|MAINTENANCE",
+      direction: "out",
+      min_amount: 1.0,
+      max_amount: 50.0,
+      counterparty: "Chase",
+      action: "auto_ignore",
+      target_category: "Bank Charges",
+      target_vendor_id: null,
+      payment_method: "bank_transfer",
+      audit_reason: "Standard recurring bank maintenance charge covered by corporate policy",
+      creator: "admin@hrflow.test",
+      approved_by: "controller@voyancehealth.com",
+      is_approved: true,
+      last_used_at: "2026-09-01T09:00:00",
+      times_applied: 2,
+      created_at: "2026-08-10T10:00:00",
+      updated_at: "2026-08-10T10:00:00"
+    }
+  ];
+  }
+
+  const FinanceStatementsApi = {
+// Bank Statement Imports & Reconciliation (Phase 7)
   // ==========================================
   async previewStatement(accountId, formData) {
     if (_isMock()) {
@@ -4434,7 +3760,90 @@ const FinanceApi = {
 
 
   // ==========================================
-  // 10. Financial Reports & Excel Export (Phase 8)
+  };
+
+  root.FinanceStatementsApi = FinanceStatementsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceStatementsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceStatementsApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/reports-api.js
+ * Finance API - Reports & Analytics domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.reportExportAudits) {
+    FinanceMockState.reportExportAudits = [
+    {
+      id: 1,
+      report_key: "profit-and-loss",
+      export_format: "xlsx",
+      user_email: "admin@hrflow.test",
+      row_count: 18,
+      file_name: "profit_and_loss_2026-09-01_to_2026-09-30.xlsx",
+      filters: { basis: "accrual", currency: "USD", period: "this_month" },
+      created_at: "2026-09-14T08:30:00Z",
+    },
+    {
+      id: 2,
+      report_key: "balance-sheet",
+      export_format: "csv",
+      user_email: "admin@hrflow.test",
+      row_count: 12,
+      file_name: "balance_sheet_2026-09-14.csv",
+      filters: { basis: "accrual", as_of_date: "2026-09-14" },
+      created_at: "2026-09-14T09:00:00Z",
+    },
+  ];
+  }
+
+  if (!FinanceMockState.reportSchedules) {
+    FinanceMockState.reportSchedules = [
+    {
+      id: 1,
+      report_key: "profit-and-loss",
+      report_title: "Profit & Loss Statement (P&L)",
+      frequency: "monthly",
+      recipients: ["finance-team@voyance.health", "cfo@voyance.health"],
+      export_format: "xlsx",
+      filters: { basis: "accrual", currency: "USD" },
+      is_active: true,
+      created_by: "admin@hrflow.test",
+      created_at: "2026-09-01T08:00:00Z",
+    },
+    {
+      id: 2,
+      report_key: "ar-aging",
+      report_title: "Accounts Receivable (AR) Aging",
+      frequency: "weekly",
+      recipients: ["collections@voyance.health"],
+      export_format: "csv",
+      filters: { currency: "USD" },
+      is_active: true,
+      created_by: "admin@hrflow.test",
+      created_at: "2026-09-02T11:00:00Z",
+    },
+  ];
+  }
+
+  const FinanceReportsApi = {
+// 10. Financial Reports & Excel Export (Phase 8)
   // ==========================================
   async getCategorySummaryReport(params = {}) {
     if (_isMock()) {
@@ -4745,6 +4154,39 @@ const FinanceApi = {
             supported_basis: ["cash", "accrual"],
             supported_formats: ["json"],
             badge: "Payroll",
+          },
+          {
+            key: "compensation-summary",
+            title: "Compensation Spend & Variance Report",
+            category: "Payroll",
+            business_question: "What is total company compensation spend across external, internal, commission, and bonus pay?",
+            description: "Granular compensation reporting per employee and company-wide across flexible date ranges.",
+            icon: "fa-solid fa-money-bill-wave",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json"],
+            badge: "Spend",
+          },
+          {
+            key: "statutory-remitted",
+            title: "Statutory Obligations Remitted Report",
+            category: "Payroll",
+            business_question: "How much tax and social insurance has been officially paid and remitted to authorities?",
+            description: "Summary of settled statutory obligations by period and tax/insurance obligation type.",
+            icon: "fa-solid fa-landmark",
+            supported_basis: ["cash"],
+            supported_formats: ["json"],
+            badge: "Compliance",
+          },
+          {
+            key: "payable-status",
+            title: "Payroll & Statutory Settlement Status",
+            category: "Payroll",
+            business_question: "What is the settlement status (pending vs settled) of employee payouts, taxes, and social insurance?",
+            description: "Unified view tracking pending vs settled amounts for external wire, internal cash, tax, and insurance flows.",
+            icon: "fa-solid fa-money-bill-transfer",
+            supported_basis: ["cash", "accrual"],
+            supported_formats: ["json"],
+            badge: "Payables",
           },
           {
             key: "transactions",
@@ -5251,385 +4693,740 @@ const FinanceApi = {
   },
 
   // ==========================================
-  // Story 8.1: Guided Payroll Run
+  // FUX-419: Compensation Spend & Variance Reporting
   // ==========================================
-  async getPayrollRuns(params = {}) {
+  async getEmployeeCompensationReport(employeeId, params = {}) {
     if (_isMock()) {
-      let list = [...(FinanceMockState.payrollRuns || [])];
-      if (params.status && params.status !== "all") {
-        list = list.filter((r) => r.status === params.status);
-      }
-      if (params.search) {
-        const s = params.search.toLowerCase();
-        list = list.filter((r) => (r.period_label || "").toLowerCase().includes(s));
-      }
-      return list;
-    }
-    const qs = new URLSearchParams(params).toString();
-    return apiRequest("GET", `/api/finance/payroll/runs${qs ? "?" + qs : ""}`);
-  },
-
-  async previewPayrollRun(payload) {
-    if (_isMock()) {
-      const fxRateSource = payload.fx_rate_source || "first_of_month";
-      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
       return {
-        period_label: payload.period_label || "2026-10",
-        period_start: payload.period_start || "2026-10-01",
-        period_end: payload.period_end || "2026-10-31",
-        bank_account_id: payload.bank_account_id || 1,
-        bank_account_name: "Voyance Operating USD",
-        fx_rate_source: fxRateSource,
-        fx_rate_value: fxRateValue,
-        headcount: 3,
-        total_gross: 29000.0,
-        total_tax: 1900.0,
-        total_deductions: 950.0,
-        total_net: 26150.0,
-        total_employer_cost: 31280.0,
-        has_blocking_exceptions: false,
-        exceptions: [],
-        variance_summary: {
-          prior_period_label: "2026-09",
-          headcount_delta: 0,
-          gross_delta: 1500.0,
-          net_delta: 1275.0,
-          pct_change: 3.2,
-          joiners_count: 0,
-          leavers_count: 0,
-          raises_count: 1,
+        employee_id: employeeId,
+        employee_name: "Sarah Jenkins",
+        department: "Engineering",
+        start_date: params.start_date || "2026-09-01",
+        end_date: params.end_date || "2026-10-31",
+        currency: params.currency || "USD",
+        by_compensation_type: {
+          external_usd: 6000.0,
+          internal_usd_cash: 3000.0,
+          commission_sales: 500.0,
+          bonus: 200.0,
         },
-        liabilities_summary: {
-          net_pay_payable: 26150.0,
-          income_tax_withheld: 1900.0,
-          social_insurance_employee: 950.0,
-          social_insurance_employer: 2280.0,
-          total_liabilities: 31280.0,
-        },
-        journal_preview: {
-          debits: [
-            {
-              account: "Salaries & Wages Expense",
-              account_code: "5000-SAL",
-              direction: "debit",
-              amount: 29000.0,
-              description: `Gross employee earnings for ${payload.period_label || "2026-10"}`,
-            },
-            {
-              account: "Employer Payroll Tax & Insurance Expense",
-              account_code: "5010-ETAX",
-              direction: "debit",
-              amount: 2280.0,
-              description: `Employer statutory contributions for ${payload.period_label || "2026-10"}`,
-            },
-          ],
-          credits: [
-            {
-              account: "Voyance Operating USD",
-              account_code: "1000-BANK",
-              direction: "credit",
-              amount: 26150.0,
-              description: "Net salary disbursements from funding account",
-            },
-            {
-              account: "Payroll Taxes & Statutory Liabilities Payable",
-              account_code: "2100-PAYLIAB",
-              direction: "credit",
-              amount: 5130.0,
-              description: "Employee withholdings & employer taxes payable",
-            },
-          ],
-          total_debit: 31280.0,
-          total_credit: 31280.0,
-          is_balanced: true,
-        },
+        total_external: 6000.0,
+        total_internal: 3000.0,
+        total_commission: 500.0,
+        total_bonus: 200.0,
+        grand_total: 9700.0,
+        payroll_runs_count: 2,
         lines: [
-          {
-            id: 101,
-            payroll_run_id: 0,
-            employee_id: 1,
-            employee_name: "Sarah Connor",
-            department: "Engineering",
-            compensation_type: "external_usd",
-            is_taxable_local: false,
-            is_insurable: false,
-            base_salary: 10000.0,
-            allowances_total: 0.0,
-            deductions_total: 0.0,
-            tax_amount: 0.0,
-            net_pay: 10000.0,
-            employer_cost_extra: 0.0,
-            bank_name: "Chase",
-            bank_account_masked: "••••4821",
-            payment_status: "pending",
-            failure_reason: null,
-            snapshot_notes: "External USD - October",
-            created_at: new Date().toISOString(),
-            paid_at: null,
-          },
-          {
-            id: 102,
-            payroll_run_id: 0,
-            employee_id: 1,
-            employee_name: "Sarah Connor",
-            department: "Engineering",
-            compensation_type: "internal_usd_cash",
-            is_taxable_local: true,
-            is_insurable: true,
-            base_salary: 5000.0,
-            allowances_total: 0.0,
-            deductions_total: 250.0,
-            tax_amount: 500.0,
-            net_pay: 4250.0,
-            employer_cost_extra: 600.0,
-            bank_name: "Chase",
-            bank_account_masked: "••••4821",
-            payment_status: "pending",
-            failure_reason: null,
-            snapshot_notes: "Internal Cash - October",
-            created_at: new Date().toISOString(),
-            paid_at: null,
-          },
-          {
-            id: 103,
-            payroll_run_id: 0,
-            employee_id: 2,
-            employee_name: "John DevOps",
-            department: "Operations",
-            compensation_type: "internal_usd_cash",
-            is_taxable_local: true,
-            is_insurable: true,
-            base_salary: 14000.0,
-            allowances_total: 0.0,
-            deductions_total: 700.0,
-            tax_amount: 1400.0,
-            net_pay: 11900.0,
-            employer_cost_extra: 1680.0,
-            bank_name: "SVB",
-            bank_account_masked: "••••9102",
-            payment_status: "pending",
-            failure_reason: null,
-            snapshot_notes: "Internal Cash - October",
-            created_at: new Date().toISOString(),
-            paid_at: null,
-          },
+          { id: 101, payroll_run_id: 1, period_label: "2026-09", compensation_type: "external_usd", base_salary: 3000.0, allowances_total: 0.0, deductions_total: 0.0, tax_amount: 0.0, net_pay: 3000.0, employer_cost_extra: 0.0, payment_status: "paid", paid_at: "2026-09-30T10:00:00Z" },
+          { id: 102, payroll_run_id: 1, period_label: "2026-09", compensation_type: "internal_usd_cash", base_salary: 1500.0, allowances_total: 0.0, deductions_total: 75.0, tax_amount: 150.0, net_pay: 1275.0, employer_cost_extra: 180.0, payment_status: "paid", paid_at: "2026-09-30T10:00:00Z" },
+          { id: 103, payroll_run_id: 1, period_label: "2026-09", compensation_type: "commission_sales", base_salary: 500.0, allowances_total: 0.0, deductions_total: 25.0, tax_amount: 50.0, net_pay: 425.0, employer_cost_extra: 60.0, payment_status: "paid", paid_at: "2026-09-30T10:00:00Z" },
+          { id: 104, payroll_run_id: 2, period_label: "2026-10", compensation_type: "external_usd", base_salary: 3000.0, allowances_total: 0.0, deductions_total: 0.0, tax_amount: 0.0, net_pay: 3000.0, employer_cost_extra: 0.0, payment_status: "pending", paid_at: null },
+          { id: 105, payroll_run_id: 2, period_label: "2026-10", compensation_type: "internal_usd_cash", base_salary: 1500.0, allowances_total: 0.0, deductions_total: 75.0, tax_amount: 150.0, net_pay: 1275.0, employer_cost_extra: 180.0, payment_status: "pending", paid_at: null },
+          { id: 106, payroll_run_id: 2, period_label: "2026-10", compensation_type: "bonus", base_salary: 200.0, allowances_total: 0.0, deductions_total: 10.0, tax_amount: 20.0, net_pay: 170.0, employer_cost_extra: 24.0, payment_status: "pending", paid_at: null },
         ],
       };
     }
-    return apiRequest("POST", "/api/finance/payroll/runs/preview", payload);
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/compensation/employee/${employeeId}${qs ? "?" + qs : ""}`);
   },
 
-  async generatePayrollRun(payload) {
+  async getCompanyCompensationReport(params = {}) {
     if (_isMock()) {
-      const prev = await this.previewPayrollRun(payload);
-      const fxRateSource = payload.fx_rate_source || "first_of_month";
-      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
-      const newRun = {
-        id: (FinanceMockState.payrollRuns || []).length + 1,
-        period_label: payload.period_label,
-        period_start: payload.period_start,
-        period_end: payload.period_end,
-        status: "draft",
-        fx_rate_source: fxRateSource,
-        fx_rate_value: fxRateValue,
-        total_gross: prev.total_gross,
-        total_tax: prev.total_tax,
-        total_deductions: prev.total_deductions,
-        total_net: prev.total_net,
-        total_employer_cost: prev.total_employer_cost,
-        headcount: prev.headcount,
-        currency: payload.currency || "USD",
-        bank_account_id: payload.bank_account_id || 1,
-        bank_account_name: prev.bank_account_name,
-        created_at: new Date().toISOString(),
-        created_by: "payroll@voyance.health",
-        approved_at: null,
-        approved_by: null,
-        finalized_at: null,
-        finalized_by: null,
-        paid_at: null,
-        paid_by: null,
-        journal_transaction_id: null,
-        has_blocking_exceptions: false,
-        exceptions: [],
-        variance_summary: prev.variance_summary,
-        liabilities_summary: prev.liabilities_summary,
-        lines: prev.lines.map((l, idx) => ({ ...l, id: Date.now() + idx, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
-      };
-      if (!FinanceMockState.payrollRuns) FinanceMockState.payrollRuns = [];
-      FinanceMockState.payrollRuns.unshift(newRun);
-      return newRun;
-    }
-    return apiRequest("POST", "/api/finance/payroll/runs/generate", payload);
-  },
-
-  async createPayrollRun(payload) {
-    if (_isMock()) {
-      const prev = await this.previewPayrollRun(payload);
-      const fxRateSource = payload.fx_rate_source || "first_of_month";
-      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
-      const newRun = {
-        id: (FinanceMockState.payrollRuns || []).length + 1,
-        period_label: payload.period_label,
-        period_start: payload.period_start,
-        period_end: payload.period_end,
-        status: "draft",
-        fx_rate_source: fxRateSource,
-        fx_rate_value: fxRateValue,
-        total_gross: prev.total_gross,
-        total_tax: prev.total_tax,
-        total_deductions: prev.total_deductions,
-        total_net: prev.total_net,
-        total_employer_cost: prev.total_employer_cost,
-        headcount: prev.headcount,
-        currency: payload.currency || "USD",
-        bank_account_id: payload.bank_account_id || 1,
-        bank_account_name: prev.bank_account_name,
-        created_at: new Date().toISOString(),
-        created_by: "payroll@voyance.health",
-        approved_at: null,
-        approved_by: null,
-        finalized_at: null,
-        finalized_by: null,
-        paid_at: null,
-        paid_by: null,
-        journal_transaction_id: null,
-        has_blocking_exceptions: false,
-        exceptions: [],
-        variance_summary: prev.variance_summary,
-        liabilities_summary: prev.liabilities_summary,
-        lines: (payload.lines && payload.lines.length > 0 ? payload.lines : prev.lines).map((l, idx) => ({ ...l, id: Date.now() + idx, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
-      };
-      if (!FinanceMockState.payrollRuns) FinanceMockState.payrollRuns = [];
-      FinanceMockState.payrollRuns.unshift(newRun);
-      return newRun;
-    }
-    return apiRequest("POST", "/api/finance/payroll/runs", payload);
-  },
-
-  async getPayrollRun(id) {
-    if (_isMock()) {
-      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
-      if (!run) throw new Error(`Payroll run #${id} not found`);
-      return run;
-    }
-    return apiRequest("GET", `/api/finance/payroll/runs/${id}`);
-  },
-
-  async approvePayrollRun(id) {
-    if (_isMock()) {
-      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
-      if (!run) throw new Error(`Payroll run #${id} not found`);
-      run.status = "approved";
-      run.approved_at = new Date().toISOString();
-      run.approved_by = "cfo@voyance.health";
-      return run;
-    }
-    return apiRequest("POST", `/api/finance/payroll/runs/${id}/approve`);
-  },
-
-  async finalizePayrollRun(id) {
-    if (_isMock()) {
-      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
-      if (!run) throw new Error(`Payroll run #${id} not found`);
-      run.status = "finalized";
-      run.finalized_at = new Date().toISOString();
-      run.finalized_by = "payroll@voyance.health";
-      return run;
-    }
-    return apiRequest("POST", `/api/finance/payroll/runs/${id}/finalize`);
-  },
-
-  async payPayrollRun(id, payload = {}) {
-    if (_isMock()) {
-      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
-      if (!run) throw new Error(`Payroll run #${id} not found`);
-      run.status = "paid";
-      run.paid_at = new Date().toISOString();
-      run.paid_by = "payroll@voyance.health";
-      (run.lines || []).forEach((l) => {
-        l.payment_status = "paid";
-        l.paid_at = run.paid_at;
-      });
-      return run;
-    }
-    return apiRequest("POST", `/api/finance/payroll/runs/${id}/pay`, payload);
-  },
-
-  async postPayrollJournal(id) {
-    if (_isMock()) {
-      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
-      if (!run) throw new Error(`Payroll run #${id} not found`);
-      run.journal_transaction_id = 999;
       return {
-        success: true,
-        journal_transaction_id: 999,
-        reference: `PAYROLL-${run.period_label}`,
-        amount: run.total_net,
-        date: new Date().toISOString().slice(0, 10),
-        is_already_posted: false,
+        start_date: params.start_date || "2026-09-01",
+        end_date: params.end_date || "2026-10-31",
+        currency: params.currency || "USD",
+        by_compensation_type: {
+          external_usd: 12000.0,
+          internal_usd_cash: 7000.0,
+          commission_sales: 1500.0,
+          bonus: 600.0,
+        },
+        total_external: 12000.0,
+        total_internal: 7000.0,
+        total_commission: 1500.0,
+        total_bonus: 600.0,
+        grand_total: 21100.0,
+        total_headcount: 3,
+        payroll_runs_count: 2,
+        employees: [
+          { employee_id: 1, employee_name: "Sarah Jenkins", department: "Engineering", by_compensation_type: { external_usd: 6000.0, internal_usd_cash: 3000.0, commission_sales: 500.0, bonus: 200.0 }, total_external: 6000.0, total_internal: 3000.0, total_commission: 500.0, total_bonus: 200.0, grand_total: 9700.0, lines_count: 6 },
+          { employee_id: 2, employee_name: "Marcus Vance", department: "Sales", by_compensation_type: { external_usd: 4000.0, internal_usd_cash: 2000.0, commission_sales: 1000.0, bonus: 400.0 }, total_external: 4000.0, total_internal: 2000.0, total_commission: 1000.0, total_bonus: 400.0, grand_total: 7400.0, lines_count: 6 },
+          { employee_id: 3, employee_name: "Elena Rostova", department: "Operations", by_compensation_type: { external_usd: 2000.0, internal_usd_cash: 2000.0 }, total_external: 2000.0, total_internal: 2000.0, total_commission: 0.0, total_bonus: 0.0, grand_total: 4000.0, lines_count: 4 },
+        ],
       };
     }
-    return apiRequest("POST", `/api/finance/payroll/runs/${id}/post-journal`);
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/compensation/company${qs ? "?" + qs : ""}`);
   },
 
-  async getMyPayslips() {
+  async getStatutoryRemittedReport(params = {}) {
     if (_isMock()) {
-      return [
+      return {
+        start_date: params.start_date || "2026-09-01",
+        end_date: params.end_date || "2026-10-31",
+        currency: params.currency || "USD",
+        total_remitted: 3450.0,
+        by_obligation_type: {
+          income_tax: 1500.0,
+          social_insurance_employee: 750.0,
+          social_insurance_employer: 1200.0,
+        },
+        by_period: {
+          "2026-09": 3450.0,
+        },
+        items: [
+          { id: 1, period: "2026-09", obligation_type: "income_tax", amount_remitted: 1500.0, amount_accrued: 1500.0, currency: "USD", status: "remitted", due_date: "2026-10-15", source_type: "payroll_run", source_id: 1, notes: "Payroll 2026-09 - Salary Income Tax Withheld" },
+          { id: 2, period: "2026-09", obligation_type: "social_insurance_employee", amount_remitted: 750.0, amount_accrued: 750.0, currency: "USD", status: "remitted", due_date: "2026-10-15", source_type: "payroll_run", source_id: 1, notes: "Payroll 2026-09 - Employee Social Insurance" },
+          { id: 3, period: "2026-09", obligation_type: "social_insurance_employer", amount_remitted: 1200.0, amount_accrued: 1200.0, currency: "USD", status: "remitted", due_date: "2026-10-15", source_type: "payroll_run", source_id: 1, notes: "Payroll 2026-09 - Employer Social Insurance" },
+        ],
+        obligations_count: 3,
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/statutory/remitted${qs ? "?" + qs : ""}`);
+  },
+
+  async getPayableStatusReport(params = {}) {
+    if (_isMock()) {
+      return {
+        period: params.period || "2026-09",
+        start_date: params.start_date || null,
+        end_date: params.end_date || null,
+        employee_id: params.employee_id ? parseInt(params.employee_id, 10) : null,
+        currency: params.currency || "USD",
+        flows: [
+          { flow_type: "external_transfer", label: "External Wire Transfers", pending_amount: 0.0, settled_amount: 6000.0, total_amount: 6000.0, status: "settled" },
+          { flow_type: "internal_cash", label: "Internal Cash Payroll", pending_amount: 0.0, settled_amount: 3500.0, total_amount: 3500.0, status: "settled" },
+          { flow_type: "tax_obligation", label: "Income Tax Obligations", pending_amount: 0.0, settled_amount: 1500.0, total_amount: 1500.0, status: "settled" },
+          { flow_type: "insurance_obligation", label: "Social Insurance Obligations", pending_amount: 1950.0, settled_amount: 0.0, total_amount: 1950.0, status: "pending" },
+        ],
+        total_pending: 1950.0,
+        total_settled: 11000.0,
+        grand_total: 12950.0,
+        employee_breakdown: [
+          { employee_id: 1, employee_name: "Sarah Jenkins", department: "Engineering", external_pending: 0.0, external_settled: 3000.0, internal_pending: 0.0, internal_settled: 1700.0, tax_pending: 0.0, tax_settled: 200.0, insurance_pending: 289.0, insurance_settled: 0.0, total_pending: 289.0, total_settled: 4900.0 },
+          { employee_id: 2, employee_name: "Marcus Vance", department: "Sales", external_pending: 0.0, external_settled: 2000.0, internal_pending: 0.0, internal_settled: 1100.0, tax_pending: 0.0, tax_settled: 140.0, insurance_pending: 202.0, insurance_settled: 0.0, total_pending: 202.0, total_settled: 3240.0 },
+          { employee_id: 3, employee_name: "Elena Rostova", department: "Operations", external_pending: 0.0, external_settled: 1000.0, internal_pending: 0.0, internal_settled: 700.0, tax_pending: 0.0, tax_settled: 90.0, insurance_pending: 130.0, insurance_settled: 0.0, total_pending: 130.0, total_settled: 1790.0 },
+        ],
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/payroll/payable-status${qs ? "?" + qs : ""}`);
+  },
+
+
+  // ==========================================
+  };
+
+  root.FinanceReportsApi = FinanceReportsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceReportsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceReportsApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/dashboard-api.js
+ * Finance API - Dashboard & Activity domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.attentionReviewed) {
+    FinanceMockState.attentionReviewed = new Set();
+  }
+
+  const FinanceDashboardApi = {
+async getFinanceSummary(params = {}) {
+    if (_isMock()) {
+      const period = (params.period || "MTD").toUpperCase();
+      const basis = (params.basis || "cash").toLowerCase();
+      const currency = (params.currency || "USD").toUpperCase();
+      const entity = (params.entity || "all").toLowerCase();
+
+      let accounts = [...(FinanceMockState.accounts || [])];
+      if (currency !== "ALL") {
+        accounts = accounts.filter((a) => (a.currency || "USD").toUpperCase() === currency);
+      }
+
+      let balance = 245000.0;
+      if (currency === "EGP") {
+        balance = 470000.0;
+      } else if (currency === "ALL") {
+        balance = 715000.0;
+      }
+
+      let revenue = 0;
+      let cost = 0;
+
+      if (basis === "accrual") {
+        let invs = [...(FinanceMockState.invoices || [])].filter((i) => i.status !== "void" && i.status !== "draft");
+        if (currency !== "ALL") invs = invs.filter((i) => (i.currency || "USD").toUpperCase() === currency);
+        revenue = invs.reduce((acc, i) => acc + (i.total || 0), 0) || 30000.0;
+
+        let bills = [...(FinanceMockState.bills || [])].filter((b) => b.status !== "void");
+        if (currency !== "ALL") bills = bills.filter((b) => (b.currency || "USD").toUpperCase() === currency);
+        cost = bills.reduce((acc, b) => acc + (b.total || 0), 0) || 10000.0;
+      } else {
+        if (currency === "EGP") {
+          revenue = 0.0;
+          cost = 0.0;
+        } else {
+          revenue = 48200.0;
+          cost = 31400.0;
+        }
+      }
+
+      const net = Math.round((revenue - cost) * 100) / 100;
+      const marginValid = revenue > 0;
+      const marginPct = marginValid ? Math.round((net / revenue) * 1000) / 10 : null;
+      const displayCurrency = currency !== "ALL" ? currency : "USD";
+
+      return {
+        balance: balance || 245000.0,
+        revenue_mtd: revenue,
+        cost_mtd: cost,
+        net_mtd: net,
+        margin_pct: marginPct,
+        margin_valid: marginValid,
+        currency: displayCurrency,
+        base_currency: displayCurrency,
+        period: period,
+        basis: basis,
+        entity: entity,
+        conversion_policy: currency === "ALL"
+          ? "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
+          : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
+        data_scope: `${entity}_${currency.toLowerCase()}`,
+        open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,
+        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => b.status === "unpaid").length,
+        active_subscriptions_count: (FinanceMockState.subscriptions || []).filter((s) => s.is_active).length,
+        generated_at: new Date().toISOString(),
+        kpis: {
+          total_cash: {
+            id: "statFinanceBalance",
+            value: balance || 245000.0,
+            currency: displayCurrency,
+            label: "Total Cash Balance",
+            period: "Current (Real-time)",
+            definition: "Consolidated book cash balance across all active bank and cash accounts matching scope.",
+            formula: "SUM(finance_bank_accounts.current_balance WHERE is_active=True)",
+            source_coverage: `${accounts.length} active bank & cash accounts`,
+            drilldown_section: "finance-accounts",
+            drilldown_filter: { is_active: "true" },
+          },
+          revenue: {
+            id: "statFinanceRevenue",
+            value: revenue,
+            currency: displayCurrency,
+            label: `Revenue (${period})`,
+            period: period,
+            definition: basis === "cash" ? "Actual cash inflows received and categorized as revenue" : "Recognized revenue from all non-void sales invoices issued in period",
+            formula: basis === "cash" ? "SUM(ledger_inflows WHERE source!='transfer')" : "SUM(sales_invoices.total WHERE status NOT IN ('void', 'draft'))",
+            source_coverage: basis === "cash" ? "Bank & cash ledger transactions" : "Sales invoices register",
+            drilldown_section: basis === "cash" ? "finance-transactions" : "finance-invoices",
+            drilldown_filter: basis === "cash" ? { direction: "in" } : { status: "all" },
+          },
+          operating_spend: {
+            id: "statFinanceCost",
+            value: cost,
+            currency: displayCurrency,
+            label: `Operating Expenses (${period})`,
+            period: period,
+            definition: basis === "cash" ? "Actual cash outflows paid for expenses, bills, and charges" : "Recognized costs from all non-void vendor bills issued in period",
+            formula: basis === "cash" ? "SUM(ledger_outflows WHERE source!='transfer')" : "SUM(bills.total WHERE status!='void')",
+            source_coverage: basis === "cash" ? "Bank & cash ledger transactions" : "Vendor bills register",
+            drilldown_section: basis === "cash" ? "finance-transactions" : "finance-bills",
+            drilldown_filter: basis === "cash" ? { direction: "out" } : { status: "all" },
+          },
+          net_result: {
+            id: "statFinanceNet",
+            value: net,
+            currency: displayCurrency,
+            label: `Net Operating Result (${period})`,
+            period: period,
+            definition: "Net operating difference: Revenue minus Operating Expenses for the period.",
+            formula: "Revenue - Operating Expenses",
+            source_coverage: basis === "cash" ? "Ledger operating delta" : "Invoices minus Bills",
+            drilldown_section: "finance-reports",
+            drilldown_filter: {},
+          },
+          operating_margin: {
+            id: "statFinanceMargin",
+            value: marginPct,
+            is_valid: marginValid,
+            unit: "%",
+            label: `Operating Margin (${period})`,
+            period: period,
+            definition: marginValid ? "Operating profitability percentage: (Net Result / Revenue) * 100." : "Margin is undefined when Revenue is zero or negative.",
+            formula: "(Net Operating Result / Revenue) * 100",
+            source_coverage: "Derived from Revenue and Spend",
+            drilldown_section: "finance-reports",
+            drilldown_filter: {},
+          },
+        },
+      };
+    }
+    let url = "/api/finance/reports/summary";
+    if (params && Object.keys(params).length > 0) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  async getDashboardSummary(params = {}) {
+    return this.getFinanceSummary(params);
+  },
+
+  async getAttentionQueue(params = {}) {
+    if (_isMock()) {
+      const severity = (params.severity || "all").toLowerCase();
+      const itemType = (params.item_type || params.type || "all").toLowerCase();
+      const search = (params.search || "").toLowerCase();
+      const includeReviewed = params.include_reviewed === true || params.include_reviewed === "true";
+
+      const reviewedSet = FinanceMockState.attentionReviewed || new Set();
+
+      const allMockItems = [
         {
-          id: 101,
-          payroll_run_id: 1,
-          period_label: "2026-08",
-          period_start: "2026-08-01",
-          period_end: "2026-08-31",
-          employee_id: 1,
-          employee_name: "Sarah Connor",
-          department: "Engineering",
-          base_salary: 15000.0,
-          allowances_total: 0.0,
-          deductions_total: 750.0,
-          tax_amount: 1500.0,
-          net_pay: 12750.0,
+          id: "rec-inv-1",
+          deduplication_key: "invoice:1:overdue",
+          type: "overdue_receivable",
+          severity: "urgent",
+          severity_label: "Urgent",
+          title: "Overdue Invoice: INV-2026-001",
+          description: "Invoice INV-2026-001 to Apex Health Partners is overdue by 13 days. Outstanding balance: $12,500.00 USD.",
+          counterparty: "Apex Health Partners",
+          amount: 12500.0,
           currency: "USD",
-          status: "paid",
-          paid_date: "2026-08-31",
-          bank_name: "Chase",
-          bank_account_masked: "••••4821",
+          due_date: "2026-09-01",
+          due_state: "overdue",
+          due_state_label: "Overdue by 13d",
+          owner: "billing@apexhealth.com",
+          target_route: "a-finance-invoices",
+          target_id: 1,
+          target_filter: { status: "overdue", invoice_id: 1 },
+          permission: "finance.invoice.read",
+          priority_score: 95,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("invoice:1:overdue"),
+          created_at: "2026-09-01T08:00:00",
+        },
+        {
+          id: "bill-1",
+          deduplication_key: "bill:1:due",
+          type: "bill_due",
+          severity: "urgent",
+          severity_label: "Urgent",
+          title: "Overdue Bill: BILL-2026-001",
+          description: "Bill BILL-2026-001 from Amazon Web Services is overdue by 5 days. Payable balance: $4,200.00 USD.",
+          counterparty: "Amazon Web Services",
+          amount: 4200.0,
+          currency: "USD",
+          due_date: "2026-09-08",
+          due_state: "overdue",
+          due_state_label: "Overdue by 5d",
+          owner: "aws-receivables@amazon.com",
+          target_route: "a-finance-bills",
+          target_id: 1,
+          target_filter: { bill_id: 1 },
+          permission: "finance.bill.read",
+          priority_score: 88,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("bill:1:due"),
+          created_at: "2026-09-01T08:00:00",
+        },
+        {
+          id: "cash-acc-4",
+          deduplication_key: "account:4:negative_balance",
+          type: "negative_cash",
+          severity: "urgent",
+          severity_label: "Urgent",
+          title: "Negative Balance: Cairo Office Petty Cash Drawer",
+          description: "Petty cash drawer has an overdraft balance of 2,500.00 EGP. Replenishment transfer required.",
+          counterparty: "Cairo Office Petty Cash",
+          amount: 2500.0,
+          currency: "EGP",
+          due_date: "2026-09-13",
+          due_state: "immediate",
+          due_state_label: "Action Required (Overdraft)",
+          owner: null,
+          target_route: "a-finance-accounts",
+          target_id: 4,
+          target_filter: { is_active: "true" },
+          permission: "finance.account.read",
+          priority_score: 110,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("account:4:negative_balance"),
+          created_at: "2026-09-10T12:00:00",
+        },
+        {
+          id: "transfer-1",
+          deduplication_key: "transfer:1:incomplete",
+          type: "pending_approval",
+          severity: "warning",
+          severity_label: "Warning",
+          title: "Incomplete Transfer #1",
+          description: "Transfer of $50,000.00 USD from Voyance Operating USD to Voyance Treasury Reserve has confirmed leg 'from_only'. Second leg requires confirmation.",
+          counterparty: "Voyance Operating USD → Treasury Reserve",
+          amount: 50000.0,
+          currency: "USD",
+          due_date: "2026-09-12",
+          due_state: "pending_review",
+          due_state_label: "Pending Second Leg",
+          owner: "finance.admin@example.com",
+          target_route: "a-finance-transfers",
+          target_id: 1,
+          target_filter: { transfer_id: 1 },
+          permission: "finance.transfer.read",
+          priority_score: 75,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("transfer:1:incomplete"),
+          created_at: "2026-09-12T15:30:00",
+        },
+        {
+          id: "stmt-1",
+          deduplication_key: "statement:1:unmatched",
+          type: "unreconciled_statement",
+          severity: "warning",
+          severity_label: "Warning",
+          title: "Unreconciled Statement: JPMorgan Chase (2026-08)",
+          description: "Statement import for 2026-08 contains 3 unmatched statement lines requiring ledger matching.",
+          counterparty: "JPMorgan Chase",
+          amount: 3850.0,
+          currency: "USD",
+          due_date: "2026-09-01",
+          due_state: "needs_reconciliation",
+          due_state_label: "3 Unmatched Lines",
+          owner: null,
+          target_route: "a-finance-statements",
+          target_id: 1,
+          target_filter: { import_id: 1 },
+          permission: "finance.statement.read",
+          priority_score: 65,
+          can_resolve: true,
+          can_mark_reviewed: true,
+          is_reviewed: reviewedSet.has("statement:1:unmatched"),
+          created_at: "2026-09-01T14:00:00",
         },
       ];
-    }
-    return apiRequest("GET", "/api/finance/payroll/payslips/my");
-  },
 
-  async getEmployeePayslip(runId, employeeId) {
-    if (_isMock()) {
-      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
-      const line = run ? (run.lines || []).find((l) => l.employee_id === parseInt(employeeId, 10)) : null;
+      let filtered = allMockItems.filter((it) => {
+        if (!includeReviewed && it.is_reviewed) return false;
+        if (severity !== "all" && it.severity !== severity) return false;
+        if (itemType !== "all" && it.type !== itemType) return false;
+        if (search) {
+          const s = search.toLowerCase();
+          const match =
+            it.title.toLowerCase().includes(s) ||
+            it.description.toLowerCase().includes(s) ||
+            (it.counterparty && it.counterparty.toLowerCase().includes(s));
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => b.priority_score - a.priority_score);
+
+      const urgentCount = filtered.filter((i) => i.severity === "urgent").length;
+      const warningCount = filtered.filter((i) => i.severity === "warning").length;
+      const infoCount = filtered.filter((i) => i.severity === "info").length;
+
+      const currencyTotals = {};
+      filtered.forEach((it) => {
+        if (it.amount && it.currency) {
+          currencyTotals[it.currency] = round((currencyTotals[it.currency] || 0) + it.amount, 2);
+        }
+      });
+
       return {
-        id: line ? line.id : 101,
-        payroll_run_id: runId,
-        period_label: run ? run.period_label : "2026-08",
-        period_start: run ? run.period_start : "2026-08-01",
-        period_end: run ? run.period_end : "2026-08-31",
-        employee_id: employeeId,
-        employee_name: line ? line.employee_name : "Sarah Connor",
-        department: line ? line.department : "Engineering",
-        base_salary: line ? line.base_salary : 15000.0,
-        allowances_total: line ? line.allowances_total : 0.0,
-        deductions_total: line ? line.deductions_total : 750.0,
-        tax_amount: line ? line.tax_amount : 1500.0,
-        net_pay: line ? line.net_pay : 12750.0,
-        currency: run ? run.currency : "USD",
-        status: line ? line.payment_status : "paid",
-        paid_date: line ? (line.paid_at ? line.paid_at.slice(0, 10) : "2026-08-31") : "2026-08-31",
-        bank_name: line ? line.bank_name : "Chase",
-        bank_account_masked: line ? line.bank_account_masked : "••••4821",
+        total_count: filtered.length,
+        urgent_count: urgentCount,
+        warning_count: warningCount,
+        info_count: infoCount,
+        total_amount_by_currency: currencyTotals,
+        items: filtered,
+        generated_at: new Date().toISOString(),
       };
     }
-    return apiRequest("GET", `/api/finance/payroll/runs/${runId}/payslips/${employeeId}`);
+
+    let url = "/api/finance/reports/attention-queue";
+    if (params && Object.keys(params).length > 0) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
   },
 
-  async getEntityActivity(entityType, entityId) {
+  async reviewAttentionItem(itemKey, payload = {}) {
+    if (_isMock()) {
+      if (!FinanceMockState.attentionReviewed) {
+        FinanceMockState.attentionReviewed = new Set();
+      }
+      FinanceMockState.attentionReviewed.add(itemKey);
+      return { success: true, deduplication_key: itemKey, status: payload.status || "reviewed" };
+    }
+    const encodedKey = encodeURIComponent(itemKey);
+    return apiRequest("POST", `/api/finance/reports/attention-queue/${encodedKey}/review`, payload);
+  },
+
+  async getCashForecast(params = {}) {
+    if (_isMock()) {
+      const currency = (params.currency || "all").toUpperCase();
+      const horizonDays = parseInt(params.horizon_days || "90", 10);
+      const includeExpected = params.include_expected !== false && params.include_expected !== "false";
+
+      let rawAccounts = FinanceMockState.accounts || [];
+      if (currency !== "ALL") {
+        rawAccounts = rawAccounts.filter((a) => (a.currency || "").toUpperCase() === currency);
+      }
+
+      const cheques = FinanceMockState.cheques || [];
+      const transfers = FinanceMockState.transfers || [];
+
+      let totalCurrentCash = 0;
+      const currentCashByCurrency = {};
+
+      const accounts = rawAccounts.map((acc) => {
+        const bookBal = round(acc.current_balance || 0, 2);
+        const curr = (acc.currency || "USD").toUpperCase();
+        currentCashByCurrency[curr] = round((currentCashByCurrency[curr] || 0) + bookBal, 2);
+        totalCurrentCash = round(totalCurrentCash + bookBal, 2);
+
+        // Uncleared issued cheques
+        let uncleared = 0;
+        cheques.forEach((chq) => {
+          if (chq.account_id === acc.id && chq.status === "issued") {
+            uncleared += (chq.amount || 0);
+          }
+        });
+        uncleared = round(uncleared, 2);
+
+        // Pending outgoing transfers
+        let pending = 0;
+        transfers.forEach((tr) => {
+          if (tr.from_account_id === acc.id && tr.confirmed_leg !== "both") {
+            pending += (tr.from_amount || 0);
+          }
+        });
+        pending = round(pending, 2);
+
+        const availableBal = round(bookBal - uncleared - pending, 2);
+        const reconciledBal = bookBal > 0 ? round(bookBal * 0.95, 2) : bookBal;
+
+        return {
+          account_id: acc.id,
+          account_name: acc.account_name,
+          bank_name: acc.bank_name,
+          account_type: acc.account_type || "bank",
+          currency: acc.currency,
+          book_balance: bookBal,
+          available_balance: availableBal,
+          reconciled_balance: reconciledBal,
+          uncleared_cheques_amount: uncleared,
+          pending_transfers_amount: pending,
+          is_active: acc.is_active,
+        };
+      });
+
+      // Obligations
+      const obligations = [];
+      const todayStr = "2026-09-13";
+      const today = new Date("2026-09-13T00:00:00");
+
+      // (a) Invoices
+      (FinanceMockState.invoices || []).forEach((inv) => {
+        if (["void", "draft"].includes((inv.status || "").toLowerCase())) return;
+        if (currency !== "ALL" && (inv.currency || "").toUpperCase() !== currency) return;
+        const total = inv.total || 0;
+        const paid = (inv.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const bal = round(total - paid, 2);
+        if (bal <= 0) return;
+
+        const isOverdue = inv.due_date && inv.due_date < todayStr;
+        obligations.push({
+          id: `inflow-inv-${inv.id}`,
+          entity_type: "invoice",
+          entity_id: inv.id,
+          reference: inv.invoice_number,
+          counterparty: inv.customer_name || "Customer",
+          type: "inflow",
+          amount: bal,
+          currency: inv.currency,
+          due_date: isOverdue ? todayStr : (inv.due_date || todayStr),
+          status: isOverdue ? "expected" : "confirmed",
+          certainty: isOverdue ? "overdue" : "contractual",
+          target_route: "a-finance-invoices",
+          notes: `Sales Invoice balance: ${bal.toLocaleString()} ${inv.currency}`,
+        });
+      });
+
+      // (b) Bills
+      (FinanceMockState.bills || []).forEach((bill) => {
+        if (["void", "draft"].includes((bill.status || "").toLowerCase())) return;
+        if (currency !== "ALL" && (bill.currency || "").toUpperCase() !== currency) return;
+        const total = bill.total || 0;
+        const paid = (bill.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const bal = round(total - paid, 2);
+        if (bal <= 0) return;
+
+        const isOverdue = bill.due_date && bill.due_date < todayStr;
+        obligations.push({
+          id: `outflow-bill-${bill.id}`,
+          entity_type: "bill",
+          entity_id: bill.id,
+          reference: bill.bill_number,
+          counterparty: bill.vendor_name || "Vendor",
+          type: "outflow",
+          amount: bal,
+          currency: bill.currency,
+          due_date: isOverdue ? todayStr : (bill.due_date || todayStr),
+          status: "confirmed",
+          certainty: isOverdue ? "overdue" : "contractual",
+          target_route: "a-finance-bills",
+          notes: `Vendor payable balance: ${bal.toLocaleString()} ${bill.currency}`,
+        });
+      });
+
+      // (c) Subscriptions
+      if (includeExpected) {
+        (FinanceMockState.subscriptions || []).forEach((sub) => {
+          if (!sub.is_active) return;
+          if (currency !== "ALL" && (sub.currency || "").toUpperCase() !== currency) return;
+          const amt = round(sub.amount || 0, 2);
+          if (amt <= 0) return;
+
+          [0, 1, 2].forEach((cycle) => {
+            const d = new Date(today);
+            d.setDate(d.getDate() + 15 + cycle * 30);
+            const cycleDateStr = d.toISOString().split("T")[0];
+            obligations.push({
+              id: `outflow-sub-${sub.id}-c${cycle}`,
+              entity_type: "subscription",
+              entity_id: sub.id,
+              reference: `${sub.name} (Renewal #${cycle + 1})`,
+              counterparty: sub.vendor_name || sub.name,
+              type: "outflow",
+              amount: amt,
+              currency: sub.currency,
+              due_date: cycleDateStr,
+              status: "expected",
+              certainty: "estimated",
+              target_route: "a-finance-spend",
+              notes: `Recurring ${sub.billing_cycle || "monthly"} subscription charge`,
+            });
+          });
+        });
+      }
+
+      // Horizons calculations
+      const horizonsMeta = [
+        { key: "30_days", days: 30, label: "Next 30 Days", minDays: 0, maxDays: 30 },
+        { key: "60_days", days: 60, label: "31 - 60 Days", minDays: 31, maxDays: 60 },
+        { key: "90_days", days: 90, label: "61 - 90 Days", minDays: 61, maxDays: 90 },
+      ];
+
+      let runningCash = totalCurrentCash;
+      const horizons = {};
+
+      horizonsMeta.forEach((h) => {
+        let confIn = 0;
+        let expIn = 0;
+        let confOut = 0;
+        let expOut = 0;
+
+        obligations.forEach((ob) => {
+          const obDate = new Date(ob.due_date + "T00:00:00");
+          const diffDays = Math.round((obDate - today) / (1000 * 60 * 60 * 24));
+          const inRange = (h.key === "30_days" && diffDays <= 30) || (diffDays >= h.minDays && diffDays <= h.maxDays);
+          if (inRange) {
+            if (ob.type === "inflow") {
+              if (ob.status === "confirmed") confIn += ob.amount;
+              else expIn += ob.amount;
+            } else {
+              if (ob.status === "confirmed") confOut += ob.amount;
+              else expOut += ob.amount;
+            }
+          }
+        });
+
+        confIn = round(confIn, 2);
+        expIn = round(expIn, 2);
+        confOut = round(confOut, 2);
+        expOut = round(expOut, 2);
+
+        const totIn = round(confIn + expIn, 2);
+        const totOut = round(confOut + expOut, 2);
+        const netFlow = round(totIn - totOut, 2);
+        runningCash = round(runningCash + netFlow, 2);
+
+        horizons[h.key] = {
+          period_label: h.label,
+          days: h.days,
+          confirmed_inflows: confIn,
+          expected_inflows: expIn,
+          total_inflows: totIn,
+          confirmed_outflows: confOut,
+          expected_outflows: expOut,
+          total_outflows: totOut,
+          net_cash_flow: netFlow,
+          projected_ending_cash: runningCash,
+          confidence: h.key === "30_days" ? "high" : (h.key === "60_days" ? "medium" : "low"),
+        };
+      });
+
+      obligations.sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+      const fxWarnings = [];
+      if (currency === "ALL") {
+        fxWarnings.push("Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.");
+      }
+
+      return {
+        as_of_date: todayStr,
+        currency: currency,
+        accounts: accounts,
+        current_cash_by_currency: currentCashByCurrency,
+        total_current_cash: totalCurrentCash,
+        horizons: horizons,
+        material_obligations: obligations.slice(0, 50),
+        assumptions: [
+          "Draft sales invoices and unapproved vendor bills are strictly excluded from cash projections.",
+          "Contractual obligations with past-due dates are placed in the immediate 0-30 day horizon with an overdue status indicator.",
+          "Active monthly subscriptions repeat every 30 days as estimated expected outflows.",
+          "Book, available, and reconciled balances are tracked independently and never conflated.",
+        ],
+        fx_warnings: fxWarnings,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
+    let url = "/api/finance/reports/cash-forecast";
+    if (params && Object.keys(params).length > 0) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+
+async getEntityActivity(entityType, entityId) {
     const norm = (entityType || "").toLowerCase().replace(/s$/, "");
     const id = parseInt(entityId, 10);
     if (_isMock()) {
@@ -6093,7 +5890,668 @@ const FinanceApi = {
   },
 
   // ==========================================
-  // Story 8.1: Guided Payroll Run API
+  };
+
+  root.FinanceDashboardApi = FinanceDashboardApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceDashboardApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceDashboardApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/payroll-api.js
+ * Finance API - Payroll & Compensation domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.payrollRuns) {
+    FinanceMockState.payrollRuns = [
+    {
+      id: 1,
+      period_label: "2026-08",
+      period_start: "2026-08-01",
+      period_end: "2026-08-31",
+      status: "paid",
+      total_gross: 45000.0,
+      total_tax: 4500.0,
+      total_deductions: 2250.0,
+      total_net: 38250.0,
+      total_employer_cost: 50400.0,
+      headcount: 4,
+      currency: "USD",
+      bank_account_id: 1,
+      bank_account_name: "Voyance Operating USD",
+      created_at: "2026-08-25T09:00:00Z",
+      created_by: "payroll@voyance.health",
+      approved_at: "2026-08-28T10:00:00Z",
+      approved_by: "cfo@voyance.health",
+      finalized_at: "2026-08-29T11:00:00Z",
+      finalized_by: "payroll@voyance.health",
+      paid_at: "2026-08-31T14:30:00Z",
+      paid_by: "payroll@voyance.health",
+      journal_transaction_id: 101,
+      has_blocking_exceptions: false,
+      exceptions: [],
+      variance_summary: {
+        prior_period_label: "2026-07",
+        headcount_delta: 0,
+        gross_delta: 0.0,
+        net_delta: 0.0,
+        pct_change: 0.0,
+        joiners_count: 0,
+        leavers_count: 0,
+        raises_count: 0,
+      },
+      liabilities_summary: {
+        net_pay_payable: 38250.0,
+        income_tax_withheld: 4500.0,
+        social_insurance_employee: 2250.0,
+        social_insurance_employer: 5400.0,
+        total_liabilities: 50400.0,
+      },
+      lines: [
+        {
+          id: 1,
+          payroll_run_id: 1,
+          employee_id: 1,
+          employee_name: "Sarah Connor",
+          department: "Engineering",
+          base_salary: 15000.0,
+          allowances_total: 0.0,
+          deductions_total: 750.0,
+          tax_amount: 1500.0,
+          net_pay: 12750.0,
+          employer_cost_extra: 1800.0,
+          bank_name: "Chase",
+          bank_account_masked: "••••4821",
+          payment_status: "paid",
+          failure_reason: null,
+          snapshot_notes: "August regular payroll",
+          created_at: "2026-08-25T09:00:00Z",
+          paid_at: "2026-08-31T14:30:00Z",
+        },
+        {
+          id: 2,
+          payroll_run_id: 1,
+          employee_id: 2,
+          employee_name: "John DevOps",
+          department: "Operations",
+          base_salary: 12000.0,
+          allowances_total: 0.0,
+          deductions_total: 600.0,
+          tax_amount: 1200.0,
+          net_pay: 10200.0,
+          employer_cost_extra: 1440.0,
+          bank_name: "SVB",
+          bank_account_masked: "••••9102",
+          payment_status: "paid",
+          failure_reason: null,
+          snapshot_notes: "August regular payroll",
+          created_at: "2026-08-25T09:00:00Z",
+          paid_at: "2026-08-31T14:30:00Z",
+        },
+      ],
+    },
+    {
+      id: 2,
+      period_label: "2026-09",
+      period_start: "2026-09-01",
+      period_end: "2026-09-30",
+      status: "draft",
+      total_gross: 47000.0,
+      total_tax: 4700.0,
+      total_deductions: 2350.0,
+      total_net: 39950.0,
+      total_employer_cost: 52640.0,
+      headcount: 4,
+      currency: "USD",
+      bank_account_id: 1,
+      bank_account_name: "Voyance Operating USD",
+      created_at: "2026-09-10T10:00:00Z",
+      created_by: "payroll@voyance.health",
+      approved_at: null,
+      approved_by: null,
+      finalized_at: null,
+      finalized_by: null,
+      paid_at: null,
+      paid_by: null,
+      journal_transaction_id: null,
+      has_blocking_exceptions: false,
+      exceptions: [],
+      variance_summary: {
+        prior_period_label: "2026-08",
+        headcount_delta: 0,
+        gross_delta: 2000.0,
+        net_delta: 1700.0,
+        pct_change: 4.4,
+        joiners_count: 0,
+        leavers_count: 0,
+        raises_count: 1,
+      },
+      liabilities_summary: {
+        net_pay_payable: 39950.0,
+        income_tax_withheld: 4700.0,
+        social_insurance_employee: 2350.0,
+        social_insurance_employer: 5640.0,
+        total_liabilities: 52640.0,
+      },
+      lines: [
+        {
+          id: 3,
+          payroll_run_id: 2,
+          employee_id: 1,
+          employee_name: "Sarah Connor",
+          department: "Engineering",
+          base_salary: 15000.0,
+          allowances_total: 0.0,
+          deductions_total: 750.0,
+          tax_amount: 1500.0,
+          net_pay: 12750.0,
+          employer_cost_extra: 1800.0,
+          bank_name: "Chase",
+          bank_account_masked: "••••4821",
+          payment_status: "pending",
+          failure_reason: null,
+          snapshot_notes: "September regular payroll",
+          created_at: "2026-09-10T10:00:00Z",
+          paid_at: null,
+        },
+        {
+          id: 4,
+          payroll_run_id: 2,
+          employee_id: 2,
+          employee_name: "John DevOps",
+          department: "Operations",
+          base_salary: 14000.0,
+          allowances_total: 0.0,
+          deductions_total: 700.0,
+          tax_amount: 1400.0,
+          net_pay: 11900.0,
+          employer_cost_extra: 1680.0,
+          bank_name: "SVB",
+          bank_account_masked: "••••9102",
+          payment_status: "pending",
+          failure_reason: null,
+          snapshot_notes: "September regular payroll (promotion adjustment)",
+          created_at: "2026-09-10T10:00:00Z",
+          paid_at: null,
+        },
+      ],
+    },
+  ];
+  }
+
+  if (!FinanceMockState.compensationPlans) {
+    FinanceMockState.compensationPlans = [
+    {
+      id: 1,
+      employee_id: "EMP001",
+      component_type: "external_usd",
+      amount: 8000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "US account direct deposit",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 2,
+      employee_id: "EMP001",
+      component_type: "internal_usd_cash",
+      amount: 4500.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "Cairo monthly cash payout",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 3,
+      employee_id: 1,
+      component_type: "external_usd",
+      amount: 10000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "US account direct deposit",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 4,
+      employee_id: 1,
+      component_type: "internal_usd_cash",
+      amount: 5000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "Cairo monthly cash payout",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 5,
+      employee_id: 2,
+      component_type: "external_usd",
+      amount: 8000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "US account wire",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+    {
+      id: 6,
+      employee_id: 2,
+      component_type: "internal_usd_cash",
+      amount: 4000.0,
+      currency: "USD",
+      effective_start_date: "2026-01-01",
+      effective_end_date: null,
+      notes: "Local cash component",
+      created_at: "2026-01-01T09:00:00Z",
+      updated_at: "2026-01-01T09:00:00Z",
+    },
+  ];
+  }
+
+  const FinancePayrollApi = {
+// Story 8.1: Guided Payroll Run
+  // ==========================================
+  async getPayrollRuns(params = {}) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.payrollRuns || [])];
+      if (params.status && params.status !== "all") {
+        list = list.filter((r) => r.status === params.status);
+      }
+      if (params.search) {
+        const s = params.search.toLowerCase();
+        list = list.filter((r) => (r.period_label || "").toLowerCase().includes(s));
+      }
+      return list;
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/payroll/runs${qs ? "?" + qs : ""}`);
+  },
+
+  async previewPayrollRun(payload) {
+    if (_isMock()) {
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
+      return {
+        period_label: payload.period_label || "2026-10",
+        period_start: payload.period_start || "2026-10-01",
+        period_end: payload.period_end || "2026-10-31",
+        bank_account_id: payload.bank_account_id || 1,
+        bank_account_name: "Voyance Operating USD",
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
+        headcount: 3,
+        total_gross: 29000.0,
+        total_tax: 1900.0,
+        total_deductions: 950.0,
+        total_net: 26150.0,
+        total_employer_cost: 31280.0,
+        has_blocking_exceptions: false,
+        exceptions: [],
+        variance_summary: {
+          prior_period_label: "2026-09",
+          headcount_delta: 0,
+          gross_delta: 1500.0,
+          net_delta: 1275.0,
+          pct_change: 3.2,
+          joiners_count: 0,
+          leavers_count: 0,
+          raises_count: 1,
+        },
+        liabilities_summary: {
+          net_pay_payable: 26150.0,
+          income_tax_withheld: 1900.0,
+          social_insurance_employee: 950.0,
+          social_insurance_employer: 2280.0,
+          total_liabilities: 31280.0,
+        },
+        journal_preview: {
+          debits: [
+            {
+              account: "Salaries & Wages Expense",
+              account_code: "5000-SAL",
+              direction: "debit",
+              amount: 29000.0,
+              description: `Gross employee earnings for ${payload.period_label || "2026-10"}`,
+            },
+            {
+              account: "Employer Payroll Tax & Insurance Expense",
+              account_code: "5010-ETAX",
+              direction: "debit",
+              amount: 2280.0,
+              description: `Employer statutory contributions for ${payload.period_label || "2026-10"}`,
+            },
+          ],
+          credits: [
+            {
+              account: "Voyance Operating USD",
+              account_code: "1000-BANK",
+              direction: "credit",
+              amount: 26150.0,
+              description: "Net salary disbursements from funding account",
+            },
+            {
+              account: "Payroll Taxes & Statutory Liabilities Payable",
+              account_code: "2100-PAYLIAB",
+              direction: "credit",
+              amount: 5130.0,
+              description: "Employee withholdings & employer taxes payable",
+            },
+          ],
+          total_debit: 31280.0,
+          total_credit: 31280.0,
+          is_balanced: true,
+        },
+        lines: [
+          {
+            id: 101,
+            payroll_run_id: 0,
+            employee_id: 1,
+            employee_name: "Sarah Connor",
+            department: "Engineering",
+            compensation_type: "external_usd",
+            is_taxable_local: false,
+            is_insurable: false,
+            base_salary: 10000.0,
+            allowances_total: 0.0,
+            deductions_total: 0.0,
+            tax_amount: 0.0,
+            net_pay: 10000.0,
+            employer_cost_extra: 0.0,
+            bank_name: "Chase",
+            bank_account_masked: "••••4821",
+            payment_status: "pending",
+            failure_reason: null,
+            snapshot_notes: "External USD - October",
+            created_at: new Date().toISOString(),
+            paid_at: null,
+          },
+          {
+            id: 102,
+            payroll_run_id: 0,
+            employee_id: 1,
+            employee_name: "Sarah Connor",
+            department: "Engineering",
+            compensation_type: "internal_usd_cash",
+            is_taxable_local: true,
+            is_insurable: true,
+            base_salary: 5000.0,
+            allowances_total: 0.0,
+            deductions_total: 250.0,
+            tax_amount: 500.0,
+            net_pay: 4250.0,
+            employer_cost_extra: 600.0,
+            bank_name: "Chase",
+            bank_account_masked: "••••4821",
+            payment_status: "pending",
+            failure_reason: null,
+            snapshot_notes: "Internal Cash - October",
+            created_at: new Date().toISOString(),
+            paid_at: null,
+          },
+          {
+            id: 103,
+            payroll_run_id: 0,
+            employee_id: 2,
+            employee_name: "John DevOps",
+            department: "Operations",
+            compensation_type: "internal_usd_cash",
+            is_taxable_local: true,
+            is_insurable: true,
+            base_salary: 14000.0,
+            allowances_total: 0.0,
+            deductions_total: 700.0,
+            tax_amount: 1400.0,
+            net_pay: 11900.0,
+            employer_cost_extra: 1680.0,
+            bank_name: "SVB",
+            bank_account_masked: "••••9102",
+            payment_status: "pending",
+            failure_reason: null,
+            snapshot_notes: "Internal Cash - October",
+            created_at: new Date().toISOString(),
+            paid_at: null,
+          },
+        ],
+      };
+    }
+    return apiRequest("POST", "/api/finance/payroll/runs/preview", payload);
+  },
+
+  async generatePayrollRun(payload) {
+    if (_isMock()) {
+      const prev = await this.previewPayrollRun(payload);
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
+      const newRun = {
+        id: (FinanceMockState.payrollRuns || []).length + 1,
+        period_label: payload.period_label,
+        period_start: payload.period_start,
+        period_end: payload.period_end,
+        status: "draft",
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
+        total_gross: prev.total_gross,
+        total_tax: prev.total_tax,
+        total_deductions: prev.total_deductions,
+        total_net: prev.total_net,
+        total_employer_cost: prev.total_employer_cost,
+        headcount: prev.headcount,
+        currency: payload.currency || "USD",
+        bank_account_id: payload.bank_account_id || 1,
+        bank_account_name: prev.bank_account_name,
+        created_at: new Date().toISOString(),
+        created_by: "payroll@voyance.health",
+        approved_at: null,
+        approved_by: null,
+        finalized_at: null,
+        finalized_by: null,
+        paid_at: null,
+        paid_by: null,
+        journal_transaction_id: null,
+        has_blocking_exceptions: false,
+        exceptions: [],
+        variance_summary: prev.variance_summary,
+        liabilities_summary: prev.liabilities_summary,
+        lines: prev.lines.map((l, idx) => ({ ...l, id: Date.now() + idx, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
+      };
+      if (!FinanceMockState.payrollRuns) FinanceMockState.payrollRuns = [];
+      FinanceMockState.payrollRuns.unshift(newRun);
+      return newRun;
+    }
+    return apiRequest("POST", "/api/finance/payroll/runs/generate", payload);
+  },
+
+  async createPayrollRun(payload) {
+    if (_isMock()) {
+      const prev = await this.previewPayrollRun(payload);
+      const fxRateSource = payload.fx_rate_source || "first_of_month";
+      const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
+      const newRun = {
+        id: (FinanceMockState.payrollRuns || []).length + 1,
+        period_label: payload.period_label,
+        period_start: payload.period_start,
+        period_end: payload.period_end,
+        status: "draft",
+        fx_rate_source: fxRateSource,
+        fx_rate_value: fxRateValue,
+        total_gross: prev.total_gross,
+        total_tax: prev.total_tax,
+        total_deductions: prev.total_deductions,
+        total_net: prev.total_net,
+        total_employer_cost: prev.total_employer_cost,
+        headcount: prev.headcount,
+        currency: payload.currency || "USD",
+        bank_account_id: payload.bank_account_id || 1,
+        bank_account_name: prev.bank_account_name,
+        created_at: new Date().toISOString(),
+        created_by: "payroll@voyance.health",
+        approved_at: null,
+        approved_by: null,
+        finalized_at: null,
+        finalized_by: null,
+        paid_at: null,
+        paid_by: null,
+        journal_transaction_id: null,
+        has_blocking_exceptions: false,
+        exceptions: [],
+        variance_summary: prev.variance_summary,
+        liabilities_summary: prev.liabilities_summary,
+        lines: (payload.lines && payload.lines.length > 0 ? payload.lines : prev.lines).map((l, idx) => ({ ...l, id: Date.now() + idx, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
+      };
+      if (!FinanceMockState.payrollRuns) FinanceMockState.payrollRuns = [];
+      FinanceMockState.payrollRuns.unshift(newRun);
+      return newRun;
+    }
+    return apiRequest("POST", "/api/finance/payroll/runs", payload);
+  },
+
+  async getPayrollRun(id) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
+      if (!run) throw new Error(`Payroll run #${id} not found`);
+      return run;
+    }
+    return apiRequest("GET", `/api/finance/payroll/runs/${id}`);
+  },
+
+  async approvePayrollRun(id) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
+      if (!run) throw new Error(`Payroll run #${id} not found`);
+      run.status = "approved";
+      run.approved_at = new Date().toISOString();
+      run.approved_by = "cfo@voyance.health";
+      return run;
+    }
+    return apiRequest("POST", `/api/finance/payroll/runs/${id}/approve`);
+  },
+
+  async finalizePayrollRun(id) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
+      if (!run) throw new Error(`Payroll run #${id} not found`);
+      run.status = "finalized";
+      run.finalized_at = new Date().toISOString();
+      run.finalized_by = "payroll@voyance.health";
+      return run;
+    }
+    return apiRequest("POST", `/api/finance/payroll/runs/${id}/finalize`);
+  },
+
+  async payPayrollRun(id, payload = {}) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
+      if (!run) throw new Error(`Payroll run #${id} not found`);
+      run.status = "paid";
+      run.paid_at = new Date().toISOString();
+      run.paid_by = "payroll@voyance.health";
+      (run.lines || []).forEach((l) => {
+        l.payment_status = "paid";
+        l.paid_at = run.paid_at;
+      });
+      return run;
+    }
+    return apiRequest("POST", `/api/finance/payroll/runs/${id}/pay`, payload);
+  },
+
+  async postPayrollJournal(id) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
+      if (!run) throw new Error(`Payroll run #${id} not found`);
+      run.journal_transaction_id = 999;
+      return {
+        success: true,
+        journal_transaction_id: 999,
+        reference: `PAYROLL-${run.period_label}`,
+        amount: run.total_net,
+        date: new Date().toISOString().slice(0, 10),
+        is_already_posted: false,
+      };
+    }
+    return apiRequest("POST", `/api/finance/payroll/runs/${id}/post-journal`);
+  },
+
+  async getMyPayslips() {
+    if (_isMock()) {
+      return [
+        {
+          id: 101,
+          payroll_run_id: 1,
+          period_label: "2026-08",
+          period_start: "2026-08-01",
+          period_end: "2026-08-31",
+          employee_id: 1,
+          employee_name: "Sarah Connor",
+          department: "Engineering",
+          base_salary: 15000.0,
+          allowances_total: 0.0,
+          deductions_total: 750.0,
+          tax_amount: 1500.0,
+          net_pay: 12750.0,
+          currency: "USD",
+          status: "paid",
+          paid_date: "2026-08-31",
+          bank_name: "Chase",
+          bank_account_masked: "••••4821",
+        },
+      ];
+    }
+    return apiRequest("GET", "/api/finance/payroll/payslips/my");
+  },
+
+  async getEmployeePayslip(runId, employeeId) {
+    if (_isMock()) {
+      const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+      const line = run ? (run.lines || []).find((l) => l.employee_id === parseInt(employeeId, 10)) : null;
+      return {
+        id: line ? line.id : 101,
+        payroll_run_id: runId,
+        period_label: run ? run.period_label : "2026-08",
+        period_start: run ? run.period_start : "2026-08-01",
+        period_end: run ? run.period_end : "2026-08-31",
+        employee_id: employeeId,
+        employee_name: line ? line.employee_name : "Sarah Connor",
+        department: line ? line.department : "Engineering",
+        base_salary: line ? line.base_salary : 15000.0,
+        allowances_total: line ? line.allowances_total : 0.0,
+        deductions_total: line ? line.deductions_total : 750.0,
+        tax_amount: line ? line.tax_amount : 1500.0,
+        net_pay: line ? line.net_pay : 12750.0,
+        currency: run ? run.currency : "USD",
+        status: line ? line.payment_status : "paid",
+        paid_date: line ? (line.paid_at ? line.paid_at.slice(0, 10) : "2026-08-31") : "2026-08-31",
+        bank_name: line ? line.bank_name : "Chase",
+        bank_account_masked: line ? line.bank_account_masked : "••••4821",
+      };
+    }
+    return apiRequest("GET", `/api/finance/payroll/runs/${runId}/payslips/${employeeId}`);
+  },
+
+// Story 8.1: Guided Payroll Run API
   // ==========================================
   async getPayrollRuns(params) {
     if (_isMock()) {
@@ -6627,58 +7085,236 @@ const FinanceApi = {
     return apiRequest("GET", `/api/finance/payroll/runs/${runId}/payslips/${employeeId}`);
   },
 
-  async getFeatureFlags() {
+// Employee Compensation Plans (FUX-416)
+  async getEmployeeCompensationPlan(employeeId) {
     if (_isMock()) {
-      const flags = FinanceMockState.featureFlags || {};
+      const plans = (FinanceMockState.compensationPlans || []).filter(
+        (p) => String(p.employee_id) === String(employeeId) && !p.effective_end_date
+      );
+      const ext = plans.find((p) => p.component_type === "external_usd") || null;
+      const intCash = plans.find((p) => p.component_type === "internal_usd_cash") || null;
+      const total = round((ext ? Number(ext.amount) : 0) + (intCash ? Number(intCash.amount) : 0));
       return {
-        status: "success",
-        flags: { ...flags },
-        rollout_stage: Object.values(flags).every(Boolean) ? "general_availability" : "pilot",
-        active_count: Object.values(flags).filter(Boolean).length,
-        total_count: Object.keys(flags).length,
+        employee_id: employeeId,
+        external_usd: ext,
+        internal_usd_cash: intCash,
+        total_monthly_usd: total,
       };
     }
-    return apiRequest("GET", "/api/finance/feature-flags");
+    return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan`);
   },
 
-  async updateFeatureFlags(flags) {
+  async getEmployeeCompensationPlanHistory(employeeId) {
     if (_isMock()) {
-      FinanceMockState.featureFlags = { ...(FinanceMockState.featureFlags || {}), ...flags };
-      return {
-        status: "success",
-        flags: { ...FinanceMockState.featureFlags },
-        message: `Updated ${Object.keys(flags).length} feature flag(s) safely`,
-      };
+      const history = (FinanceMockState.compensationPlans || [])
+        .filter((p) => String(p.employee_id) === String(employeeId))
+        .sort((a, b) => new Date(b.effective_start_date) - new Date(a.effective_start_date) || b.id - a.id);
+      return history;
     }
-    return apiRequest("PATCH", "/api/finance/feature-flags", { flags });
+    return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan/history`);
   },
 
-  async isFeatureEnabled(flagKey) {
-    try {
-      const res = await this.getFeatureFlags();
-      return !!(res && res.flags && res.flags[flagKey]);
-    } catch (_) {
-      return true;
-    }
-  },
-
-  async getObservabilityMetrics() {
+  async setEmployeeCompensationPlanComponent(employeeId, componentType, data) {
     if (_isMock()) {
-      return {
-        status: "success",
-        uptime_seconds: 3600.0,
-        total_commands: 42,
-        failed_commands: 0,
-        idempotency_hits: 5,
-        avg_latency_ms: 18.5,
-        reconciliation_throughput_items_per_sec: 120.0,
-        timestamp: new Date().toISOString(),
+      const amt = Number(data.amount);
+      if (isNaN(amt) || amt <= 0) {
+        throw new Error("Component amount must be greater than 0");
+      }
+      if (!data.effective_start_date) {
+        throw new Error("effective_start_date is required");
+      }
+      if (!["external_usd", "internal_usd_cash"].includes(componentType)) {
+        throw new Error(`Invalid component_type '${componentType}'`);
+      }
+
+      const plans = FinanceMockState.compensationPlans || [];
+      const activeIdx = plans.findIndex(
+        (p) => String(p.employee_id) === String(employeeId) && p.component_type === componentType && !p.effective_end_date
+      );
+
+      if (activeIdx >= 0) {
+        const active = plans[activeIdx];
+        if (data.effective_start_date <= active.effective_start_date) {
+          throw new Error(`New effective_start_date must be strictly after current component start date (${active.effective_start_date})`);
+        }
+        const d = new Date(data.effective_start_date);
+        d.setDate(d.getDate() - 1);
+        active.effective_end_date = d.toISOString().slice(0, 10);
+        active.updated_at = new Date().toISOString();
+      }
+
+      const newId = plans.length > 0 ? Math.max(...plans.map((p) => p.id)) + 1 : 1;
+      const newRow = {
+        id: newId,
+        employee_id: employeeId,
+        component_type: componentType,
+        amount: round(amt),
+        currency: "USD",
+        effective_start_date: data.effective_start_date,
+        effective_end_date: null,
+        notes: data.notes || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
+      plans.push(newRow);
+
+      if (typeof employees !== "undefined" && Array.isArray(employees)) {
+        const emp = employees.find((e) => String(e.id) === String(employeeId));
+        if (emp) {
+          if (componentType === "external_usd") emp.externalSalaryUsd = round(amt);
+          if (componentType === "internal_usd_cash") emp.internalSalaryUsd = round(amt);
+          emp.salary = round((emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0));
+        }
+      }
+
+      return newRow;
     }
-    return apiRequest("GET", "/api/finance/observability/metrics");
+    return apiRequest("PUT", `/api/finance/employees/${employeeId}/compensation-plan/${componentType}`, data);
   },
 
-  // Statutory Obligations (FUX-410)
+
+
+  getLastCorrelationId() {
+    return typeof window.Api !== "undefined" && window.Api.getLastCorrelationId
+      ? window.Api.getLastCorrelationId()
+      : (typeof _lastCorrelationId !== "undefined" && _lastCorrelationId ? _lastCorrelationId : `corr-${Date.now()}`);
+  },
+
+  generateCorrelationId() {
+    return typeof window.Api !== "undefined" && window.Api.generateCorrelationId
+      ? window.Api.generateCorrelationId()
+      : `corr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+  };
+
+  root.FinancePayrollApi = FinancePayrollApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinancePayrollApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinancePayrollApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/statutory-api.js
+ * Finance API - Statutory Obligations domain client and mock handlers.
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const round = root.round || function (val, decimals = 2) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+  const _getIdempHeaders = root._getIdempHeaders || function (explicitKey = null) {
+    const key = explicitKey || (typeof FinanceCommand !== "undefined" && FinanceCommand.generateIdempotencyKey ? FinanceCommand.generateIdempotencyKey() : null);
+    return key ? { "Idempotency-Key": key } : {};
+  };
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.statutoryObligations) {
+    FinanceMockState.statutoryObligations = [
+    {
+      id: 1,
+      obligation_type: "social_insurance_employee",
+      period: "2026-08",
+      amount_estimated: 1250.0,
+      amount_accrued: 1250.0,
+      amount_remitted: 0.0,
+      remaining_balance: 1250.0,
+      variance_amount: 0.0,
+      variance_note: null,
+      currency: "USD",
+      status: "estimated",
+      due_date: "2026-09-15",
+      source_type: "payroll_run",
+      source_id: 1,
+      notes: "August payroll social insurance employee portion",
+      created_at: "2026-09-01T10:00:00Z",
+      updated_at: "2026-09-01T10:00:00Z",
+    },
+    {
+      id: 2,
+      obligation_type: "social_insurance_employer",
+      period: "2026-08",
+      amount_estimated: 3000.0,
+      amount_accrued: 3000.0,
+      amount_remitted: 0.0,
+      remaining_balance: 3000.0,
+      variance_amount: 0.0,
+      variance_note: null,
+      currency: "USD",
+      status: "estimated",
+      due_date: "2026-09-15",
+      source_type: "payroll_run",
+      source_id: 1,
+      notes: "August payroll social insurance employer contribution",
+      created_at: "2026-09-01T10:00:00Z",
+      updated_at: "2026-09-01T10:00:00Z",
+    },
+    {
+      id: 3,
+      obligation_type: "income_tax",
+      period: "2026-08",
+      amount_estimated: 2500.0,
+      amount_accrued: 2500.0,
+      amount_remitted: 0.0,
+      remaining_balance: 2500.0,
+      variance_amount: 0.0,
+      variance_note: null,
+      currency: "USD",
+      status: "estimated",
+      due_date: "2026-09-15",
+      source_type: "payroll_run",
+      source_id: 1,
+      notes: "August payroll salary income tax withheld",
+      created_at: "2026-09-01T10:00:00Z",
+      updated_at: "2026-09-01T10:00:00Z",
+    },
+    {
+      id: 4,
+      obligation_type: "sales_tax",
+      period: "2026-08",
+      amount_estimated: null,
+      amount_accrued: 4500.0,
+      amount_remitted: 4500.0,
+      remaining_balance: 0.0,
+      variance_amount: 0.0,
+      variance_note: null,
+      currency: "USD",
+      status: "remitted",
+      due_date: "2026-09-10",
+      source_type: "invoice_tax_line",
+      source_id: null,
+      notes: "August sales tax / VAT remittance",
+      created_at: "2026-08-31T15:00:00Z",
+      updated_at: "2026-09-05T11:00:00Z",
+    },
+    {
+      id: 5,
+      obligation_type: "withholding_tax",
+      period: "2026-08",
+      amount_estimated: null,
+      amount_accrued: 850.0,
+      amount_remitted: 0.0,
+      remaining_balance: 850.0,
+      variance_amount: 0.0,
+      variance_note: null,
+      currency: "USD",
+      status: "accrued",
+      due_date: "2026-09-25",
+      source_type: "bill_tax_line",
+      source_id: null,
+      notes: "August vendor withholding tax",
+      created_at: "2026-08-31T16:00:00Z",
+      updated_at: "2026-08-31T16:00:00Z",
+    },
+  ];
+  }
+
+  const FinanceStatutoryApi = {
+// Statutory Obligations (FUX-410)
   async listStatutoryObligations(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.statutoryObligations || [])];
@@ -6820,111 +7456,14 @@ const FinanceApi = {
       return obl;
     }
     return apiRequest("PATCH", `/api/finance/statutory-obligations/${id}`, data);
-  },
+  }
+  };
 
-  // Employee Compensation Plans (FUX-416)
-  async getEmployeeCompensationPlan(employeeId) {
-    if (_isMock()) {
-      const plans = (FinanceMockState.compensationPlans || []).filter(
-        (p) => String(p.employee_id) === String(employeeId) && !p.effective_end_date
-      );
-      const ext = plans.find((p) => p.component_type === "external_usd") || null;
-      const intCash = plans.find((p) => p.component_type === "internal_usd_cash") || null;
-      const total = round((ext ? Number(ext.amount) : 0) + (intCash ? Number(intCash.amount) : 0));
-      return {
-        employee_id: employeeId,
-        external_usd: ext,
-        internal_usd_cash: intCash,
-        total_monthly_usd: total,
-      };
-    }
-    return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan`);
-  },
+  root.FinanceStatutoryApi = FinanceStatutoryApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceStatutoryApi);
 
-  async getEmployeeCompensationPlanHistory(employeeId) {
-    if (_isMock()) {
-      const history = (FinanceMockState.compensationPlans || [])
-        .filter((p) => String(p.employee_id) === String(employeeId))
-        .sort((a, b) => new Date(b.effective_start_date) - new Date(a.effective_start_date) || b.id - a.id);
-      return history;
-    }
-    return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan/history`);
-  },
-
-  async setEmployeeCompensationPlanComponent(employeeId, componentType, data) {
-    if (_isMock()) {
-      const amt = Number(data.amount);
-      if (isNaN(amt) || amt <= 0) {
-        throw new Error("Component amount must be greater than 0");
-      }
-      if (!data.effective_start_date) {
-        throw new Error("effective_start_date is required");
-      }
-      if (!["external_usd", "internal_usd_cash"].includes(componentType)) {
-        throw new Error(`Invalid component_type '${componentType}'`);
-      }
-
-      const plans = FinanceMockState.compensationPlans || [];
-      const activeIdx = plans.findIndex(
-        (p) => String(p.employee_id) === String(employeeId) && p.component_type === componentType && !p.effective_end_date
-      );
-
-      if (activeIdx >= 0) {
-        const active = plans[activeIdx];
-        if (data.effective_start_date <= active.effective_start_date) {
-          throw new Error(`New effective_start_date must be strictly after current component start date (${active.effective_start_date})`);
-        }
-        const d = new Date(data.effective_start_date);
-        d.setDate(d.getDate() - 1);
-        active.effective_end_date = d.toISOString().slice(0, 10);
-        active.updated_at = new Date().toISOString();
-      }
-
-      const newId = plans.length > 0 ? Math.max(...plans.map((p) => p.id)) + 1 : 1;
-      const newRow = {
-        id: newId,
-        employee_id: employeeId,
-        component_type: componentType,
-        amount: round(amt),
-        currency: "USD",
-        effective_start_date: data.effective_start_date,
-        effective_end_date: null,
-        notes: data.notes || "",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      plans.push(newRow);
-
-      if (typeof employees !== "undefined" && Array.isArray(employees)) {
-        const emp = employees.find((e) => String(e.id) === String(employeeId));
-        if (emp) {
-          if (componentType === "external_usd") emp.externalSalaryUsd = round(amt);
-          if (componentType === "internal_usd_cash") emp.internalSalaryUsd = round(amt);
-          emp.salary = round((emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0));
-        }
-      }
-
-      return newRow;
-    }
-    return apiRequest("PUT", `/api/finance/employees/${employeeId}/compensation-plan/${componentType}`, data);
-  },
-
-
-
-  getLastCorrelationId() {
-    return typeof window.Api !== "undefined" && window.Api.getLastCorrelationId
-      ? window.Api.getLastCorrelationId()
-      : (typeof _lastCorrelationId !== "undefined" && _lastCorrelationId ? _lastCorrelationId : `corr-${Date.now()}`);
-  },
-
-  generateCorrelationId() {
-    return typeof window.Api !== "undefined" && window.Api.generateCorrelationId
-      ? window.Api.generateCorrelationId()
-      : `corr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  },
-};
-
-window.FinanceApi = FinanceApi;
-
-
-
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceStatutoryApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
