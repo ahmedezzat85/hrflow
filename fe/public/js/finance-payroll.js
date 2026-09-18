@@ -316,10 +316,18 @@ function populateWizardData(preview) {
     empTableBody.innerHTML = preview.lines
       .map(line => {
         const compType = line.compensation_type || "internal_usd_cash";
-        const isExt = compType === "external_usd";
-        const typeBadge = isExt
-          ? `<span class="badge" style="background:#0284C7; color:#fff; font-size:0.75rem; padding:2px 6px;">External USD</span>`
-          : `<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem; padding:2px 6px;">Internal USD Cash</span>`;
+        let typeBadge;
+        if (compType === "external_usd") {
+          typeBadge = `<span class="badge" style="background:#0284C7; color:#fff; font-size:0.75rem; padding:2px 6px;">External USD</span>`;
+        } else if (compType === "internal_usd_cash") {
+          typeBadge = `<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem; padding:2px 6px;">Internal USD Cash</span>`;
+        } else if (compType.startsWith("commission")) {
+          typeBadge = `<span class="badge" style="background:#8B5CF6; color:#fff; font-size:0.75rem; padding:2px 6px;">Commission</span>`;
+        } else if (compType === "bonus") {
+          typeBadge = `<span class="badge" style="background:#F59E0B; color:#fff; font-size:0.75rem; padding:2px 6px;">Bonus</span>`;
+        } else {
+          typeBadge = `<span class="badge" style="background:#6B7280; color:#fff; font-size:0.75rem; padding:2px 6px;">${compType.replace('_', ' ').toUpperCase()}</span>`;
+        }
         return `
           <tr>
             <td><strong>${line.employee_name}</strong></td>
@@ -341,6 +349,7 @@ function populateWizardData(preview) {
   const excClean = document.getElementById("wizardExceptionsClean");
   const excBanner = document.getElementById("wizardExceptionsBanner");
   const exceptions = preview.exceptions || [];
+  const isBlocking = (e) => e.blocking === true || e.severity === "blocking";
 
   if (exceptions.length === 0) {
     if (excList) excList.innerHTML = "";
@@ -348,7 +357,7 @@ function populateWizardData(preview) {
     if (excBanner) excBanner.style.display = "none";
   } else {
     if (excClean) excClean.style.display = "none";
-    const blockingCount = exceptions.filter(e => e.blocking).length;
+    const blockingCount = exceptions.filter(isBlocking).length;
     if (excBanner) {
       excBanner.style.display = "block";
       if (blockingCount > 0) {
@@ -365,23 +374,29 @@ function populateWizardData(preview) {
     }
 
     if (excList) {
-      excList.innerHTML = exceptions.map(exc => `
-        <div class="card" style="padding:14px; margin-bottom:10px; border-left:4px solid ${exc.blocking ? '#EF4444' : '#F59E0B'}; display:flex; justify-content:space-between; align-items:center;">
+      excList.innerHTML = exceptions.map(exc => {
+        const blk = isBlocking(exc);
+        const deptStr = exc.department ? ` (${exc.department})` : "";
+        const titleStr = exc.title ? ` — ${exc.title}` : "";
+        const msgStr = exc.description || exc.message || "";
+        return `
+        <div class="card" style="padding:14px; margin-bottom:10px; border-left:4px solid ${blk ? '#EF4444' : '#F59E0B'}; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <div style="font-weight:600; font-size:0.9rem; color:var(--text-main);">
-              ${exc.employee_name} (${exc.department})
+              ${exc.employee_name || "Employee"}${deptStr}${titleStr}
             </div>
             <div style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">
-              ${exc.message}
+              ${msgStr}
             </div>
           </div>
           <div>
-            <span class="badge" style="background:${exc.blocking ? '#EF4444' : '#F59E0B'}; color:#fff;">
-              ${exc.blocking ? 'BLOCKING' : 'WARNING'}
+            <span class="badge" style="background:${blk ? '#EF4444' : '#F59E0B'}; color:#fff;">
+              ${blk ? 'BLOCKING' : 'WARNING'}
             </span>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
   }
 
@@ -444,7 +459,7 @@ function populateWizardData(preview) {
 
   // Step 5: Adjust Create/Approve button if blocking exceptions exist
   const btnApprove = document.getElementById("btnWizardCreateAndApprove");
-  const hasBlocking = (preview.exceptions || []).some(e => e.blocking);
+  const hasBlocking = (preview.exceptions || []).some(isBlocking);
   if (btnApprove) {
     if (hasBlocking) {
       btnApprove.disabled = true;

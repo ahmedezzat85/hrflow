@@ -145,84 +145,36 @@ class PayrollService:
                 })
 
             comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
-            if comps:
-                for comp in comps:
-                    comp_type = comp.component_type
-                    amount = float(comp.amount or 0.0)
-                    is_taxable = (comp_type == "internal_usd_cash")
-                    is_insurable = (comp_type == "internal_usd_cash")
+            if not comps:
+                has_blocking = True
+                exceptions.append({
+                    "id": f"exc-plan-{emp.id}",
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "severity": "blocking",
+                    "title": "No Active Compensation Plan",
+                    "description": f"{emp.name} has no active external/internal compensation plan configured for this period. Configure their plan under Salary before running payroll.",
+                    "correction_path": f"/admin?section=salary&employee_id={emp.id}",
+                    "is_resolved": False,
+                })
+                continue
 
-                    deductions = round(amount * 0.05, 2) if is_insurable else 0.0
-                    tax_amt = round(amount * 0.10, 2) if is_taxable else 0.0
-                    employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
-                    net = round(amount - deductions - tax_amt, 2)
+            for comp in comps:
+                comp_type = comp.component_type
+                amount = float(comp.amount or 0.0)
+                is_taxable = (comp_type == "internal_usd_cash")
+                is_insurable = (comp_type == "internal_usd_cash")
 
-                    tot_gross += amount
-                    tot_tax += tax_amt
-                    tot_deductions += deductions
-                    tot_net += net
-                    tot_employer_cost += amount + employer_extra
+                deductions = round(amount * 0.05, 2) if is_insurable else 0.0
+                tax_amt = round(amount * 0.10, 2) if is_taxable else 0.0
+                employer_extra = round(amount * 0.12, 2) if is_insurable else 0.0
+                net = round(amount - deductions - tax_amt, 2)
 
-                    lines.append({
-                        "id": emp.id,
-                        "payroll_run_id": 0,
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "department": emp.dept or "General",
-                        "compensation_type": comp_type,
-                        "is_taxable_local": is_taxable,
-                        "is_insurable": is_insurable,
-                        "base_salary": amount,
-                        "allowances_total": 0.0,
-                        "deductions_total": deductions,
-                        "tax_amount": tax_amt,
-                        "net_pay": net,
-                        "employer_cost_extra": employer_extra,
-                        "bank_name": bank_name or "Unassigned",
-                        "bank_account_masked": masked_acc or "Not Provided",
-                        "payment_status": "pending",
-                        "failure_reason": None,
-                        "snapshot_notes": f"{comp_type.replace('_', ' ').title()} - {period_label}",
-                        "created_at": datetime.utcnow().isoformat(),
-                        "paid_at": None,
-                    })
-            else:
-                base_salary = float(emp.salary or 0.0)
-                if base_salary <= 0:
-                    has_blocking = True
-                    exceptions.append({
-                        "id": f"exc-salary-{emp.id}",
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "severity": "blocking",
-                        "title": "Zero or Invalid Salary",
-                        "description": f"{emp.name} has a recorded salary of $0.00 and no active compensation plan.",
-                        "correction_path": f"/admin?section=salary&employee_id={emp.id}",
-                        "is_resolved": False,
-                    })
-                else:
-                    exceptions.append({
-                        "id": f"exc-plan-{emp.id}",
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "severity": "warning",
-                        "title": "Unconfigured Compensation Plan",
-                        "description": f"{emp.name} has a legacy base salary (${base_salary:,.2f}) but no active compensation plan configured.",
-                        "correction_path": f"/admin?section=salary&employee_id={emp.id}",
-                        "is_resolved": False,
-                    })
-
-                allowances = 0.0
-                deductions = round(base_salary * 0.05, 2)
-                tax_amt = round(base_salary * 0.10, 2)
-                net = round(base_salary + allowances - deductions - tax_amt, 2)
-                employer_extra = round(base_salary * 0.12, 2)
-
-                tot_gross += base_salary + allowances
+                tot_gross += amount
                 tot_tax += tax_amt
                 tot_deductions += deductions
                 tot_net += net
-                tot_employer_cost += base_salary + allowances + employer_extra
+                tot_employer_cost += amount + employer_extra
 
                 lines.append({
                     "id": emp.id,
@@ -230,11 +182,11 @@ class PayrollService:
                     "employee_id": emp.id,
                     "employee_name": emp.name,
                     "department": emp.dept or "General",
-                    "compensation_type": "internal_usd_cash",
-                    "is_taxable_local": True,
-                    "is_insurable": True,
-                    "base_salary": base_salary,
-                    "allowances_total": allowances,
+                    "compensation_type": comp_type,
+                    "is_taxable_local": is_taxable,
+                    "is_insurable": is_insurable,
+                    "base_salary": amount,
+                    "allowances_total": 0.0,
                     "deductions_total": deductions,
                     "tax_amount": tax_amt,
                     "net_pay": net,
@@ -243,7 +195,7 @@ class PayrollService:
                     "bank_account_masked": masked_acc or "Not Provided",
                     "payment_status": "pending",
                     "failure_reason": None,
-                    "snapshot_notes": f"Legacy unconfigured plan - {period_label}",
+                    "snapshot_notes": f"{comp_type.replace('_', ' ').title()} - {period_label}",
                     "created_at": datetime.utcnow().isoformat(),
                     "paid_at": None,
                 })
@@ -608,6 +560,8 @@ class PayrollService:
             )
             self.db.add(line_db)
 
+        self.db.flush()
+        self._recalculate_run_aggregates(run)
         self.db.commit()
         self.db.refresh(run)
         return self._format_run_detail(run)
