@@ -360,9 +360,15 @@ function populateWizardData(preview) {
   const recipCountEl = document.getElementById("wizardReviewRecipientCount");
   const netDeltaEl = document.getElementById("wizardReviewNetDelta");
   const issueCountsEl = document.getElementById("wizardReviewIssueCounts");
+  const additionsTotalEl = document.getElementById("wizardReviewAdditionsTotal");
 
   if (totalNetEl) totalNetEl.textContent = `$${Number(preview.total_net || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   if (recipCountEl) recipCountEl.textContent = preview.recipient_count || preview.headcount || 0;
+
+  const totalAdditions = Number(preview.total_additions !== undefined ? preview.total_additions : ((preview.total_commissions || 0) + (preview.total_bonuses || 0)));
+  if (additionsTotalEl) {
+    additionsTotalEl.textContent = `+$${totalAdditions.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  }
 
   if (preview.variance_summary) {
     const v = preview.variance_summary;
@@ -379,11 +385,11 @@ function populateWizardData(preview) {
 
   if (issueCountsEl) {
     if (blockers.length > 0) {
-      issueCountsEl.innerHTML = `<span class="badge" style="background:#EF4444; color:#fff;"><i class="fa-solid fa-ban"></i> ${blockers.length} Blocker(s)</span>`;
+      issueCountsEl.innerHTML = `<span class="badge" style="background:#EF4444; color:#fff; white-space:nowrap;"><i class="fa-solid fa-ban"></i> ${blockers.length} Blocker(s)</span>`;
     } else if (warnings.length > 0) {
-      issueCountsEl.innerHTML = `<span class="badge" style="background:#F59E0B; color:#fff;"><i class="fa-solid fa-triangle-exclamation"></i> ${warnings.length} Warning(s)</span>`;
+      issueCountsEl.innerHTML = `<span class="badge" style="background:#F59E0B; color:#fff; white-space:nowrap;"><i class="fa-solid fa-triangle-exclamation"></i> ${warnings.length} Warning(s)</span>`;
     } else {
-      issueCountsEl.innerHTML = `<span class="badge badge-success" style="background:#10B981; color:#fff;"><i class="fa-solid fa-check"></i> All Ready</span>`;
+      issueCountsEl.innerHTML = `<span class="badge badge-success" style="background:#10B981; color:#fff; white-space:nowrap;"><i class="fa-solid fa-check"></i> All Ready</span>`;
     }
   }
 
@@ -397,42 +403,82 @@ function populateWizardData(preview) {
   populateWizardConfirmation(preview);
 }
 
-function renderWizardRecipientsTable(preview) {
-  const tbody = document.getElementById("wizardEmployeesPreviewTableBody");
-  if (!tbody || !preview) return;
+let wizardSessionSource = "INT"; // Remembers last selected payment source in current runner session
+let currentDetailEmpId = null;
 
-  const lines = preview.lines || [];
-  const query = (document.getElementById("wizardReviewSearch")?.value || "").toLowerCase().trim();
-  const routeFilter = document.getElementById("wizardReviewRouteFilter")?.value || "all";
-  const statusFilter = document.getElementById("wizardReviewStatusFilter")?.value || "all";
-
-  // Group lines by employee
+function _extractRecipientsFromPreview(preview) {
+  if (preview && preview.recipients && preview.recipients.length > 0) {
+    return preview.recipients;
+  }
+  const lines = (preview && preview.lines) || [];
+  const allAdjs = (preview && preview.adjustments) || [];
   const grouped = {};
+
   lines.forEach(l => {
     if (!grouped[l.employee_id]) {
       grouped[l.employee_id] = {
         employee_id: l.employee_id,
         employee_name: l.employee_name || `Employee #${l.employee_id}`,
         department: l.department || "General",
-        lines: [],
-        total_net: 0,
+        base_int_amount: 0,
+        base_ext_amount: 0,
+        int_adjustments_total: 0,
+        ext_adjustments_total: 0,
+        final_int_amount: 0,
+        final_ext_amount: 0,
+        final_payment_amount: 0,
+        adjustments: [],
         bank_name: l.bank_name,
-        bank_account_masked: l.bank_account_masked,
+        destination_masked: l.bank_account_masked,
       };
     }
-    grouped[l.employee_id].lines.push(l);
-    grouped[l.employee_id].total_net += Number(l.net_pay || 0);
+    const amt = Number(l.net_pay || 0);
+    if (l.compensation_type === "external_usd") {
+      grouped[l.employee_id].base_ext_amount += amt;
+    } else {
+      grouped[l.employee_id].base_int_amount += amt;
+    }
+    if (l.bank_name) grouped[l.employee_id].bank_name = l.bank_name;
+    if (l.bank_account_masked) grouped[l.employee_id].destination_masked = l.bank_account_masked;
   });
 
-  const empList = Object.values(grouped).filter(emp => {
+  Object.values(grouped).forEach(r => {
+    const empAdjs = allAdjs.filter(a => a.employee_id === r.employee_id);
+    r.adjustments = empAdjs;
+    r.int_adjustments_total = empAdjs.filter(a => a.payment_source === "INT").reduce((s, a) => s + Number(a.amount || 0), 0);
+    r.ext_adjustments_total = empAdjs.filter(a => a.payment_source === "EXT").reduce((s, a) => s + Number(a.amount || 0), 0);
+    r.final_int_amount = r.base_int_amount + r.int_adjustments_total;
+    r.final_ext_amount = r.base_ext_amount + r.ext_adjustments_total;
+    r.final_payment_amount = r.final_int_amount + r.final_ext_amount;
+  });
+
+  return Object.values(grouped);
+}
+
+function renderWizardRecipientsTable(preview) {
+  const tbody = document.getElementById("wizardEmployeesPreviewTableBody");
+  if (!tbody || !preview) return;
+
+  const recipients = _extractRecipientsFromPreview(preview);
+  const query = (document.getElementById("wizardReviewSearch")?.value || "").toLowerCase().trim();
+  const routeFilter = document.getElementById("wizardReviewRouteFilter")?.value || "all";
+  const statusFilter = document.getElementById("wizardReviewStatusFilter")?.value || "all";
+
+  const filtered = recipients.filter(emp => {
     const matchQuery = !query ||
       emp.employee_name.toLowerCase().includes(query) ||
-      (emp.bank_account_masked && emp.bank_account_masked.toLowerCase().includes(query)) ||
-      emp.department.toLowerCase().includes(query);
+      (emp.destination_masked && emp.destination_masked.toLowerCase().includes(query)) ||
+      (emp.department && emp.department.toLowerCase().includes(query));
 
-    const matchRoute = routeFilter === "all" || emp.lines.some(l => l.compensation_type === routeFilter);
+    const hasExt = Number(emp.final_ext_amount || emp.base_ext_amount || 0) > 0;
+    const hasInt = Number(emp.final_int_amount || emp.base_int_amount || 0) > 0;
 
-    const hasIssue = (preview.exceptions || []).some(e => e.employee_id === emp.employee_id);
+    const matchRoute = routeFilter === "all" ||
+      (routeFilter === "external_usd" && hasExt) ||
+      (routeFilter === "internal_usd_cash" && hasInt);
+
+    const empExceptions = (preview.exceptions || []).filter(e => e.employee_id === emp.employee_id);
+    const hasIssue = empExceptions.length > 0;
     const matchStatus = statusFilter === "all" ||
       (statusFilter === "issue" && hasIssue) ||
       (statusFilter === "ready" && !hasIssue);
@@ -441,89 +487,391 @@ function renderWizardRecipientsTable(preview) {
   });
 
   const emptyEl = document.getElementById("wizardRecipientsEmptyState");
-  if (empList.length === 0) {
+  if (filtered.length === 0) {
     tbody.innerHTML = "";
     if (emptyEl) emptyEl.style.display = "block";
     return;
   }
   if (emptyEl) emptyEl.style.display = "none";
 
-  tbody.innerHTML = empList.map(emp => {
-    const isExpanded = wizardExpandedEmployees.has(emp.employee_id);
+  tbody.innerHTML = filtered.map(emp => {
     const empExceptions = (preview.exceptions || []).filter(e => e.employee_id === emp.employee_id);
     const hasBlocker = empExceptions.some(e => e.severity === "blocking");
     const hasWarning = empExceptions.some(e => e.severity === "warning");
 
-    let statusChip = `<span class="badge" style="background:#10B981; color:#fff; font-size:0.75rem;">Ready</span>`;
+    let statusChip = `<span class="badge badge-success" style="background:#10B981; color:#fff; font-size:0.75rem; white-space:nowrap;"><i class="fa-solid fa-check"></i> Ready</span>`;
     if (hasBlocker) {
-      statusChip = `<span class="badge" style="background:#EF4444; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> Action Needed</span>`;
+      statusChip = `<span class="badge" style="background:#EF4444; color:#fff; font-size:0.75rem; white-space:nowrap;"><i class="fa-solid fa-ban"></i> Action Needed</span>`;
     } else if (hasWarning) {
-      statusChip = `<span class="badge" style="background:#F59E0B; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Warning</span>`;
+      statusChip = `<span class="badge" style="background:#F59E0B; color:#fff; font-size:0.75rem; white-space:nowrap;"><i class="fa-solid fa-triangle-exclamation"></i> Warning</span>`;
     }
 
-    const routeLabels = emp.lines.map(l => {
-      const amt = `$${Number(l.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-      if (l.compensation_type === "external_usd") return `EXT (${amt})`;
-      if (l.compensation_type === "internal_usd_cash") return `INT (${amt})`;
-      if (l.compensation_type?.startsWith("commission")) return `Commission (${amt})`;
-      if (l.compensation_type === "bonus") return `Bonus (${amt})`;
-      return `Direct (${amt})`;
-    });
-    const uniqueRoutes = [...new Set(routeLabels)].join(" · ");
-
-    const destination = emp.bank_name ? `${emp.bank_name} (${emp.bank_account_masked || '••••'})` : '<span style="color:var(--text-muted);">Internal Cash</span>';
-
-    let subRowsHtml = "";
-    if (isExpanded) {
-      subRowsHtml = emp.lines.map(l => {
-        const routeName = l.compensation_type === "external_usd" ? "External Bank Wire" : "Internal Cash Payment";
-        return `
-          <tr style="background:var(--bg-secondary, #F8FAFC); font-size:0.8rem; border-left:3px solid var(--primary, #2563EB);">
-            <td style="padding-left:24px;">↳ <span style="color:var(--text-muted);">${l.snapshot_notes || routeName}</span></td>
-            <td>—</td>
-            <td><span class="badge" style="background:#E2E8F0; color:#1E293B;">${routeName}</span></td>
-            <td>${l.bank_account_masked || '—'}</td>
-            <td style="text-align:right; font-weight:600;">$${Number(l.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:center;">—</td>
-            <td style="text-align:center;">—</td>
-          </tr>
-        `;
-      }).join("");
+    const extAmt = Number(emp.final_ext_amount || 0);
+    const intAmt = Number(emp.final_int_amount || 0);
+    let routeCompact = "";
+    if (extAmt > 0 && intAmt > 0) {
+      routeCompact = `EXT ($${extAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })}) · INT ($${intAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })})`;
+    } else if (extAmt > 0) {
+      routeCompact = `EXT ($${extAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })})`;
+    } else {
+      routeCompact = `INT ($${intAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })})`;
     }
 
-    const expandBtn = emp.lines.length > 1
-      ? `<button class="btn btn-sm btn-outline" style="padding:2px 8px; font-size:0.75rem;" onclick="toggleWizardEmployeeLines(${emp.employee_id})">${isExpanded ? 'Hide' : `View (${emp.lines.length})`}</button>`
-      : `<span style="color:var(--text-muted); font-size:0.75rem;">1</span>`;
+    let destination = "";
+    if (extAmt > 0) {
+      if (emp.destination_masked) {
+        destination = `${emp.bank_name ? emp.bank_name + ' ' : ''}(${emp.destination_masked})`;
+      } else {
+        destination = `<span class="badge" style="background:#FEE2E2; color:#991B1B; font-size:0.75rem;">Missing Destination</span>`;
+      }
+    } else {
+      destination = `<span style="color:var(--text-muted);">Internal Cash</span>`;
+    }
+
+    const empAdjs = emp.adjustments || [];
+    let adjSummaryHtml = "";
+    if (empAdjs.length > 0) {
+      const parts = empAdjs.map(a => `+$${Number(a.amount).toLocaleString("en-US", { minimumFractionDigits: 0 })} ${a.type === 'COMMISSION' ? 'Comm' : 'Bonus'} (${a.payment_source})`);
+      adjSummaryHtml = `<div style="font-size:0.75rem; color:#8B5CF6; font-weight:600; margin-top:2px; white-space:nowrap;">${parts.join(" · ")}</div>`;
+    }
+
+    const finalPay = Number(emp.final_payment_amount || (extAmt + intAmt));
 
     return `
       <tr class="recipient-review-row" style="border-bottom:1px solid var(--border-color, #E2E8F0);">
         <td style="padding:10px 12px;"><strong>${emp.employee_name}</strong></td>
-        <td style="padding:10px 12px;">${emp.department}</td>
-        <td style="padding:10px 12px;"><span class="badge" style="background:#F1F5F9; color:#0F172A;">${uniqueRoutes}</span></td>
+        <td style="padding:10px 12px; color:var(--text-muted);">${emp.department || 'General'}</td>
+        <td style="padding:10px 12px;"><span class="badge" style="background:#F1F5F9; color:#0F172A; font-size:0.8rem; white-space:nowrap;">${routeCompact}</span></td>
         <td style="padding:10px 12px;">${destination}</td>
-        <td style="padding:10px 12px; text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${emp.total_net.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+        <td style="padding:10px 12px; text-align:right;">
+          <div style="font-weight:700; color:var(--primary, #2563EB); font-size:0.95rem; white-space:nowrap;">$${finalPay.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+          ${adjSummaryHtml}
+        </td>
         <td style="padding:10px 12px; text-align:center;">${statusChip}</td>
-        <td style="padding:10px 12px; text-align:center;">${expandBtn}</td>
+        <td style="padding:10px 12px; text-align:center;">
+          <button type="button" class="btn btn-sm btn-outline btn-view-recipient" onclick="openWizardRecipientDetails(${emp.employee_id})" style="padding:4px 10px; font-size:0.8rem; white-space:nowrap;">
+            <i class="fa-solid fa-eye"></i> View
+          </button>
+        </td>
       </tr>
-      ${subRowsHtml}
     `;
   }).join("");
-}
-
-function toggleWizardEmployeeLines(empId) {
-  if (wizardExpandedEmployees.has(empId)) {
-    wizardExpandedEmployees.delete(empId);
-  } else {
-    wizardExpandedEmployees.add(empId);
-  }
-  if (wizardPreviewData) {
-    renderWizardRecipientsTable(wizardPreviewData);
-  }
 }
 
 function filterWizardRecipients() {
   if (wizardPreviewData) {
     renderWizardRecipientsTable(wizardPreviewData);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Commission / Bonus Adjustment Modal Handlers
+// -----------------------------------------------------------------------------
+function openWizardAdjustmentModal(empId = null, adjustmentId = null) {
+  const modal = document.getElementById("wizardAdjustmentModal");
+  if (!modal || !wizardPreviewData) return;
+
+  const empSelect = document.getElementById("wizardAdjEmployeeSelect");
+  if (empSelect) {
+    empSelect.innerHTML = `<option value="">Select Staff Member...</option>`;
+    const recipients = _extractRecipientsFromPreview(wizardPreviewData);
+    recipients.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.employee_id;
+      opt.textContent = `${r.employee_name} (${r.department || 'General'})`;
+      if (empId && String(r.employee_id) === String(empId)) {
+        opt.selected = true;
+      }
+      empSelect.appendChild(opt);
+    });
+  }
+
+  const idField = document.getElementById("wizardAdjId");
+  const typeField = document.getElementById("wizardAdjType");
+  const amountField = document.getElementById("wizardAdjAmount");
+  const descField = document.getElementById("wizardAdjDescription");
+  const refField = document.getElementById("wizardAdjExternalRef");
+  const deleteBtn = document.getElementById("btnDeleteWizardAdjustment");
+  const titleEl = document.getElementById("wizardAdjustmentModalTitle");
+
+  if (adjustmentId) {
+    // Edit mode
+    const allAdjs = wizardPreviewData.adjustments || [];
+    const adj = allAdjs.find(a => a.id === adjustmentId);
+    if (adj) {
+      if (idField) idField.value = adj.id;
+      if (empSelect) empSelect.value = adj.employee_id;
+      if (typeField) typeField.value = adj.type;
+      if (amountField) amountField.value = adj.amount;
+      if (descField) descField.value = adj.description || "";
+      if (refField) refField.value = adj.external_reference || "";
+      const sourceInt = document.getElementById("wizardAdjSourceINT");
+      const sourceExt = document.getElementById("wizardAdjSourceEXT");
+      if (adj.payment_source === "EXT") {
+        if (sourceExt) sourceExt.checked = true;
+      } else {
+        if (sourceInt) sourceInt.checked = true;
+      }
+      if (deleteBtn) deleteBtn.style.display = "inline-flex";
+      if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:var(--primary, #2563EB);"></i> Edit Commission / Bonus`;
+    }
+  } else {
+    // Add mode
+    if (idField) idField.value = "";
+    if (typeField) typeField.value = "COMMISSION";
+    if (amountField) amountField.value = "";
+    if (descField) descField.value = "";
+    if (refField) refField.value = "";
+    const sourceInt = document.getElementById("wizardAdjSourceINT");
+    const sourceExt = document.getElementById("wizardAdjSourceEXT");
+    if (wizardSessionSource === "EXT") {
+      if (sourceExt) sourceExt.checked = true;
+    } else {
+      if (sourceInt) sourceInt.checked = true;
+    }
+    if (deleteBtn) deleteBtn.style.display = "none";
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-plus-circle" style="color:var(--primary, #2563EB);"></i> Add Commission / Bonus`;
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeWizardAdjustmentModal() {
+  const modal = document.getElementById("wizardAdjustmentModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function handleWizardAdjustmentSubmit(event) {
+  event.preventDefault();
+  if (!wizardPreviewData) return;
+
+  const adjId = document.getElementById("wizardAdjId")?.value;
+  const empId = parseInt(document.getElementById("wizardAdjEmployeeSelect")?.value, 10);
+  const type = document.getElementById("wizardAdjType")?.value;
+  const amount = parseFloat(document.getElementById("wizardAdjAmount")?.value);
+  const source = document.querySelector('input[name="wizardAdjSource"]:checked')?.value || "INT";
+  const description = document.getElementById("wizardAdjDescription")?.value || "";
+  const externalRef = document.getElementById("wizardAdjExternalRef")?.value || null;
+
+  if (!empId) {
+    showToast("Please select a recipient.", "error");
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    showToast("Adjustment amount must be greater than zero.", "error");
+    return;
+  }
+
+  wizardSessionSource = source;
+
+  const saveBtn = document.getElementById("btnSaveWizardAdjustment");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+  }
+
+  try {
+    const previewId = wizardPreviewData.preview_id;
+    if (adjId) {
+      await FinanceApi.updatePreviewAdjustment(previewId, adjId, {
+        employee_id: empId,
+        type: type,
+        direction: "ADDITION",
+        amount: amount,
+        payment_source: source,
+        description: description,
+        external_reference: externalRef,
+      });
+      showToast("Adjustment updated successfully.", "success");
+    } else {
+      await FinanceApi.addPreviewAdjustment(previewId, {
+        employee_id: empId,
+        type: type,
+        direction: "ADDITION",
+        amount: amount,
+        payment_source: source,
+        description: description,
+        external_reference: externalRef,
+      });
+      showToast("Adjustment added successfully.", "success");
+    }
+
+    const refreshed = await FinanceApi.getPreview(previewId);
+    wizardPreviewData = refreshed;
+    populateWizardData(refreshed);
+    closeWizardAdjustmentModal();
+
+    const detailModal = document.getElementById("wizardRecipientDetailModal");
+    if (detailModal && detailModal.style.display !== "none") {
+      openWizardRecipientDetails(empId);
+    }
+  } catch (err) {
+    console.error("Adjustment error:", err);
+    showToast("Failed to save adjustment: " + (err.message || err), "error");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `<i class="fa-solid fa-check"></i> Save Adjustment`;
+    }
+  }
+}
+
+async function handleWizardAdjustmentDelete() {
+  const adjId = document.getElementById("wizardAdjId")?.value;
+  if (!adjId || !wizardPreviewData) return;
+
+  const empId = parseInt(document.getElementById("wizardAdjEmployeeSelect")?.value, 10);
+  const deleteBtn = document.getElementById("btnDeleteWizardAdjustment");
+  if (deleteBtn) {
+    deleteBtn.disabled = true;
+    deleteBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+  }
+
+  try {
+    const previewId = wizardPreviewData.preview_id;
+    await FinanceApi.deletePreviewAdjustment(previewId, adjId);
+    showToast("Adjustment removed.", "success");
+
+    const refreshed = await FinanceApi.getPreview(previewId);
+    wizardPreviewData = refreshed;
+    populateWizardData(refreshed);
+    closeWizardAdjustmentModal();
+
+    const detailModal = document.getElementById("wizardRecipientDetailModal");
+    if (detailModal && detailModal.style.display !== "none" && empId) {
+      openWizardRecipientDetails(empId);
+    }
+  } catch (err) {
+    console.error("Failed to delete adjustment:", err);
+    showToast("Failed to delete adjustment: " + (err.message || err), "error");
+  } finally {
+    if (deleteBtn) {
+      deleteBtn.disabled = false;
+      deleteBtn.innerHTML = `<i class="fa-solid fa-trash"></i> Remove`;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Recipient Payment Details Modal Handlers
+// -----------------------------------------------------------------------------
+function openWizardRecipientDetails(empId) {
+  currentDetailEmpId = empId;
+  const modal = document.getElementById("wizardRecipientDetailModal");
+  if (!modal || !wizardPreviewData) return;
+
+  const recipients = _extractRecipientsFromPreview(wizardPreviewData);
+  const emp = recipients.find(r => r.employee_id === empId);
+  if (!emp) return;
+
+  const nameEl = document.getElementById("recipientDetailName");
+  const deptEl = document.getElementById("recipientDetailDept");
+  if (nameEl) nameEl.textContent = emp.employee_name;
+  if (deptEl) deptEl.textContent = `${emp.department || 'General'} · ID #${emp.employee_id}`;
+
+  const baseTotal = Number(emp.base_int_amount || 0) + Number(emp.base_ext_amount || 0);
+  const baseTotEl = document.getElementById("recipientDetailBaseTotal");
+  const baseSplitEl = document.getElementById("recipientDetailBaseSplit");
+  if (baseTotEl) baseTotEl.textContent = `$${baseTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (baseSplitEl) baseSplitEl.textContent = `EXT: $${Number(emp.base_ext_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} · INT: $${Number(emp.base_int_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+  const addTotal = Number(emp.ext_adjustments_total || 0) + Number(emp.int_adjustments_total || 0);
+  const addTotEl = document.getElementById("recipientDetailAdditionsTotal");
+  const addSplitEl = document.getElementById("recipientDetailAdditionsSplit");
+  if (addTotEl) addTotEl.textContent = `+$${addTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (addSplitEl) addSplitEl.textContent = `EXT: $${Number(emp.ext_adjustments_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} · INT: $${Number(emp.int_adjustments_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+  const finalTotal = Number(emp.final_payment_amount || (baseTotal + addTotal));
+  const finalTotEl = document.getElementById("recipientDetailFinalTotal");
+  const finalSplitEl = document.getElementById("recipientDetailFinalSplit");
+  if (finalTotEl) finalTotEl.textContent = `$${finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (finalSplitEl) finalSplitEl.textContent = `EXT: $${Number(emp.final_ext_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} · INT: $${Number(emp.final_int_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+  const destText = emp.bank_name ? `${emp.bank_name} (${emp.destination_masked || '••••'})` : 'Internal Cash Drawer';
+  const destEl = document.getElementById("recipientDetailDestinationText");
+  if (destEl) destEl.textContent = destText;
+
+  const empExceptions = (wizardPreviewData.exceptions || []).filter(e => e.employee_id === emp.employee_id);
+  const hasBlocker = empExceptions.some(e => e.severity === "blocking");
+  const hasWarning = empExceptions.some(e => e.severity === "warning");
+
+  const badgeContainer = document.getElementById("recipientDetailReadinessBadge");
+  if (badgeContainer) {
+    if (hasBlocker) {
+      badgeContainer.innerHTML = `<span class="badge" style="background:#EF4444; color:#fff; white-space:nowrap;"><i class="fa-solid fa-ban"></i> Action Needed</span>`;
+    } else if (hasWarning) {
+      badgeContainer.innerHTML = `<span class="badge" style="background:#F59E0B; color:#fff; white-space:nowrap;"><i class="fa-solid fa-triangle-exclamation"></i> Warning</span>`;
+    } else {
+      badgeContainer.innerHTML = `<span class="badge badge-success" style="background:#10B981; color:#fff; white-space:nowrap;"><i class="fa-solid fa-check"></i> Ready</span>`;
+    }
+  }
+
+  const alertBox = document.getElementById("recipientDetailIssuesAlert");
+  if (alertBox) {
+    if (empExceptions.length > 0) {
+      alertBox.style.display = "block";
+      alertBox.innerHTML = empExceptions.map(e => `<div><strong>${e.title}:</strong> ${e.description}</div>`).join("");
+    } else {
+      alertBox.style.display = "none";
+    }
+  }
+
+  const adjsList = document.getElementById("recipientDetailAdjustmentsList");
+  if (adjsList) {
+    const empAdjs = emp.adjustments || [];
+    if (empAdjs.length === 0) {
+      adjsList.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; padding:10px; background:var(--bg-secondary, #F8FAFC); border-radius:6px; text-align:center;">No commissions or bonuses recorded for this period.</div>`;
+    } else {
+      adjsList.innerHTML = empAdjs.map(a => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-secondary, #F8FAFC); border:1px solid var(--border-color, #E2E8F0); border-radius:6px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:${a.type === 'COMMISSION' ? '#8B5CF6' : '#3B82F6'}; color:#fff; font-size:0.75rem;">${a.type}</span>
+              <span class="badge" style="background:#E2E8F0; color:#1E293B; font-size:0.75rem;">${a.payment_source}</span>
+              <strong style="font-size:0.9rem;">$${Number(a.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:3px;">${a.description || 'No description'}</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="btn btn-sm btn-outline" onclick="openWizardAdjustmentModal(${emp.employee_id}, '${a.id}')" style="padding:2px 8px; font-size:0.75rem;">
+              <i class="fa-solid fa-pen"></i> Edit
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="deleteAdjustmentFromDetail('${a.id}', ${emp.employee_id})" style="padding:2px 8px; font-size:0.75rem; color:#EF4444; border-color:#EF4444;">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  modal.style.display = "flex";
+}
+
+function openWizardAdjustmentForCurrentRecipient() {
+  if (currentDetailEmpId) {
+    openWizardAdjustmentModal(currentDetailEmpId);
+  }
+}
+
+function closeWizardRecipientDetailModal() {
+  const modal = document.getElementById("wizardRecipientDetailModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function deleteAdjustmentFromDetail(adjId, empId) {
+  if (!confirm("Are you sure you want to remove this adjustment?")) return;
+  if (!wizardPreviewData) return;
+  try {
+    await FinanceApi.deletePreviewAdjustment(wizardPreviewData.preview_id, adjId);
+    showToast("Adjustment removed.", "success");
+    const refreshed = await FinanceApi.getPreview(wizardPreviewData.preview_id);
+    wizardPreviewData = refreshed;
+    populateWizardData(refreshed);
+    openWizardRecipientDetails(empId);
+  } catch (err) {
+    console.error("Failed to delete adjustment:", err);
+    showToast("Failed to delete adjustment: " + (err.message || err), "error");
   }
 }
 
@@ -659,12 +1007,26 @@ function populateWizardConfirmation(preview) {
   const intTotalEl = document.getElementById("wizardConfirmIntTotal");
   const warnAckContainer = document.getElementById("wizardWarningAckContainer");
 
-  const lines = preview.lines || [];
-  const extTotal = lines.filter(l => l.compensation_type === "external_usd").reduce((s, l) => s + Number(l.net_pay || 0), 0);
-  const intTotal = lines.filter(l => l.compensation_type !== "external_usd").reduce((s, l) => s + Number(l.net_pay || 0), 0);
+  const baseAmountEl = document.getElementById("wizardConfirmBaseAmount");
+  const addBreakdownEl = document.getElementById("wizardConfirmAdditionsBreakdown");
+  const addDetailEl = document.getElementById("wizardConfirmAdditionsDetail");
 
-  const formattedNet = `$${Number(preview.total_net || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  const totalComm = Number(preview.total_commissions || 0);
+  const totalBon = Number(preview.total_bonuses || 0);
+  const totalAdd = Number(preview.total_additions !== undefined ? preview.total_additions : (totalComm + totalBon));
+  const finalNet = Number(preview.total_net || 0);
+  const baseNet = Math.round((finalNet - totalAdd + Number.EPSILON) * 100) / 100;
+
+  const lines = preview.lines || [];
+  const finalExt = Number(preview.final_ext_total !== undefined ? preview.final_ext_total : lines.filter(l => l.compensation_type === "external_usd").reduce((s, l) => s + Number(l.net_pay || 0), 0));
+  const finalInt = Number(preview.final_int_total !== undefined ? preview.final_int_total : lines.filter(l => l.compensation_type !== "external_usd").reduce((s, l) => s + Number(l.net_pay || 0), 0));
+
+  const formattedNet = `$${finalNet.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   if (periodDatesEl) periodDatesEl.textContent = `${preview.period_label} (${preview.period_start} to ${preview.period_end}) · Pay Date: ${preview.payment_date || preview.period_end}`;
+  if (baseAmountEl) baseAmountEl.textContent = `$${baseNet.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (addBreakdownEl) addBreakdownEl.textContent = `+$${totalAdd.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (addDetailEl) addDetailEl.textContent = `Comm: $${totalComm.toLocaleString("en-US", { minimumFractionDigits: 2 })} · Bonus: $${totalBon.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
   const netTotalEl = document.getElementById("wizardConfirmNetTotal");
   if (netTotalEl) {
     netTotalEl.textContent = formattedNet;
@@ -688,8 +1050,8 @@ function populateWizardConfirmation(preview) {
 
   if (extAccNameEl) extAccNameEl.textContent = preview.external_funding_account_name || "External Bank Account";
   if (intAccNameEl) intAccNameEl.textContent = preview.internal_funding_account_name || "Internal Cash Account";
-  if (extTotalEl) extTotalEl.textContent = `$${extTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  if (intTotalEl) intTotalEl.textContent = `$${intTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (extTotalEl) extTotalEl.textContent = `$${finalExt.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  if (intTotalEl) intTotalEl.textContent = `$${finalInt.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
   const warnings = (preview.exceptions || []).filter(e => e.severity === "warning");
   if (warnAckContainer) {

@@ -6202,10 +6202,52 @@ async getEntityActivity(entityType, entityId) {
           });
         }
 
+        const previewId = `PRV-${periodLabel.replace(/-/g, "")}-0042`;
         const totalNet = lines.reduce((sum, l) => sum + l.net_pay, 0);
 
-        return {
-          preview_id: `PRV-${periodLabel.replace(/-/g, "")}-0042`,
+        const recipients = [
+          {
+            employee_id: 1,
+            employee_name: "Sarah Connor",
+            department: "Engineering",
+            base_int_amount: 5000.0,
+            base_ext_amount: 10000.0,
+            int_adjustments_total: 0.0,
+            ext_adjustments_total: 0.0,
+            final_int_amount: 5000.0,
+            final_ext_amount: 10000.0,
+            final_payment_amount: 15000.0,
+            adjustments: [],
+            bank_name: "Chase",
+            destination_masked: "••••4821",
+            readiness: {
+              status: payload.simulate_missing_bank ? "BLOCKER" : "READY",
+              issues: payload.simulate_missing_bank ? ["Sarah Connor is scheduled for external bank payment but does not have verified wire details on file."] : [],
+            },
+          },
+          {
+            employee_id: 2,
+            employee_name: "John DevOps",
+            department: "Operations",
+            base_int_amount: 14000.0,
+            base_ext_amount: 0.0,
+            int_adjustments_total: 0.0,
+            ext_adjustments_total: 0.0,
+            final_int_amount: 14000.0,
+            final_ext_amount: 0.0,
+            final_payment_amount: 14000.0,
+            adjustments: [],
+            bank_name: "SVB",
+            destination_masked: "••••9102",
+            readiness: {
+              status: "READY",
+              issues: [],
+            },
+          },
+        ];
+
+        const prevObj = {
+          preview_id: previewId,
           preview_version: 1,
           source_version: "src-mock-v1",
           generated_at: new Date().toISOString(),
@@ -6226,6 +6268,11 @@ async getEntityActivity(entityType, entityId) {
           payment_line_count: lines.length,
           total_net: totalNet,
           total_payment_amount: totalNet,
+          total_commissions: 0.0,
+          total_bonuses: 0.0,
+          total_additions: 0.0,
+          final_int_total: 19000.0,
+          final_ext_total: 10000.0,
           prior_period_total: 27000.0,
           change_amount: round(totalNet - 27000.0),
           has_blocking_exceptions: hasBlocking,
@@ -6240,9 +6287,130 @@ async getEntityActivity(entityType, entityId) {
             raises_count: totalNet > 27000.0 ? 1 : 0,
           },
           lines: lines,
+          recipients: recipients,
+          adjustments: [],
         };
+
+        FinanceMockState.previews = FinanceMockState.previews || {};
+        FinanceMockState.previews[previewId] = prevObj;
+        return prevObj;
       }
-      return apiRequest("POST", "/api/finance/payroll/runs/preview", payload);
+      return apiRequest("POST", "/api/finance/payroll/previews", payload);
+    },
+
+    async getPreview(previewId) {
+      if (_isMock()) {
+        const p = (FinanceMockState.previews || {})[previewId];
+        if (!p) throw new Error(`Preview '${previewId}' not found`);
+        return p;
+      }
+      return apiRequest("GET", `/api/finance/payroll/previews/${previewId}`);
+    },
+
+    async getPreviewAdjustments(previewId) {
+      if (_isMock()) {
+        const p = (FinanceMockState.previews || {})[previewId];
+        return p ? (p.adjustments || []) : [];
+      }
+      return apiRequest("GET", `/api/finance/payroll/previews/${previewId}/adjustments`);
+    },
+
+    async addPreviewAdjustment(previewId, payload) {
+      if (_isMock()) {
+        const p = (FinanceMockState.previews || {})[previewId];
+        if (!p) throw new Error(`Preview '${previewId}' not found`);
+        if (!payload.amount || Number(payload.amount) <= 0) {
+          throw new Error("Adjustment amount must be greater than zero.");
+        }
+        if (payload.external_reference) {
+          const dup = (p.adjustments || []).find(a => a.external_reference === payload.external_reference);
+          if (dup) throw new Error(`Duplicate external reference '${payload.external_reference}'.`);
+        }
+        const adjId = `adj_mock_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const adj = {
+          id: adjId,
+          employee_id: payload.employee_id,
+          preview_id: previewId,
+          payroll_run_id: null,
+          type: (payload.type || "BONUS").toUpperCase(),
+          direction: "ADDITION",
+          amount: round(payload.amount),
+          currency: payload.currency || "USD",
+          payment_source: (payload.payment_source || "INT").toUpperCase(),
+          effective_period: p.period_label,
+          description: payload.description || "",
+          external_reference: payload.external_reference || null,
+          origin: "MANUAL",
+          status: "DRAFT",
+          created_by: "admin@voyance.health",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        p.adjustments = p.adjustments || [];
+        p.adjustments.push(adj);
+        p.preview_version = (p.preview_version || 1) + 1;
+        this._recalculateMockPreview(p);
+        return adj;
+      }
+      return apiRequest("POST", `/api/finance/payroll/previews/${previewId}/adjustments`, payload);
+    },
+
+    async updatePreviewAdjustment(previewId, adjustmentId, payload) {
+      if (_isMock()) {
+        const p = (FinanceMockState.previews || {})[previewId];
+        if (!p) throw new Error(`Preview '${previewId}' not found`);
+        const adj = (p.adjustments || []).find(a => a.id === adjustmentId);
+        if (!adj) throw new Error(`Adjustment '${adjustmentId}' not found`);
+        if (payload.amount !== undefined) {
+          if (Number(payload.amount) <= 0) throw new Error("Adjustment amount must be greater than zero.");
+          adj.amount = round(payload.amount);
+        }
+        if (payload.type) adj.type = payload.type.toUpperCase();
+        if (payload.payment_source) adj.payment_source = payload.payment_source.toUpperCase();
+        if (payload.description !== undefined) adj.description = payload.description;
+        if (payload.external_reference !== undefined) adj.external_reference = payload.external_reference;
+        adj.updated_at = new Date().toISOString();
+        p.preview_version = (p.preview_version || 1) + 1;
+        this._recalculateMockPreview(p);
+        return adj;
+      }
+      return apiRequest("PATCH", `/api/finance/payroll/previews/${previewId}/adjustments/${adjustmentId}`, payload);
+    },
+
+    async deletePreviewAdjustment(previewId, adjustmentId) {
+      if (_isMock()) {
+        const p = (FinanceMockState.previews || {})[previewId];
+        if (!p) throw new Error(`Preview '${previewId}' not found`);
+        p.adjustments = (p.adjustments || []).filter(a => a.id !== adjustmentId);
+        p.preview_version = (p.preview_version || 1) + 1;
+        this._recalculateMockPreview(p);
+        return { success: true, deleted_id: adjustmentId };
+      }
+      return apiRequest("DELETE", `/api/finance/payroll/previews/${previewId}/adjustments/${adjustmentId}`);
+    },
+
+    _recalculateMockPreview(p) {
+      const allAdjs = p.adjustments || [];
+      (p.recipients || []).forEach(r => {
+        const empAdjs = allAdjs.filter(a => a.employee_id === r.employee_id);
+        r.adjustments = empAdjs;
+        r.int_adjustments_total = round(empAdjs.filter(a => a.payment_source === "INT").reduce((sum, a) => sum + a.amount, 0));
+        r.ext_adjustments_total = round(empAdjs.filter(a => a.payment_source === "EXT").reduce((sum, a) => sum + a.amount, 0));
+        r.final_int_amount = round(r.base_int_amount + r.int_adjustments_total);
+        r.final_ext_amount = round(r.base_ext_amount + r.ext_adjustments_total);
+        r.final_payment_amount = round(r.final_int_amount + r.final_ext_amount);
+      });
+      p.total_commissions = round(allAdjs.filter(a => a.type === "COMMISSION").reduce((sum, a) => sum + a.amount, 0));
+      p.total_bonuses = round(allAdjs.filter(a => a.type === "BONUS").reduce((sum, a) => sum + a.amount, 0));
+      p.total_additions = round(p.total_commissions + p.total_bonuses);
+      p.final_int_total = round((p.recipients || []).reduce((sum, r) => sum + r.final_int_amount, 0));
+      p.final_ext_total = round((p.recipients || []).reduce((sum, r) => sum + r.final_ext_amount, 0));
+      p.total_net = round(p.final_int_total + p.final_ext_total);
+      p.total_payment_amount = p.total_net;
+      p.change_amount = round(p.total_net - (p.prior_period_total || 27000.0));
+      if (p.variance_summary) {
+        p.variance_summary.net_delta = p.change_amount;
+      }
     },
 
     async generatePayrollRun(payload) {

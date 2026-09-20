@@ -181,18 +181,18 @@
                   </div>
 
                   <!-- Summary Metrics -->
-                  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+                  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px;">
                     <div class="card" style="padding:12px; border-left:3px solid var(--primary, #2563EB);">
                       <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Net Payment</div>
                       <div id="wizardReviewTotalNet" style="font-size:1.25rem; font-weight:700; color:var(--primary, #2563EB);">$0.00</div>
                     </div>
+                    <div class="card" style="padding:12px; border-left:3px solid #8B5CF6;">
+                      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Additions (Bonus/Comm)</div>
+                      <div id="wizardReviewAdditionsTotal" style="font-size:1.25rem; font-weight:700; color:#8B5CF6;">+$0.00</div>
+                    </div>
                     <div class="card" style="padding:12px; border-left:3px solid #10B981;">
                       <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Recipients</div>
                       <div id="wizardReviewRecipientCount" style="font-size:1.25rem; font-weight:700; color:var(--text-main);">0</div>
-                    </div>
-                    <div class="card" style="padding:12px; border-left:3px solid #8B5CF6;">
-                      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Change vs Prior</div>
-                      <div id="wizardReviewNetDelta" style="font-size:1.25rem; font-weight:700; color:#8B5CF6;">+$0.00</div>
                     </div>
                     <div class="card" style="padding:12px; border-left:3px solid #F59E0B;">
                       <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Readiness Status</div>
@@ -202,22 +202,25 @@
                     </div>
                   </div>
 
-                  <!-- Table Controls: Search, Route Filter, Status Filter -->
+                  <!-- Table Controls: Search, Route Filter, Status Filter, + Commission/Bonus -->
                   <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
                     <div class="search-box" style="position:relative; flex:1; min-width:200px;">
                       <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                       <input id="wizardReviewSearch" class="form-input" placeholder="Search recipient or destination..." style="padding-left:32px; width:100%; font-size:0.85rem;" oninput="filterWizardRecipients()">
                     </div>
-                    <select id="wizardReviewRouteFilter" class="form-input filter-select" style="font-size:0.85rem; min-width:160px;" onchange="filterWizardRecipients()">
+                    <select id="wizardReviewRouteFilter" class="form-input filter-select" style="font-size:0.85rem; min-width:140px;" onchange="filterWizardRecipients()">
                       <option value="all">All Routes</option>
                       <option value="external_usd">External Bank Wire</option>
                       <option value="internal_usd_cash">Internal Cash Payment</option>
                     </select>
-                    <select id="wizardReviewStatusFilter" class="form-input filter-select" style="font-size:0.85rem; min-width:140px;" onchange="filterWizardRecipients()">
+                    <select id="wizardReviewStatusFilter" class="form-input filter-select" style="font-size:0.85rem; min-width:130px;" onchange="filterWizardRecipients()">
                       <option value="all">All Statuses</option>
                       <option value="ready">Ready Only</option>
                       <option value="issue">Has Issues</option>
                     </select>
+                    <button type="button" class="btn btn-sm btn-primary" id="btnWizardAddAdjustment" onclick="openWizardAdjustmentModal()" style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; padding:8px 14px; white-space:nowrap;">
+                      <i class="fa-solid fa-plus-circle"></i> Commission / Bonus
+                    </button>
                   </div>
 
                   <!-- Grouped Recipient Review Table (Sticky header desktop) -->
@@ -231,7 +234,7 @@
                           <th style="padding:10px 12px;">Destination</th>
                           <th style="padding:10px 12px; text-align:right;">Final Amount</th>
                           <th style="padding:10px 12px; text-align:center;">Readiness</th>
-                          <th style="padding:10px 12px; text-align:center; width:70px;">Lines</th>
+                          <th style="padding:10px 12px; text-align:center; width:80px;">Action</th>
                         </tr>
                       </thead>
                       <tbody id="wizardEmployeesPreviewTableBody"></tbody>
@@ -282,21 +285,30 @@
                   <h4 style="margin-top:0; margin-bottom:12px; font-size:1rem;">4. Immutable Confirmation & Submission</h4>
 
                   <div class="card" style="padding:16px; margin-bottom:16px; background:var(--bg-secondary, #F8FAFC);">
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
                       <div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Cycle Period & Payment Date</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Cycle & Payment Date</div>
                         <div id="wizardConfirmPeriodDates" style="font-weight:700; font-size:1rem; color:var(--text-main); margin-top:2px;">—</div>
                       </div>
                       <div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Total Net Amount</div>
-                        <div id="wizardConfirmTotalAmount" style="font-weight:700; font-size:1.25rem; color:var(--primary, #2563EB); margin-top:2px;"><span id="wizardConfirmNetTotal">$0.00</span></div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Base Net Payroll</div>
+                        <div id="wizardConfirmBaseAmount" style="font-weight:700; font-size:1rem; color:var(--text-main); margin-top:2px;">$0.00</div>
                       </div>
                       <div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Recipients & Payment Lines</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Commissions & Bonuses</div>
+                        <div id="wizardConfirmAdditionsBreakdown" style="font-weight:700; font-size:1rem; color:var(--primary, #2563EB); margin-top:2px;">+$0.00</div>
+                        <div id="wizardConfirmAdditionsDetail" style="font-size:0.75rem; color:var(--text-muted);">Comm: $0 · Bonus: $0</div>
+                      </div>
+                      <div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Final Net Disbursement</div>
+                        <div id="wizardConfirmTotalAmount" style="font-weight:800; font-size:1.25rem; color:#10B981; margin-top:2px;"><span id="wizardConfirmNetTotal">$0.00</span></div>
+                      </div>
+                      <div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Recipients & Lines</div>
                         <div id="wizardConfirmCounts" style="font-weight:600; font-size:0.95rem; color:var(--text-main); margin-top:2px;"><span id="wizardConfirmHeadcount">0</span> Recipients · <span id="wizardConfirmLinesCount">0</span> Lines</div>
                       </div>
                       <div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Preview Version / Audit ID</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Readiness & Audit ID</div>
                         <div id="wizardConfirmPreviewVersion" style="font-weight:600; font-size:0.85rem; color:var(--text-muted); margin-top:2px;">—</div>
                       </div>
                     </div>
@@ -533,6 +545,136 @@
                   <button type="submit" class="btn btn-primary" id="btnSubmitAddBonus"><i class="fa-solid fa-plus"></i> Add Line</button>
                 </div>
               </form>
+            </div>
+          </div>
+
+          <!-- MODAL 5: Wizard Runner Commission / Bonus Adjustment Modal -->
+          <div class="modal-overlay" id="wizardAdjustmentModal" style="display:none; z-index:1070;">
+            <div class="modal modal-md" style="max-width:520px; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden;">
+              <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                <h3 class="modal-title" id="wizardAdjustmentModalTitle" style="margin:0; font-size:1.15rem;">
+                  <i class="fa-solid fa-plus-circle" style="color:var(--primary, #2563EB);"></i> Add Commission / Bonus
+                </h3>
+                <button type="button" class="modal-close" onclick="closeWizardAdjustmentModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+              </div>
+              <form id="wizardAdjustmentForm" onsubmit="handleWizardAdjustmentSubmit(event)">
+                <input type="hidden" id="wizardAdjId" value="">
+                <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="wizardAdjEmployeeSelect">Recipient *</label>
+                    <select id="wizardAdjEmployeeSelect" class="form-control form-input" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" required>
+                      <option value="">Select Staff Member...</option>
+                    </select>
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                      <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="wizardAdjType">Adjustment Type *</label>
+                      <select id="wizardAdjType" class="form-control form-input" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" required>
+                        <option value="COMMISSION">Commission</option>
+                        <option value="BONUS">Bonus</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="wizardAdjAmount">Amount (USD) *</label>
+                      <input type="number" id="wizardAdjAmount" step="0.01" min="0.01" class="form-control form-input" placeholder="0.00" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" required />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Payment Source *</label>
+                    <div style="display:flex; gap:16px; align-items:center; padding:8px 12px; background:var(--bg-secondary, #F8FAFC); border:1px solid var(--border-color, #CBD5E1); border-radius:6px;">
+                      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem; font-weight:600; margin:0;">
+                        <input type="radio" name="wizardAdjSource" id="wizardAdjSourceINT" value="INT" checked>
+                        <span>INT (Internal Cash / Vault)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem; font-weight:600; margin:0;">
+                        <input type="radio" name="wizardAdjSource" id="wizardAdjSourceEXT" value="EXT">
+                        <span>EXT (External Bank Wire)</span>
+                      </label>
+                    </div>
+                    <span style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; display:block;">Select which funding route disburses this addition.</span>
+                  </div>
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="wizardAdjDescription">Description / Justification</label>
+                    <input type="text" id="wizardAdjDescription" class="form-control form-input" placeholder="e.g. September sales milestone or performance spot bonus" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" />
+                  </div>
+                  <div class="form-group">
+                    <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;" for="wizardAdjExternalRef">External Reference (Optional)</label>
+                    <input type="text" id="wizardAdjExternalRef" class="form-control form-input" placeholder="e.g. INV-1092 or DEAL-Q3-01" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-color, #CBD5E1);" />
+                  </div>
+                </div>
+                <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                  <button type="button" class="btn btn-danger btn-sm" id="btnDeleteWizardAdjustment" onclick="handleWizardAdjustmentDelete()" style="display:none;">
+                    <i class="fa-solid fa-trash"></i> Remove
+                  </button>
+                  <div style="display:flex; gap:8px; margin-left:auto;">
+                    <button type="button" class="btn btn-secondary" onclick="closeWizardAdjustmentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveWizardAdjustment">
+                      <i class="fa-solid fa-check"></i> Save Adjustment
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- MODAL 6: Recipient Payment Details Drawer / Modal -->
+          <div class="modal-overlay" id="wizardRecipientDetailModal" style="display:none; z-index:1065;">
+            <div class="modal modal-md" style="max-width:600px; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden;">
+              <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
+                <div>
+                  <h3 class="modal-title" id="recipientDetailName" style="margin:0; font-size:1.15rem;">Recipient Payment Details</h3>
+                  <div id="recipientDetailDept" style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">—</div>
+                </div>
+                <button type="button" class="modal-close" onclick="closeWizardRecipientDetailModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+              </div>
+              <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:16px; max-height:75vh; overflow-y:auto;">
+                <!-- Breakdown Table -->
+                <div class="card" style="padding:14px; background:var(--bg-secondary, #F8FAFC);">
+                  <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; text-align:center;">
+                    <div>
+                      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Base Compensation</div>
+                      <div id="recipientDetailBaseTotal" style="font-weight:700; font-size:1rem; color:var(--text-main); margin-top:2px;">$0.00</div>
+                      <div id="recipientDetailBaseSplit" style="font-size:0.75rem; color:var(--text-muted);">EXT: $0 · INT: $0</div>
+                    </div>
+                    <div>
+                      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Additions</div>
+                      <div id="recipientDetailAdditionsTotal" style="font-weight:700; font-size:1rem; color:var(--primary, #2563EB); margin-top:2px;">+$0.00</div>
+                      <div id="recipientDetailAdditionsSplit" style="font-size:0.75rem; color:var(--text-muted);">EXT: $0 · INT: $0</div>
+                    </div>
+                    <div>
+                      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Final Payment</div>
+                      <div id="recipientDetailFinalTotal" style="font-weight:800; font-size:1.15rem; color:#10B981; margin-top:2px;">$0.00</div>
+                      <div id="recipientDetailFinalSplit" style="font-size:0.75rem; color:var(--text-muted);">EXT: $0 · INT: $0</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Destination & Readiness Info -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid var(--border-color, #E2E8F0); border-radius:8px;">
+                  <div>
+                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; display:block;">Destination</span>
+                    <strong id="recipientDetailDestinationText" style="font-size:0.9rem;">—</strong>
+                  </div>
+                  <div id="recipientDetailReadinessBadge">
+                    <span class="badge badge-success" style="background:#10B981; color:#fff;">Ready</span>
+                  </div>
+                </div>
+                <div id="recipientDetailIssuesAlert" style="display:none; padding:10px 14px; background:#FEE2E2; border:1px solid #FCA5A5; border-radius:8px; color:#991B1B; font-size:0.85rem;"></div>
+
+                <!-- Adjustments List -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h5 style="margin:0; font-size:0.9rem;">Commissions & Bonuses</h5>
+                    <button type="button" class="btn btn-sm btn-outline" id="btnRecipientAddAdjustment" onclick="openWizardAdjustmentForCurrentRecipient()">
+                      <i class="fa-solid fa-plus"></i> Add Line
+                    </button>
+                  </div>
+                  <div id="recipientDetailAdjustmentsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+              </div>
+              <div class="modal-footer" style="display:flex; justify-content:flex-end; padding:12px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
+                <button type="button" class="btn btn-secondary" onclick="closeWizardRecipientDetailModal()">Close</button>
+              </div>
             </div>
           </div>
         </section>
