@@ -1,0 +1,318 @@
+"""
+be/tests/test_finance_payroll_adjustments.py
+Targeted unit tests for extensible payroll adjustments (Commissions and Bonuses),
+recalculation of recipient and payroll totals, validation rules, and immutability.
+"""
+import pytest
+from db import get_db_context
+from models_db import EmployeeDB, EmployeeBankAccountDB
+from finance.models import (
+    PayrollRunDB,
+    PayrollLineDB,
+    PayrollAdjustmentDB,
+    FinanceBankAccountDB,
+    TransactionCategoryDB,
+    PaymentTypeDB,
+    EmployeeCompensationPlanDB,
+)
+
+
+@pytest.fixture
+def seed_env():
+    with get_db_context() as db_session:
+        # Ensure bank accounts
+        ext_bank = db_session.query(FinanceBankAccountDB).filter_by(account_number="EXT-BANK-01").first()
+        if not ext_bank:
+            ext_bank = FinanceBankAccountDB(
+                account_name="Voyance Wire Bank",
+                bank_name="Chase Wire",
+                account_number="EXT-BANK-01",
+                currency="USD",
+                opening_balance=500000.0,
+                current_balance=500000.0,
+                is_active=True,
+            )
+            db_session.add(ext_bank)
+
+        int_bank = db_session.query(FinanceBankAccountDB).filter_by(account_number="INT-CASH-01").first()
+        if not int_bank:
+            int_bank = FinanceBankAccountDB(
+                account_name="Voyance Internal Cash",
+                bank_name="Cash Drawer",
+                account_number="INT-CASH-01",
+                currency="USD",
+                opening_balance=100000.0,
+                current_balance=100000.0,
+                is_active=True,
+            )
+            db_session.add(int_bank)
+
+        cat = db_session.query(TransactionCategoryDB).filter_by(name="Salaries & Wages").first()
+        if not cat:
+            cat = TransactionCategoryDB(name="Salaries & Wages", kind="cost", is_active=True, sort_order=1)
+            db_session.add(cat)
+
+        pt = db_session.query(PaymentTypeDB).filter_by(code="OUTBOUND_TRANS").first()
+        if not pt:
+            pt = PaymentTypeDB(name="Bank Transfer", code="OUTBOUND_TRANS", is_active=True)
+            db_session.add(pt)
+
+        # Seed an employee with split compensation: Base EXT $10,000, Base INT $5,000
+        emp = db_session.query(EmployeeDB).filter_by(email="alice.adj@voyance.health").first()
+        if not emp:
+            emp = EmployeeDB(
+                name="Alice Adjustments",
+                email="alice.adj@voyance.health",
+                dept="Engineering",
+                job_role="Senior Architect",
+                status="active",
+            )
+            db_session.add(emp)
+            db_session.flush()
+
+            bank_rec = EmployeeBankAccountDB(
+                employee_id=emp.id,
+                bank_name="Barclays",
+                iban="GB29BARC20202012345678",
+                swift_code="BARCGB22",
+            )
+            db_session.add(bank_rec)
+
+        # Clear prior plans and add split plans
+        db_session.query(EmployeeCompensationPlanDB).filter_by(employee_id=emp.id).delete()
+        p_ext = EmployeeCompensationPlanDB(
+            employee_id=emp.id,
+            component_type="external_usd",
+            amount=10000.0,
+            currency="USD",
+            effective_start_date="2026-01-01",
+        )
+        p_int = EmployeeCompensationPlanDB(
+            employee_id=emp.id,
+            component_type="internal_usd_cash",
+            amount=5000.0,
+            currency="USD",
+            effective_start_date="2026-01-01",
+        )
+        db_session.add_all([p_ext, p_int])
+        db_session.commit()
+
+        return {"ext_bank_id": ext_bank.id, "int_bank_id": int_bank.id, "employee_id": emp.id}
+
+
+def test_payroll_adjustment_lifecycle(app_client, admin_cookies, seed_env):
+    """Tests preview creation, adding INT Bonus, editing to EXT, and deleting adjustment."""
+    emp_id = seed_env["employee_id"]
+
+    # 1. Create Preview
+    resp = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2026-09",
+            "period_start": "2026-09-01",
+            "period_end": "2026-09-30",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert resp.status_code == 200, resp.text
+    preview = resp.json()
+    preview_id = preview["preview_id"]
+    initial_version = preview["preview_version"]
+    initial_net = preview["total_net"]
+
+    # Recipient initial state
+    recipient = next(r for r in preview["recipients"] if r["employee_id"] == emp_id)
+    assert recipient["base_ext_amount"] == 10000.0
+    assert recipient["base_int_amount"] == 5000.0
+    assert recipient["final_payment_amount"] == 15000.0
+
+    # 2. Add an INT Bonus of $750.00
+    adj_resp = app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={
+            "employee_id": emp_id,
+            "type": "BONUS",
+            "direction": "ADDITION",
+            "amount": 750.0,
+            "payment_source": "INT",
+            "description": "Q3 Performance Bonus",
+        },
+        cookies=admin_cookies,
+    )
+    assert adj_resp.status_code == 201, adj_resp.text
+    adj_data = adj_resp.json()
+    adj_id = adj_data["id"]
+    assert adj_data["amount"] == 750.0
+    assert adj_data["payment_source"] == "INT"
+
+    # 3. Check Preview Recalculation
+    prev_resp = app_client.get(f"/api/finance/payroll/previews/{preview_id}", cookies=admin_cookies)
+    assert prev_resp.status_code == 200
+    updated_preview = prev_resp.json()
+    assert updated_preview["preview_version"] == initial_version + 1
+    assert updated_preview["total_bonuses"] == 750.0
+    assert updated_preview["total_net"] == initial_net + 750.0
+
+    updated_recip = next(r for r in updated_preview["recipients"] if r["employee_id"] == emp_id)
+    assert updated_recip["base_int_amount"] == 5000.0
+    assert updated_recip["int_adjustments_total"] == 750.0
+    assert updated_recip["final_int_amount"] == 5750.0
+    assert updated_recip["final_ext_amount"] == 10000.0
+    assert updated_recip["final_payment_amount"] == 15750.0
+
+    # 4. Edit adjustment: switch to EXT and change amount to $1,200.00
+    edit_resp = app_client.patch(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments/{adj_id}",
+        json={"amount": 1200.0, "payment_source": "EXT", "type": "COMMISSION"},
+        cookies=admin_cookies,
+    )
+    assert edit_resp.status_code == 200
+    edited_adj = edit_resp.json()
+    assert edited_adj["amount"] == 1200.0
+    assert edited_adj["payment_source"] == "EXT"
+    assert edited_adj["type"] == "COMMISSION"
+
+    prev_resp2 = app_client.get(f"/api/finance/payroll/previews/{preview_id}", cookies=admin_cookies)
+    p2 = prev_resp2.json()
+    recip2 = next(r for r in p2["recipients"] if r["employee_id"] == emp_id)
+    assert recip2["int_adjustments_total"] == 0.0
+    assert recip2["ext_adjustments_total"] == 1200.0
+    assert recip2["final_int_amount"] == 5000.0
+    assert recip2["final_ext_amount"] == 11200.0
+    assert recip2["final_payment_amount"] == 16200.0
+    assert p2["total_commissions"] == 1200.0
+    assert p2["total_bonuses"] == 0.0
+
+    # 5. Delete adjustment and verify totals revert
+    del_resp = app_client.delete(f"/api/finance/payroll/previews/{preview_id}/adjustments/{adj_id}", cookies=admin_cookies)
+    assert del_resp.status_code == 200
+
+    prev_resp3 = app_client.get(f"/api/finance/payroll/previews/{preview_id}", cookies=admin_cookies)
+    p3 = prev_resp3.json()
+    assert p3["total_commissions"] == 0.0
+    assert p3["total_net"] == initial_net
+    recip3 = next(r for r in p3["recipients"] if r["employee_id"] == emp_id)
+    assert recip3["final_payment_amount"] == 15000.0
+
+
+def test_payroll_adjustment_validation_rules(app_client, admin_cookies, seed_env):
+    """Tests validation: positive amount, unsupported type, and duplicate external references."""
+    emp_id = seed_env["employee_id"]
+
+    resp = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2026-10",
+            "period_start": "2026-10-01",
+            "period_end": "2026-10-31",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    preview_id = resp.json()["preview_id"]
+
+    # Negative / zero amount should fail
+    bad_amt = app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={"employee_id": emp_id, "amount": -100.0, "type": "BONUS", "payment_source": "INT"},
+        cookies=admin_cookies,
+    )
+    assert bad_amt.status_code == 422
+
+    # Unsupported deduction type should fail in this release
+    bad_type = app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={"employee_id": emp_id, "amount": 100.0, "type": "TAX_DEDUCTION", "payment_source": "INT"},
+        cookies=admin_cookies,
+    )
+    assert bad_type.status_code == 422
+
+    # Duplicate external reference should return 409 Conflict
+    first_ok = app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={
+            "employee_id": emp_id,
+            "amount": 250.0,
+            "type": "BONUS",
+            "payment_source": "INT",
+            "external_reference": "REF-UNIQUE-999",
+        },
+        cookies=admin_cookies,
+    )
+    assert first_ok.status_code == 201
+
+    dup = app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={
+            "employee_id": emp_id,
+            "amount": 300.0,
+            "type": "BONUS",
+            "payment_source": "INT",
+            "external_reference": "REF-UNIQUE-999",
+        },
+        cookies=admin_cookies,
+    )
+    assert dup.status_code == 409
+
+
+def test_payroll_run_creation_preserves_adjustments(app_client, admin_cookies, seed_env):
+    """Tests that create_run attaches preview adjustments into PayrollAdjustmentDB and lines."""
+    emp_id = seed_env["employee_id"]
+
+    resp = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2026-11",
+            "period_start": "2026-11-01",
+            "period_end": "2026-11-30",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    preview = resp.json()
+    preview_id = preview["preview_id"]
+
+    # Add a Sales Commission of $600.00
+    app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={
+            "employee_id": emp_id,
+            "type": "COMMISSION",
+            "direction": "ADDITION",
+            "amount": 600.0,
+            "payment_source": "EXT",
+            "description": "November Deals Commission",
+        },
+        cookies=admin_cookies,
+    )
+
+    # Refresh preview
+    p_updated = app_client.get(f"/api/finance/payroll/previews/{preview_id}", cookies=admin_cookies).json()
+
+    # Create run from preview
+    create_resp = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2026-11",
+            "period_start": "2026-11-01",
+            "period_end": "2026-11-30",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+            "preview_id": preview_id,
+            "preview_version": p_updated["preview_version"],
+            "source_version": p_updated["source_version"],
+        },
+        cookies=admin_cookies,
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    run = create_resp.json()
+
+    assert run["total_commissions"] == 600.0
+    assert len(run["adjustments"]) == 1
+    assert run["adjustments"][0]["amount"] == 600.0
+    assert run["adjustments"][0]["type"] == "COMMISSION"
+    assert run["adjustments"][0]["payment_source"] == "EXT"

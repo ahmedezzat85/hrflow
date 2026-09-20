@@ -16,6 +16,7 @@ from models_db import EmployeeDB, EmployeeBankAccountDB
 from finance.models import (
     PayrollRunDB,
     PayrollLineDB,
+    PayrollAdjustmentDB,
     FinanceBankAccountDB,
     LedgerTransactionDB,
     TransactionCategoryDB,
@@ -23,7 +24,11 @@ from finance.models import (
     StatutoryObligationDB,
     AccountTransferDB,
 )
+from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
+
+# In-memory store for active previews and draft adjustments during runner execution
+_PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
 class PayrollService:
@@ -135,6 +140,7 @@ class PayrollService:
         comp_repo = CompensationPlanRepository(self.db)
 
         lines: List[Dict[str, Any]] = []
+        recipients: List[Dict[str, Any]] = []
         exceptions: List[Dict[str, Any]] = []
         has_blocking = False
         tot_net = 0.0
@@ -189,11 +195,17 @@ class PayrollService:
                         "is_resolved": False,
                     })
 
+            base_int = 0.0
+            base_ext = 0.0
             for comp in comps:
                 comp_type = comp.component_type
                 amount = round(float(comp.amount or 0.0), 2)
                 net = amount
                 tot_net += net
+                if comp_type == "external_usd":
+                    base_ext += amount
+                else:
+                    base_int += amount
 
                 lines.append({
                     "id": emp.id,
@@ -213,6 +225,31 @@ class PayrollService:
                     "created_at": datetime.utcnow().isoformat(),
                     "paid_at": None,
                 })
+
+            emp_issues = [e["description"] for e in exceptions if e.get("employee_id") == emp.id]
+            emp_has_blocker = any(e.get("severity") == "blocking" for e in exceptions if e.get("employee_id") == emp.id)
+            emp_has_warning = any(e.get("severity") == "warning" for e in exceptions if e.get("employee_id") == emp.id)
+            emp_status = "BLOCKER" if emp_has_blocker else ("WARNING" if emp_has_warning else "READY")
+
+            recipients.append({
+                "employee_id": emp.id,
+                "employee_name": emp.name,
+                "department": emp.dept or "General",
+                "base_int_amount": round(base_int, 2),
+                "base_ext_amount": round(base_ext, 2),
+                "int_adjustments_total": 0.0,
+                "ext_adjustments_total": 0.0,
+                "final_int_amount": round(base_int, 2),
+                "final_ext_amount": round(base_ext, 2),
+                "final_payment_amount": round(base_int + base_ext, 2),
+                "adjustments": [],
+                "bank_name": bank_name,
+                "destination_masked": masked_acc,
+                "readiness": {
+                    "status": emp_status,
+                    "issues": emp_issues,
+                },
+            })
 
         # 3. Variance Comparison vs Prior Run
         prior_run = (
@@ -259,7 +296,10 @@ class PayrollService:
             resolved_fx,
         )
 
-        return {
+        final_int_total = round(sum(r["final_int_amount"] for r in recipients), 2)
+        final_ext_total = round(sum(r["final_ext_amount"] for r in recipients), 2)
+
+        preview_data = {
             "preview_id": preview_id,
             "preview_version": 1,
             "source_version": source_version,
@@ -281,13 +321,211 @@ class PayrollService:
             "payment_line_count": len(lines),
             "total_net": round(tot_net, 2),
             "total_payment_amount": round(tot_net, 2),
+            "total_commissions": 0.0,
+            "total_bonuses": 0.0,
+            "total_additions": 0.0,
+            "final_int_total": final_int_total,
+            "final_ext_total": final_ext_total,
             "prior_period_total": round(prior_total, 2),
             "change_amount": net_delta,
             "has_blocking_exceptions": has_blocking,
             "exceptions": exceptions,
             "variance_summary": variance_summary,
             "lines": lines,
+            "recipients": recipients,
+            "adjustments": [],
         }
+        _PREVIEW_CACHE[preview_id] = preview_data
+        return preview_data
+
+    def get_preview(self, preview_id: str) -> Dict[str, Any]:
+        """Retrieves active cached preview including adjustments and recipients."""
+        preview = _PREVIEW_CACHE.get(preview_id)
+        if not preview:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Preview '{preview_id}' not found.")
+        return preview
+
+    def list_preview_adjustments(self, preview_id: str) -> List[Dict[str, Any]]:
+        """Lists active adjustments for the preview."""
+        preview = self.get_preview(preview_id)
+        return preview.get("adjustments", [])
+
+    def create_preview_adjustment(
+        self,
+        preview_id: str,
+        payload: PayrollAdjustmentCreate,
+        user_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Adds a Commission or Bonus adjustment to a preview and immediately updates totals."""
+        preview = self.get_preview(preview_id)
+
+        emp = next((r for r in preview.get("recipients", []) if r["employee_id"] == payload.employee_id), None)
+        if not emp:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee #{payload.employee_id} not found in preview.")
+
+        if payload.amount <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Adjustment amount must be greater than zero.")
+
+        if payload.external_reference:
+            existing = next((a for a in preview.get("adjustments", []) if a.get("external_reference") == payload.external_reference), None)
+            if existing:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Duplicate external reference '{payload.external_reference}'.")
+
+        adj_id = f"adj_{uuid.uuid4().hex[:8]}"
+        now_iso = datetime.utcnow().isoformat() + "Z"
+        adj = {
+            "id": adj_id,
+            "employee_id": payload.employee_id,
+            "preview_id": preview_id,
+            "payroll_run_id": None,
+            "type": payload.type.upper(),
+            "direction": "ADDITION",
+            "amount": round(float(payload.amount), 2),
+            "currency": payload.currency or "USD",
+            "payment_source": payload.payment_source.upper(),
+            "effective_period": preview["period_label"],
+            "description": payload.description or f"{payload.type.title()} for {emp['employee_name']}",
+            "external_reference": payload.external_reference,
+            "origin": payload.origin or "MANUAL",
+            "status": "DRAFT",
+            "created_by": user_email,
+            "created_at": now_iso,
+            "updated_at": now_iso,
+        }
+
+        preview.setdefault("adjustments", []).append(adj)
+        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+        self._recalculate_preview_aggregates(preview)
+        return adj
+
+    def update_preview_adjustment(
+        self,
+        preview_id: str,
+        adjustment_id: str,
+        payload: PayrollAdjustmentUpdate,
+        user_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Edits an existing adjustment on a preview and recalculates totals immediately."""
+        preview = self.get_preview(preview_id)
+        adj = next((a for a in preview.get("adjustments", []) if a["id"] == adjustment_id), None)
+        if not adj:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Adjustment '{adjustment_id}' not found.")
+
+        if payload.amount is not None:
+            if payload.amount <= 0:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Adjustment amount must be greater than zero.")
+            adj["amount"] = round(float(payload.amount), 2)
+
+        if payload.payment_source is not None:
+            adj["payment_source"] = payload.payment_source.upper()
+
+        if payload.type is not None:
+            adj["type"] = payload.type.upper()
+
+        if payload.description is not None:
+            adj["description"] = payload.description
+
+        if payload.external_reference is not None:
+            adj["external_reference"] = payload.external_reference
+
+        adj["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+        self._recalculate_preview_aggregates(preview)
+        return adj
+
+    def delete_preview_adjustment(
+        self,
+        preview_id: str,
+        adjustment_id: str,
+        user_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Removes an adjustment from a preview and recalculates totals immediately."""
+        preview = self.get_preview(preview_id)
+        adjs = preview.get("adjustments", [])
+        idx = next((i for i, a in enumerate(adjs) if a["id"] == adjustment_id), None)
+        if idx is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Adjustment '{adjustment_id}' not found.")
+
+        adjs.pop(idx)
+        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+        self._recalculate_preview_aggregates(preview)
+        return {"success": True, "deleted_id": adjustment_id}
+
+    def _recalculate_preview_aggregates(self, preview: Dict[str, Any]) -> None:
+        """Recalculates recipient and run totals from base amounts and active adjustments."""
+        all_adjs = preview.get("adjustments", [])
+        recipients = preview.get("recipients", [])
+
+        for r in recipients:
+            emp_adjs = [a for a in all_adjs if a["employee_id"] == r["employee_id"]]
+            r["adjustments"] = emp_adjs
+            r["int_adjustments_total"] = round(sum(a["amount"] for a in emp_adjs if a["payment_source"] == "INT"), 2)
+            r["ext_adjustments_total"] = round(sum(a["amount"] for a in emp_adjs if a["payment_source"] == "EXT"), 2)
+            r["final_int_amount"] = round(r["base_int_amount"] + r["int_adjustments_total"], 2)
+            r["final_ext_amount"] = round(r["base_ext_amount"] + r["ext_adjustments_total"], 2)
+            r["final_payment_amount"] = round(r["final_int_amount"] + r["final_ext_amount"], 2)
+
+        total_commissions = round(sum(a["amount"] for a in all_adjs if a["type"] == "COMMISSION"), 2)
+        total_bonuses = round(sum(a["amount"] for a in all_adjs if a["type"] == "BONUS"), 2)
+        total_additions = round(total_commissions + total_bonuses, 2)
+
+        final_int_total = round(sum(r["final_int_amount"] for r in recipients), 2)
+        final_ext_total = round(sum(r["final_ext_amount"] for r in recipients), 2)
+        total_net = round(final_int_total + final_ext_total, 2)
+
+        preview["total_commissions"] = total_commissions
+        preview["total_bonuses"] = total_bonuses
+        preview["total_additions"] = total_additions
+        preview["final_int_total"] = final_int_total
+        preview["final_ext_total"] = final_ext_total
+        preview["total_net"] = total_net
+        preview["total_payment_amount"] = total_net
+
+        # Re-sync lines
+        base_lines = [l for l in preview.get("lines", []) if not l.get("is_adjustment")]
+        adj_lines = []
+        for a in all_adjs:
+            emp_name = next((r["employee_name"] for r in recipients if r["employee_id"] == a["employee_id"]), "Employee")
+            emp_dept = next((r["department"] for r in recipients if r["employee_id"] == a["employee_id"]), "General")
+            c_type = "bonus" if a["type"] == "BONUS" else "commission_sales"
+            adj_lines.append({
+                "id": a["id"],
+                "payroll_run_id": 0,
+                "employee_id": a["employee_id"],
+                "employee_name": emp_name,
+                "department": emp_dept,
+                "compensation_type": c_type,
+                "net_pay": a["amount"],
+                "amount": a["amount"],
+                "currency": a.get("currency", "USD"),
+                "bank_name": "Operating Account",
+                "bank_account_masked": "••••4821",
+                "payment_status": "pending",
+                "failure_reason": None,
+                "snapshot_notes": a.get("description") or f"{a['type']} ({a['payment_source']})",
+                "created_at": a.get("created_at"),
+                "paid_at": None,
+                "is_adjustment": True,
+            })
+        preview["lines"] = base_lines + adj_lines
+        preview["payment_line_count"] = len(preview["lines"])
+
+        # Recompute variance
+        prior_total = preview.get("prior_period_total", 0.0)
+        net_delta = round(total_net - prior_total, 2)
+        preview["change_amount"] = net_delta
+        if preview.get("variance_summary"):
+            preview["variance_summary"]["net_delta"] = net_delta
+            if prior_total > 0:
+                preview["variance_summary"]["pct_change"] = round((net_delta / prior_total) * 100, 1)
+
+        # Update source_version hash
+        preview["source_version"] = self._generate_source_version(
+            preview["lines"],
+            preview.get("external_funding_account_id"),
+            preview.get("internal_funding_account_id"),
+            preview.get("fx_rate_value"),
+        )
 
     def generate_run_from_compensation_plans(
         self,
@@ -515,17 +753,20 @@ class PayrollService:
                 detail=f"An active payroll run already exists for period {period_label} (ID #{existing.id})"
             )
 
-        preview = self.preview_run(
-            period_label=period_label,
-            period_start=period_start,
-            period_end=period_end,
-            payment_date=payment_date,
-            bank_account_id=bank_account_id,
-            external_funding_account_id=external_funding_account_id,
-            internal_funding_account_id=internal_funding_account_id,
-            fx_rate_source=fx_rate_source,
-            fx_rate_value=fx_rate_value,
-        )
+        if preview_id and preview_id in _PREVIEW_CACHE:
+            preview = _PREVIEW_CACHE[preview_id]
+        else:
+            preview = self.preview_run(
+                period_label=period_label,
+                period_start=period_start,
+                period_end=period_end,
+                payment_date=payment_date,
+                bank_account_id=bank_account_id,
+                external_funding_account_id=external_funding_account_id,
+                internal_funding_account_id=internal_funding_account_id,
+                fx_rate_source=fx_rate_source,
+                fx_rate_value=fx_rate_value,
+            )
 
         if source_version and source_version != preview["source_version"]:
             raise HTTPException(
@@ -601,6 +842,28 @@ class PayrollService:
                 created_at=datetime.utcnow(),
             )
             self.db.add(line_db)
+
+        for a in preview.get("adjustments", []):
+            adj_db = PayrollAdjustmentDB(
+                id=a["id"],
+                employee_id=a["employee_id"],
+                preview_id=preview.get("preview_id"),
+                payroll_run_id=run.id,
+                type=a["type"],
+                direction=a.get("direction", "ADDITION"),
+                amount=a["amount"],
+                currency=a.get("currency", "USD"),
+                payment_source=a.get("payment_source", "INT"),
+                effective_period=run.period_label,
+                description=a.get("description"),
+                external_reference=a.get("external_reference"),
+                origin=a.get("origin", "MANUAL"),
+                status="SUBMITTED" if submit_for_approval else "DRAFT",
+                created_by=a.get("created_by") or user_email,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            self.db.add(adj_db)
 
         self.db.flush()
         self._recalculate_run_aggregates(run)
@@ -1175,4 +1438,33 @@ class PayrollService:
         summary["variance_summary"] = var
         summary["lines"] = [self._format_line_dict(l) for l in run.lines]
         summary["payment_line_count"] = len(run.lines)
+
+        adjs = [
+            {
+                "id": a.id,
+                "employee_id": a.employee_id,
+                "preview_id": a.preview_id,
+                "payroll_run_id": a.payroll_run_id,
+                "type": a.type,
+                "direction": a.direction,
+                "amount": a.amount,
+                "currency": a.currency,
+                "payment_source": a.payment_source,
+                "effective_period": a.effective_period,
+                "description": a.description,
+                "external_reference": a.external_reference,
+                "origin": a.origin,
+                "status": a.status,
+                "created_by": a.created_by,
+                "created_at": a.created_at,
+                "updated_at": a.updated_at,
+            }
+            for a in (run.adjustments or [])
+        ]
+        total_comm = round(sum(a["amount"] for a in adjs if a["type"] == "COMMISSION"), 2)
+        total_bon = round(sum(a["amount"] for a in adjs if a["type"] == "BONUS"), 2)
+        summary["adjustments"] = adjs
+        summary["total_commissions"] = total_comm
+        summary["total_bonuses"] = total_bon
+        summary["total_additions"] = round(total_comm + total_bon, 2)
         return summary

@@ -19,6 +19,9 @@ from finance.schemas import (
     EmployeePayslipResponse,
     PayrollLineCreate,
     PayrollLineResponse,
+    PayrollAdjustmentCreate,
+    PayrollAdjustmentUpdate,
+    PayrollAdjustmentResponse,
 )
 from finance.services.payroll_service import PayrollService
 
@@ -38,15 +41,16 @@ def list_payroll_runs(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Lists company payroll runs with metadata and lifecycle status."""
+    """Lists payroll runs with period, totals, and lifecycle status."""
     return service.list_runs(status_filter=status, search=search, limit=limit, offset=offset)
 
 
+@router.post("/previews", response_model=PayrollRunPreviewResponse)
 @router.post("/runs/preview", response_model=PayrollRunPreviewResponse)
 def preview_payroll_run(
     req: PayrollRunPreviewRequest,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
     """
     Evaluates active staff to preview net payments,
@@ -63,6 +67,63 @@ def preview_payroll_run(
         fx_rate_source=req.fx_rate_source,
         fx_rate_value=req.fx_rate_value,
     )
+
+
+@router.get("/previews/{preview_id}", response_model=PayrollRunPreviewResponse)
+def get_preview(
+    preview_id: str = Path(..., description="Preview ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Returns active state of a preview including recipients, adjustments, and recalculated totals."""
+    return service.get_preview(preview_id)
+
+
+@router.get("/previews/{preview_id}/adjustments", response_model=List[PayrollAdjustmentResponse])
+def list_preview_adjustments(
+    preview_id: str = Path(..., description="Preview ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Lists active draft adjustments for the specified preview."""
+    return service.list_preview_adjustments(preview_id)
+
+
+@router.post("/previews/{preview_id}/adjustments", response_model=PayrollAdjustmentResponse, status_code=status.HTTP_201_CREATED)
+def create_preview_adjustment(
+    preview_id: str = Path(..., description="Preview ID"),
+    req: PayrollAdjustmentCreate = ...,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Adds a Commission or Bonus adjustment to a preview and immediately updates recipient and run totals."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.create_preview_adjustment(preview_id, req, user_email)
+
+
+@router.patch("/previews/{preview_id}/adjustments/{adjustment_id}", response_model=PayrollAdjustmentResponse)
+def update_preview_adjustment(
+    preview_id: str = Path(..., description="Preview ID"),
+    adjustment_id: str = Path(..., description="Adjustment ID"),
+    req: PayrollAdjustmentUpdate = ...,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Updates an existing adjustment on a preview and recalculates totals immediately."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.update_preview_adjustment(preview_id, adjustment_id, req, user_email)
+
+
+@router.delete("/previews/{preview_id}/adjustments/{adjustment_id}")
+def delete_preview_adjustment(
+    preview_id: str = Path(..., description="Preview ID"),
+    adjustment_id: str = Path(..., description="Adjustment ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Removes an adjustment from a preview and recalculates totals immediately."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.delete_preview_adjustment(preview_id, adjustment_id, user_email)
 
 
 @router.post("/runs/generate", response_model=PayrollRunResponse, status_code=status.HTTP_201_CREATED)

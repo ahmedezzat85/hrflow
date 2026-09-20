@@ -4,8 +4,8 @@ Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import date, datetime
 from enum import Enum
-from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel, Field, model_validator
+from typing import Optional, List, Dict, Any, Literal, Union
+from pydantic import BaseModel, Field, model_validator, field_validator
 
 
 # ==========================================
@@ -1922,7 +1922,7 @@ class PayrollLineCreate(BaseModel):
 
 
 class PayrollLineResponse(BaseModel):
-    id: int
+    id: Union[int, str]
     payroll_run_id: int
     employee_id: int
     employee_name: Optional[str] = None
@@ -1978,6 +1978,104 @@ class PayrollRunGenerateRequest(BaseModel):
     internal_funding_account_id: Optional[int] = None
 
 
+# ==========================================
+# Payroll Adjustment Schemas (Extensible)
+# ==========================================
+class PayrollAdjustmentBase(BaseModel):
+    employee_id: int
+    type: str = Field("BONUS", description="COMMISSION | BONUS")
+    direction: str = Field("ADDITION", description="ADDITION (reserved: DEDUCTION)")
+    amount: float = Field(..., gt=0.0, description="Strictly positive monetary amount")
+    currency: str = Field("USD", min_length=3, max_length=10)
+    payment_source: str = Field("INT", description="INT | EXT")
+    effective_period: Optional[str] = Field(None, description="YYYY-MM")
+    description: Optional[str] = None
+    external_reference: Optional[str] = None
+    origin: str = Field("MANUAL", description="MANUAL | IMPORT")
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper not in ["COMMISSION", "BONUS"]:
+            if v.lower() in ["commission_sales", "commission_support", "commission"]:
+                return "COMMISSION"
+            if v.lower() in ["bonus"]:
+                return "BONUS"
+            raise ValueError(f"Unsupported adjustment type: '{v}'. Must be COMMISSION or BONUS.")
+        return v_upper
+
+    @field_validator("direction")
+    @classmethod
+    def validate_direction(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper != "ADDITION":
+            raise ValueError("Only 'ADDITION' direction is currently supported in this release.")
+        return v_upper
+
+    @field_validator("payment_source")
+    @classmethod
+    def validate_payment_source(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper not in ["INT", "EXT"]:
+            raise ValueError(f"Invalid payment source '{v}'. Must be 'INT' or 'EXT'.")
+        return v_upper
+
+
+class PayrollAdjustmentCreate(PayrollAdjustmentBase):
+    pass
+
+
+class PayrollAdjustmentUpdate(BaseModel):
+    amount: Optional[float] = Field(None, gt=0.0)
+    payment_source: Optional[str] = None
+    type: Optional[str] = None
+    description: Optional[str] = None
+    external_reference: Optional[str] = None
+
+    @field_validator("payment_source")
+    @classmethod
+    def validate_source(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.upper() not in ["INT", "EXT"]:
+            raise ValueError("payment_source must be 'INT' or 'EXT'")
+        return v.upper() if v else None
+
+
+class PayrollAdjustmentResponse(PayrollAdjustmentBase):
+    id: str
+    preview_id: Optional[str] = None
+    payroll_run_id: Optional[int] = None
+    status: str = "DRAFT"
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayrollRecipientReadiness(BaseModel):
+    status: str = "READY"  # READY | WARNING | BLOCKER
+    issues: List[str] = []
+
+
+class PayrollRecipientPreview(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = "General"
+    base_int_amount: float = 0.0
+    base_ext_amount: float = 0.0
+    int_adjustments_total: float = 0.0
+    ext_adjustments_total: float = 0.0
+    final_int_amount: float = 0.0
+    final_ext_amount: float = 0.0
+    final_payment_amount: float = 0.0
+    adjustments: List[PayrollAdjustmentResponse] = []
+    bank_name: Optional[str] = None
+    destination_masked: Optional[str] = None
+    readiness: PayrollRecipientReadiness = Field(default_factory=PayrollRecipientReadiness)
+
+
 class PayrollRunPreviewResponse(BaseModel):
     preview_id: Optional[str] = None
     preview_version: Optional[int] = 1
@@ -2000,12 +2098,19 @@ class PayrollRunPreviewResponse(BaseModel):
     payment_line_count: int = 0
     total_net: float = 0.0
     total_payment_amount: float = 0.0
+    total_commissions: float = 0.0
+    total_bonuses: float = 0.0
+    total_additions: float = 0.0
+    final_int_total: float = 0.0
+    final_ext_total: float = 0.0
     prior_period_total: float = 0.0
     change_amount: float = 0.0
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
     variance_summary: Optional[PayrollVarianceSummary] = None
     lines: List[PayrollLineResponse] = []
+    recipients: List[PayrollRecipientPreview] = []
+    adjustments: List[PayrollAdjustmentResponse] = []
 
 
 class PayrollRunCreate(BaseModel):
@@ -2066,6 +2171,10 @@ class PayrollRunResponse(BaseModel):
     exceptions: List[PayrollExceptionItem] = []
     variance_summary: Optional[PayrollVarianceSummary] = None
     lines: List[PayrollLineResponse] = []
+    adjustments: List[PayrollAdjustmentResponse] = []
+    total_commissions: Optional[float] = 0.0
+    total_bonuses: Optional[float] = 0.0
+    total_additions: Optional[float] = 0.0
 
     @model_validator(mode="before")
     @classmethod

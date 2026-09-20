@@ -617,10 +617,35 @@ class PayrollRunDB(Base):
     variance_summary_json = Column(Text, default="{}")
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
+    adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
     bank_account = relationship("FinanceBankAccountDB", foreign_keys=[bank_account_id])
     external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
     internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
     journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
+
+
+class PayrollAdjustmentDB(Base):
+    __tablename__ = "finance_payroll_adjustments"
+
+    id = Column(String(50), primary_key=True)  # e.g. "adj_xxx"
+    employee_id = Column(Integer, nullable=False, index=True)
+    preview_id = Column(String(50), nullable=True, index=True)
+    payroll_run_id = Column(Integer, ForeignKey("finance_payroll_runs.id", ondelete="CASCADE"), nullable=True, index=True)
+    type = Column(String(30), nullable=False)  # COMMISSION | BONUS
+    direction = Column(String(20), default="ADDITION", nullable=False)  # ADDITION
+    amount = Column(Float, nullable=False)  # strictly positive
+    currency = Column(String(10), default="USD", nullable=False)
+    payment_source = Column(String(10), default="INT", nullable=False)  # INT | EXT
+    effective_period = Column(String(20), nullable=False)  # YYYY-MM
+    description = Column(String(255), nullable=True)
+    external_reference = Column(String(100), nullable=True, index=True)
+    origin = Column(String(20), default="MANUAL", nullable=False)  # MANUAL | IMPORT
+    status = Column(String(20), default="DRAFT", nullable=False)  # DRAFT | SUBMITTED | APPROVED | REMOVED
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payroll_run = relationship("PayrollRunDB", back_populates="adjustments")
 
 
 class PayrollLineDB(Base):
