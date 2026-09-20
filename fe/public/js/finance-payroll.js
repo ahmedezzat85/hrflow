@@ -539,17 +539,17 @@ function renderWizardRecipientsTable(preview) {
 
     return `
       <tr class="recipient-review-row" style="border-bottom:1px solid var(--border-color, #E2E8F0);">
-        <td style="padding:10px 12px;"><strong>${emp.employee_name}</strong></td>
-        <td style="padding:10px 12px; color:var(--text-muted);">${emp.department || 'General'}</td>
-        <td style="padding:10px 12px;"><span class="badge" style="background:#F1F5F9; color:#0F172A; font-size:0.8rem; white-space:nowrap;">${routeCompact}</span></td>
-        <td style="padding:10px 12px;">${destination}</td>
-        <td style="padding:10px 12px; text-align:right;">
-          <div style="font-weight:700; color:var(--primary, #2563EB); font-size:0.95rem; white-space:nowrap;">$${finalPay.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+        <td data-label="Recipient" style="padding:10px 12px;"><strong>${emp.employee_name}</strong></td>
+        <td data-label="Department" style="padding:10px 12px; color:var(--text-muted);">${emp.department || 'General'}</td>
+        <td data-label="Payment Route" style="padding:10px 12px;"><span class="badge" style="background:#F1F5F9; color:#0F172A; font-size:0.8rem; white-space:nowrap; font-variant-numeric:tabular-nums;">${routeCompact}</span></td>
+        <td data-label="Destination" style="padding:10px 12px; font-variant-numeric:tabular-nums;">${destination}</td>
+        <td data-label="Final Amount" style="padding:10px 12px; text-align:right;">
+          <div style="font-weight:700; color:var(--primary, #2563EB); font-size:0.95rem; white-space:nowrap; font-variant-numeric:tabular-nums;">$${finalPay.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
           ${adjSummaryHtml}
         </td>
-        <td style="padding:10px 12px; text-align:center;">${statusChip}</td>
-        <td style="padding:10px 12px; text-align:center;">
-          <button type="button" class="btn btn-sm btn-outline btn-view-recipient" onclick="openWizardRecipientDetails(${emp.employee_id})" style="padding:4px 10px; font-size:0.8rem; white-space:nowrap;">
+        <td data-label="Readiness" style="padding:10px 12px; text-align:center;">${statusChip}</td>
+        <td data-label="Action" style="padding:10px 12px; text-align:center;">
+          <button type="button" class="btn btn-sm btn-outline btn-view-recipient" onclick="openWizardRecipientDetails(${emp.employee_id})" style="padding:6px 12px; font-size:0.8rem; min-height:36px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;">
             <i class="fa-solid fa-eye"></i> View
           </button>
         </td>
