@@ -316,3 +316,82 @@ def test_payroll_run_creation_preserves_adjustments(app_client, admin_cookies, s
     assert run["adjustments"][0]["amount"] == 600.0
     assert run["adjustments"][0]["type"] == "COMMISSION"
     assert run["adjustments"][0]["payment_source"] == "EXT"
+
+
+def test_source_specific_readiness_rules(app_client, admin_cookies, seed_env):
+    """Verifies that INT-only employees without bank details are NOT warned, while EXT without bank details blocks."""
+    with get_db_context() as db:
+        # 1. INT-only employee with NO bank account
+        emp_int = EmployeeDB(
+            name="Ian Internal",
+            email="ian.int@voyance.health",
+            dept="Operations",
+            job_role="Cashier",
+            status="active",
+        )
+        db.add(emp_int)
+        db.flush()
+        plan_int = EmployeeCompensationPlanDB(
+            employee_id=emp_int.id,
+            component_type="internal_usd_cash",
+            amount=3000.0,
+            currency="USD",
+            effective_start_date="2026-01-01",
+        )
+        db.add(plan_int)
+
+        # 2. EXT-only employee with NO bank account
+        emp_ext = EmployeeDB(
+            name="Evan External",
+            email="evan.ext@voyance.health",
+            dept="Consulting",
+            job_role="Advisor",
+            status="active",
+        )
+        db.add(emp_ext)
+        db.flush()
+        plan_ext = EmployeeCompensationPlanDB(
+            employee_id=emp_ext.id,
+            component_type="external_usd",
+            amount=8000.0,
+            currency="USD",
+            effective_start_date="2026-01-01",
+        )
+        db.add(plan_ext)
+        db.commit()
+
+        int_id = emp_int.id
+        ext_id = emp_ext.id
+
+    resp = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2026-12",
+            "period_start": "2026-12-01",
+            "period_end": "2026-12-31",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert resp.status_code == 200, resp.text
+    preview = resp.json()
+
+    recipients = preview["recipients"]
+    ian_recip = next(r for r in recipients if r["employee_id"] == int_id)
+    evan_recip = next(r for r in recipients if r["employee_id"] == ext_id)
+
+    # Ian (INT-only) MUST NOT have any bank warnings or blockers
+    assert ian_recip["readiness"]["status"] == "READY"
+    assert len(ian_recip["readiness"]["issues"]) == 0
+
+    # Evan (EXT-only) MUST have a BLOCKER for missing wire details
+    assert evan_recip["readiness"]["status"] == "BLOCKER"
+    assert any("wire" in issue.lower() or "bank" in issue.lower() for issue in evan_recip["readiness"]["issues"])
+
+    # Entire preview has blocking exception due to Evan, but not due to Ian
+    assert preview["has_blocking_exceptions"] is True
+    exceptions = preview["exceptions"]
+    assert not any(e.get("employee_id") == int_id for e in exceptions)
+    assert any(e.get("employee_id") == ext_id and e.get("severity") == "blocking" for e in exceptions)
+

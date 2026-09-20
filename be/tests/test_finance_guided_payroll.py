@@ -114,7 +114,7 @@ def seed_payroll_env(db_session):
 
     p2 = EmployeeCompensationPlanDB(
         employee_id=e2.id,
-        component_type="internal_usd_cash",
+        component_type="external_usd",
         amount=8000.0,
         currency="USD",
         effective_start_date="2026-01-01",
@@ -177,7 +177,7 @@ def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed
     assert "No Active Compensation Plan" in titles
 
     bank_exc = next(e for e in excs if e["title"] == "Missing Bank Wire Details")
-    assert bank_exc["severity"] == "warning"
+    assert bank_exc["severity"] == "blocking"
     plan_exc = next(e for e in excs if e["title"] == "No Active Compensation Plan")
     assert plan_exc["severity"] == "blocking"
 
@@ -205,8 +205,8 @@ def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_
 
 
 def test_payroll_approval_allowed_with_warning_only_exceptions(app_client, admin_cookies, db_session, seed_payroll_env):
-    """Verifies that non-blocking warnings (such as Missing Bank Wire Details) do not prevent payroll creation or approval."""
-    # Charlie has no compensation plan, which is blocking. Give Charlie a compensation plan so only Bob's missing bank warning remains.
+    """Verifies that non-blocking warnings do not prevent payroll creation or approval."""
+    # Resolve Charlie's missing plan and Bob's missing bank account so no blockers remain
     p3 = EmployeeCompensationPlanDB(
         employee_id=seed_payroll_env["emp3_id"],
         component_type="internal_usd_cash",
@@ -215,9 +215,25 @@ def test_payroll_approval_allowed_with_warning_only_exceptions(app_client, admin
         effective_start_date="2026-01-01",
     )
     db_session.add(p3)
+    b2 = EmployeeBankAccountDB(
+        employee_id=seed_payroll_env["emp2_id"],
+        bank_name="Chase",
+        iban="US12CHAS021000021111222333",
+    )
+    db_session.add(b2)
+    prior_run = PayrollRunDB(
+        period_label="2026-10",
+        period_start="2026-10-01",
+        period_end="2026-10-31",
+        payment_date="2026-10-31",
+        status="approved",
+        headcount=3,
+        total_net=50000.0,
+    )
+    db_session.add(prior_run)
     db_session.commit()
 
-    # Preview run - should have no blocking exceptions despite Bob missing bank wire details
+    # Preview run - should have no blocking exceptions but should have a warning (LARGE_VARIANCE)
     prev_res = app_client.post(
         "/api/finance/payroll/runs/preview",
         json={
@@ -231,7 +247,7 @@ def test_payroll_approval_allowed_with_warning_only_exceptions(app_client, admin
     assert prev_res.status_code == 200
     prev_data = prev_res.json()
     assert prev_data["has_blocking_exceptions"] is False
-    assert any(e["title"] == "Missing Bank Wire Details" and e["severity"] == "warning" for e in prev_data["exceptions"])
+    assert any(e["severity"] == "warning" for e in prev_data["exceptions"])
 
     # Create run and approve - should succeed
     create_res = app_client.post(

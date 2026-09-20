@@ -168,32 +168,19 @@ class PayrollService:
                 continue
 
             has_external_route = any(c.component_type == "external_usd" for c in comps)
-            if not bank_rec or not iban:
-                if has_external_route:
-                    has_blocking = True
-                    exceptions.append({
-                        "id": f"exc-bank-{emp.id}",
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "severity": "blocking",
-                        "code": "MISSING_BANK_DETAILS",
-                        "title": "Missing Bank Wire Details",
-                        "description": f"{emp.name} is scheduled for external bank payment but does not have verified wire / IBAN details on file.",
-                        "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                        "is_resolved": False,
-                    })
-                else:
-                    exceptions.append({
-                        "id": f"warn-bank-{emp.id}",
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "severity": "warning",
-                        "code": "MISSING_BANK_DETAILS_OPTIONAL",
-                        "title": "Missing Bank Wire Details",
-                        "description": f"{emp.name} does not have bank details on file. Non-blocking for cash/internal route.",
-                        "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                        "is_resolved": False,
-                    })
+            if has_external_route and (not bank_rec or not iban):
+                has_blocking = True
+                exceptions.append({
+                    "id": f"exc-bank-{emp.id}",
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "severity": "blocking",
+                    "code": "MISSING_BANK_DETAILS",
+                    "title": "Missing Bank Wire Details",
+                    "description": f"{emp.name} is scheduled for external bank payment but does not have verified wire / IBAN details on file.",
+                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
+                    "is_resolved": False,
+                })
 
             base_int = 0.0
             base_ext = 0.0
@@ -614,31 +601,19 @@ class PayrollService:
             iban = bank_rec.iban if bank_rec else None
             masked_acc = f"••••{iban[-4:]}" if iban and len(iban) >= 4 else None
 
-            if not bank_rec or not iban:
-                if has_external_route:
-                    exceptions.append({
-                        "id": f"exc-bank-{emp.id}",
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "severity": "blocking",
-                        "code": "MISSING_BANK_DETAILS",
-                        "title": "Missing Bank Wire Details",
-                        "description": f"{emp.name} is scheduled for external bank payment but does not have verified wire / IBAN details on file.",
-                        "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                        "is_resolved": False,
-                    })
-                else:
-                    exceptions.append({
-                        "id": f"warn-bank-{emp.id}",
-                        "employee_id": emp.id,
-                        "employee_name": emp.name,
-                        "severity": "warning",
-                        "code": "MISSING_BANK_DETAILS_OPTIONAL",
-                        "title": "Missing Bank Wire Details",
-                        "description": f"{emp.name} does not have bank details on file. Non-blocking for cash/internal route.",
-                        "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                        "is_resolved": False,
-                    })
+            has_external_route = any(c.component_type == "external_usd" for c in comps)
+            if has_external_route and (not bank_rec or not iban):
+                exceptions.append({
+                    "id": f"exc-bank-{emp.id}",
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "severity": "blocking",
+                    "code": "MISSING_BANK_DETAILS",
+                    "title": "Missing Bank Wire Details",
+                    "description": f"{emp.name} is scheduled for external bank payment but does not have verified wire / IBAN details on file.",
+                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
+                    "is_resolved": False,
+                })
 
             for comp in comps:
                 comp_type = comp.component_type
