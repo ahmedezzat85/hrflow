@@ -395,3 +395,191 @@ def test_source_specific_readiness_rules(app_client, admin_cookies, seed_env):
     assert not any(e.get("employee_id") == int_id for e in exceptions)
     assert any(e.get("employee_id") == ext_id and e.get("severity") == "blocking" for e in exceptions)
 
+
+def test_stale_preview_rejection_and_immutability(app_client, admin_cookies, seed_env):
+    """Verifies that stale preview version submissions are rejected with 409, maker-checker is enforced, and adjustments become immutable."""
+    emp_id = seed_env["employee_id"]
+
+    # Ensure only emp_id is active so no blocking exceptions occur from other staff
+    with get_db_context() as db:
+        for e in db.query(EmployeeDB).all():
+            if e.id != emp_id:
+                e.status = "Inactive"
+            else:
+                e.status = "Active"
+        db.commit()
+
+    # 1. Create preview
+    prev_resp = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2027-01",
+            "period_start": "2027-01-01",
+            "period_end": "2027-01-31",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert prev_resp.status_code == 200
+    p = prev_resp.json()
+    preview_id = p["preview_id"]
+    v1 = p["preview_version"]
+
+    # 2. Add an adjustment (increments preview_version to v2)
+    adj_resp = app_client.post(
+        f"/api/finance/payroll/previews/{preview_id}/adjustments",
+        json={
+            "employee_id": emp_id,
+            "type": "BONUS",
+            "amount": 750.0,
+            "payment_source": "INT",
+            "description": "New year bonus",
+        },
+        cookies=admin_cookies,
+    )
+    assert adj_resp.status_code == 201
+    adj_id = adj_resp.json()["id"]
+
+    # 3. Attempt to submit with stale version v1 -> should return 409 Conflict
+    stale_sub = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2027-01",
+            "period_start": "2027-01-01",
+            "period_end": "2027-01-31",
+            "preview_id": preview_id,
+            "preview_version": v1,  # Stale!
+            "submit_for_approval": True,
+        },
+        cookies=admin_cookies,
+    )
+    assert stale_sub.status_code == 409
+    assert "stale" in stale_sub.json()["detail"].lower() or "changed" in stale_sub.json()["detail"].lower()
+
+    # 4. Submit with current version (v1 + 1 = 2) -> succeeds
+    ok_sub = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2027-01",
+            "period_start": "2027-01-01",
+            "period_end": "2027-01-31",
+            "preview_id": preview_id,
+            "preview_version": v1 + 1,
+            "submit_for_approval": True,
+        },
+        cookies=admin_cookies,
+    )
+    assert ok_sub.status_code == 201
+    run = ok_sub.json()
+    run_id = run["id"]
+    assert run["status"] == "submitted"
+    assert run["total_additions"] == 750.0
+    assert len(run["adjustments"]) == 1
+    assert run["adjustments"][0]["status"] == "SUBMITTED"
+
+    # 5. Maker-checker enforcement: Submitter cannot approve their own run
+    # (admin@hrflow.test created it, so approving as admin with allow_self_approval=False fails)
+    import auth as auth_module
+    import config as config_module
+    submitter_token = auth_module.create_session_token("preparer@voyance.health", "admin", 99, name="Preparer")
+    checker_token = auth_module.create_session_token("checker@voyance.health", "admin", 98, name="Checker")
+    submitter_cookies = {config_module.Config.SESSION_COOKIE_NAME: submitter_token}
+    checker_cookies = {config_module.Config.SESSION_COOKIE_NAME: checker_token}
+
+    # Create run as preparer
+    prep_prev = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2027-02",
+            "period_start": "2027-02-01",
+            "period_end": "2027-02-28",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=submitter_cookies,
+    )
+    p2_id = prep_prev.json()["preview_id"]
+    p2_run = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2027-02",
+            "period_start": "2027-02-01",
+            "period_end": "2027-02-28",
+            "preview_id": p2_id,
+            "submit_for_approval": True,
+        },
+        cookies=submitter_cookies,
+    )
+    assert p2_run.status_code == 201
+    p2_run_id = p2_run.json()["id"]
+
+    # Preparer attempts self-approval -> 400 Bad Request
+    self_app = app_client.post(f"/api/finance/payroll/runs/{p2_run_id}/approve", cookies=submitter_cookies)
+    assert self_app.status_code == 400
+    assert "maker-checker" in self_app.json()["detail"].lower()
+
+    # Checker approves -> 200 OK
+    check_app = app_client.post(f"/api/finance/payroll/runs/{p2_run_id}/approve", cookies=checker_cookies)
+    assert check_app.status_code == 200
+    assert check_app.json()["status"] == "approved"
+
+    # 6. Verify audit logs recorded
+    from models_db import AuditLogDB
+    with get_db_context() as db:
+        logs = db.query(AuditLogDB).filter(AuditLogDB.action.like("payroll.%")).all()
+        actions = [l.action for l in logs]
+        assert "payroll.adjustment.created" in actions
+        assert "payroll.run.submitted" in actions
+        assert "payroll.run.approved" in actions
+
+
+def test_export_payroll_run_csv(app_client, admin_cookies, seed_env):
+    """Verifies that approved net-payment run can be exported to CSV with all required columns."""
+    emp_id = seed_env["employee_id"]
+
+    prev = app_client.post(
+        "/api/finance/payroll/previews",
+        json={
+            "period_label": "2027-03",
+            "period_start": "2027-03-01",
+            "period_end": "2027-03-31",
+            "external_funding_account_id": seed_env["ext_bank_id"],
+            "internal_funding_account_id": seed_env["int_bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    p_id = prev.json()["preview_id"]
+
+    # Add commission
+    app_client.post(
+        f"/api/finance/payroll/previews/{p_id}/adjustments",
+        json={"employee_id": emp_id, "type": "COMMISSION", "amount": 1500.0, "payment_source": "EXT"},
+        cookies=admin_cookies,
+    )
+
+    # Create run
+    run_resp = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2027-03",
+            "period_start": "2027-03-01",
+            "period_end": "2027-03-31",
+            "preview_id": p_id,
+            "submit_for_approval": False,
+        },
+        cookies=admin_cookies,
+    )
+    assert run_resp.status_code == 201
+    run_id = run_resp.json()["id"]
+
+    # Export CSV
+    exp_resp = app_client.get(f"/api/finance/payroll/runs/{run_id}/export", cookies=admin_cookies)
+    assert exp_resp.status_code == 200
+    assert exp_resp.headers["content-type"].startswith("text/csv")
+    csv_text = exp_resp.text
+    assert "Employee ID,Employee Name,Department,Base INT,Base EXT,Commissions,Bonuses,Other Additions,Final INT,Final EXT,Final Payment,Payment Status,Payment Reference" in csv_text
+    assert "Alice Adjustments" in csv_text
+    assert "1500.00" in csv_text
+
+

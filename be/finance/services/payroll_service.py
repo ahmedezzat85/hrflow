@@ -10,9 +10,11 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+import csv
+import io
 from fastapi import HTTPException, status
 
-from models_db import EmployeeDB, EmployeeBankAccountDB
+from models_db import EmployeeDB, EmployeeBankAccountDB, AuditLogDB
 from finance.models import (
     PayrollRunDB,
     PayrollLineDB,
@@ -337,6 +339,28 @@ class PayrollService:
         preview = self.get_preview(preview_id)
         return preview.get("adjustments", [])
 
+    def _log_audit(
+        self,
+        action: str,
+        target_type: str,
+        target_id: str,
+        actor_email: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        try:
+            audit = AuditLogDB(
+                timestamp=datetime.utcnow().isoformat() + "Z",
+                actor_email=actor_email or "system@hrflow.internal",
+                action=action,
+                target_type=target_type,
+                target_id=str(target_id),
+                details=json.dumps(details or {}),
+            )
+            self.db.add(audit)
+            self.db.commit()
+        except Exception:
+            pass
+
     def create_preview_adjustment(
         self,
         preview_id: str,
@@ -383,6 +407,13 @@ class PayrollService:
         preview.setdefault("adjustments", []).append(adj)
         preview["preview_version"] = (preview.get("preview_version") or 1) + 1
         self._recalculate_preview_aggregates(preview)
+        self._log_audit(
+            action="payroll.adjustment.created",
+            target_type="payroll_adjustment",
+            target_id=adj_id,
+            actor_email=user_email,
+            details={"type": adj["type"], "amount": adj["amount"], "payment_source": adj["payment_source"], "employee_id": adj["employee_id"]},
+        )
         return adj
 
     def update_preview_adjustment(
@@ -418,6 +449,13 @@ class PayrollService:
         adj["updated_at"] = datetime.utcnow().isoformat() + "Z"
         preview["preview_version"] = (preview.get("preview_version") or 1) + 1
         self._recalculate_preview_aggregates(preview)
+        self._log_audit(
+            action="payroll.adjustment.updated",
+            target_type="payroll_adjustment",
+            target_id=adjustment_id,
+            actor_email=user_email,
+            details={"type": adj["type"], "amount": adj["amount"], "payment_source": adj["payment_source"], "employee_id": adj["employee_id"]},
+        )
         return adj
 
     def delete_preview_adjustment(
@@ -433,9 +471,16 @@ class PayrollService:
         if idx is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Adjustment '{adjustment_id}' not found.")
 
-        adjs.pop(idx)
+        removed = adjs.pop(idx)
         preview["preview_version"] = (preview.get("preview_version") or 1) + 1
         self._recalculate_preview_aggregates(preview)
+        self._log_audit(
+            action="payroll.adjustment.deleted",
+            target_type="payroll_adjustment",
+            target_id=adjustment_id,
+            actor_email=user_email,
+            details={"preview_id": preview_id, "employee_id": removed.get("employee_id"), "amount": removed.get("amount")},
+        )
         return {"success": True, "deleted_id": adjustment_id}
 
     def _recalculate_preview_aggregates(self, preview: Dict[str, Any]) -> None:
@@ -749,6 +794,12 @@ class PayrollService:
                 detail="Payroll source data has changed since this preview was generated. Please refresh preview."
             )
 
+        if preview_version is not None and preview.get("preview_version") is not None and preview_version != preview["preview_version"]:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Payroll preview version is stale (expected {preview_version}, current {preview['preview_version']}). Please refresh preview."
+            )
+
         if submit_for_approval and preview["has_blocking_exceptions"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -844,6 +895,13 @@ class PayrollService:
         self._recalculate_run_aggregates(run)
         self.db.commit()
         self.db.refresh(run)
+        self._log_audit(
+            action="payroll.run.submitted" if submit_for_approval else "payroll.run.created",
+            target_type="payroll_run",
+            target_id=str(run.id),
+            actor_email=user_email,
+            details={"period_label": run.period_label, "total_net": run.total_net, "preview_version": run.preview_version, "status": run.status},
+        )
         return self._format_run_detail(run)
 
     def _recalculate_run_aggregates(self, run: PayrollRunDB) -> None:
@@ -1017,6 +1075,13 @@ class PayrollService:
         run.submitted_by = user_email or "preparer@hrflow.test"
         self.db.commit()
         self.db.refresh(run)
+        self._log_audit(
+            action="payroll.run.submitted",
+            target_type="payroll_run",
+            target_id=str(run.id),
+            actor_email=user_email,
+            details={"period_label": run.period_label, "total_net": run.total_net, "submitted_by": run.submitted_by},
+        )
         return self._format_run_detail(run)
 
     def approve_run(self, run_id: int, user_email: Optional[str] = None, allow_self_approval: bool = False) -> Dict[str, Any]:
@@ -1053,8 +1118,18 @@ class PayrollService:
         run.status = "approved"
         run.approved_at = datetime.utcnow()
         run.approved_by = user_email or "admin@hrflow.test"
+        for adj in (run.adjustments or []):
+            adj.status = "APPROVED"
+            adj.updated_at = datetime.utcnow()
         self.db.commit()
         self.db.refresh(run)
+        self._log_audit(
+            action="payroll.run.approved",
+            target_type="payroll_run",
+            target_id=str(run.id),
+            actor_email=user_email,
+            details={"period_label": run.period_label, "total_net": run.total_net, "approved_by": run.approved_by},
+        )
         return self._format_run_detail(run)
 
     def finalize_run(self, run_id: int, user_email: Optional[str] = None) -> Dict[str, Any]:
@@ -1076,7 +1151,79 @@ class PayrollService:
         # NOTE: Under net-payment runner, finalization does NOT create statutory obligations or liability entries.
         self.db.commit()
         self.db.refresh(run)
+        self._log_audit(
+            action="payroll.run.finalized",
+            target_type="payroll_run",
+            target_id=str(run.id),
+            actor_email=user_email,
+            details={"period_label": run.period_label, "total_net": run.total_net, "finalized_by": run.finalized_by},
+        )
         return self._format_run_detail(run)
+
+    def export_run_csv(self, run_id: int) -> str:
+        """Exports payroll run recipient payments and adjustments as a net payment CSV."""
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Employee ID",
+            "Employee Name",
+            "Department",
+            "Base INT",
+            "Base EXT",
+            "Commissions",
+            "Bonuses",
+            "Other Additions",
+            "Final INT",
+            "Final EXT",
+            "Final Payment",
+            "Payment Status",
+            "Payment Reference",
+        ])
+
+        emp_ids = sorted(list(set([l.employee_id for l in run.lines] + [a.employee_id for a in (run.adjustments or [])])))
+        for eid in emp_ids:
+            emp_lines = [l for l in run.lines if l.employee_id == eid]
+            emp_adjs = [a for a in (run.adjustments or []) if a.employee_id == eid]
+            name = emp_lines[0].employee_name if emp_lines else f"Emp #{eid}"
+            dept = emp_lines[0].department if emp_lines else "General"
+
+            base_int = sum(l.net_pay for l in emp_lines if l.compensation_type != "external_usd" and not getattr(l, "is_adjustment", False))
+            base_ext = sum(l.net_pay for l in emp_lines if l.compensation_type == "external_usd" and not getattr(l, "is_adjustment", False))
+
+            comm_int = sum(a.amount for a in emp_adjs if a.type == "COMMISSION" and a.payment_source == "INT")
+            comm_ext = sum(a.amount for a in emp_adjs if a.type == "COMMISSION" and a.payment_source == "EXT")
+            bon_int = sum(a.amount for a in emp_adjs if a.type == "BONUS" and a.payment_source == "INT")
+            bon_ext = sum(a.amount for a in emp_adjs if a.type == "BONUS" and a.payment_source == "EXT")
+            other_additions = sum(a.amount for a in emp_adjs if a.type not in ["COMMISSION", "BONUS"])
+
+            final_int = round(base_int + comm_int + bon_int, 2)
+            final_ext = round(base_ext + comm_ext + bon_ext, 2)
+            final_payment = round(final_int + final_ext + other_additions, 2)
+
+            st = emp_lines[0].payment_status if emp_lines else "pending"
+            ref = emp_lines[0].linked_payment_id if emp_lines else ""
+
+            writer.writerow([
+                eid,
+                name,
+                dept,
+                f"{base_int:.2f}",
+                f"{base_ext:.2f}",
+                f"{(comm_int + comm_ext):.2f}",
+                f"{(bon_int + bon_ext):.2f}",
+                f"{other_additions:.2f}",
+                f"{final_int:.2f}",
+                f"{final_ext:.2f}",
+                f"{final_payment:.2f}",
+                st,
+                ref or "",
+            ])
+
+        return output.getvalue()
 
     def execute_payment(
         self,

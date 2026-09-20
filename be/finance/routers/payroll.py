@@ -4,7 +4,7 @@ API router for Guided Payroll Runs, Lifecycle State Transitions,
 Disbursements, GL Journal Posting, and Employee Payslips (Story 8.1).
 """
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, status, Response
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -245,6 +245,21 @@ def finalize_payroll_run(
     """Locks the payroll run against edits and enables funding/disbursement."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.finalize_run(run_id=run_id, user_email=user_email)
+
+
+@router.get("/runs/{run_id}/export")
+def export_payroll_run_csv(
+    run_id: int = Path(..., description="Payroll Run ID to export"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Exports net payment details with base amounts, adjustments, and final payments as CSV."""
+    csv_data = service.export_run_csv(run_id)
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="payroll_run_{run_id}.csv"'},
+    )
 
 
 @router.post("/runs/{run_id}/pay", response_model=PayrollRunResponse)
