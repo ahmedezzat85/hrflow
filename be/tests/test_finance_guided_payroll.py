@@ -166,7 +166,7 @@ def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed
 
     assert data["period_label"] == "2026-09"
     assert data["headcount"] == 3
-    assert data["total_gross"] == 18000.0  # 10000 + 8000 + 0
+    assert data["total_net"] == 18000.0  # 10000 + 8000 + 0
 
     # Verify blocking exceptions are detected
     assert data["has_blocking_exceptions"] is True
@@ -180,17 +180,6 @@ def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed
     assert bank_exc["severity"] == "warning"
     plan_exc = next(e for e in excs if e["title"] == "No Active Compensation Plan")
     assert plan_exc["severity"] == "blocking"
-
-    # Verify liabilities summary (0.0 statutory tax/deductions per Fix 2)
-    liab = data["liabilities_summary"]
-    assert liab["net_pay_payable"] > 0
-    assert liab["income_tax_withheld"] == 0.0
-    assert liab["total_liabilities"] > 0
-
-    # Verify balanced journal preview
-    jp = data["journal_preview"]
-    assert jp["is_balanced"] is True
-    assert jp["total_debit"] == jp["total_credit"]
 
 
 def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_payroll_env):
@@ -437,9 +426,56 @@ def test_payroll_gl_journal_posting_and_payslips(app_client, admin_cookies, empl
     assert ps_res.status_code == 200
     ps_data = ps_res.json()
     assert ps_data["employee_name"] == "Alice Engineer"
-    assert ps_data["base_salary"] == 10000.0
-    assert ps_data["net_pay"] == 10000.0  # Equal to base_salary with deductions/tax calculations removed
+    assert ps_data["net_pay"] == 10000.0
+    assert ps_data["amount"] == 10000.0
     assert ps_data["status"] == "paid"
+
+
+def test_maker_checker_segregation_blocks_self_approval(app_client, admin_cookies, db_session, seed_payroll_env):
+    """Verifies that the user who submitted a payroll run cannot approve it."""
+    # Ensure all 3 employees are clean
+    b2 = EmployeeBankAccountDB(
+        employee_id=seed_payroll_env["emp2_id"],
+        bank_name="Chase",
+        iban="US55CHAS123456789012345678",
+    )
+    db_session.add(b2)
+    charlie = db_session.query(EmployeeDB).filter_by(id=seed_payroll_env["emp3_id"]).first()
+    charlie.salary = 3000.0
+    p3 = EmployeeCompensationPlanDB(
+        employee_id=seed_payroll_env["emp3_id"],
+        component_type="internal_usd_cash",
+        amount=3000.0,
+        currency="USD",
+        effective_start_date="2026-01-01",
+    )
+    db_session.add(p3)
+    db_session.commit()
+
+    # Create run
+    create_res = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": "2026-08",
+            "period_start": "2026-08-01",
+            "period_end": "2026-08-31",
+            "bank_account_id": seed_payroll_env["bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert create_res.status_code == 201
+    run_id = create_res.json()["id"]
+
+    # Submit run by admin
+    sub_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/submit", cookies=admin_cookies)
+    assert sub_res.status_code == 200
+    assert sub_res.json()["status"] == "submitted"
+    assert sub_res.json()["submitted_by"] == "admin@hrflow.test"
+
+    # Admin attempts to self-approve - must be rejected with 400 Maker-checker violation
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    assert app_res.status_code == 400
+    assert "maker-checker" in app_res.json()["detail"].lower()
 
 
 def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_cookies, db_session, seed_payroll_env):

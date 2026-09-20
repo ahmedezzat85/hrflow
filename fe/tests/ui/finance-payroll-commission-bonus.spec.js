@@ -20,18 +20,16 @@ test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
     await expect(wizardModal).toBeVisible();
 
     await page.fill('#wizardPeriodLabel', '2026-11');
-    // Advance steps 1 -> 2 -> 3 -> 4 -> 5
+    // Advance steps 1 -> 2 -> 3 -> 4
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep2')).toBeVisible();
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep3')).toBeVisible();
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep4')).toBeVisible();
-    await page.click('#wizardNextBtn');
-    await expect(page.locator('#wizardStep5')).toBeVisible();
 
     // Create Draft Run (we will create it and leave it in draft to test FUX-418 ad-hoc additions)
-    await page.click('#btnWizardCreateDraftOnly');
+    await page.click('#btnWizardSaveDraft');
 
     // Run detail modal should open
     const detailModal = page.locator('#payrollRunDetailModal');
@@ -42,8 +40,8 @@ test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
     const addBonusToolbarBtn = page.locator('#btnRunDetailAddBonus');
     await expect(addBonusToolbarBtn).toBeVisible();
 
-    const initialGrossText = await page.locator('#runDetailGross').textContent();
-    const initialGross = parseFloat(initialGrossText.replace(/[^0-9.]/g, ''));
+    const initialNetText = await page.locator('#runDetailNet').textContent();
+    const initialNet = parseFloat(initialNetText.replace(/[^0-9.]/g, ''));
 
     // 3. Open Add Bonus Modal from toolbar
     await addBonusToolbarBtn.click();
@@ -68,10 +66,10 @@ test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
     const salesBadge = page.locator('#runDetailLinesTableBody .badge:has-text("Sales Commission")');
     await expect(salesBadge).toBeVisible();
 
-    // Verify gross increased by 750
-    const grossAfterSalesText = await page.locator('#runDetailGross').textContent();
-    const grossAfterSales = parseFloat(grossAfterSalesText.replace(/[^0-9.]/g, ''));
-    expect(grossAfterSales).toBeCloseTo(initialGross + 750.0, 1);
+    // Verify net increased by 750
+    const netAfterSalesText = await page.locator('#runDetailNet').textContent();
+    const netAfterSales = parseFloat(netAfterSalesText.replace(/[^0-9.]/g, ''));
+    expect(netAfterSales).toBeCloseTo(initialNet + 750.0, 1);
 
     // 5. Add second variable line: Discretionary Bonus via per-row action button
     const rowAddBtn = page.locator('#runDetailLinesTableBody tr:has-text("Sarah Connor") .btn-add-bonus').first();
@@ -88,9 +86,9 @@ test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
     const bonusBadge = page.locator('#runDetailLinesTableBody .badge:has-text("Bonus")');
     await expect(bonusBadge).toBeVisible();
 
-    const grossAfterBonusText = await page.locator('#runDetailGross').textContent();
-    const grossAfterBonus = parseFloat(grossAfterBonusText.replace(/[^0-9.]/g, ''));
-    expect(grossAfterBonus).toBeCloseTo(grossAfterSales + 300.0, 1);
+    const netAfterBonusText = await page.locator('#runDetailNet').textContent();
+    const netAfterBonus = parseFloat(netAfterBonusText.replace(/[^0-9.]/g, ''));
+    expect(netAfterBonus).toBeCloseTo(netAfterSales + 300.0, 1);
 
     // 6. Delete the bonus line
     page.on('dialog', (dialog) => dialog.accept());
@@ -99,11 +97,11 @@ test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
     const deleteBonusBtn = bonusRow.locator('.btn-delete-line');
     await deleteBonusBtn.click();
 
-    // Verify bonus line removed and total gross reverted
+    // Verify bonus line removed and total net reverted
     await expect(bonusBadge).not.toBeVisible();
-    const grossAfterDeleteText = await page.locator('#runDetailGross').textContent();
-    const grossAfterDelete = parseFloat(grossAfterDeleteText.replace(/[^0-9.]/g, ''));
-    expect(grossAfterDelete).toBeCloseTo(grossAfterSales, 1);
+    const netAfterDeleteText = await page.locator('#runDetailNet').textContent();
+    const netAfterDelete = parseFloat(netAfterDeleteText.replace(/[^0-9.]/g, ''));
+    expect(netAfterDelete).toBeCloseTo(netAfterSales, 1);
 
     // 7. Approve & Finalize run -> verify locking
     const approveBtn = detailModal.locator('#btnRunDetailApprove');

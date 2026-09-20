@@ -49,13 +49,14 @@ def preview_payroll_run(
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
     """
-    Evaluates active staff to preview payroll calculations,
-    detect readiness exceptions, evaluate variance vs prior period, and preview balanced GL journal.
+    Evaluates active staff to preview net payments,
+    detect route-specific readiness issues, and evaluate net variance vs prior period.
     """
     return service.preview_run(
         period_label=req.period_label,
         period_start=req.period_start,
         period_end=req.period_end,
+        payment_date=req.payment_date,
         bank_account_id=req.bank_account_id,
         external_funding_account_id=req.external_funding_account_id,
         internal_funding_account_id=req.internal_funding_account_id,
@@ -70,12 +71,13 @@ def generate_payroll_run_from_plans(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Generates a payroll run and split lines directly from active employee compensation plans (FUX-417)."""
+    """Generates a payroll run and split net payment lines directly from active employee compensation plans."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.generate_run_from_compensation_plans(
         period_label=req.period_label,
         period_start=req.period_start,
         period_end=req.period_end,
+        payment_date=req.payment_date,
         fx_rate_source=req.fx_rate_source or "first_of_month",
         fx_rate_value=req.fx_rate_value,
         bank_account_id=req.bank_account_id,
@@ -91,12 +93,13 @@ def create_payroll_run(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Creates a guided payroll run and snapshots employee line items."""
+    """Creates a net-payment payroll run and snapshots employee payment lines."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.create_run(
         period_label=req.period_label,
         period_start=req.period_start,
         period_end=req.period_end,
+        payment_date=req.payment_date,
         bank_account_id=req.bank_account_id,
         external_funding_account_id=req.external_funding_account_id,
         internal_funding_account_id=req.internal_funding_account_id,
@@ -104,6 +107,11 @@ def create_payroll_run(
         user_email=user_email,
         fx_rate_source=req.fx_rate_source,
         fx_rate_value=req.fx_rate_value,
+        preview_id=req.preview_id,
+        preview_version=req.preview_version,
+        source_version=req.source_version,
+        idempotency_key=req.idempotency_key,
+        submit_for_approval=req.submit_for_approval,
     )
 
 
@@ -113,7 +121,7 @@ def get_payroll_run_detail(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Returns complete payroll run detail including employee lines, liabilities, exceptions, and journal info."""
+    """Returns complete payroll run detail including employee payment lines, readiness issues, and payment status."""
     return service.get_run(run_id=run_id)
 
 
@@ -124,15 +132,13 @@ def add_payroll_line(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Adds an ad-hoc commission or bonus line to a draft payroll run (FUX-418)."""
+    """Adds an ad-hoc commission or bonus line to a draft payroll run."""
     return service.add_ad_hoc_line(
         run_id=run_id,
         employee_id=req.employee_id,
         compensation_type=req.compensation_type,
         amount=req.amount or req.base_salary,
         notes=req.notes or req.snapshot_notes,
-        is_taxable_local=req.is_taxable_local,
-        is_insurable=req.is_insurable,
     )
 
 
@@ -143,8 +149,19 @@ def delete_payroll_line(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Removes an ad-hoc or mistakenly added line from a draft payroll run (FUX-418)."""
+    """Removes an ad-hoc or mistakenly added line from a draft payroll run."""
     return service.delete_line(run_id=run_id, line_id=line_id)
+
+
+@router.post("/runs/{run_id}/submit", response_model=PayrollRunResponse)
+def submit_payroll_run(
+    run_id: int = Path(..., description="Payroll Run ID to submit for approval"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Submits a draft payroll run for maker-checker approval."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.submit_run(run_id=run_id, user_email=user_email)
 
 
 @router.post("/runs/{run_id}/approve", response_model=PayrollRunResponse)
@@ -153,7 +170,7 @@ def approve_payroll_run(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Maker-checker approval for payroll run. Enforces blocking exception verification."""
+    """Maker-checker approval for payroll run. Enforces blocking exception verification and prevents self-approval."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.approve_run(run_id=run_id, user_email=user_email)
 

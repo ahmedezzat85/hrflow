@@ -126,29 +126,17 @@ def test_generate_payroll_run_split_lines(app_client, admin_cookies):
     assert len(alice_lines) == 2
 
     ext_line = next(l for l in alice_lines if l["compensation_type"] == "external_usd")
-    assert ext_line["base_salary"] == 3000.0
-    assert ext_line["is_taxable_local"] is False
-    assert ext_line["is_insurable"] is False
-    assert ext_line["tax_amount"] == 0.0
-    assert ext_line["deductions_total"] == 0.0
-    assert ext_line["employer_cost_extra"] == 0.0
     assert ext_line["net_pay"] == 3000.0
+    assert ext_line["amount"] == 3000.0
 
     int_line = next(l for l in alice_lines if l["compensation_type"] == "internal_usd_cash")
-    assert int_line["base_salary"] == 1500.0
-    assert int_line["is_taxable_local"] is True
-    assert int_line["is_insurable"] is True
-    assert int_line["tax_amount"] == 0.0
-    assert int_line["deductions_total"] == 0.0
-    assert int_line["employer_cost_extra"] == 0.0
     assert int_line["net_pay"] == 1500.0
-
+    assert int_line["amount"] == 1500.0
     bob_lines = [l for l in lines if l["employee_id"] == emp2_id]
     assert len(bob_lines) == 1
     assert bob_lines[0]["compensation_type"] == "internal_usd_cash"
-    assert bob_lines[0]["base_salary"] == 2000.0
-    assert bob_lines[0]["is_taxable_local"] is True
-    assert bob_lines[0]["is_insurable"] is True
+    assert bob_lines[0]["net_pay"] == 2000.0
+    assert bob_lines[0]["amount"] == 2000.0
 
 
 def test_generate_payroll_run_missing_plan_error(app_client, admin_cookies):
@@ -274,23 +262,16 @@ def test_finalize_run_excludes_external_usd_from_statutory_obligations(app_clien
     assert resp_fin.status_code == 200
     fin_data = resp_fin.json()
 
-    # Check liabilities summary (0.0 without automatic statutory calculation):
-    liab = fin_data["liabilities_summary"]
-    assert liab["income_tax_withheld"] == 0.0
-    assert liab["social_insurance_employee"] == 0.0
-    assert liab["social_insurance_employer"] == 0.0
+    assert fin_data["status"] == "finalized"
+    assert fin_data["finalized_at"] is not None
 
-    # Check auto-generated StatutoryObligationDB rows (0.0 estimated amounts)
+    # Verify no StatutoryObligationDB rows are auto-generated
     with get_db_context() as db:
         obligations = db.query(StatutoryObligationDB).filter(
             StatutoryObligationDB.source_type == "payroll_run",
             StatutoryObligationDB.source_id == run_id,
         ).all()
-        assert len(obligations) == 3
-        obl_map = {o.obligation_type: o.amount_estimated for o in obligations}
-        assert obl_map["income_tax"] == 0.0
-        assert obl_map["social_insurance_employee"] == 0.0
-        assert obl_map["social_insurance_employer"] == 0.0
+        assert len(obligations) == 0
 
 
 def test_dual_funding_accounts_split_journal_posting(app_client, admin_cookies):

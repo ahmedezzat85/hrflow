@@ -1853,6 +1853,7 @@ class PayrollExceptionItem(BaseModel):
     employee_id: int
     employee_name: str
     severity: str  # "blocking" | "warning"
+    code: Optional[str] = None
     title: str
     description: str
     correction_path: Optional[str] = None
@@ -1862,36 +1863,11 @@ class PayrollExceptionItem(BaseModel):
 class PayrollVarianceSummary(BaseModel):
     prior_period_label: Optional[str] = None
     headcount_delta: int = 0
-    gross_delta: float = 0.0
     net_delta: float = 0.0
     pct_change: float = 0.0
     joiners_count: int = 0
     leavers_count: int = 0
     raises_count: int = 0
-
-
-class PayrollLiabilitiesSummary(BaseModel):
-    net_pay_payable: float = 0.0
-    income_tax_withheld: float = 0.0
-    social_insurance_employee: float = 0.0
-    social_insurance_employer: float = 0.0
-    total_liabilities: float = 0.0
-
-
-class PayrollJournalItem(BaseModel):
-    account: str
-    account_code: str
-    direction: str  # "debit" | "credit"
-    amount: float
-    description: str
-
-
-class PayrollJournalPreview(BaseModel):
-    debits: List[PayrollJournalItem] = []
-    credits: List[PayrollJournalItem] = []
-    total_debit: float = 0.0
-    total_credit: float = 0.0
-    is_balanced: bool = True
 
 
 VALID_PAYROLL_COMPENSATION_TYPES = {
@@ -1910,18 +1886,11 @@ class PayrollLineCreate(BaseModel):
     base_salary: Optional[float] = None
     notes: Optional[str] = None
     snapshot_notes: Optional[str] = ""
-    is_taxable_local: Optional[bool] = None
-    is_insurable: Optional[bool] = None
-    allowances_total: Optional[float] = 0.0
-    deductions_total: Optional[float] = 0.0
-    tax_amount: Optional[float] = 0.0
-    employer_cost_extra: Optional[float] = 0.0
 
     @model_validator(mode="before")
     @classmethod
     def normalize_and_validate_fields(cls, values: Any) -> Any:
         if isinstance(values, dict):
-            # Normalize amount / base_salary
             amt = values.get("amount")
             base = values.get("base_salary")
             if amt is None and base is not None:
@@ -1936,7 +1905,6 @@ class PayrollLineCreate(BaseModel):
             if float(amt) <= 0:
                 raise ValueError("Amount must be greater than 0")
 
-            # Validate compensation_type
             ctype = values.get("compensation_type") or "internal_usd_cash"
             if ctype not in VALID_PAYROLL_COMPENSATION_TYPES:
                 raise ValueError(
@@ -1944,13 +1912,6 @@ class PayrollLineCreate(BaseModel):
                 )
             values["compensation_type"] = ctype
 
-            # Tax / Insurable defaults
-            if values.get("is_taxable_local") is None:
-                values["is_taxable_local"] = (ctype != "external_usd")
-            if values.get("is_insurable") is None:
-                values["is_insurable"] = (ctype != "external_usd")
-
-            # Normalize notes / snapshot_notes
             notes = values.get("notes")
             s_notes = values.get("snapshot_notes")
             if notes and not s_notes:
@@ -1967,14 +1928,9 @@ class PayrollLineResponse(BaseModel):
     employee_name: Optional[str] = None
     department: Optional[str] = None
     compensation_type: Optional[str] = "internal_usd_cash"
-    is_taxable_local: Optional[bool] = True
-    is_insurable: Optional[bool] = True
-    base_salary: float
-    allowances_total: float
-    deductions_total: float
-    tax_amount: float
     net_pay: float
-    employer_cost_extra: float
+    amount: Optional[float] = None
+    currency: str = "USD"
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
     payment_status: str = "pending"  # pending | paid | failed
@@ -1984,6 +1940,16 @@ class PayrollLineResponse(BaseModel):
     paid_at: Optional[datetime] = None
     linked_payment_id: Optional[int] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def set_amount_from_net(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("amount") is None and values.get("net_pay") is not None:
+                values["amount"] = values["net_pay"]
+            elif values.get("net_pay") is None and values.get("amount") is not None:
+                values["net_pay"] = values["amount"]
+        return values
+
     class Config:
         from_attributes = True
 
@@ -1992,6 +1958,7 @@ class PayrollRunPreviewRequest(BaseModel):
     period_label: str  # e.g. "2026-09"
     period_start: str  # YYYY-MM-DD
     period_end: str    # YYYY-MM-DD
+    payment_date: Optional[str] = None
     bank_account_id: Optional[int] = None
     external_funding_account_id: Optional[int] = None
     internal_funding_account_id: Optional[int] = None
@@ -2003,6 +1970,7 @@ class PayrollRunGenerateRequest(BaseModel):
     period_label: str  # e.g. "2026-09"
     period_start: str  # YYYY-MM-DD
     period_end: str    # YYYY-MM-DD
+    payment_date: Optional[str] = None
     fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
     fx_rate_value: Optional[float] = None
     bank_account_id: Optional[int] = None
@@ -2011,9 +1979,14 @@ class PayrollRunGenerateRequest(BaseModel):
 
 
 class PayrollRunPreviewResponse(BaseModel):
+    preview_id: Optional[str] = None
+    preview_version: Optional[int] = 1
+    source_version: Optional[str] = None
+    generated_at: Optional[str] = None
     period_label: str
     period_start: str
     period_end: str
+    payment_date: Optional[str] = None
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
     external_funding_account_id: Optional[int] = None
@@ -2023,16 +1996,15 @@ class PayrollRunPreviewResponse(BaseModel):
     fx_rate_source: Optional[str] = "first_of_month"
     fx_rate_value: Optional[float] = None
     headcount: int = 0
-    total_gross: float = 0.0
-    total_tax: float = 0.0
-    total_deductions: float = 0.0
+    recipient_count: int = 0
+    payment_line_count: int = 0
     total_net: float = 0.0
-    total_employer_cost: float = 0.0
+    total_payment_amount: float = 0.0
+    prior_period_total: float = 0.0
+    change_amount: float = 0.0
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
-    variance_summary: PayrollVarianceSummary
-    liabilities_summary: PayrollLiabilitiesSummary
-    journal_preview: PayrollJournalPreview
+    variance_summary: Optional[PayrollVarianceSummary] = None
     lines: List[PayrollLineResponse] = []
 
 
@@ -2040,12 +2012,18 @@ class PayrollRunCreate(BaseModel):
     period_label: str
     period_start: str
     period_end: str
+    payment_date: Optional[str] = None
     bank_account_id: Optional[int] = None
     external_funding_account_id: Optional[int] = None
     internal_funding_account_id: Optional[int] = None
     currency: str = "USD"
     fx_rate_source: Optional[str] = "first_of_month"
     fx_rate_value: Optional[float] = None
+    preview_id: Optional[str] = None
+    preview_version: Optional[int] = None
+    source_version: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    submit_for_approval: Optional[bool] = False
     lines: Optional[List[PayrollLineCreate]] = None
 
 
@@ -2054,13 +2032,13 @@ class PayrollRunResponse(BaseModel):
     period_label: str
     period_start: str
     period_end: str
-    status: str  # draft | approved | finalized | paid | partially_paid | cancelled
-    total_gross: float
-    total_tax: float
-    total_deductions: float
+    payment_date: Optional[str] = None
+    status: str  # draft | submitted | approved | finalized | paid | partially_paid | cancelled
     total_net: float
-    total_employer_cost: float
+    total_payment_amount: Optional[float] = None
     headcount: int = 0
+    recipient_count: Optional[int] = None
+    payment_line_count: int = 0
     currency: str = "USD"
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
@@ -2070,8 +2048,13 @@ class PayrollRunResponse(BaseModel):
     internal_funding_account_name: Optional[str] = None
     fx_rate_source: Optional[str] = "first_of_month"
     fx_rate_value: Optional[float] = None
+    preview_id: Optional[str] = None
+    preview_version: Optional[int] = None
+    source_version: Optional[str] = None
     created_at: datetime
     created_by: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    submitted_by: Optional[str] = None
     approved_at: Optional[datetime] = None
     approved_by: Optional[str] = None
     finalized_at: Optional[datetime] = None
@@ -2082,8 +2065,17 @@ class PayrollRunResponse(BaseModel):
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
     variance_summary: Optional[PayrollVarianceSummary] = None
-    liabilities_summary: Optional[PayrollLiabilitiesSummary] = None
     lines: List[PayrollLineResponse] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_net_aliases(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("total_payment_amount") is None:
+                values["total_payment_amount"] = values.get("total_net", 0.0)
+            if values.get("recipient_count") is None:
+                values["recipient_count"] = values.get("headcount", 0)
+        return values
 
     class Config:
         from_attributes = True
@@ -2104,16 +2096,24 @@ class EmployeePayslipResponse(BaseModel):
     employee_id: int
     employee_name: str
     department: str
-    base_salary: float
-    allowances_total: float
-    deductions_total: float
-    tax_amount: float
     net_pay: float
+    amount: Optional[float] = None
     currency: str = "USD"
     status: str
     paid_date: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
+    compensation_type: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_amount_from_net(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("amount") is None and values.get("net_pay") is not None:
+                values["amount"] = values["net_pay"]
+            elif values.get("net_pay") is None and values.get("amount") is not None:
+                values["net_pay"] = values["amount"]
+        return values
 
 
 # ============================================================================

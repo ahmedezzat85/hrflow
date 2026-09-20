@@ -33,30 +33,31 @@ test.describe('FUX-417: Payroll Run Compensation Split & FX Rate Policy', () => 
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep2')).toBeVisible();
 
-    // Verify aggregated employee rows with EXT and INT in preview (Fix 1)
-    const previewRows = page.locator('#wizardEmployeesPreviewTableBody tr');
+    // Verify recipient review rows in preview
+    const previewRows = page.locator('#wizardRecipientReviewsBody .recipient-review-row');
     await expect(previewRows).toHaveCount(2);
 
-    // Sarah Connor should have aggregated row with EXT ($10,000.00) and INT ($5,000.00)
-    const sarahRow = page.locator('#wizardEmployeesPreviewTableBody tr:has-text("Sarah Connor")');
+    // Sarah Connor should have recipient review row with EXT ($10,000.00) and INT ($5,000.00)
+    const sarahRow = page.locator('#wizardRecipientReviewsBody .recipient-review-row:has-text("Sarah Connor")');
     await expect(sarahRow).toBeVisible();
     await expect(sarahRow).toContainText('$10,000.00');
     await expect(sarahRow).toContainText('$5,000.00');
 
-    // Step 3 -> 4 -> 5
+    // Step 3 -> 4
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep3')).toBeVisible();
     await page.click('#wizardNextBtn');
     await expect(page.locator('#wizardStep4')).toBeVisible();
-    await page.click('#wizardNextBtn');
-    await expect(page.locator('#wizardStep5')).toBeVisible();
 
-    // Create & Approve Run
-    await page.click('#btnWizardCreateAndApprove');
+    // Submit Run
+    await page.click('#btnWizardSubmitForApproval');
 
     // Detail Modal opens
     const detailModal = page.locator('#payrollRunDetailModal');
     await expect(detailModal).toBeVisible();
+
+    // Approve run
+    await detailModal.locator('#btnRunDetailApprove').click();
 
     // Locked FX Rate card should display rate and source
     const fxRateCard = page.locator('#runDetailFxRate');
