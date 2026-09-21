@@ -1,7 +1,7 @@
 /**
  * fe/public/js/finance-payroll.js
  * In-Page Payroll Module Controller for HRFlow
- * Conforms directly to the interactive prototype (payroll-final-prototype.html)
+ * Sourced and synced directly with real database employees and bank accounts
  */
 
 (function () {
@@ -50,11 +50,12 @@
     ],
     initialized: false,
 
-    init() {
-      if (this.initialized) return;
-      this.initialized = true;
+    async init() {
+      // 1. Sync real data from database
+      await this.loadEmployeesFromDb();
+      await this.loadBankAccountsFromDb();
 
-      // Populate settings form inputs
+      // 2. Populate settings form inputs
       const monthInput = document.getElementById('payrollSetMonth');
       if (monthInput) monthInput.value = this.month;
       const payDateInput = document.getElementById('payrollSetPayDate');
@@ -66,7 +67,132 @@
 
       this.drawBankList();
       this.redraw();
-      this.showPage('list');
+
+      if (!this.initialized) {
+        this.initialized = true;
+        this.showPage('list');
+      }
+    },
+
+    async loadEmployeesFromDb() {
+      try {
+        let rawEmployees = null;
+        const isMock = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        
+        if (isMock) {
+          if (typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
+            rawEmployees = window.employees;
+          }
+        } else {
+          if (typeof Api !== 'undefined' && typeof Api.getEmployees === 'function') {
+            try {
+              rawEmployees = await Api.getEmployees();
+            } catch (apiErr) {
+              console.warn('[PayrollApp] API fetch failed, trying window.employees:', apiErr);
+            }
+          }
+          if (!rawEmployees && typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
+            rawEmployees = window.employees;
+          }
+        }
+
+        if (Array.isArray(rawEmployees) && rawEmployees.length > 0) {
+          const existingBonusesMap = {};
+          (this.rows || []).forEach(r => {
+            if (r.bonuses && r.bonuses.length) {
+              existingBonusesMap[r.id] = r.bonuses;
+            }
+          });
+
+          const activeEmps = rawEmployees.filter(e => !e.status || String(e.status).toLowerCase() === 'active');
+          if (activeEmps.length > 0) {
+            this.rows = activeEmps.map(e => {
+              const baseExt = Number(e.externalSalaryUsd !== undefined ? e.externalSalaryUsd : (e.external_salary_usd || 0));
+              let baseInt = Number(e.internalSalaryUsd !== undefined ? e.internalSalaryUsd : (e.internal_salary_usd || 0));
+              if (baseExt === 0 && baseInt === 0 && e.salary) {
+                baseInt = Number(e.salary);
+              }
+              return {
+                id: e.id,
+                name: e.name,
+                dept: e.dept || e.department || 'Operations',
+                baseExt: baseExt,
+                baseInt: baseInt,
+                bonuses: existingBonusesMap[e.id] || [],
+                exception: null
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load employees from database:', err);
+      }
+    },
+
+    async loadBankAccountsFromDb() {
+      try {
+        let rawAccounts = null;
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getAccounts === 'function') {
+          rawAccounts = await FinanceApi.getAccounts({ is_active: true });
+        }
+
+        if (Array.isArray(rawAccounts) && rawAccounts.length > 0) {
+          let savedConfig = {};
+          try {
+            const rawSaved = localStorage.getItem('hrflow_payroll_banks_cfg');
+            if (rawSaved) savedConfig = JSON.parse(rawSaved);
+          } catch (_) {}
+
+          this.banks = rawAccounts.map(acc => {
+            const accId = acc.id;
+            const cfg = savedConfig[accId] || {};
+
+            let detectedType = 'external';
+            const nameLower = (acc.account_name || acc.name || '').toLowerCase();
+            const typeLower = (acc.account_type || '').toLowerCase();
+            if (typeLower === 'cash' || nameLower.includes('cash') || nameLower.includes('internal')) {
+              detectedType = 'internal';
+            }
+
+            const type = cfg.type || detectedType;
+            const isDefault = cfg.isDefault !== undefined ? cfg.isDefault : false;
+
+            return {
+              id: accId,
+              name: acc.account_name || acc.name || `Account #${accId}`,
+              bank_name: acc.bank_name || '',
+              type: type,
+              currency: acc.currency || 'USD',
+              number: acc.account_number || '****',
+              isDefault: isDefault
+            };
+          });
+
+          // Ensure at least one internal and one external default exists
+          const hasDefaultInt = this.banks.some(b => b.type === 'internal' && b.isDefault);
+          if (!hasDefaultInt) {
+            const firstInt = this.banks.find(b => b.type === 'internal') || this.banks[0];
+            if (firstInt) firstInt.isDefault = true;
+          }
+          const hasDefaultExt = this.banks.some(b => b.type === 'external' && b.isDefault);
+          if (!hasDefaultExt) {
+            const firstExt = this.banks.find(b => b.type === 'external');
+            if (firstExt) firstExt.isDefault = true;
+          }
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load bank accounts from database:', err);
+      }
+    },
+
+    persistBanksConfig() {
+      try {
+        const cfg = {};
+        this.banks.forEach(b => {
+          cfg[b.id] = { type: b.type, isDefault: b.isDefault };
+        });
+        localStorage.setItem('hrflow_payroll_banks_cfg', JSON.stringify(cfg));
+      } catch (_) {}
     },
 
     money(v) {
@@ -484,8 +610,13 @@
 
       const sub = document.getElementById('payrollPeriodSubtitle');
       if (sub) {
-        const defaultInternal = this.banks.find(b => b.type === 'internal' && b.isDefault);
-        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${defaultInternal ? defaultInternal.name : 'No default account set'} (USD)`;
+        const defaultInternal = this.banks.find(b => b.type === 'internal' && b.isDefault) || this.banks.find(b => b.type === 'internal') || this.banks[0];
+        const defaultExternal = this.banks.find(b => b.type === 'external' && b.isDefault);
+        let fundingText = defaultInternal ? `${defaultInternal.name} (${defaultInternal.currency || 'USD'})` : 'No default account set';
+        if (defaultExternal) {
+          fundingText += ` · External: ${defaultExternal.name} (${defaultExternal.currency || 'USD'})`;
+        }
+        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${fundingText}`;
       }
     },
 
@@ -605,8 +736,8 @@
           return;
         }
         this.stepIndex = 2;
-        // Simulate one payment failure on Omar Farouk to demonstrate the exception/retry path
-        const target = this.rows.find(r => r.id === 305);
+        // Simulate one payment failure on an employee to demonstrate the exception/retry path
+        const target = this.rows[Math.min(4, this.rows.length - 1)];
         if (target) {
           target.exception = 'Bank transfer rejected: destination account details invalid.';
         }
@@ -669,14 +800,14 @@
       this.showBanner('Run reverted to Draft. Employee lines are unlocked again for correction.', 'orange');
     },
 
-    /* ---------------- Settings view ---------------- */
+    /* ---------------- Settings view & DB Sync ---------------- */
     drawBankList() {
       const container = document.getElementById('payrollBankList');
       if (!container) return;
 
       container.innerHTML = this.banks.map(b => `
         <div class="bank-row">
-          <select onchange="PayrollApp.updateBank(${b.id}, 'type', this.value)">
+          <select onchange="PayrollApp.updateBankType(${b.id}, this.value)">
             <option value="internal" ${b.type === 'internal' ? 'selected' : ''}>Internal</option>
             <option value="external" ${b.type === 'external' ? 'selected' : ''}>External</option>
           </select>
@@ -691,9 +822,30 @@
       `).join('');
     },
 
-    updateBank(id, field, value) {
+    async updateBank(id, field, value) {
       const b = this.banks.find(x => x.id === id);
       if (b) b[field] = value;
+
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.updateAccount === 'function') {
+          const payload = {};
+          if (field === 'name') payload.account_name = value;
+          if (field === 'currency') payload.currency = value;
+          if (field === 'number') payload.account_number = value;
+          await FinanceApi.updateAccount(id, payload);
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] updateBank sync warning:', err);
+      }
+    },
+
+    updateBankType(id, type) {
+      const b = this.banks.find(x => x.id === id);
+      if (!b) return;
+      b.type = type;
+      this.persistBanksConfig();
+      this.drawBankList();
+      this.drawPeriodLabel();
     },
 
     setDefaultBank(id) {
@@ -703,21 +855,55 @@
         if (b.type === target.type) b.isDefault = false;
       });
       target.isDefault = true;
+      this.persistBanksConfig();
       this.drawBankList();
+      this.drawPeriodLabel();
     },
 
-    removeBank(id) {
+    async removeBank(id) {
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.deleteAccount === 'function') {
+          await FinanceApi.deleteAccount(id);
+          await this.loadBankAccountsFromDb();
+          this.drawBankList();
+          this.drawPeriodLabel();
+          return;
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] deleteAccount API failed, falling back to local:', err);
+      }
       this.banks = this.banks.filter(b => b.id !== id);
+      this.persistBanksConfig();
       this.drawBankList();
+      this.drawPeriodLabel();
     },
 
-    addBankRow() {
+    async addBankRow() {
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createAccount === 'function') {
+          await FinanceApi.createAccount({
+            account_name: 'New Treasury Account',
+            bank_name: 'Company Bank',
+            currency: 'USD',
+            account_number: '****' + Math.floor(1000 + Math.random() * 9000),
+            account_type: 'bank',
+            is_active: true
+          });
+          await this.loadBankAccountsFromDb();
+          this.drawBankList();
+          this.drawPeriodLabel();
+          return;
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] createAccount API failed, falling back to local:', err);
+      }
       const newId = Math.max(0, ...this.banks.map(b => b.id)) + 1;
-      this.banks.push({ id: newId, name: 'New account', type: 'internal', currency: 'USD', number: '****0000', isDefault: false });
+      this.banks.push({ id: newId, name: 'New Treasury Account', type: 'internal', currency: 'USD', number: '****0000', isDefault: false });
       this.drawBankList();
+      this.drawPeriodLabel();
     },
 
-    saveSettings() {
+    async saveSettings() {
       const monthInput = document.getElementById('payrollSetMonth');
       if (monthInput && monthInput.value) this.month = monthInput.value;
 
@@ -730,6 +916,20 @@
       const endInput = document.getElementById('payrollSetEnd');
       if (endInput && endInput.value) this.end = endInput.value;
 
+      this.persistBanksConfig();
+
+      if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.updateAccount === 'function') {
+        for (const b of this.banks) {
+          try {
+            await FinanceApi.updateAccount(b.id, {
+              account_name: b.name,
+              currency: b.currency,
+              account_number: b.number
+            });
+          } catch (_) {}
+        }
+      }
+
       this.addAudit('Payroll settings updated: bank accounts and/or payroll month changed.');
       this.drawPeriodLabel();
       this.showPage('list');
@@ -737,7 +937,7 @@
     },
 
     /* ---------------- Navigation between views ---------------- */
-    showPage(page) {
+    async showPage(page) {
       const pageList = document.getElementById('payrollViewList');
       const pageRun = document.getElementById('payrollViewRun');
       const pageSettings = document.getElementById('payrollViewSettings');
@@ -756,6 +956,7 @@
       } else if (page === 'run') {
         this.redraw();
       } else if (page === 'settings') {
+        await this.loadBankAccountsFromDb();
         this.drawBankList();
       }
     }
@@ -765,16 +966,16 @@
   window.PayrollApp = PayrollApp;
 
   // Compatibility stubs for existing router and legacy call sites
-  window.loadFinancePayroll = function () {
-    PayrollApp.init();
+  window.loadFinancePayroll = async function () {
+    await PayrollApp.init();
     PayrollApp.showPage('list');
   };
-  window.openRunPayrollWizardModal = function () {
-    PayrollApp.init();
+  window.openRunPayrollWizardModal = async function () {
+    await PayrollApp.init();
     PayrollApp.openRun('current');
   };
-  window.initPayrollTableDeferred = function () {
-    PayrollApp.init();
+  window.initPayrollTableDeferred = async function () {
+    await PayrollApp.init();
   };
 
   if (typeof document !== 'undefined') {

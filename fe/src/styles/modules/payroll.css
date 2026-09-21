@@ -512,25 +512,56 @@ table.payroll-worksheet tfoot td {
   font-size: 0.74rem;
 }
 
+/* Buttons & Footer Controls */
+.btn-ghost {
+  background: transparent !important;
+  border: 1px solid var(--border-color, #dbe4ee) !important;
+  color: var(--text-muted, #64748b) !important;
+  cursor: pointer;
+  border-radius: 10px;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2, #f8fafc) !important;
+  color: var(--text-primary, #0f172a) !important;
+  border-color: var(--border-color, #cbd5e1) !important;
+}
+
 .payroll-footer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--border-color, #dbe4ee);
-  background: var(--surface-2, #f8fafc);
-  align-items: center;
-  justify-content: space-between;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 16px 20px !important;
+  border-top: 1px solid var(--border-color, #dbe4ee) !important;
+  background: var(--surface-2, #f8fafc) !important;
+  flex-wrap: nowrap !important;
 }
 .payroll-footer-actions .left-info {
   color: var(--text-muted, #64748b);
   font-size: 0.85rem;
-  max-width: 68ch;
+  flex: 1 1 auto;
 }
 .payroll-footer-actions .btns {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+  flex-shrink: 0 !important;
+}
+.payroll-footer-actions .btns .btn,
+.payroll-footer-actions .btns button,
+.save-bar .btn,
+.save-bar button {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  min-width: 85px;
+  height: 38px;
+  white-space: nowrap !important;
 }
 
 /* Settings */
@@ -608,9 +639,12 @@ table.payroll-worksheet tfoot td {
 .save-bar {
   padding: 14px 20px;
   border-top: 1px solid var(--border-color, #dbe4ee);
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
   background: var(--surface-2, #f8fafc);
 }
 
