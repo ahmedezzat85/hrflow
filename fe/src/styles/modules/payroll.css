@@ -270,8 +270,8 @@ table.runs-table tr.clickable:hover {
 
 /* Table */
 .payroll-table-wrap {
-  overflow: auto;
-  max-height: 560px;
+  overflow-x: auto;
+  overflow-y: visible;
   border-top: 1px solid var(--border-color, #dbe4ee);
 }
 table.payroll-worksheet {
@@ -300,8 +300,6 @@ table.payroll-worksheet th {
   border-bottom: 2px solid var(--border-color, #dbe4ee);
 }
 table.payroll-worksheet tfoot td {
-  position: sticky;
-  bottom: 0;
   background: #eef4ff;
   font-weight: 800;
   border-top: 2px solid #bfdbfe;
@@ -368,17 +366,24 @@ table.payroll-worksheet tfoot td {
   padding: 0 !important;
 }
 .expand-inner {
-  padding: 14px 18px;
+  padding: 12px 18px;
   display: flex;
-  gap: 14px;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
   background: #f8fbff;
   border-left: 4px solid var(--primary, #2563eb);
 }
+.expand-form-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+  width: auto;
+}
 .expand-inner .field {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 .expand-inner label {
   font-size: 0.74rem;
@@ -394,52 +399,81 @@ table.payroll-worksheet tfoot td {
   border-radius: 8px;
   min-width: 140px;
   font-size: 0.85rem;
+  height: 36px;
+  box-sizing: border-box;
 }
 .src-toggle {
   display: inline-flex;
   border: 1px solid var(--border-color, #dbe4ee);
   border-radius: 999px;
   overflow: hidden;
+  height: 36px;
+  box-sizing: border-box;
 }
 .src-toggle button {
   border: 0;
   background: #fff;
-  padding: 7px 13px;
+  padding: 0 13px;
   cursor: pointer;
   font-weight: 700;
   font-size: 0.82rem;
   color: var(--text-muted, #64748b);
   transition: all 0.12s ease;
+  height: 100%;
 }
 .src-toggle button.active {
   background: var(--primary-soft, #e8f0ff);
   color: var(--primary, #2563eb);
 }
+.expand-btn-group {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+  height: 36px;
+}
+.expand-btn-group .btn,
+.expand-btn-group button {
+  width: auto !important;
+  min-width: 75px !important;
+  height: 36px !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
 .existing-bonuses {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  margin-right: auto;
   align-items: center;
+  width: 100%;
 }
 .bonus-tag {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   background: #fff;
   border: 1px solid var(--border-color, #dbe4ee);
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   font-size: 0.78rem;
   font-weight: 600;
+  color: var(--text-primary, #0f172a);
 }
 .bonus-tag .rm {
   cursor: pointer;
-  color: var(--danger, #ef4444);
+  color: var(--text-muted, #94a3b8);
   font-weight: 800;
   font-size: 0.95rem;
   line-height: 1;
-  margin-left: 2px;
+}
+.bonus-tag .rm:hover {
+  color: var(--danger, #ef4444);
 }
 
 /* Compact Bottom Summary Bar (Funding Disbursal & Readiness) */

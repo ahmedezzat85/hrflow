@@ -90,15 +90,30 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     // Expand row appears
     const expandRow = table.locator('.expand-row');
     await expect(expandRow).toBeVisible();
+
+    // Verify fields and buttons are aligned in a single horizontal row
+    const formRow = expandRow.locator('.expand-form-row');
+    await expect(formRow).toBeVisible();
+    const submitBtn = expandRow.locator('.btn-bonus-submit');
+    const closeBtn = expandRow.locator('.btn-bonus-close');
+    await expect(submitBtn).toBeVisible();
+    await expect(closeBtn).toBeVisible();
+    const submitBox = await submitBtn.boundingBox();
+    expect(submitBox.width).toBeLessThan(160); // Not stretched to full row width
+
     await expandRow.locator(`#amt-${empId}`).fill('500');
     // Toggle source to External
     await expandRow.locator(`#src-${empId} button[data-src="external"]`).click();
-    await expandRow.locator('button:has-text("Submit")').click();
+    await submitBtn.click();
 
     // Verify bonus tag created
     await expect(expandRow.locator('.bonus-tag')).toContainText('$500.00');
 
-    // 5. Check compact bottom summary strip
+    // 5. Verify single outer scroll (no inner vertical table scroll)
+    const tableWrapHasVerticalScroll = await page.locator('#payrollViewRun .payroll-table-wrap').evaluate(el => el.scrollHeight > el.clientHeight);
+    expect(tableWrapHasVerticalScroll).toBe(false);
+
+    // 6. Check compact bottom summary strip
     await expect(page.locator('#accExternal')).toBeVisible();
     await expect(page.locator('#accInternal')).toBeVisible();
     await expect(page.locator('#payrollExceptionList')).toBeVisible();

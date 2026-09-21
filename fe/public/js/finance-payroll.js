@@ -478,29 +478,33 @@
                         ${b.type} · ${this.money(b.amount)} · ${b.source === 'internal' ? 'INT' : 'EXT'}
                         <span class="rm" onclick="PayrollApp.removeBonus(${r.id}, ${idx})">&times;</span>
                       </span>
-                    `).join('') || '<span style="color:var(--text-muted); font-size:.82rem;">No bonuses added yet</span>'}
+                    `).join('') || '<span style="color:var(--text-muted); font-size:.82rem;">No additions added yet</span>'}
                   </div>
-                  <div class="field">
-                    <label>Type</label>
-                    <select id="type-${r.id}">
-                      <option value="Bonus">Bonus</option>
-                      <option value="Sales Commission">Sales Commission</option>
-                      <option value="Support Commission">Support Commission</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label>Amount (USD)</label>
-                    <input id="amt-${r.id}" type="number" step="0.01" placeholder="0.00" />
-                  </div>
-                  <div class="field">
-                    <label>Payment source</label>
-                    <div class="src-toggle" id="src-${r.id}">
-                      <button class="active" data-src="internal" onclick="PayrollApp.setSrc(${r.id}, 'internal')">Internal</button>
-                      <button data-src="external" onclick="PayrollApp.setSrc(${r.id}, 'external')">External</button>
+                  <div class="expand-form-row">
+                    <div class="field">
+                      <label>Type</label>
+                      <select id="type-${r.id}">
+                        <option value="Bonus">Bonus</option>
+                        <option value="Sales Commission">Sales Commission</option>
+                        <option value="Support Commission">Support Commission</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Amount (USD)</label>
+                      <input id="amt-${r.id}" type="number" step="0.01" placeholder="0.00" />
+                    </div>
+                    <div class="field">
+                      <label>Payment source</label>
+                      <div class="src-toggle" id="src-${r.id}">
+                        <button class="active" data-src="internal" onclick="PayrollApp.setSrc(${r.id}, 'internal')">Internal</button>
+                        <button data-src="external" onclick="PayrollApp.setSrc(${r.id}, 'external')">External</button>
+                      </div>
+                    </div>
+                    <div class="expand-btn-group">
+                      <button class="btn btn-primary btn-sm btn-bonus-submit" onclick="PayrollApp.submitBonus(${r.id})">Submit</button>
+                      <button class="btn btn-ghost btn-sm btn-bonus-close" onclick="PayrollApp.toggleExpand(${r.id})">Close</button>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm" style="padding:7px 14px; font-weight:700;" onclick="PayrollApp.submitBonus(${r.id})">Submit</button>
-                  <button class="btn btn-ghost btn-sm" style="padding:7px 14px;" onclick="PayrollApp.toggleExpand(${r.id})">Close</button>
                 </div>
               </td>
             </tr>
