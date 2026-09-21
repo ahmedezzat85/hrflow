@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('HRFlow Redesigned Payroll Module — Table, Cycle & Verification', () => {
+test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
     page.on('pageerror', (err) => console.log('PAGE ERROR:', err));
@@ -11,207 +11,161 @@ test.describe('HRFlow Redesigned Payroll Module — Table, Cycle & Verification'
     // Navigate to Payroll section
     await page.click('#adminSidebar a[data-page="a-finance-payroll"]');
     await expect(page.locator('#a-finance-payroll')).toBeVisible();
-
-    // Ensure deterministic clean state for 2026-09
-    await page.evaluate(() => {
-      if (typeof PayrollCycleManager !== 'undefined') {
-        PayrollCycleManager.resetCycle('2026-09');
-      }
-      if (typeof PayrollTableController !== 'undefined') {
-        PayrollTableController.loadData('2026-09');
-        PayrollTableController.render();
-      }
-    });
   });
 
-  test('Goals 1, 3, 4: Table renders required columns, 15 seed employees across 3 groups, and pinned totals row', async ({ page }) => {
-    // Check Cycle Bar and Status Stepper
-    await expect(page.locator('#payrollStep_draft')).toBeVisible();
-    await expect(page.locator('#payrollStep_draft')).toHaveClass(/active/);
-    await expect(page.locator('#payrollCycleCurrentBadge')).toHaveText('DRAFT');
+  test('TC-1: In-Page Architecture — Runs List (History), Run Page, and Settings without modals', async ({ page }) => {
+    // Topbar brand and sub-navigation tabs should be visible
+    await expect(page.locator('#payrollNavList')).toBeVisible();
+    await expect(page.locator('#payrollNavSettings')).toBeVisible();
 
-    // Check Table presence and headers
+    // Starts on Runs List / History page by default
+    const viewList = page.locator('#payrollViewList');
+    await expect(viewList).toBeVisible();
+    await expect(viewList.locator('#payrollRunsTable')).toBeVisible();
+    await expect(viewList.locator('#payrollRunsCount')).toContainText('runs');
+
+    // History table contains current cycle and past cycles
+    const runsRows = viewList.locator('#payrollRunsTableBody tr');
+    await expect(runsRows).toHaveCount(4);
+    await expect(runsRows.first()).toContainText('2026-09');
+
+    // Click "Open current cycle" to open the Run page in-place (NOT a modal)
+    await page.click('#btnOpenCurrentCycle');
+    await expect(viewList).toHaveClass(/payroll-hidden/);
+
+    const viewRun = page.locator('#payrollViewRun');
+    await expect(viewRun).toBeVisible();
+    await expect(page.locator('#runPayrollWizardModal')).toHaveCount(0); // Old wizard modal should not exist
+
+    // Back to All runs button returns to Runs List
+    await page.click('#payrollViewRun button:has-text("All runs")');
+    await expect(viewList).toBeVisible();
+    await expect(viewRun).toHaveClass(/payroll-hidden/);
+
+    // Switch to Settings Page via topbar
+    await page.click('#payrollNavSettings');
+    const viewSettings = page.locator('#payrollViewSettings');
+    await expect(viewSettings).toBeVisible();
+    await expect(viewList).toHaveClass(/payroll-hidden/);
+    await expect(page.locator('#payrollBankList')).toBeVisible();
+    await expect(page.locator('#payrollSetMonth')).toHaveValue('2026-09');
+
+    // Cancel in Settings returns to Runs List
+    await page.click('#payrollViewSettings button:has-text("Cancel")');
+    await expect(viewList).toBeVisible();
+  });
+
+  test('TC-2: Run Page — Stepper, 5 KPI cards, worksheet table, inline bonuses, and bottom panels', async ({ page }) => {
+    // Open Run Page
+    await page.click('#btnOpenCurrentCycle');
+    const viewRun = page.locator('#payrollViewRun');
+    await expect(viewRun).toBeVisible();
+
+    // 1. Check Stepper
+    const stepper = page.locator('#payrollStepper');
+    await expect(stepper.locator('.payroll-step-pill')).toHaveCount(4);
+    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('1. Review & Draft');
+
+    // 2. Check 5 KPI Stat cards
+    const stats = page.locator('#payrollStatsGrid .payroll-stat');
+    await expect(stats).toHaveCount(5);
+    await expect(stats.nth(0).locator('.label')).toHaveText(/Headcount/i);
+    await expect(stats.nth(0).locator('.value')).toHaveText('8');
+    await expect(stats.nth(1).locator('.label')).toHaveText(/Total Net Payment/i);
+
+    // 3. Check Worksheet table columns and rows
     const table = page.locator('#payrollWorksheetTable');
     await expect(table).toBeVisible();
+    const rows = table.locator('#payrollTableBody tr');
+    await expect(rows.first()).toContainText('Youssef Adel');
 
-    const headers = table.locator('thead th');
-    await expect(headers.nth(0)).toContainText('Employee');
-    await expect(headers.nth(1)).toContainText('Base Salary');
-    await expect(headers.nth(2)).toContainText('Overtime');
-    await expect(headers.nth(3)).toContainText('Bonus');
-    await expect(headers.nth(4)).toContainText('Sales Comm.');
-    await expect(headers.nth(5)).toContainText('Supp. Comm.');
-    await expect(headers.nth(6)).toContainText('Source');
-    await expect(headers.nth(7)).toContainText('Deductions');
-    await expect(headers.nth(8)).toContainText('Net Pay');
+    // 4. Test adding inline bonus to Youssef Adel (#301)
+    const adelRow = table.locator('#payrollTableBody tr:has-text("Youssef Adel")');
+    await adelRow.locator('.add-bonus-btn').click();
 
-    // 3 Account Groups should be rendered
-    await expect(table.locator('.payroll-group-header-row')).toHaveCount(3);
-    await expect(table.locator('.payroll-group-header-row').nth(0)).toContainText('Operations');
-    await expect(table.locator('.payroll-group-header-row').nth(1)).toContainText('Engineering');
-    await expect(table.locator('.payroll-group-header-row').nth(2)).toContainText('Sales & Marketing');
+    // Expand row appears
+    const expandRow = table.locator('.expand-row');
+    await expect(expandRow).toBeVisible();
+    await expandRow.locator('#amt-301').fill('500');
+    // Toggle source to External
+    await expandRow.locator('#src-301 button[data-src="external"]').click();
+    await expandRow.locator('button:has-text("Submit")').click();
 
-    // 15 employee rows
-    await expect(table.locator('.payroll-row')).toHaveCount(15);
+    // Verify bonus tag and audit log entry created
+    await expect(page.locator('#payrollAuditList')).toContainText('Added Bonus of $500.00 (external) for Youssef Adel');
 
-    // 3 Per-Account Totals rows + 1 Grand Total row
-    await expect(table.locator('.payroll-group-totals-row')).toHaveCount(3);
-    await expect(table.locator('.payroll-grand-totals-row')).toBeVisible();
-    await expect(page.locator('#grandTotalNet')).toBeVisible();
+    // 5. Check bottom 4 panels
+    await expect(page.locator('#accExternal')).toBeVisible();
+    await expect(page.locator('#accInternal')).toBeVisible();
+    await expect(page.locator('#payrollExceptionList')).toBeVisible();
+    await expect(page.locator('#payrollJournalBadge')).toHaveText('Not Posted');
+    await expect(page.locator('#payrollJournalRows')).toContainText('Internal Payroll Expense');
   });
 
-  test('Goal 1: Inline cell editing for Bonus, Sales Commission, and Support Commission with live recompute', async ({ page }) => {
-    // Target Sarah Connor (EMP001) in Engineering
-    const row = page.locator('#payrollRow_EMP001');
-    await expect(row).toBeVisible();
+  test('TC-3: Step lifecycle (Draft -> Approved -> Processing -> Paid), exception handling, and Revert to Draft', async ({ page }) => {
+    // Open Run Page
+    await page.click('#btnOpenCurrentCycle');
 
-    const bonusCell = row.locator('.payroll-editable-cell[data-field="bonus"]');
-    const netCell = page.locator('#netPayDisplay_EMP001');
+    // Advance to Step 2: Approved
+    await page.click('#payrollNextBtn');
+    await expect(page.locator('#payrollStatusBadge')).toHaveText('APPROVED');
+    await expect(page.locator('#payrollLockNote')).toBeVisible();
 
-    const initialNetText = await netCell.innerText();
+    // Advance to Step 3: Processing (simulates bank failure on Omar Farouk)
+    await page.click('#payrollNextBtn');
+    await expect(page.locator('#payrollStatusBadge')).toHaveText('PROCESSING');
 
-    // Click bonus cell to activate inline input
-    await bonusCell.click();
-    const input = bonusCell.locator('input.payroll-inline-input');
-    await expect(input).toBeVisible();
+    // Verify exception appears under Exceptions panel
+    const exceptionsPanel = page.locator('#payrollExceptionList');
+    await expect(exceptionsPanel).toContainText('Omar Farouk');
+    await expect(exceptionsPanel).toContainText('Bank transfer rejected');
 
-    // Type new bonus value 2500 and press Enter
-    await input.fill('2500');
-    await input.press('Enter');
+    // Attempting next when blocking exception exists is prevented
+    await expect(page.locator('#payrollNextBtn')).toBeDisabled();
 
-    // Expect input removed and display text updated
-    await expect(bonusCell.locator('input')).toHaveCount(0);
-    await expect(bonusCell.locator('#cellDisplay_EMP001_bonus')).toHaveText('$2,500.00');
-    await expect(bonusCell).toHaveClass(/payroll-cell-edited/);
+    // Click "Retry payment" on Omar Farouk's exception
+    await page.click('.retry-btn');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payment retried for Omar Farouk');
 
-    // Net pay should increase
-    const updatedNetText = await netCell.innerText();
-    expect(updatedNetText).not.toEqual(initialNetText);
+    // Advance to Step 4: Paid
+    await expect(page.locator('#payrollNextBtn')).not.toBeDisabled();
+    await page.click('#payrollNextBtn');
+    await expect(page.locator('#payrollStatusBadge')).toHaveText('PAID');
+    await expect(page.locator('#payrollJournalBadge')).toHaveText('Posted');
+    await expect(page.locator('#payrollNextBtn')).toHaveText('Cycle Complete');
 
-    // Test Escape cancels editing without committing
-    const salesCell = row.locator('.payroll-editable-cell[data-field="salesComm"]');
-    const initialSales = await salesCell.innerText();
-    await salesCell.click();
-    const salesInput = salesCell.locator('input.payroll-inline-input');
-    await salesInput.fill('9999');
-    await salesInput.press('Escape');
-    await expect(salesCell.locator('input')).toHaveCount(0);
-    await expect(salesCell).toContainText(initialSales);
+    // Test Revert to Draft
+    await page.click('#payrollRevertBtn');
+    const revertModal = page.locator('#payrollRevertModal');
+    await expect(revertModal).toHaveClass(/show/);
+
+    await page.fill('#payrollRevertReason', 'Correction needed for overtime hours');
+    await page.click('#payrollRevertModal button:has-text("Revert to draft")');
+
+    await expect(revertModal).not.toHaveClass(/show/);
+    await expect(page.locator('#payrollStatusBadge')).toHaveText('DRAFT');
+    await expect(page.locator('#payrollLockNote')).toHaveClass(/payroll-hidden/);
+    await expect(page.locator('#payrollAuditList')).toContainText('Reverted from PAID back to DRAFT');
   });
 
-  test('Goal 2: INT / EXT source toggle muting and filter integration', async ({ page }) => {
-    // Check initial row source
-    const row = page.locator('#payrollRow_EMP001');
-    const toggleBtn = row.locator('#btnSourceToggle_EMP001');
-    await expect(toggleBtn).toHaveText('INT');
-    await expect(row).not.toHaveClass(/payroll-row-ext/);
+  test('TC-4: Settings Page — Bank accounts management and payroll month schedule update', async ({ page }) => {
+    await page.click('#payrollNavSettings');
+    await expect(page.locator('#payrollViewSettings')).toBeVisible();
 
-    // Click toggle to switch to EXT
-    await toggleBtn.click();
-    await expect(toggleBtn).toHaveText('EXT');
-    await expect(row).toHaveClass(/payroll-row-ext/);
+    // Initial 2 accounts present
+    const bankRows = page.locator('#payrollBankList .bank-row');
+    await expect(bankRows).toHaveCount(2);
 
-    // Filter by Source = EXT
-    await page.selectOption('#payrollSourceFilter', 'EXT');
-    // All visible rows should be EXT
-    const visibleRows = page.locator('#payrollWorksheetTable .payroll-row');
-    const count = await visibleRows.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      await expect(visibleRows.nth(i).locator('.source-chip')).toHaveText('EXT');
-    }
+    // Add a new bank account
+    await page.click('button:has-text("+ Add bank account")');
+    await expect(bankRows).toHaveCount(3);
 
-    // Reset filter to All
-    await page.selectOption('#payrollSourceFilter', 'all');
-  });
+    // Change Month schedule
+    await page.fill('#payrollSetMonth', '2026-10');
+    await page.click('button:has-text("Save settings")');
 
-  test('Goal 5: Full Cycle workflow Draft -> Review -> Approved -> Paid with confirmation modals and lock enforcement', async ({ page }) => {
-    // 1. Submit for Review
-    const btnSubmit = page.locator('#btnPayrollSubmitReview');
-    await expect(btnSubmit).toBeVisible();
-    await btnSubmit.click();
-
-    // Confirmation modal appears
-    const confirmModal = page.locator('#financeConfirmModal');
-    await expect(confirmModal).toBeVisible();
-    await page.click('#financeConfirmSubmitBtn');
-    await expect(confirmModal).not.toBeVisible();
-
-    // Step status becomes REVIEW
-    await expect(page.locator('#payrollStep_review')).toHaveClass(/active/);
-    await expect(page.locator('#payrollCycleCurrentBadge')).toHaveText('REVIEW');
-
-    // 2. Approve cycle (admin role)
-    const btnApprove = page.locator('#btnPayrollApprove');
-    await expect(btnApprove).toBeVisible();
-    await btnApprove.click();
-
-    await expect(confirmModal).toBeVisible();
-    await page.click('#financeConfirmSubmitBtn');
-    await expect(confirmModal).not.toBeVisible();
-
-    // Step status becomes APPROVED
-    await expect(page.locator('#payrollStep_approved')).toHaveClass(/active/);
-    await expect(page.locator('#payrollCycleCurrentBadge')).toHaveText('APPROVED');
-
-    // Table should now be locked!
-    await expect(page.locator('#payrollTableLockBanner')).toBeVisible();
-    const lockedCell = page.locator('#payrollRow_EMP001 .payroll-editable-cell').first();
-    await expect(lockedCell).toHaveAttribute('tabindex', '-1');
-
-    // 3. Mark as Paid
-    const btnPaid = page.locator('#btnPayrollMarkPaid');
-    await expect(btnPaid).toBeVisible();
-    await btnPaid.click();
-
-    await expect(confirmModal).toBeVisible();
-    await page.click('#financeConfirmSubmitBtn');
-    await expect(confirmModal).not.toBeVisible();
-
-    // Step status becomes PAID
-    await expect(page.locator('#payrollStep_paid')).toHaveClass(/active/);
-    await expect(page.locator('#payrollCycleCurrentBadge')).toHaveText('PAID');
-
-    // 4. Reopen Draft
-    const btnReopen = page.locator('#btnPayrollReopenDraft');
-    await expect(btnReopen).toBeVisible();
-    await btnReopen.click();
-
-    await expect(confirmModal).toBeVisible();
-    await page.click('#financeConfirmSubmitBtn');
-    await expect(confirmModal).not.toBeVisible();
-
-    // Returns to DRAFT and table is unlocked
-    await expect(page.locator('#payrollStep_draft')).toHaveClass(/active/);
-    await expect(page.locator('#payrollCycleCurrentBadge')).toHaveText('DRAFT');
-    await expect(page.locator('#payrollTableLockBanner')).not.toBeVisible();
-  });
-
-  test('Goal 6: Export to Excel and PDF dropdown menu works', async ({ page }) => {
-    const exportBtn = page.locator('#btnPayrollExportMenu');
-    await expect(exportBtn).toBeVisible();
-
-    // Open dropdown
-    await exportBtn.click();
-    const dropdownMenu = page.locator('#payrollExportMenuContent');
-    await expect(dropdownMenu).toBeVisible();
-
-    // Verify both export choices exist
-    await expect(dropdownMenu.locator('text=Export to Excel (.csv)')).toBeVisible();
-    await expect(dropdownMenu.locator('text=Export to PDF / Print')).toBeVisible();
-  });
-
-  test('Goal 7 & 8: Dark mode and 375px mobile viewport rendering', async ({ page }) => {
-    // Toggle dark mode
-    await page.evaluate(() => {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      document.body.setAttribute('data-theme', 'dark');
-    });
-    await expect(page.locator('#payrollWorksheetTable')).toBeVisible();
-
-    // Resize viewport to 375px width (iPhone standard mobile width)
-    await page.setViewportSize({ width: 375, height: 667 });
-    await expect(page.locator('#payrollWorksheetTable')).toBeVisible();
-    await expect(page.locator('.payroll-table-wrapper')).toBeVisible();
+    // Redirects to runs list and displays confirmation
+    await expect(page.locator('#payrollViewList')).toBeVisible();
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll settings saved');
   });
 });
