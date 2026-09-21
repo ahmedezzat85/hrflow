@@ -109,9 +109,20 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     // Verify bonus tag created
     await expect(expandRow.locator('.bonus-tag')).toContainText('$500.00');
 
-    // 5. Verify single outer scroll (no inner vertical table scroll)
-    const tableWrapHasVerticalScroll = await page.locator('#payrollViewRun .payroll-table-wrap').evaluate(el => el.scrollHeight > el.clientHeight);
-    expect(tableWrapHasVerticalScroll).toBe(false);
+    // 5. Verify ID in first column, employee name wrapping in second column
+    const firstRowCells = firstRow.locator('td');
+    await expect(firstRowCells.nth(0)).toHaveClass(/payroll-id-col/);
+    await expect(firstRowCells.nth(1)).toHaveClass(/payroll-name-col/);
+    const empNameWhiteSpace = await firstRow.locator('.payroll-emp-name').evaluate(el => window.getComputedStyle(el).whiteSpace);
+    expect(empNameWhiteSpace).toBe('normal');
+
+    // 6. Verify single outer scroll (no inner vertical table scroll and no horizontal scroll on desktop)
+    const tableWrapScrollState = await page.locator('#payrollViewRun .payroll-table-wrap').evaluate(el => ({
+      hasVerticalScroll: el.scrollHeight > el.clientHeight,
+      hasHorizontalScroll: el.scrollWidth > el.clientWidth + 2
+    }));
+    expect(tableWrapScrollState.hasVerticalScroll).toBe(false);
+    expect(tableWrapScrollState.hasHorizontalScroll).toBe(false);
 
     // 6. Check compact bottom summary strip
     await expect(page.locator('#accExternal')).toBeVisible();

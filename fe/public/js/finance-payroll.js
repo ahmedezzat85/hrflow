@@ -445,10 +445,10 @@
 
         html += `
           <tr class="${flagged}" style="${locked && !r.exception ? 'opacity:.88;' : ''}">
-            <td>
-              <div class="payroll-emp-name">${r.name}</div>
-              <div class="payroll-emp-id">#${r.id}</div>
-              ${r.exception ? `<div style="margin-top:4px;"><span class="p-badge b-red">Payment failed</span></div>` : ''}
+            <td class="payroll-id-col"><span class="payroll-emp-id">#${r.id}</span></td>
+            <td class="payroll-name-col">
+              <div class="payroll-emp-name" title="${r.name}">${r.name}</div>
+              ${r.exception ? `<div style="margin-top:2px;"><span class="p-badge b-red">Payment failed</span></div>` : ''}
             </td>
             <td class="payroll-num">${this.money(r.baseExt)}</td>
             <td class="payroll-num">${this.money(r.baseInt)}</td>
@@ -470,7 +470,7 @@
         if (this.expandedId === r.id && !locked) {
           html += `
             <tr class="expand-row">
-              <td colspan="9">
+              <td colspan="10">
                 <div class="expand-inner">
                   <div class="existing-bonuses" id="chips-${r.id}">
                     ${(r.bonuses || []).map((b, idx) => `
@@ -512,7 +512,7 @@
         }
       });
 
-      tbody.innerHTML = html || `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted);">No employees match the current filters.</td></tr>`;
+      tbody.innerHTML = html || `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-muted);">No employees match the current filters.</td></tr>`;
 
       // Update footers
       const t = this.rollup();

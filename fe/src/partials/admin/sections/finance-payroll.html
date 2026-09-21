@@ -110,21 +110,22 @@
                 <table class="payroll-worksheet" id="payrollWorksheetTable">
                   <thead>
                     <tr>
-                      <th>Employee</th>
-                      <th>Base External (USD)</th>
-                      <th>Base Internal (USD)</th>
-                      <th>Bonus (USD)</th>
-                      <th>Total Internal</th>
-                      <th>Total Deductions</th>
-                      <th>Internal</th>
-                      <th>External</th>
-                      <th>Net Payment</th>
+                      <th class="payroll-id-th">ID</th>
+                      <th class="payroll-name-th">Employee</th>
+                      <th class="payroll-num-th">Base Ext ($)</th>
+                      <th class="payroll-num-th">Base Int ($)</th>
+                      <th class="payroll-num-th">Bonus ($)</th>
+                      <th class="payroll-num-th">Total Int</th>
+                      <th class="payroll-num-th">Deductions</th>
+                      <th class="payroll-num-th">Internal</th>
+                      <th class="payroll-num-th">External</th>
+                      <th class="payroll-num-th">Net Pay</th>
                     </tr>
                   </thead>
                   <tbody id="payrollTableBody"></tbody>
                   <tfoot>
                     <tr>
-                      <td>Totals</td>
+                      <td colspan="2" style="font-weight:800;">Totals</td>
                       <td class="payroll-num" id="fBaseExt">-</td>
                       <td class="payroll-num" id="fBaseInt">-</td>
                       <td class="payroll-num" id="fBonus">-</td>
