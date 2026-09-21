@@ -66,17 +66,11 @@ const PayrollTableController = {
     return Math.round((base + ot + bonus + sales + support - ded) * 100) / 100;
   },
 
-  loadData(month) {
-    const storageKey = `hrflow_payroll_rows_${month}`;
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        this.dataByMonth[month] = JSON.parse(saved);
-        return;
-      }
-    } catch (_) {}
-
-    // Clone seed data and compute initial netPay
+  loadData(month, forceReset = false) {
+    if (!forceReset && this.dataByMonth[month]) {
+      return;
+    }
+    // Clone seed data and compute initial netPay in-memory
     const cloned = this.seedEmployees.map((emp) => {
       const row = { ...emp };
       row.netPay = this.computeNetPay(row);
@@ -86,11 +80,7 @@ const PayrollTableController = {
   },
 
   saveData(month) {
-    const rows = this.dataByMonth[month];
-    if (!rows) return;
-    try {
-      localStorage.setItem(`hrflow_payroll_rows_${month}`, JSON.stringify(rows));
-    } catch (_) {}
+    // In-memory state only — this.dataByMonth[month] is already updated
   },
 
   getCurrentRows() {
@@ -182,9 +172,6 @@ const PayrollTableController = {
   },
 
   formatMoney(num) {
-    if (typeof window.formatCurrency === 'function') {
-      return window.formatCurrency(num);
-    }
     return '$' + Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   },
 

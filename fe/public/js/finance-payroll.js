@@ -41,13 +41,44 @@ window.handlePayrollDeptChange = handlePayrollDeptChange;
 window.handlePayrollSourceChange = handlePayrollSourceChange;
 window.handlePayrollSearch = handlePayrollSearch;
 
+function initPayrollTableDeferred() {
+  const section = document.getElementById("a-finance-payroll");
+  if (!section) return;
+
+  const isVisible = section.classList.contains("active") || 
+                    (window.getComputedStyle && window.getComputedStyle(section).display !== "none" && section.offsetWidth > 0);
+
+  if (isVisible) {
+    if (typeof PayrollCycleManager !== "undefined") {
+      PayrollCycleManager.init(PayrollCycleManager.getCurrentMonth() || "2026-09");
+    }
+    if (typeof PayrollTableController !== "undefined") {
+      PayrollTableController.init(typeof PayrollCycleManager !== "undefined" ? PayrollCycleManager.getCurrentMonth() : "2026-09");
+    }
+  }
+}
+
+window.initPayrollTableDeferred = initPayrollTableDeferred;
+
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    const section = document.getElementById("a-finance-payroll");
+    if (section) {
+      if (section.classList.contains("active")) {
+        initPayrollTableDeferred();
+      }
+      const observer = new MutationObserver(() => {
+        if (section.classList.contains("active")) {
+          initPayrollTableDeferred();
+        }
+      });
+      observer.observe(section, { attributes: true, attributeFilter: ["class", "style"] });
+    }
+  });
+}
+
 async function loadFinancePayroll() {
-  if (typeof PayrollCycleManager !== "undefined") {
-    PayrollCycleManager.init(PayrollCycleManager.getCurrentMonth() || "2026-09");
-  }
-  if (typeof PayrollTableController !== "undefined") {
-    PayrollTableController.init(typeof PayrollCycleManager !== "undefined" ? PayrollCycleManager.getCurrentMonth() : "2026-09");
-  }
+  initPayrollTableDeferred();
 
   const bar = document.getElementById("financePayrollLoadingBar");
   if (bar) bar.style.display = "block";

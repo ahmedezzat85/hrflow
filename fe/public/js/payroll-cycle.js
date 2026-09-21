@@ -45,31 +45,19 @@ const PayrollCycleManager = {
   },
 
   loadState(month) {
-    const storageKey = `hrflow_payroll_cycle_${month}`;
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        this.cycles[month] = JSON.parse(stored);
-        return;
-      }
-    } catch (_) {}
-
-    // Default state if not persisted
-    this.cycles[month] = {
-      id: month,
-      month: month,
-      status: 'DRAFT',
-      lockedAt: null,
-      updatedAt: new Date().toISOString()
-    };
+    if (!this.cycles[month]) {
+      this.cycles[month] = {
+        id: month,
+        month: month,
+        status: 'DRAFT',
+        lockedAt: null,
+        updatedAt: new Date().toISOString()
+      };
+    }
   },
 
   saveState(month) {
-    const cycle = this.cycles[month];
-    if (!cycle) return;
-    try {
-      localStorage.setItem(`hrflow_payroll_cycle_${month}`, JSON.stringify(cycle));
-    } catch (_) {}
+    // In-memory state only — this.cycles[month] is already updated
   },
 
   resetCycle(month = this.currentMonth) {
@@ -80,10 +68,9 @@ const PayrollCycleManager = {
       lockedAt: null,
       updatedAt: new Date().toISOString()
     };
-    try {
-      localStorage.removeItem(`hrflow_payroll_cycle_${month}`);
-      localStorage.removeItem(`hrflow_payroll_rows_${month}`);
-    } catch (_) {}
+    if (typeof PayrollTableController !== 'undefined') {
+      PayrollTableController.loadData(month, true);
+    }
     this.emitChange();
     this.updateCycleBarUI();
   },
@@ -258,7 +245,12 @@ const PayrollCycleManager = {
     const currentIndex = steps.indexOf(status);
 
     steps.forEach((step, idx) => {
-      const stepEl = document.getElementById(`payrollStep_${step.toLowerCase()}`);
+      const stepLower = step.toLowerCase();
+      const stepEl = document.getElementById(`payrollStep_${stepLower}`) ||
+                     document.getElementById(`cycleStepPill_${stepLower}`) ||
+                     document.getElementById(`cycleStep_${stepLower}`) ||
+                     document.getElementById(`stepPill_${stepLower}`) ||
+                     document.querySelector(`[data-step="${step}"]`);
       if (!stepEl) return;
 
       stepEl.classList.remove('active', 'completed', 'pending');
