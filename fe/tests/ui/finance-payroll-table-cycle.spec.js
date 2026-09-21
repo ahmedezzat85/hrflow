@@ -47,7 +47,8 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     const viewSettings = page.locator('#payrollViewSettings');
     await expect(viewSettings).toBeVisible();
     await expect(viewList).toHaveClass(/payroll-hidden/);
-    await expect(page.locator('#payrollBankList')).toBeVisible();
+    await expect(page.locator('#payrollTargetExternalAccount')).toBeVisible();
+    await expect(page.locator('#payrollTargetInternalAccount')).toBeVisible();
     await expect(page.locator('#payrollSetMonth')).toHaveValue('2026-09');
 
     // Cancel in Settings returns to Runs List
@@ -189,18 +190,31 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
   });
 
-  test('TC-4: Settings Page — Bank accounts management and payroll month schedule update', async ({ page }) => {
+  test('TC-4: Settings Page — Target funding accounts selection and payroll month schedule update', async ({ page }) => {
     await page.click('#payrollNavSettings');
     await expect(page.locator('#payrollViewSettings')).toBeVisible();
 
-    // Initial accounts present from database/mock
-    const bankRows = page.locator('#payrollBankList .bank-row');
-    const initialCount = await bankRows.count();
-    expect(initialCount).toBeGreaterThanOrEqual(2);
+    // Verify two cells for choosing target account for External and Internal salaries
+    const extSelect = page.locator('#payrollTargetExternalAccount');
+    const intSelect = page.locator('#payrollTargetInternalAccount');
+    await expect(extSelect).toBeVisible();
+    await expect(intSelect).toBeVisible();
 
-    // Add a new bank account
-    await page.click('button:has-text("+ Add bank account")');
-    await expect(bankRows).toHaveCount(initialCount + 1);
+    // Verify options are populated from company bank accounts
+    const extOptions = extSelect.locator('option');
+    const intOptions = intSelect.locator('option');
+    await expect(extOptions).not.toHaveCount(0);
+    await expect(intOptions).not.toHaveCount(0);
+
+    // Select target accounts
+    const extFirstVal = await extOptions.first().getAttribute('value');
+    if (extFirstVal) {
+      await extSelect.selectOption(extFirstVal);
+    }
+    const intLastVal = await intOptions.last().getAttribute('value');
+    if (intLastVal) {
+      await intSelect.selectOption(intLastVal);
+    }
 
     // Change Month schedule
     await page.fill('#payrollSetMonth', '2026-10');

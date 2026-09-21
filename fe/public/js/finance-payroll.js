@@ -33,6 +33,8 @@
   const PayrollApp = {
     rows: JSON.parse(JSON.stringify(seedEmployees)),
     banks: JSON.parse(JSON.stringify(seedBanks)),
+    selectedExternalAccountId: 2,
+    selectedInternalAccountId: 1,
     month: '2026-09',
     payDate: '2026-09-30',
     start: '2026-09-01',
@@ -70,7 +72,7 @@
       const endInput = document.getElementById('payrollSetEnd');
       if (endInput) endInput.value = this.end;
 
-      this.drawBankList();
+      this.drawFundingAccounts();
       this.redraw();
 
       if (!this.initialized) {
@@ -142,47 +144,32 @@
         }
 
         if (Array.isArray(rawAccounts) && rawAccounts.length > 0) {
-          let savedConfig = {};
+          this.banks = rawAccounts.map(acc => ({
+            id: acc.id,
+            name: acc.account_name || acc.name || `Account #${acc.id}`,
+            bank_name: acc.bank_name || '',
+            currency: acc.currency || 'USD',
+            number: acc.account_number || '****'
+          }));
+
+          let savedCfg = {};
           try {
-            const rawSaved = localStorage.getItem('hrflow_payroll_banks_cfg');
-            if (rawSaved) savedConfig = JSON.parse(rawSaved);
+            const rawSaved = localStorage.getItem('hrflow_payroll_funding_accounts');
+            if (rawSaved) savedCfg = JSON.parse(rawSaved);
           } catch (_) {}
 
-          this.banks = rawAccounts.map(acc => {
-            const accId = acc.id;
-            const cfg = savedConfig[accId] || {};
-
-            let detectedType = 'external';
-            const nameLower = (acc.account_name || acc.name || '').toLowerCase();
-            const typeLower = (acc.account_type || '').toLowerCase();
-            if (typeLower === 'cash' || nameLower.includes('cash') || nameLower.includes('internal')) {
-              detectedType = 'internal';
-            }
-
-            const type = cfg.type || detectedType;
-            const isDefault = cfg.isDefault !== undefined ? cfg.isDefault : false;
-
-            return {
-              id: accId,
-              name: acc.account_name || acc.name || `Account #${accId}`,
-              bank_name: acc.bank_name || '',
-              type: type,
-              currency: acc.currency || 'USD',
-              number: acc.account_number || '****',
-              isDefault: isDefault
-            };
-          });
-
-          // Ensure at least one internal and one external default exists
-          const hasDefaultInt = this.banks.some(b => b.type === 'internal' && b.isDefault);
-          if (!hasDefaultInt) {
-            const firstInt = this.banks.find(b => b.type === 'internal') || this.banks[0];
-            if (firstInt) firstInt.isDefault = true;
+          if (savedCfg.externalId && this.banks.some(b => String(b.id) === String(savedCfg.externalId))) {
+            this.selectedExternalAccountId = savedCfg.externalId;
+          } else {
+            const firstUsd = this.banks.find(b => (b.currency || '').toUpperCase() === 'USD') || this.banks[0];
+            this.selectedExternalAccountId = firstUsd ? firstUsd.id : null;
           }
-          const hasDefaultExt = this.banks.some(b => b.type === 'external' && b.isDefault);
-          if (!hasDefaultExt) {
-            const firstExt = this.banks.find(b => b.type === 'external');
-            if (firstExt) firstExt.isDefault = true;
+
+          if (savedCfg.internalId && this.banks.some(b => String(b.id) === String(savedCfg.internalId))) {
+            this.selectedInternalAccountId = savedCfg.internalId;
+          } else {
+            const firstInt = this.banks.find(b => b.name.toLowerCase().includes('cash') || (b.currency || '').toUpperCase() === 'EGP') || this.banks[1] || this.banks[0];
+            this.selectedInternalAccountId = firstInt ? firstInt.id : null;
           }
         }
       } catch (err) {
@@ -190,13 +177,12 @@
       }
     },
 
-    persistBanksConfig() {
+    persistFundingAccounts() {
       try {
-        const cfg = {};
-        this.banks.forEach(b => {
-          cfg[b.id] = { type: b.type, isDefault: b.isDefault };
-        });
-        localStorage.setItem('hrflow_payroll_banks_cfg', JSON.stringify(cfg));
+        localStorage.setItem('hrflow_payroll_funding_accounts', JSON.stringify({
+          externalId: this.selectedExternalAccountId,
+          internalId: this.selectedInternalAccountId
+        }));
       } catch (_) {}
     },
 
@@ -623,13 +609,13 @@
 
       const sub = document.getElementById('payrollPeriodSubtitle');
       if (sub) {
-        const defaultInternal = this.banks.find(b => b.type === 'internal' && b.isDefault) || this.banks.find(b => b.type === 'internal') || this.banks[0];
-        const defaultExternal = this.banks.find(b => b.type === 'external' && b.isDefault);
-        let fundingText = defaultInternal ? `${defaultInternal.name} (${defaultInternal.currency || 'USD'})` : 'No default account set';
-        if (defaultExternal) {
-          fundingText += ` · External: ${defaultExternal.name} (${defaultExternal.currency || 'USD'})`;
+        const extAcc = this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId));
+        const intAcc = this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId));
+        let fundingText = extAcc ? `External: ${extAcc.name} (${extAcc.currency || 'USD'})` : '';
+        if (intAcc) {
+          fundingText += (fundingText ? ' · ' : '') + `Internal: ${intAcc.name} (${intAcc.currency || 'USD'})`;
         }
-        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${fundingText}`;
+        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${fundingText || 'Not configured'}`;
       }
     },
 
@@ -809,106 +795,34 @@
       this.showBanner('Run reverted to Draft. Employee lines are unlocked again for correction.', 'orange');
     },
 
-    /* ---------------- Settings view & DB Sync ---------------- */
-    drawBankList() {
-      const container = document.getElementById('payrollBankList');
-      if (!container) return;
+    /* ---------------- Settings view & Target Accounts Selection ---------------- */
+    drawFundingAccounts() {
+      const extSelect = document.getElementById('payrollTargetExternalAccount');
+      const intSelect = document.getElementById('payrollTargetInternalAccount');
+      if (!extSelect || !intSelect) return;
 
-      container.innerHTML = this.banks.map(b => `
-        <div class="bank-row">
-          <select onchange="PayrollApp.updateBankType(${b.id}, this.value)">
-            <option value="internal" ${b.type === 'internal' ? 'selected' : ''}>Internal</option>
-            <option value="external" ${b.type === 'external' ? 'selected' : ''}>External</option>
-          </select>
-          <input value="${b.name}" onchange="PayrollApp.updateBank(${b.id}, 'name', this.value)" placeholder="Account name" />
-          <input value="${b.currency}" onchange="PayrollApp.updateBank(${b.id}, 'currency', this.value)" placeholder="Currency" />
-          <input value="${b.number}" onchange="PayrollApp.updateBank(${b.id}, 'number', this.value)" placeholder="Account number" />
-          <label class="default-radio">
-            <input type="radio" name="default-${b.type}" ${b.isDefault ? 'checked' : ''} onchange="PayrollApp.setDefaultBank(${b.id})" /> Default
-          </label>
-          <button class="btn btn-ghost btn-sm" onclick="PayrollApp.removeBank(${b.id})" title="Remove account" style="color:var(--danger, #ef4444); font-weight:800; padding:4px;">✕</button>
-        </div>
-      `).join('');
-    },
-
-    async updateBank(id, field, value) {
-      const b = this.banks.find(x => x.id === id);
-      if (b) b[field] = value;
-
-      try {
-        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.updateAccount === 'function') {
-          const payload = {};
-          if (field === 'name') payload.account_name = value;
-          if (field === 'currency') payload.currency = value;
-          if (field === 'number') payload.account_number = value;
-          await FinanceApi.updateAccount(id, payload);
+      const renderOptions = (selectedId) => {
+        if (!this.banks || !this.banks.length) {
+          return '<option value="">No bank accounts found</option>';
         }
-      } catch (err) {
-        console.warn('[PayrollApp] updateBank sync warning:', err);
+        return this.banks.map(b => `
+          <option value="${b.id}" ${String(b.id) === String(selectedId) ? 'selected' : ''}>
+            ${b.name} (${b.currency}) ${b.number ? '— ' + b.number : ''}
+          </option>
+        `).join('');
+      };
+
+      extSelect.innerHTML = renderOptions(this.selectedExternalAccountId);
+      intSelect.innerHTML = renderOptions(this.selectedInternalAccountId);
+    },
+
+    setFundingAccount(type, accountId) {
+      if (type === 'external') {
+        this.selectedExternalAccountId = accountId;
+      } else if (type === 'internal') {
+        this.selectedInternalAccountId = accountId;
       }
-    },
-
-    updateBankType(id, type) {
-      const b = this.banks.find(x => x.id === id);
-      if (!b) return;
-      b.type = type;
-      this.persistBanksConfig();
-      this.drawBankList();
-      this.drawPeriodLabel();
-    },
-
-    setDefaultBank(id) {
-      const target = this.banks.find(x => x.id === id);
-      if (!target) return;
-      this.banks.forEach(b => {
-        if (b.type === target.type) b.isDefault = false;
-      });
-      target.isDefault = true;
-      this.persistBanksConfig();
-      this.drawBankList();
-      this.drawPeriodLabel();
-    },
-
-    async removeBank(id) {
-      try {
-        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.deleteAccount === 'function') {
-          await FinanceApi.deleteAccount(id);
-          await this.loadBankAccountsFromDb();
-          this.drawBankList();
-          this.drawPeriodLabel();
-          return;
-        }
-      } catch (err) {
-        console.warn('[PayrollApp] deleteAccount API failed, falling back to local:', err);
-      }
-      this.banks = this.banks.filter(b => b.id !== id);
-      this.persistBanksConfig();
-      this.drawBankList();
-      this.drawPeriodLabel();
-    },
-
-    async addBankRow() {
-      try {
-        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createAccount === 'function') {
-          await FinanceApi.createAccount({
-            account_name: 'New Treasury Account',
-            bank_name: 'Company Bank',
-            currency: 'USD',
-            account_number: '****' + Math.floor(1000 + Math.random() * 9000),
-            account_type: 'bank',
-            is_active: true
-          });
-          await this.loadBankAccountsFromDb();
-          this.drawBankList();
-          this.drawPeriodLabel();
-          return;
-        }
-      } catch (err) {
-        console.warn('[PayrollApp] createAccount API failed, falling back to local:', err);
-      }
-      const newId = Math.max(0, ...this.banks.map(b => b.id)) + 1;
-      this.banks.push({ id: newId, name: 'New Treasury Account', type: 'internal', currency: 'USD', number: '****0000', isDefault: false });
-      this.drawBankList();
+      this.persistFundingAccounts();
       this.drawPeriodLabel();
     },
 
@@ -925,22 +839,15 @@
       const endInput = document.getElementById('payrollSetEnd');
       if (endInput && endInput.value) this.end = endInput.value;
 
-      this.persistBanksConfig();
+      const extSelect = document.getElementById('payrollTargetExternalAccount');
+      if (extSelect && extSelect.value) this.selectedExternalAccountId = extSelect.value;
 
-      if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.updateAccount === 'function') {
-        for (const b of this.banks) {
-          try {
-            await FinanceApi.updateAccount(b.id, {
-              account_name: b.name,
-              currency: b.currency,
-              account_number: b.number
-            });
-          } catch (_) {}
-        }
-      }
+      const intSelect = document.getElementById('payrollTargetInternalAccount');
+      if (intSelect && intSelect.value) this.selectedInternalAccountId = intSelect.value;
 
-      this.addAudit('Payroll settings updated: bank accounts and/or payroll month changed.');
+      this.persistFundingAccounts();
       this.drawPeriodLabel();
+      this.addAudit('Payroll settings updated: funding accounts and/or schedule changed.');
       this.showPage('list');
       this.showBanner('Payroll settings saved.', 'blue');
     },
@@ -966,7 +873,7 @@
         this.redraw();
       } else if (page === 'settings') {
         await this.loadBankAccountsFromDb();
-        this.drawBankList();
+        this.drawFundingAccounts();
       }
     }
   };

@@ -651,46 +651,31 @@ table.payroll-worksheet tfoot td {
   gap: 18px;
   padding: 20px;
 }
-.bank-row {
+.funding-form {
   display: grid;
-  grid-template-columns: 110px 1.4fr 80px 1fr 85px 36px;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color, #dbe4ee);
-  border-radius: 12px;
-  background: var(--surface-2, #f8fafc);
-  margin-bottom: 10px;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 18px 20px;
 }
-.bank-row input, .bank-row select {
-  border: 1px solid var(--border-color, #dbe4ee);
-  background: #fff;
-  padding: 7px 9px;
-  border-radius: 8px;
-  width: 100%;
-  font-size: 0.84rem;
-}
-.default-radio {
-  display: flex;
-  align-items: center;
+.funding-form .field {
+  display: grid;
   gap: 6px;
+}
+.funding-form label {
   font-size: 0.78rem;
   color: var(--text-muted, #64748b);
-  cursor: pointer;
-}
-.add-row-btn {
-  width: 100%;
-  border: 1px dashed var(--border-color, #93c5fd);
-  background: transparent;
-  border-radius: 10px;
-  padding: 10px;
-  color: var(--primary, #2563eb);
   font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
-.add-row-btn:hover {
-  background: var(--primary-soft, #e8f0ff);
+.funding-form select {
+  border: 1px solid var(--border-color, #dbe4ee);
+  background: #fff;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: var(--text-primary, #0f172a);
+  width: 100%;
 }
 .month-form {
   display: grid;

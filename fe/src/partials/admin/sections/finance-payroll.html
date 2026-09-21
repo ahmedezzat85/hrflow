@@ -201,12 +201,22 @@
                   <div class="payroll-header-row" style="padding:12px 16px;">
                     <div>
                       <div class="payroll-panel-title">Funding bank accounts</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Internal and external source accounts used to disburse payroll.</div>
+                      <div class="payroll-subtitle" style="font-size:0.78rem;">Choose target accounts used to disburse External and Internal salaries.</div>
                     </div>
                   </div>
-                  <div style="padding:16px;" id="payrollBankList"></div>
-                  <div style="padding:0 16px 16px;">
-                    <button class="add-row-btn" onclick="PayrollApp.addBankRow()">+ Add bank account</button>
+                  <div class="funding-form">
+                    <div class="field">
+                      <label for="payrollTargetExternalAccount">Target Account for External Salaries</label>
+                      <select id="payrollTargetExternalAccount" onchange="PayrollApp.setFundingAccount('external', this.value)">
+                        <!-- Populated dynamically with active bank accounts -->
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="payrollTargetInternalAccount">Target Account for Internal Salaries</label>
+                      <select id="payrollTargetInternalAccount" onchange="PayrollApp.setFundingAccount('internal', this.value)">
+                        <!-- Populated dynamically with active bank accounts -->
+                      </select>
+                    </div>
                   </div>
                 </div>
 
