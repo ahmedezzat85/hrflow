@@ -95,20 +95,23 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expandRow.locator(`#src-${empId} button[data-src="external"]`).click();
     await expandRow.locator('button:has-text("Submit")').click();
 
-    // Verify bonus tag and audit log entry created
-    await expect(page.locator('#payrollAuditList')).toContainText(`Added Bonus of $500.00 (external) for ${empName}`);
+    // Verify bonus tag created
+    await expect(expandRow.locator('.bonus-tag')).toContainText('$500.00');
 
-    // 5. Check bottom 4 panels
+    // 5. Check compact bottom summary strip
     await expect(page.locator('#accExternal')).toBeVisible();
     await expect(page.locator('#accInternal')).toBeVisible();
     await expect(page.locator('#payrollExceptionList')).toBeVisible();
-    await expect(page.locator('#payrollJournalBadge')).toHaveText('Not Posted');
-    await expect(page.locator('#payrollJournalRows')).toContainText('Internal Payroll Expense');
+    // Journal card should remain hidden before paid
+    await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
   });
 
   test('TC-3: Step lifecycle (Draft -> Approved -> Processing -> Paid), exception handling, and Revert to Draft', async ({ page }) => {
     // Open Run Page
     await page.click('#btnOpenCurrentCycle');
+
+    // Journal should be hidden initially
+    await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
 
     // Advance to Step 2: Approved
     await page.click('#payrollNextBtn');
@@ -119,7 +122,7 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await page.click('#payrollNextBtn');
     await expect(page.locator('#payrollStatusBadge')).toHaveText('PROCESSING');
 
-    // Verify exception appears under Exceptions panel
+    // Verify exception appears under Exceptions strip
     const exceptionsPanel = page.locator('#payrollExceptionList');
     await expect(exceptionsPanel).toContainText('Bank transfer rejected');
 
@@ -134,8 +137,17 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expect(page.locator('#payrollNextBtn')).not.toBeDisabled();
     await page.click('#payrollNextBtn');
     await expect(page.locator('#payrollStatusBadge')).toHaveText('PAID');
-    await expect(page.locator('#payrollJournalBadge')).toHaveText('Posted');
     await expect(page.locator('#payrollNextBtn')).toHaveText('Cycle Complete');
+
+    // Now Journal card becomes visible automatically once PAID
+    const journalCard = page.locator('#payrollJournalCard');
+    await expect(journalCard).toBeVisible();
+    await expect(journalCard.locator('#payrollJournalBadge')).toHaveText('Posted');
+
+    // Toggle journal lines
+    await page.click('#btnToggleJournal');
+    await expect(page.locator('#payrollJournalDetails')).toBeVisible();
+    await expect(page.locator('#payrollJournalRows')).toContainText('Internal Payroll Expense');
 
     // Test Revert to Draft
     await page.click('#payrollRevertBtn');
@@ -148,7 +160,7 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expect(revertModal).not.toHaveClass(/show/);
     await expect(page.locator('#payrollStatusBadge')).toHaveText('DRAFT');
     await expect(page.locator('#payrollLockNote')).toHaveClass(/payroll-hidden/);
-    await expect(page.locator('#payrollAuditList')).toContainText('Reverted from PAID back to DRAFT');
+    await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
   });
 
   test('TC-4: Settings Page — Bank accounts management and payroll month schedule update', async ({ page }) => {

@@ -20,7 +20,7 @@
                 </button>
               </div>
               <div style="display:flex; gap:10px; align-items:center;">
-                <span style="color:var(--text-muted, #64748b); font-size:0.82rem;">Signed in as <strong>F. Nasser (Payroll Admin)</strong></span>
+                <span style="color:var(--text-muted, #64748b); font-size:0.82rem;">Signed in as <strong id="payrollCurrentUserName">Admin</strong></span>
               </div>
             </div>
 
@@ -138,66 +138,38 @@
                 </table>
               </div>
 
-              <!-- Bottom 4 Panels -->
-              <div class="payroll-bottom-panels">
-                <div class="payroll-card" style="box-shadow:none;">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Account totals</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Deducted per account this cycle.</div>
-                    </div>
+              <!-- Sleek Compact Summary Bar (Funding Disbursal & Readiness) -->
+              <div class="payroll-bottom-summary">
+                <div class="payroll-account-pills">
+                  <div class="payroll-account-pill">
+                    <span class="lbl"><i class="fa-solid fa-building-columns"></i> External Account:</span>
+                    <span class="val" id="accExternal">-</span>
                   </div>
-                  <div style="padding:14px 16px;">
-                    <div class="account-grid">
-                      <div class="account-item">
-                        <div class="k">Total External Account</div>
-                        <div class="v" id="accExternal">-</div>
-                      </div>
-                      <div class="account-item">
-                        <div class="k">Total Internal Net Salary</div>
-                        <div class="v" id="accInternal">-</div>
-                      </div>
-                      <div class="account-item zero">
-                        <div class="k">Taxes (not configured)</div>
-                        <div class="v">$0.00</div>
-                      </div>
-                      <div class="account-item zero">
-                        <div class="k">Social Insurance (not config)</div>
-                        <div class="v">$0.00</div>
-                      </div>
-                    </div>
+                  <div class="payroll-account-pill">
+                    <span class="lbl"><i class="fa-solid fa-money-bill-wave"></i> Internal Net Salary:</span>
+                    <span class="val" id="accInternal">-</span>
                   </div>
                 </div>
 
-                <div class="payroll-card" style="box-shadow:none;">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Exceptions</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Blocking items stop approval or payment.</div>
-                    </div>
-                  </div>
-                  <div style="padding:14px 16px;" id="payrollExceptionList"></div>
+                <div class="payroll-exceptions-strip" id="payrollExceptionList">
+                  <!-- Rendered dynamically -->
                 </div>
+              </div>
 
-                <div class="payroll-card" style="box-shadow:none;">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Journal</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Posted automatically once fully Paid.</div>
-                    </div>
-                    <span class="p-badge b-gray" id="payrollJournalBadge">Not Posted</span>
+              <!-- Conditional GL Journal (Shown only after run is PAID) -->
+              <div class="payroll-card payroll-hidden" id="payrollJournalCard" style="margin: 12px 20px 0; border:1px solid #bbf7d0; background:#f0fdf4;">
+                <div class="payroll-header-row" style="padding:10px 16px; border-bottom:none;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span class="p-badge b-green" id="payrollJournalBadge">Posted</span>
+                    <span style="font-weight:800; font-size:0.88rem; color:#166534;"><i class="fa-solid fa-book-journal-whills"></i> General Ledger Journal Entry</span>
+                    <span style="font-size:0.78rem; color:#166534;">Auto-posted to company ledger upon payment confirmation.</span>
                   </div>
-                  <div style="padding:14px 16px;" id="payrollJournalRows"></div>
+                  <button class="btn btn-ghost btn-sm" onclick="PayrollApp.toggleJournalDetails()" id="btnToggleJournal" style="font-size:0.76rem; padding:3px 10px; background:#fff !important;">
+                    View Lines <i class="fa-solid fa-chevron-down" id="payrollJournalChevron"></i>
+                  </button>
                 </div>
-
-                <div class="payroll-card" style="box-shadow:none;">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Audit trail</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Who did what, and when.</div>
-                    </div>
-                  </div>
-                  <div style="padding:14px 16px;" id="payrollAuditList"></div>
+                <div id="payrollJournalDetails" class="payroll-hidden" style="padding:10px 16px; border-top:1px solid #dcfce7; background:#fff;">
+                  <div id="payrollJournalRows"></div>
                 </div>
               </div>
 

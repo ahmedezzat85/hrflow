@@ -442,74 +442,89 @@ table.payroll-worksheet tfoot td {
   margin-left: 2px;
 }
 
-/* Bottom Panels */
-.payroll-bottom-panels {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr 1fr;
+/* Compact Bottom Summary Bar (Funding Disbursal & Readiness) */
+.payroll-bottom-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  padding: 18px 20px;
-}
-.payroll-panel-title {
-  font-weight: 800;
-  font-size: 0.96rem;
-  color: var(--text-primary, #0f172a);
-}
-.account-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-.account-item {
-  border: 1px solid var(--border-color, #dbe4ee);
-  border-radius: 12px;
-  padding: 12px;
+  padding: 10px 20px;
   background: var(--surface-2, #f8fafc);
-}
-.account-item .k {
-  color: var(--text-muted, #64748b);
-  font-size: 0.76rem;
-  font-weight: 600;
-}
-.account-item .v {
-  margin-top: 6px;
-  font-weight: 800;
-  font-size: 1.05rem;
-  color: var(--text-primary, #0f172a);
-}
-.account-item.zero {
-  opacity: 0.6;
+  border-top: 1px solid var(--border-color, #dbe4ee);
+  flex-wrap: wrap;
 }
 
-.exception-card, .journal-row, .audit-row {
+.payroll-account-pills {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.payroll-account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface, #fff);
   border: 1px solid var(--border-color, #dbe4ee);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: var(--surface-2, #f8fafc);
-  margin-bottom: 8px;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
 }
-.exception-card.blocking {
-  border-left: 4px solid var(--danger, #ef4444);
+
+.payroll-account-pill .lbl {
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
 }
-.exception-card.warning {
-  border-left: 4px solid var(--warning, #f59e0b);
+
+.payroll-account-pill .val {
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
 }
+
+.payroll-exceptions-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.payroll-exception-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.payroll-exception-alert.clear {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.payroll-exception-alert.warning {
+  background: #fefce8;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.payroll-exception-alert.blocking {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 .journal-row {
   display: grid;
   grid-template-columns: 1fr 50px 80px 80px;
   gap: 8px;
   align-items: center;
   font-size: 0.82rem;
-}
-.audit-row {
-  font-size: 0.8rem;
-}
-.audit-row .who {
-  font-weight: 700;
-  color: var(--text-primary, #0f172a);
-}
-.audit-row .when {
-  color: var(--text-muted, #64748b);
-  font-size: 0.74rem;
+  padding: 4px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 /* Buttons & Footer Controls */

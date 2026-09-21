@@ -40,9 +40,7 @@
     stepIndex: 0,
     expandedId: null,
     journalPosted: false,
-    audit: [
-      { who: 'F. Nasser (Payroll Admin)', when: '2026-09-01 09:12', text: 'Draft created for 2026-09 payroll cycle.' }
-    ],
+    audit: [],
     historyRuns: [
       { period: '2026-08', status: 'paid', net: 34210.00, employees: 8, updated: '2026-08-30 18:42' },
       { period: '2026-07', status: 'paid', net: 33875.50, employees: 8, updated: '2026-07-31 17:10' },
@@ -55,7 +53,14 @@
       await this.loadEmployeesFromDb();
       await this.loadBankAccountsFromDb();
 
-      // 2. Populate settings form inputs
+      // 2. Set current user name
+      const userNameEl = document.getElementById('payrollCurrentUserName');
+      if (userNameEl) {
+        const curName = (typeof SessionInfo !== 'undefined' && SessionInfo.getName && SessionInfo.getName()) || 'Admin';
+        userNameEl.textContent = curName;
+      }
+
+      // 3. Populate settings form inputs
       const monthInput = document.getElementById('payrollSetMonth');
       if (monthInput) monthInput.value = this.month;
       const payDateInput = document.getElementById('payrollSetPayDate');
@@ -258,7 +263,8 @@
     },
 
     addAudit(text) {
-      this.audit.unshift({ who: 'F. Nasser (Payroll Admin)', when: this.nowStamp(), text });
+      const who = (typeof SessionInfo !== 'undefined' && SessionInfo.getName && SessionInfo.getName()) || 'Admin';
+      this.audit.unshift({ who, when: this.nowStamp(), text });
     },
 
     /* ---------------- Runs list view ---------------- */
@@ -529,35 +535,40 @@
       const items = this.exceptions();
       if (!items.length) {
         container.innerHTML = `
-          <div class="exception-card">
-            <strong>No exceptions</strong>
-            <div style="color:var(--text-muted); font-size:.8rem; margin-top:4px;">All employees are clear.</div>
+          <div class="payroll-exception-alert clear">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Readiness: All clear (Ready for payment)</span>
           </div>
         `;
         return;
       }
 
       container.innerHTML = items.map(i => `
-        <div class="exception-card ${i.type}">
-          <div style="display:flex; justify-content:space-between; gap:10px; align-items:start;">
-            <div>
-              <strong>${i.name}</strong>
-              <div style="color:var(--text-muted); font-size:.8rem; margin-top:4px;">${i.text}</div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px; align-items:end;">
-              <span class="p-badge ${i.type === 'blocking' ? 'b-red' : 'b-orange'}">${i.type.toUpperCase()}</span>
-              ${i.retry ? `<button class="retry-btn" onclick="PayrollApp.retryPayment(${i.empId})">Retry payment</button>` : ''}
-            </div>
-          </div>
+        <div class="payroll-exception-alert ${i.type}">
+          <i class="fa-solid ${i.type === 'blocking' ? 'fa-circle-xmark' : 'fa-triangle-exclamation'}"></i>
+          <span>${i.type === 'blocking' ? 'Blocked' : 'Warning'}: ${i.name} — ${i.text}</span>
+          ${i.retry ? `<button class="retry-btn" onclick="PayrollApp.retryPayment(${i.empId})" style="margin-left:6px;">Retry payment</button>` : ''}
         </div>
       `).join('');
     },
 
     drawJournal() {
+      const key = this.currentStatusKey();
+      const journalCard = document.getElementById('payrollJournalCard');
+      if (!journalCard) return;
+
+      // Only show Journal once run is PAID
+      if (key !== 'paid' && !this.journalPosted) {
+        journalCard.classList.add('payroll-hidden');
+        return;
+      }
+
+      journalCard.classList.remove('payroll-hidden');
+
       const badge = document.getElementById('payrollJournalBadge');
       if (badge) {
-        badge.textContent = this.journalPosted ? 'Posted' : 'Not Posted';
-        badge.className = `p-badge ${this.journalPosted ? 'b-green' : 'b-gray'}`;
+        badge.textContent = 'Posted';
+        badge.className = 'p-badge b-green';
       }
 
       const rowsContainer = document.getElementById('payrollJournalRows');
@@ -582,7 +593,7 @@
           <div class="payroll-num">${r[3] ? this.money(r[3]) : '—'}</div>
         </div>
       `).join('') + `
-        <div class="journal-row" style="background:var(--primary-soft, #e8f0ff); border-radius:8px; padding:6px 10px; margin-top:6px;">
+        <div class="journal-row" style="background:var(--primary-soft, #e8f0ff); border-radius:6px; padding:6px 10px; margin-top:6px; font-weight:800;">
           <div><strong>Totals</strong></div>
           <div></div>
           <div class="payroll-num">${this.money(debit)}</div>
@@ -591,17 +602,15 @@
       `;
     },
 
-    drawAudit() {
-      const container = document.getElementById('payrollAuditList');
-      if (!container) return;
-
-      container.innerHTML = this.audit.map(a => `
-        <div class="audit-row">
-          <div class="who">${a.who}</div>
-          <div class="when">${a.when}</div>
-          <div style="margin-top:4px;">${a.text}</div>
-        </div>
-      `).join('');
+    toggleJournalDetails() {
+      const details = document.getElementById('payrollJournalDetails');
+      const chevron = document.getElementById('payrollJournalChevron');
+      if (!details) return;
+      const isHidden = details.classList.contains('payroll-hidden');
+      details.classList.toggle('payroll-hidden', !isHidden);
+      if (chevron) {
+        chevron.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+      }
     },
 
     drawPeriodLabel() {
@@ -627,7 +636,6 @@
       this.drawTable();
       this.drawExceptions();
       this.drawJournal();
-      this.drawAudit();
       this.drawFooterControls();
       this.drawPeriodLabel();
       this.drawRunsList();
@@ -669,7 +677,6 @@
 
       this.drawTable();
       this.drawStats();
-      this.drawAudit();
       this.drawJournal();
       this.drawExceptions();
     },
@@ -684,7 +691,6 @@
 
       this.drawTable();
       this.drawStats();
-      this.drawAudit();
       this.drawJournal();
       this.drawExceptions();
     },
@@ -697,7 +703,6 @@
       this.addAudit(`Retried payment for ${row.name} — transfer resubmitted successfully.`);
       this.drawTable();
       this.drawExceptions();
-      this.drawAudit();
       this.drawFooterControls();
       this.showBanner(`Payment retried for ${row.name}. Exception cleared.`, 'blue');
     },
