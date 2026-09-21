@@ -9,7 +9,46 @@ let wizardIsStale = false;
 let wizardExpandedEmployees = new Set();
 let currentDetailRun = null;
 
+function handlePayrollMonthChange(val) {
+  if (typeof PayrollCycleManager !== 'undefined') {
+    PayrollCycleManager.setMonth(val);
+  }
+  if (typeof PayrollTableController !== 'undefined') {
+    PayrollTableController.setMonth(val);
+  }
+}
+
+function handlePayrollDeptChange(val) {
+  if (typeof PayrollTableController !== 'undefined') {
+    PayrollTableController.setFilter('department', val);
+  }
+}
+
+function handlePayrollSourceChange(val) {
+  if (typeof PayrollTableController !== 'undefined') {
+    PayrollTableController.setFilter('source', val);
+  }
+}
+
+function handlePayrollSearch(val) {
+  if (typeof PayrollTableController !== 'undefined') {
+    PayrollTableController.setFilter('search', val);
+  }
+}
+
+window.handlePayrollMonthChange = handlePayrollMonthChange;
+window.handlePayrollDeptChange = handlePayrollDeptChange;
+window.handlePayrollSourceChange = handlePayrollSourceChange;
+window.handlePayrollSearch = handlePayrollSearch;
+
 async function loadFinancePayroll() {
+  if (typeof PayrollCycleManager !== "undefined") {
+    PayrollCycleManager.init(PayrollCycleManager.getCurrentMonth() || "2026-09");
+  }
+  if (typeof PayrollTableController !== "undefined") {
+    PayrollTableController.init(typeof PayrollCycleManager !== "undefined" ? PayrollCycleManager.getCurrentMonth() : "2026-09");
+  }
+
   const bar = document.getElementById("financePayrollLoadingBar");
   if (bar) bar.style.display = "block";
 

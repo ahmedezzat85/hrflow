@@ -1,0 +1,75 @@
+<div class="card payroll-cycle-card" style="padding:16px 20px; margin-bottom:20px; border-radius:12px; background:var(--surface, #ffffff); border:1px solid var(--border-color, #E2E8F0); box-shadow:var(--shadow-sm);">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+    
+    <!-- Left: Stepper -->
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <div class="payroll-cycle-stepper" style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-secondary, #F8FAFC); padding:4px 8px; border-radius:30px; border:1px solid var(--border-color, #E2E8F0);">
+        <div class="payroll-step active" id="payrollStep_draft" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:700; transition:all 0.2s ease;">
+          <span class="step-circle" style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem;">1</span>
+          <span>Draft</span>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; color:var(--text-muted); opacity:0.6;"></i>
+
+        <div class="payroll-step pending" id="payrollStep_review" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:700; transition:all 0.2s ease;">
+          <span class="step-circle" style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem;">2</span>
+          <span>Review</span>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; color:var(--text-muted); opacity:0.6;"></i>
+
+        <div class="payroll-step pending" id="payrollStep_approved" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:700; transition:all 0.2s ease;">
+          <span class="step-circle" style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem;">3</span>
+          <span>Approved</span>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; color:var(--text-muted); opacity:0.6;"></i>
+
+        <div class="payroll-step pending" id="payrollStep_paid" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:700; transition:all 0.2s ease;">
+          <span class="step-circle" style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem;">4</span>
+          <span>Paid</span>
+        </div>
+      </div>
+
+      <span id="payrollCycleCurrentBadge" class="badge payroll-status-badge payroll-status-draft" style="font-size:0.78rem; font-weight:700; text-transform:uppercase; padding:4px 10px; border-radius:12px;">DRAFT</span>
+    </div>
+
+    <!-- Right: Actions & Export -->
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm btn-primary" id="btnPayrollSubmitReview" onclick="PayrollCycleManager.submitForReview()" style="display:inline-flex; align-items:center; gap:6px;">
+        <i class="fa-solid fa-paper-plane"></i> Submit for Review
+      </button>
+
+      <button type="button" class="btn btn-sm btn-success" id="btnPayrollApprove" onclick="PayrollCycleManager.approve()" style="display:none; align-items:center; gap:6px; background:#10B981; border-color:#10B981; color:#fff;">
+        <i class="fa-solid fa-check-double"></i> Approve
+      </button>
+
+      <button type="button" class="btn btn-sm btn-primary" id="btnPayrollMarkPaid" onclick="PayrollCycleManager.markAsPaid()" style="display:none; align-items:center; gap:6px;">
+        <i class="fa-solid fa-money-bill-transfer"></i> Mark as Paid
+      </button>
+
+      <button type="button" class="btn btn-sm btn-outline" id="btnPayrollReopenDraft" onclick="PayrollCycleManager.reopenDraft()" style="display:none; align-items:center; gap:6px;">
+        <i class="fa-solid fa-arrow-rotate-left"></i> Reopen Draft
+      </button>
+
+      <!-- Export Dropdown -->
+      <div class="dropdown" style="position:relative; display:inline-block;" id="payrollExportDropdown">
+        <button type="button" class="btn btn-sm btn-outline" id="btnPayrollExportMenu" onclick="togglePayrollExportMenu(event)" style="display:inline-flex; align-items:center; gap:6px;">
+          <i class="fa-solid fa-download"></i> Export <i class="fa-solid fa-chevron-down" style="font-size:0.7rem;"></i>
+        </button>
+        <div id="payrollExportMenuContent" class="dropdown-content" style="display:none; position:absolute; right:0; top:100%; margin-top:4px; min-width:180px; background:var(--surface, #ffffff); border:1px solid var(--border-color, #CBD5E1); border-radius:8px; box-shadow:var(--shadow-md); z-index:100; overflow:hidden;">
+          <a href="javascript:void(0)" onclick="triggerPayrollExcelExport(); closePayrollExportMenu();" style="display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:0.83rem; color:var(--text-primary); text-decoration:none; border-bottom:1px solid var(--border-color, #E2E8F0);">
+            <i class="fa-solid fa-file-excel" style="color:#10B981;"></i> Export to Excel (.csv)
+          </a>
+          <a href="javascript:void(0)" onclick="triggerPayrollPdfExport(); closePayrollExportMenu();" style="display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:0.83rem; color:var(--text-primary); text-decoration:none;">
+            <i class="fa-solid fa-file-pdf" style="color:#EF4444;"></i> Export to PDF / Print
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Table Lock Banner (Visible when APPROVED or PAID) -->
+  <div id="payrollTableLockBanner" style="display:none; margin-top:14px; padding:8px 14px; border-radius:8px; background:rgba(245, 158, 11, 0.1); border:1px solid #F59E0B; color:#B45309; font-size:0.82rem; font-weight:600; align-items:center; gap:8px;">
+    <i class="fa-solid fa-lock" style="font-size:0.95rem;"></i>
+    <span id="payrollLockBannerText">Cycle is APPROVED. Table is locked for editing.</span>
+  </div>
+</div>

@@ -1,0 +1,136 @@
+/* HRFlow Payroll Module Styles */
+
+.payroll-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 12px;
+}
+
+.payroll-worksheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.payroll-worksheet-table th,
+.payroll-worksheet-table td {
+  padding: 10px 14px;
+}
+
+.payroll-editable-cell {
+  position: relative;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 4px;
+}
+
+.payroll-editable-cell:hover:not([tabindex="-1"]) {
+  background-color: var(--bg-hover, rgba(37, 99, 235, 0.06));
+}
+
+.payroll-editable-cell:focus-visible {
+  outline: 2px solid var(--primary, #2563EB);
+  outline-offset: -2px;
+}
+
+.payroll-cell-edited {
+  background-color: var(--primary-highlight, rgba(37, 99, 235, 0.12)) !important;
+  color: var(--primary, #2563EB) !important;
+  font-weight: 600;
+}
+
+.payroll-row-ext {
+  opacity: 0.82;
+  background: var(--bg-subtle, rgba(241, 245, 249, 0.4));
+}
+
+.payroll-step.active {
+  background: var(--primary, #2563EB) !important;
+  color: #ffffff !important;
+}
+
+.payroll-step.active .step-circle {
+  background: #ffffff !important;
+  color: var(--primary, #2563EB) !important;
+  font-weight: 800;
+}
+
+.payroll-step.completed {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #10B981 !important;
+}
+
+.payroll-step.completed .step-circle {
+  background: #10B981 !important;
+  color: #ffffff !important;
+}
+
+.payroll-step.pending {
+  color: var(--text-muted, #64748B) !important;
+}
+
+.payroll-step.pending .step-circle {
+  background: var(--border-color, #CBD5E1) !important;
+  color: var(--text-muted, #64748B) !important;
+}
+
+/* Status Badges */
+.payroll-status-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.payroll-status-draft {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
+.payroll-status-review {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+}
+
+.payroll-status-approved {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  border: 1px solid #93C5FD;
+}
+
+.payroll-status-paid {
+  background: #D1FAE5;
+  color: #059669;
+  border: 1px solid #6EE7B7;
+}
+
+/* Mobile Responsiveness down to 375px */
+@media (max-width: 768px) {
+  .payroll-cycle-card {
+    padding: 12px !important;
+  }
+
+  .payroll-cycle-stepper {
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+
+  .payroll-step {
+    padding: 4px 8px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .payroll-worksheet-table {
+    font-size: 0.78rem !important;
+  }
+
+  .payroll-worksheet-table th,
+  .payroll-worksheet-table td {
+    padding: 8px 8px !important;
+  }
+}

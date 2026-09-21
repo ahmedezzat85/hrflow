@@ -14,6 +14,7 @@
 @import "./styles/modules/invoices.css";
 @import "./styles/modules/vacations.css";
 @import "./styles/modules/search.css";
+@import "./styles/modules/payroll.css";
 
 /* Responsive overrides & accessibility */
 @import "./styles/responsive.css";

@@ -26,6 +26,8 @@ const APP_SCRIPT_ORDER = [
   'finance-dashboard.js',
   'finance-invoices.js',
   'finance-bills.js',
+  'payroll-cycle.js',
+  'payroll-table.js',
   'finance-payroll.js',
   'finance-accounts.js',
   'finance-cheques.js',

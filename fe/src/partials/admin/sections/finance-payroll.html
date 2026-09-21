@@ -1,15 +1,81 @@
         <section class="page-section" id="a-finance-payroll">
-          <div class="toolbar" style="margin-bottom:20px;">
+          <div class="toolbar" style="margin-bottom:16px;">
             <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-money-check-dollar"></i> Net-Payment Payroll Operations</h2>
-              <p class="section-subtitle">Payment preparation, route readiness, maker-checker authorization, and execution tracking.</p>
+              <h2 class="section-title"><i class="fa-solid fa-money-check-dollar"></i> Payroll Management & Operations</h2>
+              <p class="section-subtitle">Grouped payroll worksheet, inline adjustments, authorization cycle, and execution tracking.</p>
             </div>
             <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-              <div class="search-box" style="position:relative; min-width:240px;">
-                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                <input id="financePayrollSearch" class="form-input" placeholder="Search by period (e.g. 2026-09)..." style="padding-left:36px; width:100%;" oninput="filterFinancePayrollRuns()">
+              <button class="btn btn-primary" id="btnRunPayrollWizard" onclick="openRunPayrollWizardModal()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Prepare Payroll
+              </button>
+            </div>
+          </div>
+
+          <!-- Cycle Status Bar Stepper & Actions -->
+          <!-- @include "payroll-cycle-bar.html" -->
+
+          <!-- Payroll Worksheet Filter Toolbar -->
+          <div class="card" style="padding:14px 18px; margin-bottom:16px; background:var(--surface, #ffffff); border-radius:12px; border:1px solid var(--border-color, #E2E8F0);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; flex:1;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <label for="payrollMonthFilter" style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin:0;">Cycle:</label>
+                  <select id="payrollMonthFilter" class="form-input" style="font-size:0.85rem; padding:6px 12px; min-width:120px;" onchange="handlePayrollMonthChange(this.value)">
+                    <option value="2026-09" selected>2026-09</option>
+                    <option value="2026-08">2026-08</option>
+                    <option value="2026-07">2026-07</option>
+                  </select>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <label for="payrollDeptFilter" style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin:0;">Dept / Account:</label>
+                  <select id="payrollDeptFilter" class="form-input" style="font-size:0.85rem; padding:6px 12px; min-width:140px;" onchange="handlePayrollDeptChange(this.value)">
+                    <option value="all" selected>All Accounts</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Sales & Marketing">Sales & Marketing</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Support">Support</option>
+                  </select>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <label for="payrollSourceFilter" style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin:0;">Source:</label>
+                  <select id="payrollSourceFilter" class="form-input" style="font-size:0.85rem; padding:6px 12px; min-width:100px;" onchange="handlePayrollSourceChange(this.value)">
+                    <option value="all" selected>All Sources</option>
+                    <option value="INT">INT (Internal)</option>
+                    <option value="EXT">EXT (External)</option>
+                  </select>
+                </div>
+
+                <div class="search-box" style="position:relative; min-width:220px; flex:1; max-width:320px;">
+                  <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.8rem;"></i>
+                  <input id="payrollSearchInput" class="form-input" placeholder="Search employee or ID..." style="padding-left:32px; font-size:0.85rem; width:100%;" oninput="handlePayrollSearch(this.value)">
+                </div>
               </div>
-              <select id="financePayrollStatusFilter" class="form-input filter-select" onchange="filterFinancePayrollRuns()" style="font-size:0.85rem;">
+
+              <div style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:8px;">
+                <span><i class="fa-solid fa-pen" style="color:var(--primary, #2563EB);"></i> Click cell to edit</span>
+                <span>·</span>
+                <span><kbd style="padding:1px 4px; background:var(--bg-secondary, #f1f5f9); border:1px solid var(--border-color, #cbd5e1); border-radius:3px;">Tab</kbd> next</span>
+                <span>·</span>
+                <span><kbd style="padding:1px 4px; background:var(--bg-secondary, #f1f5f9); border:1px solid var(--border-color, #cbd5e1); border-radius:3px;">Esc</kbd> cancel</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grouped Editable Payroll Worksheet Table -->
+          <div id="payrollTableContainer" style="margin-bottom:24px;"></div>
+
+          <!-- Section Heading & Filter for Execution Runs -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin:28px 0 14px 0; flex-wrap:wrap; gap:12px;">
+            <h3 style="font-size:1.05rem; font-weight:700; margin:0; color:var(--text-primary);"><i class="fa-solid fa-clock-rotate-left"></i> Payment Runs & Execution Tracking</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="search-box" style="position:relative; min-width:200px;">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.8rem;"></i>
+                <input id="financePayrollSearch" class="form-input" placeholder="Search runs (e.g. 2026-09)..." style="padding-left:30px; font-size:0.82rem; width:100%;" oninput="filterFinancePayrollRuns()">
+              </div>
+              <select id="financePayrollStatusFilter" class="form-input filter-select" onchange="filterFinancePayrollRuns()" style="font-size:0.82rem; padding:5px 10px;">
                 <option value="all">All Statuses</option>
                 <option value="draft">Draft</option>
                 <option value="submitted">Submitted</option>
@@ -18,9 +84,6 @@
                 <option value="paid">Paid</option>
                 <option value="partially_paid">Partially Paid</option>
               </select>
-              <button class="btn btn-primary" id="btnRunPayrollWizard" onclick="openRunPayrollWizardModal()">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Prepare Payroll
-              </button>
             </div>
           </div>
 

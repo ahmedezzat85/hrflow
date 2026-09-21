@@ -689,6 +689,7 @@ const FinanceCommand = {
   },
 };
 window.FinanceCommand = FinanceCommand;
+window.FinanceConfirm = FinanceCommand;
 
 // ============================================================================
 // FinanceTable — Shared list/table shell, pagination, sorting, density (Story 1.2)
@@ -1369,4 +1370,18 @@ if (typeof document !== "undefined") {
   }
 }
 
+// Shared Payroll & Finance Helpers
+function formatCurrency(amount, currency = "USD") {
+  if (typeof FinanceFormat !== "undefined" && typeof FinanceFormat.formatMoney === "function") {
+    return FinanceFormat.formatMoney(amount, currency);
+  }
+  return "$" + Number(amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
+function sumColumn(items, key) {
+  if (!Array.isArray(items)) return 0;
+  return items.reduce((sum, item) => sum + Number((item && item[key]) || 0), 0);
+}
+
+window.formatCurrency = formatCurrency;
+window.sumColumn = sumColumn;
