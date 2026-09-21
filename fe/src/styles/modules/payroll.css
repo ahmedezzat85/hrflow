@@ -282,7 +282,7 @@ table.payroll-worksheet {
   table-layout: auto;
 }
 table.payroll-worksheet th, table.payroll-worksheet td {
-  padding: 8px 5px;
+  padding: 8px 6px;
   border-bottom: 1px solid var(--border-color, #edf2f7);
   vertical-align: middle;
 }
@@ -307,29 +307,29 @@ table.payroll-worksheet td.payroll-num {
 }
 table.payroll-worksheet th.payroll-id-th,
 table.payroll-worksheet td.payroll-id-col {
-  width: 42px;
-  min-width: 38px;
-  max-width: 46px;
+  width: 36px;
+  min-width: 32px;
+  max-width: 40px;
   text-align: center;
-  padding-left: 6px;
-  padding-right: 4px;
+  padding: 8px 2px;
   white-space: nowrap;
 }
 table.payroll-worksheet th.payroll-name-th,
 table.payroll-worksheet td.payroll-name-col {
-  width: 125px;
-  min-width: 95px;
-  max-width: 140px;
+  min-width: 150px;
+  width: 26%;
   text-align: left;
+  padding-left: 8px;
+  padding-right: 10px;
 }
 .payroll-emp-name {
   font-weight: 700;
   color: var(--text-primary, #0f172a);
   white-space: normal !important;
-  line-height: 1.25;
+  line-height: 1.28;
   word-break: normal;
   overflow-wrap: break-word;
-  font-size: 0.81rem;
+  font-size: 0.82rem;
 }
 .payroll-emp-id {
   color: var(--text-muted, #64748b);
@@ -351,12 +351,16 @@ table.payroll-worksheet tfoot td {
   font-weight: 600;
 }
 
+table.payroll-worksheet td.payroll-bonus-col {
+  text-align: right !important;
+}
 .bonus-cell {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
   white-space: nowrap;
+  margin-left: auto;
 }
 .add-bonus-btn {
   width: 20px;

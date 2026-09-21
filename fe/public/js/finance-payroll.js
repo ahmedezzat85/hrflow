@@ -438,7 +438,7 @@
             </td>
             <td class="payroll-num">${this.money(r.baseExt)}</td>
             <td class="payroll-num">${this.money(r.baseInt)}</td>
-            <td>
+            <td class="payroll-num payroll-bonus-col">
               <div class="bonus-cell">
                 <span class="payroll-num">${this.money(c.bonusTotal)}</span>
                 ${chips}
