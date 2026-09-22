@@ -85,9 +85,11 @@ Use for finance (e.g., FUX stories in `docs/finance-module/`), payroll, permissi
    - **Token-Efficient Verification Protocol**:
      - **Zero Polling Loops**: NEVER poll `manage_task(status)` or loop in shell checks waiting for running background commands. Each polling step resends the entire conversation context window (often 50k–150k+ tokens), consuming massive credit quotas within minutes. Launch commands with adequate `WaitMsBeforeAsync` or let background tasks run and stop calling tools—the reactive system automatically wakes up on task completion.
      - **Targeted First**: During implementation and debugging, run ONLY the single test or spec file directly addressing the change (e.g., `pytest be/tests/test_specific.py -q` or `npx playwright test tests/ui/specific.spec.js --reporter=line`).
-     - **Compact Output**: Use concise reporters (`--reporter=line` for Playwright, `-q` or `--tb=short` for `pytest`) to prevent voluminous terminal output from bloating context. Avoid `--reporter=list` or trace dumps unless diagnosing a stubborn failure.
-     - **Defer Regressions**: Do NOT run broad directory-wide test suites during intermediate iteration. Run broader regression suites ONLY once, as the final validation step immediately before clean teardown and commit.
-5. **Clean Teardown & Delivery**: Inspect `git status` and `git diff` for zero scratch/temporary artifacts, stage cleanly, and commit with descriptive messages (`FUX-XXX`).
+      - **Compact Output & Scoped Diffs**: Use concise reporters (`--reporter=line` for Playwright, `-q` or `--tb=short` for `pytest`). NEVER run bare `git diff` or verbose command outputs that dump thousands of lines of code/logs into context—always use compact summaries (`git diff --stat`, `git log --oneline -n <N>`) or scope to specific single files.
+      - **Direct Commands (No Exploratory Churn)**: For operational tasks (merges, pulls, branch checkouts, status checks), execute the direct command immediately rather than chaining 10+ exploratory inspection calls.
+      - **Defer Regressions**: Do NOT run broad directory-wide test suites during intermediate iteration. Run broader regression suites ONLY once, as the final validation step immediately before clean teardown and commit.
+      - **Session Freshness**: Start a new chat session once a major feature/test cycle is completed before starting merges or subsequent tasks, preventing cumulative context window bloat (50k–150k+ tokens per step).
+5. **Clean Teardown & Delivery**: Inspect `git status` and `git diff --stat` for zero scratch/temporary artifacts, stage cleanly, and commit with descriptive messages (`FUX-XXX`).
 
 ## Frontend and Mock Mode
 
@@ -145,8 +147,8 @@ npx playwright test tests/ui/finance-bill-repository.spec.js --headed
 - Inspect `git status` and the final `git diff`; ensure no temporary, scratch, generated, or test-output files are included.
 - Stage only relevant source, documentation, and test files.
 - Use a descriptive commit message explaining what changed and why; include a story identifier such as `FUX-XXX` when applicable.
-- Determine the target branch from the current task, repository state, and user instruction.
-- Commit, push, create branches, or open pull requests only when explicitly authorized by the user or required by the active execution environment.
+- Determine the target branch from the current task, repository state, and active feature branch.
+- Once implementation passes all checks, automatically stage relevant files, commit with a descriptive message (including story ID where applicable), and push to the active remote branch without waiting for a separate prompt.
 - For large files or reconstructed patches, read back the resulting content or inspect the diff before and after committing.
 
 ## Definition of Done
@@ -156,6 +158,7 @@ Before declaring a task complete:
 - Inspect `git diff` and verify only intended files changed (verify no placeholder content).
 - Run the relevant build (`npm run build`) and applicable backend/unit/integration/UI tests for the touched area.
 - Add or update permanent tests for changed behavior.
+- Cleanly stage, commit, and push changes to the active branch.
 - Report: summary of changes, test commands run and results, any limitations, and unresolved assumptions.
 
 ## Maintaining This Guide

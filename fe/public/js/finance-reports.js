@@ -151,6 +151,9 @@ async function openReportFromLibrary(reportKey) {
     "ap-aging",
     "transactions",
     "cheques",
+    "compensation-summary",
+    "statutory-remitted",
+    "payable-status",
   ];
   const subnav = document.getElementById("financeReportsSubNav");
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -175,6 +178,9 @@ async function openReportFromLibrary(reportKey) {
           "ap-aging": "reportPaneApAging",
           transactions: "reportPaneTransactions",
           cheques: "reportPaneCheques",
+          "compensation-summary": "reportPaneCompensationSummary",
+          "statutory-remitted": "reportPaneStatutoryRemitted",
+          "payable-status": "reportPanePayableStatus",
         }[t]
       );
       if (pane) pane.style.display = "none";
@@ -227,6 +233,9 @@ function switchFinanceReportsTab(tabName, btn) {
     "ap-aging": "reportPaneApAging",
     transactions: "reportPaneTransactions",
     cheques: "reportPaneCheques",
+    "compensation-summary": "reportPaneCompensationSummary",
+    "statutory-remitted": "reportPaneStatutoryRemitted",
+    "payable-status": "reportPanePayableStatus",
   };
 
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -280,6 +289,12 @@ function switchFinanceReportsTab(tabName, btn) {
     loadReportTransactions();
   } else if (tabName === "cheques") {
     loadReportCheques();
+  } else if (tabName === "compensation-summary") {
+    loadCompensationSummaryReport();
+  } else if (tabName === "statutory-remitted") {
+    loadStatutoryRemittedReport();
+  } else if (tabName === "payable-status") {
+    loadPayableStatusReport();
   }
 }
 
@@ -429,6 +444,12 @@ function refreshActiveReport() {
     loadReportTransactions();
   } else if (_currentReportsTab === "cheques") {
     loadReportCheques();
+  } else if (_currentReportsTab === "compensation-summary") {
+    loadCompensationSummaryReport();
+  } else if (_currentReportsTab === "statutory-remitted") {
+    loadStatutoryRemittedReport();
+  } else if (_currentReportsTab === "payable-status") {
+    loadPayableStatusReport();
   }
 }
 
@@ -2023,4 +2044,403 @@ window.switchDeliveriesModalTab = switchDeliveriesModalTab;
 window.loadReportSchedules = loadReportSchedules;
 window.deleteReportSchedule = deleteReportSchedule;
 window.loadReportExportAudits = loadReportExportAudits;
+
+// =========================================================================
+// FUX-419: Compensation Spend & Variance Reporting
+// =========================================================================
+let _compensationViewMode = "company"; // company | employee
+let _selectedCompensationEmployeeId = null;
+let _cachedCompanyEmployees = [];
+
+async function loadCompensationSummaryReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+
+  if (_compensationViewMode === "employee" && _selectedCompensationEmployeeId) {
+    await loadEmployeeCompensationReport(_selectedCompensationEmployeeId, dFrom, dTo, currency);
+  } else {
+    await loadCompanyCompensationReport(dFrom, dTo, currency);
+  }
+}
+
+async function loadCompanyCompensationReport(dFrom, dTo, currency) {
+  try {
+    const data = await FinanceApi.getCompanyCompensationReport({
+      start_date: dFrom || undefined,
+      end_date: dTo || undefined,
+      currency: currency || undefined,
+      breakdown_employees: true,
+    });
+
+    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const totSpendEl = document.getElementById("reportCompTotalSpend");
+    const extEl = document.getElementById("reportCompExternal");
+    const intEl = document.getElementById("reportCompInternal");
+    const commBonusEl = document.getElementById("reportCompCommBonus");
+    const headcountEl = document.getElementById("reportCompHeadcount");
+
+    if (totSpendEl) totSpendEl.textContent = formatCurrency(data.grand_total);
+    if (extEl) extEl.textContent = formatCurrency(data.total_external);
+    if (intEl) intEl.textContent = formatCurrency(data.total_internal);
+    if (commBonusEl) commBonusEl.textContent = formatCurrency((data.total_commission || 0) + (data.total_bonus || 0));
+    if (headcountEl) headcountEl.textContent = String(data.total_headcount || 0);
+
+    // Populate employee selector dropdown
+    _cachedCompanyEmployees = data.employees || [];
+    const empSelect = document.getElementById("reportCompEmployeeSelect");
+    if (empSelect) {
+      empSelect.innerHTML = '<option value="">Choose Employee for Drilldown...</option>' +
+        _cachedCompanyEmployees.map(e => `<option value="${e.employee_id}">${e.employee_name} (${e.department || 'General'})</option>`).join("");
+    }
+
+    // Render Company Spend Table
+    const tbody = document.getElementById("reportCompanySpendTableBody");
+    const tfoot = document.getElementById("reportCompanySpendTableFoot");
+    const emptyState = document.getElementById("reportCompanySpendEmpty");
+
+    if (!tbody) return;
+
+    if (!_cachedCompanyEmployees.length) {
+      tbody.innerHTML = "";
+      if (tfoot) tfoot.innerHTML = "";
+      if (emptyState) emptyState.style.display = "block";
+      return;
+    }
+    if (emptyState) emptyState.style.display = "none";
+
+    tbody.innerHTML = _cachedCompanyEmployees.map(e => `
+      <tr>
+        <td><strong>${e.employee_name}</strong></td>
+        <td><span class="badge badge-neutral">${e.department || 'General'}</span></td>
+        <td style="text-align:right;">${formatCurrency(e.total_external)}</td>
+        <td style="text-align:right;">${formatCurrency(e.total_internal)}</td>
+        <td style="text-align:right;">${formatCurrency(e.total_commission)}</td>
+        <td style="text-align:right;">${formatCurrency(e.total_bonus)}</td>
+        <td style="text-align:right; font-weight:700;">${formatCurrency(e.grand_total)}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-sm btn-outline" onclick="onCompensationEmployeeChanged(${e.employee_id})" title="Drill into employee lines">
+            <i class="fa-solid fa-magnifying-glass"></i> Drilldown
+          </button>
+        </td>
+      </tr>
+    `).join("");
+
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td>Company Totals (${data.total_headcount || 0} staff)</td>
+          <td></td>
+          <td style="text-align:right;">${formatCurrency(data.total_external)}</td>
+          <td style="text-align:right;">${formatCurrency(data.total_internal)}</td>
+          <td style="text-align:right;">${formatCurrency(data.total_commission)}</td>
+          <td style="text-align:right;">${formatCurrency(data.total_bonus)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          <td></td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load company compensation report:", err);
+  }
+}
+
+async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
+  try {
+    const data = await FinanceApi.getEmployeeCompensationReport(empId, {
+      start_date: dFrom || undefined,
+      end_date: dTo || undefined,
+      currency: currency || undefined,
+    });
+
+    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const titleEl = document.getElementById("reportEmployeeSpendTitle");
+    if (titleEl) {
+      titleEl.innerHTML = `<i class="fa-solid fa-user"></i> ${data.employee_name} <span class="badge badge-info" style="font-size:0.75rem; font-weight:normal; margin-left:8px;">${data.department || 'General'}</span> — Total Spend: <strong>${formatCurrency(data.grand_total)}</strong>`;
+    }
+
+    const tbody = document.getElementById("reportEmployeeSpendTableBody");
+    const tfoot = document.getElementById("reportEmployeeSpendTableFoot");
+    if (!tbody) return;
+
+    const lines = data.lines || [];
+    tbody.innerHTML = lines.map(l => {
+      const typeLabel = (l.compensation_type || "internal_usd_cash")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
+      const isPaid = l.payment_status === "paid";
+      const statusBadge = isPaid
+        ? '<span class="badge badge-success">Settled</span>'
+        : '<span class="badge badge-warning">Pending</span>';
+
+      return `
+        <tr>
+          <td><strong>${l.period_label || 'Current'}</strong></td>
+          <td>${typeLabel}</td>
+          <td style="text-align:right;">${formatCurrency(l.base_salary)}</td>
+          <td style="text-align:right; color:#EF4444;">${formatCurrency((l.tax_amount || 0) + (l.deductions_total || 0))}</td>
+          <td style="text-align:right; font-weight:700;">${formatCurrency(l.net_pay)}</td>
+          <td style="text-align:center;">${statusBadge}</td>
+          <td style="font-size:0.82rem; color:var(--text-muted);">${l.paid_at ? new Date(l.paid_at).toLocaleDateString() : '—'}</td>
+        </tr>
+      `;
+    }).join("");
+
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td>Total (${lines.length} lines across ${data.payroll_runs_count || 0} cycles)</td>
+          <td></td>
+          <td style="text-align:right;">${formatCurrency(data.grand_total)}</td>
+          <td style="text-align:right;"></td>
+          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          <td colspan="2"></td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load employee compensation report:", err);
+  }
+}
+
+function onCompensationViewModeChanged(mode) {
+  _compensationViewMode = mode;
+  const vSelect = document.getElementById("reportCompViewMode");
+  if (vSelect) vSelect.value = mode;
+
+  const grp = document.getElementById("reportCompEmployeeSelectGroup");
+  const compCard = document.getElementById("reportCompanySpendCard");
+  const empCard = document.getElementById("reportEmployeeSpendCard");
+
+  if (mode === "employee") {
+    if (grp) grp.style.display = "inline-flex";
+    if (compCard) compCard.style.display = "none";
+    if (empCard) empCard.style.display = "block";
+    if (!_selectedCompensationEmployeeId && _cachedCompanyEmployees.length) {
+      _selectedCompensationEmployeeId = _cachedCompanyEmployees[0].employee_id;
+      const empSelect = document.getElementById("reportCompEmployeeSelect");
+      if (empSelect) empSelect.value = _selectedCompensationEmployeeId;
+    }
+  } else {
+    if (grp) grp.style.display = "none";
+    if (compCard) compCard.style.display = "block";
+    if (empCard) empCard.style.display = "none";
+  }
+
+  loadCompensationSummaryReport();
+}
+
+function onCompensationEmployeeChanged(empId) {
+  if (!empId) return;
+  _selectedCompensationEmployeeId = parseInt(empId, 10);
+  onCompensationViewModeChanged("employee");
+}
+
+async function loadStatutoryRemittedReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+
+  try {
+    const data = await FinanceApi.getStatutoryRemittedReport({
+      start_date: dFrom || undefined,
+      end_date: dTo || undefined,
+      currency: currency || undefined,
+    });
+
+    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const totEl = document.getElementById("reportStatTotalRemitted");
+    const taxEl = document.getElementById("reportStatTaxRemitted");
+    const insEl = document.getElementById("reportStatInsRemitted");
+    const countEl = document.getElementById("reportStatRemittedCount");
+
+    if (totEl) totEl.textContent = formatCurrency(data.total_remitted);
+    const byType = data.by_obligation_type || {};
+    const taxSum = (byType["income_tax"] || 0) + (byType["withholding_tax"] || 0) + (byType["sales_tax"] || 0);
+    const insSum = (byType["social_insurance_employee"] || 0) + (byType["social_insurance_employer"] || 0) + (byType["health_insurance"] || 0);
+
+    if (taxEl) taxEl.textContent = formatCurrency(taxSum);
+    if (insEl) insEl.textContent = formatCurrency(insSum);
+    if (countEl) countEl.textContent = String(data.obligations_count || 0);
+
+    const tbody = document.getElementById("reportStatutoryRemittedTableBody");
+    const tfoot = document.getElementById("reportStatutoryRemittedTableFoot");
+    const emptyState = document.getElementById("reportStatutoryRemittedEmpty");
+
+    if (!tbody) return;
+    const items = data.items || [];
+    if (!items.length) {
+      tbody.innerHTML = "";
+      if (tfoot) tfoot.innerHTML = "";
+      if (emptyState) emptyState.style.display = "block";
+      return;
+    }
+    if (emptyState) emptyState.style.display = "none";
+
+    tbody.innerHTML = items.map(it => {
+      const typeLabel = (it.obligation_type || "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
+      return `
+        <tr>
+          <td><strong>${it.period}</strong></td>
+          <td><span class="badge badge-neutral">${typeLabel}</span></td>
+          <td>${it.notes || '—'}</td>
+          <td style="text-align:right; font-weight:700; color:#10B981;">${formatCurrency(it.amount_remitted)}</td>
+          <td style="text-align:right; color:var(--text-muted);">${formatCurrency(it.amount_accrued)}</td>
+          <td style="text-align:center;"><span class="badge badge-success">Settled</span></td>
+          <td style="font-size:0.85rem;">${it.due_date || '—'}</td>
+        </tr>
+      `;
+    }).join("");
+
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="3">Total Remitted to Authorities</td>
+          <td style="text-align:right; font-weight:700; color:#10B981;">${formatCurrency(data.total_remitted)}</td>
+          <td colspan="3"></td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load statutory remitted report:", err);
+  }
+}
+
+let _selectedPayableEmployeeId = "";
+
+async function loadPayableStatusReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+
+  try {
+    const data = await FinanceApi.getPayableStatusReport({
+      start_date: dFrom || undefined,
+      end_date: dTo || undefined,
+      employee_id: _selectedPayableEmployeeId || undefined,
+      currency: currency || undefined,
+    });
+
+    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const flows = data.flows || [];
+    const flowMap = {};
+    flows.forEach(f => { flowMap[f.flow_type] = f; });
+
+    const updateCard = (prefix, f) => {
+      const bEl = document.getElementById(`badgeFlow${prefix}`);
+      const sEl = document.getElementById(`amtFlow${prefix}Settled`);
+      const pEl = document.getElementById(`amtFlow${prefix}Pending`);
+      const tEl = document.getElementById(`amtFlow${prefix}Total`);
+      if (!f) return;
+
+      if (bEl) {
+        bEl.textContent = f.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        bEl.className = f.status === "settled" ? "badge badge-success" : (f.status === "pending" ? "badge badge-danger" : "badge badge-warning");
+      }
+      if (sEl) sEl.textContent = formatCurrency(f.settled_amount);
+      if (pEl) pEl.textContent = formatCurrency(f.pending_amount);
+      if (tEl) tEl.textContent = formatCurrency(f.total_amount);
+    };
+
+    updateCard("External", flowMap["external_transfer"]);
+    updateCard("Internal", flowMap["internal_cash"]);
+    updateCard("Tax", flowMap["tax_obligation"]);
+    updateCard("Insurance", flowMap["insurance_obligation"]);
+
+    // Render Summary Table
+    const tbody = document.getElementById("reportPayableStatusTableBody");
+    const tfoot = document.getElementById("reportPayableStatusTableFoot");
+    if (tbody) {
+      tbody.innerHTML = flows.map(f => {
+        const badgeClass = f.status === "settled" ? "badge badge-success" : (f.status === "pending" ? "badge badge-danger" : "badge badge-warning");
+        return `
+          <tr>
+            <td><strong>${f.label}</strong></td>
+            <td style="text-align:right; color:#10B981; font-weight:600;">${formatCurrency(f.settled_amount)}</td>
+            <td style="text-align:right; color:#EF4444; font-weight:600;">${formatCurrency(f.pending_amount)}</td>
+            <td style="text-align:right; font-weight:700;">${formatCurrency(f.total_amount)}</td>
+            <td style="text-align:center;"><span class="${badgeClass}">${f.status.replace(/_/g, " ").toUpperCase()}</span></td>
+          </tr>
+        `;
+      }).join("");
+
+      if (tfoot) {
+        tfoot.innerHTML = `
+          <tr>
+            <td>Total Net Outflow Status</td>
+            <td style="text-align:right; color:#10B981; font-weight:700;">${formatCurrency(data.total_settled)}</td>
+            <td style="text-align:right; color:#EF4444; font-weight:700;">${formatCurrency(data.total_pending)}</td>
+            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+            <td style="text-align:center;">${data.total_pending === 0 ? '<span class="badge badge-success">FULLY SETTLED</span>' : '<span class="badge badge-warning">ACTION REQUIRED</span>'}</td>
+          </tr>
+        `;
+      }
+    }
+
+    // Render Employee Breakdown Table (if available)
+    const breakdownCard = document.getElementById("reportPayableEmployeeBreakdownCard");
+    const breakdownBody = document.getElementById("reportPayableEmployeeBreakdownTableBody");
+    const breakdownFoot = document.getElementById("reportPayableEmployeeBreakdownTableFoot");
+
+    if (data.employee_breakdown && data.employee_breakdown.length && breakdownCard && breakdownBody) {
+      breakdownCard.style.display = "block";
+
+      // Populate employee scope dropdown if not already populated
+      const scopeSel = document.getElementById("reportPayableEmployeeSelect");
+      if (scopeSel && scopeSel.options.length <= 1) {
+        data.employee_breakdown.forEach(e => {
+          const opt = document.createElement("option");
+          opt.value = e.employee_id;
+          opt.textContent = `${e.employee_name} (${e.department || 'General'})`;
+          scopeSel.appendChild(opt);
+        });
+      }
+
+      breakdownBody.innerHTML = data.employee_breakdown.map(e => `
+        <tr>
+          <td><strong>${e.employee_name}</strong></td>
+          <td><span class="badge badge-neutral">${e.department || 'General'}</span></td>
+          <td style="text-align:right; color:#10B981;">${formatCurrency(e.external_settled)}</td>
+          <td style="text-align:right; color:#EF4444;">${formatCurrency(e.external_pending)}</td>
+          <td style="text-align:right; color:#10B981;">${formatCurrency(e.internal_settled)}</td>
+          <td style="text-align:right; color:#EF4444;">${formatCurrency(e.internal_pending)}</td>
+          <td style="text-align:right; font-size:0.85rem;">
+            <span style="color:#10B981;">${formatCurrency(e.tax_settled)}</span> / <span style="color:#EF4444;">${formatCurrency(e.tax_pending)}</span>
+          </td>
+          <td style="text-align:right; font-size:0.85rem;">
+            <span style="color:#10B981;">${formatCurrency(e.insurance_settled)}</span> / <span style="color:#EF4444;">${formatCurrency(e.insurance_pending)}</span>
+          </td>
+          <td style="text-align:right; font-weight:700;">${formatCurrency((e.total_settled || 0) + (e.total_pending || 0))}</td>
+        </tr>
+      `).join("");
+
+      if (breakdownFoot) {
+        breakdownFoot.innerHTML = `
+          <tr>
+            <td colspan="8">Grand Total (Settled: ${formatCurrency(data.total_settled)} | Pending: ${formatCurrency(data.total_pending)})</td>
+            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          </tr>
+        `;
+      }
+    } else if (breakdownCard) {
+      breakdownCard.style.display = "none";
+    }
+  } catch (err) {
+    console.error("Failed to load payable status report:", err);
+  }
+}
+
+function onPayableStatusScopeChanged(val) {
+  _selectedPayableEmployeeId = val ? parseInt(val, 10) : "";
+  loadPayableStatusReport();
+}
+
+window.loadCompensationSummaryReport = loadCompensationSummaryReport;
+window.onCompensationViewModeChanged = onCompensationViewModeChanged;
+window.onCompensationEmployeeChanged = onCompensationEmployeeChanged;
+window.loadStatutoryRemittedReport = loadStatutoryRemittedReport;
+window.loadPayableStatusReport = loadPayableStatusReport;
+window.onPayableStatusScopeChanged = onPayableStatusScopeChanged;
 

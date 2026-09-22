@@ -9,6 +9,8 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 
+from fastapi import HTTPException, status
+
 from finance.models import (
     FinanceBankAccountDB,
     LedgerTransactionDB,
@@ -21,7 +23,11 @@ from finance.models import (
     FinanceSavedReportViewDB,
     FinanceExportAuditDB,
     FinanceReportScheduleDB,
+    PayrollRunDB,
+    PayrollLineDB,
+    StatutoryObligationDB,
 )
+from models_db import EmployeeDB
 from finance.services.excel_exporter import (
     export_transactions_xlsx,
     export_category_summary_xlsx,
@@ -826,6 +832,42 @@ class ReportsService:
                 "supported_formats": ["json"],
                 "required_permission": "finance.report.read",
                 "badge": "Payroll",
+            },
+            {
+                "key": "compensation-summary",
+                "title": "Compensation Spend & Variance Report",
+                "category": "Payroll",
+                "business_question": "What is total company compensation spend across external, internal, commission, and bonus pay?",
+                "description": "Granular compensation reporting per employee and company-wide across flexible date ranges.",
+                "icon": "fa-solid fa-money-bill-wave",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Spend",
+            },
+            {
+                "key": "statutory-remitted",
+                "title": "Statutory Obligations Remitted Report",
+                "category": "Payroll",
+                "business_question": "How much tax and social insurance has been officially paid and remitted to authorities?",
+                "description": "Summary of settled statutory obligations by period and tax/insurance obligation type.",
+                "icon": "fa-solid fa-landmark",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Compliance",
+            },
+            {
+                "key": "payable-status",
+                "title": "Payroll & Statutory Settlement Status",
+                "category": "Payroll",
+                "business_question": "What is the settlement status (pending vs settled) of employee payouts, taxes, and social insurance?",
+                "description": "Unified view tracking pending vs settled amounts for external wire, internal cash, tax, and insurance flows.",
+                "icon": "fa-solid fa-money-bill-transfer",
+                "supported_basis": ["cash", "accrual"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Payables",
             },
             # Audit & Compliance
             {
@@ -2048,6 +2090,514 @@ class ReportsService:
         self.db.delete(sch)
         self.db.commit()
         return True
+
+    # ------------------------------------------------------------------
+    # FUX-419: Compensation Spend & Variance Reporting
+    # ------------------------------------------------------------------
+    def get_employee_compensation_report(
+        self,
+        employee_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        """
+        Per-employee compensation report: total external, internal, commission, bonus,
+        and grand total for a given employee across an arbitrary date range.
+        """
+        emp = self.db.query(EmployeeDB).filter(EmployeeDB.id == employee_id).first()
+        if not emp:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee #{employee_id} not found"
+            )
+
+        query = (
+            self.db.query(PayrollLineDB, PayrollRunDB)
+            .join(PayrollRunDB, PayrollLineDB.payroll_run_id == PayrollRunDB.id)
+            .filter(PayrollLineDB.employee_id == employee_id)
+            .filter(PayrollRunDB.status != "cancelled")
+        )
+
+        if start_date:
+            query = query.filter(PayrollRunDB.period_end >= start_date)
+        if end_date:
+            query = query.filter(PayrollRunDB.period_start <= end_date)
+        if currency and currency.upper() != "ALL":
+            query = query.filter(PayrollRunDB.currency == currency.upper())
+
+        results = query.order_by(PayrollRunDB.period_start.asc(), PayrollLineDB.id.asc()).all()
+
+        by_type: Dict[str, float] = {}
+        total_ext = 0.0
+        total_int = 0.0
+        total_comm = 0.0
+        total_bonus = 0.0
+        grand_total = 0.0
+        run_ids = set()
+        line_items = []
+
+        for line, run in results:
+            run_ids.add(run.id)
+            ctype = line.compensation_type or "internal_usd_cash"
+            amt = float(line.base_salary or 0.0) + float(line.allowances_total or 0.0)
+            by_type[ctype] = round(by_type.get(ctype, 0.0) + amt, 2)
+            grand_total += amt
+
+            if ctype == "external_usd":
+                total_ext += amt
+            elif ctype == "internal_usd_cash":
+                total_int += amt
+            elif "commission" in ctype:
+                total_comm += amt
+            elif "bonus" in ctype:
+                total_bonus += amt
+            else:
+                total_int += amt
+
+            line_items.append({
+                "id": line.id,
+                "payroll_run_id": run.id,
+                "period_label": run.period_label,
+                "compensation_type": ctype,
+                "base_salary": round(float(line.base_salary or 0.0), 2),
+                "allowances_total": round(float(line.allowances_total or 0.0), 2),
+                "deductions_total": round(float(line.deductions_total or 0.0), 2),
+                "tax_amount": round(float(line.tax_amount or 0.0), 2),
+                "net_pay": round(float(line.net_pay or 0.0), 2),
+                "employer_cost_extra": round(float(line.employer_cost_extra or 0.0), 2),
+                "payment_status": line.payment_status or "pending",
+                "paid_at": line.paid_at.isoformat() if line.paid_at else None,
+                "linked_payment_id": line.linked_payment_id,
+            })
+
+        return {
+            "employee_id": emp.id,
+            "employee_name": emp.name,
+            "department": emp.dept or "General",
+            "start_date": start_date,
+            "end_date": end_date,
+            "currency": currency or "USD",
+            "by_compensation_type": by_type,
+            "total_external": round(total_ext, 2),
+            "total_internal": round(total_int, 2),
+            "total_commission": round(total_comm, 2),
+            "total_bonus": round(total_bonus, 2),
+            "grand_total": round(grand_total, 2),
+            "payroll_runs_count": len(run_ids),
+            "lines": line_items,
+        }
+
+    def get_company_compensation_report(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        currency: str = "USD",
+        breakdown_employees: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Company salary spend report: aggregate total compensation across all employees
+        for a selected period, broken down by compensation type, with per-employee breakdown.
+        """
+        query = (
+            self.db.query(PayrollLineDB, PayrollRunDB)
+            .join(PayrollRunDB, PayrollLineDB.payroll_run_id == PayrollRunDB.id)
+            .filter(PayrollRunDB.status != "cancelled")
+        )
+
+        if start_date:
+            query = query.filter(PayrollRunDB.period_end >= start_date)
+        if end_date:
+            query = query.filter(PayrollRunDB.period_start <= end_date)
+        if currency and currency.upper() != "ALL":
+            query = query.filter(PayrollRunDB.currency == currency.upper())
+
+        results = query.order_by(PayrollRunDB.period_start.asc(), PayrollLineDB.employee_name.asc()).all()
+
+        by_type: Dict[str, float] = {}
+        total_ext = 0.0
+        total_int = 0.0
+        total_comm = 0.0
+        total_bonus = 0.0
+        grand_total = 0.0
+        emp_map: Dict[int, Dict[str, Any]] = {}
+        run_ids = set()
+
+        for line, run in results:
+            run_ids.add(run.id)
+            ctype = line.compensation_type or "internal_usd_cash"
+            amt = float(line.base_salary or 0.0) + float(line.allowances_total or 0.0)
+            by_type[ctype] = round(by_type.get(ctype, 0.0) + amt, 2)
+            grand_total += amt
+
+            if ctype == "external_usd":
+                total_ext += amt
+            elif ctype == "internal_usd_cash":
+                total_int += amt
+            elif "commission" in ctype:
+                total_comm += amt
+            elif "bonus" in ctype:
+                total_bonus += amt
+            else:
+                total_int += amt
+
+            emp_id = line.employee_id
+            if emp_id not in emp_map:
+                emp_map[emp_id] = {
+                    "employee_id": emp_id,
+                    "employee_name": line.employee_name or f"Employee #{emp_id}",
+                    "department": line.department or "General",
+                    "by_compensation_type": {},
+                    "total_external": 0.0,
+                    "total_internal": 0.0,
+                    "total_commission": 0.0,
+                    "total_bonus": 0.0,
+                    "grand_total": 0.0,
+                    "lines_count": 0,
+                }
+            e = emp_map[emp_id]
+            e["by_compensation_type"][ctype] = round(e["by_compensation_type"].get(ctype, 0.0) + amt, 2)
+            e["grand_total"] = round(e["grand_total"] + amt, 2)
+            e["lines_count"] += 1
+            if ctype == "external_usd":
+                e["total_external"] = round(e["total_external"] + amt, 2)
+            elif ctype == "internal_usd_cash":
+                e["total_internal"] = round(e["total_internal"] + amt, 2)
+            elif "commission" in ctype:
+                e["total_commission"] = round(e["total_commission"] + amt, 2)
+            elif "bonus" in ctype:
+                e["total_bonus"] = round(e["total_bonus"] + amt, 2)
+            else:
+                e["total_internal"] = round(e["total_internal"] + amt, 2)
+
+        employees_list = sorted(list(emp_map.values()), key=lambda x: x["employee_name"]) if breakdown_employees else []
+
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "currency": currency or "USD",
+            "by_compensation_type": by_type,
+            "total_external": round(total_ext, 2),
+            "total_internal": round(total_int, 2),
+            "total_commission": round(total_comm, 2),
+            "total_bonus": round(total_bonus, 2),
+            "grand_total": round(grand_total, 2),
+            "total_headcount": len(emp_map),
+            "payroll_runs_count": len(run_ids),
+            "employees": employees_list,
+        }
+
+    def get_statutory_remitted_report(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        """
+        Statutory obligations paid report: total tax and social insurance actually remitted
+        (not just accrued) for a selected period.
+        """
+        query = self.db.query(StatutoryObligationDB)
+
+        if currency and currency.upper() != "ALL":
+            query = query.filter(StatutoryObligationDB.currency == currency.upper())
+
+        if start_date:
+            start_period = start_date[:7]
+            query = query.filter(StatutoryObligationDB.period >= start_period)
+        if end_date:
+            end_period = end_date[:7]
+            query = query.filter(StatutoryObligationDB.period <= end_period)
+
+        obligations = query.order_by(StatutoryObligationDB.period.asc(), StatutoryObligationDB.id.asc()).all()
+
+        by_type: Dict[str, float] = {}
+        by_period: Dict[str, float] = {}
+        total_remitted = 0.0
+        items = []
+
+        for obl in obligations:
+            remitted = float(obl.amount_remitted or 0.0)
+            if remitted > 0:
+                by_type[obl.obligation_type] = round(by_type.get(obl.obligation_type, 0.0) + remitted, 2)
+                by_period[obl.period] = round(by_period.get(obl.period, 0.0) + remitted, 2)
+                total_remitted += remitted
+
+                items.append({
+                    "id": obl.id,
+                    "period": obl.period,
+                    "obligation_type": obl.obligation_type,
+                    "amount_remitted": round(remitted, 2),
+                    "amount_accrued": round(float(obl.amount_accrued or 0.0), 2),
+                    "currency": obl.currency,
+                    "status": obl.status,
+                    "due_date": obl.due_date,
+                    "source_type": obl.source_type,
+                    "source_id": obl.source_id,
+                    "notes": obl.notes,
+                })
+
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "currency": currency or "USD",
+            "total_remitted": round(total_remitted, 2),
+            "by_obligation_type": by_type,
+            "by_period": by_period,
+            "items": items,
+            "obligations_count": len(items),
+        }
+
+    def get_payroll_payable_status_report(
+        self,
+        period: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        employee_id: Optional[int] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        """
+        Payable/paid status view: shows the status of each of the four money flows
+        (external transfer, internal cash, tax obligation, insurance obligation) — pending vs. settled —
+        for both a single employee and company-wide.
+        """
+        # 1. Resolve relevant payroll runs & lines
+        line_q = (
+            self.db.query(PayrollLineDB, PayrollRunDB)
+            .join(PayrollRunDB, PayrollLineDB.payroll_run_id == PayrollRunDB.id)
+            .filter(PayrollRunDB.status != "cancelled")
+        )
+
+        if employee_id:
+            line_q = line_q.filter(PayrollLineDB.employee_id == employee_id)
+
+        if period:
+            line_q = line_q.filter(PayrollRunDB.period_label == period)
+        else:
+            if start_date:
+                line_q = line_q.filter(PayrollRunDB.period_end >= start_date)
+            if end_date:
+                line_q = line_q.filter(PayrollRunDB.period_start <= end_date)
+
+        if currency and currency.upper() != "ALL":
+            line_q = line_q.filter(PayrollRunDB.currency == currency.upper())
+
+        matched_lines = line_q.all()
+        run_ids = list(set(r.id for _, r in matched_lines))
+        run_periods = list(set(r.period_label for _, r in matched_lines))
+        if period and period not in run_periods:
+            run_periods.append(period)
+
+        # Flow 1: External Wire Transfers
+        ext_settled = 0.0
+        ext_pending = 0.0
+        # Flow 2: Internal Cash Payroll
+        int_settled = 0.0
+        int_pending = 0.0
+
+        # Per employee tracking if needed
+        emp_status_map: Dict[int, Dict[str, Any]] = {}
+
+        for line, run in matched_lines:
+            ctype = line.compensation_type or "internal_usd_cash"
+            # For payable amounts, net_pay is the amount due to the employee
+            line_amt = float(line.net_pay if line.net_pay is not None else line.base_salary or 0.0)
+            is_paid = (line.payment_status == "paid") or (line.paid_at is not None)
+
+            eid = line.employee_id
+            if eid not in emp_status_map:
+                emp_status_map[eid] = {
+                    "employee_id": eid,
+                    "employee_name": line.employee_name or f"Employee #{eid}",
+                    "department": line.department or "General",
+                    "external_pending": 0.0,
+                    "external_settled": 0.0,
+                    "internal_pending": 0.0,
+                    "internal_settled": 0.0,
+                    "tax_pending": 0.0,
+                    "tax_settled": 0.0,
+                    "insurance_pending": 0.0,
+                    "insurance_settled": 0.0,
+                    "total_pending": 0.0,
+                    "total_settled": 0.0,
+                }
+            es = emp_status_map[eid]
+
+            if ctype == "external_usd":
+                if is_paid:
+                    ext_settled += line_amt
+                    es["external_settled"] += line_amt
+                else:
+                    ext_pending += line_amt
+                    es["external_pending"] += line_amt
+            else:
+                if is_paid:
+                    int_settled += line_amt
+                    es["internal_settled"] += line_amt
+                else:
+                    int_pending += line_amt
+                    es["internal_pending"] += line_amt
+
+            # Accumulate employee local tax & SI contributions from lines
+            emp_tax = float(line.tax_amount or 0.0)
+            emp_si = float(line.deductions_total or 0.0) + float(line.employer_cost_extra or 0.0)
+            # Will be distributed as settled/pending based on statutory obligation status below
+            es["_raw_tax"] = es.get("_raw_tax", 0.0) + emp_tax
+            es["_raw_si"] = es.get("_raw_si", 0.0) + emp_si
+
+        # Flow 3 & 4: Statutory Obligations (Tax and Insurance)
+        obl_q = self.db.query(StatutoryObligationDB)
+        if run_periods:
+            obl_q = obl_q.filter(StatutoryObligationDB.period.in_(run_periods))
+        elif period:
+            obl_q = obl_q.filter(StatutoryObligationDB.period == period)
+        elif start_date or end_date:
+            if start_date:
+                obl_q = obl_q.filter(StatutoryObligationDB.period >= start_date[:7])
+            if end_date:
+                obl_q = obl_q.filter(StatutoryObligationDB.period <= end_date[:7])
+
+        if currency and currency.upper() != "ALL":
+            obl_q = obl_q.filter(StatutoryObligationDB.currency == currency.upper())
+
+        statutory_records = obl_q.all()
+
+        tax_types = {"income_tax", "withholding_tax", "sales_tax"}
+        insurance_types = {"social_insurance_employee", "social_insurance_employer", "health_insurance"}
+
+        tax_settled = 0.0
+        tax_pending = 0.0
+        ins_settled = 0.0
+        ins_pending = 0.0
+
+        tax_total_accrued = 0.0
+        tax_total_remitted = 0.0
+        ins_total_accrued = 0.0
+        ins_total_remitted = 0.0
+
+        for obl in statutory_records:
+            accrued = float(obl.amount_accrued or obl.amount_estimated or 0.0)
+            remitted = float(obl.amount_remitted or 0.0)
+            pending = max(0.0, accrued - remitted)
+
+            if obl.obligation_type in tax_types:
+                tax_settled += remitted
+                tax_pending += pending
+                tax_total_accrued += accrued
+                tax_total_remitted += remitted
+            elif obl.obligation_type in insurance_types:
+                ins_settled += remitted
+                ins_pending += pending
+                ins_total_accrued += accrued
+                ins_total_remitted += remitted
+
+        # Ratio of remittance for employee breakdown
+        tax_remit_ratio = (tax_total_remitted / tax_total_accrued) if tax_total_accrued > 0 else (1.0 if tax_total_remitted > 0 else 0.0)
+        ins_remit_ratio = (ins_total_remitted / ins_total_accrued) if ins_total_accrued > 0 else (1.0 if ins_total_remitted > 0 else 0.0)
+
+        # Distribute into employee breakdown
+        for eid, es in emp_status_map.items():
+            raw_tax = es.pop("_raw_tax", 0.0)
+            raw_si = es.pop("_raw_si", 0.0)
+
+            es["tax_settled"] = round(raw_tax * tax_remit_ratio, 2)
+            es["tax_pending"] = round(raw_tax - es["tax_settled"], 2)
+
+            es["insurance_settled"] = round(raw_si * ins_remit_ratio, 2)
+            es["insurance_pending"] = round(raw_si - es["insurance_settled"], 2)
+
+            es["external_pending"] = round(es["external_pending"], 2)
+            es["external_settled"] = round(es["external_settled"], 2)
+            es["internal_pending"] = round(es["internal_pending"], 2)
+            es["internal_settled"] = round(es["internal_settled"], 2)
+
+            es["total_pending"] = round(
+                es["external_pending"] + es["internal_pending"] + es["tax_pending"] + es["insurance_pending"], 2
+            )
+            es["total_settled"] = round(
+                es["external_settled"] + es["internal_settled"] + es["tax_settled"] + es["insurance_settled"], 2
+            )
+
+        # If querying for a specific employee, the 4 flows reflect that employee
+        if employee_id:
+            es = emp_status_map.get(employee_id, {
+                "external_pending": 0.0, "external_settled": 0.0,
+                "internal_pending": 0.0, "internal_settled": 0.0,
+                "tax_pending": 0.0, "tax_settled": 0.0,
+                "insurance_pending": 0.0, "insurance_settled": 0.0,
+            })
+            flow_ext_pend, flow_ext_sett = es["external_pending"], es["external_settled"]
+            flow_int_pend, flow_int_sett = es["internal_pending"], es["internal_settled"]
+            flow_tax_pend, flow_tax_sett = es["tax_pending"], es["tax_settled"]
+            flow_ins_pend, flow_ins_sett = es["insurance_pending"], es["insurance_settled"]
+        else:
+            flow_ext_pend, flow_ext_sett = ext_pending, ext_settled
+            flow_int_pend, flow_int_sett = int_pending, int_settled
+            flow_tax_pend, flow_tax_sett = tax_pending, tax_settled
+            flow_ins_pend, flow_ins_sett = ins_pending, ins_settled
+
+        def _flow_status(pend: float, sett: float) -> str:
+            if pend <= 0.001 and sett > 0.001:
+                return "settled"
+            if sett <= 0.001 and pend > 0.001:
+                return "pending"
+            if pend > 0.001 and sett > 0.001:
+                return "partially_settled"
+            return "settled"
+
+        flows = [
+            {
+                "flow_type": "external_transfer",
+                "label": "External Wire Transfers",
+                "pending_amount": round(flow_ext_pend, 2),
+                "settled_amount": round(flow_ext_sett, 2),
+                "total_amount": round(flow_ext_pend + flow_ext_sett, 2),
+                "status": _flow_status(flow_ext_pend, flow_ext_sett),
+            },
+            {
+                "flow_type": "internal_cash",
+                "label": "Internal Cash Payroll",
+                "pending_amount": round(flow_int_pend, 2),
+                "settled_amount": round(flow_int_sett, 2),
+                "total_amount": round(flow_int_pend + flow_int_sett, 2),
+                "status": _flow_status(flow_int_pend, flow_int_sett),
+            },
+            {
+                "flow_type": "tax_obligation",
+                "label": "Income Tax Obligations",
+                "pending_amount": round(flow_tax_pend, 2),
+                "settled_amount": round(flow_tax_sett, 2),
+                "total_amount": round(flow_tax_pend + flow_tax_sett, 2),
+                "status": _flow_status(flow_tax_pend, flow_tax_sett),
+            },
+            {
+                "flow_type": "insurance_obligation",
+                "label": "Social Insurance Obligations",
+                "pending_amount": round(flow_ins_pend, 2),
+                "settled_amount": round(flow_ins_sett, 2),
+                "total_amount": round(flow_ins_pend + flow_ins_sett, 2),
+                "status": _flow_status(flow_ins_pend, flow_ins_sett),
+            },
+        ]
+
+        total_pending = round(sum(f["pending_amount"] for f in flows), 2)
+        total_settled = round(sum(f["settled_amount"] for f in flows), 2)
+        grand_total = round(total_pending + total_settled, 2)
+
+        emp_breakdown = list(emp_status_map.values()) if not employee_id else None
+
+        return {
+            "period": period,
+            "start_date": start_date,
+            "end_date": end_date,
+            "employee_id": employee_id,
+            "currency": currency or "USD",
+            "flows": flows,
+            "total_pending": total_pending,
+            "total_settled": total_settled,
+            "grand_total": grand_total,
+            "employee_breakdown": emp_breakdown,
+        }
 
 
 

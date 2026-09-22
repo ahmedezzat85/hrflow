@@ -6,6 +6,8 @@
   "description": "HRFlow frontend - vanilla JS, modular source bundled by Vite into a single self-contained index.html (no runtime multi-file fetches).",
   "scripts": {
     "dev": "vite",
+    "bundle:finance-api": "node scripts/assemble-finance-api.js",
+    "prebuild": "npm run bundle:finance-api",
     "build": "vite build",
     "preview": "vite preview",
     "test": "playwright test",

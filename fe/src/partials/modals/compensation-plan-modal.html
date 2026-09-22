@@ -1,0 +1,94 @@
+  <div class="modal-overlay" id="compensationPlanModal">
+    <div class="modal modal-v2" style="max-width:640px;">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-file-contract"></i></div>
+        <div class="modal-head-text">
+          <h3 id="compPlanModalTitle">Employee Compensation Plan</h3>
+          <p>Manage recurring effective-dated external USD and internal USD cash components.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('compensationPlanModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <!-- Current Active Plan Summary -->
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-user-check"></i> Active Compensation Summary <span class="line"></span></div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-weight:600; font-size:14px;" id="compPlanEmpName">—</span>
+              <span class="badge-pill pill-primary" id="compPlanTotalBadge">$0.00 / month</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div style="background:var(--surface); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+                <div style="font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; margin-bottom:4px;">
+                  <i class="fa-solid fa-building-columns"></i> External USD
+                </div>
+                <div style="font-size:15px; font-weight:700;" id="compPlanActiveExternal">$0.00</div>
+                <div style="font-size:11px; color:var(--text2); margin-top:2px;" id="compPlanExtEffective">Effective: —</div>
+              </div>
+              <div style="background:var(--surface); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+                <div style="font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; margin-bottom:4px;">
+                  <i class="fa-solid fa-money-bill-wave"></i> Internal USD Cash
+                </div>
+                <div style="font-size:15px; font-weight:700;" id="compPlanActiveInternal">$0.00</div>
+                <div style="font-size:11px; color:var(--text2); margin-top:2px;" id="compPlanIntEffective">Effective: —</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Set Component Form -->
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-pen-to-square"></i> Set / Update Component <span class="line"></span></div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Component Type <span class="req">*</span></label>
+              <select id="compPlanComponentType" onchange="onCompPlanTypeChange()">
+                <option value="external_usd">External USD (US Transfer)</option>
+                <option value="internal_usd_cash">Internal USD Cash (Local Cash)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>New Amount <span class="opt">USD</span> <span class="req">*</span></label>
+              <input type="number" id="compPlanAmount" step="0.01" min="0.01" placeholder="e.g. 2500">
+            </div>
+            <div class="form-field">
+              <label>Effective Start Date <span class="req">*</span></label>
+              <input type="date" id="compPlanStartDate">
+            </div>
+            <div class="form-field">
+              <label>Notes / Rationale</label>
+              <input type="text" id="compPlanNotes" placeholder="e.g. Compensation adjustment">
+            </div>
+          </div>
+          <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+            <button class="btn btn-fill" id="compPlanSaveBtn" onclick="saveCompPlanComponent(event)">
+              <i class="fa-solid fa-check"></i> Save Component
+            </button>
+          </div>
+        </div>
+
+        <!-- Effective-Dated History -->
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-clock-rotate-left"></i> Effective-Dated Plan History <span class="line"></span></div>
+          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:10px;">
+            <table class="responsive-card-table" style="font-size:12.5px;">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Amount</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="compPlanHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="compPlanCloseBtn" onclick="closeModal('compensationPlanModal')">Close</button>
+      </div>
+    </div>
+  </div>

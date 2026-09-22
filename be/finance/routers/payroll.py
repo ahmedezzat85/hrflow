@@ -4,7 +4,7 @@ API router for Guided Payroll Runs, Lifecycle State Transitions,
 Disbursements, GL Journal Posting, and Employee Payslips (Story 8.1).
 """
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, status, Response
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -14,8 +14,14 @@ from finance.schemas import (
     PayrollRunPreviewRequest,
     PayrollRunPreviewResponse,
     PayrollRunCreate,
+    PayrollRunGenerateRequest,
     PayrollPaymentRequest,
     EmployeePayslipResponse,
+    PayrollLineCreate,
+    PayrollLineResponse,
+    PayrollAdjustmentCreate,
+    PayrollAdjustmentUpdate,
+    PayrollAdjustmentResponse,
 )
 from finance.services.payroll_service import PayrollService
 
@@ -35,25 +41,110 @@ def list_payroll_runs(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Lists company payroll runs with metadata and lifecycle status."""
+    """Lists payroll runs with period, totals, and lifecycle status."""
     return service.list_runs(status_filter=status, search=search, limit=limit, offset=offset)
 
 
+@router.post("/previews", response_model=PayrollRunPreviewResponse)
 @router.post("/runs/preview", response_model=PayrollRunPreviewResponse)
 def preview_payroll_run(
     req: PayrollRunPreviewRequest,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
     """
-    Evaluates active staff to preview payroll calculations,
-    detect readiness exceptions, evaluate variance vs prior period, and preview balanced GL journal.
+    Evaluates active staff to preview net payments,
+    detect route-specific readiness issues, and evaluate net variance vs prior period.
     """
     return service.preview_run(
         period_label=req.period_label,
         period_start=req.period_start,
         period_end=req.period_end,
+        payment_date=req.payment_date,
         bank_account_id=req.bank_account_id,
+        external_funding_account_id=req.external_funding_account_id,
+        internal_funding_account_id=req.internal_funding_account_id,
+        fx_rate_source=req.fx_rate_source,
+        fx_rate_value=req.fx_rate_value,
+    )
+
+
+@router.get("/previews/{preview_id}", response_model=PayrollRunPreviewResponse)
+def get_preview(
+    preview_id: str = Path(..., description="Preview ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Returns active state of a preview including recipients, adjustments, and recalculated totals."""
+    return service.get_preview(preview_id)
+
+
+@router.get("/previews/{preview_id}/adjustments", response_model=List[PayrollAdjustmentResponse])
+def list_preview_adjustments(
+    preview_id: str = Path(..., description="Preview ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Lists active draft adjustments for the specified preview."""
+    return service.list_preview_adjustments(preview_id)
+
+
+@router.post("/previews/{preview_id}/adjustments", response_model=PayrollAdjustmentResponse, status_code=status.HTTP_201_CREATED)
+def create_preview_adjustment(
+    preview_id: str = Path(..., description="Preview ID"),
+    req: PayrollAdjustmentCreate = ...,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Adds a Commission or Bonus adjustment to a preview and immediately updates recipient and run totals."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.create_preview_adjustment(preview_id, req, user_email)
+
+
+@router.patch("/previews/{preview_id}/adjustments/{adjustment_id}", response_model=PayrollAdjustmentResponse)
+def update_preview_adjustment(
+    preview_id: str = Path(..., description="Preview ID"),
+    adjustment_id: str = Path(..., description="Adjustment ID"),
+    req: PayrollAdjustmentUpdate = ...,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Updates an existing adjustment on a preview and recalculates totals immediately."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.update_preview_adjustment(preview_id, adjustment_id, req, user_email)
+
+
+@router.delete("/previews/{preview_id}/adjustments/{adjustment_id}")
+def delete_preview_adjustment(
+    preview_id: str = Path(..., description="Preview ID"),
+    adjustment_id: str = Path(..., description="Adjustment ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Removes an adjustment from a preview and recalculates totals immediately."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.delete_preview_adjustment(preview_id, adjustment_id, user_email)
+
+
+@router.post("/runs/generate", response_model=PayrollRunResponse, status_code=status.HTTP_201_CREATED)
+def generate_payroll_run_from_plans(
+    req: PayrollRunGenerateRequest,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Generates a payroll run and split net payment lines directly from active employee compensation plans."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.generate_run_from_compensation_plans(
+        period_label=req.period_label,
+        period_start=req.period_start,
+        period_end=req.period_end,
+        payment_date=req.payment_date,
+        fx_rate_source=req.fx_rate_source or "first_of_month",
+        fx_rate_value=req.fx_rate_value,
+        bank_account_id=req.bank_account_id,
+        external_funding_account_id=req.external_funding_account_id,
+        internal_funding_account_id=req.internal_funding_account_id,
+        user_email=user_email,
     )
 
 
@@ -63,15 +154,25 @@ def create_payroll_run(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Creates a guided payroll run and snapshots employee line items."""
+    """Creates a net-payment payroll run and snapshots employee payment lines."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.create_run(
         period_label=req.period_label,
         period_start=req.period_start,
         period_end=req.period_end,
+        payment_date=req.payment_date,
         bank_account_id=req.bank_account_id,
+        external_funding_account_id=req.external_funding_account_id,
+        internal_funding_account_id=req.internal_funding_account_id,
         currency=req.currency,
         user_email=user_email,
+        fx_rate_source=req.fx_rate_source,
+        fx_rate_value=req.fx_rate_value,
+        preview_id=req.preview_id,
+        preview_version=req.preview_version,
+        source_version=req.source_version,
+        idempotency_key=req.idempotency_key,
+        submit_for_approval=req.submit_for_approval,
     )
 
 
@@ -81,8 +182,47 @@ def get_payroll_run_detail(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Returns complete payroll run detail including employee lines, liabilities, exceptions, and journal info."""
+    """Returns complete payroll run detail including employee payment lines, readiness issues, and payment status."""
     return service.get_run(run_id=run_id)
+
+
+@router.post("/runs/{run_id}/lines", response_model=PayrollLineResponse, status_code=status.HTTP_201_CREATED)
+def add_payroll_line(
+    run_id: int = Path(..., description="Payroll Run ID"),
+    req: PayrollLineCreate = ...,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Adds an ad-hoc commission or bonus line to a draft payroll run."""
+    return service.add_ad_hoc_line(
+        run_id=run_id,
+        employee_id=req.employee_id,
+        compensation_type=req.compensation_type,
+        amount=req.amount or req.base_salary,
+        notes=req.notes or req.snapshot_notes,
+    )
+
+
+@router.delete("/runs/{run_id}/lines/{line_id}")
+def delete_payroll_line(
+    run_id: int = Path(..., description="Payroll Run ID"),
+    line_id: int = Path(..., description="Payroll Line ID to delete"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Removes an ad-hoc or mistakenly added line from a draft payroll run."""
+    return service.delete_line(run_id=run_id, line_id=line_id)
+
+
+@router.post("/runs/{run_id}/submit", response_model=PayrollRunResponse)
+def submit_payroll_run(
+    run_id: int = Path(..., description="Payroll Run ID to submit for approval"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.write")),
+):
+    """Submits a draft payroll run for maker-checker approval."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.submit_run(run_id=run_id, user_email=user_email)
 
 
 @router.post("/runs/{run_id}/approve", response_model=PayrollRunResponse)
@@ -91,7 +231,7 @@ def approve_payroll_run(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
-    """Maker-checker approval for payroll run. Enforces blocking exception verification."""
+    """Maker-checker approval for payroll run. Enforces blocking exception verification and prevents self-approval."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.approve_run(run_id=run_id, user_email=user_email)
 
@@ -105,6 +245,21 @@ def finalize_payroll_run(
     """Locks the payroll run against edits and enables funding/disbursement."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.finalize_run(run_id=run_id, user_email=user_email)
+
+
+@router.get("/runs/{run_id}/export")
+def export_payroll_run_csv(
+    run_id: int = Path(..., description="Payroll Run ID to export"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Exports net payment details with base amounts, adjustments, and final payments as CSV."""
+    csv_data = service.export_run_csv(run_id)
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="payroll_run_{run_id}.csv"'},
+    )
 
 
 @router.post("/runs/{run_id}/pay", response_model=PayrollRunResponse)

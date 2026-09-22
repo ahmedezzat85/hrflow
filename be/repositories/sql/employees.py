@@ -3,6 +3,7 @@ be/repositories/sql/employees.py
 SQLAlchemy-backed implementation of EmployeeRepository.
 """
 from typing import Optional, List, Dict, Any, Union
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -118,6 +119,45 @@ class SqlEmployeeRepository:
                 employee_id=emp.id,
             )
             db.add(user)
+            db.flush()
+
+            # Fix 2a: Write-through to CompensationPlanService
+            if internal_salary > 0 or external_salary > 0:
+                from finance.services.compensation_plan_service import CompensationPlanService
+                from finance.models import PayrollRunDB
+                comp_service = CompensationPlanService(db)
+                today_str = datetime.utcnow().strftime("%Y-%m-%d")
+                join_date = data.get("join_date", "")
+                eff_date = join_date if (join_date and len(join_date) == 10 and join_date[4] == '-' and join_date[7] == '-') else today_str
+                finalized_runs = (
+                    db.query(PayrollRunDB)
+                    .filter(PayrollRunDB.status.in_(["finalized", "paid", "partially_paid"]))
+                    .all()
+                )
+                if finalized_runs:
+                    max_period_end = max(r.period_end for r in finalized_runs)
+                    if eff_date <= max_period_end:
+                        eff_date = today_str
+                        if eff_date <= max_period_end:
+                            eff_date = (datetime.strptime(max_period_end, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+
+                if internal_salary > 0:
+                    comp_service.set_component(
+                        employee_id=emp.id,
+                        component_type="internal_usd_cash",
+                        amount=internal_salary,
+                        effective_start_date=eff_date,
+                        notes="Synced from employee profile",
+                    )
+                if external_salary > 0:
+                    comp_service.set_component(
+                        employee_id=emp.id,
+                        component_type="external_usd",
+                        amount=external_salary,
+                        effective_start_date=eff_date,
+                        notes="Synced from employee profile",
+                    )
+
             db.commit()
             return emp.id
 
@@ -128,7 +168,8 @@ class SqlEmployeeRepository:
                 return False
 
             updates_dict = dict(updates)
-            if "internal_salary_usd" in updates_dict or "external_salary_usd" in updates_dict:
+            has_salary_change = "internal_salary_usd" in updates_dict or "external_salary_usd" in updates_dict
+            if has_salary_change:
                 current_internal = emp.internal_salary_usd or 0.0
                 current_external = emp.external_salary_usd or 0.0
                 new_internal = float(updates_dict.get("internal_salary_usd", current_internal))
@@ -138,6 +179,45 @@ class SqlEmployeeRepository:
             for k, v in updates_dict.items():
                 if hasattr(emp, k):
                     setattr(emp, k, v)
+            db.flush()
+
+            if has_salary_change:
+                from finance.services.compensation_plan_service import CompensationPlanService
+                from finance.models import PayrollRunDB
+                comp_service = CompensationPlanService(db)
+                today_str = datetime.utcnow().strftime("%Y-%m-%d")
+                finalized_runs = (
+                    db.query(PayrollRunDB)
+                    .filter(PayrollRunDB.status.in_(["finalized", "paid", "partially_paid"]))
+                    .all()
+                )
+                eff_date = today_str
+                if finalized_runs:
+                    max_period_end = max(r.period_end for r in finalized_runs)
+                    if eff_date <= max_period_end:
+                        eff_date = (datetime.strptime(max_period_end, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+
+                if "internal_salary_usd" in updates_dict:
+                    val = float(updates_dict["internal_salary_usd"] or 0)
+                    if val > 0:
+                        comp_service.set_component(
+                            employee_id=emp.id,
+                            component_type="internal_usd_cash",
+                            amount=val,
+                            effective_start_date=eff_date,
+                            notes="Synced from employee profile",
+                        )
+                if "external_salary_usd" in updates_dict:
+                    val = float(updates_dict["external_salary_usd"] or 0)
+                    if val > 0:
+                        comp_service.set_component(
+                            employee_id=emp.id,
+                            component_type="external_usd",
+                            amount=val,
+                            effective_start_date=eff_date,
+                            notes="Synced from employee profile",
+                        )
+
             db.commit()
             return True
 

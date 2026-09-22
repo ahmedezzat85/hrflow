@@ -593,22 +593,59 @@ class PayrollRunDB(Base):
     headcount = Column(Integer, default=0)
     currency = Column(String(10), default="USD")
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by = Column(String(255), nullable=True)
     approved_at = Column(DateTime, nullable=True)
     approved_by = Column(String(255), nullable=True)
     finalized_at = Column(DateTime, nullable=True)
     finalized_by = Column(String(255), nullable=True)
     paid_at = Column(DateTime, nullable=True)
     paid_by = Column(String(255), nullable=True)
+    payment_date = Column(String(20), nullable=True)
+    preview_id = Column(String(50), nullable=True)
+    preview_version = Column(Integer, default=1, nullable=True)
+    source_version = Column(String(100), nullable=True)
     journal_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
+    fx_rate_source = Column(String(30), default="first_of_month", nullable=True)  # first_of_month / payment_date
+    fx_rate_value = Column(Float, nullable=True)
     liabilities_summary_json = Column(Text, default="{}")
     exceptions_json = Column(Text, default="[]")
     variance_summary_json = Column(Text, default="{}")
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
-    bank_account = relationship("FinanceBankAccountDB")
+    adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
+    bank_account = relationship("FinanceBankAccountDB", foreign_keys=[bank_account_id])
+    external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
+    internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
     journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
+
+
+class PayrollAdjustmentDB(Base):
+    __tablename__ = "finance_payroll_adjustments"
+
+    id = Column(String(50), primary_key=True)  # e.g. "adj_xxx"
+    employee_id = Column(Integer, nullable=False, index=True)
+    preview_id = Column(String(50), nullable=True, index=True)
+    payroll_run_id = Column(Integer, ForeignKey("finance_payroll_runs.id", ondelete="CASCADE"), nullable=True, index=True)
+    type = Column(String(30), nullable=False)  # COMMISSION | BONUS
+    direction = Column(String(20), default="ADDITION", nullable=False)  # ADDITION
+    amount = Column(Float, nullable=False)  # strictly positive
+    currency = Column(String(10), default="USD", nullable=False)
+    payment_source = Column(String(10), default="INT", nullable=False)  # INT | EXT
+    effective_period = Column(String(20), nullable=False)  # YYYY-MM
+    description = Column(String(255), nullable=True)
+    external_reference = Column(String(100), nullable=True, index=True)
+    origin = Column(String(20), default="MANUAL", nullable=False)  # MANUAL | IMPORT
+    status = Column(String(20), default="DRAFT", nullable=False)  # DRAFT | SUBMITTED | APPROVED | REMOVED
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payroll_run = relationship("PayrollRunDB", back_populates="adjustments")
 
 
 class PayrollLineDB(Base):
@@ -619,6 +656,9 @@ class PayrollLineDB(Base):
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     employee_name = Column(String(255), nullable=True)
     department = Column(String(100), nullable=True)
+    compensation_type = Column(String(50), default="internal_usd_cash", nullable=True)  # external_usd / internal_usd_cash / commission_sales / commission_support / bonus
+    is_taxable_local = Column(Boolean, default=True, nullable=True)
+    is_insurable = Column(Boolean, default=True, nullable=True)
     base_salary = Column(Float, default=0.0)
     allowances_total = Column(Float, default=0.0)
     deductions_total = Column(Float, default=0.0)
@@ -632,9 +672,11 @@ class PayrollLineDB(Base):
     snapshot_notes = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
     paid_at = Column(DateTime, nullable=True)
+    linked_payment_id = Column(Integer, ForeignKey("finance_payments.id", ondelete="SET NULL"), nullable=True, index=True)
 
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
+    linked_payment = relationship("PaymentDB", foreign_keys=[linked_payment_id])
 
 
 class AccountTransferDB(Base):
@@ -761,3 +803,28 @@ class StatutoryObligationDB(Base):
 
 
 FinanceStatutoryObligationDB = StatutoryObligationDB
+
+
+class EmployeeCompensationPlanDB(Base):
+    __tablename__ = "finance_employee_compensation_plans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
+    component_type = Column(String(50), nullable=False, index=True)  # external_usd | internal_usd_cash
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), default="USD", nullable=False)
+    effective_start_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    effective_end_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD, null when active
+    notes = Column(Text, default="", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    employee = relationship("EmployeeDB", foreign_keys=[employee_id])
+
+    __table_args__ = (
+        Index("ix_emp_comp_plan_lookup", "employee_id", "component_type", "effective_end_date"),
+    )
+
+
+FinanceEmployeeCompensationPlanDB = EmployeeCompensationPlanDB
+

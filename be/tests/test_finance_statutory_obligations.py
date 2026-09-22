@@ -43,8 +43,8 @@ def _get_or_create_bank_account() -> int:
         return new_acc.id
 
 
-def test_payroll_finalization_auto_generates_estimated_obligations(app_client, admin_cookies):
-    """A finalized payroll run automatically creates estimated obligations for social insurance and income tax."""
+def test_payroll_finalization_does_not_auto_generate_statutory_obligations(app_client, admin_cookies):
+    """A finalized payroll run does not auto-generate statutory obligations under net payment runner."""
     period_label = f"2026-T{int(datetime.utcnow().timestamp()) % 10000}"
     with get_db_context() as db:
         run = PayrollRunDB(
@@ -53,9 +53,7 @@ def test_payroll_finalization_auto_generates_estimated_obligations(app_client, a
             period_end="2026-09-30",
             status="approved",
             currency="USD",
-            total_gross=20000.0,
             total_net=15000.0,
-            liabilities_summary_json='{"social_insurance_employee": 1200.0, "social_insurance_employer": 2800.0, "income_tax_withheld": 2200.0}',
             created_at=datetime.utcnow(),
             approved_at=datetime.utcnow(),
             approved_by="admin@hrflow.test",
@@ -68,27 +66,11 @@ def test_payroll_finalization_auto_generates_estimated_obligations(app_client, a
     fin_resp = app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
     assert fin_resp.status_code == 200
 
-    # Verify estimated statutory obligations created
+    # Verify NO estimated statutory obligations are created from payroll run
     stat_resp = app_client.get(f"/api/finance/statutory-obligations?period={period_label}", cookies=admin_cookies)
     assert stat_resp.status_code == 200
     obligations = stat_resp.json()
-    assert len(obligations) >= 3
-
-    types = {o["obligation_type"]: o for o in obligations}
-    assert "social_insurance_employee" in types
-    assert "social_insurance_employer" in types
-    assert "income_tax" in types
-
-    for obl_type in ("social_insurance_employee", "social_insurance_employer", "income_tax"):
-        obl = types[obl_type]
-        assert obl["status"] == "estimated"
-        assert obl["source_type"] == "payroll_run"
-        assert obl["source_id"] == run_id
-        assert obl["amount_estimated"] is not None
-        assert obl["amount_estimated"] > 0
-        assert obl["amount_accrued"] == obl["amount_estimated"]
-        assert obl["variance_amount"] == 0.0
-        assert obl["amount_remitted"] == 0.0
+    assert len(obligations) == 0
 
 
 def test_confirm_or_adjust_statutory_obligation(app_client, admin_cookies):

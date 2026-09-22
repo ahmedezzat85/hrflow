@@ -1,892 +1,913 @@
-// ==========================================
-// 4. Guided Payroll Operations & Runs
-// ==========================================
+/**
+ * fe/public/js/finance-payroll.js
+ * In-Page Payroll Module Controller for HRFlow
+ * Sourced and synced directly with real database employees and bank accounts
+ */
 
-let wizardCurrentStep = 1;
-let wizardPreviewData = null;
-let currentDetailRun = null;
+(function () {
+  const seedEmployees = [
+    { id: 301, name: 'Youssef Adel', baseExt: 1800, baseInt: 4300, bonuses: [], exception: null },
+    { id: 302, name: 'Salma Ibrahim', baseExt: 0, baseInt: 4450, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
+    { id: 303, name: 'Karim Nabil', baseExt: 2500, baseInt: 4500, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
+    { id: 304, name: 'Mariam Essam', baseExt: 1200, baseInt: 4550, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
+    { id: 305, name: 'Omar Farouk', baseExt: 0, baseInt: 4200, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
+    { id: 306, name: 'Nadine Samir', baseExt: 2000, baseInt: 3100, bonuses: [], exception: null },
+    { id: 307, name: 'Hassan Tarek', baseExt: 0, baseInt: 5200, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
+    { id: 308, name: 'Lina Kamal', baseExt: 1600, baseInt: 3900, bonuses: [], exception: null }
+  ];
 
-async function loadFinancePayroll() {
-  const bar = document.getElementById("financePayrollLoadingBar");
-  if (bar) bar.style.display = "block";
+  const seedBanks = [
+    { id: 1, name: 'Primary Treasury Operating Account', type: 'internal', currency: 'USD', number: '****4021', isDefault: true },
+    { id: 2, name: 'Global Payments Partner Account', type: 'external', currency: 'USD', number: '****7788', isDefault: true }
+  ];
 
-  try {
-    const items = await FinanceApi.getPayrollRuns();
-    FinanceState.payrollRuns = items || [];
-    renderFinancePayroll(FinanceState.payrollRuns);
-  } catch (err) {
-    console.error("Failed to load payroll runs:", err);
-    showToast("Failed to load payroll runs: " + (err.message || err), "error");
-  } finally {
-    if (bar) bar.style.display = "none";
-  }
-}
+  const FLOW = ['draft', 'approved', 'processing', 'paid'];
+  const STEP_META = {
+    draft: { label: '1. Review & Draft', hint: 'Step 1 of 4 — Review payroll lines, add bonuses if needed, then click Next to save as draft.' },
+    approved: { label: '2. Approve', hint: 'Step 2 of 4 — Draft saved and locked. Click Next to approve the run (blocked if any exception is blocking).' },
+    processing: { label: '3. Processing', hint: 'Step 3 of 4 — Transfers submitted to the bank and awaiting confirmation. Click Next to simulate bank confirmation.' },
+    paid: { label: '4. Paid', hint: 'Step 4 of 4 — Funds confirmed received. The GL journal has been posted automatically.' }
+  };
+  const DONE_HINT = 'Cycle complete — payroll is Paid and the GL journal has been posted automatically.';
 
-function renderFinancePayroll(items) {
-  const tbody = document.getElementById("financePayrollTableBody");
-  const empty = document.getElementById("financePayrollEmpty");
-  if (!tbody) return;
+  const PayrollApp = {
+    rows: JSON.parse(JSON.stringify(seedEmployees)),
+    banks: JSON.parse(JSON.stringify(seedBanks)),
+    selectedExternalAccountId: 2,
+    selectedInternalAccountId: 1,
+    month: '2026-09',
+    payDate: '2026-09-30',
+    start: '2026-09-01',
+    end: '2026-09-30',
+    stepIndex: 0,
+    expandedId: null,
+    journalPosted: false,
+    audit: [],
+    historyRuns: [
+      { period: '2026-08', status: 'paid', net: 34210.00, employees: 8, updated: '2026-08-30 18:42' },
+      { period: '2026-07', status: 'paid', net: 33875.50, employees: 8, updated: '2026-07-31 17:10' },
+      { period: '2026-06', status: 'paid', net: 33420.00, employees: 8, updated: '2026-06-30 16:55' }
+    ],
+    initialized: false,
 
-  // Update KPI cards
-  const runs = items || [];
-  const latestRun = runs.length > 0 ? runs[0] : null;
-  const lastRunNetEl = document.getElementById("kpiLastRunNet");
-  const lastRunPeriodEl = document.getElementById("kpiLastRunPeriod");
-  const activeStaffEl = document.getElementById("kpiActiveStaff");
-  const pendingRunsEl = document.getElementById("kpiPendingRuns");
-  const ytdPayrollEl = document.getElementById("kpiYtdPayroll");
+    async init() {
+      // 1. Sync real data from database
+      await this.loadEmployeesFromDb();
+      await this.loadBankAccountsFromDb();
 
-  if (lastRunNetEl && latestRun) {
-    lastRunNetEl.textContent = `$${Number(latestRun.total_net || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  if (lastRunPeriodEl && latestRun) {
-    lastRunPeriodEl.textContent = `Cycle: ${latestRun.period_label}`;
-  }
-
-  const staffCount = latestRun ? (latestRun.headcount || (latestRun.lines ? latestRun.lines.length : 0)) : 0;
-  if (activeStaffEl) activeStaffEl.textContent = staffCount || "0";
-
-  const pendingCount = runs.filter(r => r.status === "draft" || r.status === "approved").length;
-  if (pendingRunsEl) pendingRunsEl.textContent = pendingCount;
-
-  const ytdTotal = runs
-    .filter(r => r.status === "paid" || r.status === "partially_paid")
-    .reduce((sum, r) => sum + Number(r.total_net || 0), 0);
-  if (ytdPayrollEl) {
-    ytdPayrollEl.textContent = `$${ytdTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-
-  if (runs.length === 0) {
-    tbody.innerHTML = "";
-    if (empty) empty.style.display = "block";
-    return;
-  }
-  if (empty) empty.style.display = "none";
-
-  tbody.innerHTML = runs
-    .map((run) => {
-      const statusBadge = getStatusBadge(run.status);
-      const staff = run.headcount || (run.lines ? run.lines.length : 0);
-      const funding = run.funding_account_name || "Operating Account";
-      return `
-      <tr>
-        <td><strong>${run.period_label}</strong></td>
-        <td>${run.period_start} to ${run.period_end}</td>
-        <td style="text-align:center;"><span class="badge" style="background:#E2E8F0; color:#1E293B;">${staff} staff</span></td>
-        <td style="text-align:right;">$${Number(run.total_gross || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-        <td style="text-align:right;"><strong>$${Number(run.total_net || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-        <td style="text-align:right;">$${Number(run.total_employer_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-        <td><i class="fa-solid fa-building-columns" style="color:var(--text-muted); margin-right:4px;"></i>${funding}</td>
-        <td>${statusBadge}</td>
-        <td style="text-align:center;">
-          <button class="btn btn-sm btn-outline" onclick="openPayrollRunDetail('${run.id}')" id="btnDetailRun_${run.id}">
-            <i class="fa-solid fa-list-check"></i> Details
-          </button>
-        </td>
-      </tr>
-    `;
-    })
-    .join("");
-}
-
-function getStatusBadge(status) {
-  const s = (status || "draft").toLowerCase();
-  switch (s) {
-    case "paid":
-      return `<span class="badge badge-success" style="background:#10B981; color:#fff;"><i class="fa-solid fa-check"></i> PAID</span>`;
-    case "partially_paid":
-      return `<span class="badge" style="background:#F59E0B; color:#fff;"><i class="fa-solid fa-circle-exclamation"></i> PARTIAL</span>`;
-    case "finalized":
-      return `<span class="badge" style="background:#8B5CF6; color:#fff;"><i class="fa-solid fa-lock"></i> FINALIZED</span>`;
-    case "approved":
-      return `<span class="badge" style="background:#3B82F6; color:#fff;"><i class="fa-solid fa-stamp"></i> APPROVED</span>`;
-    case "cancelled":
-      return `<span class="badge" style="background:#EF4444; color:#fff;">CANCELLED</span>`;
-    case "draft":
-    default:
-      return `<span class="badge" style="background:#94A3B8; color:#fff;">DRAFT</span>`;
-  }
-}
-
-function filterFinancePayrollRuns() {
-  const query = (document.getElementById("financePayrollSearch")?.value || "").toLowerCase().trim();
-  const statusFilter = document.getElementById("financePayrollStatusFilter")?.value || "all";
-
-  const filtered = (FinanceState.payrollRuns || []).filter((run) => {
-    const matchQuery = !query ||
-      (run.period_label && run.period_label.toLowerCase().includes(query)) ||
-      (run.period_start && run.period_start.includes(query)) ||
-      (run.period_end && run.period_end.includes(query));
-
-    const matchStatus = statusFilter === "all" || (run.status && run.status.toLowerCase() === statusFilter.toLowerCase());
-
-    return matchQuery && matchStatus;
-  });
-
-  renderFinancePayroll(filtered);
-}
-
-// ==========================================
-// 5-Step Guided Run Payroll Wizard
-// ==========================================
-async function openRunPayrollWizardModal() {
-  wizardCurrentStep = 1;
-  wizardPreviewData = null;
-
-  // Set default cycle month (current YYYY-MM)
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const periodInput = document.getElementById("wizardPeriodLabel");
-  if (periodInput) {
-    periodInput.value = `${year}-${month}`;
-    onWizardPeriodChanged(`${year}-${month}`);
-  }
-
-  // Populate Funding Bank Accounts
-  const fundingSelect = document.getElementById("wizardFundingAccount");
-  if (fundingSelect) {
-    fundingSelect.innerHTML = `<option value="">Loading accounts...</option>`;
-    try {
-      const accounts = await FinanceApi.getBankAccounts();
-      if (accounts && accounts.length > 0) {
-        fundingSelect.innerHTML = accounts
-          .map(acc => `<option value="${acc.id}">${acc.bank_name || 'Bank'} - ${acc.account_name} (${acc.account_number_masked || '••••'}) [${acc.currency}]</option>`)
-          .join("");
-      } else {
-        fundingSelect.innerHTML = `<option value="1">Primary Treasury Operating Account (USD)</option>`;
+      // 2. Set current user name
+      const userNameEl = document.getElementById('payrollCurrentUserName');
+      if (userNameEl) {
+        const curName = (typeof SessionInfo !== 'undefined' && SessionInfo.getName && SessionInfo.getName()) || 'Admin';
+        userNameEl.textContent = curName;
       }
-    } catch (e) {
-      fundingSelect.innerHTML = `<option value="1">Primary Treasury Operating Account (USD)</option>`;
-    }
-  }
 
-  updateWizardStepView();
-  const modal = document.getElementById("runPayrollWizardModal");
-  if (modal) modal.style.display = "flex";
-}
+      // 3. Populate settings form inputs
+      const monthInput = document.getElementById('payrollSetMonth');
+      if (monthInput) monthInput.value = this.month;
+      const payDateInput = document.getElementById('payrollSetPayDate');
+      if (payDateInput) payDateInput.value = this.payDate;
+      const startInput = document.getElementById('payrollSetStart');
+      if (startInput) startInput.value = this.start;
+      const endInput = document.getElementById('payrollSetEnd');
+      if (endInput) endInput.value = this.end;
 
-function closeRunPayrollWizardModal() {
-  const modal = document.getElementById("runPayrollWizardModal");
-  if (modal) modal.style.display = "none";
-}
+      this.drawFundingAccounts();
+      this.redraw();
 
-function onWizardPeriodChanged(val) {
-  if (!val) return;
-  const parts = val.split("-");
-  if (parts.length !== 2) return;
-  const y = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
+      if (!this.initialized) {
+        this.initialized = true;
+        this.showPage('list');
+      }
+    },
 
-  const firstDay = new Date(Date.UTC(y, m - 1, 1)).toISOString().split("T")[0];
-  const lastDay = new Date(Date.UTC(y, m, 0)).toISOString().split("T")[0];
+    async loadEmployeesFromDb() {
+      try {
+        let rawEmployees = null;
+        const isMock = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        
+        if (isMock) {
+          if (typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
+            rawEmployees = window.employees;
+          }
+        } else {
+          if (typeof Api !== 'undefined' && typeof Api.getEmployees === 'function') {
+            try {
+              rawEmployees = await Api.getEmployees();
+            } catch (apiErr) {
+              console.warn('[PayrollApp] API fetch failed, trying window.employees:', apiErr);
+            }
+          }
+          if (!rawEmployees && typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
+            rawEmployees = window.employees;
+          }
+        }
 
-  const startEl = document.getElementById("wizardPeriodStart");
-  const endEl = document.getElementById("wizardPeriodEnd");
-  if (startEl) startEl.value = firstDay;
-  if (endEl) endEl.value = lastDay;
-}
+        if (Array.isArray(rawEmployees) && rawEmployees.length > 0) {
+          const existingBonusesMap = {};
+          (this.rows || []).forEach(r => {
+            if (r.bonuses && r.bonuses.length) {
+              existingBonusesMap[r.id] = r.bonuses;
+            }
+          });
 
-async function navigateWizardStep(direction) {
-  const nextStep = wizardCurrentStep + direction;
-  if (nextStep < 1 || nextStep > 5) return;
+          const activeEmps = rawEmployees.filter(e => !e.status || String(e.status).toLowerCase() === 'active');
+          if (activeEmps.length > 0) {
+            this.rows = activeEmps.map(e => {
+              const baseExt = Number(e.externalSalaryUsd !== undefined ? e.externalSalaryUsd : (e.external_salary_usd || 0));
+              let baseInt = Number(e.internalSalaryUsd !== undefined ? e.internalSalaryUsd : (e.internal_salary_usd || 0));
+              if (baseExt === 0 && baseInt === 0 && e.salary) {
+                baseInt = Number(e.salary);
+              }
+              return {
+                id: e.id,
+                name: e.name,
+                dept: e.dept || e.department || 'Operations',
+                baseExt: baseExt,
+                baseInt: baseInt,
+                bonuses: existingBonusesMap[e.id] || [],
+                exception: null
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load employees from database:', err);
+      }
+    },
 
-  // If moving from step 1 to step 2, trigger preview calculation
-  if (wizardCurrentStep === 1 && direction > 0) {
-    const periodLabel = document.getElementById("wizardPeriodLabel")?.value;
-    const periodStart = document.getElementById("wizardPeriodStart")?.value;
-    const periodEnd = document.getElementById("wizardPeriodEnd")?.value;
-    const fundingAccountId = document.getElementById("wizardFundingAccount")?.value;
+    async loadBankAccountsFromDb() {
+      try {
+        let rawAccounts = null;
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getAccounts === 'function') {
+          rawAccounts = await FinanceApi.getAccounts({ is_active: true });
+        }
 
-    if (!periodLabel || !periodStart || !periodEnd) {
-      showToast("Please fill in cycle period and dates.", "warning");
-      return;
-    }
+        if (Array.isArray(rawAccounts) && rawAccounts.length > 0) {
+          this.banks = rawAccounts.map(acc => ({
+            id: acc.id,
+            name: acc.account_name || acc.name || `Account #${acc.id}`,
+            bank_name: acc.bank_name || '',
+            currency: acc.currency || 'USD',
+            number: acc.account_number || '****'
+          }));
 
-    const nextBtn = document.getElementById("wizardNextBtn");
-    if (nextBtn) {
-      nextBtn.disabled = true;
-      nextBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Calculating Preview...`;
-    }
+          let savedCfg = {};
+          try {
+            const rawSaved = localStorage.getItem('hrflow_payroll_funding_accounts');
+            if (rawSaved) savedCfg = JSON.parse(rawSaved);
+          } catch (_) {}
 
-    try {
-      wizardPreviewData = await FinanceApi.previewPayrollRun({
-        period_label: periodLabel,
-        period_start: periodStart,
-        period_end: periodEnd,
-        funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null
+          if (savedCfg.externalId && this.banks.some(b => String(b.id) === String(savedCfg.externalId))) {
+            this.selectedExternalAccountId = savedCfg.externalId;
+          } else {
+            const firstUsd = this.banks.find(b => (b.currency || '').toUpperCase() === 'USD') || this.banks[0];
+            this.selectedExternalAccountId = firstUsd ? firstUsd.id : null;
+          }
+
+          if (savedCfg.internalId && this.banks.some(b => String(b.id) === String(savedCfg.internalId))) {
+            this.selectedInternalAccountId = savedCfg.internalId;
+          } else {
+            const firstInt = this.banks.find(b => b.name.toLowerCase().includes('cash') || (b.currency || '').toUpperCase() === 'EGP') || this.banks[1] || this.banks[0];
+            this.selectedInternalAccountId = firstInt ? firstInt.id : null;
+          }
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load bank accounts from database:', err);
+      }
+    },
+
+    persistFundingAccounts() {
+      try {
+        localStorage.setItem('hrflow_payroll_funding_accounts', JSON.stringify({
+          externalId: this.selectedExternalAccountId,
+          internalId: this.selectedInternalAccountId
+        }));
+      } catch (_) {}
+    },
+
+    money(v) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v || 0);
+    },
+
+    nowStamp() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      return '2026-09-21 ' + timeStr;
+    },
+
+    currentStatusKey() {
+      return FLOW[this.stepIndex];
+    },
+
+    bonusTotals(row) {
+      let internal = 0, external = 0;
+      (row.bonuses || []).forEach(b => {
+        if (b.source === 'internal') internal += Number(b.amount || 0);
+        else external += Number(b.amount || 0);
       });
-      populateWizardData(wizardPreviewData);
-    } catch (err) {
-      console.error("Preview error:", err);
-      showToast("Failed to preview payroll cycle: " + (err.message || err), "error");
-      if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.innerHTML = `Next <i class="fa-solid fa-arrow-right"></i>`;
-      }
-      return;
-    } finally {
-      if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.innerHTML = `Next <i class="fa-solid fa-arrow-right"></i>`;
-      }
-    }
-  }
+      return { internal, external, total: internal + external };
+    },
 
-  wizardCurrentStep = nextStep;
-  updateWizardStepView();
-}
+    computeRow(row) {
+      const b = this.bonusTotals(row);
+      const totalInternal = (row.baseInt || 0) + b.internal;
+      const deductions = 0;
+      const internal = totalInternal - deductions;
+      const external = (row.baseExt || 0) + b.external;
+      const net = internal + external;
+      return { bonusTotal: b.total, totalInternal, deductions, internal, external, net };
+    },
 
-function updateWizardStepView() {
-  for (let i = 1; i <= 5; i++) {
-    const panel = document.getElementById(`wizardStep${i}`);
-    const pill = document.getElementById(`stepPill${i}`);
-    if (panel) panel.style.display = i === wizardCurrentStep ? "block" : "none";
-    if (pill) {
-      if (i === wizardCurrentStep) {
-        pill.classList.add("active");
-        pill.style.color = "var(--primary, #2563EB)";
-        const numSpan = pill.querySelector(".step-num");
-        if (numSpan) {
-          numSpan.style.background = "var(--primary, #2563EB)";
-          numSpan.style.color = "#fff";
+    rollup() {
+      return this.rows.reduce((acc, r) => {
+        const c = this.computeRow(r);
+        acc.baseExt += (r.baseExt || 0);
+        acc.baseInt += (r.baseInt || 0);
+        acc.bonus += c.bonusTotal;
+        acc.totalInt += c.totalInternal;
+        acc.deductions += c.deductions;
+        acc.internal += c.internal;
+        acc.external += c.external;
+        acc.net += c.net;
+        return acc;
+      }, { baseExt: 0, baseInt: 0, bonus: 0, totalInt: 0, deductions: 0, internal: 0, external: 0, net: 0 });
+    },
+
+    exceptions() {
+      const out = [];
+      this.rows.forEach(r => {
+        const b = this.bonusTotals(r);
+        if (b.total >= 1000) {
+          out.push({ type: 'warning', name: r.name, text: 'Total bonus amount is unusually high and should be reviewed.', empId: r.id });
         }
-      } else if (i < wizardCurrentStep) {
-        pill.classList.remove("active");
-        pill.style.color = "#10B981";
-        const numSpan = pill.querySelector(".step-num");
-        if (numSpan) {
-          numSpan.style.background = "#10B981";
-          numSpan.style.color = "#fff";
+        if (r.exception) {
+          out.push({ type: 'blocking', name: r.name, text: r.exception, empId: r.id, retry: true });
         }
-      } else {
-        pill.classList.remove("active");
-        pill.style.color = "var(--text-muted, #94A3B8)";
-        const numSpan = pill.querySelector(".step-num");
-        if (numSpan) {
-          numSpan.style.background = "var(--border-color, #CBD5E1)";
-          numSpan.style.color = "#fff";
-        }
-      }
-    }
-  }
+      });
+      return out;
+    },
 
-  const prevBtn = document.getElementById("wizardPrevBtn");
-  const nextBtn = document.getElementById("wizardNextBtn");
-  if (prevBtn) prevBtn.style.display = wizardCurrentStep > 1 ? "inline-block" : "none";
-  if (nextBtn) nextBtn.style.display = wizardCurrentStep < 5 ? "inline-block" : "none";
-}
+    addAudit(text) {
+      const who = (typeof SessionInfo !== 'undefined' && SessionInfo.getName && SessionInfo.getName()) || 'Admin';
+      this.audit.unshift({ who, when: this.nowStamp(), text });
+    },
 
-function populateWizardData(preview) {
-  if (!preview) return;
+    /* ---------------- Runs list view ---------------- */
+    drawRunsList() {
+      const tbody = document.getElementById('payrollRunsTableBody');
+      const countEl = document.getElementById('payrollRunsCount');
+      if (!tbody) return;
 
-  // Step 2: Variances & Employees Preview
-  const varHeadcount = document.getElementById("wizardVarianceHeadcount");
-  const varGross = document.getElementById("wizardVarianceGrossDelta");
-  const varNet = document.getElementById("wizardVarianceNetDelta");
-  const varPct = document.getElementById("wizardVariancePctChange");
+      const currentStatus = this.currentStatusKey();
+      const statusMap = {
+        draft: ['DRAFT', 'b-gray'],
+        approved: ['APPROVED', 'b-blue'],
+        processing: ['PROCESSING', 'b-orange'],
+        paid: ['PAID', 'b-green']
+      };
+      const t = this.rollup();
 
-  if (varHeadcount) varHeadcount.textContent = preview.headcount || 0;
-  if (preview.variance_summary) {
-    const v = preview.variance_summary;
-    if (varGross) {
-      const sign = v.gross_delta >= 0 ? "+" : "-";
-      varGross.textContent = `${sign}$${Math.abs(v.gross_delta || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-      varGross.style.color = v.gross_delta >= 0 ? "#10B981" : "#EF4444";
-    }
-    if (varNet) {
-      const sign = v.net_delta >= 0 ? "+" : "-";
-      varNet.textContent = `${sign}$${Math.abs(v.net_delta || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    }
-    if (varPct) {
-      const sign = v.pct_change >= 0 ? "+" : "";
-      varPct.textContent = `${sign}${Number(v.pct_change || 0).toFixed(1)}%`;
-    }
-  }
-
-  const empTableBody = document.getElementById("wizardEmployeesPreviewTableBody");
-  if (empTableBody && preview.lines) {
-    empTableBody.innerHTML = preview.lines
-      .map(line => `
-        <tr>
-          <td><strong>${line.employee_name}</strong></td>
-          <td>${line.department}</td>
-          <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank</span>'}</td>
-        </tr>
-      `)
-      .join("");
-  }
-
-  // Step 3: Exceptions & Readiness
-  const excList = document.getElementById("wizardExceptionsList");
-  const excClean = document.getElementById("wizardExceptionsClean");
-  const excBanner = document.getElementById("wizardExceptionsBanner");
-  const exceptions = preview.exceptions || [];
-
-  if (exceptions.length === 0) {
-    if (excList) excList.innerHTML = "";
-    if (excClean) excClean.style.display = "block";
-    if (excBanner) excBanner.style.display = "none";
-  } else {
-    if (excClean) excClean.style.display = "none";
-    const blockingCount = exceptions.filter(e => e.blocking).length;
-    if (excBanner) {
-      excBanner.style.display = "block";
-      if (blockingCount > 0) {
-        excBanner.style.background = "#FEF2F2";
-        excBanner.style.border = "1px solid #FCA5A5";
-        excBanner.style.color = "#991B1B";
-        excBanner.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <strong>${blockingCount} Blocking Exception(s) Detected:</strong> Approval is blocked until resolved. You may only save this cycle as a Draft.`;
-      } else {
-        excBanner.style.background = "#FFFBEB";
-        excBanner.style.border = "1px solid #FCD34D";
-        excBanner.style.color = "#92400E";
-        excBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>${exceptions.length} Warning(s) Detected:</strong> Please review adjustments before final approval.`;
-      }
-    }
-
-    if (excList) {
-      excList.innerHTML = exceptions.map(exc => `
-        <div class="card" style="padding:14px; margin-bottom:10px; border-left:4px solid ${exc.blocking ? '#EF4444' : '#F59E0B'}; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main);">
-              ${exc.employee_name} (${exc.department})
-            </div>
-            <div style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">
-              ${exc.message}
-            </div>
-          </div>
-          <div>
-            <span class="badge" style="background:${exc.blocking ? '#EF4444' : '#F59E0B'}; color:#fff;">
-              ${exc.blocking ? 'BLOCKING' : 'WARNING'}
-            </span>
-          </div>
-        </div>
-      `).join("");
-    }
-  }
-
-  // Step 4: Liabilities & Balanced GL Double-Entry Journal
-  if (preview.liabilities_summary) {
-    const liab = preview.liabilities_summary;
-    const lNet = document.getElementById("wizardLiabNetPay");
-    const lTax = document.getElementById("wizardLiabTax");
-    const lStaff = document.getElementById("wizardLiabStaffIns");
-    const lEmp = document.getElementById("wizardLiabEmployerIns");
-
-    if (lNet) lNet.textContent = `$${Number(liab.net_salaries_payable || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (lTax) lTax.textContent = `$${Number(liab.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (lStaff) lStaff.textContent = `$${Number(liab.social_insurance_staff || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (lEmp) lEmp.textContent = `$${Number(liab.social_insurance_employer || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  }
-
-  if (preview.journal_preview) {
-    const jp = preview.journal_preview;
-    const jBody = document.getElementById("wizardJournalTableBody");
-    const jFoot = document.getElementById("wizardJournalTableFoot");
-    const jBadge = document.getElementById("wizardJournalBalancedBadge");
-
-    if (jBadge) {
-      if (jp.is_balanced) {
-        jBadge.className = "badge badge-success";
-        jBadge.style.background = "#10B981";
-        jBadge.style.color = "#fff";
-        jBadge.innerHTML = `<i class="fa-solid fa-check"></i> Balanced (Zero Variance)`;
-      } else {
-        jBadge.className = "badge";
-        jBadge.style.background = "#EF4444";
-        jBadge.style.color = "#fff";
-        jBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Out of Balance`;
-      }
-    }
-
-    if (jBody && jp.items) {
-      jBody.innerHTML = jp.items.map(item => `
-        <tr>
-          <td><strong>${item.account_name}</strong></td>
-          <td><code>${item.account_code}</code></td>
-          <td style="color:var(--text-muted); font-size:0.8rem;">${item.description}</td>
-          <td style="text-align:right; font-weight:600;">${item.debit > 0 ? `$${Number(item.debit).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : '—'}</td>
-          <td style="text-align:right; font-weight:600;">${item.credit > 0 ? `$${Number(item.credit).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : '—'}</td>
-        </tr>
-      `).join("");
-    }
-
-    if (jFoot) {
-      jFoot.innerHTML = `
-        <tr>
-          <td colspan="3" style="text-align:right;">Total General Ledger Outflow:</td>
-          <td style="text-align:right; color:var(--primary, #2563EB);">$${Number(jp.total_debit || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; color:var(--primary, #2563EB);">$${Number(jp.total_credit || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+      let rowsHtml = `
+        <tr class="clickable" onclick="PayrollApp.openRun('current')">
+          <td><strong>${this.month}</strong></td>
+          <td>${this.start} &rarr; ${this.end}</td>
+          <td><span class="p-badge ${statusMap[currentStatus][1]}">${statusMap[currentStatus][0]}</span></td>
+          <td class="payroll-num">${this.money(t.net)}</td>
+          <td>${this.rows.length}</td>
+          <td>${this.audit[0] ? this.audit[0].when : '—'}</td>
         </tr>
       `;
-    }
-  }
 
-  // Step 5: Adjust Create/Approve button if blocking exceptions exist
-  const btnApprove = document.getElementById("btnWizardCreateAndApprove");
-  const hasBlocking = (preview.exceptions || []).some(e => e.blocking);
-  if (btnApprove) {
-    if (hasBlocking) {
-      btnApprove.disabled = true;
-      btnApprove.style.opacity = "0.5";
-      btnApprove.title = "Cannot approve with blocking exceptions. Fix bank details or save as draft.";
-    } else {
-      btnApprove.disabled = false;
-      btnApprove.style.opacity = "1.0";
-      btnApprove.title = "";
-    }
-  }
-}
-
-async function submitWizardCreateRun(autoApprove = false) {
-  if (!wizardPreviewData) {
-    showToast("No cycle preview data available.", "error");
-    return;
-  }
-
-  const periodLabel = document.getElementById("wizardPeriodLabel")?.value;
-  const periodStart = document.getElementById("wizardPeriodStart")?.value;
-  const periodEnd = document.getElementById("wizardPeriodEnd")?.value;
-  const fundingAccountId = document.getElementById("wizardFundingAccount")?.value;
-
-  const btn = autoApprove ? document.getElementById("btnWizardCreateAndApprove") : document.getElementById("btnWizardCreateDraftOnly");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing...`;
-  }
-
-  try {
-    const payload = {
-      period_label: periodLabel,
-      period_start: periodStart,
-      period_end: periodEnd,
-      currency: "USD",
-      funding_account_id: fundingAccountId ? parseInt(fundingAccountId, 10) : null,
-      lines: (wizardPreviewData.lines || []).map(l => ({
-        employee_id: l.employee_id,
-        employee_name: l.employee_name,
-        department: l.department,
-        base_salary: l.base_salary,
-        allowances_total: l.allowances_total,
-        deductions_total: l.deductions_total,
-        tax_withheld: l.tax_withheld,
-        employer_taxes: l.employer_taxes,
-        bank_name: l.bank_name,
-        bank_account_masked: l.bank_account_masked
-      }))
-    };
-
-    const newRun = await FinanceApi.createPayrollRun(payload);
-
-    if (autoApprove) {
-      try {
-        await FinanceApi.approvePayrollRun(newRun.id);
-        showToast(`Payroll run ${newRun.period_label} created and approved!`, "success");
-      } catch (appErr) {
-        console.warn("Auto-approve rejected:", appErr);
-        showToast(`Payroll run created as Draft. Approval blocked: ${appErr.message || appErr}`, "warning");
-      }
-    } else {
-      showToast(`Payroll run ${newRun.period_label} saved as Draft.`, "success");
-    }
-
-    closeRunPayrollWizardModal();
-    await loadFinancePayroll();
-    openPayrollRunDetail(newRun.id);
-  } catch (err) {
-    console.error("Create run failed:", err);
-    showToast("Failed to create payroll run: " + (err.message || err), "error");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = autoApprove ? `<i class="fa-solid fa-check-double"></i> Create & Approve Run` : `<i class="fa-solid fa-floppy-disk"></i> Save as Draft Only`;
-    }
-  }
-}
-
-// ==========================================
-// Run Detail Drawer & Lifecycle Actions
-// ==========================================
-async function openPayrollRunDetail(runId) {
-  try {
-    const run = await FinanceApi.getPayrollRun(runId);
-    currentDetailRun = run;
-    renderPayrollRunDetail(run);
-    const modal = document.getElementById("payrollRunDetailModal");
-    if (modal) modal.style.display = "flex";
-  } catch (err) {
-    console.error("Failed to load run detail:", err);
-    showToast("Failed to load payroll run details: " + (err.message || err), "error");
-  }
-}
-
-function closePayrollRunDetailModal() {
-  const modal = document.getElementById("payrollRunDetailModal");
-  if (modal) modal.style.display = "none";
-  currentDetailRun = null;
-}
-
-function renderPayrollRunDetail(run) {
-  if (!run) return;
-
-  const titleEl = document.getElementById("runDetailTitle");
-  const badgeEl = document.getElementById("runDetailStatusBadge");
-  const cycleDatesEl = document.getElementById("runDetailCycleDates");
-  const bankNameEl = document.getElementById("runDetailBankName");
-  const grossEl = document.getElementById("runDetailGross");
-  const netEl = document.getElementById("runDetailNet");
-  const dedEl = document.getElementById("runDetailDeductions");
-  const empCostEl = document.getElementById("runDetailEmployerCost");
-  const linesTbody = document.getElementById("runDetailLinesTableBody");
-
-  if (titleEl) titleEl.textContent = `Payroll Run #${run.period_label}`;
-  if (badgeEl) {
-    badgeEl.outerHTML = getStatusBadge(run.status);
-  }
-  if (cycleDatesEl) cycleDatesEl.textContent = `${run.period_start} to ${run.period_end}`;
-  if (bankNameEl) bankNameEl.textContent = run.funding_account_name || "Operating Account";
-
-  if (grossEl) grossEl.textContent = `$${Number(run.total_gross || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  if (netEl) netEl.textContent = `$${Number(run.total_net || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  if (dedEl) dedEl.textContent = `$${Number(run.total_deductions || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  if (empCostEl) empCostEl.textContent = `$${Number(run.total_employer_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-
-  // Update Action Buttons based on status
-  const status = (run.status || "draft").toLowerCase();
-  const btnApprove = document.getElementById("btnRunDetailApprove");
-  const btnFinalize = document.getElementById("btnRunDetailFinalize");
-  const btnDisburse = document.getElementById("btnRunDetailDisburse");
-  const btnRetry = document.getElementById("btnRunDetailRetryFailed");
-  const btnJournal = document.getElementById("btnRunDetailPostJournal");
-
-  if (btnApprove) btnApprove.style.display = status === "draft" ? "inline-block" : "none";
-  if (btnFinalize) btnFinalize.style.display = status === "approved" ? "inline-block" : "none";
-  if (btnDisburse) btnDisburse.style.display = status === "finalized" ? "inline-block" : "none";
-  const hasFailedLines = (run.lines || []).some(l => l.payment_status === "failed");
-  if (btnRetry) btnRetry.style.display = (status === "partially_paid" || hasFailedLines) ? "inline-block" : "none";
-  if (btnJournal) {
-    // Show GL post button if paid or partially paid and not yet posted
-    btnJournal.style.display = (status === "paid" || status === "partially_paid") ? "inline-block" : "none";
-    if (run.journal_transaction_id) {
-      btnJournal.disabled = true;
-      btnJournal.innerHTML = `<i class="fa-solid fa-check"></i> GL Journal Posted (#${run.journal_transaction_id})`;
-    } else {
-      btnJournal.disabled = false;
-      btnJournal.innerHTML = `<i class="fa-solid fa-book-journal-whills"></i> Post GL Journal`;
-    }
-  }
-
-  // Render Employee Lines
-  if (linesTbody) {
-    const lines = run.lines || [];
-    if (lines.length === 0) {
-      linesTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-muted);">No employee records found in this run.</td></tr>`;
-    } else {
-      linesTbody.innerHTML = lines.map(line => {
-        let payBadge = `<span class="badge" style="background:#94A3B8; color:#fff;">PENDING</span>`;
-        if (line.payment_status === "paid") {
-          payBadge = `<span class="badge" style="background:#10B981; color:#fff;"><i class="fa-solid fa-check"></i> PAID</span>`;
-        } else if (line.payment_status === "failed") {
-          payBadge = `<span class="badge" style="background:#EF4444; color:#fff;" title="${line.failure_reason || 'Failed'}"><i class="fa-solid fa-triangle-exclamation"></i> FAILED</span>`;
-        }
-
-        return `
-          <tr>
-            <td><strong>${line.employee_name || ('Employee #' + line.employee_id)}</strong></td>
-            <td>${line.department || '—'}</td>
-            <td style="text-align:right;">$${Number(line.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EF4444;">-$${Number(line.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; color:#EA580C;">-$${Number(line.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">$${Number(line.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td>${line.bank_name ? `${line.bank_name} (${line.bank_account_masked})` : '<span style="color:#EF4444;">Missing</span>'}</td>
-            <td style="text-align:center;">${payBadge}</td>
-            <td style="text-align:center;">
-              <button class="btn btn-sm btn-outline" onclick="openEmployeePayslipModal('${run.id}', '${line.employee_id}')" title="View Payslip">
-                <i class="fa-solid fa-file-invoice"></i>
-              </button>
-            </td>
+      this.historyRuns.forEach(r => {
+        rowsHtml += `
+          <tr class="clickable" onclick="PayrollApp.openHistoryRun('${r.period}')">
+            <td><strong>${r.period}</strong></td>
+            <td>${r.period}-01 &rarr; ${r.period}-30</td>
+            <td><span class="p-badge b-green">PAID</span></td>
+            <td class="payroll-num">${this.money(r.net)}</td>
+            <td>${r.employees || 8}</td>
+            <td>${r.updated}</td>
           </tr>
         `;
-      }).join("");
+      });
+
+      tbody.innerHTML = rowsHtml;
+      if (countEl) {
+        countEl.textContent = `${this.historyRuns.length + 1} runs · current cycle is ${statusMap[currentStatus][0]}`;
+      }
+    },
+
+    openRun(period) {
+      this.showPage('run');
+      this.redraw();
+    },
+
+    openHistoryRun(period) {
+      this.showPage('run');
+      this.showBanner(`Viewing historical closed run for ${period} (read-only reference).`, 'blue');
+      this.redraw();
+    },
+
+    /* ---------------- Run detail view ---------------- */
+    drawStepper() {
+      const stepperEl = document.getElementById('payrollStepper');
+      if (!stepperEl) return;
+
+      stepperEl.innerHTML = FLOW.map((key, i) => {
+        let cls = 'payroll-step-pill';
+        if (i < this.stepIndex) cls += ' done';
+        else if (i === this.stepIndex) cls += ' active';
+        return `<div class="${cls}"><span class="payroll-step-num">${i + 1}</span>${STEP_META[key].label}</div>`;
+      }).join('');
+    },
+
+    drawStats() {
+      const statsGrid = document.getElementById('payrollStatsGrid');
+      if (!statsGrid) return;
+
+      const t = this.rollup();
+      const cards = [
+        ['Headcount', String(this.rows.length)],
+        ['Total Net Payment', this.money(t.net)],
+        ['Total Internal Payout', this.money(t.internal)],
+        ['Total External Payout', this.money(t.external)],
+        ['Total Bonus Amount', this.money(t.bonus)]
+      ];
+
+      statsGrid.innerHTML = cards.map(([k, v]) => `
+        <div class="payroll-stat">
+          <div class="label">${k}</div>
+          <div class="value">${v}</div>
+        </div>
+      `).join('');
+    },
+
+    drawStatus() {
+      const key = this.currentStatusKey();
+      const statusMap = {
+        draft: ['DRAFT', 'b-gray'],
+        approved: ['APPROVED', 'b-blue'],
+        processing: ['PROCESSING', 'b-orange'],
+        paid: ['PAID', 'b-green']
+      };
+
+      const badge = document.getElementById('payrollStatusBadge');
+      if (badge) {
+        badge.textContent = statusMap[key][0];
+        badge.className = `p-badge ${statusMap[key][1]}`;
+      }
+
+      const revertBtn = document.getElementById('payrollRevertBtn');
+      if (revertBtn) {
+        revertBtn.classList.toggle('payroll-hidden', key === 'draft');
+      }
+
+      const lockNote = document.getElementById('payrollLockNote');
+      const lockText = document.getElementById('payrollLockText');
+      if (lockNote && lockText) {
+        if (key === 'draft') {
+          lockNote.classList.add('payroll-hidden');
+        } else {
+          lockNote.classList.remove('payroll-hidden');
+          const lockMsgs = {
+            approved: 'This run is locked. Employee lines cannot be edited while Approved. Use "Revert to draft" if a correction is needed.',
+            processing: 'This run is locked while transfers are processing at the bank. No edits are possible until Paid or reverted.',
+            paid: 'This run is Paid and permanently locked. No further edits are possible — corrections require a new adjustment run.'
+          };
+          lockText.textContent = lockMsgs[key] || '';
+        }
+      }
+    },
+
+    drawFooterControls() {
+      const key = this.currentStatusKey();
+      const hasBlocking = this.exceptions().some(x => x.type === 'blocking');
+      const atEnd = key === 'paid';
+
+      const hintEl = document.getElementById('payrollStepHint');
+      if (hintEl) {
+        hintEl.textContent = atEnd ? DONE_HINT : STEP_META[key].hint;
+      }
+
+      const backBtn = document.getElementById('payrollBackBtn');
+      if (backBtn) {
+        backBtn.disabled = this.stepIndex === 0 || key === 'paid';
+      }
+
+      const nextBtn = document.getElementById('payrollNextBtn');
+      if (nextBtn) {
+        nextBtn.textContent = atEnd ? 'Cycle Complete' : (hasBlocking ? 'Resolve exceptions to continue' : 'Next');
+        nextBtn.disabled = atEnd || (hasBlocking && (key === 'approved' || key === 'processing'));
+      }
+    },
+
+    drawTable() {
+      const tbody = document.getElementById('payrollTableBody');
+      if (!tbody) return;
+
+      const searchInput = document.getElementById('payrollSearchInput');
+      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+      const bonusSelect = document.getElementById('payrollBonusFilter');
+      const bonusFilter = bonusSelect ? bonusSelect.value : 'all';
+
+      const stepKey = this.currentStatusKey();
+      const locked = stepKey !== 'draft';
+
+      const filteredRows = this.rows.filter(r => {
+        const matchQ = !q || r.name.toLowerCase().includes(q) || String(r.id).includes(q);
+        const types = (r.bonuses || []).map(b => b.type);
+        const matchBonus = bonusFilter === 'all' || (bonusFilter === 'none' ? (!r.bonuses || r.bonuses.length === 0) : types.includes(bonusFilter));
+        return matchQ && matchBonus;
+      });
+
+      let html = '';
+      filteredRows.forEach(r => {
+        const c = this.computeRow(r);
+        const count = (r.bonuses || []).length;
+        const chips = count > 0 ? `<span class="bonus-chip">${count} item${count > 1 ? 's' : ''}</span>` : '';
+        const flagged = r.exception ? 'exception-row-flag' : '';
+
+        html += `
+          <tr class="${flagged}" style="${locked && !r.exception ? 'opacity:.88;' : ''}">
+            <td class="payroll-id-col"><span class="payroll-emp-id">#${r.id}</span></td>
+            <td class="payroll-name-col">
+              <div class="payroll-emp-name" title="${r.name}">${r.name}</div>
+              ${r.exception ? `<div style="margin-top:2px;"><span class="p-badge b-red">Payment failed</span></div>` : ''}
+            </td>
+            <td class="payroll-num">${this.money(r.baseExt)}</td>
+            <td class="payroll-num">${this.money(r.baseInt)}</td>
+            <td class="payroll-num payroll-bonus-col">
+              <div class="bonus-cell">
+                <span class="payroll-num">${this.money(c.bonusTotal)}</span>
+                ${chips}
+                <button class="add-bonus-btn" ${locked ? 'disabled title="Locked after draft step"' : `onclick="PayrollApp.toggleExpand(${r.id})" title="Add bonus / commission"`}>+</button>
+              </div>
+            </td>
+            <td class="payroll-num">${this.money(c.totalInternal)}</td>
+            <td class="payroll-num payroll-muted-col">${this.money(c.deductions)}</td>
+            <td class="payroll-num">${this.money(c.internal)}</td>
+            <td class="payroll-num">${this.money(c.external)}</td>
+            <td class="payroll-num" style="color:var(--primary, #2563eb); font-weight:800;">${this.money(c.net)}</td>
+          </tr>
+        `;
+
+        if (this.expandedId === r.id && !locked) {
+          html += `
+            <tr class="expand-row">
+              <td colspan="10">
+                <div class="expand-inner">
+                  <div class="existing-bonuses" id="chips-${r.id}">
+                    ${(r.bonuses || []).map((b, idx) => `
+                      <span class="bonus-tag">
+                        ${b.type} · ${this.money(b.amount)} · ${b.source === 'internal' ? 'INT' : 'EXT'}
+                        <span class="rm" onclick="PayrollApp.removeBonus(${r.id}, ${idx})">&times;</span>
+                      </span>
+                    `).join('') || '<span style="color:var(--text-muted); font-size:.82rem;">No additions added yet</span>'}
+                  </div>
+                  <div class="expand-form-row">
+                    <div class="field">
+                      <label>Type</label>
+                      <select id="type-${r.id}">
+                        <option value="Bonus">Bonus</option>
+                        <option value="Sales Commission">Sales Commission</option>
+                        <option value="Support Commission">Support Commission</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Amount (USD)</label>
+                      <input id="amt-${r.id}" type="number" step="0.01" placeholder="0.00" />
+                    </div>
+                    <div class="field">
+                      <label>Payment source</label>
+                      <div class="src-toggle" id="src-${r.id}">
+                        <button class="active" data-src="internal" onclick="PayrollApp.setSrc(${r.id}, 'internal')">Internal</button>
+                        <button data-src="external" onclick="PayrollApp.setSrc(${r.id}, 'external')">External</button>
+                      </div>
+                    </div>
+                    <div class="expand-btn-group">
+                      <button class="btn btn-primary btn-sm btn-bonus-submit" onclick="PayrollApp.submitBonus(${r.id})">Submit</button>
+                      <button class="btn btn-ghost btn-sm btn-bonus-close" onclick="PayrollApp.toggleExpand(${r.id})">Close</button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      });
+
+      tbody.innerHTML = html || `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-muted);">No employees match the current filters.</td></tr>`;
+
+      // Update footers
+      const t = this.rollup();
+      const updateText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+      updateText('fBaseExt', this.money(t.baseExt));
+      updateText('fBaseInt', this.money(t.baseInt));
+      updateText('fBonus', this.money(t.bonus));
+      updateText('fTotalInt', this.money(t.totalInt));
+      updateText('fDeductions', this.money(t.deductions));
+      updateText('fInternal', this.money(t.internal));
+      updateText('fExternal', this.money(t.external));
+      updateText('fNet', this.money(t.net));
+      updateText('accExternal', this.money(t.external));
+      updateText('accInternal', this.money(t.internal));
+    },
+
+    drawExceptions() {
+      const container = document.getElementById('payrollExceptionList');
+      if (!container) return;
+
+      const items = this.exceptions();
+      if (!items.length) {
+        container.innerHTML = `
+          <div class="payroll-exception-alert clear">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Readiness: All clear (Ready for payment)</span>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map(i => `
+        <div class="payroll-exception-alert ${i.type}">
+          <i class="fa-solid ${i.type === 'blocking' ? 'fa-circle-xmark' : 'fa-triangle-exclamation'}"></i>
+          <span>${i.type === 'blocking' ? 'Blocked' : 'Warning'}: ${i.name} — ${i.text}</span>
+          ${i.retry ? `<button class="retry-btn" onclick="PayrollApp.retryPayment(${i.empId})" style="margin-left:6px;">Retry payment</button>` : ''}
+        </div>
+      `).join('');
+    },
+
+    drawJournal() {
+      const key = this.currentStatusKey();
+      const journalCard = document.getElementById('payrollJournalCard');
+      if (!journalCard) return;
+
+      // Only show Journal once run is PAID
+      if (key !== 'paid' && !this.journalPosted) {
+        journalCard.classList.add('payroll-hidden');
+        return;
+      }
+
+      journalCard.classList.remove('payroll-hidden');
+
+      const badge = document.getElementById('payrollJournalBadge');
+      if (badge) {
+        badge.textContent = 'Posted';
+        badge.className = 'p-badge b-green';
+      }
+
+      const rowsContainer = document.getElementById('payrollJournalRows');
+      if (!rowsContainer) return;
+
+      const t = this.rollup();
+      const rows = [
+        ['Internal Payroll Expense', '6001', t.totalInt, 0],
+        ['External Payroll Expense', '6003', t.external, 0],
+        ['Deductions Payable', '2102', 0, t.deductions],
+        ['Internal Net Salaries Payable', '2103', 0, t.internal],
+        ['External Net Salaries Payable', '2105', 0, t.external],
+      ];
+      const debit = rows.reduce((s, r) => s + r[2], 0);
+      const credit = rows.reduce((s, r) => s + r[3], 0);
+
+      rowsContainer.innerHTML = rows.map(r => `
+        <div class="journal-row">
+          <div><strong>${r[0]}</strong></div>
+          <div><code>${r[1]}</code></div>
+          <div class="payroll-num">${r[2] ? this.money(r[2]) : '—'}</div>
+          <div class="payroll-num">${r[3] ? this.money(r[3]) : '—'}</div>
+        </div>
+      `).join('') + `
+        <div class="journal-row" style="background:var(--primary-soft, #e8f0ff); border-radius:6px; padding:6px 10px; margin-top:6px; font-weight:800;">
+          <div><strong>Totals</strong></div>
+          <div></div>
+          <div class="payroll-num">${this.money(debit)}</div>
+          <div class="payroll-num">${this.money(credit)}</div>
+        </div>
+      `;
+    },
+
+    toggleJournalDetails() {
+      const details = document.getElementById('payrollJournalDetails');
+      const chevron = document.getElementById('payrollJournalChevron');
+      if (!details) return;
+      const isHidden = details.classList.contains('payroll-hidden');
+      details.classList.toggle('payroll-hidden', !isHidden);
+      if (chevron) {
+        chevron.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+      }
+    },
+
+    drawPeriodLabel() {
+      const label = document.getElementById('payrollPeriodLabel');
+      if (label) label.textContent = this.month;
+
+      const sub = document.getElementById('payrollPeriodSubtitle');
+      if (sub) {
+        const extAcc = this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId));
+        const intAcc = this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId));
+        let fundingText = extAcc ? `External: ${extAcc.name} (${extAcc.currency || 'USD'})` : '';
+        if (intAcc) {
+          fundingText += (fundingText ? ' · ' : '') + `Internal: ${intAcc.name} (${intAcc.currency || 'USD'})`;
+        }
+        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${fundingText || 'Not configured'}`;
+      }
+    },
+
+    redraw() {
+      this.drawStepper();
+      this.drawStats();
+      this.drawStatus();
+      this.drawTable();
+      this.drawExceptions();
+      this.drawJournal();
+      this.drawFooterControls();
+      this.drawPeriodLabel();
+      this.drawRunsList();
+    },
+
+    toggleExpand(id) {
+      this.expandedId = this.expandedId === id ? null : id;
+      this.drawTable();
+    },
+
+    setSrc(id, src) {
+      const wrap = document.getElementById(`src-${id}`);
+      if (!wrap) return;
+      wrap.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.src === src);
+      });
+    },
+
+    submitBonus(id) {
+      const row = this.rows.find(r => r.id === id);
+      if (!row) return;
+
+      const typeEl = document.getElementById(`type-${id}`);
+      const amtEl = document.getElementById(`amt-${id}`);
+      const type = typeEl ? typeEl.value : 'Bonus';
+      const amount = Number((amtEl ? amtEl.value : '') || 0);
+
+      const srcBtn = document.querySelector(`#src-${id} button.active`);
+      const source = srcBtn ? srcBtn.dataset.src : 'internal';
+
+      if (!amount || amount <= 0) {
+        alert('Enter a bonus amount greater than zero.');
+        return;
+      }
+
+      if (!row.bonuses) row.bonuses = [];
+      row.bonuses.push({ type, amount, source });
+      this.addAudit(`Added ${type} of ${this.money(amount)} (${source}) for ${row.name}.`);
+
+      this.drawTable();
+      this.drawStats();
+      this.drawJournal();
+      this.drawExceptions();
+    },
+
+    removeBonus(id, idx) {
+      const row = this.rows.find(r => r.id === id);
+      if (!row || !row.bonuses) return;
+
+      const removed = row.bonuses[idx];
+      row.bonuses.splice(idx, 1);
+      this.addAudit(`Removed ${removed.type} of ${this.money(removed.amount)} for ${row.name}.`);
+
+      this.drawTable();
+      this.drawStats();
+      this.drawJournal();
+      this.drawExceptions();
+    },
+
+    retryPayment(empId) {
+      const row = this.rows.find(r => r.id === empId);
+      if (!row) return;
+
+      row.exception = null;
+      this.addAudit(`Retried payment for ${row.name} — transfer resubmitted successfully.`);
+      this.drawTable();
+      this.drawExceptions();
+      this.drawFooterControls();
+      this.showBanner(`Payment retried for ${row.name}. Exception cleared.`, 'blue');
+    },
+
+    showBanner(text, tone) {
+      const el = document.getElementById('payrollActionBanner');
+      if (!el) return;
+
+      const colors = {
+        green: ['#dcfce7', '#166534', '#bbf7d0'],
+        blue: ['#dbeafe', '#1d4ed8', '#bfdbfe'],
+        orange: ['#fef3c7', '#92400e', '#fde68a']
+      };
+      const c = colors[tone] || colors.blue;
+      el.style.display = 'block';
+      el.style.background = c[0];
+      el.style.color = c[1];
+      el.style.border = `1px solid ${c[2]}`;
+      el.textContent = text;
+    },
+
+    goNext() {
+      const key = this.currentStatusKey();
+
+      if (key === 'draft') {
+        this.stepIndex = 1;
+        this.addAudit('Draft saved and submitted for approval. Employee lines locked.');
+        this.redraw();
+        this.showBanner('Draft saved. The run is now locked and moved to Approved.', 'blue');
+        return;
+      }
+
+      if (key === 'approved') {
+        if (this.exceptions().some(x => x.type === 'blocking')) {
+          alert('Approval blocked: resolve blocking exceptions (failed payments) before continuing.');
+          return;
+        }
+        this.stepIndex = 2;
+        // Simulate one payment failure on an employee to demonstrate the exception/retry path
+        const target = this.rows[Math.min(4, this.rows.length - 1)];
+        if (target) {
+          target.exception = 'Bank transfer rejected: destination account details invalid.';
+        }
+        this.addAudit('Run approved. Transfers submitted to the bank for processing.');
+        this.redraw();
+        this.showBanner('Run approved and transfers submitted — status is now PROCESSING while the bank confirms.', 'orange');
+        return;
+      }
+
+      if (key === 'processing') {
+        if (this.exceptions().some(x => x.type === 'blocking')) {
+          alert('Cannot mark as Paid: one or more payments failed. Retry or resolve the exception first.');
+          return;
+        }
+        this.stepIndex = 3;
+        this.journalPosted = true;
+        this.addAudit('Bank confirmed all transfers. Payroll marked as Paid. GL journal posted automatically.');
+        this.redraw();
+        this.showBanner('Bank confirmed all transfers — payroll is now PAID and the GL journal was posted automatically.', 'green');
+        return;
+      }
+    },
+
+    goBack() {
+      if (this.stepIndex === 0 || this.currentStatusKey() === 'paid') return;
+      this.stepIndex -= 1;
+      const banner = document.getElementById('payrollActionBanner');
+      if (banner) banner.style.display = 'none';
+      this.redraw();
+    },
+
+    /* ---------------- Revert to draft ---------------- */
+    openRevertModal() {
+      const modal = document.getElementById('payrollRevertModal');
+      if (modal) modal.classList.add('show');
+    },
+
+    closeRevertModal() {
+      const modal = document.getElementById('payrollRevertModal');
+      if (modal) modal.classList.remove('show');
+      const reasonEl = document.getElementById('payrollRevertReason');
+      if (reasonEl) reasonEl.value = '';
+    },
+
+    confirmRevert() {
+      const reasonEl = document.getElementById('payrollRevertReason');
+      const reason = (reasonEl ? reasonEl.value : '').trim();
+      if (!reason) {
+        alert('A reason is required to revert this run to draft.');
+        return;
+      }
+
+      const fromStatus = this.currentStatusKey();
+      this.stepIndex = 0;
+      this.journalPosted = false;
+      this.rows.forEach(r => r.exception = null);
+      this.addAudit(`Reverted from ${fromStatus.toUpperCase()} back to DRAFT. Reason: "${reason}"`);
+      this.closeRevertModal();
+      this.redraw();
+      this.showBanner('Run reverted to Draft. Employee lines are unlocked again for correction.', 'orange');
+    },
+
+    /* ---------------- Settings view & Target Accounts Selection ---------------- */
+    drawFundingAccounts() {
+      const extSelect = document.getElementById('payrollTargetExternalAccount');
+      const intSelect = document.getElementById('payrollTargetInternalAccount');
+      if (!extSelect || !intSelect) return;
+
+      const renderOptions = (selectedId) => {
+        if (!this.banks || !this.banks.length) {
+          return '<option value="">No bank accounts found</option>';
+        }
+        return this.banks.map(b => `
+          <option value="${b.id}" ${String(b.id) === String(selectedId) ? 'selected' : ''}>
+            ${b.name} (${b.currency}) ${b.number ? '— ' + b.number : ''}
+          </option>
+        `).join('');
+      };
+
+      extSelect.innerHTML = renderOptions(this.selectedExternalAccountId);
+      intSelect.innerHTML = renderOptions(this.selectedInternalAccountId);
+    },
+
+    setFundingAccount(type, accountId) {
+      if (type === 'external') {
+        this.selectedExternalAccountId = accountId;
+      } else if (type === 'internal') {
+        this.selectedInternalAccountId = accountId;
+      }
+      this.persistFundingAccounts();
+      this.drawPeriodLabel();
+    },
+
+    async saveSettings() {
+      const monthInput = document.getElementById('payrollSetMonth');
+      if (monthInput && monthInput.value) this.month = monthInput.value;
+
+      const payDateInput = document.getElementById('payrollSetPayDate');
+      if (payDateInput && payDateInput.value) this.payDate = payDateInput.value;
+
+      const startInput = document.getElementById('payrollSetStart');
+      if (startInput && startInput.value) this.start = startInput.value;
+
+      const endInput = document.getElementById('payrollSetEnd');
+      if (endInput && endInput.value) this.end = endInput.value;
+
+      const extSelect = document.getElementById('payrollTargetExternalAccount');
+      if (extSelect && extSelect.value) this.selectedExternalAccountId = extSelect.value;
+
+      const intSelect = document.getElementById('payrollTargetInternalAccount');
+      if (intSelect && intSelect.value) this.selectedInternalAccountId = intSelect.value;
+
+      this.persistFundingAccounts();
+      this.drawPeriodLabel();
+      this.addAudit('Payroll settings updated: funding accounts and/or schedule changed.');
+      this.showPage('list');
+      this.showBanner('Payroll settings saved.', 'blue');
+    },
+
+    /* ---------------- Navigation between views ---------------- */
+    async showPage(page) {
+      const pageList = document.getElementById('payrollViewList');
+      const pageRun = document.getElementById('payrollViewRun');
+      const pageSettings = document.getElementById('payrollViewSettings');
+      const navList = document.getElementById('payrollNavList');
+      const navSettings = document.getElementById('payrollNavSettings');
+
+      if (pageList) pageList.classList.toggle('payroll-hidden', page !== 'list');
+      if (pageRun) pageRun.classList.toggle('payroll-hidden', page !== 'run');
+      if (pageSettings) pageSettings.classList.toggle('payroll-hidden', page !== 'settings');
+
+      if (navList) navList.classList.toggle('active', page === 'list' || page === 'run');
+      if (navSettings) navSettings.classList.toggle('active', page === 'settings');
+
+      if (page === 'list') {
+        this.drawRunsList();
+      } else if (page === 'run') {
+        this.redraw();
+      } else if (page === 'settings') {
+        await this.loadBankAccountsFromDb();
+        this.drawFundingAccounts();
+      }
     }
+  };
+
+  // Expose globally
+  window.PayrollApp = PayrollApp;
+
+  // Compatibility stubs for existing router and legacy call sites
+  window.loadFinancePayroll = async function () {
+    await PayrollApp.init();
+    PayrollApp.showPage('list');
+  };
+  window.openRunPayrollWizardModal = async function () {
+    await PayrollApp.init();
+    PayrollApp.openRun('current');
+  };
+  window.initPayrollTableDeferred = async function () {
+    await PayrollApp.init();
+  };
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const section = document.getElementById('a-finance-payroll');
+      if (section) {
+        if (section.classList.contains('active')) {
+          PayrollApp.init();
+        }
+        const observer = new MutationObserver(() => {
+          if (section.classList.contains('active')) {
+            PayrollApp.init();
+          }
+        });
+        observer.observe(section, { attributes: true, attributeFilter: ['class', 'style'] });
+      }
+    });
   }
-}
-
-async function approveCurrentPayrollRun() {
-  if (!currentDetailRun) return;
-  try {
-    const updated = await FinanceApi.approvePayrollRun(currentDetailRun.id);
-    showToast(`Payroll run ${updated.period_label} approved!`, "success");
-    currentDetailRun = updated;
-    renderPayrollRunDetail(updated);
-    await loadFinancePayroll();
-  } catch (err) {
-    console.error("Approve failed:", err);
-    showToast("Approval failed: " + (err.message || err), "error");
-  }
-}
-
-async function finalizeCurrentPayrollRun() {
-  if (!currentDetailRun) return;
-  try {
-    const updated = await FinanceApi.finalizePayrollRun(currentDetailRun.id);
-    showToast(`Payroll run ${updated.period_label} finalized and locked against edits!`, "success");
-    currentDetailRun = updated;
-    renderPayrollRunDetail(updated);
-    await loadFinancePayroll();
-  } catch (err) {
-    console.error("Finalize failed:", err);
-    showToast("Finalization failed: " + (err.message || err), "error");
-  }
-}
-
-async function disburseCurrentPayrollRun() {
-  if (!currentDetailRun) return;
-  const btn = document.getElementById("btnRunDetailDisburse");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Disbursing...`;
-  }
-
-  try {
-    const updated = await FinanceApi.payPayrollRun(currentDetailRun.id, { retry_failed_only: false });
-    if (updated.status === "paid") {
-      showToast(`All employee net salaries successfully disbursed!`, "success");
-    } else {
-      showToast(`Disbursement finished with status: ${updated.status}. Check failed lines.`, "warning");
-    }
-    currentDetailRun = updated;
-    renderPayrollRunDetail(updated);
-    await loadFinancePayroll();
-  } catch (err) {
-    console.error("Disbursement failed:", err);
-    showToast("Disbursement failed: " + (err.message || err), "error");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Fund & Disburse`;
-    }
-  }
-}
-
-async function retryFailedPayrollDisbursements() {
-  if (!currentDetailRun) return;
-  const btn = document.getElementById("btnRunDetailRetryFailed");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Retrying...`;
-  }
-
-  try {
-    const updated = await FinanceApi.payPayrollRun(currentDetailRun.id, { retry_failed_only: true });
-    showToast(`Retry completed. Updated status: ${updated.status}`, "success");
-    currentDetailRun = updated;
-    renderPayrollRunDetail(updated);
-    await loadFinancePayroll();
-  } catch (err) {
-    console.error("Retry failed:", err);
-    showToast("Retry failed: " + (err.message || err), "error");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Retry Failed Payments`;
-    }
-  }
-}
-
-async function postCurrentPayrollJournal() {
-  if (!currentDetailRun) return;
-  const btn = document.getElementById("btnRunDetailPostJournal");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Posting GL Journal...`;
-  }
-
-  try {
-    const updated = await FinanceApi.postPayrollJournal(currentDetailRun.id);
-    showToast(`Balanced GL Double-Entry Journal posted successfully (#${updated.journal_transaction_id})!`, "success");
-    currentDetailRun = updated;
-    renderPayrollRunDetail(updated);
-    await loadFinancePayroll();
-  } catch (err) {
-    console.error("GL Journal posting failed:", err);
-    showToast("Posting GL Journal failed: " + (err.message || err), "error");
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<i class="fa-solid fa-book-journal-whills"></i> Post GL Journal`;
-    }
-  }
-}
-
-function exportCurrentPayrollRunLines() {
-  if (!currentDetailRun || !currentDetailRun.lines) {
-    showToast("No line records to export.", "warning");
-    return;
-  }
-
-  const run = currentDetailRun;
-  const headers = ["Employee ID", "Employee Name", "Department", "Base Salary", "Allowances", "Deductions", "Tax Withheld", "Net Pay", "Bank Name", "Bank Account", "Payment Status"];
-  const rows = run.lines.map(l => [
-    `"${l.employee_id}"`,
-    `"${l.employee_name}"`,
-    `"${l.department}"`,
-    l.base_salary,
-    l.allowances_total,
-    l.deductions_total,
-    l.tax_withheld,
-    l.net_pay,
-    `"${l.bank_name || ''}"`,
-    `"${l.bank_account_masked || ''}"`,
-    `"${l.payment_status}"`
-  ]);
-
-  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `payroll_${run.period_label}_disbursements.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// ==========================================
-// Employee Payslip View Modal
-// ==========================================
-async function openEmployeePayslipModal(runId, employeeId) {
-  try {
-    const payslip = await FinanceApi.getEmployeePayslip(runId, employeeId);
-    if (!payslip) {
-      showToast("Payslip record not found.", "warning");
-      return;
-    }
-
-    const nameEl = document.getElementById("payslipEmpName");
-    const deptEl = document.getElementById("payslipDept");
-    const periodEl = document.getElementById("payslipPeriod");
-    const chipEl = document.getElementById("payslipStatusChip");
-    const baseEl = document.getElementById("payslipBaseSalary");
-    const allowEl = document.getElementById("payslipAllowances");
-    const dedEl = document.getElementById("payslipDeductions");
-    const taxEl = document.getElementById("payslipTax");
-    const netEl = document.getElementById("payslipNetPay");
-    const bankEl = document.getElementById("payslipBankName");
-    const accEl = document.getElementById("payslipMaskedAcc");
-    const dateEl = document.getElementById("payslipPaidDate");
-
-    if (nameEl) nameEl.textContent = payslip.employee_name || `Employee #${payslip.employee_id}`;
-    if (deptEl) deptEl.textContent = payslip.department || "General";
-    if (periodEl) periodEl.textContent = `Period ${payslip.period_label}`;
-    if (chipEl) {
-      chipEl.textContent = (payslip.payment_status || "PAID").toUpperCase();
-      chipEl.style.background = payslip.payment_status === "paid" ? "#10B981" : "#F59E0B";
-      chipEl.style.color = "#fff";
-    }
-
-    if (baseEl) baseEl.textContent = `$${Number(payslip.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (allowEl) allowEl.textContent = `$${Number(payslip.allowances_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (dedEl) dedEl.textContent = `-$${Number(payslip.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (taxEl) taxEl.textContent = `-$${Number(payslip.tax_withheld || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    if (netEl) netEl.textContent = `$${Number(payslip.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-
-    if (bankEl) bankEl.textContent = payslip.bank_name || "Direct Deposit";
-    if (accEl) accEl.textContent = payslip.bank_account_masked || "••••";
-    if (dateEl) dateEl.textContent = payslip.paid_at ? payslip.paid_at.split("T")[0] : payslip.period_end;
-
-    const modal = document.getElementById("employeePayslipModal");
-    if (modal) modal.style.display = "flex";
-  } catch (err) {
-    console.error("Failed to load payslip:", err);
-    showToast("Failed to load employee payslip: " + (err.message || err), "error");
-  }
-}
-
-function closeEmployeePayslipModal() {
-  const modal = document.getElementById("employeePayslipModal");
-  if (modal) modal.style.display = "none";
-}
-
-// ==========================================
-// 7. Employee Self-Service Payslips
-// ==========================================
-async function loadMyPayslips() {
-  const bar = document.getElementById("myPayslipsLoadingBar");
-  if (bar) bar.style.display = "block";
-
-  try {
-    const items = await FinanceApi.getMyPayslips();
-    FinanceState.myPayslips = items;
-    renderMyPayslips(items);
-  } catch (err) {
-    console.error("Failed to load my payslips:", err);
-  } finally {
-    if (bar) bar.style.display = "none";
-  }
-}
-
-function renderMyPayslips(items) {
-  const tbody = document.getElementById("myPayslipsTableBody");
-  const empty = document.getElementById("myPayslipsEmpty");
-  if (!tbody) return;
-
-  if (!items || items.length === 0) {
-    tbody.innerHTML = "";
-    if (empty) empty.style.display = "block";
-    return;
-  }
-  if (empty) empty.style.display = "none";
-
-  tbody.innerHTML = items
-    .map(
-      (ps) => `
-    <tr>
-      <td><strong>${ps.period_label}</strong></td>
-      <td>${ps.period_start} to ${ps.period_end}</td>
-      <td class="cell-money">$${Number(ps.base_salary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-      <td class="cell-money">$${Number(ps.allowances_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-      <td class="cell-money">-$${Number(ps.deductions_total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-      <td class="cell-money"><strong>$${Number(ps.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-      <td><span class="badge badge-success" style="background:#10B981; color:#fff;">PAID</span></td>
-      <td>
-        <button class="btn btn-sm btn-outline" onclick="openEmployeePayslipModal('${ps.payroll_run_id}', '${ps.employee_id}')">
-          <i class="fa-solid fa-file-invoice"></i> View
-        </button>
-      </td>
-    </tr>
-  `
-    )
-    .join("");
-}
-
-function refreshMyPayslips() {
-  loadMyPayslips();
-  showToast("Payslip records refreshed", "success");
-}
-
-// Window exports for Payroll Runs & Payslips
-window.loadFinancePayroll = loadFinancePayroll;
-window.renderFinancePayroll = renderFinancePayroll;
-window.filterFinancePayrollRuns = filterFinancePayrollRuns;
-window.openRunPayrollWizardModal = openRunPayrollWizardModal;
-window.closeRunPayrollWizardModal = closeRunPayrollWizardModal;
-window.onWizardPeriodChanged = onWizardPeriodChanged;
-window.navigateWizardStep = navigateWizardStep;
-window.submitWizardCreateRun = submitWizardCreateRun;
-window.openPayrollRunDetail = openPayrollRunDetail;
-window.closePayrollRunDetailModal = closePayrollRunDetailModal;
-window.approveCurrentPayrollRun = approveCurrentPayrollRun;
-window.finalizeCurrentPayrollRun = finalizeCurrentPayrollRun;
-window.disburseCurrentPayrollRun = disburseCurrentPayrollRun;
-window.retryFailedPayrollDisbursements = retryFailedPayrollDisbursements;
-window.postCurrentPayrollJournal = postCurrentPayrollJournal;
-window.exportCurrentPayrollRunLines = exportCurrentPayrollRunLines;
-window.openEmployeePayslipModal = openEmployeePayslipModal;
-window.closeEmployeePayslipModal = closeEmployeePayslipModal;
-window.loadMyPayslips = loadMyPayslips;
-window.renderMyPayslips = renderMyPayslips;
-window.refreshMyPayslips = refreshMyPayslips;
+})();

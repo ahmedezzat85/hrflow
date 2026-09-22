@@ -235,6 +235,267 @@ async function executeExport() {
   }
 }
 
+// ==========================================
+// Payroll Specific Exports (Excel / PDF)
+// ==========================================
+
+function exportToExcel(payrollRows, filename = 'payroll_worksheet') {
+  const rows = payrollRows || (typeof PayrollTableController !== 'undefined' ? PayrollTableController.getCurrentRows() : []);
+  const month = typeof PayrollCycleManager !== 'undefined' ? PayrollCycleManager.getCurrentMonth() : 'current';
+  const fname = `${filename}_${month}.csv`;
+
+  // Headers
+  const csvLines = [
+    ['Account Group', 'Employee ID', 'Name', 'Department', 'Base Salary', 'Overtime', 'Bonus', 'Sales Comm.', 'Support Comm.', 'Source', 'Deductions', 'Net Pay'].map(c => `"${c}"`).join(',')
+  ];
+
+  // Group by account
+  const groups = {};
+  rows.forEach((r) => {
+    const acc = r.account || 'General';
+    if (!groups[acc]) groups[acc] = [];
+    groups[acc].push(r);
+  });
+
+  let grandBase = 0, grandOT = 0, grandBonus = 0, grandSales = 0, grandSupp = 0, grandDed = 0, grandNet = 0;
+
+  Object.keys(groups).forEach((groupName) => {
+    const groupRows = groups[groupName];
+    let gBase = 0, gOT = 0, gBonus = 0, gSales = 0, gSupp = 0, gDed = 0, gNet = 0;
+
+    csvLines.push(`"-- Account Group: ${groupName} --",,,,,,,,,,,`);
+
+    groupRows.forEach((r) => {
+      const base = Number(r.baseSalary || 0);
+      const ot = Number(r.overtime || 0);
+      const bonus = Number(r.bonus || 0);
+      const sales = Number(r.salesComm || 0);
+      const supp = Number(r.supportComm || 0);
+      const ded = Number(r.deductions || 0);
+      const net = Number(r.netPay || 0);
+
+      gBase += base; gOT += ot; gBonus += bonus; gSales += sales; gSupp += supp; gDed += ded; gNet += net;
+
+      csvLines.push([
+        `"${groupName}"`,
+        `"${r.id}"`,
+        `"${r.name}"`,
+        `"${r.department}"`,
+        base.toFixed(2),
+        ot.toFixed(2),
+        bonus.toFixed(2),
+        sales.toFixed(2),
+        supp.toFixed(2),
+        `"${r.source}"`,
+        ded.toFixed(2),
+        net.toFixed(2)
+      ].join(','));
+    });
+
+    // Group Total Row
+    csvLines.push([
+      `"TOTAL (${groupName})"`,
+      '""', '""', '""',
+      gBase.toFixed(2),
+      gOT.toFixed(2),
+      gBonus.toFixed(2),
+      gSales.toFixed(2),
+      gSupp.toFixed(2),
+      '""',
+      gDed.toFixed(2),
+      gNet.toFixed(2)
+    ].join(','));
+
+    csvLines.push(''); // blank row between groups
+
+    grandBase += gBase; grandOT += gOT; grandBonus += gBonus;
+    grandSales += gSales; grandSupp += gSupp; grandDed += gDed; grandNet += gNet;
+  });
+
+  // Grand Total Row
+  csvLines.push([
+    '"GRAND TOTAL"',
+    '""', '""', '""',
+    grandBase.toFixed(2),
+    grandOT.toFixed(2),
+    grandBonus.toFixed(2),
+    grandSales.toFixed(2),
+    grandSupp.toFixed(2),
+    '""',
+    grandDed.toFixed(2),
+    grandNet.toFixed(2)
+  ].join(','));
+
+  const csvContent = '\uFEFF' + csvLines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  if (typeof showToast === 'function') {
+    showToast(`Payroll worksheet exported to ${fname}`, 'success');
+  }
+}
+
+function exportToPDF(payrollRows, title = 'Payroll Worksheet') {
+  const rows = payrollRows || (typeof PayrollTableController !== 'undefined' ? PayrollTableController.getCurrentRows() : []);
+  const month = typeof PayrollCycleManager !== 'undefined' ? PayrollCycleManager.getCurrentMonth() : 'current';
+
+  const groups = {};
+  rows.forEach((r) => {
+    const acc = r.account || 'General';
+    if (!groups[acc]) groups[acc] = [];
+    groups[acc].push(r);
+  });
+
+  let sectionsHtml = '';
+  Object.keys(groups).forEach((groupName) => {
+    const groupRows = groups[groupName];
+    let gBase = 0, gOT = 0, gBonus = 0, gSales = 0, gSupp = 0, gDed = 0, gNet = 0;
+
+    let rowsHtml = '';
+    groupRows.forEach((r) => {
+      const base = Number(r.baseSalary || 0);
+      const ot = Number(r.overtime || 0);
+      const bonus = Number(r.bonus || 0);
+      const sales = Number(r.salesComm || 0);
+      const supp = Number(r.supportComm || 0);
+      const ded = Number(r.deductions || 0);
+      const net = Number(r.netPay || 0);
+
+      gBase += base; gOT += ot; gBonus += bonus; gSales += sales; gSupp += supp; gDed += ded; gNet += net;
+
+      rowsHtml += `
+        <tr>
+          <td><strong>${r.name}</strong><br><small style="color:#666;">${r.id} · ${r.department}</small></td>
+          <td style="text-align:right;">$${base.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right;">$${ot.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right;">$${bonus.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right;">$${sales.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right;">$${supp.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:center;"><span style="padding:2px 6px; border:1px solid #999; border-radius:4px; font-size:11px;">${r.source}</span></td>
+          <td style="text-align:right; color:#c00;">-$${ded.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right; font-weight:bold;">$${net.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    });
+
+    sectionsHtml += `
+      <div class="account-group-page" style="page-break-after:always; margin-bottom:30px;">
+        <h3 style="margin-top:20px; border-bottom:2px solid #2563EB; padding-bottom:6px; color:#1E293B;">
+          Account Group: ${groupName} <span style="font-size:13px; font-weight:normal; color:#64748B;">(${groupRows.length} staff)</span>
+        </h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:10px;">
+          <thead>
+            <tr style="background:#F1F5F9; text-align:left; border-bottom:1px solid #CBD5E1;">
+              <th style="padding:8px;">Employee</th>
+              <th style="padding:8px; text-align:right;">Base</th>
+              <th style="padding:8px; text-align:right;">OT</th>
+              <th style="padding:8px; text-align:right;">Bonus</th>
+              <th style="padding:8px; text-align:right;">Sales Comm</th>
+              <th style="padding:8px; text-align:right;">Supp Comm</th>
+              <th style="padding:8px; text-align:center;">Source</th>
+              <th style="padding:8px; text-align:right;">Deductions</th>
+              <th style="padding:8px; text-align:right;">Net Pay</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="background:#F8FAFC; font-weight:bold; border-top:2px solid #94A3B8;">
+              <td style="padding:8px;">TOTAL (${groupName})</td>
+              <td style="padding:8px; text-align:right;">$${gBase.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td style="padding:8px; text-align:right;">$${gOT.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td style="padding:8px; text-align:right;">$${gBonus.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td style="padding:8px; text-align:right;">$${gSales.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td style="padding:8px; text-align:right;">$${gSupp.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td style="padding:8px; text-align:center;">—</td>
+              <td style="padding:8px; text-align:right; color:#c00;">-$${gDed.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td style="padding:8px; text-align:right; color:#2563EB;">$${gNet.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
+  if (printWindow) {
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>HRFlow Payroll - ${month}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #0F172A; }
+          table, th, td { border-bottom: 1px solid #E2E8F0; }
+          th, td { padding: 8px 6px; }
+          @media print {
+            .account-group-page { page-break-after: always; }
+          }
+        </style>
+      </head>
+      <body>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #0F172A; padding-bottom:12px;">
+          <div>
+            <h1 style="margin:0; font-size:22px; color:#2563EB;">HRFlow — Payroll Worksheet</h1>
+            <p style="margin:4px 0 0 0; color:#64748B; font-size:14px;">Cycle Period: <strong>${month}</strong></p>
+          </div>
+          <div style="text-align:right; font-size:12px; color:#64748B;">
+            Voyance Health HRFlow<br>Generated: ${new Date().toLocaleDateString()}
+          </div>
+        </div>
+        ${sectionsHtml}
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      try {
+        printWindow.print();
+      } catch (_) {}
+    }, 250);
+  }
+
+  if (typeof showToast === 'function') {
+    showToast(`Payroll print preview generated for ${month}`, 'info');
+  }
+}
+
+function togglePayrollExportMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('payrollExportMenuContent');
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+function closePayrollExportMenu() {
+  const menu = document.getElementById('payrollExportMenuContent');
+  if (menu) menu.style.display = 'none';
+}
+
+function triggerPayrollExcelExport() {
+  exportToExcel();
+}
+
+function triggerPayrollPdfExport() {
+  exportToPDF();
+}
+
+// Close export menu on window click
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', (e) => {
+    if (!e.target.closest('#payrollExportDropdown')) {
+      closePayrollExportMenu();
+    }
+  });
+}
+
 // Global window assignments
 window.openExportModal = openExportModal;
 window.closeExportModal = closeExportModal;
@@ -242,3 +503,10 @@ window.onExportDatasetChange = onExportDatasetChange;
 window.onExportPeriodTypeChange = onExportPeriodTypeChange;
 window.toggleExportFormatFields = toggleExportFormatFields;
 window.executeExport = executeExport;
+window.exportToExcel = exportToExcel;
+window.exportToPDF = exportToPDF;
+window.togglePayrollExportMenu = togglePayrollExportMenu;
+window.closePayrollExportMenu = closePayrollExportMenu;
+window.triggerPayrollExcelExport = triggerPayrollExcelExport;
+window.triggerPayrollPdfExport = triggerPayrollPdfExport;
+

@@ -3,8 +3,9 @@ be/finance/schemas.py
 Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import date, datetime
-from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel, Field
+from enum import Enum
+from typing import Optional, List, Dict, Any, Literal, Union
+from pydantic import BaseModel, Field, model_validator, field_validator
 
 
 # ==========================================
@@ -1852,6 +1853,7 @@ class PayrollExceptionItem(BaseModel):
     employee_id: int
     employee_name: str
     severity: str  # "blocking" | "warning"
+    code: Optional[str] = None
     title: str
     description: str
     correction_path: Optional[str] = None
@@ -1861,7 +1863,6 @@ class PayrollExceptionItem(BaseModel):
 class PayrollVarianceSummary(BaseModel):
     prior_period_label: Optional[str] = None
     headcount_delta: int = 0
-    gross_delta: float = 0.0
     net_delta: float = 0.0
     pct_change: float = 0.0
     joiners_count: int = 0
@@ -1869,52 +1870,67 @@ class PayrollVarianceSummary(BaseModel):
     raises_count: int = 0
 
 
-class PayrollLiabilitiesSummary(BaseModel):
-    net_pay_payable: float = 0.0
-    income_tax_withheld: float = 0.0
-    social_insurance_employee: float = 0.0
-    social_insurance_employer: float = 0.0
-    total_liabilities: float = 0.0
-
-
-class PayrollJournalItem(BaseModel):
-    account: str
-    account_code: str
-    direction: str  # "debit" | "credit"
-    amount: float
-    description: str
-
-
-class PayrollJournalPreview(BaseModel):
-    debits: List[PayrollJournalItem] = []
-    credits: List[PayrollJournalItem] = []
-    total_debit: float = 0.0
-    total_credit: float = 0.0
-    is_balanced: bool = True
+VALID_PAYROLL_COMPENSATION_TYPES = {
+    "external_usd",
+    "internal_usd_cash",
+    "commission_sales",
+    "commission_support",
+    "bonus",
+}
 
 
 class PayrollLineCreate(BaseModel):
     employee_id: int
-    base_salary: float
-    allowances_total: float = 0.0
-    deductions_total: float = 0.0
-    tax_amount: float = 0.0
-    employer_cost_extra: float = 0.0
+    compensation_type: Optional[str] = "internal_usd_cash"
+    amount: Optional[float] = None
+    base_salary: Optional[float] = None
+    notes: Optional[str] = None
     snapshot_notes: Optional[str] = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_and_validate_fields(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            amt = values.get("amount")
+            base = values.get("base_salary")
+            if amt is None and base is not None:
+                amt = base
+                values["amount"] = amt
+            elif base is None and amt is not None:
+                base = amt
+                values["base_salary"] = base
+
+            if amt is None:
+                raise ValueError("Either amount or base_salary must be provided")
+            if float(amt) <= 0:
+                raise ValueError("Amount must be greater than 0")
+
+            ctype = values.get("compensation_type") or "internal_usd_cash"
+            if ctype not in VALID_PAYROLL_COMPENSATION_TYPES:
+                raise ValueError(
+                    f"Invalid compensation_type '{ctype}'. Must be one of: {', '.join(sorted(VALID_PAYROLL_COMPENSATION_TYPES))}"
+                )
+            values["compensation_type"] = ctype
+
+            notes = values.get("notes")
+            s_notes = values.get("snapshot_notes")
+            if notes and not s_notes:
+                values["snapshot_notes"] = notes
+            elif s_notes and not notes:
+                values["notes"] = s_notes
+        return values
 
 
 class PayrollLineResponse(BaseModel):
-    id: int
+    id: Union[int, str]
     payroll_run_id: int
     employee_id: int
     employee_name: Optional[str] = None
     department: Optional[str] = None
-    base_salary: float
-    allowances_total: float
-    deductions_total: float
-    tax_amount: float
+    compensation_type: Optional[str] = "internal_usd_cash"
     net_pay: float
-    employer_cost_extra: float
+    amount: Optional[float] = None
+    currency: str = "USD"
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
     payment_status: str = "pending"  # pending | paid | failed
@@ -1922,6 +1938,17 @@ class PayrollLineResponse(BaseModel):
     snapshot_notes: Optional[str] = ""
     created_at: Optional[datetime] = None
     paid_at: Optional[datetime] = None
+    linked_payment_id: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_amount_from_net(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("amount") is None and values.get("net_pay") is not None:
+                values["amount"] = values["net_pay"]
+            elif values.get("net_pay") is None and values.get("amount") is not None:
+                values["net_pay"] = values["amount"]
+        return values
 
     class Config:
         from_attributes = True
@@ -1931,35 +1958,177 @@ class PayrollRunPreviewRequest(BaseModel):
     period_label: str  # e.g. "2026-09"
     period_start: str  # YYYY-MM-DD
     period_end: str    # YYYY-MM-DD
+    payment_date: Optional[str] = None
     bank_account_id: Optional[int] = None
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
+    fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
+    fx_rate_value: Optional[float] = None
+
+
+class PayrollRunGenerateRequest(BaseModel):
+    period_label: str  # e.g. "2026-09"
+    period_start: str  # YYYY-MM-DD
+    period_end: str    # YYYY-MM-DD
+    payment_date: Optional[str] = None
+    fx_rate_source: Optional[str] = "first_of_month"  # first_of_month | payment_date
+    fx_rate_value: Optional[float] = None
+    bank_account_id: Optional[int] = None
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
+
+
+# ==========================================
+# Payroll Adjustment Schemas (Extensible)
+# ==========================================
+class PayrollAdjustmentBase(BaseModel):
+    employee_id: int
+    type: str = Field("BONUS", description="COMMISSION | BONUS")
+    direction: str = Field("ADDITION", description="ADDITION (reserved: DEDUCTION)")
+    amount: float = Field(..., gt=0.0, description="Strictly positive monetary amount")
+    currency: str = Field("USD", min_length=3, max_length=10)
+    payment_source: str = Field("INT", description="INT | EXT")
+    effective_period: Optional[str] = Field(None, description="YYYY-MM")
+    description: Optional[str] = None
+    external_reference: Optional[str] = None
+    origin: str = Field("MANUAL", description="MANUAL | IMPORT")
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper not in ["COMMISSION", "BONUS"]:
+            if v.lower() in ["commission_sales", "commission_support", "commission"]:
+                return "COMMISSION"
+            if v.lower() in ["bonus"]:
+                return "BONUS"
+            raise ValueError(f"Unsupported adjustment type: '{v}'. Must be COMMISSION or BONUS.")
+        return v_upper
+
+    @field_validator("direction")
+    @classmethod
+    def validate_direction(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper != "ADDITION":
+            raise ValueError("Only 'ADDITION' direction is currently supported in this release.")
+        return v_upper
+
+    @field_validator("payment_source")
+    @classmethod
+    def validate_payment_source(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper not in ["INT", "EXT"]:
+            raise ValueError(f"Invalid payment source '{v}'. Must be 'INT' or 'EXT'.")
+        return v_upper
+
+
+class PayrollAdjustmentCreate(PayrollAdjustmentBase):
+    pass
+
+
+class PayrollAdjustmentUpdate(BaseModel):
+    amount: Optional[float] = Field(None, gt=0.0)
+    payment_source: Optional[str] = None
+    type: Optional[str] = None
+    description: Optional[str] = None
+    external_reference: Optional[str] = None
+
+    @field_validator("payment_source")
+    @classmethod
+    def validate_source(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.upper() not in ["INT", "EXT"]:
+            raise ValueError("payment_source must be 'INT' or 'EXT'")
+        return v.upper() if v else None
+
+
+class PayrollAdjustmentResponse(PayrollAdjustmentBase):
+    id: str
+    preview_id: Optional[str] = None
+    payroll_run_id: Optional[int] = None
+    status: str = "DRAFT"
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayrollRecipientReadiness(BaseModel):
+    status: str = "READY"  # READY | WARNING | BLOCKER
+    issues: List[str] = []
+
+
+class PayrollRecipientPreview(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = "General"
+    base_int_amount: float = 0.0
+    base_ext_amount: float = 0.0
+    int_adjustments_total: float = 0.0
+    ext_adjustments_total: float = 0.0
+    final_int_amount: float = 0.0
+    final_ext_amount: float = 0.0
+    final_payment_amount: float = 0.0
+    adjustments: List[PayrollAdjustmentResponse] = []
+    bank_name: Optional[str] = None
+    destination_masked: Optional[str] = None
+    readiness: PayrollRecipientReadiness = Field(default_factory=PayrollRecipientReadiness)
 
 
 class PayrollRunPreviewResponse(BaseModel):
+    preview_id: Optional[str] = None
+    preview_version: Optional[int] = 1
+    source_version: Optional[str] = None
+    generated_at: Optional[str] = None
     period_label: str
     period_start: str
     period_end: str
+    payment_date: Optional[str] = None
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
+    external_funding_account_id: Optional[int] = None
+    external_funding_account_name: Optional[str] = None
+    internal_funding_account_id: Optional[int] = None
+    internal_funding_account_name: Optional[str] = None
+    fx_rate_source: Optional[str] = "first_of_month"
+    fx_rate_value: Optional[float] = None
     headcount: int = 0
-    total_gross: float = 0.0
-    total_tax: float = 0.0
-    total_deductions: float = 0.0
+    recipient_count: int = 0
+    payment_line_count: int = 0
     total_net: float = 0.0
-    total_employer_cost: float = 0.0
+    total_payment_amount: float = 0.0
+    total_commissions: float = 0.0
+    total_bonuses: float = 0.0
+    total_additions: float = 0.0
+    final_int_total: float = 0.0
+    final_ext_total: float = 0.0
+    prior_period_total: float = 0.0
+    change_amount: float = 0.0
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
-    variance_summary: PayrollVarianceSummary
-    liabilities_summary: PayrollLiabilitiesSummary
-    journal_preview: PayrollJournalPreview
+    variance_summary: Optional[PayrollVarianceSummary] = None
     lines: List[PayrollLineResponse] = []
+    recipients: List[PayrollRecipientPreview] = []
+    adjustments: List[PayrollAdjustmentResponse] = []
 
 
 class PayrollRunCreate(BaseModel):
     period_label: str
     period_start: str
     period_end: str
+    payment_date: Optional[str] = None
     bank_account_id: Optional[int] = None
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
     currency: str = "USD"
+    fx_rate_source: Optional[str] = "first_of_month"
+    fx_rate_value: Optional[float] = None
+    preview_id: Optional[str] = None
+    preview_version: Optional[int] = None
+    source_version: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    submit_for_approval: Optional[bool] = False
     lines: Optional[List[PayrollLineCreate]] = None
 
 
@@ -1968,18 +2137,29 @@ class PayrollRunResponse(BaseModel):
     period_label: str
     period_start: str
     period_end: str
-    status: str  # draft | approved | finalized | paid | partially_paid | cancelled
-    total_gross: float
-    total_tax: float
-    total_deductions: float
+    payment_date: Optional[str] = None
+    status: str  # draft | submitted | approved | finalized | paid | partially_paid | cancelled
     total_net: float
-    total_employer_cost: float
+    total_payment_amount: Optional[float] = None
     headcount: int = 0
+    recipient_count: Optional[int] = None
+    payment_line_count: int = 0
     currency: str = "USD"
     bank_account_id: Optional[int] = None
     bank_account_name: Optional[str] = None
+    external_funding_account_id: Optional[int] = None
+    external_funding_account_name: Optional[str] = None
+    internal_funding_account_id: Optional[int] = None
+    internal_funding_account_name: Optional[str] = None
+    fx_rate_source: Optional[str] = "first_of_month"
+    fx_rate_value: Optional[float] = None
+    preview_id: Optional[str] = None
+    preview_version: Optional[int] = None
+    source_version: Optional[str] = None
     created_at: datetime
     created_by: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    submitted_by: Optional[str] = None
     approved_at: Optional[datetime] = None
     approved_by: Optional[str] = None
     finalized_at: Optional[datetime] = None
@@ -1990,8 +2170,21 @@ class PayrollRunResponse(BaseModel):
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
     variance_summary: Optional[PayrollVarianceSummary] = None
-    liabilities_summary: Optional[PayrollLiabilitiesSummary] = None
     lines: List[PayrollLineResponse] = []
+    adjustments: List[PayrollAdjustmentResponse] = []
+    total_commissions: Optional[float] = 0.0
+    total_bonuses: Optional[float] = 0.0
+    total_additions: Optional[float] = 0.0
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_net_aliases(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("total_payment_amount") is None:
+                values["total_payment_amount"] = values.get("total_net", 0.0)
+            if values.get("recipient_count") is None:
+                values["recipient_count"] = values.get("headcount", 0)
+        return values
 
     class Config:
         from_attributes = True
@@ -2012,16 +2205,24 @@ class EmployeePayslipResponse(BaseModel):
     employee_id: int
     employee_name: str
     department: str
-    base_salary: float
-    allowances_total: float
-    deductions_total: float
-    tax_amount: float
     net_pay: float
+    amount: Optional[float] = None
     currency: str = "USD"
     status: str
     paid_date: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
+    compensation_type: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_amount_from_net(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("amount") is None and values.get("net_pay") is not None:
+                values["amount"] = values["net_pay"]
+            elif values.get("net_pay") is None and values.get("amount") is not None:
+                values["net_pay"] = values["amount"]
+        return values
 
 
 # ============================================================================
@@ -2104,6 +2305,169 @@ class StatutoryObligationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CompensationComponentType(str, Enum):
+    external_usd = "external_usd"
+    internal_usd_cash = "internal_usd_cash"
+
+
+class CompensationComponentSetRequest(BaseModel):
+    amount: float = Field(..., gt=0, description="Component amount in USD, must be greater than 0")
+    effective_start_date: str = Field(..., description="Effective start date in YYYY-MM-DD format")
+    notes: Optional[str] = Field("", description="Optional notes or rationale")
+
+
+class CompensationComponentResponse(BaseModel):
+    id: int
+    employee_id: int
+    component_type: str
+    amount: float
+    currency: str = "USD"
+    effective_start_date: str
+    effective_end_date: Optional[str] = None
+    notes: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class EmployeeCompensationPlanResponse(BaseModel):
+    employee_id: int
+    external_usd: Optional[CompensationComponentResponse] = None
+    internal_usd_cash: Optional[CompensationComponentResponse] = None
+    total_monthly_usd: float = 0.0
+
+
+# =========================================================================
+# FUX-419: Compensation Spend & Variance Reporting
+# =========================================================================
+
+class EmployeeCompensationLineItem(BaseModel):
+    id: int
+    payroll_run_id: int
+    period_label: str
+    compensation_type: str
+    base_salary: float
+    allowances_total: float = 0.0
+    deductions_total: float = 0.0
+    tax_amount: float = 0.0
+    net_pay: float
+    employer_cost_extra: float = 0.0
+    payment_status: str = "pending"
+    paid_at: Optional[datetime] = None
+    linked_payment_id: Optional[int] = None
+
+
+class EmployeeCompensationReportResponse(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    by_compensation_type: Dict[str, float] = {}
+    total_external: float = 0.0
+    total_internal: float = 0.0
+    total_commission: float = 0.0
+    total_bonus: float = 0.0
+    grand_total: float = 0.0
+    payroll_runs_count: int = 0
+    lines: List[EmployeeCompensationLineItem] = []
+
+
+class CompanyEmployeeCompensationItem(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = None
+    by_compensation_type: Dict[str, float] = {}
+    total_external: float = 0.0
+    total_internal: float = 0.0
+    total_commission: float = 0.0
+    total_bonus: float = 0.0
+    grand_total: float = 0.0
+    lines_count: int = 0
+
+
+class CompanyCompensationReportResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    by_compensation_type: Dict[str, float] = {}
+    total_external: float = 0.0
+    total_internal: float = 0.0
+    total_commission: float = 0.0
+    total_bonus: float = 0.0
+    grand_total: float = 0.0
+    total_headcount: int = 0
+    payroll_runs_count: int = 0
+    employees: List[CompanyEmployeeCompensationItem] = []
+
+
+class StatutoryRemittedItem(BaseModel):
+    id: int
+    period: str
+    obligation_type: str
+    amount_remitted: float
+    amount_accrued: float = 0.0
+    currency: str = "USD"
+    status: str
+    due_date: Optional[str] = None
+    source_type: Optional[str] = None
+    source_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class StatutoryRemittedReportResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    total_remitted: float = 0.0
+    by_obligation_type: Dict[str, float] = {}
+    by_period: Dict[str, float] = {}
+    items: List[StatutoryRemittedItem] = []
+    obligations_count: int = 0
+
+
+class MoneyFlowStatusItem(BaseModel):
+    flow_type: str  # external_transfer | internal_cash | tax_obligation | insurance_obligation
+    label: str
+    pending_amount: float = 0.0
+    settled_amount: float = 0.0
+    total_amount: float = 0.0
+    status: str = "pending"  # pending | settled | partially_settled
+
+
+class EmployeePayableStatusItem(BaseModel):
+    employee_id: int
+    employee_name: str
+    department: Optional[str] = None
+    external_pending: float = 0.0
+    external_settled: float = 0.0
+    internal_pending: float = 0.0
+    internal_settled: float = 0.0
+    tax_pending: float = 0.0
+    tax_settled: float = 0.0
+    insurance_pending: float = 0.0
+    insurance_settled: float = 0.0
+    total_pending: float = 0.0
+    total_settled: float = 0.0
+
+
+class PayableStatusReportResponse(BaseModel):
+    period: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    employee_id: Optional[int] = None
+    currency: str = "USD"
+    flows: List[MoneyFlowStatusItem] = []
+    total_pending: float = 0.0
+    total_settled: float = 0.0
+    grand_total: float = 0.0
+    employee_breakdown: Optional[List[EmployeePayableStatusItem]] = None
+
 
 
 
