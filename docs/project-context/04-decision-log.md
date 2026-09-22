@@ -54,7 +54,8 @@ This document records durable product and architectural decisions approved by th
   - A subsequent compensation-review step may permit confirmation or change.
 - **Rationale:** Avoid duplicate data entry while maintaining a controlled review point.
 - **Implementation Implications:**
-  - Payroll run generation must read employee master salary fields ([be/models_db.py](file:///d:/Voyance/DICOM_UTILITY/HR/hrflow/be/models_db.py)) and default `PayrollLineDB` figures accordingly.
+  - Employee setup and compensation-review flows must preserve existing salary-component values as defaults, while allowing authorized review or amendment.
+  - The specific data mapping and UI flow remain implementation details.
 - **Evidence / Reference:**
   - Owner-approved payroll design context (September 2026).
   - *Implementation Status:* Requires repository verification.
@@ -66,7 +67,8 @@ This document records durable product and architectural decisions approved by th
   - A payroll cycle must support adding them during the normal operational flow, without forcing a user to save a draft and return through a separate edit sequence solely to add variable items.
 - **Rationale:** Monthly compensation varies, and payroll operations must remain efficient.
 - **Implementation Implications:**
-  - The worksheet UI must support inline bonus adder popovers and dynamic recalculation of net totals.
+  - The payroll experience must accept optional monthly bonus and commission values within the normal payroll cycle.
+  - The specific UI controls, save behavior, and recalculation mechanism remain implementation details.
 - **Evidence / Reference:**
   - Owner-approved payroll design context (September 2026).
   - *Implementation Status:* Requires repository verification.
@@ -78,7 +80,8 @@ This document records durable product and architectural decisions approved by th
   - Transfer execution must be optional/configurable and disabled unless explicitly enabled.
 - **Rationale:** Separate payroll preparation, approval, and recordkeeping from external payment rail integration.
 - **Implementation Implications:**
-  - Marking payroll as "Paid" generates internal ledger and payment records without requiring external banking integrations.
+  - Payroll lifecycle design must support operation without a direct external bank-transfer integration.
+  - Any ledger, payment-record, or transfer-integration behavior must be verified and specified separately.
 - **Evidence / Reference:**
   - Owner-approved payroll design context (September 2026).
   - *Implementation Status:* Requires repository verification.
@@ -90,7 +93,8 @@ This document records durable product and architectural decisions approved by th
   - It must not block payroll preparation or processing by itself.
 - **Rationale:** Operations need to continue while payroll staff can resolve disbursement risk.
 - **Implementation Implications:**
-  - Surface prominent non-blocking warning banners in the payroll worksheet; do not block draft compilation or review progression.
+  - The payroll workflow must make missing bank details clearly visible to authorized operators while preserving the decision’s non-blocking rule.
+  - The warning presentation and exact lifecycle behavior remain implementation details.
 - **Evidence / Reference:**
   - Owner-approved payroll design context (September 2026).
   - *Implementation Status:* Requires repository verification.
@@ -102,7 +106,8 @@ This document records durable product and architectural decisions approved by th
   - That employee’s relevant payroll components must appear on the same row.
 - **Rationale:** Supports practical downstream review, handoff, and operational processing.
 - **Implementation Implications:**
-  - The export engine must layout employee payroll records horizontally in a single flat row per individual.
+  - Payroll export design must preserve a single employee-level record per row, with applicable payroll components represented in that row.
+  - Column order, file format options, and export implementation remain separate specifications.
 - **Evidence / Reference:**
   - Owner-approved payroll design context (September 2026).
   - *Implementation Status:* Requires repository verification.
@@ -113,7 +118,7 @@ This document records durable product and architectural decisions approved by th
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:
 
-- **Modular Monolith Architecture:** Established architectural pattern canonically documented in [02-architecture-and-domain-boundaries.md](file:///d:/Voyance/DICOM_UTILITY/HR/hrflow/docs/project-context/02-architecture-and-domain-boundaries.md).
-- **SQL Persistence & Google Sheets Export Role:** Verified operational facts documented in [01-repository-baseline.md](file:///d:/Voyance/DICOM_UTILITY/HR/hrflow/docs/project-context/01-repository-baseline.md) and [02-architecture-and-domain-boundaries.md](file:///d:/Voyance/DICOM_UTILITY/HR/hrflow/docs/project-context/02-architecture-and-domain-boundaries.md).
+- **Modular Monolith Architecture:** Established architectural pattern canonically documented in [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md).
+- **SQL Persistence & Google Sheets Export Role:** Verified operational facts documented in [01-repository-baseline.md](01-repository-baseline.md) and [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md).
 - **Statutory Obligations Workflow Scope (VAT & Annual Income Tax):** Multi-tax obligation tracking is planned roadmap work, not an accepted implementation decision.
 - **Branch-Specific Test Status and UI Defects:** Ephemeral test suite results and branch-specific UI defect fixes are historical branch records, not durable product context.
