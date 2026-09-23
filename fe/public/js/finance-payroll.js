@@ -212,7 +212,7 @@
     computeRow(row) {
       const b = this.bonusTotals(row);
       const totalInternal = (row.baseInt || 0) + b.internal;
-      const deductions = 0;
+      const deductions = Number(row.deductions !== undefined ? row.deductions : (row.deductions_total || 0));
       const internal = totalInternal - deductions;
       const external = (row.baseExt || 0) + b.external;
       const net = internal + external;
@@ -845,9 +845,24 @@
       const intSelect = document.getElementById('payrollTargetInternalAccount');
       if (intSelect && intSelect.value) this.selectedInternalAccountId = intSelect.value;
 
+      const empRateInput = document.getElementById('payrollEmployeeInsuranceRate');
+      const empyrRateInput = document.getElementById('payrollEmployerInsuranceRate');
+      if (empRateInput && empyrRateInput && typeof FinanceApi !== 'undefined' && FinanceApi.updatePayrollSettings) {
+        const empRate = Number(empRateInput.value) / 100.0;
+        const empyrRate = Number(empyrRateInput.value) / 100.0;
+        try {
+          await FinanceApi.updatePayrollSettings({
+            employee_rate: empRate,
+            employer_rate: empyrRate
+          });
+        } catch (err) {
+          console.warn('[PayrollApp] Could not save payroll rate settings:', err);
+        }
+      }
+
       this.persistFundingAccounts();
       this.drawPeriodLabel();
-      this.addAudit('Payroll settings updated: funding accounts and/or schedule changed.');
+      this.addAudit('Payroll settings updated: funding accounts, schedule, or statutory rates changed.');
       this.showPage('list');
       this.showBanner('Payroll settings saved.', 'blue');
     },
@@ -874,6 +889,21 @@
       } else if (page === 'settings') {
         await this.loadBankAccountsFromDb();
         this.drawFundingAccounts();
+        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
+          try {
+            const settings = await FinanceApi.getPayrollSettings();
+            const empRateInput = document.getElementById('payrollEmployeeInsuranceRate');
+            const empyrRateInput = document.getElementById('payrollEmployerInsuranceRate');
+            if (empRateInput && settings.employee_rate !== undefined) {
+              empRateInput.value = (Number(settings.employee_rate) * 100).toFixed(2);
+            }
+            if (empyrRateInput && settings.employer_rate !== undefined) {
+              empyrRateInput.value = (Number(settings.employer_rate) * 100).toFixed(2);
+            }
+          } catch (err) {
+            console.warn('[PayrollApp] Could not load payroll settings:', err);
+          }
+        }
       }
     }
   };

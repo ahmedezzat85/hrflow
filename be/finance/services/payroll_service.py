@@ -14,7 +14,7 @@ import csv
 import io
 from fastapi import HTTPException, status
 
-from models_db import EmployeeDB, EmployeeBankAccountDB, AuditLogDB
+from models_db import EmployeeDB, EmployeeBankAccountDB, AuditLogDB, EmployeeSocialInsuranceDB
 from finance.models import (
     PayrollRunDB,
     PayrollLineDB,
@@ -25,9 +25,11 @@ from finance.models import (
     PaymentTypeDB,
     StatutoryObligationDB,
     AccountTransferDB,
+    PayrollSettingsDB,
 )
 from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
+from repositories.social_insurance_repository import SocialInsuranceRepository
 
 # In-memory store for active previews and draft adjustments during runner execution
 _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -36,6 +38,75 @@ _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
 class PayrollService:
     def __init__(self, db: Session):
         self.db = db
+        self.social_insurance_repo = SocialInsuranceRepository(db)
+
+    def get_payroll_settings(self) -> PayrollSettingsDB:
+        """Fetch current organization-wide payroll rate settings, initializing defaults if needed."""
+        settings = self.db.query(PayrollSettingsDB).filter(PayrollSettingsDB.id == 1).first()
+        if not settings:
+            settings = PayrollSettingsDB(
+                id=1,
+                employee_rate=0.11,
+                employer_rate=0.18,
+                updated_at=datetime.utcnow(),
+                updated_by="system",
+            )
+            self.db.add(settings)
+            self.db.commit()
+            self.db.refresh(settings)
+        return settings
+
+    def update_payroll_settings(
+        self,
+        employee_rate: Optional[float] = None,
+        employer_rate: Optional[float] = None,
+        user_email: Optional[str] = None,
+    ) -> PayrollSettingsDB:
+        """Update organization-wide social insurance contribution rates."""
+        settings = self.get_payroll_settings()
+        old_emp_rate = settings.employee_rate
+        old_org_rate = settings.employer_rate
+
+        if employee_rate is not None:
+            if not (0.0 <= float(employee_rate) <= 1.0):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Employee contribution rate must be between 0.0 and 1.0 (0% to 100%)",
+                )
+            settings.employee_rate = round(float(employee_rate), 4)
+
+        if employer_rate is not None:
+            if not (0.0 <= float(employer_rate) <= 1.0):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Employer contribution rate must be between 0.0 and 1.0 (0% to 100%)",
+                )
+            settings.employer_rate = round(float(employer_rate), 4)
+
+        settings.updated_at = datetime.utcnow()
+        settings.updated_by = user_email or "system"
+
+        try:
+            audit = AuditLogDB(
+                timestamp=datetime.utcnow().isoformat() + "Z",
+                actor_email=user_email or "system@hrflow.internal",
+                action="payroll.settings.rates_updated",
+                target_type="payroll_settings",
+                target_id="1",
+                details=json.dumps({
+                    "old_employee_rate": old_emp_rate,
+                    "new_employee_rate": settings.employee_rate,
+                    "old_employer_rate": old_org_rate,
+                    "new_employer_rate": settings.employer_rate,
+                }),
+            )
+            self.db.add(audit)
+        except Exception:
+            pass
+
+        self.db.commit()
+        self.db.refresh(settings)
+        return settings
 
     def list_runs(
         self,
@@ -140,12 +211,18 @@ class PayrollService:
         )
 
         comp_repo = CompensationPlanRepository(self.db)
+        settings = self.get_payroll_settings()
+        emp_rate = float(settings.employee_rate)
+        org_rate = float(settings.employer_rate)
 
         lines: List[Dict[str, Any]] = []
         recipients: List[Dict[str, Any]] = []
         exceptions: List[Dict[str, Any]] = []
         has_blocking = False
         tot_net = 0.0
+        tot_gross = 0.0
+        tot_deductions = 0.0
+        tot_employer_cost = 0.0
 
         for emp in employees:
             bank_rec = emp.bank_account
@@ -184,17 +261,67 @@ class PayrollService:
                     "is_resolved": False,
                 })
 
+            # Check social insurance configuration
+            social_ins = self.social_insurance_repo.get_insurance_for_period(emp.id, period_start, period_end)
+            insured_flag = bool(social_ins.insured_flag) if social_ins else False
+            insured_base = float(social_ins.insured_base) if (social_ins and social_ins.insured_base is not None) else None
+
+            # Check internal salary presence
+            int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
+            internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
+
+            # Blocking rule:
+            # If internal_salary > 0 AND insured_flag = true AND no insured base is set -> BLOCKED
+            if internal_salary > 0 and insured_flag and (insured_base is None or insured_base <= 0):
+                has_blocking = True
+                exceptions.append({
+                    "id": f"exc-ins-{emp.id}",
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "severity": "blocking",
+                    "code": "MISSING_INSURED_BASE",
+                    "title": "Missing Insured Base",
+                    "description": f"{emp.name} is configured for social insurance coverage but has no active insured base configured. Set their insured base under Employee Profile > Social Insurance before running payroll.",
+                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
+                    "is_resolved": False,
+                })
+
+            # Calculate insurance deduction and employer cost estimate
+            if internal_salary > 0 and insured_flag and insured_base and insured_base > 0:
+                emp_deduction = round(insured_base * emp_rate, 2)
+                org_cost = round(insured_base * org_rate, 2)
+            else:
+                emp_deduction = 0.0
+                org_cost = 0.0
+
             base_int = 0.0
             base_ext = 0.0
             for comp in comps:
                 comp_type = comp.component_type
                 amount = round(float(comp.amount or 0.0), 2)
-                net = amount
-                tot_net += net
                 if comp_type == "external_usd":
+                    deduction = 0.0
+                    net = amount
+                    cost = 0.0
                     base_ext += amount
+                    is_ins = False
+                    base_snap = 0.0
+                    emp_r_snap = 0.0
+                    org_r_snap = 0.0
                 else:
+                    deduction = emp_deduction
+                    net = round(amount - deduction, 2)
+                    cost = org_cost
                     base_int += amount
+                    is_ins = insured_flag
+                    base_snap = insured_base or 0.0
+                    emp_r_snap = emp_rate if insured_flag else 0.0
+                    org_r_snap = org_rate if insured_flag else 0.0
+
+                tot_gross += amount
+                tot_deductions += deduction
+                tot_net += net
+                tot_employer_cost += cost
 
                 lines.append({
                     "id": emp.id,
@@ -203,8 +330,15 @@ class PayrollService:
                     "employee_name": emp.name,
                     "department": emp.dept or "General",
                     "compensation_type": comp_type,
+                    "base_salary": amount,
+                    "deductions_total": deduction,
                     "net_pay": net,
                     "amount": net,
+                    "employer_cost_extra": cost,
+                    "is_insurable": is_ins,
+                    "insured_base_snapshot": base_snap,
+                    "employee_rate_snapshot": emp_r_snap,
+                    "employer_rate_snapshot": org_r_snap,
                     "currency": "USD",
                     "bank_name": bank_name or "Unassigned",
                     "bank_account_masked": masked_acc or "Not Provided",
@@ -226,11 +360,13 @@ class PayrollService:
                 "department": emp.dept or "General",
                 "base_int_amount": round(base_int, 2),
                 "base_ext_amount": round(base_ext, 2),
+                "int_deductions_total": emp_deduction,
+                "employer_cost_extra": org_cost,
                 "int_adjustments_total": 0.0,
                 "ext_adjustments_total": 0.0,
-                "final_int_amount": round(base_int, 2),
+                "final_int_amount": round(base_int - emp_deduction, 2),
                 "final_ext_amount": round(base_ext, 2),
-                "final_payment_amount": round(base_int + base_ext, 2),
+                "final_payment_amount": round(base_int - emp_deduction + base_ext, 2),
                 "adjustments": [],
                 "bank_name": bank_name,
                 "destination_masked": masked_acc,
@@ -308,7 +444,10 @@ class PayrollService:
             "headcount": len(employees),
             "recipient_count": len(employees),
             "payment_line_count": len(lines),
+            "total_gross": round(tot_gross, 2),
+            "total_deductions": round(tot_deductions, 2),
             "total_net": round(tot_net, 2),
+            "total_employer_cost": round(tot_net + tot_employer_cost, 2),
             "total_payment_amount": round(tot_net, 2),
             "total_commissions": 0.0,
             "total_bonuses": 0.0,
@@ -493,7 +632,8 @@ class PayrollService:
             r["adjustments"] = emp_adjs
             r["int_adjustments_total"] = round(sum(a["amount"] for a in emp_adjs if a["payment_source"] == "INT"), 2)
             r["ext_adjustments_total"] = round(sum(a["amount"] for a in emp_adjs if a["payment_source"] == "EXT"), 2)
-            r["final_int_amount"] = round(r["base_int_amount"] + r["int_adjustments_total"], 2)
+            ded = r.get("int_deductions_total", 0.0)
+            r["final_int_amount"] = round(r["base_int_amount"] - ded + r["int_adjustments_total"], 2)
             r["final_ext_amount"] = round(r["base_ext_amount"] + r["ext_adjustments_total"], 2)
             r["final_payment_amount"] = round(r["final_int_amount"] + r["final_ext_amount"], 2)
 
@@ -635,7 +775,14 @@ class PayrollService:
                 detail=f"Cannot generate payroll run: Active employee(s) without active compensation plan: {emp_names}. Please configure compensation plans before generating run."
             )
 
+        settings = self.get_payroll_settings()
+        emp_rate = float(settings.employee_rate)
+        org_rate = float(settings.employer_rate)
+
         tot_net = 0.0
+        tot_gross = 0.0
+        tot_deductions = 0.0
+        tot_employer_cost = 0.0
         exceptions = []
         lines_dict_list = []
 
@@ -660,11 +807,62 @@ class PayrollService:
                     "is_resolved": False,
                 })
 
+            # Check social insurance configuration
+            social_ins = self.social_insurance_repo.get_insurance_for_period(emp.id, period_start, period_end)
+            insured_flag = bool(social_ins.insured_flag) if social_ins else False
+            insured_base = float(social_ins.insured_base) if (social_ins and social_ins.insured_base is not None) else None
+
+            # Check internal salary presence
+            int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
+            internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
+
+            # Blocking rule:
+            # If internal_salary > 0 AND insured_flag = true AND no insured base is set -> BLOCKED
+            if internal_salary > 0 and insured_flag and (insured_base is None or insured_base <= 0):
+                exceptions.append({
+                    "id": f"exc-ins-{emp.id}",
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "severity": "blocking",
+                    "code": "MISSING_INSURED_BASE",
+                    "title": "Missing Insured Base",
+                    "description": f"{emp.name} is configured for social insurance coverage but has no active insured base configured. Set their insured base under Employee Profile > Social Insurance before running payroll.",
+                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
+                    "is_resolved": False,
+                })
+
+            # Calculate insurance deduction and employer cost estimate
+            if internal_salary > 0 and insured_flag and insured_base and insured_base > 0:
+                emp_deduction = round(insured_base * emp_rate, 2)
+                org_cost = round(insured_base * org_rate, 2)
+            else:
+                emp_deduction = 0.0
+                org_cost = 0.0
+
             for comp in comps:
                 comp_type = comp.component_type
                 amount = round(float(comp.amount or 0.0), 2)
-                net = amount
+                if comp_type == "external_usd":
+                    deduction = 0.0
+                    net = amount
+                    cost = 0.0
+                    is_ins = False
+                    base_snap = 0.0
+                    emp_r_snap = 0.0
+                    org_r_snap = 0.0
+                else:
+                    deduction = emp_deduction
+                    net = round(amount - deduction, 2)
+                    cost = org_cost
+                    is_ins = insured_flag
+                    base_snap = insured_base or 0.0
+                    emp_r_snap = emp_rate if insured_flag else 0.0
+                    org_r_snap = org_rate if insured_flag else 0.0
+
+                tot_gross += amount
+                tot_deductions += deduction
                 tot_net += net
+                tot_employer_cost += cost
 
                 line_db = PayrollLineDB(
                     payroll_run_id=run.id,
@@ -673,13 +871,16 @@ class PayrollService:
                     department=emp.dept or "General",
                     compensation_type=comp_type,
                     is_taxable_local=True,
-                    is_insurable=True,
-                    base_salary=net,
+                    is_insurable=is_ins,
+                    base_salary=amount,
                     allowances_total=0.0,
-                    deductions_total=0.0,
+                    deductions_total=deduction,
                     tax_amount=0.0,
                     net_pay=net,
-                    employer_cost_extra=0.0,
+                    employer_cost_extra=cost,
+                    insured_base_snapshot=base_snap,
+                    employee_rate_snapshot=emp_r_snap,
+                    employer_rate_snapshot=org_r_snap,
                     bank_name=bank_name or "Unassigned",
                     bank_account_masked=masked_acc or "Not Provided",
                     payment_status="pending",
@@ -722,11 +923,11 @@ class PayrollService:
             resolved_fx,
         )
 
-        run.total_gross = round(tot_net, 2)
+        run.total_gross = round(tot_gross, 2)
         run.total_tax = 0.0
-        run.total_deductions = 0.0
+        run.total_deductions = round(tot_deductions, 2)
         run.total_net = round(tot_net, 2)
-        run.total_employer_cost = round(tot_net, 2)
+        run.total_employer_cost = round(tot_net + tot_employer_cost, 2)
         run.headcount = len(employees)
         run.payment_date = payment_date or period_end
         run.preview_id = f"PRV-{period_label.replace('-', '')}-{uuid.uuid4().hex[:6].upper()}"
@@ -818,11 +1019,11 @@ class PayrollService:
             period_end=period_end,
             payment_date=pay_date,
             status=run_status,
-            total_gross=preview["total_net"],
+            total_gross=preview.get("total_gross", preview["total_net"]),
             total_tax=0.0,
-            total_deductions=0.0,
+            total_deductions=preview.get("total_deductions", 0.0),
             total_net=preview["total_net"],
-            total_employer_cost=preview["total_net"],
+            total_employer_cost=preview.get("total_employer_cost", preview["total_net"]),
             headcount=preview["headcount"],
             currency=currency or "USD",
             bank_account_id=preview["bank_account_id"],
@@ -846,7 +1047,15 @@ class PayrollService:
         lines_to_add = custom_lines if custom_lines is not None else preview["lines"]
         for pl in lines_to_add:
             c_type = pl.get("compensation_type", "internal_usd_cash")
-            net = float(pl.get("net_pay", pl.get("amount", pl.get("base_salary", 0.0))))
+            base_sal = float(pl.get("base_salary", pl.get("amount", pl.get("net_pay", 0.0))))
+            ded = float(pl.get("deductions_total", 0.0))
+            net = float(pl.get("net_pay", base_sal - ded))
+            emp_extra = float(pl.get("employer_cost_extra", 0.0))
+            is_ins = bool(pl.get("is_insurable", True))
+            ins_base = float(pl.get("insured_base_snapshot", 0.0))
+            emp_rate_snap = float(pl.get("employee_rate_snapshot", 0.0))
+            org_rate_snap = float(pl.get("employer_rate_snapshot", 0.0))
+
             line_db = PayrollLineDB(
                 payroll_run_id=run.id,
                 employee_id=pl["employee_id"],
@@ -854,13 +1063,16 @@ class PayrollService:
                 department=pl.get("department"),
                 compensation_type=c_type,
                 is_taxable_local=True,
-                is_insurable=True,
-                base_salary=net,
+                is_insurable=is_ins,
+                base_salary=base_sal,
                 allowances_total=0.0,
-                deductions_total=0.0,
+                deductions_total=ded,
                 tax_amount=0.0,
                 net_pay=net,
-                employer_cost_extra=0.0,
+                employer_cost_extra=emp_extra,
+                insured_base_snapshot=ins_base,
+                employee_rate_snapshot=emp_rate_snap,
+                employer_rate_snapshot=org_rate_snap,
                 bank_name=pl.get("bank_name", "Unassigned"),
                 bank_account_masked=pl.get("bank_account_masked", "Not Provided"),
                 payment_status="pending",
@@ -1472,6 +1684,10 @@ class PayrollService:
             "employee_id": emp.id if emp else employee_id,
             "employee_name": line.employee_name or (emp.name if emp else "Employee"),
             "department": line.department or (emp.dept if emp else "General"),
+            "base_salary": line.base_salary or line.net_pay,
+            "deductions_total": line.deductions_total or 0.0,
+            "employer_cost_extra": line.employer_cost_extra or 0.0,
+            "deductions_label": "Social Insurance (Internal Estimate)" if (line.deductions_total and line.deductions_total > 0) else None,
             "net_pay": line.net_pay,
             "amount": line.net_pay,
             "currency": line.payroll_run.currency or "USD",
@@ -1501,7 +1717,10 @@ class PayrollService:
             "status": run.status,
             "fx_rate_source": run.fx_rate_source or "first_of_month",
             "fx_rate_value": run.fx_rate_value,
+            "total_gross": run.total_gross if run.total_gross is not None else run.total_net,
+            "total_deductions": run.total_deductions or 0.0,
             "total_net": run.total_net,
+            "total_employer_cost": run.total_employer_cost if run.total_employer_cost is not None else run.total_net,
             "total_payment_amount": run.total_net,
             "headcount": run.headcount,
             "recipient_count": run.headcount,
@@ -1537,6 +1756,13 @@ class PayrollService:
             "employee_name": l.employee_name,
             "department": l.department,
             "compensation_type": l.compensation_type or "internal_usd_cash",
+            "base_salary": l.base_salary if l.base_salary is not None else (l.net_pay or 0.0),
+            "deductions_total": l.deductions_total or 0.0,
+            "employer_cost_extra": l.employer_cost_extra or 0.0,
+            "is_insurable": bool(l.is_insurable),
+            "insured_base_snapshot": l.insured_base_snapshot or 0.0,
+            "employee_rate_snapshot": l.employee_rate_snapshot or 0.0,
+            "employer_rate_snapshot": l.employer_rate_snapshot or 0.0,
             "net_pay": l.net_pay or 0.0,
             "amount": l.net_pay or 0.0,
             "currency": l.payroll_run.currency if l.payroll_run else "USD",

@@ -6838,6 +6838,36 @@ async getEntityActivity(entityType, entityId) {
       return apiRequest("PUT", `/api/finance/employees/${employeeId}/compensation-plan/${componentType}`, data);
     },
 
+    async getPayrollSettings() {
+      if (_isMock()) {
+        if (!FinanceMockState.payrollSettings) {
+          FinanceMockState.payrollSettings = {
+            id: 1,
+            employee_rate: 0.11,
+            employer_rate: 0.18,
+            updated_at: new Date().toISOString(),
+            updated_by: "admin@voyance.health"
+          };
+        }
+        return FinanceMockState.payrollSettings;
+      }
+      return apiRequest("GET", "/api/finance/payroll/settings");
+    },
+
+    async updatePayrollSettings(payload) {
+      if (_isMock()) {
+        FinanceMockState.payrollSettings = {
+          id: 1,
+          employee_rate: Number(payload.employee_rate),
+          employer_rate: Number(payload.employer_rate),
+          updated_at: new Date().toISOString(),
+          updated_by: "admin@voyance.health"
+        };
+        return FinanceMockState.payrollSettings;
+      }
+      return apiRequest("PUT", "/api/finance/payroll/settings", payload);
+    },
+
     getLastCorrelationId() {
       return typeof window.Api !== "undefined" && window.Api.getLastCorrelationId
         ? window.Api.getLastCorrelationId()

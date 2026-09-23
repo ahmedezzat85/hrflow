@@ -1928,6 +1928,13 @@ class PayrollLineResponse(BaseModel):
     employee_name: Optional[str] = None
     department: Optional[str] = None
     compensation_type: Optional[str] = "internal_usd_cash"
+    base_salary: Optional[float] = None
+    deductions_total: Optional[float] = 0.0
+    employer_cost_extra: Optional[float] = 0.0
+    is_insurable: Optional[bool] = True
+    insured_base_snapshot: Optional[float] = 0.0
+    employee_rate_snapshot: Optional[float] = 0.0
+    employer_rate_snapshot: Optional[float] = 0.0
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2065,6 +2072,8 @@ class PayrollRecipientPreview(BaseModel):
     department: Optional[str] = "General"
     base_int_amount: float = 0.0
     base_ext_amount: float = 0.0
+    int_deductions_total: float = 0.0
+    employer_cost_extra: float = 0.0
     int_adjustments_total: float = 0.0
     ext_adjustments_total: float = 0.0
     final_int_amount: float = 0.0
@@ -2096,7 +2105,10 @@ class PayrollRunPreviewResponse(BaseModel):
     headcount: int = 0
     recipient_count: int = 0
     payment_line_count: int = 0
+    total_gross: Optional[float] = None
+    total_deductions: Optional[float] = 0.0
     total_net: float = 0.0
+    total_employer_cost: Optional[float] = None
     total_payment_amount: float = 0.0
     total_commissions: float = 0.0
     total_bonuses: float = 0.0
@@ -2139,7 +2151,10 @@ class PayrollRunResponse(BaseModel):
     period_end: str
     payment_date: Optional[str] = None
     status: str  # draft | submitted | approved | finalized | paid | partially_paid | cancelled
+    total_gross: Optional[float] = None
+    total_deductions: Optional[float] = 0.0
     total_net: float
+    total_employer_cost: Optional[float] = None
     total_payment_amount: Optional[float] = None
     headcount: int = 0
     recipient_count: Optional[int] = None
@@ -2205,6 +2220,10 @@ class EmployeePayslipResponse(BaseModel):
     employee_id: int
     employee_name: str
     department: str
+    base_salary: Optional[float] = None
+    deductions_total: Optional[float] = 0.0
+    employer_cost_extra: Optional[float] = 0.0
+    deductions_label: Optional[str] = None
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2467,6 +2486,23 @@ class PayableStatusReportResponse(BaseModel):
     total_settled: float = 0.0
     grand_total: float = 0.0
     employee_breakdown: Optional[List[EmployeePayableStatusItem]] = None
+
+
+class PayrollSettingsUpdate(BaseModel):
+    employee_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+    employer_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class PayrollSettingsResponse(BaseModel):
+    id: int
+    employee_rate: float
+    employer_rate: float
+    updated_at: Optional[Union[str, datetime]] = None
+    updated_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 
 
 

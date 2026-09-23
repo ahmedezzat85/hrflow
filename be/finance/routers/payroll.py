@@ -22,6 +22,8 @@ from finance.schemas import (
     PayrollAdjustmentCreate,
     PayrollAdjustmentUpdate,
     PayrollAdjustmentResponse,
+    PayrollSettingsUpdate,
+    PayrollSettingsResponse,
 )
 from finance.services.payroll_service import PayrollService
 
@@ -313,3 +315,28 @@ def get_employee_payslip(
 ):
     """Itemized payslip detail for a specific employee on a run."""
     return service.get_employee_payslip(run_id=run_id, employee_id=employee_id)
+
+
+@router.get("/settings", response_model=PayrollSettingsResponse)
+def get_payroll_settings(
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Get current organization-wide social insurance contribution rates."""
+    return service.get_payroll_settings()
+
+
+@router.put("/settings", response_model=PayrollSettingsResponse)
+def update_payroll_settings(
+    payload: PayrollSettingsUpdate,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.settings.write")),
+):
+    """Update organization-wide social insurance contribution rates (Super Admin only)."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.update_payroll_settings(
+        employee_rate=payload.employee_rate,
+        employer_rate=payload.employer_rate,
+        user_email=user_email,
+    )
+

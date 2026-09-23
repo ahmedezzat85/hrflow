@@ -137,6 +137,26 @@
                 </div>
               </div>
 
+              <div class="card employee-bank-card" id="socialInsuranceCard" style="margin-top:16px;">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-shield-halved"></i> Social Insurance</h3>
+                  <button class="action-btn" id="socialInsuranceActionBtn" onclick="openSocialInsuranceModal(event)" title="Edit Social Insurance">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                </div>
+                <div class="status-line" id="socialInsuranceStatusLine">
+                  <span class="badge-pill" id="socialInsurancePill" style="background:var(--surface2);color:var(--text2);">
+                    <i class="fa-solid fa-circle-question"></i> Not loaded
+                  </span>
+                </div>
+                <div class="card-body" id="socialInsuranceDetailsBody">
+                  <div class="iban-row"><span class="k">Coverage</span><span class="v" id="socialInsCoverage">—</span></div>
+                  <div class="iban-row"><span class="k">Insured Base</span><span class="v" id="socialInsBase">—</span></div>
+                  <div class="iban-row"><span class="k">Effective Date</span><span class="v" id="socialInsEffectiveDate">—</span></div>
+                  <p class="helper">Internal estimate basis. Governs payroll deductions.</p>
+                </div>
+              </div>
+
               <div class="employee-detail-section-label">
                 <span>Quick Actions</span>
                 <span class="employee-detail-section-line"></span>

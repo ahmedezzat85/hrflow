@@ -1,0 +1,46 @@
+<div class="modal-overlay" id="socialInsuranceModal">
+  <div class="modal modal-v2">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="modal-head-text">
+        <h3 id="socialInsuranceModalTitle">Social Insurance Configuration</h3>
+        <p>Per-employee social insurance coverage and effective-dated insured base.</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('socialInsuranceModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Insurance Configuration <span class="line"></span></div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="fSocialInsFlag" style="width:auto;cursor:pointer;">
+              <span style="font-weight:600;">Covered by Social Insurance</span>
+            </label>
+            <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
+              Toggle whether social insurance deductions apply to this employee.
+            </span>
+          </div>
+          <div class="form-field full" id="fSocialInsBaseContainer">
+            <label>Insured Base Amount <span class="req">*</span></label>
+            <input type="number" step="0.01" min="0" id="fSocialInsBase" placeholder="e.g. 5000.00">
+            <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
+              Cannot exceed employee's internal salary. Deduction is an internal estimate.
+            </span>
+          </div>
+          <div class="form-field full">
+            <label>Effective Date <span class="req">*</span></label>
+            <input type="date" id="fSocialInsEffectiveDate">
+            <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
+              Must be on or before today (future pre-staging is not permitted).
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="socialInsuranceCancelBtn" onclick="closeModal('socialInsuranceModal')">Cancel</button>
+      <button class="btn btn-fill" id="socialInsuranceSaveBtn" onclick="saveSocialInsurance(event)"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>

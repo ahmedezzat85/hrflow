@@ -392,6 +392,35 @@ const Api = {
   upsertBankAccount(empId, payload) {
     return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/bank-account`, payload);
   },
+  getSocialInsurance(empId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      window._mockSocialInsurance = window._mockSocialInsurance || {};
+      const record = window._mockSocialInsurance[empId] || {
+        insured_flag: false,
+        insured_base: null,
+        effective_start_date: null
+      };
+      return Promise.resolve(record);
+    }
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/social-insurance`);
+  },
+  upsertSocialInsurance(empId, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      window._mockSocialInsurance = window._mockSocialInsurance || {};
+      const record = {
+        id: 1,
+        employee_id: empId,
+        insured_flag: !!payload.insured_flag,
+        insured_base: payload.insured_base !== null && payload.insured_base !== undefined ? Number(payload.insured_base) : null,
+        effective_start_date: payload.effective_start_date,
+        effective_end_date: null,
+        created_at: new Date().toISOString()
+      };
+      window._mockSocialInsurance[empId] = record;
+      return Promise.resolve(record);
+    }
+    return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/social-insurance`, payload);
+  },
   getExportStatus() {
     return apiRequest("GET", "/api/export/status");
   },

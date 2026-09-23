@@ -2,8 +2,9 @@
 models.py
 Pydantic request/response models for the HRFlow API.
 """
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Literal, List
+from typing import Optional, Literal, List, Union
 
 # Allowed values for an employee's employment state (single source of truth
 # shared by EmployeeCreate / EmployeeUpdate).
@@ -215,4 +216,33 @@ class SheetsExportRequest(BaseModel):
     end_date: Optional[str] = None
     status: Optional[str] = None
     worksheet_title: Optional[str] = None
+
+
+class EmployeeSocialInsuranceUpsert(BaseModel):
+    """
+    Configure an employee's social insurance coverage flag and insured base.
+    """
+    insured_flag: bool = False
+    insured_base: Optional[float] = None
+    currency: str = "USD"
+    effective_start_date: str
+    notes: Optional[str] = ""
+
+
+class EmployeeSocialInsuranceResponse(BaseModel):
+    id: int
+    employee_id: int
+    insured_flag: bool
+    insured_base: Optional[float] = None
+    currency: str = "USD"
+    effective_start_date: str
+    effective_end_date: Optional[str] = None
+    notes: str = ""
+    created_by: Optional[str] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
+
+    class Config:
+        from_attributes = True
+
 

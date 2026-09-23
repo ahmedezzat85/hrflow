@@ -13,6 +13,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 
@@ -61,6 +62,8 @@ from finance.models import (  # noqa: E402, F401
     FinanceStatutoryObligationDB,
     EmployeeCompensationPlanDB,
     FinanceEmployeeCompensationPlanDB,
+    PayrollSettingsDB,
+    FinancePayrollSettingsDB,
 )
 
 
@@ -98,6 +101,7 @@ class EmployeeDB(Base):
     vacations = relationship("VacationHistoryDB", back_populates="employee", cascade="all, delete-orphan")
     salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
     compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="all, delete-orphan")
+    social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="all, delete-orphan")
 
     @property
     def invoices(self):
@@ -284,3 +288,26 @@ class AuditLogDB(Base):
     target_type = Column(String(100), default="")
     target_id = Column(String(100), default="")
     details = Column(Text, default="")
+
+
+class EmployeeSocialInsuranceDB(Base):
+    __tablename__ = "employee_social_insurance"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    insured_flag = Column(Boolean, default=False, nullable=False)
+    insured_base = Column(Float, nullable=True)
+    currency = Column(String(10), default="USD", nullable=False)
+    effective_start_date = Column(String(20), nullable=False, index=True)
+    effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
+    notes = Column(Text, default="", nullable=False)
+    created_by = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    employee = relationship("EmployeeDB", back_populates="social_insurance")
+
+    __table_args__ = (
+        Index("ix_emp_social_ins_lookup", "employee_id", "effective_end_date"),
+    )
+

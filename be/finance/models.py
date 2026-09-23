@@ -665,6 +665,9 @@ class PayrollLineDB(Base):
     tax_amount = Column(Float, default=0.0)
     net_pay = Column(Float, default=0.0)
     employer_cost_extra = Column(Float, default=0.0)
+    insured_base_snapshot = Column(Float, default=0.0, nullable=True)
+    employee_rate_snapshot = Column(Float, default=0.0, nullable=True)
+    employer_rate_snapshot = Column(Float, default=0.0, nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_masked = Column(String(50), nullable=True)
     payment_status = Column(String(30), default="pending")  # pending / paid / failed
@@ -827,4 +830,17 @@ class EmployeeCompensationPlanDB(Base):
 
 
 FinanceEmployeeCompensationPlanDB = EmployeeCompensationPlanDB
+
+
+class PayrollSettingsDB(Base):
+    __tablename__ = "finance_payroll_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    employee_rate = Column(Float, default=0.11, nullable=False)
+    employer_rate = Column(Float, default=0.18, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(String(255), nullable=True)
+
+
+FinancePayrollSettingsDB = PayrollSettingsDB
 

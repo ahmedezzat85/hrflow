@@ -10,10 +10,10 @@ function renderEmployeesTable(filter = '') {
     <td data-label="Next Raise">${e.nextRaise}</td>
     <td data-label="Status">${statusPill(e.status)}</td>
     <td data-label="Actions" class="col-actions">
-      <button class="icon-action" onclick="viewProfile(${e.id})" title="View Profile"><i class="fa-solid fa-eye"></i></button>
-      <button class="icon-action" onclick="openEmployeeModal(${e.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
-      <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice(${e.id})"><i class="fa-solid fa-file-invoice"></i></button>
-      <button class="icon-action" onclick="askDelete(${e.id})" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      <button class="icon-action" onclick="viewProfile('${e.id}')" title="View Profile"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+      <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
+      <button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
     </td></tr>`).join('') || renderEmptyTableRow(7, 'No employees found.', 'fa-solid fa-user-slash');
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
@@ -218,6 +218,7 @@ async function viewProfile(id) {
       renderNotesList(notes);
       await loadEmployeeDocuments(id);
       await loadBankAccountStatus(id);
+      await loadSocialInsuranceStatus(id);
     } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
@@ -683,3 +684,124 @@ async function saveBankAccount(evt) {
     setButtonLoading(btn, false);
   }
 }
+
+let _socialInsuranceConfig = null;
+
+async function loadSocialInsuranceStatus(empId) {
+  const pill = document.getElementById('socialInsurancePill');
+  const btn = document.getElementById('socialInsuranceActionBtn');
+  const covEl = document.getElementById('socialInsCoverage');
+  const baseEl = document.getElementById('socialInsBase');
+  const effEl = document.getElementById('socialInsEffectiveDate');
+  if (!pill) return;
+  pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+  pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  if (covEl) covEl.textContent = '—';
+  if (baseEl) baseEl.textContent = '—';
+  if (effEl) effEl.textContent = '—';
+
+  try {
+    const data = await Api.getSocialInsurance(empId);
+    _socialInsuranceConfig = data;
+    const isCovered = !!data.insured_flag;
+    const baseAmt = data.insured_base !== null && data.insured_base !== undefined ? Number(data.insured_base) : null;
+    const effDate = data.effective_start_date ? String(data.effective_start_date).slice(0, 10) : '—';
+
+    if (btn) {
+      btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      btn.title = 'Edit Social Insurance';
+    }
+
+    if (isCovered) {
+      if (baseAmt === null || baseAmt <= 0) {
+        pill.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Missing Base';
+        pill.style.cssText = 'background:var(--warning-soft);color:var(--warning);';
+        if (covEl) covEl.textContent = 'Covered (Action Required)';
+        if (baseEl) baseEl.textContent = 'Not set (blocking)';
+      } else {
+        pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Covered';
+        pill.style.cssText = 'background:var(--success-soft);color:var(--success);';
+        if (covEl) covEl.textContent = 'Covered';
+        if (baseEl) baseEl.textContent = `${fmtMoney(baseAmt)} (Internal Estimate)`;
+      }
+      if (effEl) effEl.textContent = effDate;
+    } else {
+      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Not Covered';
+      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      if (covEl) covEl.textContent = 'Not Covered';
+      if (baseEl) baseEl.textContent = '—';
+      if (effEl) effEl.textContent = effDate !== '—' ? effDate : '—';
+    }
+  } catch (err) {
+    pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
+    pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  }
+}
+
+async function openSocialInsuranceModal() {
+  const flagInput = document.getElementById('fSocialInsFlag');
+  const baseInput = document.getElementById('fSocialInsBase');
+  const effInput = document.getElementById('fSocialInsEffectiveDate');
+
+  flagInput.checked = false;
+  baseInput.value = '';
+  const todayStr = new Date().toISOString().slice(0, 10);
+  effInput.value = todayStr;
+
+  if (_socialInsuranceConfig) {
+    flagInput.checked = !!_socialInsuranceConfig.insured_flag;
+    if (_socialInsuranceConfig.insured_base !== null && _socialInsuranceConfig.insured_base !== undefined) {
+      baseInput.value = _socialInsuranceConfig.insured_base;
+    }
+    if (_socialInsuranceConfig.effective_start_date) {
+      effInput.value = String(_socialInsuranceConfig.effective_start_date).slice(0, 10);
+    }
+  }
+
+  document.getElementById('socialInsuranceModal').classList.add('active');
+}
+
+async function saveSocialInsurance(evt) {
+  const btn = (evt && evt.currentTarget) || document.getElementById('socialInsuranceSaveBtn') || document.querySelector('#socialInsuranceModal .btn-fill');
+  const flag = document.getElementById('fSocialInsFlag').checked;
+  const baseVal = document.getElementById('fSocialInsBase').value.trim();
+  const effDate = document.getElementById('fSocialInsEffectiveDate').value.trim();
+
+  if (!effDate) {
+    toast('Effective Date is required.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (effDate > todayStr) {
+    toast('Future pre-staging is not permitted. Effective date must be on or before today.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+
+  let insuredBase = null;
+  if (flag) {
+    if (!baseVal || Number(baseVal) <= 0) {
+      toast('Insured Base Amount is required when employee is covered.', 'fa-solid fa-triangle-exclamation');
+      return;
+    }
+    insuredBase = Number(baseVal);
+  } else if (baseVal) {
+    insuredBase = Number(baseVal);
+  }
+
+  setButtonLoading(btn, true, 'Saving…');
+  try {
+    await Api.upsertSocialInsurance(currentDetailEmployeeId, {
+      insured_flag: flag,
+      insured_base: insuredBase,
+      effective_start_date: effDate
+    });
+    toast('Social insurance configuration saved.');
+    closeModal('socialInsuranceModal');
+    await loadSocialInsuranceStatus(currentDetailEmployeeId);
+  } catch (err) {
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}
+
