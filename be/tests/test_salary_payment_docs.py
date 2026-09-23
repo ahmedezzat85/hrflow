@@ -267,3 +267,68 @@ def test_pdf_converter_graceful_handling_empty_input():
     assert convert_docx_to_pdf_bytes(None) is None
 
 
+def test_build_template_context_includes_address_and_full_name():
+    from services.salary_payment_docs import build_template_context
+    import datetime as dt
+
+    emp = {
+        "id": 1,
+        "name": "Jane Developer",
+        "external_salary_usd": 4200,
+        "invoice_id": "05",
+        "address_line_1": "100 Innovation Blvd",
+        "address_line_2": "Suite 300",
+    }
+    fixed_now = dt.datetime(2026, 9, 23, 12, 0, 0, tzinfo=dt.timezone.utc)
+    ctx = build_template_context(emp, 2026, 9, now=fixed_now)
+
+    assert ctx["employee_name"] == "Jane Developer"
+    assert ctx["employee_full_name"] == "Jane Developer"
+    assert ctx["address_line_1"] == "100 Innovation Blvd"
+    assert ctx["address_line_2"] == "Suite 300"
+    assert ctx["current_month"] == "September"
+    assert ctx["invoice_number"] == "260509"
+    assert ctx["invoice_date"] == "23/09/2026"
+    assert ctx["amount"] == "$4,200.00"
+    assert ctx["total_amount"] == "$4,200.00"
+
+
+def test_render_invoice_document_populates_address_in_template():
+    import os
+    import docx
+    import io
+    from docxtpl import DocxTemplate
+    from services.salary_payment_docs import build_template_context
+    import datetime as dt
+
+    template_path = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "templates", "us_invoice_template.docx")
+    if not os.path.exists(template_path):
+        pytest.skip("Template file not found at " + template_path)
+
+    emp = {
+        "id": 2,
+        "name": "Ahmed Ezzat",
+        "external_salary_usd": 5000,
+        "invoice_id": "02",
+        "address_line_1": "15 Example St",
+        "address_line_2": "New Cairo, Cairo",
+    }
+    fixed_now = dt.datetime(2026, 9, 23, 12, 0, 0, tzinfo=dt.timezone.utc)
+    ctx = build_template_context(emp, 2026, 9, now=fixed_now)
+
+    doc = DocxTemplate(template_path)
+    doc.render(ctx)
+
+    bio = io.BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    rendered_doc = docx.Document(bio)
+
+    bill_from_text = rendered_doc.tables[0].rows[0].cells[0].text
+    assert "Ahmed Ezzat" in bill_from_text
+    assert "15 Example St" in bill_from_text
+    assert "New Cairo, Cairo" in bill_from_text
+    assert "Egypt" in bill_from_text
+
+
+
