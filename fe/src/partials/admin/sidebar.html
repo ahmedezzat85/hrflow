@@ -4,45 +4,47 @@
         <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse sidebar"><i
             class="fa-solid fa-chevron-left"></i></button>
       </div>
-      <div class="nav-section-label">Workspace</div>
-      <a class="nav-item active" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span
-          class="nav-label">Dashboard</span></a>
-      <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span
-          class="nav-label">Employees</span></a>
-      <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span
-          class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
-      <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span
-          class="nav-label">Salary & Raises</span></a>
-      <a class="nav-item" data-page="a-invoices" title="Invoices"><i class="fa-solid fa-file-invoice-dollar"></i> <span
-          class="nav-label">Invoices</span></a>
-      <div class="nav-section-label">Modules</div>
-      <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span
-          class="nav-label">Vacations</span></a>
-      <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i
-          class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
-      <a class="nav-item" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span
-          class="nav-label">Document Hub</span></a>
-      <div id="adminFinanceNavGroup" class="finance-nav-group">
-        <div class="nav-section-label">Finance</div>
-        <a class="nav-item" data-page="a-finance-dashboard" title="Finance Overview"><i class="fa-solid fa-chart-line"></i> <span
-            class="nav-label">Overview</span></a>
-        <a class="nav-item" data-page="a-finance-sales" title="Sales &amp; Receivables"><i class="fa-solid fa-file-invoice-dollar"></i> <span
-            class="nav-label">Sales</span><span id="financeSalesBadge" class="badge" style="display:none;" role="status"></span></a>
-        <a class="nav-item nav-sub-item" data-page="a-finance-invoices" title="Sales Invoices" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-file-invoice" style="font-size:11px;"></i> <span class="nav-label">Invoices</span></a>
-        <a class="nav-item" data-page="a-finance-spend" title="Spend &amp; Payables"><i class="fa-solid fa-receipt"></i> <span
-            class="nav-label">Spend</span><span id="financeSpendBadge" class="badge" style="display:none;" role="status"></span></a>
-        <a class="nav-item nav-sub-item" data-page="a-finance-bills" title="Vendor Bills" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-receipt" style="font-size:11px;"></i> <span class="nav-label">Bills</span></a>
-        <a class="nav-item nav-sub-item" data-page="a-finance-subscriptions" title="Subscriptions" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-repeat" style="font-size:11px;"></i> <span class="nav-label">Subscriptions</span></a>
-        <a class="nav-item nav-sub-item" data-page="a-finance-statutory" title="Statutory Obligations" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-landmark" style="font-size:11px;"></i> <span class="nav-label">Statutory</span></a>
-        <a class="nav-item" data-page="a-finance-banking" title="Banking &amp; Cash Management"><i class="fa-solid fa-building-columns"></i> <span
-            class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
-        <a class="nav-item nav-sub-item" data-page="a-finance-accounts" title="Company Accounts" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-building-columns" style="font-size:11px;"></i> <span class="nav-label">Bank Accounts</span></a>
-        <a class="nav-item" data-page="a-finance-payroll" title="Payroll Runs"><i class="fa-solid fa-money-check-dollar"></i> <span
-            class="nav-label">Payroll</span></a>
-        <a class="nav-item" data-page="a-finance-reports" title="Financial Reports & Export"><i class="fa-solid fa-file-excel"></i> <span
-            class="nav-label">Reports &amp; Export</span></a>
-        <a class="nav-item" data-page="a-finance-settings" title="Finance Settings"><i class="fa-solid fa-sliders"></i> <span
-            class="nav-label">Settings</span></a>
+      <div class="sidebar-nav">
+        <div class="nav-section-label">Workspace</div>
+        <a class="nav-item active" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span
+            class="nav-label">Dashboard</span></a>
+        <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span
+            class="nav-label">Employees</span></a>
+        <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span
+            class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
+        <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span
+            class="nav-label">Salary & Raises</span></a>
+        <a class="nav-item" data-page="a-invoices" title="Invoices"><i class="fa-solid fa-file-invoice-dollar"></i> <span
+            class="nav-label">Invoices</span></a>
+        <div class="nav-section-label">Modules</div>
+        <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span
+            class="nav-label">Vacations</span></a>
+        <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i
+            class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+        <a class="nav-item" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span
+            class="nav-label">Document Hub</span></a>
+        <div id="adminFinanceNavGroup" class="finance-nav-group">
+          <div class="nav-section-label">Finance</div>
+          <a class="nav-item" data-page="a-finance-dashboard" title="Finance Overview"><i class="fa-solid fa-chart-line"></i> <span
+              class="nav-label">Overview</span></a>
+          <a class="nav-item" data-page="a-finance-sales" title="Sales &amp; Receivables"><i class="fa-solid fa-file-invoice-dollar"></i> <span
+              class="nav-label">Sales</span><span id="financeSalesBadge" class="badge" style="display:none;" role="status"></span></a>
+          <a class="nav-item nav-sub-item" data-page="a-finance-invoices" title="Sales Invoices" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-file-invoice" style="font-size:11px;"></i> <span class="nav-label">Invoices</span></a>
+          <a class="nav-item" data-page="a-finance-spend" title="Spend &amp; Payables"><i class="fa-solid fa-receipt"></i> <span
+              class="nav-label">Spend</span><span id="financeSpendBadge" class="badge" style="display:none;" role="status"></span></a>
+          <a class="nav-item nav-sub-item" data-page="a-finance-bills" title="Vendor Bills" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-receipt" style="font-size:11px;"></i> <span class="nav-label">Bills</span></a>
+          <a class="nav-item nav-sub-item" data-page="a-finance-subscriptions" title="Subscriptions" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-repeat" style="font-size:11px;"></i> <span class="nav-label">Subscriptions</span></a>
+          <a class="nav-item nav-sub-item" data-page="a-finance-statutory" title="Statutory Obligations" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-landmark" style="font-size:11px;"></i> <span class="nav-label">Statutory</span></a>
+          <a class="nav-item" data-page="a-finance-banking" title="Banking &amp; Cash Management"><i class="fa-solid fa-building-columns"></i> <span
+              class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
+          <a class="nav-item nav-sub-item" data-page="a-finance-accounts" title="Company Accounts" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-building-columns" style="font-size:11px;"></i> <span class="nav-label">Bank Accounts</span></a>
+          <a class="nav-item" data-page="a-finance-payroll" title="Payroll Runs"><i class="fa-solid fa-money-check-dollar"></i> <span
+              class="nav-label">Payroll</span></a>
+          <a class="nav-item" data-page="a-finance-reports" title="Financial Reports & Export"><i class="fa-solid fa-file-excel"></i> <span
+              class="nav-label">Reports &amp; Export</span></a>
+          <a class="nav-item" data-page="a-finance-settings" title="Finance Settings"><i class="fa-solid fa-sliders"></i> <span
+              class="nav-label">Settings</span></a>
+        </div>
       </div>
       <div class="sidebar-footer">
         <div class="user-mini" title="Account">

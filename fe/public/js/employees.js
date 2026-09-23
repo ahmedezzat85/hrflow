@@ -19,17 +19,19 @@ function renderEmployeesTable(filter = '') {
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 
 function openEmployeeModal(id = null) {
-  currentEditId = id;
+  const numId = id !== null ? Number(id) : null;
+  currentEditId = (numId !== null && !isNaN(numId)) ? numId : id;
   document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
   if (id) {
-    const e = employees.find(x => x.id === id);
-    fEmpName.value = e.name; fEmpEmail.value = e.email; fEmpDept.value = e.dept; fEmpRole.value = e.role;
+    const e = employees.find(x => String(x.id) === String(id));
+    if (!e) return;
+    fEmpName.value = e.name || ''; fEmpEmail.value = e.email || ''; fEmpDept.value = e.dept || e.department || ''; fEmpRole.value = e.role || '';
     document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
     document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
     document.getElementById('fEmpInvoiceId').value = e.invoice_id || '';
     document.getElementById('fEmpAddressLine1').value = e.address_line_1 || '';
     document.getElementById('fEmpAddressLine2').value = e.address_line_2 || '';
-    fEmpJoin.value = e.join; fEmpStatus.value = e.status; fEmpVac.value = e.vacTotal - e.vacUsed;
+    fEmpJoin.value = e.join || ''; fEmpStatus.value = e.status || 'Active'; fEmpVac.value = (e.vacTotal || 21) - (e.vacUsed || 0);
     document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
   } else {
     ['fEmpName', 'fEmpEmail', 'fEmpRole'].forEach(id => document.getElementById(id).value = '');
@@ -80,7 +82,8 @@ async function saveEmployee(evt) {
 
 function askDelete(id) {
   currentDeleteId = id;
-  document.getElementById('delEmpName').textContent = employees.find(e => e.id === id).name;
+  const emp = employees.find(e => String(e.id) === String(id));
+  document.getElementById('delEmpName').textContent = emp ? emp.name : 'this employee';
   document.getElementById('confirmModal').classList.add('active');
 }
 async function confirmDelete(evt) {
@@ -107,9 +110,10 @@ function escRow(icon, label, valueHtml, opts = {}) {
 }
 
 async function viewProfile(id) {
-  currentDetailEmployeeId = id;
+  const numId = Number(id);
+  currentDetailEmployeeId = !isNaN(numId) ? numId : id;
   showSection('a-employee-detail', 'admin');
-  const e = employees.find(x => x.id === id);
+  const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
 
   const internalUsd = Number(e.internalSalaryUsd || 0);
@@ -272,7 +276,7 @@ function openBehalfVacationModal() {
 }
 async function submitBehalfVacation(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('behalfVacationSaveBtn') || document.querySelector('#behalfVacationModal .btn-fill');
-  const emp = employees.find(e => e.id === currentDetailEmployeeId);
+  const emp = employees.find(e => String(e.id) === String(currentDetailEmployeeId));
   const leave_type = document.getElementById('bvType').value;
   const start_date = document.getElementById('bvStart').value;
   const end_date = document.getElementById('bvEnd').value || start_date;
@@ -314,7 +318,7 @@ async function openBehalfClaimModal() {
 }
 async function submitBehalfClaim(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('behalfClaimSaveBtn') || document.querySelector('#behalfClaimModal .btn-fill');
-  const emp = employees.find(e => e.id === currentDetailEmployeeId);
+  const emp = employees.find(e => String(e.id) === String(currentDetailEmployeeId));
   const category = document.getElementById('bcCategory').value;
   const provider = document.getElementById('bcProvider').value;
   const amount = Number(document.getElementById('bcAmount').value);

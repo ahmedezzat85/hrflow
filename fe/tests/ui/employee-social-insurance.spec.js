@@ -130,4 +130,67 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     const deductionFooter = page.locator('#fDeductions');
     await expect(deductionFooter).toHaveAttribute('title', /Internal Estimate/);
   });
+
+  test('Regression fix: Employee profile card renders with header and compensation grid', async ({ page }) => {
+    await page.click('#adminSidebar a[data-page="a-employees"]');
+    await expect(page.locator('#a-employees')).toBeVisible();
+
+    const firstRow = page.locator('#employeesTableBody tr').first();
+    await expect(firstRow).toBeVisible();
+    await firstRow.locator('.icon-action[title="View Profile"]').click();
+
+    await expect(page.locator('#a-employee-detail')).toBeVisible();
+
+    // Verify detailProfileHead is populated
+    const profileHead = page.locator('#detailProfileHead');
+    await expect(profileHead).toBeVisible();
+    await expect(profileHead.locator('.esc-identity h4')).not.toBeEmpty();
+    await expect(profileHead.locator('.esc-avatar')).toBeVisible();
+
+    // Verify detailInfoGrid is populated with compensation & info items
+    const infoGrid = page.locator('#detailInfoGrid');
+    await expect(infoGrid).toBeVisible();
+    await expect(infoGrid.locator('.esc-body')).toBeVisible();
+    await expect(infoGrid).toContainText('Monthly Compensation');
+  });
+
+  test('Regression fix: Employee edit button in table opens edit modal with prefilled data', async ({ page }) => {
+    await page.click('#adminSidebar a[data-page="a-employees"]');
+    await expect(page.locator('#a-employees')).toBeVisible();
+
+    const firstRow = page.locator('#employeesTableBody tr').first();
+    await expect(firstRow).toBeVisible();
+
+    // Click edit button
+    const editBtn = firstRow.locator('.icon-action[title="Edit"]');
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // Expect modal to be open and prefilled
+    const modal = page.locator('#employeeModal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#empModalTitle')).toContainText('Edit Employee');
+    await expect(modal.locator('#fEmpName')).not.toBeEmpty();
+
+    // Close modal cleanly
+    await modal.locator('.modal-close').click();
+    await expect(modal).not.toBeVisible();
+  });
+
+  test('Regression fix: Viewport and sidebar layout containment prevents window scroll cut-off', async ({ page }) => {
+    // Check that html/body has overflow hidden and window scroll is 0
+    const scrollY = await page.evaluate(() => window.scrollY);
+    expect(scrollY).toBe(0);
+
+    const isWindowScrollable = await page.evaluate(() => {
+      return document.documentElement.scrollHeight > window.innerHeight;
+    });
+    expect(isWindowScrollable).toBe(false);
+
+    // Verify sidebar-nav exists and is scrollable container
+    const sidebarNav = page.locator('#adminSidebar .sidebar-nav');
+    await expect(sidebarNav).toBeVisible();
+    const navOverflowY = await sidebarNav.evaluate(el => window.getComputedStyle(el).overflowY);
+    expect(navOverflowY).toBe('auto');
+  });
 });
