@@ -254,3 +254,6 @@ uploads/
 migration_report.csv
 *.db.bak
 *.db.pre_migration*
+*.bkp
+be/.env
+be/credentials.json
