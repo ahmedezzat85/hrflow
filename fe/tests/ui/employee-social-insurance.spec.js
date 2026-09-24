@@ -52,6 +52,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     const modal = page.locator('#socialInsuranceModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('#socialInsuranceModalTitle')).toContainText('Social Insurance Configuration');
+    await expect(modal.locator('#fSocialInsBaseContainer label')).toContainText('(EGP)');
 
     // Attempt to set a future date
     await modal.locator('#fSocialInsFlag').check();
@@ -74,7 +75,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     const socialInsCard = page.locator('#socialInsuranceCard');
     await expect(socialInsCard.locator('#socialInsurancePill')).toContainText('Covered');
     await expect(socialInsCard.locator('#socialInsCoverage')).toContainText('Covered');
-    await expect(socialInsCard.locator('#socialInsBase')).toContainText('Internal Estimate');
+    await expect(socialInsCard.locator('#socialInsBase')).toContainText('EGP (Internal Estimate)');
     await expect(socialInsCard.locator('#socialInsEffectiveDate')).toContainText('2026-01-01');
   });
 

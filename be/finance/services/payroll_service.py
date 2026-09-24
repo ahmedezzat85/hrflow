@@ -30,6 +30,7 @@ from finance.models import (
 from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
 from repositories.social_insurance_repository import SocialInsuranceRepository
+from finance.services.payroll_calculation_helper import validate_and_calculate_internal_statutory
 
 # In-memory store for active previews and draft adjustments during runner execution
 _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -223,6 +224,8 @@ class PayrollService:
         tot_gross = 0.0
         tot_deductions = 0.0
         tot_employer_cost = 0.0
+        tot_emp_tax_egp = 0.0
+        tot_si_egp = 0.0
 
         for emp in employees:
             bank_rec = emp.bank_account
@@ -265,34 +268,31 @@ class PayrollService:
             social_ins = self.social_insurance_repo.get_insurance_for_period(emp.id, period_start, period_end)
             insured_flag = bool(social_ins.insured_flag) if social_ins else False
             insured_base = float(social_ins.insured_base) if (social_ins and social_ins.insured_base is not None) else None
+            insured_currency = social_ins.currency if social_ins else None
 
-            # Check internal salary presence
+            # Check internal salary presence & basis
             int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
             internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
+            salary_basis = getattr(int_comp, "salary_basis", "NET") if int_comp else "NET"
 
-            # Blocking rule:
-            # If internal_salary > 0 AND insured_flag = true AND no insured base is set -> BLOCKED
-            if internal_salary > 0 and insured_flag and (insured_base is None or insured_base <= 0):
-                has_blocking = True
-                exceptions.append({
-                    "id": f"exc-ins-{emp.id}",
-                    "employee_id": emp.id,
-                    "employee_name": emp.name,
-                    "severity": "blocking",
-                    "code": "MISSING_INSURED_BASE",
-                    "title": "Missing Insured Base",
-                    "description": f"{emp.name} is configured for social insurance coverage but has no active insured base configured. Set their insured base under Employee Profile > Social Insurance before running payroll.",
-                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                    "is_resolved": False,
-                })
-
-            # Calculate insurance deduction and employer cost estimate
-            if internal_salary > 0 and insured_flag and insured_base and insured_base > 0:
-                emp_deduction = round(insured_base * emp_rate, 2)
-                org_cost = round(insured_base * org_rate, 2)
-            else:
-                emp_deduction = 0.0
-                org_cost = 0.0
+            stat_res, stat_exceptions = validate_and_calculate_internal_statutory(
+                employee_id=emp.id,
+                employee_name=emp.name,
+                internal_usd_amount=internal_salary,
+                salary_basis=salary_basis,
+                locked_fx_rate=resolved_fx,
+                insured_flag=insured_flag,
+                insured_base=insured_base,
+                insured_currency=insured_currency,
+                employee_rate=emp_rate,
+                employer_rate=org_rate,
+                bonus_usd=0.0,
+                commission_usd=0.0,
+            )
+            if stat_exceptions:
+                exceptions.extend(stat_exceptions)
+                if any(e.get("severity") == "blocking" for e in stat_exceptions):
+                    has_blocking = True
 
             base_int = 0.0
             base_ext = 0.0
@@ -308,15 +308,46 @@ class PayrollService:
                     base_snap = 0.0
                     emp_r_snap = 0.0
                     org_r_snap = 0.0
+                    sal_basis_snap = None
+                    conf_int_sal_snap = 0.0
+                    ins_base_egp_snap = 0.0
+                    fx_rate_snap = resolved_fx
+                    base_gross_egp_val = 0.0
+                    var_gross_egp_val = 0.0
+                    emp_si_egp_val = 0.0
+                    org_si_egp_val = 0.0
+                    tot_si_egp_val = 0.0
+                    emp_tax_egp_val = 0.0
+                    emp_si_usd_eq_val = 0.0
+                    emp_tax_usd_eq_val = 0.0
+                    fin_int_net_egp_val = 0.0
+                    fin_int_pay_usd_val = None
                 else:
-                    deduction = emp_deduction
-                    net = round(amount - deduction, 2)
-                    cost = org_cost
-                    base_int += amount
+                    deduction = stat_res["deductions_total_usd"]
+                    net = stat_res["net_pay_usd"]
+                    cost = stat_res["employer_cost_extra_usd"]
+                    base_int += net
                     is_ins = insured_flag
-                    base_snap = insured_base or 0.0
-                    emp_r_snap = emp_rate if insured_flag else 0.0
-                    org_r_snap = org_rate if insured_flag else 0.0
+                    base_snap = stat_res["insured_base_egp"]
+                    emp_r_snap = stat_res["employee_rate"]
+                    org_r_snap = stat_res["employer_rate"]
+                    sal_basis_snap = stat_res["salary_basis"]
+                    conf_int_sal_snap = stat_res["configured_internal_salary_usd"]
+                    ins_base_egp_snap = stat_res["insured_base_egp"]
+                    fx_rate_snap = stat_res["fx_rate"]
+                    base_gross_egp_val = stat_res["base_gross_egp"]
+                    var_gross_egp_val = stat_res["variable_gross_egp"]
+                    emp_si_egp_val = stat_res["employee_social_insurance_egp"]
+                    org_si_egp_val = stat_res["employer_social_insurance_egp"]
+                    tot_si_egp_val = stat_res["total_social_insurance_egp"]
+                    emp_tax_egp_val = stat_res["employee_tax_egp"]
+                    emp_si_usd_eq_val = stat_res["employee_social_insurance_usd_equivalent"]
+                    emp_tax_usd_eq_val = stat_res["employee_tax_usd_equivalent"]
+                    fin_int_net_egp_val = stat_res["final_internal_net_egp"]
+                    fin_int_pay_usd_val = stat_res["final_internal_payment_usd"]
+
+                    tot_emp_tax_egp += emp_tax_egp_val
+                    tot_si_egp += tot_si_egp_val
 
                 tot_gross += amount
                 tot_deductions += deduction
@@ -339,6 +370,20 @@ class PayrollService:
                     "insured_base_snapshot": base_snap,
                     "employee_rate_snapshot": emp_r_snap,
                     "employer_rate_snapshot": org_r_snap,
+                    "salary_basis_snapshot": sal_basis_snap,
+                    "configured_internal_salary_usd_snapshot": conf_int_sal_snap,
+                    "insured_base_egp_snapshot": ins_base_egp_snap,
+                    "fx_rate_snapshot": fx_rate_snap,
+                    "base_gross_egp": base_gross_egp_val,
+                    "variable_gross_egp": var_gross_egp_val,
+                    "employee_social_insurance_egp": emp_si_egp_val,
+                    "employer_social_insurance_egp": org_si_egp_val,
+                    "total_social_insurance_egp": tot_si_egp_val,
+                    "employee_tax_egp": emp_tax_egp_val,
+                    "employee_social_insurance_usd_equivalent": emp_si_usd_eq_val,
+                    "employee_tax_usd_equivalent": emp_tax_usd_eq_val,
+                    "final_internal_net_egp": fin_int_net_egp_val,
+                    "final_internal_payment_usd": fin_int_pay_usd_val,
                     "currency": "USD",
                     "bank_name": bank_name or "Unassigned",
                     "bank_account_masked": masked_acc or "Not Provided",
@@ -358,15 +403,15 @@ class PayrollService:
                 "employee_id": emp.id,
                 "employee_name": emp.name,
                 "department": emp.dept or "General",
-                "base_int_amount": round(base_int, 2),
+                "base_int_amount": round(stat_res["final_internal_payment_usd"], 2) if int_comp else 0.0,
                 "base_ext_amount": round(base_ext, 2),
-                "int_deductions_total": emp_deduction,
-                "employer_cost_extra": org_cost,
+                "int_deductions_total": stat_res["deductions_total_usd"] if int_comp else 0.0,
+                "employer_cost_extra": stat_res["employer_cost_extra_usd"] if int_comp else 0.0,
                 "int_adjustments_total": 0.0,
                 "ext_adjustments_total": 0.0,
-                "final_int_amount": round(base_int - emp_deduction, 2),
+                "final_int_amount": round(stat_res["final_internal_payment_usd"], 2) if int_comp else 0.0,
                 "final_ext_amount": round(base_ext, 2),
-                "final_payment_amount": round(base_int - emp_deduction + base_ext, 2),
+                "final_payment_amount": round((stat_res["final_internal_payment_usd"] if int_comp else 0.0) + base_ext, 2),
                 "adjustments": [],
                 "bank_name": bank_name,
                 "destination_masked": masked_acc,
@@ -454,6 +499,8 @@ class PayrollService:
             "total_additions": 0.0,
             "final_int_total": final_int_total,
             "final_ext_total": final_ext_total,
+            "total_employee_tax_egp": round(tot_emp_tax_egp, 2),
+            "total_social_insurance_egp": round(tot_si_egp, 2),
             "prior_period_total": round(prior_total, 2),
             "change_amount": net_delta,
             "has_blocking_exceptions": has_blocking,
@@ -783,6 +830,8 @@ class PayrollService:
         tot_gross = 0.0
         tot_deductions = 0.0
         tot_employer_cost = 0.0
+        tot_emp_tax_egp = 0.0
+        tot_si_egp = 0.0
         exceptions = []
         lines_dict_list = []
 
@@ -811,33 +860,29 @@ class PayrollService:
             social_ins = self.social_insurance_repo.get_insurance_for_period(emp.id, period_start, period_end)
             insured_flag = bool(social_ins.insured_flag) if social_ins else False
             insured_base = float(social_ins.insured_base) if (social_ins and social_ins.insured_base is not None) else None
+            insured_currency = social_ins.currency if social_ins else None
 
-            # Check internal salary presence
+            # Check internal salary presence & basis
             int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
             internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
+            salary_basis = getattr(int_comp, "salary_basis", "NET") if int_comp else "NET"
 
-            # Blocking rule:
-            # If internal_salary > 0 AND insured_flag = true AND no insured base is set -> BLOCKED
-            if internal_salary > 0 and insured_flag and (insured_base is None or insured_base <= 0):
-                exceptions.append({
-                    "id": f"exc-ins-{emp.id}",
-                    "employee_id": emp.id,
-                    "employee_name": emp.name,
-                    "severity": "blocking",
-                    "code": "MISSING_INSURED_BASE",
-                    "title": "Missing Insured Base",
-                    "description": f"{emp.name} is configured for social insurance coverage but has no active insured base configured. Set their insured base under Employee Profile > Social Insurance before running payroll.",
-                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                    "is_resolved": False,
-                })
-
-            # Calculate insurance deduction and employer cost estimate
-            if internal_salary > 0 and insured_flag and insured_base and insured_base > 0:
-                emp_deduction = round(insured_base * emp_rate, 2)
-                org_cost = round(insured_base * org_rate, 2)
-            else:
-                emp_deduction = 0.0
-                org_cost = 0.0
+            stat_res, stat_exceptions = validate_and_calculate_internal_statutory(
+                employee_id=emp.id,
+                employee_name=emp.name,
+                internal_usd_amount=internal_salary,
+                salary_basis=salary_basis,
+                locked_fx_rate=resolved_fx,
+                insured_flag=insured_flag,
+                insured_base=insured_base,
+                insured_currency=insured_currency,
+                employee_rate=emp_rate,
+                employer_rate=org_rate,
+                bonus_usd=0.0,
+                commission_usd=0.0,
+            )
+            if stat_exceptions:
+                exceptions.extend(stat_exceptions)
 
             for comp in comps:
                 comp_type = comp.component_type
@@ -850,14 +895,45 @@ class PayrollService:
                     base_snap = 0.0
                     emp_r_snap = 0.0
                     org_r_snap = 0.0
+                    sal_basis_snap = None
+                    conf_int_sal_snap = 0.0
+                    ins_base_egp_snap = 0.0
+                    fx_rate_snap = resolved_fx
+                    base_gross_egp_val = 0.0
+                    var_gross_egp_val = 0.0
+                    emp_si_egp_val = 0.0
+                    org_si_egp_val = 0.0
+                    tot_si_egp_val = 0.0
+                    emp_tax_egp_val = 0.0
+                    emp_si_usd_eq_val = 0.0
+                    emp_tax_usd_eq_val = 0.0
+                    fin_int_net_egp_val = 0.0
+                    fin_int_pay_usd_val = None
                 else:
-                    deduction = emp_deduction
-                    net = round(amount - deduction, 2)
-                    cost = org_cost
+                    deduction = stat_res["deductions_total_usd"]
+                    net = stat_res["net_pay_usd"]
+                    cost = stat_res["employer_cost_extra_usd"]
                     is_ins = insured_flag
-                    base_snap = insured_base or 0.0
-                    emp_r_snap = emp_rate if insured_flag else 0.0
-                    org_r_snap = org_rate if insured_flag else 0.0
+                    base_snap = stat_res["insured_base_egp"]
+                    emp_r_snap = stat_res["employee_rate"]
+                    org_r_snap = stat_res["employer_rate"]
+                    sal_basis_snap = stat_res["salary_basis"]
+                    conf_int_sal_snap = stat_res["configured_internal_salary_usd"]
+                    ins_base_egp_snap = stat_res["insured_base_egp"]
+                    fx_rate_snap = stat_res["fx_rate"]
+                    base_gross_egp_val = stat_res["base_gross_egp"]
+                    var_gross_egp_val = stat_res["variable_gross_egp"]
+                    emp_si_egp_val = stat_res["employee_social_insurance_egp"]
+                    org_si_egp_val = stat_res["employer_social_insurance_egp"]
+                    tot_si_egp_val = stat_res["total_social_insurance_egp"]
+                    emp_tax_egp_val = stat_res["employee_tax_egp"]
+                    emp_si_usd_eq_val = stat_res["employee_social_insurance_usd_equivalent"]
+                    emp_tax_usd_eq_val = stat_res["employee_tax_usd_equivalent"]
+                    fin_int_net_egp_val = stat_res["final_internal_net_egp"]
+                    fin_int_pay_usd_val = stat_res["final_internal_payment_usd"]
+
+                    tot_emp_tax_egp += emp_tax_egp_val
+                    tot_si_egp += tot_si_egp_val
 
                 tot_gross += amount
                 tot_deductions += deduction
@@ -881,6 +957,20 @@ class PayrollService:
                     insured_base_snapshot=base_snap,
                     employee_rate_snapshot=emp_r_snap,
                     employer_rate_snapshot=org_r_snap,
+                    salary_basis_snapshot=sal_basis_snap,
+                    configured_internal_salary_usd_snapshot=conf_int_sal_snap,
+                    insured_base_egp_snapshot=ins_base_egp_snap,
+                    fx_rate_snapshot=fx_rate_snap,
+                    base_gross_egp=base_gross_egp_val,
+                    variable_gross_egp=var_gross_egp_val,
+                    employee_social_insurance_egp=emp_si_egp_val,
+                    employer_social_insurance_egp=org_si_egp_val,
+                    total_social_insurance_egp=tot_si_egp_val,
+                    employee_tax_egp=emp_tax_egp_val,
+                    employee_social_insurance_usd_equivalent=emp_si_usd_eq_val,
+                    employee_tax_usd_equivalent=emp_tax_usd_eq_val,
+                    final_internal_net_egp=fin_int_net_egp_val,
+                    final_internal_payment_usd=fin_int_pay_usd_val,
                     bank_name=bank_name or "Unassigned",
                     bank_account_masked=masked_acc or "Not Provided",
                     payment_status="pending",
@@ -928,6 +1018,8 @@ class PayrollService:
         run.total_deductions = round(tot_deductions, 2)
         run.total_net = round(tot_net, 2)
         run.total_employer_cost = round(tot_net + tot_employer_cost, 2)
+        run.total_employee_tax_egp = round(tot_emp_tax_egp, 2)
+        run.total_social_insurance_egp = round(tot_si_egp, 2)
         run.headcount = len(employees)
         run.payment_date = payment_date or period_end
         run.preview_id = f"PRV-{period_label.replace('-', '')}-{uuid.uuid4().hex[:6].upper()}"
@@ -1024,6 +1116,8 @@ class PayrollService:
             total_deductions=preview.get("total_deductions", 0.0),
             total_net=preview["total_net"],
             total_employer_cost=preview.get("total_employer_cost", preview["total_net"]),
+            total_employee_tax_egp=preview.get("total_employee_tax_egp", 0.0),
+            total_social_insurance_egp=preview.get("total_social_insurance_egp", 0.0),
             headcount=preview["headcount"],
             currency=currency or "USD",
             bank_account_id=preview["bank_account_id"],
@@ -1073,6 +1167,20 @@ class PayrollService:
                 insured_base_snapshot=ins_base,
                 employee_rate_snapshot=emp_rate_snap,
                 employer_rate_snapshot=org_rate_snap,
+                salary_basis_snapshot=pl.get("salary_basis_snapshot"),
+                configured_internal_salary_usd_snapshot=pl.get("configured_internal_salary_usd_snapshot"),
+                insured_base_egp_snapshot=pl.get("insured_base_egp_snapshot"),
+                fx_rate_snapshot=pl.get("fx_rate_snapshot", resolved_fx),
+                base_gross_egp=pl.get("base_gross_egp"),
+                variable_gross_egp=pl.get("variable_gross_egp"),
+                employee_social_insurance_egp=pl.get("employee_social_insurance_egp"),
+                employer_social_insurance_egp=pl.get("employer_social_insurance_egp"),
+                total_social_insurance_egp=pl.get("total_social_insurance_egp"),
+                employee_tax_egp=pl.get("employee_tax_egp"),
+                employee_social_insurance_usd_equivalent=pl.get("employee_social_insurance_usd_equivalent"),
+                employee_tax_usd_equivalent=pl.get("employee_tax_usd_equivalent"),
+                final_internal_net_egp=pl.get("final_internal_net_egp"),
+                final_internal_payment_usd=pl.get("final_internal_payment_usd"),
                 bank_name=pl.get("bank_name", "Unassigned"),
                 bank_account_masked=pl.get("bank_account_masked", "Not Provided"),
                 payment_status="pending",
@@ -1120,13 +1228,20 @@ class PayrollService:
         """Recalculates net payment totals and headcount for a payroll run from its lines."""
         lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
         tot_net = round(sum(float(l.net_pay or 0.0) for l in lines), 2)
+        tot_gross = round(sum(float(l.base_salary or 0.0) for l in lines), 2)
+        tot_deductions = round(sum(float(l.deductions_total or 0.0) for l in lines), 2)
+        tot_employer_extra = round(sum(float(l.employer_cost_extra or 0.0) for l in lines), 2)
+        tot_emp_tax_egp = round(sum(float(l.employee_tax_egp or 0.0) for l in lines), 2)
+        tot_si_egp = round(sum(float(l.total_social_insurance_egp or 0.0) for l in lines), 2)
         distinct_headcount = len(set(l.employee_id for l in lines))
 
-        run.total_gross = tot_net
+        run.total_gross = tot_gross
         run.total_tax = 0.0
-        run.total_deductions = 0.0
+        run.total_deductions = tot_deductions
         run.total_net = tot_net
-        run.total_employer_cost = tot_net
+        run.total_employer_cost = round(tot_net + tot_employer_extra, 2)
+        run.total_employee_tax_egp = tot_emp_tax_egp
+        run.total_social_insurance_egp = tot_si_egp
         run.headcount = distinct_headcount
         run.liabilities_summary_json = "{}"
 
@@ -1394,6 +1509,15 @@ class PayrollService:
             "Final Payment",
             "Payment Status",
             "Payment Reference",
+            "Salary Basis",
+            "Insured Base EGP",
+            "Employee SI EGP",
+            "Employer SI EGP",
+            "Total SI EGP",
+            "Employee Tax EGP",
+            "Employee SI USD Eq",
+            "Employee Tax USD Eq",
+            "FX Rate",
         ])
 
         emp_ids = sorted(list(set([l.employee_id for l in run.lines] + [a.employee_id for a in (run.adjustments or [])])))
@@ -1419,6 +1543,17 @@ class PayrollService:
             st = emp_lines[0].payment_status if emp_lines else "pending"
             ref = emp_lines[0].linked_payment_id if emp_lines else ""
 
+            int_line = next((l for l in emp_lines if l.compensation_type != "external_usd" and not getattr(l, "is_adjustment", False)), None)
+            sal_basis = int_line.salary_basis_snapshot if (int_line and int_line.salary_basis_snapshot) else ("NET" if int_line else "")
+            ins_base_egp = f"{(int_line.insured_base_egp_snapshot or 0.0):.2f}" if (int_line and int_line.insured_base_egp_snapshot) else "0.00"
+            emp_si_egp = f"{(int_line.employee_social_insurance_egp or 0.0):.2f}" if (int_line and int_line.employee_social_insurance_egp) else "0.00"
+            org_si_egp = f"{(int_line.employer_social_insurance_egp or 0.0):.2f}" if (int_line and int_line.employer_social_insurance_egp) else "0.00"
+            tot_si_egp = f"{(int_line.total_social_insurance_egp or 0.0):.2f}" if (int_line and int_line.total_social_insurance_egp) else "0.00"
+            emp_tax_egp = f"{(int_line.employee_tax_egp or 0.0):.2f}" if (int_line and int_line.employee_tax_egp) else "0.00"
+            emp_si_usd = f"{(int_line.employee_social_insurance_usd_equivalent or 0.0):.2f}" if (int_line and int_line.employee_social_insurance_usd_equivalent) else "0.00"
+            emp_tax_usd = f"{(int_line.employee_tax_usd_equivalent or 0.0):.2f}" if (int_line and int_line.employee_tax_usd_equivalent) else "0.00"
+            fx_rate = f"{(int_line.fx_rate_snapshot or run.fx_rate_value or 0.0):.4f}" if int_line else f"{(run.fx_rate_value or 0.0):.4f}"
+
             writer.writerow([
                 eid,
                 name,
@@ -1433,6 +1568,15 @@ class PayrollService:
                 f"{final_payment:.2f}",
                 st,
                 ref or "",
+                sal_basis,
+                ins_base_egp,
+                emp_si_egp,
+                org_si_egp,
+                tot_si_egp,
+                emp_tax_egp,
+                emp_si_usd,
+                emp_tax_usd,
+                fx_rate,
             ])
 
         return output.getvalue()
@@ -1696,6 +1840,20 @@ class PayrollService:
             "bank_name": line.bank_name,
             "bank_account_masked": line.bank_account_masked,
             "compensation_type": line.compensation_type,
+            "salary_basis_snapshot": line.salary_basis_snapshot,
+            "configured_internal_salary_usd_snapshot": line.configured_internal_salary_usd_snapshot,
+            "insured_base_egp_snapshot": line.insured_base_egp_snapshot,
+            "fx_rate_snapshot": line.fx_rate_snapshot or line.payroll_run.fx_rate_value,
+            "base_gross_egp": line.base_gross_egp,
+            "variable_gross_egp": line.variable_gross_egp,
+            "employee_social_insurance_egp": line.employee_social_insurance_egp,
+            "employer_social_insurance_egp": line.employer_social_insurance_egp,
+            "total_social_insurance_egp": line.total_social_insurance_egp,
+            "employee_tax_egp": line.employee_tax_egp,
+            "employee_social_insurance_usd_equivalent": line.employee_social_insurance_usd_equivalent,
+            "employee_tax_usd_equivalent": line.employee_tax_usd_equivalent,
+            "final_internal_net_egp": line.final_internal_net_egp,
+            "final_internal_payment_usd": line.final_internal_payment_usd,
         }
 
     # -------------------------------------------------------------------------
@@ -1721,6 +1879,8 @@ class PayrollService:
             "total_deductions": run.total_deductions or 0.0,
             "total_net": run.total_net,
             "total_employer_cost": run.total_employer_cost if run.total_employer_cost is not None else run.total_net,
+            "total_employee_tax_egp": run.total_employee_tax_egp or 0.0,
+            "total_social_insurance_egp": run.total_social_insurance_egp or 0.0,
             "total_payment_amount": run.total_net,
             "headcount": run.headcount,
             "recipient_count": run.headcount,
@@ -1763,6 +1923,20 @@ class PayrollService:
             "insured_base_snapshot": l.insured_base_snapshot or 0.0,
             "employee_rate_snapshot": l.employee_rate_snapshot or 0.0,
             "employer_rate_snapshot": l.employer_rate_snapshot or 0.0,
+            "salary_basis_snapshot": l.salary_basis_snapshot,
+            "configured_internal_salary_usd_snapshot": l.configured_internal_salary_usd_snapshot,
+            "insured_base_egp_snapshot": l.insured_base_egp_snapshot,
+            "fx_rate_snapshot": l.fx_rate_snapshot,
+            "base_gross_egp": l.base_gross_egp,
+            "variable_gross_egp": l.variable_gross_egp,
+            "employee_social_insurance_egp": l.employee_social_insurance_egp,
+            "employer_social_insurance_egp": l.employer_social_insurance_egp,
+            "total_social_insurance_egp": l.total_social_insurance_egp,
+            "employee_tax_egp": l.employee_tax_egp,
+            "employee_social_insurance_usd_equivalent": l.employee_social_insurance_usd_equivalent,
+            "employee_tax_usd_equivalent": l.employee_tax_usd_equivalent,
+            "final_internal_net_egp": l.final_internal_net_egp,
+            "final_internal_payment_usd": l.final_internal_payment_usd,
             "net_pay": l.net_pay or 0.0,
             "amount": l.net_pay or 0.0,
             "currency": l.payroll_run.currency if l.payroll_run else "USD",

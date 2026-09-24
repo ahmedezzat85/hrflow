@@ -398,6 +398,7 @@ const Api = {
       const record = window._mockSocialInsurance[empId] || {
         insured_flag: false,
         insured_base: null,
+        currency: "EGP",
         effective_start_date: null
       };
       return Promise.resolve(record);
@@ -412,6 +413,7 @@ const Api = {
         employee_id: empId,
         insured_flag: !!payload.insured_flag,
         insured_base: payload.insured_base !== null && payload.insured_base !== undefined ? Number(payload.insured_base) : null,
+        currency: "EGP",
         effective_start_date: payload.effective_start_date,
         effective_end_date: null,
         created_at: new Date().toISOString()

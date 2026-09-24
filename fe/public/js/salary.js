@@ -176,6 +176,10 @@ function onCompPlanTypeChange() {
   const type = document.getElementById('compPlanComponentType').value;
   const emp = employees.find(e => String(e.id) === currentCompPlanEmpId);
   const amtInput = document.getElementById('compPlanAmount');
+  const basisContainer = document.getElementById('compPlanSalaryBasisContainer');
+  if (basisContainer) {
+    basisContainer.style.display = type === 'internal_usd_cash' ? 'block' : 'none';
+  }
   if (emp) {
     if (type === 'external_usd') {
       amtInput.value = emp.externalSalaryUsd || '';
@@ -188,7 +192,7 @@ function onCompPlanTypeChange() {
 async function reloadCompPlanData(empId) {
   const histTbody = document.getElementById('compPlanHistoryBody');
   if (!histTbody) return;
-  histTbody.innerHTML = renderEmptyTableRow(6, 'Loading history...', 'fa-solid fa-spinner fa-spin');
+  histTbody.innerHTML = renderEmptyTableRow(7, 'Loading history...', 'fa-solid fa-spinner fa-spin');
   try {
     const [plan, history] = await Promise.all([
       FinanceApi.getEmployeeCompensationPlan(empId),
@@ -205,8 +209,11 @@ async function reloadCompPlanData(empId) {
       }
 
       if (plan.internal_usd_cash) {
-        document.getElementById('compPlanActiveInternal').textContent = fmtUSD(plan.internal_usd_cash.amount);
+        const basisLabel = (plan.internal_usd_cash.salary_basis || 'NET').toUpperCase();
+        document.getElementById('compPlanActiveInternal').textContent = `${fmtUSD(plan.internal_usd_cash.amount)} (${basisLabel})`;
         document.getElementById('compPlanIntEffective').textContent = `Effective: ${plan.internal_usd_cash.effective_start_date}`;
+        const basisSelect = document.getElementById('compPlanSalaryBasis');
+        if (basisSelect) basisSelect.value = basisLabel;
       } else {
         document.getElementById('compPlanActiveInternal').textContent = '$0.00';
         document.getElementById('compPlanIntEffective').textContent = 'No active plan';
@@ -224,8 +231,10 @@ async function reloadCompPlanData(empId) {
         const statusBadge = !h.effective_end_date
           ? '<span class="badge-pill pill-success">Active</span>'
           : '<span class="badge-pill pill-neutral">Closed</span>';
+        const basisText = isExternal ? 'NET' : (h.salary_basis || 'NET');
         return `<tr>
           <td>${typeBadge}</td>
+          <td><span class="badge-pill pill-neutral">${basisText}</span></td>
           <td><strong>${fmtUSD(h.amount)}</strong></td>
           <td>${h.effective_start_date}</td>
           <td>${h.effective_end_date || '—'}</td>
@@ -234,11 +243,11 @@ async function reloadCompPlanData(empId) {
         </tr>`;
       }).join('');
     } else {
-      histTbody.innerHTML = renderEmptyTableRow(6, 'No compensation history recorded yet.', 'fa-solid fa-clock');
+      histTbody.innerHTML = renderEmptyTableRow(7, 'No compensation history recorded yet.', 'fa-solid fa-clock');
     }
   } catch (err) {
     console.warn('Failed to load compensation plan details:', err);
-    histTbody.innerHTML = renderEmptyTableRow(6, 'Could not load history.', 'fa-solid fa-triangle-exclamation');
+    histTbody.innerHTML = renderEmptyTableRow(7, 'Could not load history.', 'fa-solid fa-triangle-exclamation');
   }
 }
 
@@ -248,6 +257,7 @@ async function saveCompPlanComponent(evt) {
   const amountVal = document.getElementById('compPlanAmount').value;
   const startDate = document.getElementById('compPlanStartDate').value;
   const notes = document.getElementById('compPlanNotes').value;
+  const salaryBasis = type === 'internal_usd_cash' ? (document.getElementById('compPlanSalaryBasis')?.value || 'NET') : 'NET';
 
   if (!amountVal || Number(amountVal) <= 0) {
     toast('Please specify a valid amount greater than 0.', 'fa-solid fa-triangle-exclamation');
@@ -260,11 +270,16 @@ async function saveCompPlanComponent(evt) {
 
   setButtonLoading(btn, true, 'Saving…');
   try {
-    await FinanceApi.setEmployeeCompensationPlanComponent(currentCompPlanEmpId, type, {
+    const payload = {
       amount: Number(amountVal),
       effective_start_date: startDate,
       notes: notes
-    });
+    };
+    if (type === 'internal_usd_cash') {
+      payload.salary_basis = salaryBasis;
+    }
+
+    await FinanceApi.setEmployeeCompensationPlanComponent(currentCompPlanEmpId, type, payload);
 
     toast('Compensation component updated successfully.', 'fa-solid fa-check');
 
@@ -274,7 +289,6 @@ async function saveCompPlanComponent(evt) {
       if (type === 'internal_usd_cash') emp.internalSalaryUsd = Number(amountVal);
       emp.salary = (emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0);
     }
-
 
     await reloadCompPlanData(currentCompPlanEmpId);
     renderSalaryPage(document.getElementById('salarySearch')?.value || '');

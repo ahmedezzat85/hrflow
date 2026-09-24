@@ -615,6 +615,8 @@ class PayrollRunDB(Base):
     liabilities_summary_json = Column(Text, default="{}")
     exceptions_json = Column(Text, default="[]")
     variance_summary_json = Column(Text, default="{}")
+    total_employee_tax_egp = Column(Float, default=0.0, nullable=True)
+    total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
     adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
@@ -668,6 +670,20 @@ class PayrollLineDB(Base):
     insured_base_snapshot = Column(Float, default=0.0, nullable=True)
     employee_rate_snapshot = Column(Float, default=0.0, nullable=True)
     employer_rate_snapshot = Column(Float, default=0.0, nullable=True)
+    salary_basis_snapshot = Column(String(20), nullable=True)
+    configured_internal_salary_usd_snapshot = Column(Float, default=0.0, nullable=True)
+    insured_base_egp_snapshot = Column(Float, default=0.0, nullable=True)
+    fx_rate_snapshot = Column(Float, nullable=True)
+    base_gross_egp = Column(Float, default=0.0, nullable=True)
+    variable_gross_egp = Column(Float, default=0.0, nullable=True)
+    employee_social_insurance_egp = Column(Float, default=0.0, nullable=True)
+    employer_social_insurance_egp = Column(Float, default=0.0, nullable=True)
+    total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
+    employee_tax_egp = Column(Float, default=0.0, nullable=True)
+    employee_social_insurance_usd_equivalent = Column(Float, default=0.0, nullable=True)
+    employee_tax_usd_equivalent = Column(Float, default=0.0, nullable=True)
+    final_internal_net_egp = Column(Float, default=0.0, nullable=True)
+    final_internal_payment_usd = Column(Float, nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_masked = Column(String(50), nullable=True)
     payment_status = Column(String(30), default="pending")  # pending / paid / failed
@@ -816,6 +832,7 @@ class EmployeeCompensationPlanDB(Base):
     component_type = Column(String(50), nullable=False, index=True)  # external_usd | internal_usd_cash
     amount = Column(Float, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
+    salary_basis = Column(String(20), default="NET", nullable=False)
     effective_start_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
     effective_end_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD, null when active
     notes = Column(Text, default="", nullable=False)

@@ -224,7 +224,7 @@ class EmployeeSocialInsuranceUpsert(BaseModel):
     """
     insured_flag: bool = False
     insured_base: Optional[float] = None
-    currency: str = "USD"
+    currency: str = "EGP"
     effective_start_date: str
     notes: Optional[str] = ""
 
@@ -234,7 +234,7 @@ class EmployeeSocialInsuranceResponse(BaseModel):
     employee_id: int
     insured_flag: bool
     insured_base: Optional[float] = None
-    currency: str = "USD"
+    currency: str = "EGP"
     effective_start_date: str
     effective_end_date: Optional[str] = None
     notes: str = ""

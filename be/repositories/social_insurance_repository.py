@@ -72,7 +72,7 @@ class SocialInsuranceRepository:
         insured_base: Optional[float],
         effective_start_date: str,
         notes: str = "",
-        currency: str = "USD",
+        currency: str = "EGP",
         created_by: str = "",
     ) -> EmployeeSocialInsuranceDB:
         """Create a new active social insurance row."""
@@ -86,7 +86,7 @@ class SocialInsuranceRepository:
             employee_id=employee_id,
             insured_flag=bool(insured_flag),
             insured_base=round(float(insured_base), 2) if (insured_base is not None and insured_flag) else None,
-            currency=currency or "USD",
+            currency=currency or "EGP",
             effective_start_date=effective_start_date,
             effective_end_date=None,
             notes=notes or "",

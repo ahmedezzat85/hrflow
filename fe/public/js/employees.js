@@ -710,13 +710,21 @@ async function loadSocialInsuranceStatus(empId) {
     const isCovered = !!data.insured_flag;
     const baseAmt = data.insured_base !== null && data.insured_base !== undefined ? Number(data.insured_base) : null;
     const effDate = data.effective_start_date ? String(data.effective_start_date).slice(0, 10) : '—';
+    const curr = (data.currency || 'EGP').toUpperCase();
+    const isLegacyUSD = isCovered && curr === 'USD';
 
     if (btn) {
       btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
       btn.title = 'Edit Social Insurance';
     }
 
-    if (isCovered) {
+    if (isLegacyUSD) {
+      pill.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Legacy USD Config';
+      pill.style.cssText = 'background:var(--danger-soft);color:var(--danger);';
+      if (covEl) covEl.textContent = 'Covered (Update Required)';
+      if (baseEl) baseEl.textContent = `${baseAmt !== null ? '$' + Number(baseAmt).toLocaleString() : '—'} USD (Needs EGP conversion)`;
+      if (effEl) effEl.textContent = effDate;
+    } else if (isCovered) {
       if (baseAmt === null || baseAmt <= 0) {
         pill.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Missing Base';
         pill.style.cssText = 'background:var(--warning-soft);color:var(--warning);';
@@ -726,7 +734,7 @@ async function loadSocialInsuranceStatus(empId) {
         pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Covered';
         pill.style.cssText = 'background:var(--success-soft);color:var(--success);';
         if (covEl) covEl.textContent = 'Covered';
-        if (baseEl) baseEl.textContent = `${fmtMoney(baseAmt)} (Internal Estimate)`;
+        if (baseEl) baseEl.textContent = `${Number(baseAmt).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} EGP (Internal Estimate)`;
       }
       if (effEl) effEl.textContent = effDate;
     } else {

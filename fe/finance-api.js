@@ -6816,6 +6816,7 @@ async getEntityActivity(entityType, entityId) {
           component_type: componentType,
           amount: round(amt),
           currency: "USD",
+          salary_basis: componentType === "internal_usd_cash" ? (data.salary_basis || "NET") : "NET",
           effective_start_date: data.effective_start_date,
           effective_end_date: null,
           notes: data.notes || "",

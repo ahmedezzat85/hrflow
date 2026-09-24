@@ -108,13 +108,6 @@ class SocialInsuranceService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="insured_base cannot be negative",
                 )
-
-            internal_salary = float(emp.internal_salary_usd or 0.0)
-            if cleaned_base > internal_salary:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insured base (${cleaned_base:,.2f}) cannot exceed employee internal salary (${internal_salary:,.2f})",
-                )
         else:
             cleaned_base = None
 
@@ -124,6 +117,7 @@ class SocialInsuranceService:
             if effective_start_date == active_row.effective_start_date:
                 active_row.insured_flag = bool(insured_flag)
                 active_row.insured_base = cleaned_base
+                active_row.currency = "EGP"
                 if notes is not None:
                     active_row.notes = notes
                 new_row = active_row
@@ -145,7 +139,7 @@ class SocialInsuranceService:
                     insured_base=cleaned_base,
                     effective_start_date=effective_start_date,
                     notes=notes or "",
-                    currency="USD",
+                    currency="EGP",
                     created_by=user_email or "system",
                 )
         else:
@@ -155,7 +149,7 @@ class SocialInsuranceService:
                 insured_base=cleaned_base,
                 effective_start_date=effective_start_date,
                 notes=notes or "",
-                currency="USD",
+                currency="EGP",
                 created_by=user_email or "system",
             )
 
@@ -170,6 +164,7 @@ class SocialInsuranceService:
                 details=json.dumps({
                     "insured_flag": bool(insured_flag),
                     "insured_base": cleaned_base,
+                    "currency": "EGP",
                     "effective_start_date": effective_start_date,
                     "notes": notes,
                 }),

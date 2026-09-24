@@ -1935,6 +1935,20 @@ class PayrollLineResponse(BaseModel):
     insured_base_snapshot: Optional[float] = 0.0
     employee_rate_snapshot: Optional[float] = 0.0
     employer_rate_snapshot: Optional[float] = 0.0
+    salary_basis_snapshot: Optional[str] = None
+    configured_internal_salary_usd_snapshot: Optional[float] = 0.0
+    insured_base_egp_snapshot: Optional[float] = 0.0
+    fx_rate_snapshot: Optional[float] = None
+    base_gross_egp: Optional[float] = 0.0
+    variable_gross_egp: Optional[float] = 0.0
+    employee_social_insurance_egp: Optional[float] = 0.0
+    employer_social_insurance_egp: Optional[float] = 0.0
+    total_social_insurance_egp: Optional[float] = 0.0
+    employee_tax_egp: Optional[float] = 0.0
+    employee_social_insurance_usd_equivalent: Optional[float] = 0.0
+    employee_tax_usd_equivalent: Optional[float] = 0.0
+    final_internal_net_egp: Optional[float] = 0.0
+    final_internal_payment_usd: Optional[float] = None
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2115,6 +2129,8 @@ class PayrollRunPreviewResponse(BaseModel):
     total_additions: float = 0.0
     final_int_total: float = 0.0
     final_ext_total: float = 0.0
+    total_employee_tax_egp: Optional[float] = 0.0
+    total_social_insurance_egp: Optional[float] = 0.0
     prior_period_total: float = 0.0
     change_amount: float = 0.0
     has_blocking_exceptions: bool = False
@@ -2190,6 +2206,8 @@ class PayrollRunResponse(BaseModel):
     total_commissions: Optional[float] = 0.0
     total_bonuses: Optional[float] = 0.0
     total_additions: Optional[float] = 0.0
+    total_employee_tax_egp: Optional[float] = 0.0
+    total_social_insurance_egp: Optional[float] = 0.0
 
     @model_validator(mode="before")
     @classmethod
@@ -2232,6 +2250,18 @@ class EmployeePayslipResponse(BaseModel):
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
     compensation_type: Optional[str] = None
+    salary_basis_snapshot: Optional[str] = None
+    insured_base_egp_snapshot: Optional[float] = None
+    fx_rate_snapshot: Optional[float] = None
+    base_gross_egp: Optional[float] = None
+    variable_gross_egp: Optional[float] = None
+    employee_social_insurance_egp: Optional[float] = None
+    employer_social_insurance_egp: Optional[float] = None
+    total_social_insurance_egp: Optional[float] = None
+    employee_tax_egp: Optional[float] = None
+    employee_social_insurance_usd_equivalent: Optional[float] = None
+    final_internal_net_egp: Optional[float] = None
+    final_internal_payment_usd: Optional[float] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -2335,6 +2365,7 @@ class CompensationComponentSetRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Component amount in USD, must be greater than 0")
     effective_start_date: str = Field(..., description="Effective start date in YYYY-MM-DD format")
     notes: Optional[str] = Field("", description="Optional notes or rationale")
+    salary_basis: Optional[str] = Field("NET", description="Salary basis: NET or GROSS (internal_usd_cash only)")
 
 
 class CompensationComponentResponse(BaseModel):
@@ -2343,6 +2374,7 @@ class CompensationComponentResponse(BaseModel):
     component_type: str
     amount: float
     currency: str = "USD"
+    salary_basis: Optional[str] = "NET"
     effective_start_date: str
     effective_end_date: Optional[str] = None
     notes: str = ""

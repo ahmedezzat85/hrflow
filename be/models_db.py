@@ -297,7 +297,7 @@ class EmployeeSocialInsuranceDB(Base):
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
     insured_flag = Column(Boolean, default=False, nullable=False)
     insured_base = Column(Float, nullable=True)
-    currency = Column(String(10), default="USD", nullable=False)
+    currency = Column(String(10), default="EGP", nullable=False)
     effective_start_date = Column(String(20), nullable=False, index=True)
     effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
     notes = Column(Text, default="", nullable=False)
