@@ -119,17 +119,15 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     await page.click('#btnOpenCurrentCycle');
     await expect(page.locator('#payrollViewRun')).toBeVisible();
 
-    // Verify worksheet table header for Deductions contains (Est.)
-    const tableHeader = page.locator('#payrollWorksheetTable thead');
-    await expect(tableHeader).toContainText('Deductions (Est.)');
+    // Advance Screen 1 -> Screen 2 -> Screen 3 (Processing)
+    await page.click('#btnP1Proceed');
+    await page.click('#btnP2Approve');
 
-    // Verify header title has estimate indicator
-    const deductionTh = tableHeader.locator('th:has-text("Deductions (Est.)")');
-    await expect(deductionTh).toHaveAttribute('title', /Internal Estimate/);
-
-    // Verify footer total deductions cell has estimate title
-    const deductionFooter = page.locator('#fDeductions');
-    await expect(deductionFooter).toHaveAttribute('title', /Internal Estimate/);
+    // Verify Screen 3 table headers contain statutory Social Insurance snapshots
+    const tableHeader = page.locator('#payrollProcessingTable thead');
+    await expect(tableHeader).toContainText('Emp SI (EGP)');
+    await expect(tableHeader).toContainText('Empr SI (EGP)');
+    await expect(tableHeader).toContainText('Total SI (EGP)');
   });
 
   test('Regression fix: Employee profile card renders with header and compensation grid', async ({ page }) => {

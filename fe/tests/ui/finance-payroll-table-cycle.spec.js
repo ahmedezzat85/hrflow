@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
+test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
     page.on('pageerror', (err) => console.log('PAGE ERROR:', err));
@@ -56,151 +56,113 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expect(viewList).toBeVisible();
   });
 
-  test('TC-2: Run Page — Stepper, 5 KPI cards, worksheet table, inline bonuses, and bottom panels', async ({ page }) => {
+  test('TC-2: Stepper (6 steps), Screen 1 (Initiation: FX & Period), and Screen 2 (Approve & Bonuses)', async ({ page }) => {
     // Open Run Page
     await page.click('#btnOpenCurrentCycle');
     const viewRun = page.locator('#payrollViewRun');
     await expect(viewRun).toBeVisible();
 
-    // 1. Check Stepper
+    // 1. Check Stepper: 6 purpose-built steps
     const stepper = page.locator('#payrollStepper');
-    await expect(stepper.locator('.payroll-step-pill')).toHaveCount(4);
-    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('1. Review & Draft');
+    await expect(stepper.locator('.payroll-step-pill')).toHaveCount(6);
+    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('1. Initiation');
 
-    // 2. Check 5 KPI Stat cards
-    const stats = page.locator('#payrollStatsGrid .payroll-stat');
-    await expect(stats).toHaveCount(5);
-    await expect(stats.nth(0).locator('.label')).toHaveText(/Headcount/i);
-    await expect(stats.nth(1).locator('.label')).toHaveText(/Total Net Payment/i);
+    // 2. Screen 1 elements visible
+    const s1 = page.locator('#payrollScreen1');
+    await expect(s1).toBeVisible();
+    await expect(page.locator('#p1Month')).toHaveValue('2026-09');
+    await expect(page.locator('#p1Headcount')).toHaveText('2');
+    await expect(page.locator('#payrollFxRateBadge')).toHaveText('50.0000');
 
-    // 3. Check Worksheet table columns and rows
+    // Test FX rate override on Screen 1
+    await page.fill('#p1FxRateInput', '48.5000');
+    await page.click('#btnP1ApplyFx');
+    await expect(page.locator('#payrollFxRateBadge')).toHaveText('48.5000');
+    await expect(page.locator('#payrollFxRateSourceBadge')).toHaveText('Manual Override');
+
+    // Reset FX rate
+    await page.click('#btnP1ResetFx');
+    await expect(page.locator('#payrollFxRateBadge')).toHaveText('50.0000');
+
+    // Advance to Screen 2
+    await page.click('#btnP1Proceed');
+
+    // 3. Screen 2 is active
+    await expect(s1).toHaveClass(/payroll-hidden/);
+    const s2 = page.locator('#payrollScreen2');
+    await expect(s2).toBeVisible();
+    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('2. Approve');
+
+    // Check Worksheet table on Screen 2
     const table = page.locator('#payrollWorksheetTable');
     await expect(table).toBeVisible();
-    const rows = table.locator('#payrollTableBody tr:not(.expand-row)');
-    const count = await rows.count();
-    expect(count).toBeGreaterThan(0);
+    const rows = table.locator('#payrollTableBody tr');
+    await expect(rows).toHaveCount(8);
 
-    // 4. Test adding inline bonus to first employee
-    const firstRow = rows.first();
-    const empName = await firstRow.locator('.payroll-emp-name').textContent();
-    const empIdText = await firstRow.locator('.payroll-emp-id').textContent();
-    const empId = empIdText.replace('#', '').trim();
+    // Test adding a bonus via modal
+    await page.click('#btnAddBonusModalBtn');
+    const bonusModal = page.locator('#payrollBonusModal');
+    await expect(bonusModal).toBeVisible();
 
-    await firstRow.locator('.add-bonus-btn').click();
+    await page.fill('#bonusAmountInput', '450.00');
+    await page.fill('#bonusDescriptionInput', 'Top performer award');
+    await page.click('#bonusSaveBtn');
+    await expect(bonusModal).not.toBeVisible();
 
-    // Expand row appears
-    const expandRow = table.locator('.expand-row');
-    await expect(expandRow).toBeVisible();
+    // Verify row displays bonus badge
+    await expect(rows.first().locator('.p-bonus-pill')).toContainText('450');
 
-    // Verify fields and buttons are aligned in a single horizontal row
-    const formRow = expandRow.locator('.expand-form-row');
-    await expect(formRow).toBeVisible();
-    const submitBtn = expandRow.locator('.btn-bonus-submit');
-    const closeBtn = expandRow.locator('.btn-bonus-close');
-    await expect(submitBtn).toBeVisible();
-    await expect(closeBtn).toBeVisible();
-    const submitBox = await submitBtn.boundingBox();
-    expect(submitBox.width).toBeLessThan(160); // Not stretched to full row width
-
-    await expandRow.locator(`#amt-${empId}`).fill('500');
-    // Toggle source to External
-    await expandRow.locator(`#src-${empId} button[data-src="external"]`).click();
-    await submitBtn.click();
-
-    // Verify bonus tag created
-    await expect(expandRow.locator('.bonus-tag')).toContainText('$500.00');
-
-    // 5. Verify ID in first column, employee name wrapping in second column
-    const firstRowCells = firstRow.locator('td');
-    await expect(firstRowCells.nth(0)).toHaveClass(/payroll-id-col/);
-    await expect(firstRowCells.nth(1)).toHaveClass(/payroll-name-col/);
-    const empNameWhiteSpace = await firstRow.locator('.payroll-emp-name').evaluate(el => window.getComputedStyle(el).whiteSpace);
-    expect(empNameWhiteSpace).toBe('normal');
-
-    // 6. Verify single outer scroll (no inner vertical table scroll and no horizontal scroll on desktop)
-    const tableWrapScrollState = await page.locator('#payrollViewRun .payroll-table-wrap').evaluate(el => ({
-      hasVerticalScroll: el.scrollHeight > el.clientHeight,
-      hasHorizontalScroll: el.scrollWidth > el.clientWidth + 2
-    }));
-    expect(tableWrapScrollState.hasVerticalScroll).toBe(false);
-    expect(tableWrapScrollState.hasHorizontalScroll).toBe(false);
-
-    // 6. Check compact bottom summary strip
-    await expect(page.locator('#accExternal')).toBeVisible();
-    await expect(page.locator('#accInternal')).toBeVisible();
-    await expect(page.locator('#payrollExceptionList')).toBeVisible();
-    // Journal card should remain hidden before paid
-    await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
+    // Save Draft
+    await page.click('#btnP2SaveDraft');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll run saved as Draft');
   });
 
-  test('TC-3: Step lifecycle (Draft -> Approved -> Processing -> Paid), exception handling, and Revert to Draft', async ({ page }) => {
-    // Open Run Page
+  test('TC-3: Lifecycle Transitions: Submit & Approve -> Screen 3 (Frozen Snapshots) -> Screen 4 (Preview)', async ({ page }) => {
     await page.click('#btnOpenCurrentCycle');
+    // Proceed from Screen 1 to Screen 2
+    await page.click('#btnP1Proceed');
+    await expect(page.locator('#payrollScreen2')).toBeVisible();
 
-    // Journal should be hidden initially
-    await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
+    // Click Submit & Approve Run
+    await page.click('#btnP2Approve');
 
-    // Advance to Step 2: Approved
-    await page.click('#payrollNextBtn');
-    await expect(page.locator('#payrollStatusBadge')).toHaveText('APPROVED');
+    // Advances to Screen 3 (Processing)
+    const s3 = page.locator('#payrollScreen3');
+    await expect(s3).toBeVisible();
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('3. Processing');
+
+    // Finalized lock note is visible
     await expect(page.locator('#payrollLockNote')).toBeVisible();
 
-    // Advance to Step 3: Processing (simulates bank failure)
-    await page.click('#payrollNextBtn');
-    await expect(page.locator('#payrollStatusBadge')).toHaveText('PROCESSING');
+    // Screen 3 table contains backend statutory snapshots
+    const procTable = page.locator('#payrollProcessingTableBody tr');
+    await expect(procTable).toHaveCount(3);
+    // Verifies Insured Base and Employee SI columns
+    await expect(procTable.first().locator('td').nth(4)).not.toBeEmpty();
+    await expect(procTable.first().locator('td').nth(6)).not.toBeEmpty();
 
-    // Verify exception appears under Exceptions strip
-    const exceptionsPanel = page.locator('#payrollExceptionList');
-    await expect(exceptionsPanel).toContainText('Bank transfer rejected');
+    // Advance to Screen 4 (Payment Preview)
+    await page.click('#btnP3Next');
+    const s4 = page.locator('#payrollScreen4');
+    await expect(s4).toBeVisible();
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('4. Payment Preview');
 
-    // Attempting next when blocking exception exists is prevented
-    await expect(page.locator('#payrollNextBtn')).toBeDisabled();
-
-    // Click "Retry payment" on the exception
-    await page.click('.retry-btn');
-    await expect(page.locator('#payrollActionBanner')).toContainText('Payment retried for');
-
-    // Advance to Step 4: Paid
-    await expect(page.locator('#payrollNextBtn')).not.toBeDisabled();
-    await page.click('#payrollNextBtn');
-    await expect(page.locator('#payrollStatusBadge')).toHaveText('PAID');
-    await expect(page.locator('#payrollNextBtn')).toHaveText('Cycle Complete');
-
-    // Now Journal card becomes visible automatically once PAID
-    const journalCard = page.locator('#payrollJournalCard');
-    await expect(journalCard).toBeVisible();
-    await expect(journalCard.locator('#payrollJournalBadge')).toHaveText('Posted');
-
-    // Toggle journal lines
-    await page.click('#btnToggleJournal');
-    await expect(page.locator('#payrollJournalDetails')).toBeVisible();
-    await expect(page.locator('#payrollJournalRows')).toContainText('Internal Payroll Expense');
-
-    // Test Revert to Draft
-    await page.click('#payrollRevertBtn');
-    const revertModal = page.locator('#payrollRevertModal');
-    await expect(revertModal).toHaveClass(/show/);
-
-    await page.fill('#payrollRevertReason', 'Correction needed for overtime hours');
-    await page.click('#payrollRevertModal button:has-text("Revert to draft")');
-
-    await expect(revertModal).not.toHaveClass(/show/);
-    await expect(page.locator('#payrollStatusBadge')).toHaveText('DRAFT');
-    await expect(page.locator('#payrollLockNote')).toHaveClass(/payroll-hidden/);
-    await expect(page.locator('#payrollJournalCard')).toHaveClass(/payroll-hidden/);
+    // Check disbursement summary cards
+    await expect(page.locator('#p4ExtBankTotal')).toBeVisible();
+    await expect(page.locator('#p4IntCashTotal')).toBeVisible();
+    await expect(page.locator('#p4TotalNet')).toBeVisible();
+    await expect(page.locator('#payrollPaymentPreviewTableBody tr')).toHaveCount(8);
   });
 
   test('TC-4: Settings Page — Target funding accounts selection and payroll month schedule update', async ({ page }) => {
     await page.click('#payrollNavSettings');
     await expect(page.locator('#payrollViewSettings')).toBeVisible();
 
-    // Verify two cells for choosing target account for External and Internal salaries
     const extSelect = page.locator('#payrollTargetExternalAccount');
     const intSelect = page.locator('#payrollTargetInternalAccount');
     await expect(extSelect).toBeVisible();
     await expect(intSelect).toBeVisible();
 
-    // Verify options are populated from company bank accounts
     const extOptions = extSelect.locator('option');
     const intOptions = intSelect.locator('option');
     await expect(extOptions).not.toHaveCount(0);
@@ -225,56 +187,56 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expect(page.locator('#payrollActionBanner')).toContainText('Payroll settings saved');
   });
 
-  test('TC-5: FX-rate wiring, fallback indicator, manual override, and non-zero Deductions column validation', async ({ page }) => {
-    // Open Run Page
+  test('TC-5: Screen 5 (Disbursement & GL Journal) and Screen 6 (Statutory Reconciliation)', async ({ page }) => {
     await page.click('#btnOpenCurrentCycle');
-    await expect(page.locator('#payrollViewRun')).toBeVisible();
+    // Screen 1 -> Screen 2
+    await page.click('#btnP1Proceed');
+    // Screen 2 -> Screen 3
+    await page.click('#btnP2Approve');
+    // Screen 3 -> Screen 4
+    await page.click('#btnP3Next');
+    // Screen 4 -> Screen 5
+    await page.click('#btnP4Next');
 
-    // 1. Verify FX Rate strip, rate badge, and fallback indicator
-    const fxStrip = page.locator('#payrollFxStrip');
-    await expect(fxStrip).toBeVisible();
-    const fxBadge = page.locator('#payrollFxRateBadge');
-    await expect(fxBadge).toBeVisible();
-    await expect(fxBadge).toHaveText('50.0000');
-    const fxSourceBadge = page.locator('#payrollFxRateSourceBadge');
-    await expect(fxSourceBadge).toContainText('System Fallback (50.0)');
+    const s5 = page.locator('#payrollScreen5');
+    await expect(s5).toBeVisible();
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('5. Confirm Disbursal');
 
-    // 2. Verify Deductions column in worksheet table has non-zero values
-    const rows = page.locator('#payrollWorksheetTable #payrollTableBody tr:not(.expand-row)');
-    const count = await rows.count();
-    expect(count).toBeGreaterThan(0);
+    // Confirm & Disburse
+    await page.click('#btnP5ConfirmDisburse');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll disbursement confirmed');
 
-    // First row should have non-zero deduction
-    const firstRowDeduction = rows.first().locator('td').nth(6);
-    await expect(firstRowDeduction).toBeVisible();
-    const dedText = await firstRowDeduction.textContent();
-    expect(dedText).not.toBe('$0.00');
-    expect(dedText).toMatch(/\$\d+\.\d{2}/);
+    // Results card & GL journal visible
+    await expect(page.locator('#p5DisburseResultsCard')).toBeVisible();
+    const journalCard = page.locator('#payrollJournalCard');
+    await expect(journalCard).toBeVisible();
+    await expect(journalCard.locator('#payrollJournalBadge')).toHaveText('Posted');
 
-    // Footer total deductions is non-zero
-    const footerDeductions = page.locator('#fDeductions');
-    await expect(footerDeductions).toBeVisible();
-    const footerText = await footerDeductions.textContent();
-    expect(footerText).not.toBe('$0.00');
-    expect(footerText).toMatch(/\$\d+[\d,]*\.\d{2}/);
+    // Toggle GL journal lines
+    await page.click('#btnToggleJournal');
+    await expect(page.locator('#payrollJournalDetails')).toBeVisible();
 
-    // 3. Test inline FX Rate override
-    await page.click('#btnToggleFxOverride');
-    const overrideForm = page.locator('#payrollFxOverrideForm');
-    await expect(overrideForm).toBeVisible();
+    // Advance to Screen 6 (Statutory Payments)
+    await page.click('#btnP5ProceedStatutory');
+    const s6 = page.locator('#payrollScreen6');
+    await expect(s6).toBeVisible();
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('6. Statutory Payments');
 
-    await page.fill('#payrollFxRateInput', '48.7500');
-    await page.click('#btnApplyFxRate');
+    // Check estimate snapshot displays
+    await expect(page.locator('#p6SocialInsEstimate')).toContainText('EGP');
+    await expect(page.locator('#p6TaxEstimate')).toContainText('EGP');
 
-    // Badge updates to manual override
-    await expect(overrideForm).not.toBeVisible();
-    await expect(fxBadge).toHaveText('48.7500');
-    await expect(fxSourceBadge).toHaveText('Manual Override');
+    // Record Social Insurance Obligation
+    await page.fill('#p6SocialInsActual', '18500.00');
+    await page.click('#btnP6RecordSocialIns');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Statutory obligation');
 
-    // 4. Test Resetting FX Rate override
-    await page.click('#btnToggleFxOverride');
-    await page.click('#btnResetFxRate');
-    await expect(fxBadge).toHaveText('50.0000');
-    await expect(fxSourceBadge).toContainText('System Fallback (50.0)');
+    // Verify linked obligation row appeared in table
+    const statRows = page.locator('#payrollStatutoryRecordsTableBody tr');
+    await expect(statRows).not.toHaveCount(0);
+
+    // Finish returns to Runs List
+    await page.click('#btnP6Finish');
+    await expect(page.locator('#payrollViewList')).toBeVisible();
   });
 });

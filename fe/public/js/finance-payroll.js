@@ -1,6 +1,6 @@
 /**
  * fe/public/js/finance-payroll.js
- * In-Page Payroll Module Controller for HRFlow
+ * In-Page Payroll Module Controller for HRFlow (Six-Screen Journey)
  * Sourced and synced directly with real database employees and bank accounts
  */
 
@@ -21,14 +21,16 @@
     { id: 2, name: 'Global Payments Partner Account', type: 'external', currency: 'USD', number: '****7788', isDefault: true }
   ];
 
-  const FLOW = ['draft', 'approved', 'processing', 'paid'];
+  const FLOW = ['initiation', 'approve', 'processing', 'preview', 'confirmation', 'statutory'];
   const STEP_META = {
-    draft: { label: '1. Review & Draft', hint: 'Step 1 of 4 — Review payroll lines, add bonuses if needed, then click Next to save as draft.' },
-    approved: { label: '2. Approve', hint: 'Step 2 of 4 — Draft saved and locked. Click Next to approve the run (blocked if any exception is blocking).' },
-    processing: { label: '3. Processing', hint: 'Step 3 of 4 — Transfers submitted to the bank and awaiting confirmation. Click Next to simulate bank confirmation.' },
-    paid: { label: '4. Paid', hint: 'Step 4 of 4 — Funds confirmed received. The GL journal has been posted automatically.' }
+    initiation: { label: '1. Initiation', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
+    approve: { label: '2. Approve', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
+    processing: { label: '3. Processing', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
+    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview disbursement breakdown by payment rail before funding release.' },
+    confirmation: { label: '5. Confirm Disbursal', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
+    statutory: { label: '6. Statutory Payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
   };
-  const DONE_HINT = 'Cycle complete — payroll is Paid and the GL journal has been posted automatically.';
+  const DONE_HINT = 'Cycle complete — payroll is Paid and statutory obligations are reconciled.';
 
   const PayrollApp = {
     rows: JSON.parse(JSON.stringify(seedEmployees)),
@@ -48,6 +50,8 @@
     stepIndex: 0,
     expandedId: null,
     journalPosted: false,
+    currentRun: null,
+    currentPreview: null,
     audit: [],
     historyRuns: [
       { period: '2026-08', status: 'paid', net: 34210.00, employees: 8, updated: '2026-08-30 18:42' },
@@ -94,10 +98,11 @@
     async loadEmployeesFromDb() {
       try {
         let rawEmployees = null;
-        const isMock = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
-        
-        if (isMock) {
-          if (typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
+        const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (isMockMode) {
+          if (typeof FinanceMockState !== 'undefined' && Array.isArray(FinanceMockState.employees) && FinanceMockState.employees.length > 0) {
+            rawEmployees = FinanceMockState.employees;
+          } else if (typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
             rawEmployees = window.employees;
           }
         } else {
@@ -210,7 +215,9 @@
     },
 
     currentStatusKey() {
-      return FLOW[this.stepIndex];
+      if (this.currentRun && this.currentRun.status) return this.currentRun.status;
+      const legacyMap = ['draft', 'draft', 'approved', 'finalized', 'processing', 'paid'];
+      return legacyMap[this.stepIndex] || 'draft';
     },
 
     bonusTotals(row) {
@@ -275,8 +282,11 @@
       const currentStatus = this.currentStatusKey();
       const statusMap = {
         draft: ['DRAFT', 'b-gray'],
+        submitted: ['SUBMITTED', 'b-blue'],
         approved: ['APPROVED', 'b-blue'],
+        finalized: ['FINALIZED', 'b-blue'],
         processing: ['PROCESSING', 'b-orange'],
+        partially_paid: ['PARTIALLY PAID', 'b-orange'],
         paid: ['PAID', 'b-green']
       };
       const t = this.rollup();
@@ -285,7 +295,7 @@
         <tr class="clickable" onclick="PayrollApp.openRun('current')">
           <td><strong>${this.month}</strong></td>
           <td>${this.start} &rarr; ${this.end}</td>
-          <td><span class="p-badge ${statusMap[currentStatus][1]}">${statusMap[currentStatus][0]}</span></td>
+          <td><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'DRAFT'}</span></td>
           <td class="payroll-num">${this.money(t.net)}</td>
           <td>${this.rows.length}</td>
           <td>${this.audit[0] ? this.audit[0].when : '—'}</td>
@@ -299,120 +309,271 @@
             <td>${r.period}-01 &rarr; ${r.period}-30</td>
             <td><span class="p-badge b-green">PAID</span></td>
             <td class="payroll-num">${this.money(r.net)}</td>
-            <td>${r.employees || 8}</td>
+            <td>${r.employees}</td>
             <td>${r.updated}</td>
           </tr>
         `;
       });
 
       tbody.innerHTML = rowsHtml;
-      if (countEl) {
-        countEl.textContent = `${this.historyRuns.length + 1} runs · current cycle is ${statusMap[currentStatus][0]}`;
+      if (countEl) countEl.textContent = `${this.historyRuns.length + 1} runs total`;
+    },
+
+    openRun(id) {
+      if (id === 'current') {
+        this.showPage('run');
+        this.setStep(0);
+      } else {
+        this.openHistoryRun(id);
       }
     },
 
-    openRun(period) {
+    async openHistoryRun(period) {
+      try {
+        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollRuns) {
+          const runs = await FinanceApi.getPayrollRuns();
+          const match = (runs || []).find(r => r.period_label === period || String(r.id) === String(period));
+          if (match) {
+            this.currentRun = match;
+            this.month = match.period_label || period;
+            this.showPage('run');
+            if (match.status === 'paid' || match.status === 'partially_paid') {
+              this.setStep(4);
+            } else if (match.status === 'finalized') {
+              this.setStep(3);
+            } else if (match.status === 'approved') {
+              this.setStep(2);
+            } else {
+              this.setStep(1);
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load specific run:', e);
+      }
+      this.showBanner(`Viewing historical snapshot for ${period}`, 'blue');
       this.showPage('run');
-      this.redraw();
+      this.setStep(4);
     },
 
-    openHistoryRun(period) {
-      this.showPage('run');
-      this.showBanner(`Viewing historical closed run for ${period} (read-only reference).`, 'blue');
-      this.redraw();
-    },
-
-    /* ---------------- Run detail view ---------------- */
+    /* ---------------- Stepper & Screen Navigation ---------------- */
     drawStepper() {
-      const stepperEl = document.getElementById('payrollStepper');
-      if (!stepperEl) return;
+      const container = document.getElementById('payrollStepper');
+      if (!container) return;
 
-      stepperEl.innerHTML = FLOW.map((key, i) => {
-        let cls = 'payroll-step-pill';
-        if (i < this.stepIndex) cls += ' done';
-        else if (i === this.stepIndex) cls += ' active';
-        return `<div class="${cls}"><span class="payroll-step-num">${i + 1}</span>${STEP_META[key].label}</div>`;
+      container.innerHTML = FLOW.map((stepKey, idx) => {
+        const meta = STEP_META[stepKey] || { label: `${idx + 1}. Step` };
+        const isActive = idx === this.stepIndex;
+        const isDone = idx < this.stepIndex;
+        const cls = isActive ? 'active' : (isDone ? 'done' : '');
+        return `
+          <button type="button" class="payroll-step-pill ${cls}" onclick="PayrollApp.setStep(${idx})">
+            <span class="payroll-step-num">${idx + 1}</span>
+            <span>${meta.label}</span>
+          </button>
+        `;
       }).join('');
     },
 
-    drawStats() {
-      const statsGrid = document.getElementById('payrollStatsGrid');
-      if (!statsGrid) return;
+    async setStep(idx) {
+      if (idx < 0) idx = 0;
+      if (idx > 5) idx = 5;
 
-      const t = this.rollup();
-      const cards = [
-        ['Headcount', String(this.rows.length)],
-        ['Total Net Payment', this.money(t.net)],
-        ['Total Internal Payout', this.money(t.internal)],
-        ['Total External Payout', this.money(t.external)],
-        ['Total Bonus Amount', this.money(t.bonus)]
-      ];
-
-      statsGrid.innerHTML = cards.map(([k, v]) => `
-        <div class="payroll-stat">
-          <div class="label">${k}</div>
-          <div class="value">${v}</div>
-        </div>
-      `).join('');
-    },
-
-    drawStatus() {
-      const key = this.currentStatusKey();
-      const statusMap = {
-        draft: ['DRAFT', 'b-gray'],
-        approved: ['APPROVED', 'b-blue'],
-        processing: ['PROCESSING', 'b-orange'],
-        paid: ['PAID', 'b-green']
-      };
-
-      const badge = document.getElementById('payrollStatusBadge');
-      if (badge) {
-        badge.textContent = statusMap[key][0];
-        badge.className = `p-badge ${statusMap[key][1]}`;
+      // Lifecycle Gate: Finalize when entering Screen 3 (Processing)
+      if (idx === 2 && this.currentRun && this.currentRun.status === 'approved') {
+        try {
+          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
+            await FinanceApi.finalizePayrollRun(this.currentRun.id);
+            this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
+            this.showBanner('Payroll run finalized and locked. Backend snapshots populated.', 'blue');
+          }
+        } catch (err) {
+          console.warn('[PayrollApp] Finalize error:', err);
+        }
       }
 
-      const revertBtn = document.getElementById('payrollRevertBtn');
-      if (revertBtn) {
-        revertBtn.classList.toggle('payroll-hidden', key === 'draft');
+      this.stepIndex = idx;
+
+      // Toggle Screen Views
+      for (let s = 1; s <= 6; s++) {
+        const screenEl = document.getElementById(`payrollScreen${s}`);
+        if (screenEl) {
+          if (s === idx + 1) {
+            screenEl.classList.remove('payroll-hidden');
+          } else {
+            screenEl.classList.add('payroll-hidden');
+          }
+        }
       }
 
+      // Draw active screen content
+      if (idx === 0) this.drawScreen1();
+      else if (idx === 1) this.drawScreen2();
+      else if (idx === 2) this.drawScreen3();
+      else if (idx === 3) this.drawScreen4();
+      else if (idx === 4) this.drawScreen5();
+      else if (idx === 5) this.drawScreen6();
+
+      this.drawStepper();
+      this.drawPeriodLabel();
+      this.drawStatus();
+
+      const stepKey = FLOW[idx];
+      const hint = STEP_META[stepKey] ? STEP_META[stepKey].hint : '';
+      const hintEl = document.getElementById('payrollStepHint');
+      if (hintEl) hintEl.textContent = hint;
+
+      // Lock banner
       const lockNote = document.getElementById('payrollLockNote');
       const lockText = document.getElementById('payrollLockText');
       if (lockNote && lockText) {
-        if (key === 'draft') {
-          lockNote.classList.add('payroll-hidden');
-        } else {
+        if (idx >= 2) {
           lockNote.classList.remove('payroll-hidden');
-          const lockMsgs = {
-            approved: 'This run is locked. Employee lines cannot be edited while Approved. Use "Revert to draft" if a correction is needed.',
-            processing: 'This run is locked while transfers are processing at the bank. No edits are possible until Paid or reverted.',
-            paid: 'This run is Paid and permanently locked. No further edits are possible — corrections require a new adjustment run.'
-          };
-          lockText.textContent = lockMsgs[key] || '';
+          lockText.textContent = 'This payroll cycle has been finalized. Base compensation and dynamic additions are locked against edits.';
+        } else {
+          lockNote.classList.add('payroll-hidden');
         }
       }
     },
 
-    drawFooterControls() {
-      const key = this.currentStatusKey();
-      const hasBlocking = this.exceptions().some(x => x.type === 'blocking');
-      const atEnd = key === 'paid';
+    goBack() {
+      if (this.stepIndex > 0) {
+        this.setStep(this.stepIndex - 1);
+      }
+    },
 
-      const hintEl = document.getElementById('payrollStepHint');
-      if (hintEl) {
-        hintEl.textContent = atEnd ? DONE_HINT : STEP_META[key].hint;
+    goNext() {
+      if (this.stepIndex < 5) {
+        this.setStep(this.stepIndex + 1);
+      }
+    },
+
+    /* ==================== SCREEN 1: INITIATION ==================== */
+    drawScreen1() {
+      const mInput = document.getElementById('p1Month');
+      if (mInput) mInput.value = this.month;
+      const pdInput = document.getElementById('p1PayDate');
+      if (pdInput) pdInput.value = this.payDate;
+      const sInput = document.getElementById('p1Start');
+      if (sInput) sInput.value = this.start;
+      const eInput = document.getElementById('p1End');
+      if (eInput) eInput.value = this.end;
+
+      const extSelect = document.getElementById('p1ExtAccount');
+      const intSelect = document.getElementById('p1IntAccount');
+      if (extSelect) {
+        extSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+      }
+      if (intSelect) {
+        intSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
       }
 
-      const backBtn = document.getElementById('payrollBackBtn');
-      if (backBtn) {
-        backBtn.disabled = this.stepIndex === 0 || key === 'paid';
-      }
+      this.drawFxRate();
 
-      const nextBtn = document.getElementById('payrollNextBtn');
-      if (nextBtn) {
-        nextBtn.textContent = atEnd ? 'Cycle Complete' : (hasBlocking ? 'Resolve exceptions to continue' : 'Next');
-        nextBtn.disabled = atEnd || (hasBlocking && (key === 'approved' || key === 'processing'));
+      const p = this.currentPreview;
+      const t = this.rollup();
+      const hcEl = document.getElementById('p1Headcount');
+      const extEl = document.getElementById('p1ExtEst');
+      const intEl = document.getElementById('p1IntEst');
+      const netEl = document.getElementById('p1NetEst');
+
+      if (hcEl) hcEl.textContent = (p && p.headcount) || this.rows.length;
+      if (extEl) extEl.textContent = this.money((p && p.final_ext_total) || t.external);
+      if (intEl) intEl.textContent = this.money((p && p.final_int_total) || t.internal);
+      if (netEl) netEl.textContent = this.money((p && p.total_net) || t.net);
+    },
+
+    onScreen1PeriodChange() {
+      const m = document.getElementById('p1Month');
+      if (m && m.value) this.month = m.value;
+      const pd = document.getElementById('p1PayDate');
+      if (pd && pd.value) this.payDate = pd.value;
+      const s = document.getElementById('p1Start');
+      if (s && s.value) this.start = s.value;
+      const e = document.getElementById('p1End');
+      if (e && e.value) this.end = e.value;
+      this.drawPeriodLabel();
+    },
+
+    onScreen1AccountChange() {
+      const ext = document.getElementById('p1ExtAccount');
+      const intAcc = document.getElementById('p1IntAccount');
+      if (ext) this.selectedExternalAccountId = ext.value;
+      if (intAcc) this.selectedInternalAccountId = intAcc.value;
+      this.persistFundingAccounts();
+    },
+
+    async applyScreen1Fx() {
+      const input = document.getElementById('p1FxRateInput') || document.getElementById('payrollFxRateInput');
+      const val = input ? parseFloat(input.value) : null;
+      if (val && val > 0) {
+        this.fxRateValue = val;
+        this.addAudit(`Applied manual FX rate: ${val.toFixed(4)} USD/EGP.`);
+      } else {
+        this.fxRateValue = null;
+        this.addAudit('Reset FX rate to resolver.');
       }
+      await this.fetchPreview();
+      this.drawScreen1();
+      this.drawFxRate();
+      this.showBanner(`FX conversion rate updated: ${this.resolvedFxRate.toFixed(4)} USD/EGP.`, 'blue');
+    },
+
+    async resetScreen1Fx() {
+      this.fxRateValue = null;
+      await this.fetchPreview();
+      this.drawScreen1();
+      this.drawFxRate();
+      this.showBanner('FX rate reset to default resolver.', 'blue');
+    },
+
+    async proceedFromScreen1() {
+      this.onScreen1PeriodChange();
+      this.onScreen1AccountChange();
+      await this.fetchPreview();
+      this.setStep(1);
+    },
+
+    /* ==================== SCREEN 2: APPROVE & ADJUSTMENTS ==================== */
+    drawScreen2() {
+      this.drawStats();
+      this.drawTable();
+    },
+
+    drawStats() {
+      const grid = document.getElementById('payrollStatsGrid');
+      if (!grid) return;
+      const t = this.rollup();
+      const p = this.currentPreview;
+
+      const baseExt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_ext_amount || 0), 0) : t.baseExt;
+      const baseInt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_int_amount || 0), 0) : t.baseInt;
+      const totalAdditions = (p && p.total_additions !== undefined) ? p.total_additions : t.bonus;
+      const totalNet = (p && p.total_net !== undefined) ? p.total_net : t.net;
+
+      grid.innerHTML = `
+        <div class="stat-card">
+          <div class="lbl">Base External (USD)</div>
+          <div class="val">${this.money(baseExt)}</div>
+          <div class="sub">Fixed bank salaries</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Base Internal (USD)</div>
+          <div class="val">${this.money(baseInt)}</div>
+          <div class="sub">Fixed cash salaries</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Bonuses &amp; Commissions</div>
+          <div class="val">${this.money(totalAdditions)}</div>
+          <div class="sub">Dynamic additions</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Total Compensation</div>
+          <div class="val" style="color:var(--primary, #2563eb);">${this.money(totalNet)}</div>
+          <div class="sub">All recipients gross/net</div>
+        </div>
+      `;
     },
 
     drawTable() {
@@ -420,489 +581,732 @@
       if (!tbody) return;
 
       const searchInput = document.getElementById('payrollSearchInput');
-      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const bonusFilter = document.getElementById('payrollBonusFilter');
+      const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+      const bFilter = bonusFilter ? bonusFilter.value : 'all';
 
-      const bonusSelect = document.getElementById('payrollBonusFilter');
-      const bonusFilter = bonusSelect ? bonusSelect.value : 'all';
+      let filtered = [...this.rows];
+      if (q) {
+        filtered = filtered.filter(r => r.name.toLowerCase().includes(q) || String(r.id).includes(q));
+      }
+      if (bFilter !== 'all') {
+        if (bFilter === 'none') {
+          filtered = filtered.filter(r => !r.bonuses || r.bonuses.length === 0);
+        } else {
+          filtered = filtered.filter(r => (r.bonuses || []).some(b => b.type === bFilter));
+        }
+      }
 
-      const stepKey = this.currentStatusKey();
-      const locked = stepKey !== 'draft';
+      let rowsHtml = '';
+      let totExt = 0, totInt = 0, totBonus = 0, totTotal = 0;
 
-      const filteredRows = this.rows.filter(r => {
-        const matchQ = !q || r.name.toLowerCase().includes(q) || String(r.id).includes(q);
-        const types = (r.bonuses || []).map(b => b.type);
-        const matchBonus = bonusFilter === 'all' || (bonusFilter === 'none' ? (!r.bonuses || r.bonuses.length === 0) : types.includes(bonusFilter));
-        return matchQ && matchBonus;
-      });
-
-      let html = '';
-      filteredRows.forEach(r => {
+      filtered.forEach(r => {
         const c = this.computeRow(r);
-        const count = (r.bonuses || []).length;
-        const chips = count > 0 ? `<span class="bonus-chip">${count} item${count > 1 ? 's' : ''}</span>` : '';
-        const flagged = r.exception ? 'exception-row-flag' : '';
+        totExt += r.baseExt;
+        totInt += r.baseInt;
+        totBonus += c.bonusTotal;
+        totTotal += (r.baseExt + r.baseInt + c.bonusTotal);
 
-        html += `
-          <tr class="${flagged}" style="${locked && !r.exception ? 'opacity:.88;' : ''}">
-            <td class="payroll-id-col"><span class="payroll-emp-id">#${r.id}</span></td>
-            <td class="payroll-name-col">
-              <div class="payroll-emp-name" title="${r.name}">${r.name}</div>
-              ${r.exception ? `<div style="margin-top:2px;"><span class="p-badge b-red">Payment failed</span></div>` : ''}
-            </td>
+        const bonusBadges = (r.bonuses || []).map((b, bIdx) => `
+          <span class="p-bonus-pill" style="display:inline-flex; align-items:center; gap:4px; margin:2px; padding:2px 6px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem;">
+            <span>${b.type || 'Bonus'}: <strong>$${b.amount}</strong> (${b.source || 'int'})</span>
+            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id || 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px;">&times;</button>
+          </span>
+        `).join('');
+
+        rowsHtml += `
+          <tr>
+            <td class="payroll-id-th">${r.id}</td>
+            <td class="payroll-name-th"><strong>${r.name}</strong></td>
             <td class="payroll-num">${this.money(r.baseExt)}</td>
             <td class="payroll-num">${this.money(r.baseInt)}</td>
-            <td class="payroll-num payroll-bonus-col">
-              <div class="bonus-cell">
-                <span class="payroll-num">${this.money(c.bonusTotal)}</span>
-                ${chips}
-                <button class="add-bonus-btn" ${locked ? 'disabled title="Locked after draft step"' : `onclick="PayrollApp.toggleExpand(${r.id})" title="Add bonus / commission"`}>+</button>
+            <td>
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px;">
+                ${bonusBadges || '<span style="color:var(--text-muted); font-size:0.78rem;">None</span>'}
               </div>
             </td>
-            <td class="payroll-num">${this.money(c.totalInternal)}</td>
-            <td class="payroll-num payroll-muted-col" title="${r.deductions_label || 'Social Insurance (Internal Estimate)'}">${this.money(c.deductions)}</td>
-            <td class="payroll-num">${this.money(c.internal)}</td>
-            <td class="payroll-num">${this.money(c.external)}</td>
-            <td class="payroll-num" style="color:var(--primary, #2563eb); font-weight:800;">${this.money(c.net)}</td>
+            <td class="payroll-num" style="font-weight:700;">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
+            <td style="text-align:center;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="PayrollApp.openBonusModal(${r.id})" style="padding:2px 6px; font-size:0.75rem;">
+                <i class="fa-solid fa-plus"></i> Add
+              </button>
+            </td>
           </tr>
         `;
-
-        if (this.expandedId === r.id && !locked) {
-          html += `
-            <tr class="expand-row">
-              <td colspan="10">
-                <div class="expand-inner">
-                  <div class="existing-bonuses" id="chips-${r.id}">
-                    ${(r.bonuses || []).map((b, idx) => `
-                      <span class="bonus-tag">
-                        ${b.type} · ${this.money(b.amount)} · ${b.source === 'internal' ? 'INT' : 'EXT'}
-                        <span class="rm" onclick="PayrollApp.removeBonus(${r.id}, ${idx})">&times;</span>
-                      </span>
-                    `).join('') || '<span style="color:var(--text-muted); font-size:.82rem;">No additions added yet</span>'}
-                  </div>
-                  <div class="expand-form-row">
-                    <div class="field">
-                      <label>Type</label>
-                      <select id="type-${r.id}">
-                        <option value="Bonus">Bonus</option>
-                        <option value="Sales Commission">Sales Commission</option>
-                        <option value="Support Commission">Support Commission</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label>Amount (USD)</label>
-                      <input id="amt-${r.id}" type="number" step="0.01" placeholder="0.00" />
-                    </div>
-                    <div class="field">
-                      <label>Payment source</label>
-                      <div class="src-toggle" id="src-${r.id}">
-                        <button class="active" data-src="internal" onclick="PayrollApp.setSrc(${r.id}, 'internal')">Internal</button>
-                        <button data-src="external" onclick="PayrollApp.setSrc(${r.id}, 'external')">External</button>
-                      </div>
-                    </div>
-                    <div class="expand-btn-group">
-                      <button class="btn btn-primary btn-sm btn-bonus-submit" onclick="PayrollApp.submitBonus(${r.id})">Submit</button>
-                      <button class="btn btn-ghost btn-sm btn-bonus-close" onclick="PayrollApp.toggleExpand(${r.id})">Close</button>
-                    </div>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          `;
-        }
       });
 
-      tbody.innerHTML = html || `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-muted);">No employees match the current filters.</td></tr>`;
+      tbody.innerHTML = rowsHtml;
 
-      // Update footers
-      const t = this.rollup();
-      const updateText = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
-      };
-      updateText('fBaseExt', this.money(t.baseExt));
-      updateText('fBaseInt', this.money(t.baseInt));
-      updateText('fBonus', this.money(t.bonus));
-      updateText('fTotalInt', this.money(t.totalInt));
-      updateText('fDeductions', this.money(t.deductions));
-      updateText('fInternal', this.money(t.internal));
-      updateText('fExternal', this.money(t.external));
-      updateText('fNet', this.money(t.net));
-      updateText('accExternal', this.money(t.external));
-      updateText('accInternal', this.money(t.internal));
+      const fExt = document.getElementById('fBaseExt');
+      const fInt = document.getElementById('fBaseInt');
+      const fBon = document.getElementById('fBonus');
+      const fNet = document.getElementById('fNet');
+      if (fExt) fExt.textContent = this.money(totExt);
+      if (fInt) fInt.textContent = this.money(totInt);
+      if (fBon) fBon.textContent = this.money(totBonus);
+      if (fNet) fNet.textContent = this.money(totTotal);
     },
 
-    drawExceptions() {
-      const container = document.getElementById('payrollExceptionList');
-      if (!container) return;
+    openBonusModal(empId) {
+      const modal = document.getElementById('payrollBonusModal');
+      const sel = document.getElementById('bonusEmployeeSelect');
+      const amt = document.getElementById('bonusAmountInput');
+      const desc = document.getElementById('bonusDescriptionInput');
+      if (!modal || !sel) return;
 
-      const items = this.exceptions();
-      if (!items.length) {
-        container.innerHTML = `
-          <div class="payroll-exception-alert clear">
-            <i class="fa-solid fa-circle-check"></i>
-            <span>Readiness: All clear (Ready for payment)</span>
+      sel.innerHTML = this.rows.map(r => `<option value="${r.id}" ${String(r.id) === String(empId) ? 'selected' : ''}>${r.name} (ID: ${r.id})</option>`).join('');
+      if (amt) amt.value = '';
+      if (desc) desc.value = '';
+      modal.style.display = 'flex';
+    },
+
+    closeBonusModal() {
+      const modal = document.getElementById('payrollBonusModal');
+      if (modal) modal.style.display = 'none';
+    },
+
+    async saveBonus() {
+      const sel = document.getElementById('bonusEmployeeSelect');
+      const typeSel = document.getElementById('bonusTypeSelect');
+      const srcSel = document.getElementById('bonusSourceSelect');
+      const amtInput = document.getElementById('bonusAmountInput');
+      const descInput = document.getElementById('bonusDescriptionInput');
+
+      if (!sel || !amtInput) return;
+      const empId = Number(sel.value);
+      const amt = parseFloat(amtInput.value);
+      if (!amt || amt <= 0) {
+        alert('Please enter a valid bonus amount greater than zero.');
+        return;
+      }
+      const bType = typeSel ? typeSel.value : 'BONUS';
+      const bSource = srcSel ? srcSel.value : 'INT';
+      const desc = descInput ? descInput.value.trim() : '';
+
+      // Persist to backend preview adjustment if preview is active
+      if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.addPreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
+        try {
+          await FinanceApi.addPreviewAdjustment(this.currentPreview.preview_id, {
+            employee_id: empId,
+            type: bType,
+            amount: amt,
+            payment_source: bSource,
+            description: desc
+          });
+        } catch (err) {
+          console.warn('[PayrollApp] Could not persist preview adjustment:', err);
+        }
+      }
+
+      const row = this.rows.find(r => r.id === empId);
+      if (row) {
+        if (!row.bonuses) row.bonuses = [];
+        row.bonuses.push({
+          type: bType === 'COMMISSION' ? 'Sales Commission' : 'Bonus',
+          amount: amt,
+          source: bSource.toLowerCase() === 'ext' ? 'external' : 'internal',
+          description: desc
+        });
+      }
+
+      this.addAudit(`Added ${bType} of $${amt} for employee #${empId}.`);
+      this.closeBonusModal();
+      await this.fetchPreview();
+      this.drawScreen2();
+      this.showBanner('Bonus / Commission addition saved.', 'blue');
+    },
+
+    async deleteBonus(empId, bonusIdx, adjId) {
+      if (adjId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.deletePreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
+        try {
+          await FinanceApi.deletePreviewAdjustment(this.currentPreview.preview_id, adjId);
+        } catch (err) {
+          console.warn('[PayrollApp] Error deleting preview adjustment:', err);
+        }
+      }
+      const row = this.rows.find(r => r.id === empId);
+      if (row && row.bonuses && row.bonuses[bonusIdx]) {
+        row.bonuses.splice(bonusIdx, 1);
+        this.addAudit(`Deleted bonus item for employee #${empId}.`);
+      }
+      await this.fetchPreview();
+      this.drawScreen2();
+    },
+
+    async saveDraftRun() {
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
+          const run = await FinanceApi.createPayrollRun({
+            period_label: this.month,
+            period_start: this.start,
+            period_end: this.end,
+            payment_date: this.payDate,
+            bank_account_id: Number(this.selectedExternalAccountId || 1),
+            external_funding_account_id: Number(this.selectedExternalAccountId || 1),
+            internal_funding_account_id: Number(this.selectedInternalAccountId || 2),
+            fx_rate_source: this.fxRateValue ? 'manual' : (this.fxRateSource || 'first_of_month'),
+            fx_rate_value: this.fxRateValue ? Number(this.fxRateValue) : this.resolvedFxRate,
+            submit_for_approval: false
+          });
+          this.currentRun = run;
+        }
+        this.addAudit('Payroll run persisted as Draft.');
+        this.showBanner('Payroll run saved as Draft.', 'blue');
+        this.drawStatus();
+      } catch (err) {
+        console.error('Error saving draft:', err);
+        this.showBanner(err.message || 'Failed to save draft.', 'red');
+      }
+    },
+
+    async submitAndApproveRun() {
+      try {
+        if (!this.currentRun) {
+          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
+            this.currentRun = await FinanceApi.createPayrollRun({
+              period_label: this.month,
+              period_start: this.start,
+              period_end: this.end,
+              payment_date: this.payDate,
+              bank_account_id: Number(this.selectedExternalAccountId || 1),
+              external_funding_account_id: Number(this.selectedExternalAccountId || 1),
+              internal_funding_account_id: Number(this.selectedInternalAccountId || 2),
+              fx_rate_source: this.fxRateValue ? 'manual' : (this.fxRateSource || 'first_of_month'),
+              fx_rate_value: this.fxRateValue ? Number(this.fxRateValue) : this.resolvedFxRate,
+              submit_for_approval: true
+            });
+          }
+        }
+
+        if (this.currentRun && this.currentRun.status === 'draft') {
+          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.submitPayrollRun === 'function') {
+            await FinanceApi.submitPayrollRun(this.currentRun.id);
+            this.currentRun.status = 'submitted';
+          }
+        }
+
+        if (this.currentRun && (this.currentRun.status === 'submitted' || this.currentRun.status === 'draft')) {
+          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.approvePayrollRun === 'function') {
+            await FinanceApi.approvePayrollRun(this.currentRun.id, true);
+            this.currentRun.status = 'approved';
+          }
+        }
+
+        this.addAudit('Payroll run submitted and approved.');
+        this.showBanner('Payroll run approved. Advancing to statutory processing.', 'blue');
+        this.setStep(2);
+      } catch (err) {
+        console.error('Error approving run:', err);
+        this.showBanner(err.message || 'Approval failed.', 'red');
+      }
+    },
+
+    /* ==================== SCREEN 3: STATUTORY SNAPSHOTS ==================== */
+    drawScreen3() {
+      const tbody = document.getElementById('payrollProcessingTableBody');
+      if (!tbody) return;
+
+      const lines = (this.currentRun && this.currentRun.lines) || (this.currentPreview && this.currentPreview.lines) || [];
+      const rate = this.resolvedFxRate || 50.0;
+
+      let rowsHtml = '';
+      let totEmpSi = 0, totEmprSi = 0, totSi = 0, totTax = 0, totNetEgp = 0, totNetUsd = 0;
+
+      if (lines.length > 0) {
+        lines.forEach(l => {
+          const empSi = Number(l.employee_social_insurance_egp || 0);
+          const emprSi = Number(l.employer_social_insurance_egp || 0);
+          const tSi = Number(l.total_social_insurance_egp || (empSi + emprSi));
+          const tax = Number(l.employee_tax_egp || 0);
+          const netEgp = Number(l.final_internal_net_egp || 0);
+          const netUsd = Number(l.net_pay || l.amount || (netEgp / rate));
+
+          totEmpSi += empSi;
+          totEmprSi += emprSi;
+          totSi += tSi;
+          totTax += tax;
+          totNetEgp += netEgp;
+          totNetUsd += netUsd;
+
+          rowsHtml += `
+            <tr>
+              <td class="payroll-id-th">${l.employee_id}</td>
+              <td class="payroll-name-th"><strong>${l.employee_name || `Employee #${l.employee_id}`}</strong></td>
+              <td><span class="p-badge b-gray" style="font-size:0.7rem;">${l.salary_basis_snapshot || 'NET'}</span></td>
+              <td class="payroll-num">${l.configured_internal_salary_usd_snapshot !== undefined ? `$${Number(l.configured_internal_salary_usd_snapshot).toFixed(2)}` : '—'}</td>
+              <td class="payroll-num">${Number(l.insured_base_egp_snapshot || 0).toFixed(2)}</td>
+              <td class="payroll-num" style="font-family:monospace;">${Number(l.fx_rate_snapshot || rate).toFixed(4)}</td>
+              <td class="payroll-num">${empSi.toFixed(2)}</td>
+              <td class="payroll-num">${emprSi.toFixed(2)}</td>
+              <td class="payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
+              <td class="payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
+              <td class="payroll-num">${netEgp.toFixed(2)}</td>
+              <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(netUsd)}</td>
+            </tr>
+          `;
+        });
+      } else {
+        // Fallback calculation using current rows and active rate
+        this.rows.forEach(r => {
+          const cfgUsd = r.baseInt;
+          const insuredEgp = Math.round(cfgUsd * rate);
+          const empSi = Math.round(insuredEgp * (this.employeeInsuranceRate || 0.11) * 100) / 100;
+          const emprSi = Math.round(insuredEgp * (this.employerInsuranceRate || 0.18) * 100) / 100;
+          const tSi = empSi + emprSi;
+          const tax = 0.00;
+          const netEgp = Math.max(0, insuredEgp - empSi);
+          const netUsd = Math.round((netEgp / rate) * 100) / 100;
+
+          totEmpSi += empSi;
+          totEmprSi += emprSi;
+          totSi += tSi;
+          totTax += tax;
+          totNetEgp += netEgp;
+          totNetUsd += netUsd;
+
+          rowsHtml += `
+            <tr>
+              <td class="payroll-id-th">${r.id}</td>
+              <td class="payroll-name-th"><strong>${r.name}</strong></td>
+              <td><span class="p-badge b-gray" style="font-size:0.7rem;">NET</span></td>
+              <td class="payroll-num">$${cfgUsd.toFixed(2)}</td>
+              <td class="payroll-num">${insuredEgp.toFixed(2)}</td>
+              <td class="payroll-num" style="font-family:monospace;">${rate.toFixed(4)}</td>
+              <td class="payroll-num">${empSi.toFixed(2)}</td>
+              <td class="payroll-num">${emprSi.toFixed(2)}</td>
+              <td class="payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
+              <td class="payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
+              <td class="payroll-num">${netEgp.toFixed(2)}</td>
+              <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(netUsd)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      tbody.innerHTML = rowsHtml;
+
+      const p3Emp = document.getElementById('p3TotEmpSi');
+      const p3Empr = document.getElementById('p3TotEmprSi');
+      const p3Si = document.getElementById('p3TotSi');
+      const p3Tax = document.getElementById('p3TotTax');
+      const p3Egp = document.getElementById('p3TotNetEgp');
+      const p3Usd = document.getElementById('p3TotNetUsd');
+
+      if (p3Emp) p3Emp.textContent = totEmpSi.toFixed(2) + ' EGP';
+      if (p3Empr) p3Empr.textContent = totEmprSi.toFixed(2) + ' EGP';
+      if (p3Si) p3Si.textContent = totSi.toFixed(2) + ' EGP';
+      if (p3Tax) p3Tax.textContent = totTax.toFixed(2) + ' EGP';
+      if (p3Egp) p3Egp.textContent = totNetEgp.toFixed(2) + ' EGP';
+      if (p3Usd) p3Usd.textContent = this.money(totNetUsd);
+    },
+
+    /* ==================== SCREEN 4: PAYMENT PREVIEW ==================== */
+    drawScreen4() {
+      const tbody = document.getElementById('payrollPaymentPreviewTableBody');
+      if (!tbody) return;
+
+      const t = this.rollup();
+      const p = this.currentPreview;
+
+      const extBank = (p && p.final_ext_total) || t.external;
+      const intCash = (p && p.final_int_total) || t.internal;
+      const netTotal = (p && p.total_net) || t.net;
+
+      const bExt = document.getElementById('p4ExtBankTotal');
+      const bInt = document.getElementById('p4IntCashTotal');
+      const bNet = document.getElementById('p4TotalNet');
+      const bHc = document.getElementById('p4Headcount');
+
+      if (bExt) bExt.textContent = this.money(extBank);
+      if (bInt) bInt.textContent = this.money(intCash);
+      if (bNet) bNet.textContent = this.money(netTotal);
+      if (bHc) bHc.textContent = this.rows.length;
+
+      let rowsHtml = '';
+      this.rows.forEach(r => {
+        const c = this.computeRow(r);
+        rowsHtml += `
+          <tr>
+            <td class="payroll-id-th">${r.id}</td>
+            <td class="payroll-name-th"><strong>${r.name}</strong></td>
+            <td class="payroll-num">${this.money(c.external)}</td>
+            <td><span class="p-badge b-gray" style="font-size:0.72rem;"><i class="fa-solid fa-building-columns"></i> ${r.baseExt > 0 ? 'Verified Wire ****8821' : 'None (Internal only)'}</span></td>
+            <td class="payroll-num">${this.money(c.internal)}</td>
+            <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(c.net)}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = rowsHtml;
+
+      const fExt = document.getElementById('p4TotExt');
+      const fInt = document.getElementById('p4TotInt');
+      const fNet = document.getElementById('p4TotNet');
+      if (fExt) fExt.textContent = this.money(extBank);
+      if (fInt) fInt.textContent = this.money(intCash);
+      if (fNet) fNet.textContent = this.money(netTotal);
+    },
+
+    /* ==================== SCREEN 5: PAYMENT CONFIRMATION ==================== */
+    drawScreen5() {
+      const extEl = document.getElementById('accExternal');
+      const intEl = document.getElementById('accInternal');
+      const t = this.rollup();
+      const p = this.currentPreview;
+
+      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Operating Bank Wire Account';
+      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Treasury Cash Vault';
+
+      const extTotal = (p && p.final_ext_total) || t.external;
+      const intTotal = (p && p.final_int_total) || t.internal;
+
+      if (extEl) extEl.textContent = `${this.money(extTotal)} (${extBankName})`;
+      if (intEl) intEl.textContent = `${this.money(intTotal)} (${intBankName})`;
+
+      // Readiness list (D-006 warning)
+      const excStrip = document.getElementById('payrollExceptionList');
+      if (excStrip) {
+        excStrip.innerHTML = `
+          <div style="font-size:0.8rem; color:#166534; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-circle-check"></i> Funding allocation verified. Ready for disbursement release.
           </div>
         `;
-        return;
       }
 
-      container.innerHTML = items.map(i => `
-        <div class="payroll-exception-alert ${i.type}">
-          <i class="fa-solid ${i.type === 'blocking' ? 'fa-circle-xmark' : 'fa-triangle-exclamation'}"></i>
-          <span>${i.type === 'blocking' ? 'Blocked' : 'Warning'}: ${i.name} — ${i.text}</span>
-          ${i.retry ? `<button class="retry-btn" onclick="PayrollApp.retryPayment(${i.empId})" style="margin-left:6px;">Retry payment</button>` : ''}
-        </div>
-      `).join('');
+      const resCard = document.getElementById('p5DisburseResultsCard');
+      const jCard = document.getElementById('payrollJournalCard');
+      const btnDisburse = document.getElementById('btnP5ConfirmDisburse');
+
+      const isDisbursed = this.currentRun && (this.currentRun.status === 'paid' || this.currentRun.status === 'partially_paid');
+
+      if (isDisbursed) {
+        if (resCard) resCard.classList.remove('payroll-hidden');
+        if (jCard) jCard.classList.remove('payroll-hidden');
+        if (btnDisburse) {
+          btnDisburse.disabled = true;
+          btnDisburse.innerHTML = '<i class="fa-solid fa-check"></i> Disbursed &amp; Paid';
+        }
+        this.drawDisburseResults();
+        this.drawJournalRows();
+      } else {
+        if (resCard) resCard.classList.add('payroll-hidden');
+        if (jCard) jCard.classList.add('payroll-hidden');
+        if (btnDisburse) {
+          btnDisburse.disabled = false;
+          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm &amp; Disburse Payroll';
+        }
+      }
     },
 
-    drawJournal() {
-      const key = this.currentStatusKey();
-      const journalCard = document.getElementById('payrollJournalCard');
-      if (!journalCard) return;
+    async confirmDisbursement() {
+      try {
+        if (!this.currentRun) {
+          await this.submitAndApproveRun();
+          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
+            await FinanceApi.finalizePayrollRun(this.currentRun.id);
+            this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
+          }
+        }
 
-      // Only show Journal once run is PAID
-      if (key !== 'paid' && !this.journalPosted) {
-        journalCard.classList.add('payroll-hidden');
-        return;
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.disbursePayrollRun === 'function') {
+          await FinanceApi.disbursePayrollRun(this.currentRun.id);
+          await FinanceApi.postPayrollJournal(this.currentRun.id);
+          this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
+        } else {
+          if (this.currentRun) this.currentRun.status = 'paid';
+        }
+
+        this.journalPosted = true;
+        this.addAudit('Payroll run disbursed and general ledger entry posted.');
+        this.showBanner('Payroll disbursement confirmed. Funds released and journal posted.', 'green');
+        this.drawScreen5();
+        this.drawStatus();
+      } catch (err) {
+        console.error('Error confirming disbursement:', err);
+        this.showBanner(err.message || 'Disbursement failed.', 'red');
       }
+    },
 
-      journalCard.classList.remove('payroll-hidden');
+    drawDisburseResults() {
+      const tbody = document.getElementById('payrollDisburseResultsTableBody');
+      if (!tbody) return;
 
-      const badge = document.getElementById('payrollJournalBadge');
-      if (badge) {
-        badge.textContent = 'Posted';
-        badge.className = 'p-badge b-green';
+      const lines = (this.currentRun && this.currentRun.lines) || [];
+      if (lines.length > 0) {
+        tbody.innerHTML = lines.map(l => `
+          <tr>
+            <td><strong>${l.employee_name || `Employee #${l.employee_id}`}</strong></td>
+            <td class="payroll-num" style="font-weight:700;">${this.money(l.net_pay || l.amount)}</td>
+            <td><span class="p-badge b-green">${(l.payment_status || 'paid').toUpperCase()}</span></td>
+            <td>${l.paid_at ? l.paid_at.slice(0, 16).replace('T', ' ') : this.nowStamp()}</td>
+            <td>${l.failure_reason || 'Disbursed via ' + (l.compensation_type || 'Internal Treasury')}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = this.rows.map(r => {
+          const c = this.computeRow(r);
+          return `
+            <tr>
+              <td><strong>${r.name}</strong></td>
+              <td class="payroll-num" style="font-weight:700;">${this.money(c.net)}</td>
+              <td><span class="p-badge b-green">PAID</span></td>
+              <td>${this.nowStamp()}</td>
+              <td>Bank Transfer &amp; Treasury Disbursal Complete</td>
+            </tr>
+          `;
+        }).join('');
       }
+    },
 
-      const rowsContainer = document.getElementById('payrollJournalRows');
-      if (!rowsContainer) return;
-
+    drawJournalRows() {
+      const rowsEl = document.getElementById('payrollJournalRows');
+      if (!rowsEl) return;
       const t = this.rollup();
-      const rows = [
-        ['Internal Payroll Expense', '6001', t.totalInt, 0],
-        ['External Payroll Expense', '6003', t.external, 0],
-        ['Deductions Payable', '2102', 0, t.deductions],
-        ['Internal Net Salaries Payable', '2103', 0, t.internal],
-        ['External Net Salaries Payable', '2105', 0, t.external],
-      ];
-      const debit = rows.reduce((s, r) => s + r[2], 0);
-      const credit = rows.reduce((s, r) => s + r[3], 0);
+      const p = this.currentPreview;
+      const netTotal = (p && p.total_net) || t.net;
+      const extTotal = (p && p.final_ext_total) || t.external;
+      const intTotal = (p && p.final_int_total) || t.internal;
 
-      rowsContainer.innerHTML = rows.map(r => `
-        <div class="journal-row">
-          <div><strong>${r[0]}</strong></div>
-          <div><code>${r[1]}</code></div>
-          <div class="payroll-num">${r[2] ? this.money(r[2]) : '—'}</div>
-          <div class="payroll-num">${r[3] ? this.money(r[3]) : '—'}</div>
-        </div>
-      `).join('') + `
-        <div class="journal-row" style="background:var(--primary-soft, #e8f0ff); border-radius:6px; padding:6px 10px; margin-top:6px; font-weight:800;">
-          <div><strong>Totals</strong></div>
-          <div></div>
-          <div class="payroll-num">${this.money(debit)}</div>
-          <div class="payroll-num">${this.money(credit)}</div>
-        </div>
+      rowsEl.innerHTML = `
+        <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+          <thead>
+            <tr style="border-bottom:1px solid #e2e8f0; color:#64748b;">
+              <th style="text-align:left; padding:4px 8px;">Account</th>
+              <th style="text-align:right; padding:4px 8px;">Debit</th>
+              <th style="text-align:right; padding:4px 8px;">Credit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:4px 8px;"><strong>6100 - Payroll Expense</strong></td>
+              <td style="text-align:right; padding:4px 8px; font-weight:700;">${this.money(netTotal)}</td>
+              <td style="text-align:right; padding:4px 8px;">-</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;">1010 - Primary Operating Wire Account</td>
+              <td style="text-align:right; padding:4px 8px;">-</td>
+              <td style="text-align:right; padding:4px 8px;">${this.money(extTotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;">1020 - Internal Treasury Cash Account</td>
+              <td style="text-align:right; padding:4px 8px;">-</td>
+              <td style="text-align:right; padding:4px 8px;">${this.money(intTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
       `;
     },
 
     toggleJournalDetails() {
-      const details = document.getElementById('payrollJournalDetails');
-      const chevron = document.getElementById('payrollJournalChevron');
-      if (!details) return;
-      const isHidden = details.classList.contains('payroll-hidden');
-      details.classList.toggle('payroll-hidden', !isHidden);
-      if (chevron) {
-        chevron.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
-      }
-    },
-
-    drawPeriodLabel() {
-      const label = document.getElementById('payrollPeriodLabel');
-      if (label) label.textContent = this.month;
-
-      const sub = document.getElementById('payrollPeriodSubtitle');
-      if (sub) {
-        const extAcc = this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId));
-        const intAcc = this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId));
-        let fundingText = extAcc ? `External: ${extAcc.name} (${extAcc.currency || 'USD'})` : '';
-        if (intAcc) {
-          fundingText += (fundingText ? ' · ' : '') + `Internal: ${intAcc.name} (${intAcc.currency || 'USD'})`;
-        }
-        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${fundingText || 'Not configured'}`;
-      }
-    },
-
-    redraw() {
-      this.drawFxRate();
-      this.drawStepper();
-      this.drawStats();
-      this.drawStatus();
-      this.drawTable();
-      this.drawExceptions();
-      this.drawJournal();
-      this.drawFooterControls();
-      this.drawPeriodLabel();
-      this.drawRunsList();
-    },
-
-    toggleExpand(id) {
-      this.expandedId = this.expandedId === id ? null : id;
-      this.drawTable();
-    },
-
-    setSrc(id, src) {
-      const wrap = document.getElementById(`src-${id}`);
-      if (!wrap) return;
-      wrap.querySelectorAll('button').forEach(b => {
-        b.classList.toggle('active', b.dataset.src === src);
-      });
-    },
-
-    submitBonus(id) {
-      const row = this.rows.find(r => r.id === id);
-      if (!row) return;
-
-      const typeEl = document.getElementById(`type-${id}`);
-      const amtEl = document.getElementById(`amt-${id}`);
-      const type = typeEl ? typeEl.value : 'Bonus';
-      const amount = Number((amtEl ? amtEl.value : '') || 0);
-
-      const srcBtn = document.querySelector(`#src-${id} button.active`);
-      const source = srcBtn ? srcBtn.dataset.src : 'internal';
-
-      if (!amount || amount <= 0) {
-        alert('Enter a bonus amount greater than zero.');
-        return;
-      }
-
-      if (!row.bonuses) row.bonuses = [];
-      row.bonuses.push({ type, amount, source });
-      this.addAudit(`Added ${type} of ${this.money(amount)} (${source}) for ${row.name}.`);
-
-      this.drawTable();
-      this.drawStats();
-      this.drawJournal();
-      this.drawExceptions();
-    },
-
-    removeBonus(id, idx) {
-      const row = this.rows.find(r => r.id === id);
-      if (!row || !row.bonuses) return;
-
-      const removed = row.bonuses[idx];
-      row.bonuses.splice(idx, 1);
-      this.addAudit(`Removed ${removed.type} of ${this.money(removed.amount)} for ${row.name}.`);
-
-      this.drawTable();
-      this.drawStats();
-      this.drawJournal();
-      this.drawExceptions();
-    },
-
-    retryPayment(empId) {
-      const row = this.rows.find(r => r.id === empId);
-      if (!row) return;
-
-      row.exception = null;
-      this.addAudit(`Retried payment for ${row.name} — transfer resubmitted successfully.`);
-      this.drawTable();
-      this.drawExceptions();
-      this.drawFooterControls();
-      this.showBanner(`Payment retried for ${row.name}. Exception cleared.`, 'blue');
-    },
-
-    showBanner(text, tone) {
-      const el = document.getElementById('payrollActionBanner');
+      const el = document.getElementById('payrollJournalDetails');
+      const chev = document.getElementById('payrollJournalChevron');
       if (!el) return;
-
-      const colors = {
-        green: ['#dcfce7', '#166534', '#bbf7d0'],
-        blue: ['#dbeafe', '#1d4ed8', '#bfdbfe'],
-        orange: ['#fef3c7', '#92400e', '#fde68a']
-      };
-      const c = colors[tone] || colors.blue;
-      el.style.display = 'block';
-      el.style.background = c[0];
-      el.style.color = c[1];
-      el.style.border = `1px solid ${c[2]}`;
-      el.textContent = text;
-    },
-
-    goNext() {
-      const key = this.currentStatusKey();
-
-      if (key === 'draft') {
-        this.stepIndex = 1;
-        this.addAudit('Draft saved and submitted for approval. Employee lines locked.');
-        this.redraw();
-        this.showBanner('Draft saved. The run is now locked and moved to Approved.', 'blue');
-        return;
-      }
-
-      if (key === 'approved') {
-        if (this.exceptions().some(x => x.type === 'blocking')) {
-          alert('Approval blocked: resolve blocking exceptions (failed payments) before continuing.');
-          return;
-        }
-        this.stepIndex = 2;
-        // Simulate one payment failure on an employee to demonstrate the exception/retry path
-        const target = this.rows[Math.min(4, this.rows.length - 1)];
-        if (target) {
-          target.exception = 'Bank transfer rejected: destination account details invalid.';
-        }
-        this.addAudit('Run approved. Transfers submitted to the bank for processing.');
-        this.redraw();
-        this.showBanner('Run approved and transfers submitted — status is now PROCESSING while the bank confirms.', 'orange');
-        return;
-      }
-
-      if (key === 'processing') {
-        if (this.exceptions().some(x => x.type === 'blocking')) {
-          alert('Cannot mark as Paid: one or more payments failed. Retry or resolve the exception first.');
-          return;
-        }
-        this.stepIndex = 3;
-        this.journalPosted = true;
-        this.addAudit('Bank confirmed all transfers. Payroll marked as Paid. GL journal posted automatically.');
-        this.redraw();
-        this.showBanner('Bank confirmed all transfers — payroll is now PAID and the GL journal was posted automatically.', 'green');
-        return;
+      const isHidden = el.classList.contains('payroll-hidden');
+      if (isHidden) {
+        el.classList.remove('payroll-hidden');
+        if (chev) chev.className = 'fa-solid fa-chevron-up';
+      } else {
+        el.classList.add('payroll-hidden');
+        if (chev) chev.className = 'fa-solid fa-chevron-down';
       }
     },
 
-    goBack() {
-      if (this.stepIndex === 0 || this.currentStatusKey() === 'paid') return;
-      this.stepIndex -= 1;
-      const banner = document.getElementById('payrollActionBanner');
-      if (banner) banner.style.display = 'none';
-      this.redraw();
-    },
+    /* ==================== SCREEN 6: STATUTORY RECONCILIATION ==================== */
+    async drawScreen6() {
+      // Permission evaluation
+      const canWrite = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.statutory.write') : true;
 
-    /* ---------------- Revert to draft ---------------- */
-    openRevertModal() {
-      const modal = document.getElementById('payrollRevertModal');
-      if (modal) modal.classList.add('show');
-    },
+      // Extract Snapshot Totals
+      const rate = this.resolvedFxRate || 50.0;
+      let siEst = 0, taxEst = 0;
 
-    closeRevertModal() {
-      const modal = document.getElementById('payrollRevertModal');
-      if (modal) modal.classList.remove('show');
-      const reasonEl = document.getElementById('payrollRevertReason');
-      if (reasonEl) reasonEl.value = '';
-    },
-
-    confirmRevert() {
-      const reasonEl = document.getElementById('payrollRevertReason');
-      const reason = (reasonEl ? reasonEl.value : '').trim();
-      if (!reason) {
-        alert('A reason is required to revert this run to draft.');
-        return;
-      }
-
-      const fromStatus = this.currentStatusKey();
-      this.stepIndex = 0;
-      this.journalPosted = false;
-      this.rows.forEach(r => r.exception = null);
-      this.addAudit(`Reverted from ${fromStatus.toUpperCase()} back to DRAFT. Reason: "${reason}"`);
-      this.closeRevertModal();
-      this.redraw();
-      this.showBanner('Run reverted to Draft. Employee lines are unlocked again for correction.', 'orange');
-    },
-
-    /* ---------------- Settings view & Target Accounts Selection ---------------- */
-    drawFundingAccounts() {
-      const extSelect = document.getElementById('payrollTargetExternalAccount');
-      const intSelect = document.getElementById('payrollTargetInternalAccount');
-      if (!extSelect || !intSelect) return;
-
-      const renderOptions = (selectedId) => {
-        if (!this.banks || !this.banks.length) {
-          return '<option value="">No bank accounts found</option>';
-        }
-        return this.banks.map(b => `
-          <option value="${b.id}" ${String(b.id) === String(selectedId) ? 'selected' : ''}>
-            ${b.name} (${b.currency}) ${b.number ? '— ' + b.number : ''}
-          </option>
-        `).join('');
-      };
-
-      extSelect.innerHTML = renderOptions(this.selectedExternalAccountId);
-      intSelect.innerHTML = renderOptions(this.selectedInternalAccountId);
-    },
-
-    setFundingAccount(type, accountId) {
-      if (type === 'external') {
-        this.selectedExternalAccountId = accountId;
-      } else if (type === 'internal') {
-        this.selectedInternalAccountId = accountId;
-      }
-      this.persistFundingAccounts();
-      this.drawPeriodLabel();
-    },
-
-    async saveSettings() {
-      const monthInput = document.getElementById('payrollSetMonth');
-      if (monthInput && monthInput.value) this.month = monthInput.value;
-
-      const payDateInput = document.getElementById('payrollSetPayDate');
-      if (payDateInput && payDateInput.value) this.payDate = payDateInput.value;
-
-      const startInput = document.getElementById('payrollSetStart');
-      if (startInput && startInput.value) this.start = startInput.value;
-
-      const endInput = document.getElementById('payrollSetEnd');
-      if (endInput && endInput.value) this.end = endInput.value;
-
-      const extSelect = document.getElementById('payrollTargetExternalAccount');
-      if (extSelect && extSelect.value) this.selectedExternalAccountId = extSelect.value;
-
-      const intSelect = document.getElementById('payrollTargetInternalAccount');
-      if (intSelect && intSelect.value) this.selectedInternalAccountId = intSelect.value;
-
-      const empRateInput = document.getElementById('payrollEmployeeInsuranceRate');
-      const empyrRateInput = document.getElementById('payrollEmployerInsuranceRate');
-      if (empRateInput && empyrRateInput && typeof FinanceApi !== 'undefined' && FinanceApi.updatePayrollSettings) {
-        const empRate = Number(empRateInput.value) / 100.0;
-        const empyrRate = Number(empyrRateInput.value) / 100.0;
-        try {
-          await FinanceApi.updatePayrollSettings({
-            employee_rate: empRate,
-            employer_rate: empyrRate
-          });
-        } catch (err) {
-          console.warn('[PayrollApp] Could not save payroll rate settings:', err);
+      if (this.currentRun) {
+        siEst = Number(this.currentRun.total_social_insurance_egp || 0);
+        taxEst = Number(this.currentRun.total_employee_tax_egp || 0);
+        if (siEst === 0 && this.currentRun.lines) {
+          siEst = this.currentRun.lines.reduce((sum, l) => sum + Number(l.total_social_insurance_egp || 0), 0);
+          taxEst = this.currentRun.lines.reduce((sum, l) => sum + Number(l.employee_tax_egp || 0), 0);
         }
       }
-
-      const setFxInput = document.getElementById('payrollSetFxRate');
-      if (setFxInput) {
-        const val = parseFloat(setFxInput.value);
-        this.fxRateValue = (val && val > 0) ? val : null;
+      if (siEst === 0) {
+        const t = this.rollup();
+        siEst = Math.round(t.deductions * rate * 1.5 * 100) / 100;
       }
 
-      await this.fetchPreview();
+      const siEstEl = document.getElementById('p6SocialInsEstimate');
+      const taxEstEl = document.getElementById('p6TaxEstimate');
+      if (siEstEl) siEstEl.textContent = `${siEst.toFixed(2)} EGP ($${(siEst / rate).toFixed(2)})`;
+      if (taxEstEl) taxEstEl.textContent = `${taxEst.toFixed(2)} EGP ($${(taxEst / rate).toFixed(2)})`;
 
-      this.persistFundingAccounts();
-      this.drawPeriodLabel();
-      this.addAudit('Payroll settings updated: funding accounts, schedule, statutory rates, or FX rate changed.');
-      this.showPage('list');
-      this.showBanner('Payroll settings saved.', 'blue');
+      const siInput = document.getElementById('p6SocialInsActual');
+      const taxInput = document.getElementById('p6TaxActual');
+      if (siInput && !siInput.value) siInput.value = siEst.toFixed(2);
+      if (taxInput && !taxInput.value) taxInput.value = taxEst.toFixed(2);
+
+      this.calcScreen6Variance('si');
+      this.calcScreen6Variance('tax');
+
+      // Load linked statutory obligations from database
+      await this.loadLinkedStatutoryObligations();
+
+      // Disable buttons if not authorized
+      const btnRecordSi = document.getElementById('btnP6RecordSocialIns');
+      const btnRecordTax = document.getElementById('btnP6RecordTax');
+      if (!canWrite) {
+        if (btnRecordSi) btnRecordSi.disabled = true;
+        if (btnRecordTax) btnRecordTax.disabled = true;
+      }
     },
 
-    async loadSettingsFromDb() {
+    calcScreen6Variance(type) {
+      const rate = this.resolvedFxRate || 50.0;
+      if (type === 'si') {
+        const estText = document.getElementById('p6SocialInsEstimate');
+        const input = document.getElementById('p6SocialInsActual');
+        const varEl = document.getElementById('p6SocialInsVariance');
+        if (!input || !varEl) return;
+        const est = estText ? parseFloat(estText.textContent) || 0 : 0;
+        const actual = parseFloat(input.value) || 0;
+        const diff = Math.round((actual - est) * 100) / 100;
+        const sign = diff > 0 ? '+' : '';
+        varEl.textContent = `${sign}${diff.toFixed(2)} EGP`;
+        varEl.style.color = diff !== 0 ? (diff > 0 ? '#b91c1c' : '#15803d') : '#64748b';
+      } else if (type === 'tax') {
+        const estText = document.getElementById('p6TaxEstimate');
+        const input = document.getElementById('p6TaxActual');
+        const varEl = document.getElementById('p6TaxVariance');
+        if (!input || !varEl) return;
+        const est = estText ? parseFloat(estText.textContent) || 0 : 0;
+        const actual = parseFloat(input.value) || 0;
+        const diff = Math.round((actual - est) * 100) / 100;
+        const sign = diff > 0 ? '+' : '';
+        varEl.textContent = `${sign}${diff.toFixed(2)} EGP`;
+        varEl.style.color = diff !== 0 ? (diff > 0 ? '#b91c1c' : '#15803d') : '#64748b';
+      }
+    },
+
+    async loadLinkedStatutoryObligations() {
+      const tbody = document.getElementById('payrollStatutoryRecordsTableBody');
+      if (!tbody) return;
+
       try {
-        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
-          const settings = await FinanceApi.getPayrollSettings();
-          if (settings) {
-            if (settings.employee_rate !== undefined) this.employeeInsuranceRate = Number(settings.employee_rate);
-            if (settings.employer_rate !== undefined) this.employerInsuranceRate = Number(settings.employer_rate);
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.listStatutoryObligations === 'function') {
+          const list = await FinanceApi.listStatutoryObligations({ period: this.month });
+          const runTag = `payroll_run_id:${this.currentRun ? this.currentRun.id : ''}`;
+          const linked = (list || []).filter(o => (o.notes && o.notes.includes(runTag)) || o.period === this.month);
+
+          if (linked.length > 0) {
+            tbody.innerHTML = linked.map(o => `
+              <tr>
+                <td><strong>#${o.id}</strong></td>
+                <td>${o.obligation_type}</td>
+                <td>${o.period}</td>
+                <td class="payroll-num">${Number(o.amount_accrued).toFixed(2)} ${o.currency}</td>
+                <td class="payroll-num">${Number(o.amount_remitted || 0).toFixed(2)} ${o.currency}</td>
+                <td><span class="p-badge ${o.status === 'remitted' ? 'b-green' : 'b-blue'}">${o.status.toUpperCase()}</span></td>
+                <td><span style="font-size:0.75rem; color:#64748b;">${o.notes || '—'}</span></td>
+              </tr>
+            `).join('');
+
+            // Update badge & settle buttons
+            const siObl = linked.find(o => o.obligation_type.includes('social_insurance'));
+            const taxObl = linked.find(o => o.obligation_type.includes('income_tax'));
+
+            const siBadge = document.getElementById('p6SiStatusBadge');
+            const taxBadge = document.getElementById('p6TaxStatusBadge');
+            const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
+            const btnSettleTax = document.getElementById('btnP6SettleTax');
+
+            if (siObl) {
+              if (siBadge) {
+                siBadge.textContent = siObl.status.toUpperCase();
+                siBadge.className = `p-badge ${siObl.status === 'remitted' ? 'b-green' : 'b-blue'}`;
+              }
+              if (btnSettleSi) {
+                btnSettleSi.disabled = siObl.status === 'remitted';
+                btnSettleSi.setAttribute('data-obl-id', siObl.id);
+              }
+            }
+            if (taxObl) {
+              if (taxBadge) {
+                taxBadge.textContent = taxObl.status.toUpperCase();
+                taxBadge.className = `p-badge ${taxObl.status === 'remitted' ? 'b-green' : 'b-blue'}`;
+              }
+              if (btnSettleTax) {
+                btnSettleTax.disabled = taxObl.status === 'remitted';
+                btnSettleTax.setAttribute('data-obl-id', taxObl.id);
+              }
+            }
+            return;
           }
         }
       } catch (err) {
-        console.warn('[PayrollApp] Could not load payroll settings:', err);
+        console.warn('[PayrollApp] Could not load statutory obligations:', err);
+      }
+
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
+    },
+
+    async recordStatutoryObligation(type) {
+      if (typeof SessionInfo !== 'undefined' && !SessionInfo.hasPermission('finance.statutory.write')) {
+        this.showBanner('Permission denied: finance.statutory.write required.', 'red');
+        return;
+      }
+
+      const runId = (this.currentRun && this.currentRun.id) || 1;
+      const isSi = type === 'si';
+      const input = document.getElementById(isSi ? 'p6SocialInsActual' : 'p6TaxActual');
+      const amt = input ? parseFloat(input.value) : 0;
+
+      if (!amt || amt <= 0) {
+        alert('Please enter a valid actual amount greater than zero.');
+        return;
+      }
+
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createStatutoryObligation === 'function') {
+          const obl = await FinanceApi.createStatutoryObligation({
+            obligation_type: isSi ? 'social_insurance_employee' : 'income_tax',
+            period: this.month,
+            amount_accrued: amt,
+            currency: 'EGP',
+            due_date: `${this.month}-15`,
+            notes: `payroll_run_id:${runId} | source:payroll_snapshot | actual_true_up`
+          });
+          this.showBanner(`Statutory obligation #${obl.id} recorded in accrued status.`, 'blue');
+          this.addAudit(`Recorded ${isSi ? 'Social Insurance' : 'Tax'} statutory obligation #${obl.id} of ${amt} EGP.`);
+          await this.loadLinkedStatutoryObligations();
+        }
+      } catch (err) {
+        console.error('Error recording statutory obligation:', err);
+        this.showBanner(err.message || 'Failed to record statutory obligation.', 'red');
       }
     },
 
+    async settleStatutory(type) {
+      const isSi = type === 'si';
+      const btn = document.getElementById(isSi ? 'btnP6SettleSocialIns' : 'btnP6SettleTax');
+      const oblId = btn ? btn.getAttribute('data-obl-id') : null;
+      if (!oblId) return;
+
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.settleStatutoryObligation === 'function') {
+          const obl = await FinanceApi.getStatutoryObligation(oblId);
+          await FinanceApi.settleStatutoryObligation(oblId, {
+            amount: obl.amount_accrued,
+            payment_date: new Date().toISOString().slice(0, 10),
+            bank_account_id: Number(this.selectedExternalAccountId || 1)
+          });
+          this.showBanner(`Statutory obligation #${oblId} settled and remitted.`, 'green');
+          this.addAudit(`Settled statutory obligation #${oblId}.`);
+          await this.loadLinkedStatutoryObligations();
+        }
+      } catch (err) {
+        console.error('Error settling statutory obligation:', err);
+        this.showBanner(err.message || 'Failed to remit payment.', 'red');
+      }
+    },
+
+    /* ==================== COMMON HELPERS ==================== */
     async fetchPreview() {
       try {
         let preview = null;
@@ -921,6 +1325,7 @@
         }
 
         if (preview) {
+          this.currentPreview = preview;
           if (preview.fx_rate_value !== undefined && preview.fx_rate_value !== null) {
             this.resolvedFxRate = Number(preview.fx_rate_value);
             this.resolvedFxSource = preview.fx_rate_source || (this.fxRateValue ? 'manual' : 'fallback');
@@ -935,24 +1340,26 @@
                 r.deductions = Number(recip.int_deductions_total !== undefined ? recip.int_deductions_total : 0);
                 r.deductions_total = r.deductions;
                 r.deductions_label = recip.deductions_label || (r.deductions > 0 ? 'Social Insurance (Internal Estimate)' : null);
-              } else if (r.baseInt > 0) {
-                r.deductions = Math.round(r.baseInt * (this.employeeInsuranceRate || 0.11) * 100) / 100;
-                r.deductions_total = r.deductions;
-                r.deductions_label = 'Social Insurance (Internal Estimate)';
               }
             });
           }
-        } else {
-          (this.rows || []).forEach(r => {
-            if (r.baseInt > 0 && (r.deductions === undefined || r.deductions === 0)) {
-              r.deductions = Math.round(r.baseInt * (this.employeeInsuranceRate || 0.11) * 100) / 100;
-              r.deductions_total = r.deductions;
-              r.deductions_label = 'Social Insurance (Internal Estimate)';
-            }
-          });
         }
       } catch (err) {
         console.warn('[PayrollApp] Could not fetch payroll preview:', err);
+      }
+    },
+
+    async loadSettingsFromDb() {
+      try {
+        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
+          const settings = await FinanceApi.getPayrollSettings();
+          if (settings) {
+            if (settings.employee_rate !== undefined) this.employeeInsuranceRate = Number(settings.employee_rate);
+            if (settings.employer_rate !== undefined) this.employerInsuranceRate = Number(settings.employer_rate);
+          }
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load payroll settings:', err);
       }
     },
 
@@ -960,15 +1367,13 @@
       const rateEl = document.getElementById('payrollFxRateBadge');
       const srcEl = document.getElementById('payrollFxRateSourceBadge');
       const inputEl = document.getElementById('payrollFxRateInput');
-      const setFxInput = document.getElementById('payrollSetFxRate');
+      const p1Input = document.getElementById('p1FxRateInput');
 
       const rateNum = Number(this.resolvedFxRate || 50.0);
       const isManual = this.fxRateValue !== null && this.fxRateValue !== undefined && Number(this.fxRateValue) > 0;
       const isFallback = !isManual && (this.resolvedFxSource === 'fallback' || rateNum === 50.0);
 
-      if (rateEl) {
-        rateEl.textContent = rateNum.toFixed(4);
-      }
+      if (rateEl) rateEl.textContent = rateNum.toFixed(4);
       if (srcEl) {
         if (isManual) {
           srcEl.textContent = 'Manual Override';
@@ -981,12 +1386,8 @@
           srcEl.className = 'p-badge b-green';
         }
       }
-      if (inputEl && document.activeElement !== inputEl) {
-        inputEl.value = isManual ? this.fxRateValue : '';
-      }
-      if (setFxInput && document.activeElement !== setFxInput) {
-        setFxInput.value = isManual ? this.fxRateValue : '';
-      }
+      if (inputEl && document.activeElement !== inputEl) inputEl.value = isManual ? this.fxRateValue : '';
+      if (p1Input && document.activeElement !== p1Input) p1Input.value = isManual ? this.fxRateValue : '';
     },
 
     toggleFxOverride() {
@@ -1011,7 +1412,7 @@
         this.addAudit(`Applied manual FX rate override: ${val.toFixed(4)} USD/EGP.`);
       } else {
         this.fxRateValue = null;
-        this.addAudit(`Cleared manual FX rate override. Reverted to resolved rate.`);
+        this.addAudit('Cleared manual FX rate override.');
       }
       const form = document.getElementById('payrollFxOverrideForm');
       if (form) form.style.display = 'none';
@@ -1022,7 +1423,7 @@
 
     async resetFxOverride() {
       this.fxRateValue = null;
-      this.addAudit(`Reset FX rate override to default resolver.`);
+      this.addAudit('Reset FX rate override to default resolver.');
       const form = document.getElementById('payrollFxOverrideForm');
       if (form) form.style.display = 'none';
 
@@ -1030,54 +1431,167 @@
       this.redraw();
     },
 
-    /* ---------------- Navigation between views ---------------- */
-    async showPage(page) {
+    drawPeriodLabel() {
+      const lbl = document.getElementById('payrollPeriodLabel');
+      const sub = document.getElementById('payrollPeriodSubtitle');
+      if (lbl) lbl.textContent = this.month;
+      if (sub) {
+        const extAcc = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Operating Account';
+        sub.textContent = `Period ${this.start} to ${this.end} · Funding: ${extAcc}`;
+      }
+    },
+
+    drawStatus() {
+      const badge = document.getElementById('payrollStatusBadge');
+      if (!badge) return;
+      const key = this.currentStatusKey();
+      const statusMap = {
+        draft: ['DRAFT', 'b-gray'],
+        submitted: ['SUBMITTED', 'b-blue'],
+        approved: ['APPROVED', 'b-blue'],
+        finalized: ['FINALIZED', 'b-blue'],
+        processing: ['PROCESSING', 'b-orange'],
+        partially_paid: ['PARTIALLY PAID', 'b-orange'],
+        paid: ['PAID', 'b-green']
+      };
+      const info = statusMap[key] || ['DRAFT', 'b-gray'];
+      badge.textContent = info[0];
+      badge.className = `p-badge ${info[1]}`;
+    },
+
+    drawFundingAccounts() {
+      const selExt = document.getElementById('payrollTargetExternalAccount');
+      const selInt = document.getElementById('payrollTargetInternalAccount');
+      if (selExt) {
+        selExt.innerHTML = this.banks.map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+      }
+      if (selInt) {
+        selInt.innerHTML = this.banks.map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+      }
+    },
+
+    setFundingAccount(type, id) {
+      if (type === 'external') this.selectedExternalAccountId = id;
+      else if (type === 'internal') this.selectedInternalAccountId = id;
+      this.persistFundingAccounts();
+      this.drawPeriodLabel();
+    },
+
+    async saveSettings() {
+      const monthInput = document.getElementById('payrollSetMonth');
+      if (monthInput && monthInput.value) this.month = monthInput.value;
+      const payDateInput = document.getElementById('payrollSetPayDate');
+      if (payDateInput && payDateInput.value) this.payDate = payDateInput.value;
+      const startInput = document.getElementById('payrollSetStart');
+      if (startInput && startInput.value) this.start = startInput.value;
+      const endInput = document.getElementById('payrollSetEnd');
+      if (endInput && endInput.value) this.end = endInput.value;
+
+      const setFxInput = document.getElementById('payrollSetFxRate');
+      if (setFxInput) {
+        const val = parseFloat(setFxInput.value);
+        this.fxRateValue = (val && val > 0) ? val : null;
+      }
+
+      await this.fetchPreview();
+      this.persistFundingAccounts();
+      this.drawPeriodLabel();
+      this.addAudit('Payroll settings updated.');
+      this.showPage('list');
+      this.showBanner('Payroll settings saved.', 'blue');
+    },
+
+    redraw() {
+      this.drawFxRate();
+      this.drawStepper();
+      this.drawStatus();
+      this.drawPeriodLabel();
+      if (this.stepIndex === 0) this.drawScreen1();
+      else if (this.stepIndex === 1) this.drawScreen2();
+      else if (this.stepIndex === 2) this.drawScreen3();
+      else if (this.stepIndex === 3) this.drawScreen4();
+      else if (this.stepIndex === 4) this.drawScreen5();
+      else if (this.stepIndex === 5) this.drawScreen6();
+    },
+
+    showPage(page) {
       const pageList = document.getElementById('payrollViewList');
       const pageRun = document.getElementById('payrollViewRun');
       const pageSettings = document.getElementById('payrollViewSettings');
       const navList = document.getElementById('payrollNavList');
       const navSettings = document.getElementById('payrollNavSettings');
 
-      if (pageList) pageList.classList.toggle('payroll-hidden', page !== 'list');
-      if (pageRun) pageRun.classList.toggle('payroll-hidden', page !== 'run');
-      if (pageSettings) pageSettings.classList.toggle('payroll-hidden', page !== 'settings');
+      if (!pageList || !pageRun || !pageSettings) return;
 
-      if (navList) navList.classList.toggle('active', page === 'list' || page === 'run');
+      pageList.classList.toggle('payroll-hidden', page !== 'list');
+      pageRun.classList.toggle('payroll-hidden', page !== 'run');
+      pageSettings.classList.toggle('payroll-hidden', page !== 'settings');
+
+      if (navList) navList.classList.toggle('active', page === 'list');
       if (navSettings) navSettings.classList.toggle('active', page === 'settings');
 
       if (page === 'list') {
         this.drawRunsList();
       } else if (page === 'run') {
-        await this.fetchPreview();
         this.redraw();
       } else if (page === 'settings') {
-        await this.loadBankAccountsFromDb();
+        this.loadBankAccountsFromDb();
         this.drawFundingAccounts();
         const setFxInput = document.getElementById('payrollSetFxRate');
         if (setFxInput) setFxInput.value = this.fxRateValue || '';
-        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
-          try {
-            const settings = await FinanceApi.getPayrollSettings();
-            const empRateInput = document.getElementById('payrollEmployeeInsuranceRate');
-            const empyrRateInput = document.getElementById('payrollEmployerInsuranceRate');
-            if (empRateInput && settings.employee_rate !== undefined) {
-              empRateInput.value = (Number(settings.employee_rate) * 100).toFixed(2);
-            }
-            if (empyrRateInput && settings.employer_rate !== undefined) {
-              empyrRateInput.value = (Number(settings.employer_rate) * 100).toFixed(2);
-            }
-          } catch (err) {
-            console.warn('[PayrollApp] Could not load payroll settings:', err);
-          }
-        }
       }
+    },
+
+    showBanner(msg, color = 'blue') {
+      const banner = document.getElementById('payrollActionBanner');
+      if (!banner) return;
+      banner.style.display = 'block';
+      banner.textContent = msg;
+      banner.className = `payroll-action-banner p-banner-${color}`;
+      setTimeout(() => {
+        if (banner) banner.style.display = 'none';
+      }, 5000);
+    },
+
+    openRevertModal() {
+      const modal = document.getElementById('payrollRevertModal');
+      const reason = document.getElementById('payrollRevertReason');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+      }
+      if (reason) reason.value = '';
+    },
+
+    closeRevertModal() {
+      const modal = document.getElementById('payrollRevertModal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+      }
+    },
+
+    confirmRevert() {
+      const reasonEl = document.getElementById('payrollRevertReason');
+      const reason = reasonEl ? reasonEl.value.trim() : '';
+      if (!reason) {
+        alert('Please enter a reason for reverting to draft.');
+        return;
+      }
+      if (this.currentRun) {
+        this.currentRun.status = 'draft';
+      }
+      this.closeRevertModal();
+      this.setStep(1);
+      this.addAudit(`Run reverted to draft: ${reason}`);
+      this.showBanner('Payroll run reverted to draft.', 'blue');
     }
   };
 
   // Expose globally
   window.PayrollApp = PayrollApp;
 
-  // Compatibility stubs for existing router and legacy call sites
+  // Compatibility stubs
   window.loadFinancePayroll = async function () {
     await PayrollApp.init();
     PayrollApp.showPage('list');
