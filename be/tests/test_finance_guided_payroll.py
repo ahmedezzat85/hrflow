@@ -181,6 +181,30 @@ def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed
     plan_exc = next(e for e in excs if e["title"] == "No Active Compensation Plan")
     assert plan_exc["severity"] == "blocking"
 
+    # Verify default FX rate fallback
+    assert data["fx_rate_value"] == 50.0
+    assert data["fx_rate_source"] == "first_of_month"
+
+
+def test_payroll_preview_fx_rate_override_and_recipients(app_client, admin_cookies, seed_payroll_env):
+    """Verifies that manual FX rate override is honored in preview and recipients are structured correctly."""
+    res = app_client.post(
+        "/api/finance/payroll/runs/preview",
+        json={
+            "period_label": "2026-09",
+            "period_start": "2026-09-01",
+            "period_end": "2026-09-30",
+            "fx_rate_value": 49.25,
+            "bank_account_id": seed_payroll_env["bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["fx_rate_value"] == 49.25
+    assert "recipients" in data
+    assert len(data["recipients"]) > 0
+
 
 def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_payroll_env):
     """Verifies that an attempt to approve a payroll run with unresolved blocking exceptions is rejected."""

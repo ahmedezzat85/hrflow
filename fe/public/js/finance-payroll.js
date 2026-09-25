@@ -6,14 +6,14 @@
 
 (function () {
   const seedEmployees = [
-    { id: 301, name: 'Youssef Adel', baseExt: 1800, baseInt: 4300, bonuses: [], exception: null },
-    { id: 302, name: 'Salma Ibrahim', baseExt: 0, baseInt: 4450, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
-    { id: 303, name: 'Karim Nabil', baseExt: 2500, baseInt: 4500, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
-    { id: 304, name: 'Mariam Essam', baseExt: 1200, baseInt: 4550, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
-    { id: 305, name: 'Omar Farouk', baseExt: 0, baseInt: 4200, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
-    { id: 306, name: 'Nadine Samir', baseExt: 2000, baseInt: 3100, bonuses: [], exception: null },
-    { id: 307, name: 'Hassan Tarek', baseExt: 0, baseInt: 5200, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
-    { id: 308, name: 'Lina Kamal', baseExt: 1600, baseInt: 3900, bonuses: [], exception: null }
+    { id: 301, name: 'Youssef Adel', baseExt: 1800, baseInt: 4300, deductions: 473.00, deductions_total: 473.00, bonuses: [], exception: null },
+    { id: 302, name: 'Salma Ibrahim', baseExt: 0, baseInt: 4450, deductions: 489.50, deductions_total: 489.50, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
+    { id: 303, name: 'Karim Nabil', baseExt: 2500, baseInt: 4500, deductions: 495.00, deductions_total: 495.00, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
+    { id: 304, name: 'Mariam Essam', baseExt: 1200, baseInt: 4550, deductions: 500.50, deductions_total: 500.50, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
+    { id: 305, name: 'Omar Farouk', baseExt: 0, baseInt: 4200, deductions: 462.00, deductions_total: 462.00, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
+    { id: 306, name: 'Nadine Samir', baseExt: 2000, baseInt: 3100, deductions: 341.00, deductions_total: 341.00, bonuses: [], exception: null },
+    { id: 307, name: 'Hassan Tarek', baseExt: 0, baseInt: 5200, deductions: 572.00, deductions_total: 572.00, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
+    { id: 308, name: 'Lina Kamal', baseExt: 1600, baseInt: 3900, deductions: 429.00, deductions_total: 429.00, bonuses: [], exception: null }
   ];
 
   const seedBanks = [
@@ -39,6 +39,12 @@
     payDate: '2026-09-30',
     start: '2026-09-01',
     end: '2026-09-30',
+    fxRateValue: null,
+    fxRateSource: null,
+    resolvedFxRate: 50.0,
+    resolvedFxSource: 'fallback',
+    employeeInsuranceRate: 0.11,
+    employerInsuranceRate: 0.18,
     stepIndex: 0,
     expandedId: null,
     journalPosted: false,
@@ -54,6 +60,8 @@
       // 1. Sync real data from database
       await this.loadEmployeesFromDb();
       await this.loadBankAccountsFromDb();
+      await this.loadSettingsFromDb();
+      await this.fetchPreview();
 
       // 2. Set current user name
       const userNameEl = document.getElementById('payrollCurrentUserName');
@@ -71,6 +79,8 @@
       if (startInput) startInput.value = this.start;
       const endInput = document.getElementById('payrollSetEnd');
       if (endInput) endInput.value = this.end;
+      const fxInput = document.getElementById('payrollSetFxRate');
+      if (fxInput) fxInput.value = this.fxRateValue || '';
 
       this.drawFundingAccounts();
       this.redraw();
@@ -119,12 +129,15 @@
               if (baseExt === 0 && baseInt === 0 && e.salary) {
                 baseInt = Number(e.salary);
               }
+              const ded = Number(e.deductions !== undefined ? e.deductions : (e.deductions_total || 0));
               return {
                 id: e.id,
                 name: e.name,
                 dept: e.dept || e.department || 'Operations',
                 baseExt: baseExt,
                 baseInt: baseInt,
+                deductions: ded,
+                deductions_total: ded,
                 bonuses: existingBonusesMap[e.id] || [],
                 exception: null
               };
@@ -446,7 +459,7 @@
               </div>
             </td>
             <td class="payroll-num">${this.money(c.totalInternal)}</td>
-            <td class="payroll-num payroll-muted-col">${this.money(c.deductions)}</td>
+            <td class="payroll-num payroll-muted-col" title="${r.deductions_label || 'Social Insurance (Internal Estimate)'}">${this.money(c.deductions)}</td>
             <td class="payroll-num">${this.money(c.internal)}</td>
             <td class="payroll-num">${this.money(c.external)}</td>
             <td class="payroll-num" style="color:var(--primary, #2563eb); font-weight:800;">${this.money(c.net)}</td>
@@ -620,6 +633,7 @@
     },
 
     redraw() {
+      this.drawFxRate();
       this.drawStepper();
       this.drawStats();
       this.drawStatus();
@@ -860,11 +874,160 @@
         }
       }
 
+      const setFxInput = document.getElementById('payrollSetFxRate');
+      if (setFxInput) {
+        const val = parseFloat(setFxInput.value);
+        this.fxRateValue = (val && val > 0) ? val : null;
+      }
+
+      await this.fetchPreview();
+
       this.persistFundingAccounts();
       this.drawPeriodLabel();
-      this.addAudit('Payroll settings updated: funding accounts, schedule, or statutory rates changed.');
+      this.addAudit('Payroll settings updated: funding accounts, schedule, statutory rates, or FX rate changed.');
       this.showPage('list');
       this.showBanner('Payroll settings saved.', 'blue');
+    },
+
+    async loadSettingsFromDb() {
+      try {
+        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
+          const settings = await FinanceApi.getPayrollSettings();
+          if (settings) {
+            if (settings.employee_rate !== undefined) this.employeeInsuranceRate = Number(settings.employee_rate);
+            if (settings.employer_rate !== undefined) this.employerInsuranceRate = Number(settings.employer_rate);
+          }
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load payroll settings:', err);
+      }
+    },
+
+    async fetchPreview() {
+      try {
+        let preview = null;
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.previewPayrollRun === 'function') {
+          preview = await FinanceApi.previewPayrollRun({
+            period_label: this.month,
+            period_start: this.start,
+            period_end: this.end,
+            payment_date: this.payDate,
+            bank_account_id: this.selectedExternalAccountId || 1,
+            external_funding_account_id: this.selectedExternalAccountId || 1,
+            internal_funding_account_id: this.selectedInternalAccountId || 2,
+            fx_rate_source: this.fxRateValue ? 'manual' : (this.fxRateSource || 'first_of_month'),
+            fx_rate_value: this.fxRateValue ? Number(this.fxRateValue) : null
+          });
+        }
+
+        if (preview) {
+          if (preview.fx_rate_value !== undefined && preview.fx_rate_value !== null) {
+            this.resolvedFxRate = Number(preview.fx_rate_value);
+            this.resolvedFxSource = preview.fx_rate_source || (this.fxRateValue ? 'manual' : 'fallback');
+          }
+
+          if (Array.isArray(preview.recipients) && preview.recipients.length > 0) {
+            const map = {};
+            preview.recipients.forEach(r => { map[r.employee_id] = r; });
+            (this.rows || []).forEach(r => {
+              const recip = map[r.id];
+              if (recip) {
+                r.deductions = Number(recip.int_deductions_total !== undefined ? recip.int_deductions_total : 0);
+                r.deductions_total = r.deductions;
+                r.deductions_label = recip.deductions_label || (r.deductions > 0 ? 'Social Insurance (Internal Estimate)' : null);
+              } else if (r.baseInt > 0) {
+                r.deductions = Math.round(r.baseInt * (this.employeeInsuranceRate || 0.11) * 100) / 100;
+                r.deductions_total = r.deductions;
+                r.deductions_label = 'Social Insurance (Internal Estimate)';
+              }
+            });
+          }
+        } else {
+          (this.rows || []).forEach(r => {
+            if (r.baseInt > 0 && (r.deductions === undefined || r.deductions === 0)) {
+              r.deductions = Math.round(r.baseInt * (this.employeeInsuranceRate || 0.11) * 100) / 100;
+              r.deductions_total = r.deductions;
+              r.deductions_label = 'Social Insurance (Internal Estimate)';
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not fetch payroll preview:', err);
+      }
+    },
+
+    drawFxRate() {
+      const rateEl = document.getElementById('payrollFxRateBadge');
+      const srcEl = document.getElementById('payrollFxRateSourceBadge');
+      const inputEl = document.getElementById('payrollFxRateInput');
+      const setFxInput = document.getElementById('payrollSetFxRate');
+
+      const rateNum = Number(this.resolvedFxRate || 50.0);
+      const isManual = this.fxRateValue !== null && this.fxRateValue !== undefined && Number(this.fxRateValue) > 0;
+      const isFallback = !isManual && (this.resolvedFxSource === 'fallback' || rateNum === 50.0);
+
+      if (rateEl) {
+        rateEl.textContent = rateNum.toFixed(4);
+      }
+      if (srcEl) {
+        if (isManual) {
+          srcEl.textContent = 'Manual Override';
+          srcEl.className = 'p-badge b-blue';
+        } else if (isFallback) {
+          srcEl.textContent = 'System Fallback (50.0)';
+          srcEl.className = 'p-badge b-gray';
+        } else {
+          srcEl.textContent = 'Resolved from Transfer History';
+          srcEl.className = 'p-badge b-green';
+        }
+      }
+      if (inputEl && document.activeElement !== inputEl) {
+        inputEl.value = isManual ? this.fxRateValue : '';
+      }
+      if (setFxInput && document.activeElement !== setFxInput) {
+        setFxInput.value = isManual ? this.fxRateValue : '';
+      }
+    },
+
+    toggleFxOverride() {
+      const form = document.getElementById('payrollFxOverrideForm');
+      if (!form) return;
+      const isHidden = form.style.display === 'none' || !form.style.display;
+      form.style.display = isHidden ? 'inline-flex' : 'none';
+      if (isHidden) {
+        const input = document.getElementById('payrollFxRateInput');
+        if (input) {
+          input.value = this.fxRateValue || this.resolvedFxRate || '';
+          input.focus();
+        }
+      }
+    },
+
+    async applyFxOverride() {
+      const input = document.getElementById('payrollFxRateInput');
+      const val = input ? parseFloat(input.value) : null;
+      if (val && val > 0) {
+        this.fxRateValue = val;
+        this.addAudit(`Applied manual FX rate override: ${val.toFixed(4)} USD/EGP.`);
+      } else {
+        this.fxRateValue = null;
+        this.addAudit(`Cleared manual FX rate override. Reverted to resolved rate.`);
+      }
+      const form = document.getElementById('payrollFxOverrideForm');
+      if (form) form.style.display = 'none';
+
+      await this.fetchPreview();
+      this.redraw();
+    },
+
+    async resetFxOverride() {
+      this.fxRateValue = null;
+      this.addAudit(`Reset FX rate override to default resolver.`);
+      const form = document.getElementById('payrollFxOverrideForm');
+      if (form) form.style.display = 'none';
+
+      await this.fetchPreview();
+      this.redraw();
     },
 
     /* ---------------- Navigation between views ---------------- */
@@ -885,10 +1048,13 @@
       if (page === 'list') {
         this.drawRunsList();
       } else if (page === 'run') {
+        await this.fetchPreview();
         this.redraw();
       } else if (page === 'settings') {
         await this.loadBankAccountsFromDb();
         this.drawFundingAccounts();
+        const setFxInput = document.getElementById('payrollSetFxRate');
+        if (setFxInput) setFxInput.value = this.fxRateValue || '';
         if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
           try {
             const settings = await FinanceApi.getPayrollSettings();

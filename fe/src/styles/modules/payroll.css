@@ -304,6 +304,7 @@ table.payroll-worksheet th.payroll-num-th,
 table.payroll-worksheet td.payroll-num {
   text-align: right;
   white-space: nowrap;
+  padding: 8px 4px;
 }
 table.payroll-worksheet th.payroll-id-th,
 table.payroll-worksheet td.payroll-id-col {
@@ -316,11 +317,11 @@ table.payroll-worksheet td.payroll-id-col {
 }
 table.payroll-worksheet th.payroll-name-th,
 table.payroll-worksheet td.payroll-name-col {
-  min-width: 150px;
-  width: 26%;
+  min-width: 120px;
+  width: 20%;
   text-align: left;
   padding-left: 8px;
-  padding-right: 10px;
+  padding-right: 8px;
 }
 .payroll-emp-name {
   font-weight: 700;

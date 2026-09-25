@@ -406,6 +406,7 @@ class PayrollService:
                 "base_int_amount": round(stat_res["final_internal_payment_usd"], 2) if int_comp else 0.0,
                 "base_ext_amount": round(base_ext, 2),
                 "int_deductions_total": stat_res["deductions_total_usd"] if int_comp else 0.0,
+                "deductions_label": "Social Insurance (Internal Estimate)" if (int_comp and stat_res.get("deductions_total_usd", 0) > 0) else None,
                 "employer_cost_extra": stat_res["employer_cost_extra_usd"] if int_comp else 0.0,
                 "int_adjustments_total": 0.0,
                 "ext_adjustments_total": 0.0,

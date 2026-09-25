@@ -2087,6 +2087,7 @@ class PayrollRecipientPreview(BaseModel):
     base_int_amount: float = 0.0
     base_ext_amount: float = 0.0
     int_deductions_total: float = 0.0
+    deductions_label: Optional[str] = None
     employer_cost_extra: float = 0.0
     int_adjustments_total: float = 0.0
     ext_adjustments_total: float = 0.0

@@ -224,4 +224,57 @@ test.describe('HRFlow Fresh From-Scratch In-Page Payroll Module', () => {
     await expect(page.locator('#payrollViewList')).toBeVisible();
     await expect(page.locator('#payrollActionBanner')).toContainText('Payroll settings saved');
   });
+
+  test('TC-5: FX-rate wiring, fallback indicator, manual override, and non-zero Deductions column validation', async ({ page }) => {
+    // Open Run Page
+    await page.click('#btnOpenCurrentCycle');
+    await expect(page.locator('#payrollViewRun')).toBeVisible();
+
+    // 1. Verify FX Rate strip, rate badge, and fallback indicator
+    const fxStrip = page.locator('#payrollFxStrip');
+    await expect(fxStrip).toBeVisible();
+    const fxBadge = page.locator('#payrollFxRateBadge');
+    await expect(fxBadge).toBeVisible();
+    await expect(fxBadge).toHaveText('50.0000');
+    const fxSourceBadge = page.locator('#payrollFxRateSourceBadge');
+    await expect(fxSourceBadge).toContainText('System Fallback (50.0)');
+
+    // 2. Verify Deductions column in worksheet table has non-zero values
+    const rows = page.locator('#payrollWorksheetTable #payrollTableBody tr:not(.expand-row)');
+    const count = await rows.count();
+    expect(count).toBeGreaterThan(0);
+
+    // First row should have non-zero deduction
+    const firstRowDeduction = rows.first().locator('td').nth(6);
+    await expect(firstRowDeduction).toBeVisible();
+    const dedText = await firstRowDeduction.textContent();
+    expect(dedText).not.toBe('$0.00');
+    expect(dedText).toMatch(/\$\d+\.\d{2}/);
+
+    // Footer total deductions is non-zero
+    const footerDeductions = page.locator('#fDeductions');
+    await expect(footerDeductions).toBeVisible();
+    const footerText = await footerDeductions.textContent();
+    expect(footerText).not.toBe('$0.00');
+    expect(footerText).toMatch(/\$\d+[\d,]*\.\d{2}/);
+
+    // 3. Test inline FX Rate override
+    await page.click('#btnToggleFxOverride');
+    const overrideForm = page.locator('#payrollFxOverrideForm');
+    await expect(overrideForm).toBeVisible();
+
+    await page.fill('#payrollFxRateInput', '48.7500');
+    await page.click('#btnApplyFxRate');
+
+    // Badge updates to manual override
+    await expect(overrideForm).not.toBeVisible();
+    await expect(fxBadge).toHaveText('48.7500');
+    await expect(fxSourceBadge).toHaveText('Manual Override');
+
+    // 4. Test Resetting FX Rate override
+    await page.click('#btnToggleFxOverride');
+    await page.click('#btnResetFxRate');
+    await expect(fxBadge).toHaveText('50.0000');
+    await expect(fxSourceBadge).toContainText('System Fallback (50.0)');
+  });
 });

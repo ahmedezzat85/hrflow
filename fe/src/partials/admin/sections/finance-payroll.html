@@ -68,6 +68,21 @@
                   <div class="payroll-subtitle" id="payrollPeriodSubtitle">
                     Period 2026-09-01 to 2026-09-30 · Funding: Primary Treasury Operating Account (USD)
                   </div>
+                  <div class="payroll-fx-strip" id="payrollFxStrip" style="display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                    <span style="font-size:0.82rem; font-weight:600; color:var(--text-muted, #64748b);">
+                      <i class="fa-solid fa-coins"></i> FX Rate (USD &rarr; EGP):
+                    </span>
+                    <span class="p-badge b-blue" id="payrollFxRateBadge" style="font-family:monospace; font-weight:700;">50.0000</span>
+                    <span id="payrollFxRateSourceBadge" class="p-badge b-gray" style="font-size:0.72rem;">System Fallback (50.0)</span>
+                    <button type="button" class="btn btn-ghost btn-sm" id="btnToggleFxOverride" onclick="PayrollApp.toggleFxOverride()" style="font-size:0.75rem; padding:2px 8px;">
+                      <i class="fa-solid fa-pencil"></i> Change
+                    </button>
+                    <div id="payrollFxOverrideForm" style="display:none; align-items:center; gap:6px;">
+                      <input type="number" step="0.0001" min="1" id="payrollFxRateInput" style="width:110px; padding:3px 6px; font-size:0.82rem; border:1px solid var(--border-color, #cbd5e1); border-radius:4px;" placeholder="50.0000" />
+                      <button type="button" class="btn btn-primary btn-sm" id="btnApplyFxRate" onclick="PayrollApp.applyFxOverride()" style="font-size:0.75rem; padding:3px 8px;">Apply</button>
+                      <button type="button" class="btn btn-ghost btn-sm" id="btnResetFxRate" onclick="PayrollApp.resetFxOverride()" style="font-size:0.75rem; padding:3px 8px;">Reset</button>
+                    </div>
+                  </div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                   <span class="p-badge b-gray" id="payrollStatusBadge">DRAFT</span>
@@ -223,8 +238,8 @@
                 <div class="payroll-card" style="box-shadow:none;">
                   <div class="payroll-header-row" style="padding:12px 16px;">
                     <div>
-                      <div class="payroll-panel-title">Payroll month</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Defines the period and pay date for a new run.</div>
+                      <div class="payroll-panel-title">Payroll month & FX Rate</div>
+                      <div class="payroll-subtitle" style="font-size:0.78rem;">Defines the period, pay date, and currency conversion rate for the run.</div>
                     </div>
                   </div>
                   <div class="month-form">
@@ -232,6 +247,7 @@
                     <div class="field"><label>Pay date</label><input type="date" id="payrollSetPayDate" value="2026-09-30" /></div>
                     <div class="field"><label>Period start</label><input type="date" id="payrollSetStart" value="2026-09-01" /></div>
                     <div class="field"><label>Period end</label><input type="date" id="payrollSetEnd" value="2026-09-30" /></div>
+                    <div class="field"><label>FX Rate Override (USD &rarr; EGP)</label><input type="number" step="0.0001" min="1" id="payrollSetFxRate" placeholder="Leave empty for auto / fallback (50.0000)" /></div>
                   </div>
                 </div>
 

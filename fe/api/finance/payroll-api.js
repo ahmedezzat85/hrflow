@@ -220,8 +220,8 @@
     async previewPayrollRun(payload) {
       if (_isMock()) {
         const periodLabel = payload.period_label || "2026-10";
-        const fxRateSource = payload.fx_rate_source || "first_of_month";
-        const fxRateValue = payload.fx_rate_value || (fxRateSource === "payment_date" ? 49.5 : 48.5);
+        const fxRateSource = payload.fx_rate_value ? "manual" : (payload.fx_rate_source || "first_of_month");
+        const fxRateValue = payload.fx_rate_value ? Number(payload.fx_rate_value) : (fxRateSource === "payment_date" ? 49.5 : 50.0);
 
         const lines = [
           {
@@ -301,18 +301,76 @@
         const previewId = `PRV-${periodLabel.replace(/-/g, "")}-0042`;
         const totalNet = lines.reduce((sum, l) => sum + l.net_pay, 0);
 
-        const recipients = [
-          {
+        const rawEmployeesList = (typeof window !== "undefined" && Array.isArray(window.employees) && window.employees.length > 0)
+          ? window.employees
+          : [
+              { id: 1, name: "Sarah Connor", dept: "Engineering", baseExt: 10000.0, baseInt: 5000.0, bank_name: "Chase", masked: "••••4821" },
+              { id: 2, name: "John DevOps", dept: "Operations", baseExt: 0.0, baseInt: 14000.0, bank_name: "SVB", masked: "••••9102" },
+              { id: 301, name: 'Youssef Adel', dept: 'Operations', baseExt: 1800, baseInt: 4300, bank_name: "CIB", masked: "••••4021" },
+              { id: 302, name: 'Salma Ibrahim', dept: 'Operations', baseExt: 0, baseInt: 4450, bank_name: "NBE", masked: "••••1092" },
+              { id: 303, name: 'Karim Nabil', dept: 'Operations', baseExt: 2500, baseInt: 4500, bank_name: "QNB", masked: "••••8831" },
+              { id: 304, name: 'Mariam Essam', dept: 'Operations', baseExt: 1200, baseInt: 4550, bank_name: "HSBC", masked: "••••6612" },
+              { id: 305, name: 'Omar Farouk', dept: 'Operations', baseExt: 0, baseInt: 4200, bank_name: "CIB", masked: "••••5541" },
+              { id: 306, name: 'Nadine Samir', dept: 'Operations', baseExt: 2000, baseInt: 3100, bank_name: "AlexBank", masked: "••••9920" },
+              { id: 307, name: 'Hassan Tarek', dept: 'Operations', baseExt: 0, baseInt: 5200, bank_name: "Banque Misr", masked: "••••3321" },
+              { id: 308, name: 'Lina Kamal', dept: 'Operations', baseExt: 1600, baseInt: 3900, bank_name: "CIB", masked: "••••7711" },
+            ];
+
+        const empRate = (FinanceMockState.payrollSettings && FinanceMockState.payrollSettings.employee_rate) || 0.11;
+        const orgRate = (FinanceMockState.payrollSettings && FinanceMockState.payrollSettings.employer_rate) || 0.18;
+
+        const recipients = rawEmployeesList.map(e => {
+          const ext = Number(e.baseExt !== undefined ? e.baseExt : (e.externalSalaryUsd !== undefined ? e.externalSalaryUsd : (e.external_salary_usd || 0)));
+          let intSal = Number(e.baseInt !== undefined ? e.baseInt : (e.internalSalaryUsd !== undefined ? e.internalSalaryUsd : (e.internal_salary_usd || 0)));
+          if (ext === 0 && intSal === 0 && e.salary) intSal = Number(e.salary);
+
+          const isInsured = e.is_insured !== false;
+          const ded = (intSal > 0 && isInsured) ? round(intSal * empRate, 2) : 0.0;
+          const finalInt = round(intSal - ded, 2);
+          const finalExt = round(ext, 2);
+
+          const isBlocker = payload.simulate_missing_bank && e.id === 1;
+
+          return {
+            employee_id: e.id,
+            employee_name: e.name,
+            department: e.dept || e.department || "Operations",
+            base_int_amount: intSal,
+            base_ext_amount: ext,
+            int_deductions_total: ded,
+            deductions_label: ded > 0 ? "Social Insurance (Internal Estimate)" : null,
+            employer_cost_extra: (intSal > 0 && isInsured) ? round(intSal * orgRate, 2) : 0.0,
+            int_adjustments_total: 0.0,
+            ext_adjustments_total: 0.0,
+            final_int_amount: finalInt,
+            final_ext_amount: finalExt,
+            final_payment_amount: round(finalInt + finalExt, 2),
+            adjustments: [],
+            bank_name: e.bank_name || "Primary Bank",
+            destination_masked: e.masked || e.bank_account_masked || "••••4021",
+            readiness: {
+              status: isBlocker ? "BLOCKER" : "READY",
+              issues: isBlocker ? ["Sarah Connor is scheduled for external bank payment but does not have verified wire details on file."] : [],
+            },
+          };
+        });
+
+        // Ensure Sarah Connor is always available in recipients for legacy wizard specs
+        if (!recipients.some(r => r.employee_id === 1)) {
+          recipients.unshift({
             employee_id: 1,
             employee_name: "Sarah Connor",
             department: "Engineering",
             base_int_amount: 5000.0,
             base_ext_amount: 10000.0,
+            int_deductions_total: 550.0,
+            deductions_label: "Social Insurance (Internal Estimate)",
+            employer_cost_extra: 900.0,
             int_adjustments_total: 0.0,
             ext_adjustments_total: 0.0,
-            final_int_amount: 5000.0,
+            final_int_amount: 4450.0,
             final_ext_amount: 10000.0,
-            final_payment_amount: 15000.0,
+            final_payment_amount: 14450.0,
             adjustments: [],
             bank_name: "Chase",
             destination_masked: "••••4821",
@@ -320,27 +378,8 @@
               status: payload.simulate_missing_bank ? "BLOCKER" : "READY",
               issues: payload.simulate_missing_bank ? ["Sarah Connor is scheduled for external bank payment but does not have verified wire details on file."] : [],
             },
-          },
-          {
-            employee_id: 2,
-            employee_name: "John DevOps",
-            department: "Operations",
-            base_int_amount: 14000.0,
-            base_ext_amount: 0.0,
-            int_adjustments_total: 0.0,
-            ext_adjustments_total: 0.0,
-            final_int_amount: 14000.0,
-            final_ext_amount: 0.0,
-            final_payment_amount: 14000.0,
-            adjustments: [],
-            bank_name: "SVB",
-            destination_masked: "••••9102",
-            readiness: {
-              status: "READY",
-              issues: [],
-            },
-          },
-        ];
+          });
+        }
 
         const prevObj = {
           preview_id: previewId,
