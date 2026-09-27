@@ -239,4 +239,54 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.click('#btnP6Finish');
     await expect(page.locator('#payrollViewList')).toBeVisible();
   });
+
+  test('TC-6: Screen 1 & Screen 4 Summary Cards — .payroll-card.payroll-stat styling and card boundaries', async ({ page }) => {
+    // Open Run Page (Screen 1 is active)
+    await page.click('#btnOpenCurrentCycle');
+    const s1 = page.locator('#payrollScreen1');
+    await expect(s1).toBeVisible();
+
+    // Verify all 4 summary cards on Screen 1 have payroll-card and payroll-stat classes
+    const s1Cards = s1.locator('.payroll-stats .payroll-stat');
+    await expect(s1Cards).toHaveCount(4);
+
+    const p1Card = page.locator('#p1Headcount').locator('xpath=ancestor::div[contains(@class, "payroll-stat")][1]');
+    await expect(p1Card).toHaveClass(/payroll-card/);
+    await expect(p1Card).toHaveClass(/payroll-stat/);
+
+    // Check inner structure
+    await expect(p1Card.locator('.label')).toHaveText('Active Headcount');
+    await expect(p1Card.locator('.value')).toHaveText('2');
+    await expect(p1Card.locator('.sub')).toHaveText('Eligible employees');
+
+    // Check computed styles on Screen 1 card: border and background
+    const p1CardBorder = await p1Card.evaluate((el) => window.getComputedStyle(el).borderStyle);
+    expect(p1CardBorder).toBe('solid');
+
+    // Advance through Screen 2 and Screen 3 to Screen 4
+    await page.click('#btnP1Proceed');
+    await expect(page.locator('#payrollScreen2')).toBeVisible();
+    await page.click('#btnP2Approve');
+    await expect(page.locator('#payrollScreen3')).toBeVisible();
+    await page.click('#btnP3Next');
+    const s4 = page.locator('#payrollScreen4');
+    await expect(s4).toBeVisible();
+
+    // Verify all 4 summary cards on Screen 4 have payroll-card and payroll-stat classes
+    const s4Cards = s4.locator('.payroll-stats .payroll-stat');
+    await expect(s4Cards).toHaveCount(4);
+
+    const p4Card = page.locator('#p4TotalNet').locator('xpath=ancestor::div[contains(@class, "payroll-stat")][1]');
+    await expect(p4Card).toHaveClass(/payroll-card/);
+    await expect(p4Card).toHaveClass(/payroll-stat/);
+
+    // Check inner structure
+    await expect(p4Card.locator('.label')).toHaveText('Total Net Disbursal');
+    await expect(p4Card.locator('.value')).toBeVisible();
+    await expect(p4Card.locator('.sub')).toHaveText('Total employee net cash & wire');
+
+    // Check computed styles on Screen 4 card
+    const p4CardBorder = await p4Card.evaluate((el) => window.getComputedStyle(el).borderStyle);
+    expect(p4CardBorder).toBe('solid');
+  });
 });
