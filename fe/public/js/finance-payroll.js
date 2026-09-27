@@ -390,7 +390,8 @@
             this.showBanner('Payroll run finalized and locked. Backend snapshots populated.', 'blue');
           }
         } catch (err) {
-          console.warn('[PayrollApp] Finalize error:', err);
+          this.showBanner(err.message || 'Finalization failed. Statutory snapshot could not be generated.', 'red');
+          return;
         }
       }
 

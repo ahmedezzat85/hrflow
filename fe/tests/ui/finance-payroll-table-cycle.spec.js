@@ -289,4 +289,57 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const p4CardBorder = await p4Card.evaluate((el) => window.getComputedStyle(el).borderStyle);
     expect(p4CardBorder).toBe('solid');
   });
+
+  test('TC-7: Screen 3 Entry Finalize Error Handling — Surface error banner and block transition on finalize failure', async ({ page }) => {
+    await page.click('#btnOpenCurrentCycle');
+    // Screen 1 -> Screen 2
+    await page.click('#btnP1Proceed');
+    const s2 = page.locator('#payrollScreen2');
+    await expect(s2).toBeVisible();
+
+    // Mock FinanceApi.finalizePayrollRun to reject with error
+    await page.evaluate(() => {
+      window.FinanceApi.finalizePayrollRun = async () => {
+        throw new Error('Simulated statutory engine failure during finalization');
+      };
+    });
+
+    // Attempt to submit and approve (which calls setStep(2) triggering finalize)
+    await page.click('#btnP2Approve');
+
+    // Verify:
+    // a. Visible red banner with error message
+    const banner = page.locator('#payrollActionBanner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toHaveClass(/p-banner-red/);
+    await expect(banner).toContainText('Simulated statutory engine failure during finalization');
+
+    // b. stepIndex remains at 1 (Screen 2) - Screen 2 is NOT hidden
+    await expect(s2).toBeVisible();
+    await expect(s2).not.toHaveClass(/payroll-hidden/);
+
+    // c. Screen 3 is NOT shown
+    const s3 = page.locator('#payrollScreen3');
+    await expect(s3).toHaveClass(/payroll-hidden/);
+
+    // Stepper remains on Screen 2 (Approve)
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('2. Approve');
+
+    // Fallback message test: when error has no message
+    await page.evaluate(() => {
+      window.FinanceApi.finalizePayrollRun = async () => {
+        throw new Error('');
+      };
+    });
+    // Trigger setStep(2) directly to simulate retry
+    await page.evaluate(async () => {
+      await window.PayrollApp.setStep(2);
+    });
+
+    await expect(banner).toBeVisible();
+    await expect(banner).toHaveClass(/p-banner-red/);
+    await expect(banner).toContainText('Finalization failed. Statutory snapshot could not be generated.');
+    await expect(s2).toBeVisible();
+    await expect(s3).toHaveClass(/payroll-hidden/);
+  });
 });
