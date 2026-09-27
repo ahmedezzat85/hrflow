@@ -211,7 +211,8 @@
     nowStamp() {
       const now = new Date();
       const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      return '2026-09-21 ' + timeStr;
+      const dateStr = now.toISOString().slice(0, 10);
+      return dateStr + ' ' + timeStr;
     },
 
     currentStatusKey() {
@@ -610,7 +611,7 @@
         const bonusBadges = (r.bonuses || []).map((b, bIdx) => `
           <span class="p-bonus-pill" style="display:inline-flex; align-items:center; gap:4px; margin:2px; padding:2px 6px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem;">
             <span>${b.type || 'Bonus'}: <strong>$${b.amount}</strong> (${b.source || 'int'})</span>
-            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id || 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px;">&times;</button>
+            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px;">&times;</button>
           </span>
         `).join('');
 
@@ -684,15 +685,17 @@
       const desc = descInput ? descInput.value.trim() : '';
 
       // Persist to backend preview adjustment if preview is active
+      let createdAdjId = null;
       if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.addPreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
         try {
-          await FinanceApi.addPreviewAdjustment(this.currentPreview.preview_id, {
+          const adj = await FinanceApi.addPreviewAdjustment(this.currentPreview.preview_id, {
             employee_id: empId,
             type: bType,
             amount: amt,
             payment_source: bSource,
             description: desc
           });
+          if (adj && adj.id) createdAdjId = adj.id;
         } catch (err) {
           console.warn('[PayrollApp] Could not persist preview adjustment:', err);
         }
@@ -702,6 +705,7 @@
       if (row) {
         if (!row.bonuses) row.bonuses = [];
         row.bonuses.push({
+          id: createdAdjId,
           type: bType === 'COMMISSION' ? 'Sales Commission' : 'Bonus',
           amount: amt,
           source: bSource.toLowerCase() === 'ext' ? 'external' : 'internal',
@@ -1001,6 +1005,21 @@
       try {
         if (!this.currentRun) {
           await this.submitAndApproveRun();
+        }
+
+        if (this.currentRun && (this.currentRun.status === 'draft' || this.currentRun.status === 'submitted')) {
+          if (typeof FinanceApi !== 'undefined') {
+            if (this.currentRun.status === 'draft' && typeof FinanceApi.submitPayrollRun === 'function') {
+              await FinanceApi.submitPayrollRun(this.currentRun.id);
+            }
+            if (typeof FinanceApi.approvePayrollRun === 'function') {
+              await FinanceApi.approvePayrollRun(this.currentRun.id, true);
+              this.currentRun.status = 'approved';
+            }
+          }
+        }
+
+        if (this.currentRun && this.currentRun.status === 'approved') {
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
             await FinanceApi.finalizePayrollRun(this.currentRun.id);
             this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
@@ -1134,8 +1153,14 @@
 
       const siEstEl = document.getElementById('p6SocialInsEstimate');
       const taxEstEl = document.getElementById('p6TaxEstimate');
-      if (siEstEl) siEstEl.textContent = `${siEst.toFixed(2)} EGP ($${(siEst / rate).toFixed(2)})`;
-      if (taxEstEl) taxEstEl.textContent = `${taxEst.toFixed(2)} EGP ($${(taxEst / rate).toFixed(2)})`;
+      if (siEstEl) {
+        siEstEl.setAttribute('data-est', String(siEst));
+        siEstEl.textContent = `${siEst.toFixed(2)} EGP ($${(siEst / rate).toFixed(2)})`;
+      }
+      if (taxEstEl) {
+        taxEstEl.setAttribute('data-est', String(taxEst));
+        taxEstEl.textContent = `${taxEst.toFixed(2)} EGP ($${(taxEst / rate).toFixed(2)})`;
+      }
 
       const siInput = document.getElementById('p6SocialInsActual');
       const taxInput = document.getElementById('p6TaxActual');
@@ -1164,7 +1189,7 @@
         const input = document.getElementById('p6SocialInsActual');
         const varEl = document.getElementById('p6SocialInsVariance');
         if (!input || !varEl) return;
-        const est = estText ? parseFloat(estText.textContent) || 0 : 0;
+        const est = estText ? (parseFloat(estText.getAttribute('data-est')) || parseFloat(estText.textContent) || 0) : 0;
         const actual = parseFloat(input.value) || 0;
         const diff = Math.round((actual - est) * 100) / 100;
         const sign = diff > 0 ? '+' : '';
@@ -1175,7 +1200,7 @@
         const input = document.getElementById('p6TaxActual');
         const varEl = document.getElementById('p6TaxVariance');
         if (!input || !varEl) return;
-        const est = estText ? parseFloat(estText.textContent) || 0 : 0;
+        const est = estText ? (parseFloat(estText.getAttribute('data-est')) || parseFloat(estText.textContent) || 0) : 0;
         const actual = parseFloat(input.value) || 0;
         const diff = Math.round((actual - est) * 100) / 100;
         const sign = diff > 0 ? '+' : '';

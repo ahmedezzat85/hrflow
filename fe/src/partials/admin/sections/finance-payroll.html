@@ -242,7 +242,7 @@
                 <div class="payroll-footer-actions">
                   <div class="left-info" id="p2StepHint">Step 2 of 6 — Review base compensation and dynamic additions. Submit &amp; Approve to advance to statutory processing.</div>
                   <div class="btns">
-                    <button class="btn btn-ghost" onclick="PayrollApp.setStep(0)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-ghost" id="btnP2Back" onclick="PayrollApp.setStep(0)"><i class="fa-solid fa-arrow-left"></i> Back</button>
                     <button class="btn btn-ghost" id="btnP2SaveDraft" onclick="PayrollApp.saveDraftRun()"><i class="fa-solid fa-floppy-disk"></i> Save Draft</button>
                     <button class="btn btn-primary" id="btnP2Approve" onclick="PayrollApp.submitAndApproveRun()">
                       <i class="fa-solid fa-check-double"></i> Submit &amp; Approve Run
@@ -446,7 +446,7 @@
                 <div class="payroll-footer-actions">
                   <div class="left-info">Step 5 of 6 — Disbursement execution complete. Proceed to statutory tax and social insurance reconciliation.</div>
                   <div class="btns">
-                    <button class="btn btn-ghost" onclick="PayrollApp.setStep(3)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-ghost" id="btnP5Back" onclick="PayrollApp.setStep(3)"><i class="fa-solid fa-arrow-left"></i> Back</button>
                     <button class="btn btn-primary" id="btnP5ProceedStatutory" onclick="PayrollApp.setStep(5)">
                       Next: Statutory Payments <i class="fa-solid fa-arrow-right"></i>
                     </button>
@@ -563,7 +563,7 @@
                 <div class="payroll-footer-actions">
                   <div class="left-info">Step 6 of 6 — Statutory liabilities reconciled and recorded. Cycle journey complete.</div>
                   <div class="btns">
-                    <button class="btn btn-ghost" onclick="PayrollApp.setStep(4)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-ghost" id="btnP6Back" onclick="PayrollApp.setStep(4)"><i class="fa-solid fa-arrow-left"></i> Back</button>
                     <button class="btn btn-primary" id="btnP6Finish" onclick="PayrollApp.showPage('list')">
                       <i class="fa-solid fa-check"></i> Finish &amp; Return to Runs
                     </button>
