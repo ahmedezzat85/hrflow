@@ -241,6 +241,11 @@ table.runs-table tr.clickable:hover {
   font-weight: 800;
   color: var(--text-primary, #0f172a);
 }
+.payroll-stat .sub {
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748b);
+  margin-top: 2px;
+}
 
 /* Toolbar */
 .payroll-toolbar {
