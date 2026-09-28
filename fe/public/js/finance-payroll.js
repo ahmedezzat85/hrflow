@@ -1000,7 +1000,45 @@
       let totEmpSi = 0, totEmprSi = 0, totSi = 0, totTax = 0, totNetEgp = 0, totNetUsd = 0;
 
       if (lines.length > 0) {
+        // Group and deduplicate lines by employee_id (employees may have multiple split payment lines)
+        const empMap = new Map();
         lines.forEach(l => {
+          const eid = l.employee_id;
+          if (!empMap.has(eid)) {
+            empMap.set(eid, { ...l });
+          } else {
+            const existing = empMap.get(eid);
+            existing.net_pay = Number(existing.net_pay || 0) + Number(l.net_pay || l.amount || 0);
+            existing.amount = existing.net_pay;
+            if (l.final_internal_net_egp && !existing.final_internal_net_egp) {
+              existing.final_internal_net_egp = l.final_internal_net_egp;
+            }
+            if (l.employee_social_insurance_egp && !existing.employee_social_insurance_egp) {
+              existing.employee_social_insurance_egp = l.employee_social_insurance_egp;
+            }
+            if (l.employer_social_insurance_egp && !existing.employer_social_insurance_egp) {
+              existing.employer_social_insurance_egp = l.employer_social_insurance_egp;
+            }
+            if (l.total_social_insurance_egp && !existing.total_social_insurance_egp) {
+              existing.total_social_insurance_egp = l.total_social_insurance_egp;
+            }
+            if (l.employee_tax_egp && !existing.employee_tax_egp) {
+              existing.employee_tax_egp = l.employee_tax_egp;
+            }
+            if (l.insured_base_egp_snapshot && !existing.insured_base_egp_snapshot) {
+              existing.insured_base_egp_snapshot = l.insured_base_egp_snapshot;
+            }
+            if (l.configured_internal_salary_usd_snapshot !== undefined && existing.configured_internal_salary_usd_snapshot === undefined) {
+              existing.configured_internal_salary_usd_snapshot = l.configured_internal_salary_usd_snapshot;
+            }
+            if (l.salary_basis_snapshot && !existing.salary_basis_snapshot) {
+              existing.salary_basis_snapshot = l.salary_basis_snapshot;
+            }
+          }
+        });
+        const employeeEntries = Array.from(empMap.values());
+
+        employeeEntries.forEach(l => {
           const empSi = Number(l.employee_social_insurance_egp || 0);
           const emprSi = Number(l.employer_social_insurance_egp || 0);
           const tSi = Number(l.total_social_insurance_egp || (empSi + emprSi));

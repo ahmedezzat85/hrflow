@@ -37,8 +37,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(viewRun).toBeVisible();
     await expect(page.locator('#runPayrollWizardModal')).toHaveCount(0); // Old wizard modal should not exist
 
-    // Back to All runs button returns to Runs List
-    await page.click('#payrollViewRun button:has-text("All runs")');
+    // Return to Runs List via top subnav
+    await page.click('#payrollNavList');
     await expect(viewList).toBeVisible();
     await expect(viewRun).toHaveClass(/payroll-hidden/);
 
@@ -134,9 +134,9 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // Finalized lock note is visible
     await expect(page.locator('#payrollLockNote')).toBeVisible();
 
-    // Screen 3 table contains backend statutory snapshots
+    // Screen 3 table contains backend statutory snapshots (deduplicated per employee)
     const procTable = page.locator('#payrollProcessingTableBody tr');
-    await expect(procTable).toHaveCount(3);
+    await expect(procTable).toHaveCount(2);
     // Verifies Insured Base and Employee SI columns
     await expect(procTable.first().locator('td').nth(4)).not.toBeEmpty();
     await expect(procTable.first().locator('td').nth(6)).not.toBeEmpty();
