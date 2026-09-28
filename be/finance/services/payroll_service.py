@@ -168,42 +168,19 @@ class PayrollService:
             raw += f"|{l.get('employee_id')}:{l.get('compensation_type')}:{l.get('net_pay')}:{l.get('bank_account_masked')}"
         return f"src-{hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]}"
 
-    def preview_run(
+    def _evaluate_employee_payroll_snapshots(
         self,
         period_label: str,
         period_start: str,
         period_end: str,
-        payment_date: Optional[str] = None,
-        bank_account_id: Optional[int] = None,
-        external_funding_account_id: Optional[int] = None,
-        internal_funding_account_id: Optional[int] = None,
-        fx_rate_source: Optional[str] = "first_of_month",
-        fx_rate_value: Optional[float] = None,
+        resolved_fx: float,
+        missing_plan_mode: str = "exception",
     ) -> Dict[str, Any]:
         """
-        Evaluates active employee records and active compensation plans to preview net payments,
-        detect route-specific readiness exceptions, and compare net variance vs prior period.
+        Authoritative evaluation helper for active employees and compensation plans.
+        Constructs line snapshots, readiness exceptions (including MISSING_BANK_DETAILS),
+        invokes statutory validation/calculation, and calculates aggregate totals.
         """
-        # 1. Resolve Bank Accounts
-        bank_account = None
-        if bank_account_id:
-            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
-        if not bank_account:
-            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
-
-        ext_account = None
-        if external_funding_account_id:
-            ext_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == external_funding_account_id).first()
-
-        int_account = None
-        if internal_funding_account_id:
-            int_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == internal_funding_account_id).first()
-
-        # Resolve FX rate
-        resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
-        pay_date = payment_date or period_end
-
-        # 2. Fetch Active Employees & Plans
         employees = (
             self.db.query(EmployeeDB)
             .filter(EmployeeDB.status.ilike("active"))
@@ -212,6 +189,20 @@ class PayrollService:
         )
 
         comp_repo = CompensationPlanRepository(self.db)
+        if missing_plan_mode == "error":
+            missing_plans = []
+            for emp in employees:
+                comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
+                if not comps:
+                    missing_plans.append(emp)
+
+            if missing_plans:
+                emp_names = ", ".join(f"'{e.name}' (ID #{e.id})" for e in missing_plans)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot generate payroll run: Active employee(s) without active compensation plan: {emp_names}. Please configure compensation plans before generating run."
+                )
+
         settings = self.get_payroll_settings()
         emp_rate = float(settings.employee_rate)
         org_rate = float(settings.employer_rate)
@@ -361,8 +352,11 @@ class PayrollService:
                     "employee_name": emp.name,
                     "department": emp.dept or "General",
                     "compensation_type": comp_type,
+                    "is_taxable_local": True,
                     "base_salary": amount,
+                    "allowances_total": 0.0,
                     "deductions_total": deduction,
+                    "tax_amount": 0.0,
                     "net_pay": net,
                     "amount": net,
                     "employer_cost_extra": cost,
@@ -421,6 +415,75 @@ class PayrollService:
                     "issues": emp_issues,
                 },
             })
+
+        return {
+            "employees": employees,
+            "lines": lines,
+            "recipients": recipients,
+            "exceptions": exceptions,
+            "has_blocking": has_blocking,
+            "tot_gross": tot_gross,
+            "tot_deductions": tot_deductions,
+            "tot_net": tot_net,
+            "tot_employer_cost": tot_employer_cost,
+            "tot_emp_tax_egp": tot_emp_tax_egp,
+            "tot_si_egp": tot_si_egp,
+        }
+
+    def preview_run(
+        self,
+        period_label: str,
+        period_start: str,
+        period_end: str,
+        payment_date: Optional[str] = None,
+        bank_account_id: Optional[int] = None,
+        external_funding_account_id: Optional[int] = None,
+        internal_funding_account_id: Optional[int] = None,
+        fx_rate_source: Optional[str] = "first_of_month",
+        fx_rate_value: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        Evaluates active employee records and active compensation plans to preview net payments,
+        detect route-specific readiness exceptions, and compare net variance vs prior period.
+        """
+        # 1. Resolve Bank Accounts
+        bank_account = None
+        if bank_account_id:
+            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
+        if not bank_account:
+            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
+
+        ext_account = None
+        if external_funding_account_id:
+            ext_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == external_funding_account_id).first()
+
+        int_account = None
+        if internal_funding_account_id:
+            int_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == internal_funding_account_id).first()
+
+        # Resolve FX rate
+        resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
+        pay_date = payment_date or period_end
+
+        # 2. Evaluate employee snapshots, lines, statutory calculations, and exceptions
+        snapshot_data = self._evaluate_employee_payroll_snapshots(
+            period_label=period_label,
+            period_start=period_start,
+            period_end=period_end,
+            resolved_fx=resolved_fx,
+            missing_plan_mode="exception",
+        )
+        employees = snapshot_data["employees"]
+        lines = snapshot_data["lines"]
+        recipients = snapshot_data["recipients"]
+        exceptions = list(snapshot_data["exceptions"])
+        has_blocking = snapshot_data["has_blocking"]
+        tot_gross = snapshot_data["tot_gross"]
+        tot_deductions = snapshot_data["tot_deductions"]
+        tot_net = snapshot_data["tot_net"]
+        tot_employer_cost = snapshot_data["tot_employer_cost"]
+        tot_emp_tax_egp = snapshot_data["tot_emp_tax_egp"]
+        tot_si_egp = snapshot_data["tot_si_egp"]
 
         # 3. Variance Comparison vs Prior Run
         prior_run = (
@@ -802,189 +865,63 @@ class PayrollService:
         run.fx_rate_source = fx_rate_source or "first_of_month"
         run.fx_rate_value = resolved_fx
 
-        employees = (
-            self.db.query(EmployeeDB)
-            .filter(EmployeeDB.status.ilike("active"))
-            .order_by(EmployeeDB.name.asc())
-            .all()
+        # Evaluate employee snapshots, lines, statutory calculations, and exceptions
+        snapshot_data = self._evaluate_employee_payroll_snapshots(
+            period_label=period_label,
+            period_start=period_start,
+            period_end=period_end,
+            resolved_fx=resolved_fx,
+            missing_plan_mode="error",
         )
+        employees = snapshot_data["employees"]
+        lines = snapshot_data["lines"]
+        exceptions = list(snapshot_data["exceptions"])
+        tot_gross = snapshot_data["tot_gross"]
+        tot_deductions = snapshot_data["tot_deductions"]
+        tot_net = snapshot_data["tot_net"]
+        tot_employer_cost = snapshot_data["tot_employer_cost"]
+        tot_emp_tax_egp = snapshot_data["tot_emp_tax_egp"]
+        tot_si_egp = snapshot_data["tot_si_egp"]
 
-        comp_repo = CompensationPlanRepository(self.db)
-        missing_plans = []
-        for emp in employees:
-            comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
-            if not comps:
-                missing_plans.append(emp)
-
-        if missing_plans:
-            emp_names = ", ".join(f"'{e.name}' (ID #{e.id})" for e in missing_plans)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot generate payroll run: Active employee(s) without active compensation plan: {emp_names}. Please configure compensation plans before generating run."
+        for line_data in lines:
+            line_db = PayrollLineDB(
+                payroll_run_id=run.id,
+                employee_id=line_data["employee_id"],
+                employee_name=line_data["employee_name"],
+                department=line_data["department"],
+                compensation_type=line_data["compensation_type"],
+                is_taxable_local=True,
+                is_insurable=line_data["is_insurable"],
+                base_salary=line_data["base_salary"],
+                allowances_total=0.0,
+                deductions_total=line_data["deductions_total"],
+                tax_amount=0.0,
+                net_pay=line_data["net_pay"],
+                employer_cost_extra=line_data["employer_cost_extra"],
+                insured_base_snapshot=line_data["insured_base_snapshot"],
+                employee_rate_snapshot=line_data["employee_rate_snapshot"],
+                employer_rate_snapshot=line_data["employer_rate_snapshot"],
+                salary_basis_snapshot=line_data["salary_basis_snapshot"],
+                configured_internal_salary_usd_snapshot=line_data["configured_internal_salary_usd_snapshot"],
+                insured_base_egp_snapshot=line_data["insured_base_egp_snapshot"],
+                fx_rate_snapshot=line_data["fx_rate_snapshot"],
+                base_gross_egp=line_data["base_gross_egp"],
+                variable_gross_egp=line_data["variable_gross_egp"],
+                employee_social_insurance_egp=line_data["employee_social_insurance_egp"],
+                employer_social_insurance_egp=line_data["employer_social_insurance_egp"],
+                total_social_insurance_egp=line_data["total_social_insurance_egp"],
+                employee_tax_egp=line_data["employee_tax_egp"],
+                employee_social_insurance_usd_equivalent=line_data["employee_social_insurance_usd_equivalent"],
+                employee_tax_usd_equivalent=line_data["employee_tax_usd_equivalent"],
+                final_internal_net_egp=line_data["final_internal_net_egp"],
+                final_internal_payment_usd=line_data["final_internal_payment_usd"],
+                bank_name=line_data["bank_name"],
+                bank_account_masked=line_data["bank_account_masked"],
+                payment_status="pending",
+                snapshot_notes=line_data["snapshot_notes"],
+                created_at=datetime.utcnow(),
             )
-
-        settings = self.get_payroll_settings()
-        emp_rate = float(settings.employee_rate)
-        org_rate = float(settings.employer_rate)
-
-        tot_net = 0.0
-        tot_gross = 0.0
-        tot_deductions = 0.0
-        tot_employer_cost = 0.0
-        tot_emp_tax_egp = 0.0
-        tot_si_egp = 0.0
-        exceptions = []
-        lines_dict_list = []
-
-        for emp in employees:
-            comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
-            bank_rec = emp.bank_account
-            bank_name = bank_rec.bank_name if bank_rec else None
-            iban = bank_rec.iban if bank_rec else None
-            masked_acc = f"••••{iban[-4:]}" if iban and len(iban) >= 4 else None
-
-            has_external_route = any(c.component_type == "external_usd" for c in comps)
-            if has_external_route and (not bank_rec or not iban):
-                exceptions.append({
-                    "id": f"exc-bank-{emp.id}",
-                    "employee_id": emp.id,
-                    "employee_name": emp.name,
-                    "severity": "blocking",
-                    "code": "MISSING_BANK_DETAILS",
-                    "title": "Missing Bank Wire Details",
-                    "description": f"{emp.name} is scheduled for external bank payment but does not have verified wire / IBAN details on file.",
-                    "correction_path": f"/admin?section=employees&employee_id={emp.id}",
-                    "is_resolved": False,
-                })
-
-            # Check social insurance configuration
-            social_ins = self.social_insurance_repo.get_insurance_for_period(emp.id, period_start, period_end)
-            insured_flag = bool(social_ins.insured_flag) if social_ins else False
-            insured_base = float(social_ins.insured_base) if (social_ins and social_ins.insured_base is not None) else None
-            insured_currency = social_ins.currency if social_ins else None
-
-            # Check internal salary presence & basis
-            int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
-            internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
-            salary_basis = getattr(int_comp, "salary_basis", "NET") if int_comp else "NET"
-
-            stat_res, stat_exceptions = validate_and_calculate_internal_statutory(
-                employee_id=emp.id,
-                employee_name=emp.name,
-                internal_usd_amount=internal_salary,
-                salary_basis=salary_basis,
-                locked_fx_rate=resolved_fx,
-                insured_flag=insured_flag,
-                insured_base=insured_base,
-                insured_currency=insured_currency,
-                employee_rate=emp_rate,
-                employer_rate=org_rate,
-                bonus_usd=0.0,
-                commission_usd=0.0,
-            )
-            if stat_exceptions:
-                exceptions.extend(stat_exceptions)
-
-            for comp in comps:
-                comp_type = comp.component_type
-                amount = round(float(comp.amount or 0.0), 2)
-                if comp_type == "external_usd":
-                    deduction = 0.0
-                    net = amount
-                    cost = 0.0
-                    is_ins = False
-                    base_snap = 0.0
-                    emp_r_snap = 0.0
-                    org_r_snap = 0.0
-                    sal_basis_snap = None
-                    conf_int_sal_snap = 0.0
-                    ins_base_egp_snap = 0.0
-                    fx_rate_snap = resolved_fx
-                    base_gross_egp_val = 0.0
-                    var_gross_egp_val = 0.0
-                    emp_si_egp_val = 0.0
-                    org_si_egp_val = 0.0
-                    tot_si_egp_val = 0.0
-                    emp_tax_egp_val = 0.0
-                    emp_si_usd_eq_val = 0.0
-                    emp_tax_usd_eq_val = 0.0
-                    fin_int_net_egp_val = 0.0
-                    fin_int_pay_usd_val = None
-                else:
-                    deduction = stat_res["deductions_total_usd"]
-                    net = stat_res["net_pay_usd"]
-                    cost = stat_res["employer_cost_extra_usd"]
-                    is_ins = insured_flag
-                    base_snap = stat_res["insured_base_egp"]
-                    emp_r_snap = stat_res["employee_rate"]
-                    org_r_snap = stat_res["employer_rate"]
-                    sal_basis_snap = stat_res["salary_basis"]
-                    conf_int_sal_snap = stat_res["configured_internal_salary_usd"]
-                    ins_base_egp_snap = stat_res["insured_base_egp"]
-                    fx_rate_snap = stat_res["fx_rate"]
-                    base_gross_egp_val = stat_res["base_gross_egp"]
-                    var_gross_egp_val = stat_res["variable_gross_egp"]
-                    emp_si_egp_val = stat_res["employee_social_insurance_egp"]
-                    org_si_egp_val = stat_res["employer_social_insurance_egp"]
-                    tot_si_egp_val = stat_res["total_social_insurance_egp"]
-                    emp_tax_egp_val = stat_res["employee_tax_egp"]
-                    emp_si_usd_eq_val = stat_res["employee_social_insurance_usd_equivalent"]
-                    emp_tax_usd_eq_val = stat_res["employee_tax_usd_equivalent"]
-                    fin_int_net_egp_val = stat_res["final_internal_net_egp"]
-                    fin_int_pay_usd_val = stat_res["final_internal_payment_usd"]
-
-                    tot_emp_tax_egp += emp_tax_egp_val
-                    tot_si_egp += tot_si_egp_val
-
-                tot_gross += amount
-                tot_deductions += deduction
-                tot_net += net
-                tot_employer_cost += cost
-
-                line_db = PayrollLineDB(
-                    payroll_run_id=run.id,
-                    employee_id=emp.id,
-                    employee_name=emp.name,
-                    department=emp.dept or "General",
-                    compensation_type=comp_type,
-                    is_taxable_local=True,
-                    is_insurable=is_ins,
-                    base_salary=amount,
-                    allowances_total=0.0,
-                    deductions_total=deduction,
-                    tax_amount=0.0,
-                    net_pay=net,
-                    employer_cost_extra=cost,
-                    insured_base_snapshot=base_snap,
-                    employee_rate_snapshot=emp_r_snap,
-                    employer_rate_snapshot=org_r_snap,
-                    salary_basis_snapshot=sal_basis_snap,
-                    configured_internal_salary_usd_snapshot=conf_int_sal_snap,
-                    insured_base_egp_snapshot=ins_base_egp_snap,
-                    fx_rate_snapshot=fx_rate_snap,
-                    base_gross_egp=base_gross_egp_val,
-                    variable_gross_egp=var_gross_egp_val,
-                    employee_social_insurance_egp=emp_si_egp_val,
-                    employer_social_insurance_egp=org_si_egp_val,
-                    total_social_insurance_egp=tot_si_egp_val,
-                    employee_tax_egp=emp_tax_egp_val,
-                    employee_social_insurance_usd_equivalent=emp_si_usd_eq_val,
-                    employee_tax_usd_equivalent=emp_tax_usd_eq_val,
-                    final_internal_net_egp=fin_int_net_egp_val,
-                    final_internal_payment_usd=fin_int_pay_usd_val,
-                    bank_name=bank_name or "Unassigned",
-                    bank_account_masked=masked_acc or "Not Provided",
-                    payment_status="pending",
-                    snapshot_notes=f"{comp_type.replace('_', ' ').title()} - {period_label}",
-                    created_at=datetime.utcnow(),
-                )
-                self.db.add(line_db)
-                lines_dict_list.append({
-                    "employee_id": emp.id,
-                    "compensation_type": comp_type,
-                    "net_pay": net,
-                    "bank_account_masked": masked_acc,
-                })
+            self.db.add(line_db)
 
         prior_run = (
             self.db.query(PayrollRunDB)
@@ -1008,7 +945,7 @@ class PayrollService:
         }
 
         source_version = self._generate_source_version(
-            lines_dict_list,
+            lines,
             run.external_funding_account_id,
             run.internal_funding_account_id,
             resolved_fx,

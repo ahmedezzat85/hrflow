@@ -548,3 +548,79 @@ def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_c
     bob_lines = [l for l in data["lines"] if l["employee_id"] == seed_payroll_env["emp2_id"]]
     assert len(alice_lines) == 1
     assert len(bob_lines) == 1
+
+
+def test_payroll_preview_and_direct_generation_exception_and_line_parity(app_client, admin_cookies, db_session, seed_payroll_env):
+    """
+    Verifies that preview_run and direct generation (/runs/generate) produce
+    identical line snapshots, totals, and MISSING_BANK_DETAILS exceptions.
+    """
+    # Ensure emp3 (Charlie) has an active compensation plan so /runs/generate succeeds
+    p3 = EmployeeCompensationPlanDB(
+        employee_id=seed_payroll_env["emp3_id"],
+        component_type="internal_usd_cash",
+        amount=2000.0,
+        currency="USD",
+        effective_start_date="2026-01-01",
+    )
+    db_session.add(p3)
+    db_session.commit()
+
+    period_payload = {
+        "period_label": "2026-11",
+        "period_start": "2026-11-01",
+        "period_end": "2026-11-30",
+        "bank_account_id": seed_payroll_env["bank_id"],
+        "fx_rate_value": 50.0,
+    }
+
+    # 1. Preview run
+    preview_res = app_client.post("/api/finance/payroll/runs/preview", json=period_payload, cookies=admin_cookies)
+    assert preview_res.status_code == 200
+    preview_data = preview_res.json()
+
+    # 2. Direct generation run
+    gen_res = app_client.post("/api/finance/payroll/runs/generate", json=period_payload, cookies=admin_cookies)
+    assert gen_res.status_code == 201
+    gen_data = gen_res.json()
+
+    # 3. Assert totals parity
+    assert preview_data["headcount"] == gen_data["headcount"]
+    assert preview_data["total_gross"] == gen_data["total_gross"]
+    assert preview_data["total_net"] == gen_data["total_net"]
+    assert preview_data["total_deductions"] == gen_data["total_deductions"]
+    assert preview_data["total_employer_cost"] == gen_data["total_employer_cost"]
+    assert preview_data["total_employee_tax_egp"] == gen_data["total_employee_tax_egp"]
+    assert preview_data["total_social_insurance_egp"] == gen_data["total_social_insurance_egp"]
+
+    # 4. Assert MISSING_BANK_DETAILS exception parity
+    preview_bank_excs = [e for e in preview_data["exceptions"] if e["code"] == "MISSING_BANK_DETAILS"]
+    gen_bank_excs = [e for e in gen_data["exceptions"] if e["code"] == "MISSING_BANK_DETAILS"]
+
+    assert len(preview_bank_excs) == 1
+    assert len(gen_bank_excs) == 1
+
+    p_exc = preview_bank_excs[0]
+    g_exc = gen_bank_excs[0]
+
+    assert p_exc["employee_id"] == g_exc["employee_id"] == seed_payroll_env["emp2_id"]
+    assert p_exc["code"] == g_exc["code"] == "MISSING_BANK_DETAILS"
+    assert p_exc["severity"] == g_exc["severity"] == "blocking"
+    assert p_exc["title"] == g_exc["title"]
+    assert p_exc["description"] == g_exc["description"]
+    assert p_exc["correction_path"] == g_exc["correction_path"]
+
+    # 5. Assert line calculation parity
+    preview_lines = sorted(preview_data["lines"], key=lambda x: (x["employee_id"], x["compensation_type"]))
+    gen_lines = sorted(gen_data["lines"], key=lambda x: (x["employee_id"], x["compensation_type"]))
+
+    assert len(preview_lines) == len(gen_lines)
+    for pl, gl in zip(preview_lines, gen_lines):
+        assert pl["employee_id"] == gl["employee_id"]
+        assert pl["compensation_type"] == gl["compensation_type"]
+        assert pl["base_salary"] == gl["base_salary"]
+        assert pl["net_pay"] == gl["net_pay"]
+        assert pl["deductions_total"] == gl["deductions_total"]
+        assert pl["employer_cost_extra"] == gl["employer_cost_extra"]
+        assert pl["bank_account_masked"] == gl["bank_account_masked"]
+
