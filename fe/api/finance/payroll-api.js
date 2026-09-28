@@ -135,6 +135,40 @@
           },
         ],
       },
+      {
+        id: 2,
+        period_label: "2026-07",
+        period_start: "2026-07-01",
+        period_end: "2026-07-31",
+        payment_date: "2026-07-31",
+        status: "paid",
+        total_net: 33875.50,
+        total_payment_amount: 33875.50,
+        headcount: 8,
+        recipient_count: 8,
+        currency: "USD",
+        bank_account_id: 1,
+        paid_at: "2026-07-31T17:10:00Z",
+        lines: [],
+        exceptions: [],
+      },
+      {
+        id: 3,
+        period_label: "2026-06",
+        period_start: "2026-06-01",
+        period_end: "2026-06-30",
+        payment_date: "2026-06-30",
+        status: "paid",
+        total_net: 33420.00,
+        total_payment_amount: 33420.00,
+        headcount: 8,
+        recipient_count: 8,
+        currency: "USD",
+        bank_account_id: 1,
+        paid_at: "2026-06-30T16:55:00Z",
+        lines: [],
+        exceptions: [],
+      },
     ];
   }
 
@@ -210,7 +244,7 @@
 
     async getPayrollRun(id) {
       if (_isMock()) {
-        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10));
+        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(id, 10) || r.period_label === String(id));
         if (!run) throw new Error(`Payroll run #${id} not found`);
         return run;
       }

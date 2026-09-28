@@ -242,12 +242,11 @@ class PayrollService:
 
             has_external_route = any(c.component_type == "external_usd" for c in comps)
             if has_external_route and (not bank_rec or not iban):
-                has_blocking = True
                 exceptions.append({
                     "id": f"exc-bank-{emp.id}",
                     "employee_id": emp.id,
                     "employee_name": emp.name,
-                    "severity": "blocking",
+                    "severity": "warning",
                     "code": "MISSING_BANK_DETAILS",
                     "title": "Missing Bank Wire Details",
                     "description": f"{emp.name} is scheduled for external bank payment but does not have verified wire / IBAN details on file.",

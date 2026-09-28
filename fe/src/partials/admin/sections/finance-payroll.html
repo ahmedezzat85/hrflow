@@ -334,6 +334,11 @@
                     <div class="value" id="p4Headcount">0</div>
                     <div class="sub">All recipients ready</div>
                   </div>
+                  <div class="payroll-card payroll-stat">
+                    <div class="label">Missing Bank Details</div>
+                    <div class="value" id="p4MissingBankCount" style="color:var(--amber, #f59e0b);">0</div>
+                    <div class="sub" id="p4MissingBankSub">Non-blocking warning (D-006)</div>
+                  </div>
                 </div>
 
                 <div class="payroll-table-wrap" style="margin-top:14px;">
@@ -380,15 +385,41 @@
                 </div>
 
                 <div class="payroll-bottom-summary" style="margin: 16px 20px 0;">
-                  <div class="payroll-account-pills">
-                    <div class="payroll-account-pill">
-                      <span class="lbl"><i class="fa-solid fa-building-columns"></i> External Account:</span>
-                      <span class="val" id="accExternal">-</span>
+                  <div class="payroll-account-pills" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;">
+                    <!-- Rail Card 1: External Salaries -->
+                    <div class="payroll-card" style="padding:14px; border:1px solid var(--border-color, #e2e8f0); border-radius:10px; background:var(--surface, #fff); box-shadow:none;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-weight:700; font-size:0.92rem;"><i class="fa-solid fa-building-columns" style="color:var(--primary, #2563eb);"></i> External Salaries Rail</span>
+                        <span class="p-badge b-blue" id="p5ExtRecipients">0 recipients</span>
+                      </div>
+                      <div style="font-size:1.3rem; font-weight:800; color:var(--text-primary, #0f172a);" id="p5ExtTotal">$0.00</div>
+                      <div style="font-size:0.8rem; color:var(--text-muted, #64748b); margin-top:4px;">
+                        Funding Account: <strong id="p5ExtAccount">Operating Bank Wire Account</strong>
+                      </div>
+                      <div style="font-size:0.8rem; color:var(--text-muted, #64748b);">
+                        Payment Date: <span id="p5ExtPayDate">-</span>
+                      </div>
                     </div>
-                    <div class="payroll-account-pill">
-                      <span class="lbl"><i class="fa-solid fa-money-bill-wave"></i> Internal Net Salary:</span>
-                      <span class="val" id="accInternal">-</span>
+
+                    <!-- Rail Card 2: Internal Salaries -->
+                    <div class="payroll-card" style="padding:14px; border:1px solid var(--border-color, #e2e8f0); border-radius:10px; background:var(--surface, #fff); box-shadow:none;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-weight:700; font-size:0.92rem;"><i class="fa-solid fa-money-bill-wave" style="color:#16a34a;"></i> Internal Salaries Rail</span>
+                        <span class="p-badge b-green" id="p5IntRecipients">0 recipients</span>
+                      </div>
+                      <div style="font-size:1.3rem; font-weight:800; color:var(--text-primary, #0f172a);" id="p5IntTotal">$0.00</div>
+                      <div style="font-size:0.8rem; color:var(--text-muted, #64748b); margin-top:4px;">
+                        Funding Account: <strong id="p5IntAccount">Treasury Cash Vault</strong>
+                      </div>
+                      <div style="font-size:0.8rem; color:var(--text-muted, #64748b);">
+                        Payment Date: <span id="p5IntPayDate">-</span>
+                      </div>
                     </div>
+                  </div>
+                  <!-- Hidden legacy selectors for backwards-compatibility -->
+                  <div style="display:none;">
+                    <span id="accExternal">-</span>
+                    <span id="accInternal">-</span>
                   </div>
                   <div class="payroll-exceptions-strip" id="payrollExceptionList"></div>
                 </div>
@@ -407,6 +438,7 @@
                   <div class="payroll-header-row" style="padding:10px 14px; background:var(--surface-2, #f8fafc); border-radius:10px 10px 0 0;">
                     <div style="display:flex; align-items:center; gap:8px;">
                       <span class="p-badge b-green" id="p5RunStatusBadge">PAID</span>
+                      <span class="p-badge b-gray" id="p5StatutoryBadge">Not Recorded</span>
                       <span style="font-weight:700; font-size:0.92rem;">Payment Disbursal Line Items</span>
                     </div>
                   </div>
@@ -456,9 +488,14 @@
 
               <!-- ==================== SCREEN 6: STATUTORY RECONCILIATION ==================== -->
               <div class="payroll-screen-view payroll-hidden" id="payrollScreen6">
-                <div style="padding: 16px 20px 0;">
-                  <div style="font-weight:700; font-size:1.05rem; color:var(--text-primary, #0f172a);">Screen 6: Statutory Reconciliation &amp; Government Portal True-Up</div>
-                  <div class="payroll-subtitle">Reconcile internal payroll estimates against official portal-confirmed liabilities and record obligations (D-001, D-002, D-008).</div>
+                <div style="padding: 16px 20px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <div>
+                    <div style="font-weight:700; font-size:1.05rem; color:var(--text-primary, #0f172a);">Screen 6: Statutory Reconciliation &amp; Government Portal True-Up</div>
+                    <div class="payroll-subtitle">Reconcile internal payroll estimates against official portal-confirmed liabilities and record obligations (D-001, D-002, D-008).</div>
+                  </div>
+                  <div>
+                    <span class="p-badge b-blue" id="p6StatutoryBadge">Recorded — Unpaid</span>
+                  </div>
                 </div>
 
                 <!-- Compliance Notice Banner -->
@@ -492,6 +529,16 @@
                         <span style="color:var(--text-muted, #64748b);">Variance vs Estimate:</span>
                         <strong id="p6SocialInsVariance" style="color:#64748b;">0.00 EGP</strong>
                       </div>
+                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="field">
+                          <label for="p6SiDebitAccount" style="font-size:0.78rem; font-weight:600; color:var(--text-muted, #64748b);">Debit Account</label>
+                          <select id="p6SiDebitAccount" style="padding:5px 8px; border:1px solid var(--border-color, #cbd5e1); border-radius:6px; font-size:0.82rem; width:100%;"></select>
+                        </div>
+                        <div class="field">
+                          <label for="p6SiPaymentDate" style="font-size:0.78rem; font-weight:600; color:var(--text-muted, #64748b);">Payment Date</label>
+                          <input type="date" id="p6SiPaymentDate" style="padding:5px 8px; border:1px solid var(--border-color, #cbd5e1); border-radius:6px; font-size:0.82rem; width:100%;" />
+                        </div>
+                      </div>
                       <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
                         <button type="button" class="btn btn-primary btn-sm" id="btnP6RecordSocialIns" onclick="PayrollApp.recordStatutoryObligation('si')">
                           <i class="fa-solid fa-file-invoice"></i> Record Obligation
@@ -524,6 +571,16 @@
                       <div style="display:flex; justify-content:space-between; font-size:0.84rem;">
                         <span style="color:var(--text-muted, #64748b);">Variance vs Estimate:</span>
                         <strong id="p6TaxVariance" style="color:#64748b;">0.00 EGP</strong>
+                      </div>
+                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="field">
+                          <label for="p6TaxDebitAccount" style="font-size:0.78rem; font-weight:600; color:var(--text-muted, #64748b);">Debit Account</label>
+                          <select id="p6TaxDebitAccount" style="padding:5px 8px; border:1px solid var(--border-color, #cbd5e1); border-radius:6px; font-size:0.82rem; width:100%;"></select>
+                        </div>
+                        <div class="field">
+                          <label for="p6TaxPaymentDate" style="font-size:0.78rem; font-weight:600; color:var(--text-muted, #64748b);">Payment Date</label>
+                          <input type="date" id="p6TaxPaymentDate" style="padding:5px 8px; border:1px solid var(--border-color, #cbd5e1); border-radius:6px; font-size:0.82rem; width:100%;" />
+                        </div>
                       </div>
                       <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
                         <button type="button" class="btn btn-primary btn-sm" id="btnP6RecordTax" onclick="PayrollApp.recordStatutoryObligation('tax')">

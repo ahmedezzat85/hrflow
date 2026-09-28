@@ -33,8 +33,10 @@
   const DONE_HINT = 'Cycle complete — payroll is Paid and statutory obligations are reconciled.';
 
   const PayrollApp = {
-    rows: JSON.parse(JSON.stringify(seedEmployees)),
-    banks: JSON.parse(JSON.stringify(seedBanks)),
+    rows: (typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')) ? JSON.parse(JSON.stringify(seedEmployees)) : [],
+    banks: (typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')) ? JSON.parse(JSON.stringify(seedBanks)) : [],
+    serverRuns: [],
+    runsLoadError: null,
     selectedExternalAccountId: 2,
     selectedInternalAccountId: 1,
     month: '2026-09',
@@ -53,18 +55,15 @@
     currentRun: null,
     currentPreview: null,
     audit: [],
-    historyRuns: [
-      { period: '2026-08', status: 'paid', net: 34210.00, employees: 8, updated: '2026-08-30 18:42' },
-      { period: '2026-07', status: 'paid', net: 33875.50, employees: 8, updated: '2026-07-31 17:10' },
-      { period: '2026-06', status: 'paid', net: 33420.00, employees: 8, updated: '2026-06-30 16:55' }
-    ],
+    historyRuns: [],
     initialized: false,
 
     async init() {
-      // 1. Sync real data from database
+      // 1. Sync real data from database/API
       await this.loadEmployeesFromDb();
       await this.loadBankAccountsFromDb();
       await this.loadSettingsFromDb();
+      await this.loadRunsFromDb();
       await this.fetchPreview();
 
       // 2. Set current user name
@@ -91,7 +90,13 @@
 
       if (!this.initialized) {
         this.initialized = true;
-        this.showPage('list');
+        const urlParams = (typeof window !== 'undefined' && window.location) ? new URLSearchParams(window.location.search) : null;
+        const targetRun = urlParams ? (urlParams.get('payroll_run_id') || urlParams.get('run_id') || urlParams.get('period')) : null;
+        if (targetRun) {
+          await this.openRun(targetRun);
+        } else {
+          this.showPage('list');
+        }
       }
     },
 
@@ -104,13 +109,18 @@
             rawEmployees = FinanceMockState.employees;
           } else if (typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
             rawEmployees = window.employees;
+          } else {
+            rawEmployees = seedEmployees;
           }
         } else {
           if (typeof Api !== 'undefined' && typeof Api.getEmployees === 'function') {
             try {
               rawEmployees = await Api.getEmployees();
             } catch (apiErr) {
-              console.warn('[PayrollApp] API fetch failed, trying window.employees:', apiErr);
+              console.error('[PayrollApp] API fetch employees failed:', apiErr);
+              this.rows = [];
+              this.showBanner('Failed to load active employees from server.', 'red');
+              return;
             }
           }
           if (!rawEmployees && typeof window !== 'undefined' && Array.isArray(window.employees) && window.employees.length > 0) {
@@ -148,9 +158,17 @@
               };
             });
           }
+        } else if (!isMockMode) {
+          this.rows = [];
+          this.showBanner('No active employee records found on server.', 'red');
         }
       } catch (err) {
         console.warn('[PayrollApp] Could not load employees from database:', err);
+        const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!isMockMode) {
+          this.rows = [];
+          this.showBanner('Failed to load active employee records from server.', 'red');
+        }
       }
     },
 
@@ -159,6 +177,11 @@
         let rawAccounts = null;
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getAccounts === 'function') {
           rawAccounts = await FinanceApi.getAccounts({ is_active: true });
+        }
+
+        const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!rawAccounts && isMockMode) {
+          rawAccounts = seedBanks;
         }
 
         if (Array.isArray(rawAccounts) && rawAccounts.length > 0) {
@@ -189,9 +212,43 @@
             const firstInt = this.banks.find(b => b.name.toLowerCase().includes('cash') || (b.currency || '').toUpperCase() === 'EGP') || this.banks[1] || this.banks[0];
             this.selectedInternalAccountId = firstInt ? firstInt.id : null;
           }
+        } else if (!isMockMode) {
+          this.banks = [];
+          this.showBanner('Failed to load company funding accounts from server.', 'red');
         }
       } catch (err) {
         console.warn('[PayrollApp] Could not load bank accounts from database:', err);
+        const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!isMockMode) {
+          this.banks = [];
+          this.showBanner('Failed to load company funding accounts from server.', 'red');
+        }
+      }
+    },
+
+    async loadRunsFromDb() {
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollRuns === 'function') {
+          const runs = await FinanceApi.getPayrollRuns();
+          if (Array.isArray(runs)) {
+            this.serverRuns = runs;
+            this.runsLoadError = null;
+          }
+        }
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.listStatutoryObligations === 'function') {
+          const obligations = await FinanceApi.listStatutoryObligations();
+          if (Array.isArray(obligations)) {
+            this.allObligations = obligations;
+          }
+        }
+      } catch (err) {
+        console.error('[PayrollApp] Could not load payroll runs from API:', err);
+        const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!isMockMode) {
+          this.serverRuns = [];
+          this.runsLoadError = err.message || 'Failed to load payroll runs from server.';
+          this.showBanner(this.runsLoadError, 'red');
+        }
       }
     },
 
@@ -280,6 +337,12 @@
       const countEl = document.getElementById('payrollRunsCount');
       if (!tbody) return;
 
+      if (this.runsLoadError) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${this.runsLoadError}</td></tr>`;
+        if (countEl) countEl.textContent = '0 runs';
+        return;
+      }
+
       const currentStatus = this.currentStatusKey();
       const statusMap = {
         draft: ['DRAFT', 'b-gray'],
@@ -303,59 +366,168 @@
         </tr>
       `;
 
-      this.historyRuns.forEach(r => {
+      const pastRuns = (this.serverRuns || []).filter(r => r.period_label !== this.month);
+      pastRuns.forEach(r => {
+        const sKey = (r.status || 'draft').toLowerCase();
+        const sBadge = statusMap[sKey] || ['DRAFT', 'b-gray'];
+        const netVal = r.total_net !== undefined ? r.total_net : (r.net || 0);
+        const hc = r.headcount !== undefined ? r.headcount : (r.employees || (r.lines ? r.lines.length : 0));
+        const upd = r.paid_at || r.updated_at || r.created_at || '—';
+        const displayUpd = upd.length > 16 ? upd.slice(0, 16).replace('T', ' ') : upd;
+        let statBadgeHtml = '';
+        if (sKey === 'paid' || sKey === 'partially_paid') {
+          const obls = (this.allObligations || []).filter(o =>
+            (r.id !== undefined && r.id !== null && (o.source_id === r.id || String(o.source_id) === String(r.id))) ||
+            (o.notes && o.notes.includes('payroll_run_id:' + r.id)) ||
+            (r.period_label && o.period === r.period_label)
+          );
+          const resolved = this.resolvePayrollRunState(r, obls);
+          if (resolved && resolved.badge) {
+            statBadgeHtml = ` <span class="p-badge ${resolved.badgeClass}" style="margin-left:4px; font-size:0.72rem;">${resolved.badge}</span>`;
+          }
+        }
+
         rowsHtml += `
-          <tr class="clickable" onclick="PayrollApp.openHistoryRun('${r.period}')">
-            <td><strong>${r.period}</strong></td>
-            <td>${r.period}-01 &rarr; ${r.period}-30</td>
-            <td><span class="p-badge b-green">PAID</span></td>
-            <td class="payroll-num">${this.money(r.net)}</td>
-            <td>${r.employees}</td>
-            <td>${r.updated}</td>
+          <tr class="clickable" onclick="PayrollApp.openRun('${r.id || r.period_label}')">
+            <td><strong>${r.period_label}</strong></td>
+            <td>${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
+            <td><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
+            <td class="payroll-num">${this.money(netVal)}</td>
+            <td>${hc}</td>
+            <td>${displayUpd}</td>
           </tr>
         `;
       });
 
       tbody.innerHTML = rowsHtml;
-      if (countEl) countEl.textContent = `${this.historyRuns.length + 1} runs total`;
+      if (countEl) countEl.textContent = `${1 + pastRuns.length} runs total`;
     },
 
-    openRun(id) {
+    async openRun(id) {
       if (id === 'current') {
+        const existing = (this.serverRuns || []).find(r => r.period_label === this.month);
+        if (existing && existing.id) {
+          await this.openHistoryRun(existing.id);
+          return;
+        }
         this.showPage('run');
         this.setStep(0);
-      } else {
-        this.openHistoryRun(id);
+        return;
       }
+      await this.openHistoryRun(id);
     },
 
-    async openHistoryRun(period) {
+    resolvePayrollRunState(run, linkedObligations = []) {
+      if (!run || typeof run !== 'object') {
+        return { stepIndex: 1, screen: 2, badge: null, badgeClass: null };
+      }
+
+      const status = (run.status || '').toLowerCase();
+
+      if (status === 'draft' || status === 'submitted') {
+        return { stepIndex: 1, screen: 2, badge: null, badgeClass: null };
+      }
+      if (status === 'approved') {
+        return { stepIndex: 2, screen: 3, badge: null, badgeClass: null };
+      }
+      if (status === 'finalized') {
+        return { stepIndex: 3, screen: 4, badge: null, badgeClass: null };
+      }
+      if (status === 'paid' || status === 'partially_paid') {
+        const obls = Array.isArray(linkedObligations) ? linkedObligations : [];
+        if (obls.length === 0) {
+          return { stepIndex: 4, screen: 5, badge: 'Not Recorded', badgeClass: 'b-gray' };
+        }
+
+        const allRemitted = obls.every(o => (o.status || '').toLowerCase() === 'remitted');
+        if (allRemitted) {
+          return { stepIndex: 5, screen: 6, badge: 'Reconciled', badgeClass: 'b-green' };
+        }
+
+        const someRemitted = obls.some(o => (o.status || '').toLowerCase() === 'remitted');
+        if (someRemitted) {
+          return { stepIndex: 5, screen: 6, badge: 'Partially Reconciled', badgeClass: 'b-amber' };
+        }
+
+        // One or more accrued / estimated, none remitted
+        return { stepIndex: 5, screen: 6, badge: 'Recorded — Unpaid', badgeClass: 'b-blue' };
+      }
+
+      // Safe fallback for malformed or unknown status
+      return { stepIndex: 1, screen: 2, badge: null, badgeClass: null };
+    },
+
+    async getLinkedObligationsForRun(run) {
+      if (!run) return [];
       try {
-        if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollRuns) {
-          const runs = await FinanceApi.getPayrollRuns();
-          const match = (runs || []).find(r => r.period_label === period || String(r.id) === String(period));
-          if (match) {
-            this.currentRun = match;
-            this.month = match.period_label || period;
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.listStatutoryObligations === 'function') {
+          const period = run.period_label || this.month;
+          const list = await FinanceApi.listStatutoryObligations({ period });
+          const runId = run.id;
+          const runTag = `payroll_run_id:${runId}`;
+          return (list || []).filter(o =>
+            (runId !== undefined && runId !== null && (o.source_id === runId || String(o.source_id) === String(runId))) ||
+            (o.notes && o.notes.includes(runTag)) ||
+            (period && o.period === period)
+          );
+        }
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load linked statutory obligations for run:', err);
+      }
+      return [];
+    },
+
+    renderStatutoryBadge(badgeText, badgeClass) {
+      const p5Badge = document.getElementById('p5StatutoryBadge');
+      const p6Badge = document.getElementById('p6StatutoryBadge');
+      [p5Badge, p6Badge].forEach(el => {
+        if (!el) return;
+        if (badgeText) {
+          el.textContent = badgeText;
+          el.className = `p-badge ${badgeClass || 'b-gray'}`;
+          el.style.display = '';
+        } else {
+          el.style.display = 'none';
+        }
+      });
+    },
+
+    async openHistoryRun(idOrPeriod) {
+      try {
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollRun === 'function') {
+          const run = await FinanceApi.getPayrollRun(idOrPeriod);
+          if (run) {
+            this.currentRun = run;
+            this.month = run.period_label || this.month;
+            this.start = run.period_start || this.start;
+            this.end = run.period_end || this.end;
+            this.payDate = run.payment_date || this.payDate;
+            this.resolvedFxRate = run.fx_rate_value || 50.0;
+            this.resolvedFxSource = run.fx_rate_source || 'first_of_month';
+            if (run.external_funding_account_id) this.selectedExternalAccountId = run.external_funding_account_id;
+            if (run.internal_funding_account_id) this.selectedInternalAccountId = run.internal_funding_account_id;
             this.showPage('run');
-            if (match.status === 'paid' || match.status === 'partially_paid') {
-              this.setStep(4);
-            } else if (match.status === 'finalized') {
-              this.setStep(3);
-            } else if (match.status === 'approved') {
-              this.setStep(2);
-            } else {
-              this.setStep(1);
-            }
+
+            const linkedObligations = await this.getLinkedObligationsForRun(run);
+            this.linkedObligations = linkedObligations;
+            const resolved = this.resolvePayrollRunState(run, linkedObligations);
+            this.renderStatutoryBadge(resolved.badge, resolved.badgeClass);
+            await this.setStep(resolved.stepIndex);
+            this.drawStatus();
             return;
           }
         }
       } catch (e) {
-        console.warn('Could not load specific run:', e);
+        console.error('[PayrollApp] Could not load specific run:', e);
+        const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!isMockMode) {
+          this.showBanner(e.message || `Failed to load payroll run #${idOrPeriod}`, 'red');
+          return;
+        }
       }
-      this.showBanner(`Viewing historical snapshot for ${period}`, 'blue');
+      this.showBanner(`Viewing historical snapshot for ${idOrPeriod}`, 'blue');
       this.showPage('run');
-      this.setStep(4);
+      await this.setStep(4);
     },
 
     /* ---------------- Stepper & Screen Navigation ---------------- */
@@ -913,35 +1085,71 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const extBank = (p && p.final_ext_total) || t.external;
-      const intCash = (p && p.final_int_total) || t.internal;
-      const netTotal = (p && p.total_net) || t.net;
+      const extBank = (p && p.final_ext_total !== undefined) ? p.final_ext_total : t.external;
+      const intCash = (p && p.final_int_total !== undefined) ? p.final_int_total : t.internal;
+      const netTotal = (p && p.total_net !== undefined) ? p.total_net : t.net;
 
       const bExt = document.getElementById('p4ExtBankTotal');
       const bInt = document.getElementById('p4IntCashTotal');
       const bNet = document.getElementById('p4TotalNet');
       const bHc = document.getElementById('p4Headcount');
+      const bMissing = document.getElementById('p4MissingBankCount');
 
       if (bExt) bExt.textContent = this.money(extBank);
       if (bInt) bInt.textContent = this.money(intCash);
       if (bNet) bNet.textContent = this.money(netTotal);
       if (bHc) bHc.textContent = this.rows.length;
 
+      // Identify missing bank exceptions from real run/preview data
+      const runExceptions = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      const missingBankEmpIds = new Set(
+        runExceptions
+          .filter(e => e.code === 'MISSING_BANK_DETAILS')
+          .map(e => Number(e.employee_id))
+      );
+
+      let missingBankCount = 0;
       let rowsHtml = '';
       this.rows.forEach(r => {
         const c = this.computeRow(r);
+        const hasExternal = c.external > 0 || r.baseExt > 0;
+        const isMissingBank = hasExternal && (
+          missingBankEmpIds.has(Number(r.id)) ||
+          r.has_missing_bank ||
+          (!r.bank_name && !r.bank_account_masked && !r.bank_account_id)
+        );
+
+        if (isMissingBank) {
+          missingBankCount++;
+        }
+
+        let bankBadgeHtml = '';
+        if (isMissingBank) {
+          bankBadgeHtml = `<span class="p-badge b-amber" style="font-size:0.72rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank Details (D-006)</span>`;
+        } else if (hasExternal) {
+          const bankDisplay = (r.bank_name ? `${r.bank_name} ${r.bank_account_masked || ''}` : 'Verified Wire ****8821');
+          bankBadgeHtml = `<span class="p-badge b-gray" style="font-size:0.72rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
+        } else {
+          bankBadgeHtml = `<span class="p-badge b-gray" style="font-size:0.72rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
+        }
+
         rowsHtml += `
           <tr>
             <td class="payroll-id-th">${r.id}</td>
             <td class="payroll-name-th"><strong>${r.name}</strong></td>
             <td class="payroll-num">${this.money(c.external)}</td>
-            <td><span class="p-badge b-gray" style="font-size:0.72rem;"><i class="fa-solid fa-building-columns"></i> ${r.baseExt > 0 ? 'Verified Wire ****8821' : 'None (Internal only)'}</span></td>
+            <td>${bankBadgeHtml}</td>
             <td class="payroll-num">${this.money(c.internal)}</td>
             <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(c.net)}</td>
           </tr>
         `;
       });
       tbody.innerHTML = rowsHtml;
+
+      if (bMissing) {
+        bMissing.textContent = missingBankCount;
+        bMissing.style.color = missingBankCount > 0 ? 'var(--amber, #f59e0b)' : 'var(--text-muted, #64748b)';
+      }
 
       const fExt = document.getElementById('p4TotExt');
       const fInt = document.getElementById('p4TotInt');
@@ -961,20 +1169,66 @@
       const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Operating Bank Wire Account';
       const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Treasury Cash Vault';
 
-      const extTotal = (p && p.final_ext_total) || t.external;
-      const intTotal = (p && p.final_int_total) || t.internal;
+      const extTotal = (p && p.final_ext_total !== undefined) ? p.final_ext_total : t.external;
+      const intTotal = (p && p.final_int_total !== undefined) ? p.final_int_total : t.internal;
+
+      // Count recipients per rail
+      let extRecipients = 0;
+      let intRecipients = 0;
+      (this.rows || []).forEach(r => {
+        const c = this.computeRow(r);
+        if (c.external > 0 || r.baseExt > 0) extRecipients++;
+        if (c.internal > 0 || r.baseInt > 0) intRecipients++;
+      });
+
+      // Populate Screen 5 Informational Rail Cards
+      const p5ExtTot = document.getElementById('p5ExtTotal');
+      const p5ExtAcc = document.getElementById('p5ExtAccount');
+      const p5ExtRec = document.getElementById('p5ExtRecipients');
+      const p5ExtDate = document.getElementById('p5ExtPayDate');
+
+      const p5IntTot = document.getElementById('p5IntTotal');
+      const p5IntAcc = document.getElementById('p5IntAccount');
+      const p5IntRec = document.getElementById('p5IntRecipients');
+      const p5IntDate = document.getElementById('p5IntPayDate');
+
+      if (p5ExtTot) p5ExtTot.textContent = this.money(extTotal);
+      if (p5ExtAcc) p5ExtAcc.textContent = extBankName;
+      if (p5ExtRec) p5ExtRec.textContent = `${extRecipients} recipient${extRecipients === 1 ? '' : 's'}`;
+      if (p5ExtDate) p5ExtDate.textContent = this.payDate;
+
+      if (p5IntTot) p5IntTot.textContent = this.money(intTotal);
+      if (p5IntAcc) p5IntAcc.textContent = intBankName;
+      if (p5IntRec) p5IntRec.textContent = `${intRecipients} recipient${intRecipients === 1 ? '' : 's'}`;
+      if (p5IntDate) p5IntDate.textContent = this.payDate;
 
       if (extEl) extEl.textContent = `${this.money(extTotal)} (${extBankName})`;
       if (intEl) intEl.textContent = `${this.money(intTotal)} (${intBankName})`;
 
-      // Readiness list (D-006 warning)
+      // Render persisted run exceptions instead of static text
       const excStrip = document.getElementById('payrollExceptionList');
       if (excStrip) {
-        excStrip.innerHTML = `
-          <div style="font-size:0.8rem; color:#166534; display:flex; align-items:center; gap:6px;">
-            <i class="fa-solid fa-circle-check"></i> Funding allocation verified. Ready for disbursement release.
-          </div>
-        `;
+        const runExceptions = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+        if (runExceptions.length > 0) {
+          excStrip.innerHTML = runExceptions.map(exc => {
+            const isWarn = exc.severity === 'warning' || exc.code === 'MISSING_BANK_DETAILS';
+            const bannerCls = isWarn ? 'p-banner-amber' : 'p-banner-red';
+            const icon = isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
+            const label = isWarn ? 'Warning (non-blocking D-006)' : 'Blocking Exception';
+            return `
+              <div class="p-banner ${bannerCls}" style="margin-top:6px; font-size:0.82rem; padding:8px 12px; border-radius:8px; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid ${icon}"></i>
+                <span><strong>${label}:</strong> ${exc.code === 'MISSING_BANK_DETAILS' ? 'Missing Bank Details — ' : ''}${exc.details || exc.message || exc.code}</span>
+              </div>
+            `;
+          }).join('');
+        } else {
+          excStrip.innerHTML = `
+            <div style="font-size:0.8rem; color:#166534; display:flex; align-items:center; gap:6px;">
+              <i class="fa-solid fa-circle-check"></i> Funding allocation verified. Ready for disbursement release.
+            </div>
+          `;
+        }
       }
 
       const resCard = document.getElementById('p5DisburseResultsCard');
@@ -1171,6 +1425,19 @@
       this.calcScreen6Variance('si');
       this.calcScreen6Variance('tax');
 
+      const siAccountSelect = document.getElementById('p6SiDebitAccount');
+      const taxAccountSelect = document.getElementById('p6TaxDebitAccount');
+      const siDateInput = document.getElementById('p6SiPaymentDate');
+      const taxDateInput = document.getElementById('p6TaxPaymentDate');
+
+      const bankOptionsHtml = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+      if (siAccountSelect) siAccountSelect.innerHTML = bankOptionsHtml;
+      if (taxAccountSelect) taxAccountSelect.innerHTML = bankOptionsHtml;
+
+      const defaultPayDate = this.payDate || new Date().toISOString().slice(0, 10);
+      if (siDateInput && !siDateInput.value) siDateInput.value = defaultPayDate;
+      if (taxDateInput && !taxDateInput.value) taxDateInput.value = defaultPayDate;
+
       // Load linked statutory obligations from database
       await this.loadLinkedStatutoryObligations();
 
@@ -1262,6 +1529,8 @@
                 btnSettleTax.setAttribute('data-obl-id', taxObl.id);
               }
             }
+            const resolved = this.resolvePayrollRunState(this.currentRun, linked);
+            this.renderStatutoryBadge(resolved.badge, resolved.badgeClass);
             return;
           }
         }
@@ -1269,6 +1538,9 @@
         console.warn('[PayrollApp] Could not load statutory obligations:', err);
       }
 
+      if (this.currentRun && (this.currentRun.status === 'paid' || this.currentRun.status === 'partially_paid')) {
+        this.renderStatutoryBadge('Not Recorded', 'b-gray');
+      }
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
     },
 
@@ -1314,13 +1586,19 @@
       const oblId = btn ? btn.getAttribute('data-obl-id') : null;
       if (!oblId) return;
 
+      const accountSelect = document.getElementById(isSi ? 'p6SiDebitAccount' : 'p6TaxDebitAccount');
+      const dateInput = document.getElementById(isSi ? 'p6SiPaymentDate' : 'p6TaxPaymentDate');
+
+      const bankAccountId = (accountSelect && accountSelect.value) ? Number(accountSelect.value) : Number(this.selectedExternalAccountId || 1);
+      const paymentDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().slice(0, 10);
+
       try {
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.settleStatutoryObligation === 'function') {
           const obl = await FinanceApi.getStatutoryObligation(oblId);
           await FinanceApi.settleStatutoryObligation(oblId, {
             amount: obl.amount_accrued,
-            payment_date: new Date().toISOString().slice(0, 10),
-            bank_account_id: Number(this.selectedExternalAccountId || 1)
+            payment_date: paymentDate,
+            bank_account_id: bankAccountId
           });
           this.showBanner(`Statutory obligation #${oblId} settled and remitted.`, 'green');
           this.addAudit(`Settled statutory obligation #${oblId}.`);

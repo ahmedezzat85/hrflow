@@ -385,15 +385,14 @@ def test_source_specific_readiness_rules(app_client, admin_cookies, seed_env):
     assert ian_recip["readiness"]["status"] == "READY"
     assert len(ian_recip["readiness"]["issues"]) == 0
 
-    # Evan (EXT-only) MUST have a BLOCKER for missing wire details
-    assert evan_recip["readiness"]["status"] == "BLOCKER"
+    # Evan (EXT-only) MUST have a WARNING for missing wire details (D-006)
+    assert evan_recip["readiness"]["status"] == "WARNING"
     assert any("wire" in issue.lower() or "bank" in issue.lower() for issue in evan_recip["readiness"]["issues"])
 
-    # Entire preview has blocking exception due to Evan, but not due to Ian
-    assert preview["has_blocking_exceptions"] is True
     exceptions = preview["exceptions"]
     assert not any(e.get("employee_id") == int_id for e in exceptions)
-    assert any(e.get("employee_id") == ext_id and e.get("severity") == "blocking" for e in exceptions)
+    assert any(e.get("employee_id") == ext_id and e.get("severity") == "warning" for e in exceptions)
+    assert not any(e.get("employee_id") == ext_id and e.get("severity") == "blocking" for e in exceptions)
 
 
 def test_stale_preview_rejection_and_immutability(app_client, admin_cookies, seed_env):
