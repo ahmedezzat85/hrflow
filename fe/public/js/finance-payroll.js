@@ -541,8 +541,8 @@
         const isDone = idx < this.stepIndex;
         const cls = isActive ? 'active' : (isDone ? 'done' : '');
         return `
-          <button type="button" class="payroll-step-pill ${cls}" onclick="PayrollApp.setStep(${idx})">
-            <span class="payroll-step-num">${idx + 1}</span>
+          <button type="button" class="payroll-step-pill step ${cls}" onclick="PayrollApp.setStep(${idx})">
+            <span class="payroll-step-num stepn">${idx + 1}</span>
             <span>${meta.label}</span>
           </button>
         `;
@@ -709,6 +709,13 @@
       this.setStep(1);
     },
 
+    getInitials(name) {
+      if (!name) return '??';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    },
+
     /* ==================== SCREEN 2: APPROVE & ADJUSTMENTS ==================== */
     drawScreen2() {
       this.drawStats();
@@ -725,27 +732,28 @@
       const baseInt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_int_amount || 0), 0) : t.baseInt;
       const totalAdditions = (p && p.total_additions !== undefined) ? p.total_additions : t.bonus;
       const totalNet = (p && p.total_net !== undefined) ? p.total_net : t.net;
+      const totalBase = baseExt + baseInt;
 
       grid.innerHTML = `
-        <div class="stat-card">
-          <div class="lbl">Base External (USD)</div>
-          <div class="val">${this.money(baseExt)}</div>
-          <div class="sub">Fixed bank salaries</div>
+        <div class="stat payroll-card stat-card">
+          <div class="lbl label">Headcount</div>
+          <div class="val value">${this.rows.length}</div>
+          <div class="hint sub">Active recipients</div>
         </div>
-        <div class="stat-card">
-          <div class="lbl">Base Internal (USD)</div>
-          <div class="val">${this.money(baseInt)}</div>
-          <div class="sub">Fixed cash salaries</div>
+        <div class="stat payroll-card stat-card">
+          <div class="lbl label">Base Compensation</div>
+          <div class="val value">${this.money(totalBase)}</div>
+          <div class="hint sub">Fixed salary pool</div>
         </div>
-        <div class="stat-card">
-          <div class="lbl">Bonuses &amp; Commissions</div>
-          <div class="val">${this.money(totalAdditions)}</div>
-          <div class="sub">Dynamic additions</div>
+        <div class="stat payroll-card stat-card">
+          <div class="lbl label">Bonus / Commission</div>
+          <div class="val value">${this.money(totalAdditions)}</div>
+          <div class="hint sub">Dynamic additions</div>
         </div>
-        <div class="stat-card">
-          <div class="lbl">Total Compensation</div>
-          <div class="val" style="color:var(--primary, #2563eb);">${this.money(totalNet)}</div>
-          <div class="sub">All recipients gross/net</div>
+        <div class="stat payroll-card stat-card">
+          <div class="lbl label">Total Compensation</div>
+          <div class="val value accent val-accent" style="color:var(--accent);">${this.money(totalNet)}</div>
+          <div class="hint sub">Gross / net disbursal</div>
         </div>
       `;
     },
@@ -781,29 +789,31 @@
         totBonus += c.bonusTotal;
         totTotal += (r.baseExt + r.baseInt + c.bonusTotal);
 
+        const inits = this.getInitials(r.name);
         const bonusBadges = (r.bonuses || []).map((b, bIdx) => `
-          <span class="p-bonus-pill" style="display:inline-flex; align-items:center; gap:4px; margin:2px; padding:2px 6px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem;">
-            <span>${b.type || 'Bonus'}: <strong>$${b.amount}</strong> (${b.source || 'int'})</span>
-            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px;">&times;</button>
+          <span class="chip p-bonus-pill" style="display:inline-flex; align-items:center; gap:4px;">
+            <span>${b.type || 'Bonus'} $${Number(b.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${(b.source || 'int').toUpperCase()}</span>
+            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px; font-weight:800; font-size:12px; line-height:1;" title="Remove">&times;</button>
           </span>
         `).join('');
 
         rowsHtml += `
           <tr>
-            <td class="payroll-id-th">${r.id}</td>
-            <td class="payroll-name-th"><strong>${r.name}</strong></td>
-            <td class="payroll-num">${this.money(r.baseExt)}</td>
-            <td class="payroll-num">${this.money(r.baseInt)}</td>
-            <td>
-              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px;">
-                ${bonusBadges || '<span style="color:var(--text-muted); font-size:0.78rem;">None</span>'}
+            <td class="col-id payroll-id-th">${r.id}</td>
+            <td class="payroll-name-th">
+              <div class="tname">
+                <span class="avatar">${inits}</span>
+                <strong>${r.name}</strong>
               </div>
             </td>
-            <td class="payroll-num" style="font-weight:700;">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
-            <td style="text-align:center;">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="PayrollApp.openBonusModal(${r.id})" style="padding:2px 6px; font-size:0.75rem;">
-                <i class="fa-solid fa-plus"></i> Add
-              </button>
+            <td class="num payroll-num">${this.money(r.baseExt)}</td>
+            <td class="num payroll-num">${this.money(r.baseInt)}</td>
+            <td class="num payroll-num">
+              ${bonusBadges || '<span class="muted" style="color:var(--text3); font-weight:600;">—</span>'}
+            </td>
+            <td class="num payroll-num strong">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
+            <td class="col-actions" style="text-align:center;">
+              <button type="button" class="plus" onclick="PayrollApp.openBonusModal(${r.id})" title="Add bonus / commission">+</button>
             </td>
           </tr>
         `;
@@ -1005,20 +1015,28 @@
           totNetEgp += netEgp;
           totNetUsd += netUsd;
 
+          const empName = l.employee_name || `Employee #${l.employee_id}`;
+          const inits = this.getInitials(empName);
+
           rowsHtml += `
             <tr>
-              <td class="payroll-id-th">${l.employee_id}</td>
-              <td class="payroll-name-th"><strong>${l.employee_name || `Employee #${l.employee_id}`}</strong></td>
-              <td><span class="p-badge b-gray" style="font-size:0.7rem;">${l.salary_basis_snapshot || 'NET'}</span></td>
-              <td class="payroll-num">${l.configured_internal_salary_usd_snapshot !== undefined ? `$${Number(l.configured_internal_salary_usd_snapshot).toFixed(2)}` : '—'}</td>
-              <td class="payroll-num">${Number(l.insured_base_egp_snapshot || 0).toFixed(2)}</td>
-              <td class="payroll-num" style="font-family:monospace;">${Number(l.fx_rate_snapshot || rate).toFixed(4)}</td>
-              <td class="payroll-num">${empSi.toFixed(2)}</td>
-              <td class="payroll-num">${emprSi.toFixed(2)}</td>
-              <td class="payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
-              <td class="payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="payroll-num">${netEgp.toFixed(2)}</td>
-              <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(netUsd)}</td>
+              <td class="col-id payroll-id-th">${l.employee_id}</td>
+              <td class="payroll-name-th">
+                <div class="tname">
+                  <span class="avatar">${inits}</span>
+                  <strong>${empName}</strong>
+                </div>
+              </td>
+              <td><span class="p-badge b-gray badge-pill" style="font-size:0.7rem;">${l.salary_basis_snapshot || 'NET'}</span></td>
+              <td class="num payroll-num">${l.configured_internal_salary_usd_snapshot !== undefined ? `$${Number(l.configured_internal_salary_usd_snapshot).toFixed(2)}` : '—'}</td>
+              <td class="num payroll-num">${Number(l.insured_base_egp_snapshot || 0).toFixed(2)}</td>
+              <td class="num payroll-num" style="font-family:monospace;">${Number(l.fx_rate_snapshot || rate).toFixed(4)}</td>
+              <td class="num payroll-num">${empSi.toFixed(2)}</td>
+              <td class="num payroll-num">${emprSi.toFixed(2)}</td>
+              <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
+              <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
+              <td class="num payroll-num">${netEgp.toFixed(2)}</td>
+              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1041,20 +1059,27 @@
           totNetEgp += netEgp;
           totNetUsd += netUsd;
 
+          const inits = this.getInitials(r.name);
+
           rowsHtml += `
             <tr>
-              <td class="payroll-id-th">${r.id}</td>
-              <td class="payroll-name-th"><strong>${r.name}</strong></td>
-              <td><span class="p-badge b-gray" style="font-size:0.7rem;">NET</span></td>
-              <td class="payroll-num">$${cfgUsd.toFixed(2)}</td>
-              <td class="payroll-num">${insuredEgp.toFixed(2)}</td>
-              <td class="payroll-num" style="font-family:monospace;">${rate.toFixed(4)}</td>
-              <td class="payroll-num">${empSi.toFixed(2)}</td>
-              <td class="payroll-num">${emprSi.toFixed(2)}</td>
-              <td class="payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
-              <td class="payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="payroll-num">${netEgp.toFixed(2)}</td>
-              <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(netUsd)}</td>
+              <td class="col-id payroll-id-th">${r.id}</td>
+              <td class="payroll-name-th">
+                <div class="tname">
+                  <span class="avatar">${inits}</span>
+                  <strong>${r.name}</strong>
+                </div>
+              </td>
+              <td><span class="p-badge b-gray badge-pill" style="font-size:0.7rem;">NET</span></td>
+              <td class="num payroll-num">$${cfgUsd.toFixed(2)}</td>
+              <td class="num payroll-num">${insuredEgp.toFixed(2)}</td>
+              <td class="num payroll-num" style="font-family:monospace;">${rate.toFixed(4)}</td>
+              <td class="num payroll-num">${empSi.toFixed(2)}</td>
+              <td class="num payroll-num">${emprSi.toFixed(2)}</td>
+              <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
+              <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
+              <td class="num payroll-num">${netEgp.toFixed(2)}</td>
+              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1125,22 +1150,29 @@
 
         let bankBadgeHtml = '';
         if (isMissingBank) {
-          bankBadgeHtml = `<span class="p-badge b-amber" style="font-size:0.72rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank Details (D-006)</span>`;
+          bankBadgeHtml = `<span class="pill-danger badge-pill p-badge b-amber" style="font-size:0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank Details (D-006)</span>`;
         } else if (hasExternal) {
           const bankDisplay = (r.bank_name ? `${r.bank_name} ${r.bank_account_masked || ''}` : 'Verified Wire ****8821');
-          bankBadgeHtml = `<span class="p-badge b-gray" style="font-size:0.72rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
+          bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
         } else {
-          bankBadgeHtml = `<span class="p-badge b-gray" style="font-size:0.72rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
+          bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
         }
 
+        const inits = this.getInitials(r.name);
+
         rowsHtml += `
-          <tr>
-            <td class="payroll-id-th">${r.id}</td>
-            <td class="payroll-name-th"><strong>${r.name}</strong></td>
-            <td class="payroll-num">${this.money(c.external)}</td>
+          <tr class="${isMissingBank ? 'warnrow' : ''}">
+            <td class="col-id payroll-id-th">${r.id}</td>
+            <td class="payroll-name-th">
+              <div class="tname">
+                <span class="avatar">${inits}</span>
+                <strong>${r.name}</strong>
+              </div>
+            </td>
             <td>${bankBadgeHtml}</td>
-            <td class="payroll-num">${this.money(c.internal)}</td>
-            <td class="payroll-num" style="font-weight:800; color:var(--primary, #2563eb);">${this.money(c.net)}</td>
+            <td class="num payroll-num">${this.money(c.external)}</td>
+            <td class="num payroll-num">${this.money(c.internal)}</td>
+            <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(c.net)}</td>
           </tr>
         `;
       });
@@ -1148,7 +1180,13 @@
 
       if (bMissing) {
         bMissing.textContent = missingBankCount;
-        bMissing.style.color = missingBankCount > 0 ? 'var(--amber, #f59e0b)' : 'var(--text-muted, #64748b)';
+        bMissing.style.color = missingBankCount > 0 ? 'var(--warning, #e07d10)' : 'var(--text2, #7a8ea8)';
+      }
+
+      const recSub = document.getElementById('p4RecipientsSub');
+      if (recSub) {
+        recSub.textContent = missingBankCount > 0 ? `${missingBankCount} missing bank details` : 'All recipients ready';
+        if (missingBankCount > 0) recSub.style.color = 'var(--warning, #e07d10)';
       }
 
       const fExt = document.getElementById('p4TotExt');
@@ -1185,21 +1223,25 @@
       const p5ExtTot = document.getElementById('p5ExtTotal');
       const p5ExtAcc = document.getElementById('p5ExtAccount');
       const p5ExtRec = document.getElementById('p5ExtRecipients');
+      const p5ExtRecCount = document.getElementById('p5ExtRecipientsCount');
       const p5ExtDate = document.getElementById('p5ExtPayDate');
 
       const p5IntTot = document.getElementById('p5IntTotal');
       const p5IntAcc = document.getElementById('p5IntAccount');
       const p5IntRec = document.getElementById('p5IntRecipients');
+      const p5IntRecCount = document.getElementById('p5IntRecipientsCount');
       const p5IntDate = document.getElementById('p5IntPayDate');
 
       if (p5ExtTot) p5ExtTot.textContent = this.money(extTotal);
       if (p5ExtAcc) p5ExtAcc.textContent = extBankName;
-      if (p5ExtRec) p5ExtRec.textContent = `${extRecipients} recipient${extRecipients === 1 ? '' : 's'}`;
+      if (p5ExtRec) p5ExtRec.textContent = 'External Rail';
+      if (p5ExtRecCount) p5ExtRecCount.textContent = `${extRecipients} employee${extRecipients === 1 ? '' : 's'}`;
       if (p5ExtDate) p5ExtDate.textContent = this.payDate;
 
       if (p5IntTot) p5IntTot.textContent = this.money(intTotal);
       if (p5IntAcc) p5IntAcc.textContent = intBankName;
-      if (p5IntRec) p5IntRec.textContent = `${intRecipients} recipient${intRecipients === 1 ? '' : 's'}`;
+      if (p5IntRec) p5IntRec.textContent = 'Internal Rail';
+      if (p5IntRecCount) p5IntRecCount.textContent = `${intRecipients} employee${intRecipients === 1 ? '' : 's'}`;
       if (p5IntDate) p5IntDate.textContent = this.payDate;
 
       if (extEl) extEl.textContent = `${this.money(extTotal)} (${extBankName})`;
@@ -1207,27 +1249,27 @@
 
       // Render persisted run exceptions instead of static text
       const excStrip = document.getElementById('payrollExceptionList');
+      const excWrap = document.getElementById('p5ExceptionsWrap');
       if (excStrip) {
-        const runExceptions = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+        const runExceptions = (this.currentRun && Array.isArray(this.currentRun.exceptions) && this.currentRun.exceptions.length > 0)
+          ? this.currentRun.exceptions
+          : ((this.currentPreview && this.currentPreview.exceptions) || []);
         if (runExceptions.length > 0) {
+          if (excWrap) excWrap.style.display = 'flex';
           excStrip.innerHTML = runExceptions.map(exc => {
             const isWarn = exc.severity === 'warning' || exc.code === 'MISSING_BANK_DETAILS';
-            const bannerCls = isWarn ? 'p-banner-amber' : 'p-banner-red';
             const icon = isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
             const label = isWarn ? 'Warning (non-blocking D-006)' : 'Blocking Exception';
             return `
-              <div class="p-banner ${bannerCls}" style="margin-top:6px; font-size:0.82rem; padding:8px 12px; border-radius:8px; display:flex; align-items:center; gap:8px;">
+              <div class="alertbox"${isWarn ? '' : ' style="background:var(--danger-soft); color:var(--danger);"'}>
                 <i class="fa-solid ${icon}"></i>
                 <span><strong>${label}:</strong> ${exc.code === 'MISSING_BANK_DETAILS' ? 'Missing Bank Details — ' : ''}${exc.details || exc.message || exc.code}</span>
               </div>
             `;
           }).join('');
         } else {
-          excStrip.innerHTML = `
-            <div style="font-size:0.8rem; color:#166534; display:flex; align-items:center; gap:6px;">
-              <i class="fa-solid fa-circle-check"></i> Funding allocation verified. Ready for disbursement release.
-            </div>
-          `;
+          if (excWrap) excWrap.style.display = 'none';
+          excStrip.innerHTML = '';
         }
       }
 
@@ -1306,25 +1348,41 @@
 
       const lines = (this.currentRun && this.currentRun.lines) || [];
       if (lines.length > 0) {
-        tbody.innerHTML = lines.map(l => `
-          <tr>
-            <td><strong>${l.employee_name || `Employee #${l.employee_id}`}</strong></td>
-            <td class="payroll-num" style="font-weight:700;">${this.money(l.net_pay || l.amount)}</td>
-            <td><span class="p-badge b-green">${(l.payment_status || 'paid').toUpperCase()}</span></td>
-            <td>${l.paid_at ? l.paid_at.slice(0, 16).replace('T', ' ') : this.nowStamp()}</td>
-            <td>${l.failure_reason || 'Disbursed via ' + (l.compensation_type || 'Internal Treasury')}</td>
-          </tr>
-        `).join('');
-      } else {
-        tbody.innerHTML = this.rows.map(r => {
-          const c = this.computeRow(r);
+        tbody.innerHTML = lines.map(l => {
+          const empName = l.employee_name || `Employee #${l.employee_id}`;
+          const inits = this.getInitials(empName);
+          const isWarn = l.payment_status === 'flagged' || l.missing_bank || (l.failure_reason && l.failure_reason.includes('bank'));
+          const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
+          const badgeText = isWarn ? 'Flagged — no bank' : (l.payment_status ? l.payment_status.charAt(0).toUpperCase() + l.payment_status.slice(1) : 'Paid');
+          const paidAt = l.paid_at ? l.paid_at.slice(0, 16).replace('T', ' ') : this.nowStamp();
+          const notes = l.failure_reason || (isWarn ? 'Manual/cash settlement pending; non-blocking (D-006).' : 'Settled via configured funding accounts.');
+
           return `
-            <tr>
-              <td><strong>${r.name}</strong></td>
-              <td class="payroll-num" style="font-weight:700;">${this.money(c.net)}</td>
-              <td><span class="p-badge b-green">PAID</span></td>
+            <tr class="${isWarn ? 'warnrow' : ''}">
+              <td class="tname"><span class="avatar">${inits}</span>${empName}</td>
+              <td class="num payroll-num" style="font-weight:700;">${this.money(l.net_pay || l.amount)}</td>
+              <td><span class="${badgeClass} badge-pill">${badgeText}</span></td>
+              <td>${paidAt}</td>
+              <td class="muted">${notes}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tbody.innerHTML = (this.rows || []).map(r => {
+          const c = this.computeRow(r);
+          const inits = this.getInitials(r.name);
+          const isWarn = r.missingBank || !r.hasBank;
+          const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
+          const badgeText = isWarn ? 'Flagged — no bank' : 'Paid';
+          const notes = isWarn ? 'Manual/cash settlement pending; non-blocking (D-006).' : 'Settled via configured funding accounts.';
+
+          return `
+            <tr class="${isWarn ? 'warnrow' : ''}">
+              <td class="tname"><span class="avatar">${inits}</span>${r.name}</td>
+              <td class="num payroll-num" style="font-weight:700;">${this.money(c.net)}</td>
+              <td><span class="${badgeClass} badge-pill">${badgeText}</span></td>
               <td>${this.nowStamp()}</td>
-              <td>Bank Transfer &amp; Treasury Disbursal Complete</td>
+              <td class="muted">${notes}</td>
             </tr>
           `;
         }).join('');
@@ -1340,33 +1398,13 @@
       const extTotal = (p && p.final_ext_total) || t.external;
       const intTotal = (p && p.final_int_total) || t.internal;
 
+      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'External funding account';
+      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Internal funding account';
+
       rowsEl.innerHTML = `
-        <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
-          <thead>
-            <tr style="border-bottom:1px solid #e2e8f0; color:#64748b;">
-              <th style="text-align:left; padding:4px 8px;">Account</th>
-              <th style="text-align:right; padding:4px 8px;">Debit</th>
-              <th style="text-align:right; padding:4px 8px;">Credit</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding:4px 8px;"><strong>6100 - Payroll Expense</strong></td>
-              <td style="text-align:right; padding:4px 8px; font-weight:700;">${this.money(netTotal)}</td>
-              <td style="text-align:right; padding:4px 8px;">-</td>
-            </tr>
-            <tr>
-              <td style="padding:4px 8px;">1010 - Primary Operating Wire Account</td>
-              <td style="text-align:right; padding:4px 8px;">-</td>
-              <td style="text-align:right; padding:4px 8px;">${this.money(extTotal)}</td>
-            </tr>
-            <tr>
-              <td style="padding:4px 8px;">1020 - Internal Treasury Cash Account</td>
-              <td style="text-align:right; padding:4px 8px;">-</td>
-              <td style="text-align:right; padding:4px 8px;">${this.money(intTotal)}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="jr"><span>6100 - Payroll employee disbursements</span><span>${this.money(netTotal)}</span><span>—</span></div>
+        <div class="jr"><span>${extBankName}</span><span>—</span><span>${this.money(extTotal)}</span></div>
+        <div class="jr"><span>${intBankName}</span><span>—</span><span>${this.money(intTotal)}</span></div>
       `;
     },
 
@@ -1493,9 +1531,9 @@
                 <td><strong>#${o.id}</strong></td>
                 <td>${o.obligation_type}</td>
                 <td>${o.period}</td>
-                <td class="payroll-num">${Number(o.amount_accrued).toFixed(2)} ${o.currency}</td>
-                <td class="payroll-num">${Number(o.amount_remitted || 0).toFixed(2)} ${o.currency}</td>
-                <td><span class="p-badge ${o.status === 'remitted' ? 'b-green' : 'b-blue'}">${o.status.toUpperCase()}</span></td>
+                <td class="num payroll-num">${Number(o.amount_accrued).toFixed(2)} ${o.currency}</td>
+                <td class="num payroll-num">${Number(o.amount_remitted || 0).toFixed(2)} ${o.currency}</td>
+                <td><span class="pill-${o.status === 'remitted' ? 'success' : 'info'} badge-pill">${(o.status || 'accrued').toUpperCase()}</span></td>
                 <td><span style="font-size:0.75rem; color:#64748b;">${o.notes || '—'}</span></td>
               </tr>
             `).join('');
@@ -1508,27 +1546,49 @@
             const taxBadge = document.getElementById('p6TaxStatusBadge');
             const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
             const btnSettleTax = document.getElementById('btnP6SettleTax');
+            const siPayStage = document.getElementById('p6SiPayStage');
+            const taxPayStage = document.getElementById('p6TaxPayStage');
 
             if (siObl) {
               if (siBadge) {
-                siBadge.textContent = siObl.status.toUpperCase();
-                siBadge.className = `p-badge ${siObl.status === 'remitted' ? 'b-green' : 'b-blue'}`;
+                const isRemitted = siObl.status === 'remitted';
+                siBadge.textContent = isRemitted ? 'Remitted' : 'Recorded';
+                siBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
+              if (siPayStage) siPayStage.classList.remove('locked');
               if (btnSettleSi) {
                 btnSettleSi.disabled = siObl.status === 'remitted';
                 btnSettleSi.setAttribute('data-obl-id', siObl.id);
               }
+            } else {
+              if (siBadge) {
+                siBadge.textContent = 'Unrecorded';
+                siBadge.className = 'stage-badge unrecorded';
+              }
+              if (siPayStage) siPayStage.classList.add('locked');
+              if (btnSettleSi) btnSettleSi.disabled = true;
             }
+
             if (taxObl) {
               if (taxBadge) {
-                taxBadge.textContent = taxObl.status.toUpperCase();
-                taxBadge.className = `p-badge ${taxObl.status === 'remitted' ? 'b-green' : 'b-blue'}`;
+                const isRemitted = taxObl.status === 'remitted';
+                taxBadge.textContent = isRemitted ? 'Remitted' : 'Recorded';
+                taxBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
+              if (taxPayStage) taxPayStage.classList.remove('locked');
               if (btnSettleTax) {
                 btnSettleTax.disabled = taxObl.status === 'remitted';
                 btnSettleTax.setAttribute('data-obl-id', taxObl.id);
               }
+            } else {
+              if (taxBadge) {
+                taxBadge.textContent = 'Unrecorded';
+                taxBadge.className = 'stage-badge unrecorded';
+              }
+              if (taxPayStage) taxPayStage.classList.add('locked');
+              if (btnSettleTax) btnSettleTax.disabled = true;
             }
+
             const resolved = this.resolvePayrollRunState(this.currentRun, linked);
             this.renderStatutoryBadge(resolved.badge, resolved.badgeClass);
             return;
@@ -1541,7 +1601,15 @@
       if (this.currentRun && (this.currentRun.status === 'paid' || this.currentRun.status === 'partially_paid')) {
         this.renderStatutoryBadge('Not Recorded', 'b-gray');
       }
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
+      const siBadge = document.getElementById('p6SiStatusBadge');
+      const taxBadge = document.getElementById('p6TaxStatusBadge');
+      const siPayStage = document.getElementById('p6SiPayStage');
+      const taxPayStage = document.getElementById('p6TaxPayStage');
+      if (siBadge) { siBadge.textContent = 'Unrecorded'; siBadge.className = 'stage-badge unrecorded'; }
+      if (taxBadge) { taxBadge.textContent = 'Unrecorded'; taxBadge.className = 'stage-badge unrecorded'; }
+      if (siPayStage) siPayStage.classList.add('locked');
+      if (taxPayStage) taxPayStage.classList.add('locked');
+      tbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
     },
 
     async recordStatutoryObligation(type) {

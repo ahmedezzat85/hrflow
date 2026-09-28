@@ -1,0 +1,2049 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>HRFlow Payroll — V9</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --accent: #2056e8;
+      --accent2: #4f7af8;
+      --accent-soft: #e8eeff;
+      --success: #0ea966;
+      --success-soft: rgba(14, 169, 102, .12);
+      --warning: #e07d10;
+      --warning-soft: rgba(224, 125, 16, .12);
+      --danger: #d63b3b;
+      --danger-soft: rgba(214, 59, 59, .12);
+      --info: #4f7af8;
+      --bg: #f7f8fb;
+      --surface: #fff;
+      --surface2: #fafbfd;
+      --border: rgba(30, 60, 140, .08);
+      --border2: rgba(30, 60, 140, .15);
+      --text: #141e30;
+      --text2: #7a8ea8;
+      --text3: #c2cedc;
+      --radius-sm: 10px;
+      --radius-md: 14px;
+      --radius: 18px;
+      --shadow: 0 2px 12px rgba(20, 50, 120, .07);
+      --font-head: 'Sora', sans-serif;
+      --font-body: 'Inter', sans-serif
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13.5px
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh
+    }
+
+    .side {
+      width: 230px;
+      flex-shrink: 0;
+      background: #101a30;
+      color: #a9b6cf;
+      padding: 16px 8px;
+      position: sticky;
+      top: 0;
+      height: 100vh
+    }
+
+    .brand {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 17px;
+      color: #fff;
+      padding: 0 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .brand i {
+      color: var(--accent2)
+    }
+
+    .navlabel {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-weight: 700;
+      color: #5a6a8c;
+      padding: 16px 12px 6px
+    }
+
+    .nav {
+      padding: 9px 12px;
+      border-radius: 9px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 1px;
+      font-size: 13px
+    }
+
+    .nav.active {
+      background: rgba(79, 122, 248, .22);
+      color: #fff
+    }
+
+    .nav.sub {
+      padding-left: 34px;
+      font-size: 12px;
+      color: #8494b8
+    }
+
+    .nav.sub.active {
+      background: rgba(79, 122, 248, .14);
+      color: #fff
+    }
+
+    .main {
+      flex: 1;
+      max-width: 1280px;
+      padding: 20px 22px
+    }
+
+    .notice {
+      background: var(--success-soft);
+      border: 1px solid rgba(14, 169, 102, .25);
+      color: #087a4a;
+      padding: 8px 13px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 14px;
+      font-size: 12px;
+      font-weight: 700
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden
+    }
+
+    .card-pad {
+      padding: 18px 20px
+    }
+
+    .section-title {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      gap: 9px
+    }
+
+    .section-title i {
+      color: var(--accent);
+      font-size: 15px
+    }
+
+    .runhead {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap
+    }
+
+    .runtitle {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 18px
+    }
+
+    .runhead-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end
+    }
+
+    .fxbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 6px 5px 11px;
+      font-size: 11.5px;
+      color: var(--text2);
+      font-weight: 600
+    }
+
+    .fxbox b {
+      color: var(--text);
+      font-family: var(--font-head);
+      font-weight: 700
+    }
+
+    .fxbox .editbtn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 10px
+    }
+
+    .fxbox .editbtn:hover {
+      color: var(--accent);
+      border-color: var(--accent2)
+    }
+
+    .lock {
+      margin: 0 20px;
+      margin-top: 10px;
+      padding: 8px 13px;
+      background: var(--warning-soft);
+      color: var(--warning);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .steps {
+      padding: 12px 20px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    .step {
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text2);
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .step.active {
+      background: var(--accent-soft);
+      border-color: var(--accent2);
+      color: var(--accent)
+    }
+
+    .step.done {
+      background: var(--success-soft);
+      border-color: rgba(14, 169, 102, .3);
+      color: var(--success)
+    }
+
+    .stepn {
+      background: var(--text3);
+      color: #fff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 10px
+    }
+
+    .active .stepn {
+      background: var(--accent)
+    }
+
+    .done .stepn {
+      background: var(--success)
+    }
+
+    .screen {
+      display: none
+    }
+
+    .screen.on {
+      display: block
+    }
+
+    .title-row {
+      padding: 16px 36px 2px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .title-row .section-title {
+      font-size: 15px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      line-height: 1.35;
+      gap: 10px;
+    }
+
+    .title-row .section-title i {
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 12px 20px
+    }
+
+    .inner {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm)
+    }
+
+    .innerhead {
+      padding: 9px 13px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .innerhead i {
+      color: var(--accent)
+    }
+
+    .form {
+      padding: 12px 13px;
+      display: grid;
+      gap: 10px
+    }
+
+    .form.two {
+      grid-template-columns: 1fr 1fr
+    }
+
+    .field label,
+    label {
+      display: block;
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font: inherit;
+      background: var(--surface)
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 12px 20px
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 13px;
+      background: var(--surface2)
+    }
+
+    .stat .lbl {
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em
+    }
+
+    .stat .val {
+      font-size: 17px;
+      font-weight: 800;
+      font-family: var(--font-head);
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums
+    }
+
+    .stat .hint {
+      font-size: 10.5px;
+      color: var(--text2);
+      margin-top: 1px
+    }
+
+    .toolbar-row {
+      padding: 0 20px 10px;
+      display: flex;
+      gap: 9px
+    }
+
+    .toolbar-row input {
+      max-width: 230px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text2);
+      font-weight: 700;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      background: var(--surface2)
+    }
+
+    thead th.num {
+      text-align: right
+    }
+
+    tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle
+    }
+
+    tbody tr:hover {
+      background: var(--surface2)
+    }
+
+    td.num {
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums
+    }
+
+    td.col-id {
+      width: 38px;
+      text-align: center;
+      color: var(--text2);
+      font-weight: 600
+    }
+
+    td.col-actions {
+      width: 44px;
+      text-align: center
+    }
+
+    .tname {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 600
+    }
+
+    .avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 10.5px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    tfoot td {
+      background: var(--accent-soft);
+      font-weight: 800;
+      border-top: 2px solid var(--accent2);
+      padding: 16px 10px;
+      font-size: 15px
+    }
+
+    .strong {
+      font-weight: 800
+    }
+
+    .accent {
+      color: var(--accent)
+    }
+
+    .muted {
+      color: var(--text2)
+    }
+
+    .chip {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      margin: 1px
+    }
+
+    .plus {
+      width: 21px;
+      height: 21px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--accent);
+      font-weight: 800;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      line-height: 1
+    }
+
+    .expand td {
+      padding: 0 !important
+    }
+
+    .expandbox {
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      padding: 11px 15px;
+      display: grid;
+      gap: 9px
+    }
+
+    .existing {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      font-size: 12px
+    }
+
+    .tag {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10.5px
+    }
+
+    .inlineform {
+      display: flex;
+      align-items: flex-end;
+      gap: 9px;
+      flex-wrap: wrap
+    }
+
+    .inlineform .field {
+      min-width: 130px
+    }
+
+    .toggle {
+      display: flex;
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      overflow: hidden;
+      height: 33px
+    }
+
+    .toggle button {
+      border: 0;
+      background: var(--surface);
+      color: var(--text2);
+      padding: 0 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 12px
+    }
+
+    .toggle .selected {
+      background: var(--accent-soft);
+      color: var(--accent)
+    }
+
+    .footer {
+      padding: 13px 20px;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px
+    }
+
+    .btn {
+      border-radius: 9px;
+      padding: 8px 13px;
+      font-weight: 700;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--text2);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .btn.sm {
+      padding: 6px 11px;
+      font-size: 11.5px
+    }
+
+    .btn-fill {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent)
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed
+    }
+
+    .badge-pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700
+    }
+
+    .pill-success {
+      background: var(--success-soft);
+      color: var(--success)
+    }
+
+    .pill-warning {
+      background: var(--warning-soft);
+      color: var(--warning)
+    }
+
+    .pill-danger {
+      background: var(--danger-soft);
+      color: var(--danger)
+    }
+
+    .pill-info {
+      background: var(--accent-soft);
+      color: var(--accent2)
+    }
+
+    .pill-neutral {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border2)
+    }
+
+    .summary-row {
+      display: flex;
+      gap: 10px;
+      padding: 12px 20px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .pillbox {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 11px;
+      font-size: 12px
+    }
+
+    .alertbox {
+      background: var(--warning-soft);
+      color: var(--warning);
+      border-radius: var(--radius-sm);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .warnrow {
+      background: rgba(214, 59, 59, .03)
+    }
+
+    .journal {
+      margin: 0 20px 14px;
+      border: 1px solid rgba(14, 169, 102, .25);
+      border-radius: var(--radius-sm);
+      overflow: hidden
+    }
+
+    .journal h4 {
+      margin: 0;
+      padding: 9px 13px;
+      background: var(--success-soft);
+      color: var(--success);
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .jr {
+      display: grid;
+      grid-template-columns: 1fr 105px 105px;
+      padding: 6px 13px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    @media(max-width:940px) {
+      .side {
+        width: 60px
+      }
+
+      .side .nav:not(.sub),
+      .side .navlabel,
+      .brand span {
+        font-size: 0;
+        color: transparent
+      }
+
+      .side .nav i {
+        font-size: 15px
+      }
+
+      .side .sub {
+        display: none
+      }
+
+      .grid,
+      .stats {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media(max-width:640px) {
+      .main {
+        padding: 12px
+      }
+
+      .grid,
+      .stats,
+      .form.two,
+      .disburse-grid,
+      .stat-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .disburse-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 0 20px 16px
+    }
+
+    .disburse-card {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 6px 20px rgba(20, 50, 120, .08);
+      border: 1px solid var(--border)
+    }
+
+    .disburse-card.internal {
+      background: linear-gradient(155deg, #eef3ff 0%, #ffffff 62%)
+    }
+
+    .disburse-card.external {
+      background: linear-gradient(155deg, #eafaf1 0%, #ffffff 62%)
+    }
+
+    .disburse-card .stripe {
+      height: 5px;
+      background: var(--accent2)
+    }
+
+    .disburse-card.external .stripe {
+      background: var(--success)
+    }
+
+    .disburse-card-body {
+      padding: 18px 20px 20px
+    }
+
+    .disburse-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px
+    }
+
+    .disburse-title {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 16.5px;
+      display: flex;
+      align-items: center;
+      gap: 9px
+    }
+
+    .disburse-title i {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px
+    }
+
+    .internal .disburse-title i {
+      background: var(--accent-soft);
+      color: var(--accent)
+    }
+
+    .external .disburse-title i {
+      background: var(--success-soft);
+      color: var(--success)
+    }
+
+    .disburse-rail-badge {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 3px 9px;
+      border-radius: 999px
+    }
+
+    .internal .disburse-rail-badge {
+      background: var(--accent-soft);
+      color: var(--accent)
+    }
+
+    .external .disburse-rail-badge {
+      background: var(--success-soft);
+      color: var(--success)
+    }
+
+    .disburse-amount {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 30px;
+      margin-top: 14px;
+      font-variant-numeric: tabular-nums
+    }
+
+    .disburse-amount-lbl {
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-top: 14px
+    }
+
+    .disburse-meta {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px
+    }
+
+    .disburse-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(255, 255, 255, .65);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px 11px
+    }
+
+    .disburse-row .k {
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .disburse-row .k i {
+      width: 13px;
+      text-align: center
+    }
+
+    .disburse-row .v {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-align: right
+    }
+
+    .disburse-row input,
+    .disburse-row select {
+      border: none;
+      background: transparent;
+      text-align: right;
+      font-weight: 700;
+      font-size: 12.5px;
+      padding: 0;
+      width: auto;
+      color: var(--text)
+    }
+
+    .disburse-row select {
+      cursor: pointer
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 0 20px 16px
+    }
+
+    .stat-obl-card {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 6px 20px rgba(20, 50, 120, .08);
+      border: 1px solid var(--border)
+    }
+
+    .stat-obl-card.si {
+      background: linear-gradient(155deg, #fff4e6 0%, #ffffff 62%)
+    }
+
+    .stat-obl-card.tax {
+      background: linear-gradient(155deg, #f3ecff 0%, #ffffff 62%)
+    }
+
+    .stat-obl-card .stripe {
+      height: 5px;
+      background: var(--warning)
+    }
+
+    .stat-obl-card.tax .stripe {
+      background: #8b5cf6
+    }
+
+    .stat-obl-card-body {
+      padding: 18px 20px 20px
+    }
+
+    .stat-obl-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px
+    }
+
+    .stat-obl-title {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 16.5px;
+      display: flex;
+      align-items: center;
+      gap: 9px
+    }
+
+    .stat-obl-title i {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px
+    }
+
+    .si .stat-obl-title i {
+      background: var(--warning-soft);
+      color: var(--warning)
+    }
+
+    .tax .stat-obl-title i {
+      background: rgba(139, 92, 246, .12);
+      color: #8b5cf6
+    }
+
+    .stat-obl-sub {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 2px;
+      font-weight: 600
+    }
+
+    .stage-badge {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 3px 9px;
+      border-radius: 999px;
+      white-space: nowrap
+    }
+
+    .stage-badge.unrecorded {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border2)
+    }
+
+    .stage-badge.recorded {
+      background: var(--accent-soft);
+      color: var(--accent)
+    }
+
+    .stage-badge.settled {
+      background: var(--success-soft);
+      color: var(--success)
+    }
+
+    .stat-obl-amount-lbl {
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-top: 14px
+    }
+
+    .stat-obl-amount {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 28px;
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums
+    }
+
+    .stat-obl-meta {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px
+    }
+
+    .stat-obl-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(255, 255, 255, .65);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px 11px
+    }
+
+    .stat-obl-row .k {
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .stat-obl-row .k i {
+      width: 13px;
+      text-align: center
+    }
+
+    .stat-obl-row .v {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-align: right
+    }
+
+    .stat-obl-row input,
+    .stat-obl-row select {
+      border: none;
+      background: transparent;
+      text-align: right;
+      font-weight: 700;
+      font-size: 12.5px;
+      padding: 0;
+      width: auto;
+      color: var(--text)
+    }
+
+    .stat-obl-row select {
+      cursor: pointer
+    }
+
+    .stat-obl-actions {
+      display: flex;
+      gap: 9px;
+      margin-top: 16px
+    }
+
+    .stat-obl-actions .btn {
+      flex: 1;
+      justify-content: center
+    }
+
+    .pay-stage {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border2)
+    }
+
+    .pay-stage.locked {
+      opacity: .45;
+      pointer-events: none
+    }
+
+    .stage-hint {
+      font-size: 11px;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      font-weight: 600
+    }
+
+    .stage-hint i {
+      color: var(--accent)
+    }
+
+    .pay-stage.locked .stage-hint i {
+      color: var(--text2)
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span>HRFlow</span></div>
+      <div class="navlabel">Finance</div>
+      <div class="nav"><i class="fa-solid fa-chart-line"></i> <span>Overview</span></div>
+      <div class="nav active"><i class="fa-solid fa-money-check-dollar"></i> <span>Payroll</span></div>
+      <div class="nav sub active" onclick="runs()"><i class="fa-solid fa-clock-rotate-left"></i> <span>Runs</span></div>
+      <div class="nav sub" onclick="settings()"><i class="fa-solid fa-sliders"></i> <span>Settings</span></div>
+      <div class="nav"><i class="fa-solid fa-file-excel"></i> <span>Reports &amp; Export</span></div>
+    </aside>
+    <main class="main">
+      <div class="notice"><i class="fa-solid fa-ruler-combined"></i> V9: screen-title chips under the stepper now carry
+        balanced 9px/16px padding and a subtle pill background, matching the visual weight of the stepper pills above
+        them and the stat cards below — no more cramped, flush-left text.</div>
+
+      <div id="runs" class="card">
+        <div class="card-pad"
+          style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Payroll Runs</div>
+          <button class="btn btn-fill" onclick="go(0)"><i class="fa-solid fa-play"></i> Open current cycle</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Date range</th>
+              <th>Status</th>
+              <th class="num">Total Disbursement</th>
+              <th>Employees</th>
+              <th>Last updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="go(0)" style="cursor:pointer">
+              <td class="strong">2026-09</td>
+              <td>2026-09-01 to 2026-09-30</td>
+              <td><span class="pill-neutral badge-pill">DRAFT</span></td>
+              <td class="num">$46,690.00</td>
+              <td>8</td>
+              <td>In progress</td>
+            </tr>
+            <tr>
+              <td>2026-08</td>
+              <td>2026-08-01 to 2026-08-31</td>
+              <td><span class="pill-success badge-pill">PAID</span></td>
+              <td class="num">$34,210.00</td>
+              <td>8</td>
+              <td>2026-08-30 18:42</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="settings" class="card hidden">
+        <div class="card-pad section-title"><i class="fa-solid fa-sliders"></i> Payroll Settings</div>
+        <div class="grid">
+          <div class="inner">
+            <div class="innerhead"><i class="fa-solid fa-building-columns"></i> Funding bank accounts</div>
+            <div class="form">
+              <div class="field"><label>Target Account — External Salaries</label><select>
+                  <option>Global Payments Partner Account ****7788 (USD)</option>
+                </select></div>
+              <div class="field"><label>Target Account — Internal Salaries</label><select>
+                  <option>Primary Treasury Operating Account ****4021 (USD)</option>
+                </select></div>
+            </div>
+          </div>
+          <div class="inner">
+            <div class="innerhead"><i class="fa-solid fa-calendar"></i> Payroll month &amp; FX Rate</div>
+            <div class="form two">
+              <div class="field"><label>Payroll month</label><input type="month" value="2026-09"></div>
+              <div class="field"><label>Pay date</label><input type="date" value="2026-09-30"></div>
+              <div class="field"><label>FX Rate Override</label><input
+                  placeholder="Leave empty for resolved/fallback rate"></div>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><button class="btn" onclick="runs()">Cancel</button><button class="btn btn-fill">Save
+            settings</button></div>
+      </div>
+
+      <div id="run" class="card hidden">
+        <div class="runhead">
+          <div class="runtitle">2026-09 Cycle</div>
+          <div class="runhead-right">
+            <div class="fxbox" id="fxbox">
+              <i class="fa-solid fa-coins"></i>
+              <span id="fxlabel"><b>50.0000</b> EGP/USD · <span class="pill-neutral badge-pill"
+                  style="padding:2px 8px;">System Fallback</span></span>
+              <button class="editbtn" onclick="toggleFx()" title="Override FX rate"><i
+                  class="fa-solid fa-pencil"></i></button>
+            </div>
+            <span id="status" class="pill-neutral badge-pill">DRAFT</span>
+            <button class="btn sm" id="revertBtn" style="display:none"><i class="fa-solid fa-rotate-left"></i> Revert to
+              draft</button>
+          </div>
+        </div>
+        <div id="fxEditRow" class="hidden" style="padding:10px 20px 0;display:flex;gap:8px;align-items:center;">
+          <input id="fxInput" placeholder="e.g. 48.7500" style="max-width:160px">
+          <button class="btn btn-fill sm" onclick="applyFx()">Apply</button>
+          <button class="btn sm" onclick="toggleFx()">Cancel</button>
+          <span class="muted" style="font-size:11.5px">No manual value falls back to the latest USD→EGP transfer on
+            record, or 50.0000 if none exists.</span>
+        </div>
+        <div id="lock" class="lock hidden"><i class="fa-solid fa-lock"></i> Finalized — compensation lines are locked.
+          Use Revert to Draft to edit.</div>
+        <div class="steps" id="steps"></div>
+
+        <section class="screen on" data-s="0">
+          <div class="title-row">
+            <div class="section-title"><i class="fa-solid fa-flag"></i> Initiation &amp; FX</div>
+          </div>
+          <div class="grid">
+            <div class="inner">
+              <div class="innerhead"><i class="fa-solid fa-calendar-days"></i> Period &amp; Schedule</div>
+              <div class="form two">
+                <div class="field"><label>Payroll Month</label><input type="month" value="2026-09"></div>
+                <div class="field"><label>Pay Date</label><input type="date" value="2026-09-30"></div>
+                <div class="field"><label>Period Start</label><input type="date" value="2026-09-01"></div>
+                <div class="field"><label>Period End</label><input type="date" value="2026-09-30"></div>
+              </div>
+            </div>
+            <div class="inner">
+              <div class="innerhead"><i class="fa-solid fa-building-columns"></i> Target Funding Accounts</div>
+              <div class="form">
+                <div class="field"><label>External Wire Account</label><select>
+                    <option>Global Payments Partner ****7788</option>
+                  </select></div>
+                <div class="field"><label>Internal Cash Account</label><select>
+                    <option>Primary Treasury ****4021</option>
+                  </select></div>
+              </div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="lbl">Headcount</div>
+              <div class="val">8</div>
+              <div class="hint">Eligible employees</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">External Base</div>
+              <div class="val">$9,100.00</div>
+              <div class="hint">Bank transfer salaries</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Internal Base</div>
+              <div class="val">$34,200.00</div>
+              <div class="hint">Cash disbursement</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Current Disbursement</div>
+              <div class="val accent">$46,690.00</div>
+              <div class="hint">All rails, incl. additions</div>
+            </div>
+          </div>
+          <div class="footer"><button class="btn btn-fill" onclick="go(1)">Next: Review &amp; Approve <i
+                class="fa-solid fa-arrow-right"></i></button></div>
+        </section>
+
+        <section class="screen" data-s="1">
+          <div class="title-row">
+            <div class="section-title"><i class="fa-solid fa-list-check"></i> Compensation Review</div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="lbl">Headcount</div>
+              <div class="val">8</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Base Compensation</div>
+              <div class="val">$43,300.00</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Bonus / Commission</div>
+              <div class="val">$3,390.00</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Total Compensation</div>
+              <div class="val accent">$46,690.00</div>
+            </div>
+          </div>
+          <div class="toolbar-row"><input placeholder="Search employee name or ID..."><select>
+              <option>All bonus types</option>
+            </select></div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Employee</th>
+                <th class="num">Base Ext</th>
+                <th class="num">Base Int</th>
+                <th class="num">Bonus / Commission</th>
+                <th class="num">Total Comp</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-id">301</td>
+                <td class="tname"><span class="avatar">YA</span>Youssef Adel</td>
+                <td class="num">$1,800.00</td>
+                <td class="num">$4,300.00</td>
+                <td class="num"><span class="muted">—</span></td>
+                <td class="num strong">$6,100.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr>
+                <td class="col-id">302</td>
+                <td class="tname"><span class="avatar">SI</span>Salma Ibrahim</td>
+                <td class="num">$0.00</td>
+                <td class="num">$4,450.00</td>
+                <td class="num"><span class="chip">Support Commission $360.00 · INT</span></td>
+                <td class="num strong">$4,810.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr>
+                <td class="col-id">303</td>
+                <td class="tname"><span class="avatar">KN</span>Karim Nabil</td>
+                <td class="num">$2,500.00</td>
+                <td class="num">$4,500.00</td>
+                <td class="num"><span class="chip">Bonus $600.00 · EXT</span></td>
+                <td class="num strong">$7,600.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr>
+                <td class="col-id">304</td>
+                <td class="tname"><span class="avatar">ME</span>Mariam Essam</td>
+                <td class="num">$1,200.00</td>
+                <td class="num">$4,550.00</td>
+                <td class="num"><span class="chip">Sales Commission $1,050.00 · INT</span><span class="chip">Bonus
+                    $200.00 · EXT</span></td>
+                <td class="num strong">$7,000.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr class="expand">
+                <td colspan="7">
+                  <div class="expandbox">
+                    <div class="existing"><b>Existing additions</b><span class="tag">Sales Commission · $1,050 ·
+                        INT</span><span class="tag">Bonus · $200 · EXT</span></div>
+                    <div class="inlineform">
+                      <div class="field"><label>Type</label><select>
+                          <option>Bonus</option>
+                          <option>Sales Commission</option>
+                          <option>Support Commission</option>
+                        </select></div>
+                      <div class="field"><label>Amount (USD)</label><input placeholder="0.00"></div>
+                      <div class="field"><label>Payment source</label><span class="toggle"><button class="selected"
+                            onclick="rail(this)">Internal</button><button onclick="rail(this)">External</button></span>
+                      </div><button class="btn btn-fill sm">Submit</button><button class="btn sm"
+                        onclick="closeInline(this)">Close</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-id">305</td>
+                <td class="tname"><span class="avatar">OF</span>Omar Farouk</td>
+                <td class="num">$0.00</td>
+                <td class="num">$4,200.00</td>
+                <td class="num"><span class="chip">Support Commission $430.00 · INT</span></td>
+                <td class="num strong">$4,630.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr>
+                <td class="col-id">306</td>
+                <td class="tname"><span class="avatar">NS</span>Nadine Samir</td>
+                <td class="num">$2,000.00</td>
+                <td class="num">$3,100.00</td>
+                <td class="num"><span class="muted">—</span></td>
+                <td class="num strong">$5,100.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr>
+                <td class="col-id">307</td>
+                <td class="tname"><span class="avatar">HT</span>Hassan Tarek</td>
+                <td class="num">$0.00</td>
+                <td class="num">$5,200.00</td>
+                <td class="num"><span class="chip">Bonus $750.00 · INT</span></td>
+                <td class="num strong">$5,950.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+              <tr>
+                <td class="col-id">308</td>
+                <td class="tname"><span class="avatar">LK</span>Lina Kamal</td>
+                <td class="num">$1,600.00</td>
+                <td class="num">$3,900.00</td>
+                <td class="num"><span class="muted">—</span></td>
+                <td class="num strong">$5,500.00</td>
+                <td class="col-actions"><button class="plus" onclick="inline(this)">+</button></td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2">Totals</td>
+                <td class="num">$9,100.00</td>
+                <td class="num">$34,200.00</td>
+                <td class="num">$3,390.00</td>
+                <td class="num">$46,690.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="footer"><button class="btn" onclick="go(0)">Back</button><button class="btn"><i
+                class="fa-solid fa-floppy-disk"></i> Save Draft</button><button class="btn btn-fill"
+              onclick="approve()">Submit &amp; Approve <i class="fa-solid fa-check"></i></button></div>
+        </section>
+
+        <section class="screen" data-s="2">
+          <div class="title-row">
+            <div class="section-title"><i class="fa-solid fa-shield-halved"></i> Statutory Processing</div><span
+              class="pill-info badge-pill"><i class="fa-solid fa-lock"></i> Finalized Snapshot</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Employee</th>
+                <th class="num">Insured Base (EGP)</th>
+                <th class="num">Emp SI (EGP)</th>
+                <th class="num">Empr SI (EGP)</th>
+                <th class="num">Total SI (EGP)</th>
+                <th class="num">Internal Net Payment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-id">301</td>
+                <td class="tname"><span class="avatar">YA</span>Youssef Adel</td>
+                <td class="num">215,000.00 EGP</td>
+                <td class="num">23,650.00 EGP</td>
+                <td class="num">38,700.00 EGP</td>
+                <td class="num">62,350.00 EGP</td>
+                <td class="num strong accent">$4,300.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">302</td>
+                <td class="tname"><span class="avatar">SI</span>Salma Ibrahim</td>
+                <td class="num">222,500.00 EGP</td>
+                <td class="num">24,475.00 EGP</td>
+                <td class="num">40,050.00 EGP</td>
+                <td class="num">64,525.00 EGP</td>
+                <td class="num strong accent">$4,810.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">303</td>
+                <td class="tname"><span class="avatar">KN</span>Karim Nabil</td>
+                <td class="num">225,000.00 EGP</td>
+                <td class="num">24,750.00 EGP</td>
+                <td class="num">40,500.00 EGP</td>
+                <td class="num">65,250.00 EGP</td>
+                <td class="num strong accent">$4,500.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">304</td>
+                <td class="tname"><span class="avatar">ME</span>Mariam Essam</td>
+                <td class="num">227,500.00 EGP</td>
+                <td class="num">25,025.00 EGP</td>
+                <td class="num">40,950.00 EGP</td>
+                <td class="num">65,975.00 EGP</td>
+                <td class="num strong accent">$5,600.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">305</td>
+                <td class="tname"><span class="avatar">OF</span>Omar Farouk</td>
+                <td class="num">210,000.00 EGP</td>
+                <td class="num">23,100.00 EGP</td>
+                <td class="num">37,800.00 EGP</td>
+                <td class="num">60,900.00 EGP</td>
+                <td class="num strong accent">$4,630.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">306</td>
+                <td class="tname"><span class="avatar">NS</span>Nadine Samir</td>
+                <td class="num">155,000.00 EGP</td>
+                <td class="num">17,050.00 EGP</td>
+                <td class="num">27,900.00 EGP</td>
+                <td class="num">44,950.00 EGP</td>
+                <td class="num strong accent">$3,100.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">307</td>
+                <td class="tname"><span class="avatar">HT</span>Hassan Tarek</td>
+                <td class="num">260,000.00 EGP</td>
+                <td class="num">28,600.00 EGP</td>
+                <td class="num">46,800.00 EGP</td>
+                <td class="num">75,400.00 EGP</td>
+                <td class="num strong accent">$5,950.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">308</td>
+                <td class="tname"><span class="avatar">LK</span>Lina Kamal</td>
+                <td class="num">195,000.00 EGP</td>
+                <td class="num">21,450.00 EGP</td>
+                <td class="num">35,100.00 EGP</td>
+                <td class="num">56,550.00 EGP</td>
+                <td class="num strong accent">$3,900.00</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Totals</td>
+                <td class="num">188,100.00 EGP</td>
+                <td class="num">307,800.00 EGP</td>
+                <td class="num">495,900.00 EGP</td>
+                <td class="num">$36,790.00</td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="footer"><button class="btn" onclick="go(1)">Back</button><button class="btn btn-fill"
+              onclick="go(3)">Next: Payment Preview <i class="fa-solid fa-arrow-right"></i></button></div>
+        </section>
+
+        <section class="screen" data-s="3">
+          <div class="title-row">
+            <div class="section-title"><i class="fa-solid fa-money-bill-transfer"></i> Payment Preview</div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="lbl">External Payment</div>
+              <div class="val">$9,900.00</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Internal Net Payment</div>
+              <div class="val">$36,790.00</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Total Disbursement</div>
+              <div class="val accent">$46,690.00</div>
+            </div>
+            <div class="stat">
+              <div class="lbl">Recipients</div>
+              <div class="val">8</div>
+              <div class="hint">1 missing bank details</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Employee</th>
+                <th>Bank / Routing</th>
+                <th class="num">External (USD)</th>
+                <th class="num">Internal (USD)</th>
+                <th class="num">Total Disbursement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-id">301</td>
+                <td class="tname"><span class="avatar">YA</span>Youssef Adel</td>
+                <td>Bank ****7301</td>
+                <td class="num">$1,800.00</td>
+                <td class="num">$4,300.00</td>
+                <td class="num strong accent">$6,100.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">302</td>
+                <td class="tname"><span class="avatar">SI</span>Salma Ibrahim</td>
+                <td>Bank ****7302</td>
+                <td class="num">$0.00</td>
+                <td class="num">$4,810.00</td>
+                <td class="num strong accent">$4,810.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">303</td>
+                <td class="tname"><span class="avatar">KN</span>Karim Nabil</td>
+                <td>Bank ****7303</td>
+                <td class="num">$3,100.00</td>
+                <td class="num">$4,500.00</td>
+                <td class="num strong accent">$7,600.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">304</td>
+                <td class="tname"><span class="avatar">ME</span>Mariam Essam</td>
+                <td>Bank ****7304</td>
+                <td class="num">$1,400.00</td>
+                <td class="num">$5,600.00</td>
+                <td class="num strong accent">$7,000.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">305</td>
+                <td class="tname"><span class="avatar">OF</span>Omar Farouk</td>
+                <td>Bank ****7305</td>
+                <td class="num">$0.00</td>
+                <td class="num">$4,630.00</td>
+                <td class="num strong accent">$4,630.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">306</td>
+                <td class="tname"><span class="avatar">NS</span>Nadine Samir</td>
+                <td>Bank ****7306</td>
+                <td class="num">$2,000.00</td>
+                <td class="num">$3,100.00</td>
+                <td class="num strong accent">$5,100.00</td>
+              </tr>
+              <tr>
+                <td class="col-id">307</td>
+                <td class="tname"><span class="avatar">HT</span>Hassan Tarek</td>
+                <td>Bank ****7307</td>
+                <td class="num">$0.00</td>
+                <td class="num">$5,950.00</td>
+                <td class="num strong accent">$5,950.00</td>
+              </tr>
+              <tr class="warnrow">
+                <td class="col-id">308</td>
+                <td class="tname"><span class="avatar">LK</span>Lina Kamal</td>
+                <td><span class="pill-danger badge-pill">Missing bank details</span></td>
+                <td class="num">$1,600.00</td>
+                <td class="num">$3,900.00</td>
+                <td class="num strong accent">$5,500.00</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2">Totals</td>
+                <td></td>
+                <td class="num">$9,900.00</td>
+                <td class="num">$36,790.00</td>
+                <td class="num">$46,690.00</td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="footer"><button class="btn" onclick="go(2)">Back</button><button class="btn btn-fill"
+              onclick="go(4)">Next: Confirm Payment <i class="fa-solid fa-arrow-right"></i></button></div>
+        </section>
+
+        <section class="screen" data-s="4">
+          <div class="title-row">
+            <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Payment Confirmation</div>
+          </div>
+
+          <div class="disburse-grid">
+            <div class="disburse-card internal">
+              <div class="stripe"></div>
+              <div class="disburse-card-body">
+                <div class="disburse-head">
+                  <div class="disburse-title"><i class="fa-solid fa-vault"></i> Internal Salaries</div>
+                  <span class="disburse-rail-badge">Internal Rail</span>
+                </div>
+                <div class="disburse-amount-lbl">Total Amount (USD)</div>
+                <div class="disburse-amount accent">$36,790.00</div>
+                <div class="disburse-meta">
+                  <div class="disburse-row">
+                    <span class="k"><i class="fa-solid fa-calendar-day"></i> Payment Date</span>
+                    <input type="date" value="2026-09-30">
+                  </div>
+                  <div class="disburse-row">
+                    <span class="k"><i class="fa-solid fa-building-columns"></i> Bank Account</span>
+                    <select>
+                      <option>Primary Treasury ****4021</option>
+                      <option>Secondary Cash Reserve ****9012</option>
+                    </select>
+                  </div>
+                  <div class="disburse-row">
+                    <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
+                    <span class="v">7 employees</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="disburse-card external">
+              <div class="stripe"></div>
+              <div class="disburse-card-body">
+                <div class="disburse-head">
+                  <div class="disburse-title"><i class="fa-solid fa-plane-departure"></i> External Salaries</div>
+                  <span class="disburse-rail-badge">External Rail</span>
+                </div>
+                <div class="disburse-amount-lbl">Total Amount (USD)</div>
+                <div class="disburse-amount" style="color:var(--success)">$9,900.00</div>
+                <div class="disburse-meta">
+                  <div class="disburse-row">
+                    <span class="k"><i class="fa-solid fa-calendar-day"></i> Payment Date</span>
+                    <input type="date" value="2026-09-30">
+                  </div>
+                  <div class="disburse-row">
+                    <span class="k"><i class="fa-solid fa-building-columns"></i> Bank Account</span>
+                    <select>
+                      <option>Global Payments Partner ****7788</option>
+                      <option>Primary Treasury ****4021</option>
+                    </select>
+                  </div>
+                  <div class="disburse-row">
+                    <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
+                    <span class="v">4 employees</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-row">
+            <div class="alertbox"><i class="fa-solid fa-triangle-exclamation"></i> Lina Kamal missing bank details —
+              non-blocking (D-006)</div>
+          </div>
+          <div style="padding:0 20px 14px"><button class="btn btn-fill" onclick="disburse()"><i
+                class="fa-solid fa-paper-plane"></i> Confirm &amp; Disburse Payroll</button></div>
+          <div id="results" class="hidden">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th class="num">Total Disbursement</th>
+                  <th>Status</th>
+                  <th>Paid At</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="tname"><span class="avatar">YA</span>Youssef Adel</td>
+                  <td class="num">$6,100.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr>
+                  <td class="tname"><span class="avatar">SI</span>Salma Ibrahim</td>
+                  <td class="num">$4,810.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr>
+                  <td class="tname"><span class="avatar">KN</span>Karim Nabil</td>
+                  <td class="num">$7,600.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr>
+                  <td class="tname"><span class="avatar">ME</span>Mariam Essam</td>
+                  <td class="num">$7,000.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr>
+                  <td class="tname"><span class="avatar">OF</span>Omar Farouk</td>
+                  <td class="num">$4,630.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr>
+                  <td class="tname"><span class="avatar">NS</span>Nadine Samir</td>
+                  <td class="num">$5,100.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr>
+                  <td class="tname"><span class="avatar">HT</span>Hassan Tarek</td>
+                  <td class="num">$5,950.00</td>
+                  <td><span class="pill-success badge-pill">Paid</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Settled via configured funding accounts.</td>
+                </tr>
+                <tr class="warnrow">
+                  <td class="tname"><span class="avatar">LK</span>Lina Kamal</td>
+                  <td class="num">$5,500.00</td>
+                  <td><span class="pill-warning badge-pill">Flagged — no bank</span></td>
+                  <td>2026-09-30 14:02</td>
+                  <td class="muted">Manual/cash settlement pending; non-blocking (D-006).</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="journal">
+              <h4><span class="pill-success badge-pill">Posted</span> General Ledger Journal Entry</h4>
+              <div class="jr"><b>Account</b><b>Debit</b><b>Credit</b></div>
+              <div class="jr"><span>Payroll employee disbursements</span><span>$46,690.00</span><span>—</span></div>
+              <div class="jr"><span>External funding account</span><span>—</span><span>$9,900.00</span></div>
+              <div class="jr"><span>Internal funding account</span><span>—</span><span>$36,790.00</span></div>
+            </div>
+          </div>
+          <div class="footer"><button class="btn" onclick="go(3)">Back</button><button class="btn btn-fill"
+              onclick="go(5)">Next: Statutory Payments <i class="fa-solid fa-arrow-right"></i></button></div>
+        </section>
+
+        <section class="screen" data-s="5">
+          <div class="title-row">
+            <div class="section-title"><i class="fa-solid fa-landmark"></i> Statutory Reconciliation</div>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-obl-card si" id="siCard">
+              <div class="stripe"></div>
+              <div class="stat-obl-card-body">
+                <div class="stat-obl-head">
+                  <div>
+                    <div class="stat-obl-title"><i class="fa-solid fa-shield-halved"></i> Social Insurance</div>
+                    <div class="stat-obl-sub">Employee + Employer · National Social Insurance Authority</div>
+                  </div>
+                  <span class="stage-badge unrecorded" id="siStage">Unrecorded</span>
+                </div>
+
+                <div class="stat-obl-amount-lbl">Internal Estimate (Run Snapshot)</div>
+                <div class="stat-obl-amount" style="color:var(--warning)">495,900.00 EGP</div>
+
+                <div class="stat-obl-meta">
+                  <div class="stat-obl-row">
+                    <span class="k"><i class="fa-solid fa-file-invoice"></i> Portal-Confirmed Amount</span>
+                    <input id="siPortalInput" placeholder="495900.00" oninput="calcVariance('si')">
+                  </div>
+                  <div class="stat-obl-row">
+                    <span class="k"><i class="fa-solid fa-scale-balanced"></i> Variance vs Estimate</span>
+                    <span class="v" id="siVariance">0.00 EGP</span>
+                  </div>
+                </div>
+
+                <div class="stat-obl-actions">
+                  <button class="btn btn-fill" id="siRecordBtn" onclick="recordObligation('si')"><i
+                      class="fa-solid fa-file-circle-check"></i> Record Obligation</button>
+                </div>
+
+                <div class="pay-stage locked" id="siPayStage">
+                  <div class="stage-hint"><i class="fa-solid fa-circle-info"></i> Record the obligation to unlock
+                    payment settlement.</div>
+                  <div class="stat-obl-meta">
+                    <div class="stat-obl-row">
+                      <span class="k"><i class="fa-solid fa-building-columns"></i> Debit From Bank Account</span>
+                      <select>
+                        <option>Primary Treasury ****4021</option>
+                        <option>Global Payments Partner ****7788</option>
+                      </select>
+                    </div>
+                    <div class="stat-obl-row">
+                      <span class="k"><i class="fa-solid fa-calendar-day"></i> Settlement Date</span>
+                      <input type="date" value="2026-09-30">
+                    </div>
+                  </div>
+                  <div class="stat-obl-actions">
+                    <button class="btn btn-fill" id="siPayBtn" disabled onclick="remitPayment('si')"><i
+                        class="fa-solid fa-money-bill-transfer"></i> Confirm &amp; Remit Payment</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="stat-obl-card tax" id="taxCard">
+              <div class="stripe"></div>
+              <div class="stat-obl-card-body">
+                <div class="stat-obl-head">
+                  <div>
+                    <div class="stat-obl-title"><i class="fa-solid fa-receipt"></i> Salary Income Tax</div>
+                    <div class="stat-obl-sub">Withheld · Egyptian Tax Authority (EETAX) Portal</div>
+                  </div>
+                  <span class="stage-badge unrecorded" id="taxStage">Unrecorded</span>
+                </div>
+
+                <div class="stat-obl-amount-lbl">Internal Estimate (Run Snapshot)</div>
+                <div class="stat-obl-amount" style="color:#8b5cf6">0.00 EGP</div>
+
+                <div class="stat-obl-meta">
+                  <div class="stat-obl-row">
+                    <span class="k"><i class="fa-solid fa-file-invoice"></i> Portal-Confirmed Amount</span>
+                    <input id="taxPortalInput" placeholder="0.00" oninput="calcVariance('tax')">
+                  </div>
+                  <div class="stat-obl-row">
+                    <span class="k"><i class="fa-solid fa-scale-balanced"></i> Variance vs Estimate</span>
+                    <span class="v" id="taxVariance">0.00 EGP</span>
+                  </div>
+                </div>
+
+                <div class="stat-obl-actions">
+                  <button class="btn btn-fill" id="taxRecordBtn" onclick="recordObligation('tax')"><i
+                      class="fa-solid fa-file-circle-check"></i> Record Obligation</button>
+                </div>
+
+                <div class="pay-stage locked" id="taxPayStage">
+                  <div class="stage-hint"><i class="fa-solid fa-circle-info"></i> Record the obligation to unlock
+                    payment settlement.</div>
+                  <div class="stat-obl-meta">
+                    <div class="stat-obl-row">
+                      <span class="k"><i class="fa-solid fa-building-columns"></i> Debit From Bank Account</span>
+                      <select>
+                        <option>Primary Treasury ****4021</option>
+                        <option>Global Payments Partner ****7788</option>
+                      </select>
+                    </div>
+                    <div class="stat-obl-row">
+                      <span class="k"><i class="fa-solid fa-calendar-day"></i> Settlement Date</span>
+                      <input type="date" value="2026-09-30">
+                    </div>
+                  </div>
+                  <div class="stat-obl-actions">
+                    <button class="btn btn-fill" id="taxPayBtn" disabled onclick="remitPayment('tax')"><i
+                        class="fa-solid fa-money-bill-transfer"></i> Confirm &amp; Remit Payment</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:0 20px 16px">
+            <b style="font-size:12.5px">Linked Statutory Obligations Recorded for this Run</b>
+            <div class="tablewrap"
+              style="margin-top:8px;border-top:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Period</th>
+                    <th class="num">Accrued Amount</th>
+                    <th class="num">Remitted</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="oblLog">
+                  <tr>
+                    <td colspan="6" class="muted" style="text-align:center;padding:16px">No statutory obligations
+                      recorded yet for this payroll run.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="footer"><button class="btn" onclick="go(4)">Back</button><button class="btn btn-fill"
+              onclick="runs()"><i class="fa-solid fa-check"></i> Finish &amp; Return to Runs</button></div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script>
+    const labels = ['Initiation', 'Approve', 'Processing', 'Preview', 'Confirm', 'Statutory'];
+    let step = 0, status = 'DRAFT';
+    function draw() { document.getElementById('steps').innerHTML = labels.map((x, i) => `<button class="step ${i == step ? 'active' : i < step ? 'done' : ''}" onclick="go(${i})"><span class="stepn">${i + 1}</span>${x}</button>`).join('') }
+    function go(i) { step = i; document.getElementById('runs').classList.add('hidden'); document.getElementById('settings').classList.add('hidden'); document.getElementById('run').classList.remove('hidden'); document.querySelectorAll('.screen').forEach(x => x.classList.toggle('on', +x.dataset.s === i)); let b = document.getElementById('status'); b.textContent = status; b.className = 'badge-pill ' + (status === 'DRAFT' ? 'pill-neutral' : status.includes('PAID') ? 'pill-success' : 'pill-info'); document.getElementById('lock').classList.toggle('hidden', i < 2); document.getElementById('revertBtn').style.display = i >= 2 ? 'inline-flex' : 'none'; draw() }
+    function approve() { status = 'APPROVED'; go(2) }
+    function disburse() { status = 'PARTIALLY_PAID'; document.getElementById('results').classList.remove('hidden'); let b = document.getElementById('status'); b.textContent = status; b.className = 'badge-pill pill-success' }
+    function runs() { document.getElementById('runs').classList.remove('hidden'); document.getElementById('run').classList.add('hidden'); document.getElementById('settings').classList.add('hidden') }
+    function settings() { document.getElementById('settings').classList.remove('hidden'); document.getElementById('runs').classList.add('hidden'); document.getElementById('run').classList.add('hidden') }
+    function inline(b) { let tr = b.closest('tr'), n = tr.nextElementSibling; if (n && n.classList.contains('expand')) { n.remove(); return } let r = document.createElement('tr'); r.className = 'expand'; r.innerHTML = `<td colspan="7"><div class="expandbox"><b>Add a variable component for this employee</b><div class="inlineform"><div class="field"><label>Type</label><select><option>Bonus</option><option>Sales Commission</option><option>Support Commission</option></select></div><div class="field"><label>Amount (USD)</label><input placeholder="0.00"></div><div class="field"><label>Payment source</label><span class="toggle"><button class="selected" onclick="rail(this)">Internal</button><button onclick="rail(this)">External</button></span></div><button class="btn btn-fill sm">Submit</button><button class="btn sm" onclick="closeInline(this)">Close</button></div></div></td>`; tr.after(r) }
+    function closeInline(b) { b.closest('tr').remove() }
+    function rail(b) { b.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('selected')); b.classList.add('selected') }
+    function toggleFx() { document.getElementById('fxEditRow').classList.toggle('hidden') }
+    function applyFx() { const v = document.getElementById('fxInput').value; if (!v) return; document.getElementById('fxlabel').innerHTML = `<b>${Number(v).toFixed(4)}</b> EGP/USD · <span class="badge-pill pill-info" style="padding:2px 8px;">Manual Override</span>`; toggleFx() }
+
+    const oblEstimates = { si: 495900.00, tax: 211090.00 };
+    let oblCounter = 1000;
+
+    function calcVariance(type) {
+      const input = document.getElementById(type + 'PortalInput');
+      const out = document.getElementById(type + 'Variance');
+      const portal = parseFloat(input.value);
+      if (isNaN(portal)) { out.textContent = '0.00 EGP'; return; }
+      const diff = portal - oblEstimates[type];
+      const sign = diff > 0 ? '+' : '';
+      out.textContent = `${sign}${diff.toFixed(2)} EGP`;
+      out.style.color = diff === 0 ? 'var(--text2)' : (diff > 0 ? 'var(--danger)' : 'var(--success)');
+    }
+
+    function recordObligation(type) {
+      const input = document.getElementById(type + 'PortalInput');
+      const amt = parseFloat(input.value) || oblEstimates[type];
+      document.getElementById(type + 'Stage').textContent = 'Recorded · Unpaid';
+      document.getElementById(type + 'Stage').className = 'stage-badge recorded';
+      document.getElementById(type + 'RecordBtn').innerHTML = '<i class="fa-solid fa-check"></i> Obligation Recorded';
+      document.getElementById(type + 'RecordBtn').disabled = true;
+      document.getElementById(type + 'PayStage').classList.remove('locked');
+      document.getElementById(type + 'PayStage').querySelector('.stage-hint').innerHTML = '<i class="fa-solid fa-circle-check"></i> Obligation recorded. Choose an account and settlement date to remit payment.';
+      document.getElementById(type + 'PayBtn').disabled = false;
+
+      oblCounter++;
+      const label = type === 'si' ? 'Social Insurance' : 'Income Tax';
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>#${oblCounter}</td><td>${label}</td><td>2026-09</td><td class="num">${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} EGP</td><td class="num">0.00 EGP</td><td><span class="badge-pill pill-info">Accrued</span></td>`;
+      const log = document.getElementById('oblLog');
+      if (log.querySelector('.muted')) log.innerHTML = '';
+      log.appendChild(row);
+    }
+
+    function remitPayment(type) {
+      document.getElementById(type + 'Stage').textContent = 'Settled';
+      document.getElementById(type + 'Stage').className = 'stage-badge settled';
+      document.getElementById(type + 'PayBtn').innerHTML = '<i class="fa-solid fa-check"></i> Payment Remitted';
+      document.getElementById(type + 'PayBtn').disabled = true;
+    }
+
+    draw();
+  </script>
+</body>
+
+</html>

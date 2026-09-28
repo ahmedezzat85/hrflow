@@ -601,4 +601,375 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(tbody.locator('tr:has-text("2026-04")')).toContainText('Recorded — Unpaid');
     await expect(tbody.locator('tr:has-text("2026-03")')).toContainText('Reconciled');
   });
+
+  test('TC-13: U1 Visual Checkpoints — payroll-runs-list and payroll-screen-1-initiation', async ({ page }) => {
+    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const viewList = page.locator('#payrollViewList');
+    await expect(viewList).toBeVisible();
+
+    // 1. Desktop 1440px - Runs List
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: `${artifactDir}/payroll-runs-list.png`, fullPage: false });
+
+    // 2. Tablet 1024px - Runs List
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.screenshot({ path: `${artifactDir}/payroll-runs-list-tablet.png`, fullPage: false });
+
+    // 3. Mobile 390px - Runs List
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${artifactDir}/payroll-runs-list-mobile.png`, fullPage: false });
+
+    // Open Screen 1
+    await page.click('#btnOpenCurrentCycle');
+    const s1 = page.locator('#payrollScreen1');
+    await expect(s1).toBeVisible();
+
+    // 4. Desktop 1440px - Screen 1 Initiation
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-1-initiation.png`, fullPage: false });
+
+    // 5. Tablet 1024px - Screen 1 Initiation
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-1-initiation-tablet.png`, fullPage: false });
+
+    // 6. Mobile 390px - Screen 1 Initiation
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-1-initiation-mobile.png`, fullPage: false });
+  });
+
+  test('TC-14: U2 Visual Checkpoints — payroll-screen-2-review and payroll-screen-3-processing', async ({ page }) => {
+    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    await page.click('#btnOpenCurrentCycle');
+    await page.click('#btnP1Proceed');
+    const s2 = page.locator('#payrollScreen2');
+    await expect(s2).toBeVisible();
+
+    // 1. Desktop 1440px - Screen 2 Review
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-2-review.png`, fullPage: false });
+
+    // 2. Tablet 1024px - Screen 2 Review
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-2-review-tablet.png`, fullPage: false });
+
+    // 3. Mobile 390px - Screen 2 Review
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-2-review-mobile.png`, fullPage: false });
+
+    // Submit & Approve to advance to Screen 3
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.click('#btnP2Approve');
+    const s3 = page.locator('#payrollScreen3');
+    await expect(s3).toBeVisible();
+    await page.waitForTimeout(250);
+
+    // 4. Desktop 1440px - Screen 3 Processing
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-3-processing.png`, fullPage: false, animations: 'disabled' });
+
+    // 5. Tablet 1024px - Screen 3 Processing
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-3-processing-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 6. Mobile 390px - Screen 3 Processing
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-3-processing-mobile.png`, fullPage: false, animations: 'disabled' });
+  });
+
+  test('TC-15: U3 Visual Checkpoints — payroll-screen-4-preview and explicit missing-bank warning case', async ({ page }) => {
+    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    await page.click('#btnOpenCurrentCycle');
+    await page.click('#btnP1Proceed');
+    await page.click('#btnP2Approve');
+    await page.click('#btnP3Next');
+    const s4 = page.locator('#payrollScreen4');
+    await expect(s4).toBeVisible();
+    await page.waitForTimeout(250);
+
+    // 1. Desktop 1440px - Screen 4 Preview
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-4-preview.png`, fullPage: false, animations: 'disabled' });
+
+    // 2. Tablet 1024px - Screen 4 Preview
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-4-preview-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 3. Mobile 390px - Screen 4 Preview
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-4-preview-mobile.png`, fullPage: false, animations: 'disabled' });
+
+    // 4. Explicit Missing-Bank Warning Case (Desktop 1440px & Mobile 390px)
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => {
+      window.PayrollApp.currentPreview = {
+        preview_id: 'prev_warn_u3',
+        period_label: '2026-09',
+        total_external: 9900,
+        total_internal: 36790,
+        total_net: 46690,
+        recipients_count: 8,
+        exceptions: [{ code: 'MISSING_BANK_DETAILS', employee_id: 308, severity: 'warning', message: 'Missing bank details' }]
+      };
+      window.PayrollApp.rows = [
+        { id: 301, name: 'Youssef Adel', baseExt: 1800, baseInt: 4300, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7301' },
+        { id: 302, name: 'Salma Ibrahim', baseExt: 0, baseInt: 4810, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7302' },
+        { id: 303, name: 'Karim Nabil', baseExt: 3100, baseInt: 4500, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7303' },
+        { id: 304, name: 'Mariam Essam', baseExt: 1400, baseInt: 5600, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7304' },
+        { id: 305, name: 'Omar Farouk', baseExt: 0, baseInt: 4630, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7305' },
+        { id: 306, name: 'Nadine Samir', baseExt: 2000, baseInt: 3100, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7306' },
+        { id: 307, name: 'Hassan Tarek', baseExt: 0, baseInt: 5950, deductions: 0, bonuses: [], bank_name: 'Bank', bank_account_masked: '****7307' },
+        { id: 308, name: 'Lina Kamal', baseExt: 1600, baseInt: 3900, deductions: 0, bonuses: [], has_missing_bank: true }
+      ];
+      window.PayrollApp.drawScreen4();
+    });
+    await page.waitForTimeout(150);
+    await expect(page.locator('#p4MissingBankCount')).toHaveText('1');
+    await expect(page.locator('#payrollPaymentPreviewTableBody tr.warnrow')).toHaveCount(1);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-4-preview-warning.png`, fullPage: false, animations: 'disabled' });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-4-preview-warning-mobile.png`, fullPage: false, animations: 'disabled' });
+  });
+
+  test('TC-16: U4 Visual Checkpoints — Screen 5 Payment Confirmation and Disbursal', async ({ page }) => {
+    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    await page.click('#btnOpenCurrentCycle');
+    await page.click('#btnP1Proceed');
+    await page.click('#btnP2Approve');
+    await page.click('#btnP3Next');
+    await page.click('#btnP4Next');
+
+    const s5 = page.locator('#payrollScreen5');
+    await expect(s5).toBeVisible();
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('5. Confirm Disbursal');
+
+    // Simulate warning exception for Lina Kamal (D-006) to match prototype v9
+    await page.evaluate(() => {
+      const exc = [{ code: 'MISSING_BANK_DETAILS', employee_id: 308, severity: 'warning', details: 'Lina Kamal missing bank details — non-blocking (D-006)' }];
+      if (window.PayrollApp.currentRun) {
+        window.PayrollApp.currentRun.exceptions = exc;
+      }
+      window.PayrollApp.currentPreview = {
+        preview_id: 'prev_u4',
+        period_label: '2026-09',
+        final_ext_total: 9900,
+        final_int_total: 36790,
+        total_net: 46690,
+        exceptions: exc
+      };
+      window.PayrollApp.drawScreen5();
+    });
+    await page.waitForTimeout(150);
+
+    // 1. Desktop 1440px - Screen 5 Pre-Disbursal
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('#p5ExtTotal')).toContainText('$9,900.00');
+    await expect(page.locator('#p5IntTotal')).toContainText('$36,790.00');
+    await expect(page.locator('#payrollExceptionList .alertbox')).toBeVisible();
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-pre.png`, fullPage: false, animations: 'disabled' });
+
+    // 2. Tablet 1024px - Screen 5 Pre-Disbursal
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-pre-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 3. Mobile 390px - Screen 5 Pre-Disbursal
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-pre-mobile.png`, fullPage: false, animations: 'disabled' });
+
+    // 4. Confirm & Disburse Action (Single Combined Action)
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.click('#btnP5ConfirmDisburse');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll disbursement confirmed');
+
+    // Results card, table rows & GL journal visible
+    await expect(page.locator('#p5DisburseResultsCard')).toBeVisible();
+    const journalCard = page.locator('#payrollJournalCard');
+    await expect(journalCard).toBeVisible();
+    await expect(journalCard.locator('#payrollJournalBadge')).toHaveText('Posted');
+
+    // Toggle GL journal details to reveal .jr lines
+    await page.click('#btnToggleJournal');
+    await expect(page.locator('#payrollJournalDetails')).toBeVisible();
+    await expect(page.locator('#payrollJournalRows .jr')).toHaveCount(3);
+
+    // Check results table rows have avatar and status pill
+    const resultRows = page.locator('#payrollDisburseResultsTableBody tr');
+    await expect(resultRows).not.toHaveCount(0);
+    await expect(resultRows.first().locator('.avatar')).toBeVisible();
+
+    // 5. Desktop 1440px - Screen 5 Post-Disbursal
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-post.png`, fullPage: false, animations: 'disabled' });
+
+    // 6. Tablet 1024px - Screen 5 Post-Disbursal
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-post-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 7. Mobile 390px - Screen 5 Post-Disbursal
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-post-mobile.png`, fullPage: false, animations: 'disabled' });
+
+    // Advance to Screen 6
+    await page.click('#btnP5ProceedStatutory');
+    await expect(page.locator('#payrollScreen6')).toBeVisible();
+  });
+
+  test('TC-17: U5 Visual Checkpoints — Screen 6 Statutory Reconciliation', async ({ page }) => {
+    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    await page.click('#btnOpenCurrentCycle');
+    await page.click('#btnP1Proceed');
+    await page.click('#btnP2Approve');
+    await page.click('#btnP3Next');
+    await page.click('#btnP4Next');
+    await page.click('#btnP5ConfirmDisburse');
+    await page.click('#btnP5ProceedStatutory');
+
+    const s6 = page.locator('#payrollScreen6');
+    await expect(s6).toBeVisible();
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('6. Statutory Payments');
+
+    // Setup initial Screen 6 state with one recorded obligation (recorded-unpaid state)
+    await page.evaluate(async () => {
+      window.PayrollApp.banks = [
+        { id: 1, name: 'Operating Bank Wire Account', currency: 'USD', number: '****1010' },
+        { id: 2, name: 'Treasury Cash Vault', currency: 'USD', number: '****1020' }
+      ];
+      window.FinanceApi.listStatutoryObligations = async () => [
+        {
+          id: 101,
+          source_type: 'payroll_run',
+          source_id: (window.PayrollApp.currentRun && window.PayrollApp.currentRun.id) || 1,
+          obligation_type: 'social_insurance_employee',
+          period: window.PayrollApp.month,
+          amount_accrued: 495900.00,
+          amount_remitted: 0,
+          currency: 'EGP',
+          status: 'accrued',
+          notes: `payroll_run_id:${(window.PayrollApp.currentRun && window.PayrollApp.currentRun.id) || 1}`
+        }
+      ];
+      window.FinanceApi.getStatutoryObligation = async (id) => ({
+        id: Number(id),
+        amount_accrued: 495900.00,
+        currency: 'EGP',
+        status: 'accrued'
+      });
+      window.FinanceApi.settleStatutoryObligation = async (id, payload) => ({
+        id: Number(id),
+        amount_accrued: 495900.00,
+        amount_remitted: 495900.00,
+        currency: 'EGP',
+        status: 'remitted',
+        ...payload
+      });
+      await window.PayrollApp.loadLinkedStatutoryObligations();
+    });
+    await page.waitForTimeout(200);
+
+    // 1. Desktop 1440px - Screen 6 Recorded-Unpaid State
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('#p6StatutoryBadge')).toHaveText('Recorded — Unpaid');
+    await expect(page.locator('#siCard')).toBeVisible();
+    await expect(page.locator('#taxCard')).toBeVisible();
+    await expect(page.locator('#siCard .pay-stage')).not.toHaveClass(/locked/);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-6-reconciliation-unpaid.png`, fullPage: false, animations: 'disabled' });
+
+    // 2. Tablet 1024px - Screen 6 Recorded-Unpaid State
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-6-reconciliation-unpaid-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 3. Mobile 390px - Screen 6 Recorded-Unpaid State
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-6-reconciliation-unpaid-mobile.png`, fullPage: false, animations: 'disabled' });
+
+    // 4. Settle Social Insurance obligation and record/settle Tax obligation -> Reconciled State
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.click('#btnP6SettleSocialIns');
+    await page.waitForTimeout(150);
+
+    await page.evaluate(async () => {
+      window.FinanceApi.listStatutoryObligations = async () => [
+        {
+          id: 101,
+          source_type: 'payroll_run',
+          source_id: (window.PayrollApp.currentRun && window.PayrollApp.currentRun.id) || 1,
+          obligation_type: 'social_insurance_employee',
+          period: window.PayrollApp.month,
+          amount_accrued: 495900.00,
+          amount_remitted: 495900.00,
+          currency: 'EGP',
+          status: 'remitted',
+          notes: `payroll_run_id:${(window.PayrollApp.currentRun && window.PayrollApp.currentRun.id) || 1}`
+        },
+        {
+          id: 102,
+          source_type: 'payroll_run',
+          source_id: (window.PayrollApp.currentRun && window.PayrollApp.currentRun.id) || 1,
+          obligation_type: 'income_tax',
+          period: window.PayrollApp.month,
+          amount_accrued: 211090.00,
+          amount_remitted: 211090.00,
+          currency: 'EGP',
+          status: 'remitted',
+          notes: `payroll_run_id:${(window.PayrollApp.currentRun && window.PayrollApp.currentRun.id) || 1}`
+        }
+      ];
+      await window.PayrollApp.loadLinkedStatutoryObligations();
+    });
+    await page.waitForTimeout(150);
+    await expect(page.locator('#p6StatutoryBadge')).toHaveText('Reconciled');
+
+    // 5. Desktop 1440px - Screen 6 Reconciled State
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-6-reconciliation-reconciled.png`, fullPage: false, animations: 'disabled' });
+
+    // 6. Tablet 1024px - Screen 6 Reconciled State
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-6-reconciliation-reconciled-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 7. Mobile 390px - Screen 6 Reconciled State
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-screen-6-reconciliation-reconciled-mobile.png`, fullPage: false, animations: 'disabled' });
+
+    // 8. Return to Runs List
+    await page.click('#btnP6Finish');
+    await expect(page.locator('#payrollViewList')).toBeVisible();
+  });
+
+  test('TC-18: U6 Visual Checkpoints — Settings Viewports & Full Parity Suite Verification', async ({ page }) => {
+    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    await page.click('#payrollNavSettings');
+    await expect(page.locator('#payrollViewSettings')).toBeVisible();
+
+    // 1. Desktop 1440px - Settings
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-settings.png`, fullPage: false, animations: 'disabled' });
+
+    // 2. Tablet 1024px - Settings
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-settings-tablet.png`, fullPage: false, animations: 'disabled' });
+
+    // 3. Mobile 390px - Settings
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${artifactDir}/payroll-settings-mobile.png`, fullPage: false, animations: 'disabled' });
+
+    // Return to runs
+    await page.click('button:has-text("Back to payroll runs")');
+    await expect(page.locator('#payrollViewList')).toBeVisible();
+  });
 });
+
