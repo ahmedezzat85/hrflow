@@ -1,4 +1,12 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+
+// Repo-relative visual checkpoints output directory (documented for manual review only)
+const checkpointDir = path.resolve(process.cwd(), 'test-results/payroll-visual-checkpoints');
+if (!fs.existsSync(checkpointDir)) {
+  fs.mkdirSync(checkpointDir, { recursive: true });
+}
 
 test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   test.beforeEach(async ({ page }) => {
@@ -99,15 +107,19 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const rows = table.locator('#payrollTableBody tr');
     await expect(rows).toHaveCount(8);
 
-    // Test adding a bonus via modal
-    await page.click('#btnAddBonusModalBtn');
-    const bonusModal = page.locator('#payrollBonusModal');
-    await expect(bonusModal).toBeVisible();
+    // Test adding a bonus via per-row inline expansion (prototype v9 parity)
+    const firstRowPlusBtn = rows.first().locator('.col-actions .plus');
+    await expect(firstRowPlusBtn).toBeVisible();
+    await firstRowPlusBtn.click();
 
-    await page.fill('#bonusAmountInput', '450.00');
-    await page.fill('#bonusDescriptionInput', 'Top performer award');
-    await page.click('#bonusSaveBtn');
-    await expect(bonusModal).not.toBeVisible();
+    const expandRow = table.locator('tr.expand');
+    await expect(expandRow).toBeVisible();
+
+    const empId = await rows.first().locator('.col-id').textContent();
+    const cleanId = (empId || '301').trim();
+    await page.fill(`#inlineBonusAmount_${cleanId}`, '450.00');
+    await page.click(`#btnSubmitInlineBonus_${cleanId}`);
+    await expect(expandRow).not.toBeVisible();
 
     // Verify row displays bonus badge
     await expect(rows.first().locator('.p-bonus-pill')).toContainText('450');
@@ -603,7 +615,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   });
 
   test('TC-13: U1 Visual Checkpoints — payroll-runs-list and payroll-screen-1-initiation', async ({ page }) => {
-    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const artifactDir = checkpointDir;
     const viewList = page.locator('#payrollViewList');
     await expect(viewList).toBeVisible();
 
@@ -638,7 +650,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   });
 
   test('TC-14: U2 Visual Checkpoints — payroll-screen-2-review and payroll-screen-3-processing', async ({ page }) => {
-    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
     const s2 = page.locator('#payrollScreen2');
@@ -678,7 +690,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   });
 
   test('TC-15: U3 Visual Checkpoints — payroll-screen-4-preview and explicit missing-bank warning case', async ({ page }) => {
-    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
     await page.click('#btnP2Approve');
@@ -736,7 +748,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   });
 
   test('TC-16: U4 Visual Checkpoints — Screen 5 Payment Confirmation and Disbursal', async ({ page }) => {
-    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
     await page.click('#btnP2Approve');
@@ -823,7 +835,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   });
 
   test('TC-17: U5 Visual Checkpoints — Screen 6 Statutory Reconciliation', async ({ page }) => {
-    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
     await page.click('#btnP2Approve');
@@ -948,7 +960,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   });
 
   test('TC-18: U6 Visual Checkpoints — Settings Viewports & Full Parity Suite Verification', async ({ page }) => {
-    const artifactDir = 'C:/Users/aezza/.gemini/antigravity-ide/brain/6710ccd6-a4d3-4bd8-b999-62ede035620f';
+    const artifactDir = checkpointDir;
     await page.click('#payrollNavSettings');
     await expect(page.locator('#payrollViewSettings')).toBeVisible();
 

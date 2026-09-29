@@ -1,28 +1,5 @@
         <section class="page-section" id="a-finance-payroll">
           <div class="payroll-shell">
-            <!-- Topbar Navigation for Payroll Module -->
-            <div class="payroll-topbar">
-              <div class="payroll-brand" onclick="PayrollApp.showPage('list')">
-                <div class="payroll-brand-icon">
-                  <i class="fa-solid fa-money-check-dollar"></i>
-                </div>
-                <div>
-                  <div style="font-weight:800; font-size:1.05rem; color:var(--accent);">HRFlow Payroll</div>
-                  <div style="font-size:0.78rem; color:var(--text2); font-weight:600;">Runs, review, and reconciliation</div>
-                </div>
-              </div>
-              <div class="payroll-nav-links">
-                <button class="payroll-nav-link active" id="payrollNavList" onclick="PayrollApp.showPage('list')">
-                  <i class="fa-solid fa-clock-rotate-left"></i> Payroll Runs
-                </button>
-                <button class="payroll-nav-link" id="payrollNavSettings" onclick="PayrollApp.showPage('settings')">
-                  <i class="fa-solid fa-sliders"></i> Payroll Settings
-                </button>
-              </div>
-              <div style="display:flex; gap:10px; align-items:center;">
-                <span style="color:var(--text2); font-size:0.82rem;">Signed in as <strong id="payrollCurrentUserName">Admin</strong></span>
-              </div>
-            </div>
 
             <!-- ===================== 1. RUNS LIST / HISTORY PAGE ===================== -->
             <div class="payroll-card card" id="payrollViewList">
@@ -159,7 +136,7 @@
                   </div>
                   <div class="payroll-card payroll-stat stat">
                     <div class="lbl label">Projected Net Disbursal</div>
-                    <div class="val value accent" id="p1NetEst" style="color:var(--accent);">$0.00</div>
+                    <div class="val value accent" id="p1NetEst">$0.00</div>
                     <div class="hint sub">Total employee net</div>
                   </div>
                 </div>
@@ -175,9 +152,6 @@
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen2">
                 <div class="title-row">
                   <div class="section-title"><i class="fa-solid fa-list-check"></i> Compensation Review</div>
-                  <button type="button" class="btn btn-sm btn-ghost" id="btnAddBonusModalBtn" onclick="PayrollApp.openBonusModal()">
-                    <i class="fa-solid fa-plus"></i> Add Bonus / Commission
-                  </button>
                 </div>
 
                 <!-- 4 KPI Stat Cards -->
@@ -216,7 +190,7 @@
                         <td class="num payroll-num" id="fBaseExt">-</td>
                         <td class="num payroll-num" id="fBaseInt">-</td>
                         <td class="num payroll-num" id="fBonus">-</td>
-                        <td class="num payroll-num strong accent" id="fNet" style="font-weight:800; color:var(--accent);">-</td>
+                        <td class="num payroll-num strong accent" id="fNet" style="font-weight:800;">-</td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -267,7 +241,7 @@
                         <td class="num payroll-num" id="p3TotSi" style="font-weight:700;">-</td>
                         <td class="num payroll-num" id="p3TotTax" style="font-weight:700;">-</td>
                         <td class="num payroll-num" id="p3TotNetEgp">-</td>
-                        <td class="num payroll-num strong accent" id="p3TotNetUsd" style="font-weight:800; color:var(--accent);">-</td>
+                        <td class="num payroll-num strong accent" id="p3TotNetUsd" style="font-weight:800;">-</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -300,7 +274,7 @@
                   </div>
                   <div class="stat payroll-card payroll-stat">
                     <div class="lbl label">Total Net Disbursal</div>
-                    <div class="val value accent val-accent" id="p4TotalNet" style="color:var(--accent);">$0.00</div>
+                    <div class="val value accent val-accent" id="p4TotalNet">$0.00</div>
                     <div class="hint sub">Total employee net cash &amp; wire</div>
                   </div>
                   <div class="stat payroll-card payroll-stat">
@@ -334,7 +308,7 @@
                         <td></td>
                         <td class="num payroll-num" id="p4TotExt">-</td>
                         <td class="num payroll-num" id="p4TotInt">-</td>
-                        <td class="num payroll-num strong accent" id="p4TotNet" style="font-weight:800; color:var(--accent);">-</td>
+                        <td class="num payroll-num strong accent" id="p4TotNet" style="font-weight:800;">-</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -349,7 +323,7 @@
                 </div>
               </div>
 
-              <!-- ==================== SCREEN 5: PAYMENT CONFIRMATION & DISBURSAL ==================== -->
+              <!-- ==================== SCREEN 5: PAYMENT CONFIRMATION ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen5">
                 <div class="title-row">
                   <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Payment Confirmation</div>
@@ -726,43 +700,5 @@
             </div>
           </div>
 
-          <!-- Add Bonus / Commission Modal (Screen 2) -->
-          <div class="payroll-modal-overlay" id="payrollBonusModal">
-            <div class="payroll-modal-box">
-              <h3 style="margin:0 0 6px 0; font-size:1.15rem; font-weight:800;"><i class="fa-solid fa-gift"></i> Add Bonus or Commission</h3>
-              <p class="payroll-subtitle" style="margin:0 0 14px 0;">Persists as a server-backed preview adjustment for this cycle (D-004).</p>
-              <div class="funding-form" style="display:grid; gap:12px;">
-                <div class="field">
-                  <label for="bonusEmployeeSelect">Target Recipient</label>
-                  <select id="bonusEmployeeSelect"></select>
-                </div>
-                <div class="field">
-                  <label for="bonusTypeSelect">Adjustment Type</label>
-                  <select id="bonusTypeSelect">
-                    <option value="BONUS">Bonus</option>
-                    <option value="COMMISSION">Sales Commission</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="bonusSourceSelect">Payment Rail / Source</label>
-                  <select id="bonusSourceSelect">
-                    <option value="INT">Internal (USD Cash)</option>
-                    <option value="EXT">External (Bank Wire USD)</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="bonusAmountInput">Amount (USD)</label>
-                  <input type="number" step="0.01" min="1" id="bonusAmountInput" placeholder="0.00" />
-                </div>
-                <div class="field">
-                  <label for="bonusDescriptionInput">Description / Purpose</label>
-                  <input type="text" id="bonusDescriptionInput" placeholder="e.g. Q3 Performance Bonus" />
-                </div>
-              </div>
-              <div class="actions" style="margin-top:16px;">
-                <button class="btn btn-ghost" onclick="PayrollApp.closeBonusModal()">Cancel</button>
-                <button class="btn btn-primary" id="bonusSaveBtn" onclick="PayrollApp.saveBonus()">Save Adjustment</button>
-              </div>
-            </div>
-          </div>
+
         </section>

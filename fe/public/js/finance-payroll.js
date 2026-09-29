@@ -813,7 +813,7 @@
             </td>
             <td class="num payroll-num strong">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
             <td class="col-actions" style="text-align:center;">
-              <button type="button" class="plus" onclick="PayrollApp.openBonusModal(${r.id})" title="Add bonus / commission">+</button>
+              <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
             </td>
           </tr>
         `;
@@ -831,41 +831,98 @@
       if (fNet) fNet.textContent = this.money(totTotal);
     },
 
-    openBonusModal(empId) {
-      const modal = document.getElementById('payrollBonusModal');
-      const sel = document.getElementById('bonusEmployeeSelect');
-      const amt = document.getElementById('bonusAmountInput');
-      const desc = document.getElementById('bonusDescriptionInput');
-      if (!modal || !sel) return;
+    toggleInlineBonus(empId, btn) {
+      const tr = (btn && btn.closest('tr')) || document.getElementById(`row_emp_${empId}`);
+      if (!tr) return;
+      const next = tr.nextElementSibling;
+      if (next && next.classList.contains('expand')) {
+        next.remove();
+        return;
+      }
+      // Close other open expand rows
+      const tbody = tr.closest('tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr.expand').forEach(r => r.remove());
+      }
 
-      sel.innerHTML = this.rows.map(r => `<option value="${r.id}" ${String(r.id) === String(empId) ? 'selected' : ''}>${r.name} (ID: ${r.id})</option>`).join('');
-      if (amt) amt.value = '';
-      if (desc) desc.value = '';
-      modal.style.display = 'flex';
+      const row = this.rows.find(r => r.id === empId);
+      const bonuses = (row && row.bonuses) || [];
+      const existingHtml = bonuses.length > 0
+        ? `<div class="existing"><b>Existing additions</b>${bonuses.map((b, idx) => `
+            <span class="tag">${b.type || 'Bonus'} · ${this.money(b.amount)} · ${b.source === 'external' ? 'EXT' : 'INT'}
+              <i class="fa-solid fa-xmark" style="cursor:pointer; margin-left:4px; opacity:0.7;" onclick="PayrollApp.deleteBonus(${empId}, ${idx}, ${b.id || 'null'})" title="Remove"></i>
+            </span>`).join('')}</div>`
+        : `<div class="existing"><b>Add a variable component for this employee</b></div>`;
+
+      const expandTr = document.createElement('tr');
+      expandTr.className = 'expand';
+      expandTr.id = `expandRow_${empId}`;
+      expandTr.innerHTML = `
+        <td colspan="7">
+          <div class="expandbox">
+            ${existingHtml}
+            <div class="inlineform">
+              <div class="field">
+                <label>Type</label>
+                <select id="inlineBonusType_${empId}">
+                  <option value="BONUS">Bonus</option>
+                  <option value="COMMISSION">Sales Commission</option>
+                  <option value="SUPPORT_COMMISSION">Support Commission</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Amount (USD)</label>
+                <input type="number" step="0.01" min="0" placeholder="0.00" id="inlineBonusAmount_${empId}">
+              </div>
+              <div class="field">
+                <label>Payment source</label>
+                <span class="toggle" id="inlineBonusSourceToggle_${empId}">
+                  <button type="button" class="selected" data-source="INT" onclick="PayrollApp.toggleInlineSource(this)">Internal</button>
+                  <button type="button" data-source="EXT" onclick="PayrollApp.toggleInlineSource(this)">External</button>
+                </span>
+              </div>
+              <button type="button" class="btn btn-fill sm" id="btnSubmitInlineBonus_${empId}" onclick="PayrollApp.submitInlineBonus(${empId})">Submit</button>
+              <button type="button" class="btn sm" onclick="PayrollApp.closeInlineBonus(this)">Close</button>
+            </div>
+          </div>
+        </td>
+      `;
+      tr.after(expandTr);
     },
 
-    closeBonusModal() {
-      const modal = document.getElementById('payrollBonusModal');
-      if (modal) modal.style.display = 'none';
+    toggleInlineSource(btn) {
+      const toggle = btn.parentElement;
+      if (!toggle) return;
+      toggle.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
     },
 
-    async saveBonus() {
-      const sel = document.getElementById('bonusEmployeeSelect');
-      const typeSel = document.getElementById('bonusTypeSelect');
-      const srcSel = document.getElementById('bonusSourceSelect');
-      const amtInput = document.getElementById('bonusAmountInput');
-      const descInput = document.getElementById('bonusDescriptionInput');
+    closeInlineBonus(el) {
+      const expandTr = (el && el.closest) ? el.closest('tr.expand') : document.querySelector('tr.expand');
+      if (expandTr) expandTr.remove();
+    },
 
-      if (!sel || !amtInput) return;
-      const empId = Number(sel.value);
+    async submitInlineBonus(empId) {
+      const typeSel = document.getElementById(`inlineBonusType_${empId}`);
+      const amtInput = document.getElementById(`inlineBonusAmount_${empId}`);
+      const toggle = document.getElementById(`inlineBonusSourceToggle_${empId}`);
+      if (!amtInput) return;
+
       const amt = parseFloat(amtInput.value);
       if (!amt || amt <= 0) {
         alert('Please enter a valid bonus amount greater than zero.');
         return;
       }
-      const bType = typeSel ? typeSel.value : 'BONUS';
-      const bSource = srcSel ? srcSel.value : 'INT';
-      const desc = descInput ? descInput.value.trim() : '';
+      const bTypeVal = typeSel ? typeSel.value : 'BONUS';
+      const selectedSourceBtn = toggle ? toggle.querySelector('button.selected') : null;
+      const bSource = (selectedSourceBtn && selectedSourceBtn.getAttribute('data-source')) || 'INT';
+
+      const typeLabelMap = {
+        'BONUS': 'Bonus',
+        'COMMISSION': 'Sales Commission',
+        'SUPPORT_COMMISSION': 'Support Commission'
+      };
+      const bTypeLabel = typeLabelMap[bTypeVal] || 'Bonus';
 
       // Persist to backend preview adjustment if preview is active
       let createdAdjId = null;
@@ -873,10 +930,10 @@
         try {
           const adj = await FinanceApi.addPreviewAdjustment(this.currentPreview.preview_id, {
             employee_id: empId,
-            type: bType,
+            type: bTypeVal,
             amount: amt,
             payment_source: bSource,
-            description: desc
+            description: bTypeLabel
           });
           if (adj && adj.id) createdAdjId = adj.id;
         } catch (err) {
@@ -889,18 +946,35 @@
         if (!row.bonuses) row.bonuses = [];
         row.bonuses.push({
           id: createdAdjId,
-          type: bType === 'COMMISSION' ? 'Sales Commission' : 'Bonus',
+          type: bTypeLabel,
           amount: amt,
           source: bSource.toLowerCase() === 'ext' ? 'external' : 'internal',
-          description: desc
+          description: bTypeLabel
         });
       }
 
-      this.addAudit(`Added ${bType} of $${amt} for employee #${empId}.`);
-      this.closeBonusModal();
+      this.addAudit(`Added ${bTypeLabel} of $${amt} for employee #${empId}.`);
       await this.fetchPreview();
       this.drawScreen2();
       this.showBanner('Bonus / Commission addition saved.', 'blue');
+    },
+
+    // Backward-compatibility shims
+    openBonusModal(empId) {
+      const targetId = empId || (this.rows && this.rows[0] && this.rows[0].id);
+      if (targetId) {
+        const btn = document.getElementById(`btnPlus_${targetId}`);
+        this.toggleInlineBonus(targetId, btn);
+      }
+    },
+
+    closeBonusModal() {
+      this.closeInlineBonus();
+    },
+
+    async saveBonus() {
+      const targetId = this.rows && this.rows[0] && this.rows[0].id;
+      if (targetId) await this.submitInlineBonus(targetId);
     },
 
     async deleteBonus(empId, bonusIdx, adjId) {
@@ -1937,8 +2011,10 @@
       pageRun.classList.toggle('payroll-hidden', page !== 'run');
       pageSettings.classList.toggle('payroll-hidden', page !== 'settings');
 
-      if (navList) navList.classList.toggle('active', page === 'list');
+      if (navList) navList.classList.toggle('active', page === 'list' || page === 'run');
       if (navSettings) navSettings.classList.toggle('active', page === 'settings');
+      const parentNav = document.querySelector('#adminSidebar a[data-page="a-finance-payroll"]');
+      if (parentNav) parentNav.classList.add('active');
 
       if (page === 'list') {
         this.drawRunsList();
@@ -2002,9 +2078,9 @@
   window.PayrollApp = PayrollApp;
 
   // Compatibility stubs
-  window.loadFinancePayroll = async function () {
+  window.loadFinancePayroll = async function (page = 'list') {
     await PayrollApp.init();
-    PayrollApp.showPage('list');
+    if (page) PayrollApp.showPage(page);
   };
   window.openRunPayrollWizardModal = async function () {
     await PayrollApp.init();

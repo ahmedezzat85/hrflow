@@ -38,8 +38,10 @@
           <a class="nav-item" data-page="a-finance-banking" title="Banking &amp; Cash Management"><i class="fa-solid fa-building-columns"></i> <span
               class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
           <a class="nav-item nav-sub-item" data-page="a-finance-accounts" title="Company Accounts" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-building-columns" style="font-size:11px;"></i> <span class="nav-label">Bank Accounts</span></a>
-          <a class="nav-item" data-page="a-finance-payroll" title="Payroll Runs"><i class="fa-solid fa-money-check-dollar"></i> <span
+          <a class="nav-item" data-page="a-finance-payroll" title="Payroll" onclick="if(typeof PayrollApp!=='undefined'&&PayrollApp.showPage)PayrollApp.showPage('list')"><i class="fa-solid fa-money-check-dollar"></i> <span
               class="nav-label">Payroll</span></a>
+          <a class="nav-item nav-sub-item" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs" onclick="if(typeof PayrollApp!=='undefined'&&PayrollApp.showPage)PayrollApp.showPage('list')" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-clock-rotate-left" style="font-size:11px;"></i> <span class="nav-label">Runs</span></a>
+          <a class="nav-item nav-sub-item" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings" onclick="if(typeof PayrollApp!=='undefined'&&PayrollApp.showPage)PayrollApp.showPage('settings')" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-sliders" style="font-size:11px;"></i> <span class="nav-label">Settings</span></a>
           <a class="nav-item" data-page="a-finance-reports" title="Financial Reports & Export"><i class="fa-solid fa-file-excel"></i> <span
               class="nav-label">Reports &amp; Export</span></a>
           <a class="nav-item" data-page="a-finance-settings" title="Finance Settings"><i class="fa-solid fa-sliders"></i> <span

@@ -131,6 +131,8 @@ const titles = {
   'a-finance-spend':['Spend & Payables','Track vendor bills, payments, and recurring subscriptions.'],
   'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
   'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
+  'a-finance-payroll-runs':['Payroll Runs','Review and execute company payroll cycles.'],
+  'a-finance-payroll-settings':['Payroll Settings','Configure payroll bank accounts and cycle defaults.'],
   'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
@@ -153,6 +155,8 @@ function showSection(pageId, portal){
     'a-finance-sales': 'a-finance-invoices',
     'a-finance-spend': 'a-finance-bills',
     'a-finance-banking': 'a-finance-accounts',
+    'a-finance-payroll-runs': 'a-finance-payroll',
+    'a-finance-payroll-settings': 'a-finance-payroll',
   };
 
   const targetSectionId = financeDomainMap[pageId] || pageId;
@@ -162,11 +166,20 @@ function showSection(pageId, portal){
     targetSection.classList.add('active');
   }
 
+  const isPayrollSubItem = (p) => p === 'a-finance-payroll-runs' || p === 'a-finance-payroll-settings';
   document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>{
     const p = n.dataset.page;
-    const isDirect = (p === pageId);
-    const isDomainMatch = (financeDomainMap[p] === targetSectionId || financeDomainMap[pageId] === p);
-    n.classList.toggle('active', isDirect || isDomainMatch);
+    let isActive = false;
+    if (p === pageId) {
+      isActive = true;
+    } else if (p === 'a-finance-payroll' && (pageId === 'a-finance-payroll-runs' || pageId === 'a-finance-payroll-settings')) {
+      isActive = true;
+    } else if (p === 'a-finance-payroll-runs' && pageId === 'a-finance-payroll') {
+      isActive = true;
+    } else if (!isPayrollSubItem(p) && (financeDomainMap[p] === targetSectionId || financeDomainMap[pageId] === p)) {
+      isActive = true;
+    }
+    n.classList.toggle('active', isActive);
   });
 
   const t = titles[pageId] || titles[targetSectionId];
