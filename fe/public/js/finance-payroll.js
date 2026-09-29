@@ -1969,6 +1969,50 @@
         this.fxRateValue = (val && val > 0) ? val : null;
       }
 
+      // Save Social Insurance rates if present
+      const empRateEl = document.getElementById('payrollEmployeeInsuranceRate');
+      const emprRateEl = document.getElementById('payrollEmployerInsuranceRate');
+      if (empRateEl && emprRateEl && typeof FinanceApi !== 'undefined' && typeof FinanceApi.updatePayrollSettings === 'function') {
+        const empRate = parseFloat(empRateEl.value) / 100.0;
+        const emprRate = parseFloat(emprRateEl.value) / 100.0;
+        if (!isNaN(empRate) && !isNaN(emprRate)) {
+          try {
+            await FinanceApi.updatePayrollSettings({ employee_rate: empRate, employer_rate: emprRate });
+            this.employeeInsuranceRate = empRate;
+            this.employerInsuranceRate = emprRate;
+          } catch (err) {
+            console.warn('[PayrollApp] Could not update SI settings:', err);
+          }
+        }
+      }
+
+      // Save Tax Settings / Tax_limit_P if present
+      const taxLimitPEl = document.getElementById('payrollTaxLimitP');
+      const taxEffectiveFromEl = document.getElementById('payrollTaxEffectiveFrom');
+      if (taxLimitPEl && typeof FinanceApi !== 'undefined' && typeof FinanceApi.createTaxSettings === 'function') {
+        const pVal = parseFloat(taxLimitPEl.value);
+        const fromMonth = (taxEffectiveFromEl && taxEffectiveFromEl.value) ? `${taxEffectiveFromEl.value}-01` : `${this.month}-01`;
+        if (!isNaN(pVal) && pVal >= 0) {
+          try {
+            let brackets = (this.currentTaxSettings && this.currentTaxSettings.brackets) || [];
+            if (!brackets || brackets.length === 0) {
+              if (typeof FinanceApi.getTaxSettingsTemplate === 'function') {
+                const tmpl = await FinanceApi.getTaxSettingsTemplate();
+                if (tmpl && tmpl.brackets) brackets = tmpl.brackets;
+              }
+            }
+            const savedTax = await FinanceApi.createTaxSettings({
+              effective_from: fromMonth,
+              tax_limit_p_egp: pVal,
+              brackets: brackets
+            });
+            this.currentTaxSettings = savedTax;
+          } catch (err) {
+            console.warn('[PayrollApp] Could not update Tax settings:', err);
+          }
+        }
+      }
+
       await this.fetchPreview();
       this.persistFundingAccounts();
       this.drawPeriodLabel();
@@ -2017,6 +2061,44 @@
         this.drawFundingAccounts();
         const setFxInput = document.getElementById('payrollSetFxRate');
         if (setFxInput) setFxInput.value = this.fxRateValue || '';
+
+        // Populate Social Insurance rates
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollSettings === 'function') {
+          FinanceApi.getPayrollSettings().then(st => {
+            if (st) {
+              const empEl = document.getElementById('payrollEmployeeInsuranceRate');
+              const emprEl = document.getElementById('payrollEmployerInsuranceRate');
+              if (empEl && st.employee_rate !== undefined) empEl.value = (st.employee_rate * 100).toFixed(2);
+              if (emprEl && st.employer_rate !== undefined) emprEl.value = (st.employer_rate * 100).toFixed(2);
+            }
+          }).catch(e => console.warn('[PayrollApp] Could not load SI settings:', e));
+        }
+
+        // Populate Income Tax Settings & Tax_limit_P
+        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getEffectiveTaxSettings === 'function') {
+          const pStart = (this.start && this.start.length >= 7) ? `${this.start.slice(0, 7)}-01` : `${this.month}-01`;
+          FinanceApi.getEffectiveTaxSettings(pStart).then(ts => {
+            if (ts) {
+              this.currentTaxSettings = ts;
+              const pEl = document.getElementById('payrollTaxLimitP');
+              const fromEl = document.getElementById('payrollTaxEffectiveFrom');
+              if (pEl && ts.tax_limit_p_egp !== undefined) pEl.value = Number(ts.tax_limit_p_egp);
+              if (fromEl && ts.effective_from) fromEl.value = ts.effective_from.slice(0, 7);
+            }
+          }).catch(async (e) => {
+            console.warn('[PayrollApp] Could not load effective tax settings, attempting template:', e);
+            if (typeof FinanceApi.getTaxSettingsTemplate === 'function') {
+              try {
+                const tmpl = await FinanceApi.getTaxSettingsTemplate();
+                if (tmpl) {
+                  this.currentTaxSettings = tmpl;
+                  const pEl = document.getElementById('payrollTaxLimitP');
+                  if (pEl && tmpl.tax_limit_p_egp !== undefined) pEl.value = Number(tmpl.tax_limit_p_egp);
+                }
+              } catch (_) {}
+            }
+          });
+        }
       }
     },
 

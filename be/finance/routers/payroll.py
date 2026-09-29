@@ -232,12 +232,13 @@ def submit_payroll_run(
 @router.post("/runs/{run_id}/approve", response_model=PayrollRunResponse)
 def approve_payroll_run(
     run_id: int = Path(..., description="Payroll Run ID to approve"),
+    allow_self_approval: bool = Query(False, description="Allow self-approval to bypass maker-checker"),
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.write")),
 ):
     """Maker-checker approval for payroll run. Enforces blocking exception verification and prevents self-approval."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    return service.approve_run(run_id=run_id, user_email=user_email)
+    return service.approve_run(run_id=run_id, user_email=user_email, allow_self_approval=allow_self_approval)
 
 
 @router.post("/runs/{run_id}/finalize", response_model=PayrollRunResponse)

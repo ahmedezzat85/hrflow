@@ -6608,7 +6608,8 @@ async getEntityActivity(entityType, entityId) {
         run.approved_by = "cfo@voyance.health";
         return run;
       }
-      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/approve`);
+      const query = allowSelfApproval ? "?allow_self_approval=true" : "";
+      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/approve${query}`);
     },
 
     async finalizePayrollRun(runId) {
@@ -6940,6 +6941,43 @@ async getEntityActivity(entityType, entityId) {
         return FinanceMockState.payrollSettings;
       }
       return apiRequest("PUT", "/api/finance/payroll/settings", payload);
+    },
+
+    async getEffectiveTaxSettings(periodStart) {
+      if (_isMock()) {
+        return {
+          id: 1,
+          effective_from: "2026-01-01",
+          tax_limit_p_egp: 20000.0,
+          brackets: [],
+          created_at: new Date().toISOString(),
+        };
+      }
+      return apiRequest("GET", `/api/finance/payroll/tax-settings/effective?period_start=${periodStart}`);
+    },
+
+    async getTaxSettingsTemplate() {
+      if (_isMock()) {
+        return {
+          effective_from: "2026-01-01",
+          tax_limit_p_egp: 20000.0,
+          brackets: [],
+        };
+      }
+      return apiRequest("GET", "/api/finance/payroll/tax-settings/template");
+    },
+
+    async createTaxSettings(payload) {
+      if (_isMock()) {
+        return {
+          id: 2,
+          effective_from: payload.effective_from,
+          tax_limit_p_egp: Number(payload.tax_limit_p_egp),
+          brackets: payload.brackets || [],
+          created_at: new Date().toISOString(),
+        };
+      }
+      return apiRequest("POST", "/api/finance/payroll/tax-settings", payload);
     },
 
     getLastCorrelationId() {

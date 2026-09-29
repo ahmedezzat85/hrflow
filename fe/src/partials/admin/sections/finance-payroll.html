@@ -673,6 +673,27 @@
                     </div>
                   </div>
                 </div>
+
+                <div class="payroll-card" style="box-shadow:none;" id="payrollTaxSettingsCard">
+                  <div class="payroll-header-row" style="padding:12px 16px;">
+                    <div>
+                      <div class="payroll-panel-title">Egyptian Income Tax Settings &amp; Personal Exemption</div>
+                      <div class="payroll-subtitle" style="font-size:0.78rem;">Effective-dated statutory parameters (system_admin only).</div>
+                    </div>
+                  </div>
+                  <div class="funding-form">
+                    <div class="field">
+                      <label for="payrollTaxLimitP">Annual Personal Exemption — Tax_limit_P (EGP)</label>
+                      <input type="number" step="1" min="0" id="payrollTaxLimitP" placeholder="20000" value="20000" />
+                      <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">Annual personal exemption limit (TAX_LIMIT_P, default 20,000 EGP).</span>
+                    </div>
+                    <div class="field">
+                      <label for="payrollTaxEffectiveFrom">Effective From</label>
+                      <input type="month" id="payrollTaxEffectiveFrom" value="2026-01" />
+                      <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">Effective start month for this tax exemption version (YYYY-MM).</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="save-bar">

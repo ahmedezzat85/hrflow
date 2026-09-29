@@ -5,6 +5,7 @@ Maker-Checker Approvals, Payment Execution, and GL Journal Posting.
 """
 import hashlib
 import json
+import os
 import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
@@ -1492,8 +1493,9 @@ class PayrollService:
                 detail=f"Cannot approve payroll run #{run_id}: {len(blocking)} blocking exception(s) remain unresolved (e.g. {blocking[0].get('title')})."
             )
 
-        # Maker-checker validation: Submitter cannot self-approve
-        if not allow_self_approval and user_email:
+        # Maker-checker validation: Submitter cannot self-approve (can be bypassed via allow_self_approval or ENFORCE_MAKER_CHECKER=false)
+        enforce_mc = os.getenv("ENFORCE_MAKER_CHECKER", "true").lower() == "true"
+        if enforce_mc and not allow_self_approval and user_email:
             submitter = (run.submitted_by or "").strip().lower()
             current = user_email.strip().lower()
             if submitter and current == submitter:

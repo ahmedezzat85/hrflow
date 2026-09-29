@@ -531,6 +531,11 @@ def test_maker_checker_segregation_blocks_self_approval(app_client, admin_cookie
     assert app_res.status_code == 400
     assert "maker-checker" in app_res.json()["detail"].lower()
 
+    # When allow_self_approval=true is provided (e.g. from single-admin UI Submit & Approve), self-approval succeeds
+    app_bypass_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
+    assert app_bypass_res.status_code == 200
+    assert app_bypass_res.json()["status"] == "approved"
+
 
 def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_cookies, db_session, seed_payroll_env):
     """Verifies that employees without compensation plans produce blocking exceptions and no preview lines."""
