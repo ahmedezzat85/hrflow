@@ -4,6 +4,7 @@ Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import date, datetime
 from enum import Enum
+import json
 from typing import Optional, List, Dict, Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator, field_validator
 
@@ -1949,6 +1950,11 @@ class PayrollLineResponse(BaseModel):
     employee_tax_usd_equivalent: Optional[float] = 0.0
     final_internal_net_egp: Optional[float] = 0.0
     final_internal_payment_usd: Optional[float] = None
+    taxable_gross_egp: Optional[float] = 0.0
+    tax_employee_si_egp: Optional[float] = 0.0
+    annual_taxed_salary_egp: Optional[float] = 0.0
+    annual_tax_egp: Optional[float] = 0.0
+    tax_settings_version_id: Optional[int] = None
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2209,6 +2215,7 @@ class PayrollRunResponse(BaseModel):
     total_additions: Optional[float] = 0.0
     total_employee_tax_egp: Optional[float] = 0.0
     total_social_insurance_egp: Optional[float] = 0.0
+    tax_settings_version_id: Optional[int] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -2532,6 +2539,55 @@ class PayrollSettingsResponse(BaseModel):
     employer_rate: float
     updated_at: Optional[Union[str, datetime]] = None
     updated_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TaxBracket(BaseModel):
+    upper_bound: Optional[float] = None
+    rate: float = Field(..., ge=0.0, le=1.0)
+    base: Optional[float] = None
+    fixed: float = 0.0
+
+
+class PayrollTaxSettingsCreate(BaseModel):
+    effective_from: str = Field(..., pattern=r"^\d{4}-\d{2}-01$")
+    tax_limit_p_egp: float = Field(20000.0, ge=0.0)
+    brackets: List[TaxBracket] = Field(..., min_length=1)
+
+
+class PayrollTaxSettingsResponse(BaseModel):
+    id: int
+    effective_from: str
+    tax_limit_p_egp: float
+    brackets: List[TaxBracket]
+    created_at: Optional[Union[str, datetime]] = None
+    created_by: Optional[str] = None
+    updated_at: Optional[Union[str, datetime]] = None
+    updated_by: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_brackets(cls, data: Any) -> Any:
+        if hasattr(data, "brackets_json"):
+            bj = data.brackets_json
+            parsed = json.loads(bj) if isinstance(bj, str) else (bj or [])
+            return {
+                "id": data.id,
+                "effective_from": data.effective_from,
+                "tax_limit_p_egp": data.tax_limit_p_egp,
+                "brackets": parsed,
+                "created_at": data.created_at,
+                "created_by": data.created_by,
+                "updated_at": data.updated_at,
+                "updated_by": data.updated_by,
+            }
+        elif isinstance(data, dict):
+            bj = data.get("brackets_json")
+            if bj and "brackets" not in data:
+                data["brackets"] = json.loads(bj) if isinstance(bj, str) else bj
+        return data
 
     class Config:
         from_attributes = True

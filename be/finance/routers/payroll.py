@@ -24,6 +24,8 @@ from finance.schemas import (
     PayrollAdjustmentResponse,
     PayrollSettingsUpdate,
     PayrollSettingsResponse,
+    PayrollTaxSettingsCreate,
+    PayrollTaxSettingsResponse,
 )
 from finance.services.payroll_service import PayrollService
 
@@ -339,4 +341,59 @@ def update_payroll_settings(
         employer_rate=payload.employer_rate,
         user_email=user_email,
     )
+
+
+# -----------------------------------------------------------------------------
+# Effective-Dated Income Tax Settings Endpoints (D-009)
+# -----------------------------------------------------------------------------
+@router.get("/tax-settings/template")
+def get_tax_brackets_template(
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll_tax.read")),
+):
+    """Get owner-approved default tax brackets and limit template."""
+    return service.get_default_tax_brackets_template()
+
+
+@router.get("/tax-settings/effective", response_model=PayrollTaxSettingsResponse)
+def get_effective_tax_settings(
+    period_start: str = Query(..., description="First day of payroll period YYYY-MM-01"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll_tax.read")),
+):
+    """Resolve effective income tax settings for a payroll period."""
+    settings = service.get_effective_tax_settings(period_start)
+    if not settings:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No effective tax settings found on or before {period_start}",
+        )
+    return settings
+
+
+@router.get("/tax-settings", response_model=List[PayrollTaxSettingsResponse])
+def list_tax_settings(
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll_tax.read")),
+):
+    """List all effective-dated income tax settings versions."""
+    return service.list_tax_settings()
+
+
+@router.post("/tax-settings", response_model=PayrollTaxSettingsResponse, status_code=status.HTTP_201_CREATED)
+def create_tax_settings(
+    payload: PayrollTaxSettingsCreate,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll_tax.write")),
+):
+    """Create a new effective-dated payroll tax settings version (system_admin only)."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    brackets_dicts = [b.model_dump() for b in payload.brackets]
+    return service.create_tax_settings(
+        effective_from=payload.effective_from,
+        tax_limit_p_egp=payload.tax_limit_p_egp,
+        brackets=brackets_dicts,
+        user_email=user_email,
+    )
+
 

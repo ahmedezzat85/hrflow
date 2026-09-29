@@ -26,6 +26,7 @@ from finance.models import (
     StatutoryObligationDB,
     AccountTransferDB,
     PayrollSettingsDB,
+    PayrollTaxSettingsDB,
 )
 from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
@@ -108,6 +109,88 @@ class PayrollService:
         self.db.commit()
         self.db.refresh(settings)
         return settings
+
+    def get_effective_tax_settings(self, period_start: str) -> Optional[PayrollTaxSettingsDB]:
+        """
+        Resolves effective income tax settings for a payroll period.
+        Rule: Newest version where effective_from <= first day of payroll period.
+        """
+        return (
+            self.db.query(PayrollTaxSettingsDB)
+            .filter(PayrollTaxSettingsDB.effective_from <= period_start)
+            .order_by(desc(PayrollTaxSettingsDB.effective_from), desc(PayrollTaxSettingsDB.id))
+            .first()
+        )
+
+    def list_tax_settings(self) -> List[PayrollTaxSettingsDB]:
+        """Lists all payroll income tax settings versions in descending order of effective_from."""
+        return (
+            self.db.query(PayrollTaxSettingsDB)
+            .order_by(desc(PayrollTaxSettingsDB.effective_from), desc(PayrollTaxSettingsDB.id))
+            .all()
+        )
+
+    def create_tax_settings(
+        self,
+        effective_from: str,
+        tax_limit_p_egp: float,
+        brackets: List[Dict[str, Any]],
+        user_email: Optional[str] = None,
+    ) -> PayrollTaxSettingsDB:
+        """
+        Creates a new effective-dated payroll tax settings record (system_admin only).
+        Validates effective_from is the first day of a month (YYYY-MM-01).
+        """
+        import re
+        if not re.match(r"^\d{4}-\d{2}-01$", effective_from):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"effective_from '{effective_from}' must be the first day of a calendar month (format: YYYY-MM-01)",
+            )
+        if tax_limit_p_egp < 0.0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="tax_limit_p_egp must be non-negative",
+            )
+        if not brackets:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one tax bracket must be provided",
+            )
+
+        settings = PayrollTaxSettingsDB(
+            effective_from=effective_from,
+            tax_limit_p_egp=float(tax_limit_p_egp),
+            brackets_json=json.dumps(brackets),
+            created_at=datetime.utcnow(),
+            created_by=user_email or "system",
+            updated_at=datetime.utcnow(),
+            updated_by=user_email or "system",
+        )
+        self.db.add(settings)
+        self.db.commit()
+        self.db.refresh(settings)
+
+        self._log_audit(
+            action="payroll.tax_settings.created",
+            target_type="payroll_tax_settings",
+            target_id=str(settings.id),
+            actor_email=user_email,
+            details={
+                "effective_from": settings.effective_from,
+                "tax_limit_p_egp": settings.tax_limit_p_egp,
+                "brackets_count": len(brackets),
+            },
+        )
+        return settings
+
+    def get_default_tax_brackets_template(self) -> Dict[str, Any]:
+        """Returns the owner-approved default tax brackets and limit template."""
+        from finance.services.payroll_calculation_helper import DEFAULT_TAX_LIMIT_P, DEFAULT_TAX_BRACKETS
+        return {
+            "tax_limit_p_egp": DEFAULT_TAX_LIMIT_P,
+            "brackets": DEFAULT_TAX_BRACKETS,
+        }
 
     def list_runs(
         self,
@@ -207,6 +290,16 @@ class PayrollService:
         emp_rate = float(settings.employee_rate)
         org_rate = float(settings.employer_rate)
 
+        tax_settings_db = self.get_effective_tax_settings(period_start)
+        tax_settings_dict = None
+        if tax_settings_db:
+            tax_settings_dict = {
+                "id": tax_settings_db.id,
+                "effective_from": tax_settings_db.effective_from,
+                "tax_limit_p_egp": tax_settings_db.tax_limit_p_egp,
+                "brackets": json.loads(tax_settings_db.brackets_json or "[]"),
+            }
+
         lines: List[Dict[str, Any]] = []
         recipients: List[Dict[str, Any]] = []
         exceptions: List[Dict[str, Any]] = []
@@ -278,6 +371,7 @@ class PayrollService:
                 employer_rate=org_rate,
                 bonus_usd=0.0,
                 commission_usd=0.0,
+                tax_settings=tax_settings_dict,
             )
             if stat_exceptions:
                 exceptions.extend(stat_exceptions)
@@ -312,6 +406,11 @@ class PayrollService:
                     emp_tax_usd_eq_val = 0.0
                     fin_int_net_egp_val = 0.0
                     fin_int_pay_usd_val = None
+                    taxable_gross_egp_val = 0.0
+                    tax_emp_si_egp_val = 0.0
+                    ann_taxed_sal_egp_val = 0.0
+                    ann_tax_egp_val = 0.0
+                    tax_settings_ver_id = None
                 else:
                     deduction = stat_res["deductions_total_usd"]
                     net = stat_res["net_pay_usd"]
@@ -335,6 +434,11 @@ class PayrollService:
                     emp_tax_usd_eq_val = stat_res["employee_tax_usd_equivalent"]
                     fin_int_net_egp_val = stat_res["final_internal_net_egp"]
                     fin_int_pay_usd_val = stat_res["final_internal_payment_usd"]
+                    taxable_gross_egp_val = stat_res.get("taxable_gross_egp", 0.0)
+                    tax_emp_si_egp_val = stat_res.get("tax_employee_si_egp", 0.0)
+                    ann_taxed_sal_egp_val = stat_res.get("annual_taxed_salary_egp", 0.0)
+                    ann_tax_egp_val = stat_res.get("annual_tax_egp", 0.0)
+                    tax_settings_ver_id = stat_res.get("tax_settings_version_id")
 
                     tot_emp_tax_egp += emp_tax_egp_val
                     tot_si_egp += tot_si_egp_val
@@ -377,6 +481,11 @@ class PayrollService:
                     "employee_tax_usd_equivalent": emp_tax_usd_eq_val,
                     "final_internal_net_egp": fin_int_net_egp_val,
                     "final_internal_payment_usd": fin_int_pay_usd_val,
+                    "taxable_gross_egp": taxable_gross_egp_val,
+                    "tax_employee_si_egp": tax_emp_si_egp_val,
+                    "annual_taxed_salary_egp": ann_taxed_sal_egp_val,
+                    "annual_tax_egp": ann_tax_egp_val,
+                    "tax_settings_version_id": tax_settings_ver_id,
                     "currency": "USD",
                     "bank_name": bank_name or "Unassigned",
                     "bank_account_masked": masked_acc or "Not Provided",
@@ -427,6 +536,7 @@ class PayrollService:
             "tot_employer_cost": tot_employer_cost,
             "tot_emp_tax_egp": tot_emp_tax_egp,
             "tot_si_egp": tot_si_egp,
+            "tax_settings_version_id": tax_settings_dict["id"] if tax_settings_dict else None,
         }
 
     def preview_run(
@@ -564,6 +674,7 @@ class PayrollService:
             "final_ext_total": final_ext_total,
             "total_employee_tax_egp": round(tot_emp_tax_egp, 2),
             "total_social_insurance_egp": round(tot_si_egp, 2),
+            "tax_settings_version_id": snapshot_data.get("tax_settings_version_id"),
             "prior_period_total": round(prior_total, 2),
             "change_amount": net_delta,
             "has_blocking_exceptions": has_blocking,
@@ -914,6 +1025,11 @@ class PayrollService:
                 employee_tax_usd_equivalent=line_data["employee_tax_usd_equivalent"],
                 final_internal_net_egp=line_data["final_internal_net_egp"],
                 final_internal_payment_usd=line_data["final_internal_payment_usd"],
+                taxable_gross_egp=line_data.get("taxable_gross_egp", 0.0),
+                tax_employee_si_egp=line_data.get("tax_employee_si_egp", 0.0),
+                annual_taxed_salary_egp=line_data.get("annual_taxed_salary_egp", 0.0),
+                annual_tax_egp=line_data.get("annual_tax_egp", 0.0),
+                tax_settings_version_id=line_data.get("tax_settings_version_id"),
                 bank_name=line_data["bank_name"],
                 bank_account_masked=line_data["bank_account_masked"],
                 payment_status="pending",
@@ -957,6 +1073,7 @@ class PayrollService:
         run.total_employer_cost = round(tot_net + tot_employer_cost, 2)
         run.total_employee_tax_egp = round(tot_emp_tax_egp, 2)
         run.total_social_insurance_egp = round(tot_si_egp, 2)
+        run.tax_settings_version_id = snapshot_data.get("tax_settings_version_id")
         run.headcount = len(employees)
         run.payment_date = payment_date or period_end
         run.preview_id = f"PRV-{period_label.replace('-', '')}-{uuid.uuid4().hex[:6].upper()}"
@@ -1065,6 +1182,7 @@ class PayrollService:
             preview_id=preview_id or preview["preview_id"],
             preview_version=preview_version or preview["preview_version"],
             source_version=preview["source_version"],
+            tax_settings_version_id=preview.get("tax_settings_version_id"),
             created_by=user_email,
             created_at=datetime.utcnow(),
             submitted_by=user_email if submit_for_approval else None,
@@ -1118,6 +1236,11 @@ class PayrollService:
                 employee_tax_usd_equivalent=pl.get("employee_tax_usd_equivalent"),
                 final_internal_net_egp=pl.get("final_internal_net_egp"),
                 final_internal_payment_usd=pl.get("final_internal_payment_usd"),
+                taxable_gross_egp=pl.get("taxable_gross_egp", 0.0),
+                tax_employee_si_egp=pl.get("tax_employee_si_egp", 0.0),
+                annual_taxed_salary_egp=pl.get("annual_taxed_salary_egp", 0.0),
+                annual_tax_egp=pl.get("annual_tax_egp", 0.0),
+                tax_settings_version_id=pl.get("tax_settings_version_id"),
                 bank_name=pl.get("bank_name", "Unassigned"),
                 bank_account_masked=pl.get("bank_account_masked", "Not Provided"),
                 payment_status="pending",
@@ -1843,6 +1966,7 @@ class PayrollService:
             "paid_by": run.paid_by,
             "journal_transaction_id": run.journal_transaction_id,
             "has_blocking_exceptions": has_blocking,
+            "tax_settings_version_id": run.tax_settings_version_id,
         }
 
     def _format_line_dict(self, l: PayrollLineDB) -> Dict[str, Any]:
@@ -1874,6 +1998,11 @@ class PayrollService:
             "employee_tax_usd_equivalent": l.employee_tax_usd_equivalent,
             "final_internal_net_egp": l.final_internal_net_egp,
             "final_internal_payment_usd": l.final_internal_payment_usd,
+            "taxable_gross_egp": l.taxable_gross_egp or 0.0,
+            "tax_employee_si_egp": l.tax_employee_si_egp or 0.0,
+            "annual_taxed_salary_egp": l.annual_taxed_salary_egp or 0.0,
+            "annual_tax_egp": l.annual_tax_egp or 0.0,
+            "tax_settings_version_id": l.tax_settings_version_id,
             "net_pay": l.net_pay or 0.0,
             "amount": l.net_pay or 0.0,
             "currency": l.payroll_run.currency if l.payroll_run else "USD",

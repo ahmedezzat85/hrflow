@@ -22,6 +22,7 @@ from finance.models import (
     PaymentTypeDB,
     EmployeeCompensationPlanDB,
     PayrollSettingsDB,
+    PayrollTaxSettingsDB,
 )
 from db import get_session_factory
 from finance.services.payroll_service import PayrollService
@@ -81,6 +82,21 @@ def setup_social_ins_env(db_session):
     else:
         settings.employee_rate = 0.11
         settings.employer_rate = 0.18
+
+    import json
+    db_session.query(PayrollTaxSettingsDB).filter(PayrollTaxSettingsDB.effective_from != "2026-01-01").delete()
+    tax_settings = db_session.query(PayrollTaxSettingsDB).filter_by(effective_from="2026-01-01").first()
+    if not tax_settings:
+        tax_settings = PayrollTaxSettingsDB(
+            effective_from="2026-01-01",
+            tax_limit_p_egp=20000.0,
+            brackets_json=json.dumps([{"upper_bound": None, "rate": 0.0, "base": None, "fixed": 0.0}]),
+            created_by="test",
+        )
+        db_session.add(tax_settings)
+    else:
+        tax_settings.brackets_json = json.dumps([{"upper_bound": None, "rate": 0.0, "base": None, "fixed": 0.0}])
+        tax_settings.tax_limit_p_egp = 20000.0
     db_session.commit()
 
     # Clean existing test data

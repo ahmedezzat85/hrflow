@@ -137,6 +137,25 @@ This document records durable product and architectural decisions approved by th
   - Verified against `feature/payroll-deductions` branch code: `be/finance/routers/payroll.py`, `be/finance/routers/statutory.py`, `be/finance/services/payroll_service.py`, `be/core/permissions.py`, `be/core/rbac_seed.py`, `be/finance/schemas.py`, `fe/api/finance/payroll-api.js`, `fe/api/finance/statutory-api.js`, `fe/public/js/finance-payroll.js`.
   - *Implementation Status:* In progress (six-screen redesign implementation).
 
+### D-009 — Payroll Income Tax Calculation, Effective-Dated Persistence, and NET Basis Solver
+- **Status:** Accepted
+- **Decision:**
+  - **Scope:** Income tax applies strictly to internal salary lines (`component_type="internal_usd_cash"`). External lines (`external_usd`) are never taxed and do not require tax settings to exist.
+  - **Calculation Authority:** Implements the owner's Egyptian income tax formula verbatim from the Excel model, preserving exact inclusive thresholds, tax jumps, unrounded Decimal arithmetic, and monthly tax rounded with `ROUND_HALF_UP` to 0.01 EGP.
+  - **Social Insurance Integration:** For insured employees, employee SI is deducted from gross before annualization (`ANNUAL_TAXED = (taxable gross - employee SI) x 12 - TAX_LIMIT_P`). For uninsured employees, SI = 0.
+  - **Variable Compensation:** Bonuses and commissions are added to taxable gross after recurring gross determination and taxed forward; they do not feed or alter the recurring NET basis solver target.
+  - **NET Basis Solver:** Inverts the bracket function for target net $N$, limit $L$, and employee SI $S$ across ascending tax bands (`Y = (12N - L - r*b + F) / (1 - r)`). Accepts the first band where $Y$ lies within the band (lowest valid gross rule). Self-checks that forward tax calculation on derived gross matches target net within 0.01 EGP.
+  - **Effective-Dated Persistence:** Settings (`tax_limit_p_egp` and brackets JSON) are persisted in `finance_payroll_tax_settings` table (Alembic migration `0023_payroll_income_tax_settings`). `effective_from` must be the first of a calendar month (`YYYY-MM-01`). A payroll run resolves the newest settings record with `effective_from` on or before the period start date.
+  - **Blocking Safeguard:** If any internal salary line exists and no tax settings record is resolved for the period, the calculation emits the blocking exception `MISSING_TAX_SETTINGS`, which blocks run approval.
+  - **Snapshot Immutability:** Persisted runs store `tax_settings_version_id` on the run and line-level snapshots (`taxable_gross_egp`, `tax_employee_si_egp`, `annual_taxed_salary_egp`, `annual_tax_egp`, `tax_settings_version_id`). Persisted runs are never silently recalculated when new tax settings are created.
+  - **RBAC Governance:** New permission keys `finance.payroll_tax.read` and `finance.payroll_tax.write` restricted to `system_admin`.
+- **Rationale:**
+  - Egyptian income tax is mandatory for internal payroll cash flows. Applying the owner's exact formula preserves parity with existing manual spreadsheets while enforcing auditability, effective-dating, and immutability.
+- **Evidence / Reference:**
+  - Owner-approved Project discussion (September 29, 2026), `docs/payroll/12-payroll-income-tax-calculation-spec.md`.
+  - Implemented in `be/finance/services/payroll_calculation_helper.py`, `be/finance/services/payroll_service.py`, `be/finance/models.py`, `be/finance/routers/payroll.py`, `be/migrations/versions/0023_payroll_income_tax_settings.py`, and verified in `be/tests/test_payroll_income_tax.py`.
+  - *Implementation Status:* Backend Foundation Implemented (Phase 1).
+
 
 ---
 

@@ -617,6 +617,7 @@ class PayrollRunDB(Base):
     variance_summary_json = Column(Text, default="{}")
     total_employee_tax_egp = Column(Float, default=0.0, nullable=True)
     total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
+    tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
     adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
@@ -624,6 +625,7 @@ class PayrollRunDB(Base):
     external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
     internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
     journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
+    tax_settings = relationship("PayrollTaxSettingsDB", foreign_keys=[tax_settings_version_id])
 
 
 class PayrollAdjustmentDB(Base):
@@ -684,6 +686,11 @@ class PayrollLineDB(Base):
     employee_tax_usd_equivalent = Column(Float, default=0.0, nullable=True)
     final_internal_net_egp = Column(Float, default=0.0, nullable=True)
     final_internal_payment_usd = Column(Float, nullable=True)
+    taxable_gross_egp = Column(Float, default=0.0, nullable=True)
+    tax_employee_si_egp = Column(Float, default=0.0, nullable=True)
+    annual_taxed_salary_egp = Column(Float, default=0.0, nullable=True)
+    annual_tax_egp = Column(Float, default=0.0, nullable=True)
+    tax_settings_version_id = Column(Integer, nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_masked = Column(String(50), nullable=True)
     payment_status = Column(String(30), default="pending")  # pending / paid / failed
@@ -860,4 +867,20 @@ class PayrollSettingsDB(Base):
 
 
 FinancePayrollSettingsDB = PayrollSettingsDB
+
+
+class PayrollTaxSettingsDB(Base):
+    __tablename__ = "finance_payroll_tax_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    effective_from = Column(String(20), nullable=False, index=True)  # YYYY-MM-01
+    tax_limit_p_egp = Column(Float, default=20000.0, nullable=False)
+    brackets_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(String(255), nullable=True)
+
+
+FinancePayrollTaxSettingsDB = PayrollTaxSettingsDB
 

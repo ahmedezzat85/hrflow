@@ -17,6 +17,7 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
     EmployeeCompensationPlanDB,
+    PayrollTaxSettingsDB,
 )
 from db import get_session_factory
 
@@ -60,6 +61,19 @@ def seed_payroll_env(db_session):
     if not pt:
         pt = PaymentTypeDB(name="Outbound Wire", code="OUTBOUND_TRANS", is_active=True)
         db_session.add(pt)
+
+    # Ensure dated tax setting exists for internal salary tax calculations
+    tax_setting = db_session.query(PayrollTaxSettingsDB).filter_by(effective_from="2026-01-01").first()
+    if not tax_setting:
+        import json
+        tax_setting = PayrollTaxSettingsDB(
+            effective_from="2026-01-01",
+            tax_limit_p_egp=20000.0,
+            brackets_json=json.dumps([{"upper_bound": None, "rate": 0.0, "fixed": 0.0, "base": None}]),
+            created_by="system",
+        )
+        db_session.add(tax_setting)
+        db_session.commit()
 
     # Clean existing payroll runs & test employees
     db_session.query(PayrollLineDB).delete()

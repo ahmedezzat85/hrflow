@@ -64,6 +64,8 @@ from finance.models import (  # noqa: E402, F401
     FinanceEmployeeCompensationPlanDB,
     PayrollSettingsDB,
     FinancePayrollSettingsDB,
+    PayrollTaxSettingsDB,
+    FinancePayrollTaxSettingsDB,
 )
 
 

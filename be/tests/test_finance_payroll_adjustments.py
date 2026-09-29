@@ -14,6 +14,7 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
     EmployeeCompensationPlanDB,
+    PayrollTaxSettingsDB,
 )
 
 
@@ -56,6 +57,20 @@ def seed_env():
         if not pt:
             pt = PaymentTypeDB(name="Bank Transfer", code="OUTBOUND_TRANS", is_active=True)
             db_session.add(pt)
+
+        # Seed dated tax settings for internal salary tax calculations
+        tax_setting = db_session.query(PayrollTaxSettingsDB).filter_by(effective_from="2026-01-01").first()
+        if not tax_setting:
+            import json
+            from finance.services.payroll_calculation_helper import DEFAULT_TAX_BRACKETS, DEFAULT_TAX_LIMIT_P
+            tax_setting = PayrollTaxSettingsDB(
+                effective_from="2026-01-01",
+                tax_limit_p_egp=float(DEFAULT_TAX_LIMIT_P),
+                brackets_json=json.dumps(DEFAULT_TAX_BRACKETS),
+                created_by="seed@voyance.health",
+            )
+            db_session.add(tax_setting)
+            db_session.commit()
 
         # Seed an employee with split compensation: Base EXT $10,000, Base INT $5,000
         emp = db_session.query(EmployeeDB).filter_by(email="alice.adj@voyance.health").first()
