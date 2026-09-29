@@ -1139,15 +1139,11 @@
                   <strong>${empName}</strong>
                 </div>
               </td>
-              <td><span class="p-badge b-gray badge-pill" style="font-size:0.7rem;">${l.salary_basis_snapshot || 'NET'}</span></td>
-              <td class="num payroll-num">${l.configured_internal_salary_usd_snapshot !== undefined ? `$${Number(l.configured_internal_salary_usd_snapshot).toFixed(2)}` : '—'}</td>
               <td class="num payroll-num">${Number(l.insured_base_egp_snapshot || 0).toFixed(2)}</td>
-              <td class="num payroll-num" style="font-family:monospace;">${Number(l.fx_rate_snapshot || rate).toFixed(4)}</td>
               <td class="num payroll-num">${empSi.toFixed(2)}</td>
               <td class="num payroll-num">${emprSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num">${netEgp.toFixed(2)}</td>
               <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
             </tr>
           `;
@@ -1182,15 +1178,11 @@
                   <strong>${r.name}</strong>
                 </div>
               </td>
-              <td><span class="p-badge b-gray badge-pill" style="font-size:0.7rem;">NET</span></td>
-              <td class="num payroll-num">$${cfgUsd.toFixed(2)}</td>
               <td class="num payroll-num">${insuredEgp.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-family:monospace;">${rate.toFixed(4)}</td>
               <td class="num payroll-num">${empSi.toFixed(2)}</td>
               <td class="num payroll-num">${emprSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num">${netEgp.toFixed(2)}</td>
               <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
             </tr>
           `;
