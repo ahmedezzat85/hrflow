@@ -6,6 +6,34 @@
 **Supersedes for execution sequencing:** `docs/payroll/payroll-ui-v9-parity-and-state-machine-plan.md`  
 **Design reference:** `payroll-full-cycle-prototype-v9.html` remains the approved visual and interaction reference. It is not a runtime data source.
 
+> **Status update — September 29, 2026 (`feature/payroll-deductions`):**
+>
+> This document remains the active sequencing reference for the six-screen
+> payroll integration and state-machine work, but its verified findings in
+> Section 2 are partially superseded by subsequent branch implementation:
+>
+> - **Phase -1 — Payroll snapshot consolidation:** implemented on this branch.
+>   `MISSING_BANK_DETAILS` now has one construction site in
+>   `be/finance/services/payroll_service.py`.
+> - **Phase A — D-006 missing-bank severity:** implemented on this branch.
+>   The centralized `MISSING_BANK_DETAILS` exception is emitted with
+>   `severity: "warning"`; it is no longer an approval-blocking exception.
+> - **Phase 0 — live UI/backend integration:** partially implemented on this
+>   branch. `fe/public/js/finance-payroll.js` calls the existing `FinanceApi`
+>   for payroll runs, run detail, company accounts, statutory obligations, and
+>   lifecycle actions. Do not rely on Section 2.3's statement that the
+>   controller contains no API calls without re-verifying the current file.
+> - **Current remaining work:** complete live-data/error-state verification,
+>   remove or explicitly isolate any mock/runtime fallback data, then
+>   re-evaluate the remaining B1–B3 scope against the current branch.
+>
+> The planned income-tax work is governed separately by
+> `docs/payroll/12-payroll-income-tax-calculation-spec.md` and D-009 in
+> `docs/project-context/04-decision-log.md`. Its required effective-dated tax
+> settings migration is an approved exception to this document's general
+> “No new Alembic migrations” constraint. It must not be folded into the
+> remaining six-screen phases without a separate reviewed scope.
+
 ## 1. Purpose of This Revision
 
 The prior v9 parity/state-machine plan identified valid product goals but cannot be executed safely on the current branch without first correcting two structural mismatches found during direct repository verification:
