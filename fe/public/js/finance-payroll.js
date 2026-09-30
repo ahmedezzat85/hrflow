@@ -291,7 +291,8 @@
       const b = this.bonusTotals(row);
       const totalInternal = (row.baseInt || 0) + b.internal;
       const deductions = Number(row.deductions !== undefined ? row.deductions : (row.deductions_total || 0));
-      const internal = totalInternal - deductions;
+      // Egyptian statutory policy: Internal cash payment is whole-dollar rounded (quantize_integer_currency)
+      const internal = Math.round(totalInternal - deductions);
       const external = (row.baseExt || 0) + b.external;
       const net = internal + external;
       return { bonusTotal: b.total, totalInternal, deductions, internal, external, net };
@@ -1237,11 +1238,41 @@
           .map(e => Number(e.employee_id))
       );
 
+      const runLines = (this.currentRun && this.currentRun.lines) || [];
+      const previewRecipients = (this.currentPreview && this.currentPreview.recipients) || [];
+      const recipMap = new Map();
+      previewRecipients.forEach(rp => recipMap.set(Number(rp.employee_id), rp));
+
+      const lineMap = new Map();
+      runLines.forEach(l => {
+        const eid = Number(l.employee_id);
+        if (!lineMap.has(eid)) lineMap.set(eid, { ext: 0, int: 0 });
+        const entry = lineMap.get(eid);
+        if (l.compensation_type === 'external_usd') {
+          entry.ext += Number(l.net_pay || l.amount || 0);
+        } else {
+          entry.int += Number(l.final_internal_payment_usd !== undefined && l.final_internal_payment_usd !== null ? l.final_internal_payment_usd : (l.net_pay || l.amount || 0));
+        }
+      });
+
       let missingBankCount = 0;
       let rowsHtml = '';
       this.rows.forEach(r => {
         const c = this.computeRow(r);
-        const hasExternal = c.external > 0 || r.baseExt > 0;
+        let extVal = c.external;
+        let intVal = c.internal;
+        if (lineMap.has(Number(r.id))) {
+          const lEntry = lineMap.get(Number(r.id));
+          extVal = lEntry.ext;
+          intVal = Math.round(lEntry.int);
+        } else if (recipMap.has(Number(r.id))) {
+          const rp = recipMap.get(Number(r.id));
+          if (rp.final_ext_amount !== undefined) extVal = Number(rp.final_ext_amount);
+          if (rp.final_int_amount !== undefined) intVal = Math.round(Number(rp.final_int_amount));
+        }
+        const netVal = extVal + intVal;
+
+        const hasExternal = extVal > 0 || r.baseExt > 0;
         const isMissingBank = hasExternal && (
           missingBankEmpIds.has(Number(r.id)) ||
           r.has_missing_bank ||
@@ -1274,9 +1305,9 @@
               </div>
             </td>
             <td>${bankBadgeHtml}</td>
-            <td class="num payroll-num">${this.money(c.external)}</td>
-            <td class="num payroll-num">${this.money(c.internal)}</td>
-            <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(c.net)}</td>
+            <td class="num payroll-num">${this.money(extVal)}</td>
+            <td class="num payroll-num">${this.money(intVal)}</td>
+            <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netVal)}</td>
           </tr>
         `;
       });
