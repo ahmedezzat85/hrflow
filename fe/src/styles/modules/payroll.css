@@ -1656,73 +1656,486 @@ table.payroll-worksheet td.payroll-bonus-col {
   white-space: nowrap !important;
 }
 
-/* Settings */
+/* =====================================================================
+   Payroll Settings — Premium Redesign
+   ===================================================================== */
+
+/* Settings Hero Header */
+.payroll-settings-hero {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--surface);
+}
+
+.payroll-settings-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.payroll-settings-hero-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 4px 14px rgba(32, 86, 232, 0.28);
+  flex-shrink: 0;
+}
+
+.payroll-settings-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.payroll-settings-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.payroll-settings-hero-title-row h2 {
+  font-family: var(--font-head);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.payroll-settings-hero .payroll-subtitle {
+  color: var(--text2);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.payroll-settings-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Settings Grid */
 .payroll-settings-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  padding: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  padding: 24px;
+  background: var(--bg);
 }
-.funding-form {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  padding: 18px 20px;
+
+/* Settings Card */
+.payroll-settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.funding-form .field {
-  display: grid;
-  gap: 6px;
+
+.payroll-settings-card:hover {
+  border-color: var(--border2);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
 }
-.funding-form label {
-  font-size: 0.78rem;
-  color: var(--text-muted, #64748b);
+
+/* Card Header */
+.payroll-settings-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+}
+
+.payroll-settings-card-header .card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.payroll-panel-title {
+  font-family: var(--font-head);
+  font-size: 14.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--text);
+  line-height: 1.3;
 }
-.funding-form select {
-  border: 1px solid var(--border-color, #dbe4ee);
-  background: #fff;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  color: var(--text-primary, #0f172a);
-  width: 100%;
+
+.payroll-settings-card-header .payroll-subtitle {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+  line-height: 1.35;
 }
+
+/* Icon Chips */
+.settings-icon-chip {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.settings-icon-chip.chip-blue {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-icon-chip.chip-amber {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.settings-icon-chip.chip-emerald {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.settings-icon-chip.chip-purple {
+  background: rgba(147, 51, 234, 0.12);
+  color: #9333ea;
+}
+
+/* Pills & Badges */
+.settings-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.settings-pill.pill-blue {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(32, 86, 232, 0.15);
+}
+
+.settings-pill.pill-amber {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border: 1px solid rgba(224, 125, 16, 0.18);
+}
+
+.settings-pill.pill-emerald {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(14, 169, 102, 0.18);
+}
+
+.settings-pill.pill-purple {
+  background: rgba(147, 51, 234, 0.12);
+  color: #9333ea;
+  border: 1px solid rgba(147, 51, 234, 0.18);
+}
+
+/* Forms inside Settings Cards */
+.funding-form,
+.month-form {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+  flex: 1;
+}
+
 .month-form {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px;
-  padding: 18px 20px;
 }
+
+.month-form .field.full-width {
+  grid-column: 1 / -1;
+}
+
+.funding-form .field,
 .month-form .field {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
+
+.funding-form label,
 .month-form label {
-  font-size: 0.78rem;
-  color: var(--text-muted, #64748b);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  letter-spacing: normal;
+  text-transform: none;
 }
-.month-form input, .month-form select {
-  border: 1px solid var(--border-color, #dbe4ee);
-  background: #fff;
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-size: 0.85rem;
+
+.funding-form label i,
+.month-form label i {
+  color: var(--accent);
+  font-size: 12px;
+  opacity: 0.85;
 }
+
+/* Standard Inputs & Selects */
+.funding-form input,
+.funding-form select,
+.month-form input,
+.month-form select {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 13px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+  height: 42px;
+}
+
+.funding-form select,
+.month-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237a8ea8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.funding-form input:hover,
+.funding-form select:hover,
+.month-form input:hover,
+.month-form select:hover {
+  border-color: var(--border2);
+}
+
+.funding-form input:focus,
+.funding-form select:focus,
+.month-form input:focus,
+.month-form select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Affix Input Groups (for %, EGP, Currency) */
+.input-affix-group {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+  height: 42px;
+}
+
+.input-affix-group:hover {
+  border-color: var(--border2);
+}
+
+.input-affix-group:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.input-affix-group input {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  height: 100% !important;
+  flex: 1;
+  padding: 0 13px !important;
+  font-size: 13.5px;
+  color: var(--text);
+  background: transparent !important;
+  outline: none !important;
+}
+
+.input-affix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.input-affix.prefix {
+  border-right: 1px solid var(--border);
+}
+
+.input-affix.suffix {
+  border-left: 1px solid var(--border);
+}
+
+/* Field Hints */
+.field-hint {
+  font-size: 11.5px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.35;
+  margin-top: 1px;
+}
+
+.field-hint i {
+  color: var(--text3);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* Card Bottom Callouts */
+.settings-card-callout {
+  margin-top: auto;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.settings-card-callout i {
+  margin-top: 2px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.settings-card-callout.callout-blue {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(32, 86, 232, 0.12);
+}
+
+.settings-card-callout.callout-emerald {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(14, 169, 102, 0.14);
+}
+
+.settings-card-callout.callout-purple {
+  background: rgba(147, 51, 234, 0.08);
+  color: #7c3aed;
+  border: 1px solid rgba(147, 51, 234, 0.14);
+}
+
+/* Bottom Save Bar */
 .save-bar {
-  padding: 14px 20px;
-  border-top: 1px solid var(--border-color, #dbe4ee);
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 12px !important;
-  flex-wrap: nowrap !important;
-  background: var(--surface-2, #f8fafc);
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
+  background: var(--surface2);
+}
+
+.save-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.save-bar-info i {
+  color: var(--success);
+  font-size: 14px;
+}
+
+.save-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Dark Theme Overrides for Settings */
+[data-theme="dark"] .payroll-settings-grid {
+  background: var(--bg);
+}
+
+[data-theme="dark"] .payroll-settings-hero {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .funding-form select,
+[data-theme="dark"] .month-form select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239aa0b4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .settings-card-callout.callout-blue {
+  background: rgba(62, 114, 248, 0.14);
+  color: #7aa7ff;
+  border-color: rgba(62, 114, 248, 0.22);
+}
+
+[data-theme="dark"] .settings-card-callout.callout-emerald {
+  background: rgba(31, 194, 122, 0.14);
+  color: #42e399;
+  border-color: rgba(31, 194, 122, 0.22);
+}
+
+[data-theme="dark"] .settings-card-callout.callout-purple {
+  background: rgba(168, 85, 247, 0.14);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.22);
+}
+
+[data-theme="dark"] .settings-pill.pill-purple {
+  background: rgba(168, 85, 247, 0.18);
+  color: #d8b4fe;
+  border-color: rgba(168, 85, 247, 0.25);
+}
+
+[data-theme="dark"] .settings-icon-chip.chip-purple {
+  background: rgba(168, 85, 247, 0.18);
+  color: #d8b4fe;
 }
 
 /* Modal */
@@ -1829,8 +2242,31 @@ table.payroll-worksheet td.payroll-bonus-col {
   .payroll-bottom-panels {
     grid-template-columns: 1fr;
   }
-  .payroll-settings-grid, .month-form {
+  .payroll-settings-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .month-form {
+    grid-template-columns: 1fr;
+  }
+  .payroll-settings-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .payroll-settings-hero-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .save-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .save-bar-actions {
+    justify-content: flex-end;
   }
 }
 
