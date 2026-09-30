@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 0.3 — Accessible Dialog and Form Foundation', () => {
 
@@ -7,7 +8,7 @@ test.describe('Story 0.3 — Accessible Dialog and Form Foundation', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Invoices & Customers
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
     await page.click('#tabFinanceCustomers');
     const addCustBtn = page.locator('#financeAddCustomerBtn');
@@ -55,7 +56,7 @@ test.describe('Story 0.3 — Accessible Dialog and Form Foundation', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Open customer modal
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
     await page.click('#tabFinanceCustomers');
     await page.click('#financeAddCustomerBtn');
@@ -142,7 +143,7 @@ test.describe('Story 0.3 — Accessible Dialog and Form Foundation', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Open customer modal
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
     await page.click('#tabFinanceCustomers');
     await page.click('#financeAddCustomerBtn');
@@ -187,7 +188,7 @@ test.describe('Story 0.3 — Accessible Dialog and Form Foundation', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Go to Bank & Cash Accounts
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
     const subnav = page.locator('#financeAccountsSubNav');
     await expect(subnav).toBeVisible();
@@ -227,7 +228,7 @@ test.describe('Story 0.3 — Accessible Dialog and Form Foundation', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Open a modal to check close button size
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
     await page.click('#tabFinanceCustomers');
     await page.click('#financeAddCustomerBtn');

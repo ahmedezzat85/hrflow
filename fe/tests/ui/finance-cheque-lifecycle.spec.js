@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 5.4: Cheque Lifecycle and Register', () => {
   test.beforeEach(async ({ page }) => {
@@ -6,7 +7,7 @@ test.describe('Story 5.4: Cheque Lifecycle and Register', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Finance Accounts workspace
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Switch to Cheque Register subtab

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Finance Bank Statement Imports & Reconciliation UI Testing', () => {
 
@@ -8,7 +9,7 @@ test.describe('Finance Bank Statement Imports & Reconciliation UI Testing', () =
     await page.waitForLoadState('networkidle');
 
     // Navigate to Bank Accounts via sidebar
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await page.waitForTimeout(400);
   });
 

@@ -2080,8 +2080,9 @@
 
       if (navList) navList.classList.toggle('active', page === 'list' || page === 'run');
       if (navSettings) navSettings.classList.toggle('active', page === 'settings');
-      const parentNav = document.querySelector('#adminSidebar a[data-page="a-finance-payroll"]');
-      if (parentNav) parentNav.classList.add('active');
+      if (window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {
+        window.AdminNav.syncFromPage(page === 'settings' ? 'a-finance-payroll-settings' : 'a-finance-payroll-runs');
+      }
 
       if (page === 'list') {
         this.drawRunsList();

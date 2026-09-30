@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Payroll Runner Commission & Bonus Adjustments Workflow', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,7 +10,7 @@ test.describe('Payroll Runner Commission & Bonus Adjustments Workflow', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Guided Payroll section
-    await page.click('#adminSidebar a[data-page="a-finance-payroll"]');
+    await openAdminPage(page, 'a-finance-payroll');
     await expect(page.locator('#a-finance-payroll')).toBeVisible();
   });
 

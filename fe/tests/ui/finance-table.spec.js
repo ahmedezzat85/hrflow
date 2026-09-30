@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 1.2 — Shared Finance Data Table', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#financeInvoicesTable tbody tr').first()).toBeVisible();
   });
 
@@ -143,11 +144,11 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
     await expect(rowsBefore).toContainText('BioCare Diagnostics');
 
     // Navigate away to Spend
-    await page.click('#adminSidebar a[data-page="a-finance-spend"]');
+    await openAdminPage(page, 'a-finance-spend');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
 
     // Navigate back to Sales
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Filter and search input should still be preserved

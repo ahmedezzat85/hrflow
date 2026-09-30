@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
 
@@ -162,7 +163,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // 1. Sales Invoices
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Verify Total header has cell-money
@@ -182,7 +183,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await expect(firstInvBadge).toHaveAttribute('role', 'status');
 
     // 2. Vendor Bills
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
 
     const billTotalHeader = page.locator('#financeBillsContainer th.cell-money');
@@ -197,7 +198,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await expect(firstBillBadge.locator('i')).toBeVisible();
 
     // 3. Bank Accounts
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     const accBalanceHeader = page.locator('#financeSubPaneAccounts th.cell-money').first();

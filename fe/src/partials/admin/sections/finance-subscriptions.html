@@ -1,4 +1,12 @@
         <section class="page-section" id="a-finance-subscriptions">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <div class="filter-tabs" id="financeSpendSubNavSubscriptions" role="tablist" aria-label="Spend sub navigation">
+              <button class="filter-tab" id="subtabSpendSubBills" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav){AdminNav.go('a-finance-bills');if(typeof switchBillSubTab==='function')switchBillSubTab('bills');}"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
+              <button class="filter-tab" id="subtabSpendSubVendors" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav){AdminNav.go('a-finance-bills');if(typeof switchBillSubTab==='function')switchBillSubTab('vendors');}"><i class="fa-solid fa-truck-field"></i> Vendors</button>
+              <button class="filter-tab active" id="subtabSpendSubSubscriptions" role="tab" aria-selected="true" tabindex="0"><i class="fa-solid fa-repeat"></i> Subscriptions</button>
+              <button class="filter-tab" id="subtabSpendSubStatutory" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav)AdminNav.go('a-finance-statutory')"><i class="fa-solid fa-landmark"></i> Statutory</button>
+            </div>
+          </div>
           <div class="toolbar">
             <div class="section-title-group">
               <h2 class="section-title"><i class="fa-solid fa-repeat"></i> Recurring Subscriptions</h2>

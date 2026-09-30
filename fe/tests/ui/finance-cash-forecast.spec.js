@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 2.3 — Finance Cash Position and Forecast', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     // Navigate to Finance Overview
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
     await expect(page.locator('#financeCashForecastCard')).toBeVisible();
     await expect(page.locator('#tableCashAccounts tbody tr').first()).toBeVisible({ timeout: 10000 });

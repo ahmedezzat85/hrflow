@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States', () => {
 
@@ -27,7 +28,7 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
     });
 
     // Navigate to Finance Overview (triggers loadFinanceDashboard)
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
 
     // Verify stat values show skeletons with em-dash and no believable monetary values
@@ -69,7 +70,7 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Finance Overview
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
 
     // Verify successful KPI population
@@ -127,7 +128,7 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
     });
 
     // Navigate to Finance Overview
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
 
     // Verify inline error banner is visible with specific message
@@ -159,7 +160,7 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Finance Overview with normal successful response
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#statFinanceBalance')).toContainText('$245,000.00');
 
     // Stale badge should initially be hidden

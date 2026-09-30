@@ -95,17 +95,72 @@ async function updateFinanceBadges() {
 
 function updateFinanceNavVisibility() {
   const group = document.getElementById("adminFinanceNavGroup");
-  if (!group) return;
+  const canSee = window.AdminNav && typeof window.AdminNav.canSeeModule === "function"
+    ? window.AdminNav.canSeeModule("finance")
+    : (() => {
+        const role = SessionInfo.getRole();
+        const perms = typeof SessionInfo.getPermissions === "function" ? SessionInfo.getPermissions() : [];
+        return role === "admin" || role === "system_admin" || perms.some((p) => p.startsWith("finance."));
+      })();
 
-  const role = SessionInfo.getRole();
-  const perms = typeof SessionInfo.getPermissions === "function" ? SessionInfo.getPermissions() : [];
-  const hasFinancePerm = perms.some((p) => p.startsWith("finance."));
+  if (group) {
+    const isFinanceActive = window.AdminNav && typeof window.AdminNav.getActiveModule === "function"
+      ? window.AdminNav.getActiveModule() === "finance"
+      : false;
 
-  if (role === "admin" || role === "system_admin" || hasFinancePerm) {
-    group.style.display = "block";
-    updateFinanceBadges();
-  } else {
-    group.style.display = "none";
+    if (canSee) {
+      if (isFinanceActive) {
+        group.removeAttribute("hidden");
+      }
+      updateFinanceBadges();
+    } else {
+      group.setAttribute("hidden", "until-found");
+    }
+  }
+
+  if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === "function") {
+    window.AdminNav.syncModuleVisibility();
+  }
+}
+
+
+function runFinanceLoader(pageId) {
+  if (!pageId) return;
+
+  if (pageId === "a-finance-dashboard") {
+    loadFinanceDashboard();
+  } else if (pageId === "a-finance-sales" || pageId === "a-finance-invoices") {
+    loadFinanceInvoices();
+  } else if (pageId === "a-finance-spend" || pageId === "a-finance-bills") {
+    loadFinanceBills();
+  } else if (pageId === "a-finance-payroll" || pageId === "a-finance-payroll-runs") {
+    loadFinancePayroll("list");
+  } else if (pageId === "a-finance-payroll-settings") {
+    loadFinancePayroll("settings");
+  } else if (pageId === "a-finance-banking" || pageId === "a-finance-accounts") {
+    if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "statements") {
+      loadFinanceStatements();
+    } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "cheques") {
+      loadFinanceCheques();
+    } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "transfers") {
+      loadFinanceTransfers();
+    } else {
+      loadFinanceAccounts();
+    }
+  } else if (pageId === "a-finance-subscriptions") {
+    loadFinanceSubscriptions();
+  } else if (pageId === "a-finance-statutory") {
+    loadFinanceStatutory();
+  } else if (pageId === "a-finance-reports") {
+    loadFinanceReports();
+  } else if (pageId === "a-finance-settings") {
+    switchFinanceSettingsSubTab(_currentSettingsSubTab);
+  } else if (pageId === "e-payslips") {
+    loadMyPayslips();
+  }
+
+  if (pageId && pageId.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {
+    FinanceTable.initAllTablesDensity();
   }
 }
 
@@ -115,41 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!navItem) return;
 
     const targetPage = navItem.getAttribute("data-page");
-    if (targetPage === "a-finance-dashboard") {
-      loadFinanceDashboard();
-    } else if (targetPage === "a-finance-sales" || targetPage === "a-finance-invoices") {
-      loadFinanceInvoices();
-    } else if (targetPage === "a-finance-spend" || targetPage === "a-finance-bills") {
-      loadFinanceBills();
-    } else if (targetPage === "a-finance-payroll" || targetPage === "a-finance-payroll-runs") {
-      loadFinancePayroll("list");
-    } else if (targetPage === "a-finance-payroll-settings") {
-      loadFinancePayroll("settings");
-    } else if (targetPage === "a-finance-banking" || targetPage === "a-finance-accounts") {
-      if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "statements") {
-        loadFinanceStatements();
-      } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "cheques") {
-        loadFinanceCheques();
-      } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "transfers") {
-        loadFinanceTransfers();
-      } else {
-        loadFinanceAccounts();
-      }
-    } else if (targetPage === "a-finance-subscriptions") {
-      loadFinanceSubscriptions();
-    } else if (targetPage === "a-finance-statutory") {
-      loadFinanceStatutory();
-    } else if (targetPage === "a-finance-reports") {
-      loadFinanceReports();
-    } else if (targetPage === "a-finance-settings") {
-      switchFinanceSettingsSubTab(_currentSettingsSubTab);
-    } else if (targetPage === "e-payslips") {
-      loadMyPayslips();
-    }
-
-    if (targetPage && targetPage.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {
-      FinanceTable.initAllTablesDensity();
-    }
+    runFinanceLoader(targetPage);
   });
 
   updateFinanceNavVisibility();
@@ -157,8 +178,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Global exposures
+window.runFinanceLoader = runFinanceLoader;
 window.updateFinanceNavVisibility = updateFinanceNavVisibility;
 window.updateFinanceBadges = updateFinanceBadges;
 window.switchFinanceSettingsSubTab = switchFinanceSettingsSubTab;
 window.loadFinanceDisplaySettings = loadFinanceDisplaySettings;
+
 

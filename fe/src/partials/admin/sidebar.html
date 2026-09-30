@@ -1,66 +1,79 @@
-    <aside class="sidebar" id="adminSidebar">
-      <div class="sidebar-top-row">
-        <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
-        <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse sidebar"><i
-            class="fa-solid fa-chevron-left"></i></button>
+    <aside class="sidebar dual-rail" id="adminSidebar">
+      <!-- Slim Module Rail -->
+      <div class="rail">
+        <div class="rail-logo" title="HRFlow"><i class="fa-solid fa-heart-pulse"></i></div>
+        <div class="rail-sep"></div>
+        <button class="rail-btn on active" data-module="hr" aria-label="HR module" aria-current="true" title="HR">
+          <i class="fa-solid fa-people-group"></i>
+          <span>HR</span>
+          <span class="dot" id="hrRailDot" style="display:none;" aria-label="pending requests"></span>
+        </button>
+        <button class="rail-btn" data-module="finance" id="financeRailBtn" aria-label="Finance module" title="Finance">
+          <i class="fa-solid fa-coins"></i>
+          <span>Finance</span>
+        </button>
+        <button class="rail-btn" data-module="payroll" id="payrollRailBtn" aria-label="Payroll module" title="Payroll">
+          <i class="fa-solid fa-money-check-dollar"></i>
+          <span>Payroll</span>
+        </button>
+        <div class="rail-sp"></div>
+        <div class="avatar" id="adminRailUserAvatar" title="Account">--</div>
+        <button class="rail-btn logout" onclick="logout()" title="Logout" aria-label="Logout">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
       </div>
-      <div class="sidebar-nav">
-        <div class="nav-section-label">Workspace</div>
-        <a class="nav-item active" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span
-            class="nav-label">Dashboard</span></a>
-        <a class="nav-item" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span
-            class="nav-label">Employees</span></a>
-        <a class="nav-item" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span
-            class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
-        <a class="nav-item" data-page="a-salary" title="Salary & Raises"><i class="fa-solid fa-sack-dollar"></i> <span
-            class="nav-label">Salary & Raises</span></a>
-        <a class="nav-item" data-page="a-invoices" title="Invoices"><i class="fa-solid fa-file-invoice-dollar"></i> <span
-            class="nav-label">Invoices</span></a>
-        <div class="nav-section-label">Modules</div>
-        <a class="nav-item" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span
-            class="nav-label">Vacations</span></a>
-        <a class="nav-item" data-page="a-insurance" title="Medical Insurance"><i
-            class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
-        <a class="nav-item" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span
-            class="nav-label">Document Hub</span></a>
-        <div id="adminFinanceNavGroup" class="finance-nav-group">
-          <div class="nav-section-label">Finance</div>
-          <a class="nav-item" data-page="a-finance-dashboard" title="Finance Overview"><i class="fa-solid fa-chart-line"></i> <span
-              class="nav-label">Overview</span></a>
-          <a class="nav-item" data-page="a-finance-sales" title="Sales &amp; Receivables"><i class="fa-solid fa-file-invoice-dollar"></i> <span
-              class="nav-label">Sales</span><span id="financeSalesBadge" class="badge" style="display:none;" role="status"></span></a>
-          <a class="nav-item nav-sub-item" data-page="a-finance-invoices" title="Sales Invoices" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-file-invoice" style="font-size:11px;"></i> <span class="nav-label">Invoices</span></a>
-          <a class="nav-item" data-page="a-finance-spend" title="Spend &amp; Payables"><i class="fa-solid fa-receipt"></i> <span
-              class="nav-label">Spend</span><span id="financeSpendBadge" class="badge" style="display:none;" role="status"></span></a>
-          <a class="nav-item nav-sub-item" data-page="a-finance-bills" title="Vendor Bills" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-receipt" style="font-size:11px;"></i> <span class="nav-label">Bills</span></a>
-          <a class="nav-item nav-sub-item" data-page="a-finance-subscriptions" title="Subscriptions" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-repeat" style="font-size:11px;"></i> <span class="nav-label">Subscriptions</span></a>
-          <a class="nav-item nav-sub-item" data-page="a-finance-statutory" title="Statutory Obligations" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-landmark" style="font-size:11px;"></i> <span class="nav-label">Statutory</span></a>
-          <a class="nav-item" data-page="a-finance-banking" title="Banking &amp; Cash Management"><i class="fa-solid fa-building-columns"></i> <span
-              class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
-          <a class="nav-item nav-sub-item" data-page="a-finance-accounts" title="Company Accounts" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-building-columns" style="font-size:11px;"></i> <span class="nav-label">Bank Accounts</span></a>
-          <a class="nav-item" data-page="a-finance-payroll" title="Payroll" onclick="if(typeof PayrollApp!=='undefined'&&PayrollApp.showPage)PayrollApp.showPage('list')"><i class="fa-solid fa-money-check-dollar"></i> <span
-              class="nav-label">Payroll</span></a>
-          <a class="nav-item nav-sub-item" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs" onclick="if(typeof PayrollApp!=='undefined'&&PayrollApp.showPage)PayrollApp.showPage('list')" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-clock-rotate-left" style="font-size:11px;"></i> <span class="nav-label">Runs</span></a>
-          <a class="nav-item nav-sub-item" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings" onclick="if(typeof PayrollApp!=='undefined'&&PayrollApp.showPage)PayrollApp.showPage('settings')" style="padding-left:2.2rem; font-size:12px; min-height:30px;"><i class="fa-solid fa-sliders" style="font-size:11px;"></i> <span class="nav-label">Settings</span></a>
-          <a class="nav-item" data-page="a-finance-reports" title="Financial Reports & Export"><i class="fa-solid fa-file-excel"></i> <span
-              class="nav-label">Reports &amp; Export</span></a>
-          <a class="nav-item" data-page="a-finance-settings" title="Finance Settings"><i class="fa-solid fa-sliders"></i> <span
-              class="nav-label">Settings</span></a>
-        </div>
-      </div>
-      <div class="sidebar-footer">
-        <div class="user-mini" title="Account">
-          <div class="avatar" id="adminUserAvatar">--</div>
-          <div class="user-mini-text">
-            <div class="name" id="adminUserName">--</div>
-            <div class="role" id="adminUserRole">--</div>
+
+      <!-- Contextual Page Panel -->
+      <div class="nav-panel" id="adminNavPanel">
+        <button class="collapse-btn" id="adminSidebarCollapseBtn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse navigation panel" aria-label="Toggle navigation panel">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="panel-inner">
+          <div class="panel-head">
+            <h2 id="adminNavPanelTitle">HR</h2>
+            <small id="adminNavPanelSub">People, leave and salary documents</small>
           </div>
-        </div>
-        <button class="logout-btn" onclick="logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i>
-          <span>Logout</span></button>
-        <div class="sidebar-brand-footer">
-          <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
-          <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
+          <nav class="sidebar-nav" aria-label="Admin Navigation">
+            <div id="adminHrNavGroup" class="nav-group">
+              <div class="nav-section-label">Workspace</div>
+              <a class="nav-item active" href="#" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
+              <a class="nav-item" href="#" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
+              <a class="nav-item" href="#" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
+              <a class="nav-item" href="#" data-page="a-salary" title="Salary &amp; Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary &amp; Raises</span></a>
+              <a class="nav-item" href="#" data-page="a-invoices" title="Salary Payment Docs"><i class="fa-solid fa-file-signature"></i> <span class="nav-label">Salary Payment Docs</span></a>
+              <div class="nav-section-label">Modules</div>
+              <a class="nav-item" href="#" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
+              <a class="nav-item" href="#" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
+              <a class="nav-item" href="#" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
+            </div>
+            <div id="adminFinanceNavGroup" class="finance-nav-group" hidden>
+              <div class="nav-section-label">Finance</div>
+              <a class="nav-item" href="#" data-page="a-finance-dashboard" title="Finance Overview"><i class="fa-solid fa-chart-line"></i> <span class="nav-label">Overview</span></a>
+              <a class="nav-item" href="#" data-page="a-finance-sales" title="Sales &amp; Receivables"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="nav-label">Sales</span><span id="financeSalesBadge" class="badge" style="display:none;" role="status"></span></a>
+              <a class="nav-item" href="#" data-page="a-finance-spend" title="Spend &amp; Payables"><i class="fa-solid fa-receipt"></i> <span class="nav-label">Spend</span><span id="financeSpendBadge" class="badge" style="display:none;" role="status"></span></a>
+              <a class="nav-item" href="#" data-page="a-finance-banking" title="Banking &amp; Cash Management"><i class="fa-solid fa-building-columns"></i> <span class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
+              <a class="nav-item" href="#" data-page="a-finance-reports" title="Financial Reports &amp; Export"><i class="fa-solid fa-file-excel"></i> <span class="nav-label">Reports &amp; Export</span></a>
+              <a class="nav-item" href="#" data-page="a-finance-settings" title="Finance Settings"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Finance Settings</span></a>
+            </div>
+            <div id="adminPayrollNavGroup" class="payroll-nav-group" hidden>
+              <div class="nav-section-label">Payroll</div>
+              <a class="nav-item" href="#" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs" onclick="if(typeof PayrollApp!=='undefined'&amp;&amp;PayrollApp.showPage)PayrollApp.showPage('list')"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-label">Payroll Runs</span></a>
+              <a class="nav-item" href="#" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings" onclick="if(typeof PayrollApp!=='undefined'&amp;&amp;PayrollApp.showPage)PayrollApp.showPage('settings')"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Payroll Settings</span></a>
+            </div>
+          </nav>
+          <div class="sidebar-footer">
+            <div class="user-mini" title="Account">
+              <div class="avatar" id="adminUserAvatar">--</div>
+              <div class="user-mini-text">
+                <div class="name" id="adminUserName">--</div>
+                <div class="role" id="adminUserRole">--</div>
+              </div>
+            </div>
+            <div class="sidebar-brand-footer">
+              <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
+              <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
+            </div>
+          </div>
         </div>
       </div>
     </aside>

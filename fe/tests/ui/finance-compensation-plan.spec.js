@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-416: Employee Compensation Plan', () => {
   test.beforeEach(async ({ page }) => {
@@ -6,7 +7,7 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     page.on('pageerror', err => console.log('PAGEERROR:', err));
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
-    await page.click('#adminSidebar a[data-page="a-salary"]');
+    await openAdminPage(page, 'a-salary');
     await expect(page.locator('#a-salary')).toBeVisible();
   });
 

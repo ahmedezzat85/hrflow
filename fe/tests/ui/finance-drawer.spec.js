@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 1.3 — Detail Drawer and Activity Timeline', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#financeInvoicesTable tbody tr').first()).toBeVisible();
   });
 

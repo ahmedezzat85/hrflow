@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,7 +11,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
   test('Renders Social Insurance card in Employee Details alongside Bank Account card', async ({ page }) => {
     // Navigate to Employees directory
-    await page.click('#adminSidebar a[data-page="a-employees"]');
+    await openAdminPage(page, 'a-employees');
     await expect(page.locator('#a-employees')).toBeVisible();
 
     // Click on the first employee row to view detail
@@ -37,7 +38,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
   test('Opens Social Insurance modal, validates future date prevention, and saves configuration', async ({ page }) => {
     // Navigate to Employees directory and open first employee
-    await page.click('#adminSidebar a[data-page="a-employees"]');
+    await openAdminPage(page, 'a-employees');
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator('.icon-action[title="View Profile"]').click();
@@ -81,7 +82,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
   test('Payroll Settings view renders statutory contribution rate inputs and allows updating', async ({ page }) => {
     // Navigate to Finance Payroll
-    await page.click('#adminSidebar a[data-page="a-finance-payroll"]');
+    await openAdminPage(page, 'a-finance-payroll');
     await expect(page.locator('#a-finance-payroll')).toBeVisible();
 
     // Click Payroll Settings nav link
@@ -112,7 +113,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
   });
 
   test('Worksheet table displays Deductions (Est.) column with internal estimate title', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-payroll"]');
+    await openAdminPage(page, 'a-finance-payroll');
     await expect(page.locator('#a-finance-payroll')).toBeVisible();
 
     // Open current cycle to view worksheet
@@ -131,7 +132,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
   });
 
   test('Regression fix: Employee profile card renders with header and compensation grid', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-employees"]');
+    await openAdminPage(page, 'a-employees');
     await expect(page.locator('#a-employees')).toBeVisible();
 
     const firstRow = page.locator('#employeesTableBody tr').first();
@@ -154,7 +155,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
   });
 
   test('Regression fix: Employee edit button in table opens edit modal with prefilled data', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-employees"]');
+    await openAdminPage(page, 'a-employees');
     await expect(page.locator('#a-employees')).toBeVisible();
 
     const firstRow = page.locator('#employeesTableBody tr').first();

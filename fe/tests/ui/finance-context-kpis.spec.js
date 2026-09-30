@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 2.1 — Finance Context Bar and Trustworthy KPIs', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     // Navigate to Finance Overview
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
     await expect(page.locator('#financeContextBar')).toBeVisible();
   });
@@ -56,7 +57,7 @@ test.describe('Story 2.1 — Finance Context Bar and Trustworthy KPIs', () => {
     // Reload page and verify context is restored
     await page.reload();
     await expect(page.locator('#adminSidebar')).toBeVisible();
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#financeContextPeriod')).toHaveValue('QTD');
     await expect(page.locator('#financeContextBasis')).toHaveValue('accrual');
 
@@ -109,7 +110,7 @@ test.describe('Story 2.1 — Finance Context Bar and Trustworthy KPIs', () => {
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Navigate back to Dashboard
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
 
     // Click View Reports drilldown link on Net Result card

@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage, openAdminModule } from './helpers/admin-nav.js';
 
 test.describe('Story 1.1 — Finance Information Architecture', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
+    await openAdminModule(page, 'finance');
   });
 
-  test('Acceptance Criteria 1: Reorganized Finance into 7 domains reachable in two navigation decisions or fewer', async ({ page }) => {
+  test('Acceptance Criteria 1: Reorganized Finance into 6 domains reachable in two navigation decisions or fewer (N-10: Payroll separated into dedicated module)', async ({ page }) => {
     const navGroup = page.locator('#adminFinanceNavGroup');
     await expect(navGroup).toBeVisible();
 
@@ -15,33 +17,33 @@ test.describe('Story 1.1 — Finance Information Architecture', () => {
     await expect(navGroup.locator('a[data-page="a-finance-sales"]')).toBeVisible();
     await expect(navGroup.locator('a[data-page="a-finance-spend"]')).toBeVisible();
     await expect(navGroup.locator('a[data-page="a-finance-banking"]')).toBeVisible();
-    await expect(navGroup.locator('a[data-page="a-finance-payroll"]')).toBeVisible();
+    await expect(navGroup.locator('a[data-page="a-finance-payroll"]')).toHaveCount(0);
     await expect(navGroup.locator('a[data-page="a-finance-reports"]')).toBeVisible();
     await expect(navGroup.locator('a[data-page="a-finance-settings"]')).toBeVisible();
 
     // Decision 1: Click Sales -> reaches Sales Invoices
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
     // Decision 2: Click Customers sub-tab -> reaches Customers view
     await page.click('#tabFinanceCustomers');
     await expect(page.locator('#financeCustomersContainer')).toBeVisible();
 
     // Decision 1: Click Spend -> reaches Vendor Bills
-    await page.click('#adminSidebar a[data-page="a-finance-spend"]');
+    await openAdminPage(page, 'a-finance-spend');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     // Decision 2: Click Vendors sub-tab -> reaches Vendors view
     await page.click('#tabFinanceVendors');
     await expect(page.locator('#financeVendorsContainer')).toBeVisible();
 
     // Decision 1: Click Banking -> reaches Bank & Cash Accounts
-    await page.click('#adminSidebar a[data-page="a-finance-banking"]');
+    await openAdminPage(page, 'a-finance-banking');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
     // Decision 2: Click Transfers sub-tab -> reaches Transfers view
     await page.click('#subtabFinanceTransfers');
     await expect(page.locator('#financeSubPaneTransfers')).toBeVisible();
 
     // Decision 1: Click Settings -> reaches Finance Settings
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await expect(page.locator('#a-finance-settings')).toBeVisible();
     // Decision 2: Click Payment Types sub-tab -> reaches Payment Types view
     await page.click('#subtabSettingsPaymentTypes');
@@ -73,7 +75,7 @@ test.describe('Story 1.1 — Finance Information Architecture', () => {
 
   test('Acceptance Criteria 3: Categories and Payment Types live exclusively under Settings, not Banking operations', async ({ page }) => {
     // Navigate to Banking
-    await page.click('#adminSidebar a[data-page="a-finance-banking"]');
+    await openAdminPage(page, 'a-finance-banking');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Verify Categories and Payment Types are NOT in Banking sub navigation
@@ -82,7 +84,7 @@ test.describe('Story 1.1 — Finance Information Architecture', () => {
     await expect(bankingNav.locator('#subtabFinancePaymentTypes')).toHaveCount(0);
 
     // Navigate to Settings
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await expect(page.locator('#a-finance-settings')).toBeVisible();
 
     // Verify Settings sub navigation contains Categories and Payment Types

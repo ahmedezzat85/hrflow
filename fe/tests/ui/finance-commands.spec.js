@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 0.4 — Safe Financial Command Framework', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('Story 0.4 — Safe Financial Command Framework', () => {
 
   test('Acceptance Criteria 1: Reusable FinanceCommand.confirmAction renders accessible dialog with identity, consequence, and focus trapping', async ({ page }) => {
     // Navigate to Invoices
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Trigger confirmAction programmatically without blocking
@@ -50,7 +51,7 @@ test.describe('Story 0.4 — Safe Financial Command Framework', () => {
   });
 
   test('Acceptance Criteria 2: Destructive action requires a reason before allowing confirmation', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Start a high-risk action requiring reason
@@ -91,7 +92,7 @@ test.describe('Story 0.4 — Safe Financial Command Framework', () => {
   });
 
   test('Acceptance Criteria 3: Submit button locking prevents duplicate submissions on rapid double-click', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Open New Invoice modal
@@ -136,7 +137,7 @@ test.describe('Story 0.4 — Safe Financial Command Framework', () => {
   });
 
   test('Acceptance Criteria 5: Voiding an invoice via UI invokes FinanceCommand.confirmAction and updates state', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Wait for table to render

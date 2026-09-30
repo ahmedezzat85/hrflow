@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee Auto-Fill', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee 
 
   test('AC 1: Standard banking/accounting names in Settings -> Payment Types', async ({ page }) => {
     // Navigate to Settings
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await expect(page.locator('#a-finance-settings')).toBeVisible();
 
     // Switch to Payment Types subtab
@@ -38,7 +39,7 @@ test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee 
 
   test('AC 2: Settings list integrity - error state displays visible banner on failure', async ({ page }) => {
     // Navigate to Settings
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await expect(page.locator('#a-finance-settings')).toBeVisible();
 
     // Switch to Payment Types subtab
@@ -65,7 +66,7 @@ test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee 
 
   test('AC 3: Bank Fee guided-entry auto-fills payment method and hides the field', async ({ page }) => {
     // Navigate to Accounts
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on the first account
@@ -108,7 +109,7 @@ test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee 
 
   test('AC 4: Create Bank Fee transaction end-to-end without interacting with payment method', async ({ page }) => {
     // Navigate to Accounts
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on the first account

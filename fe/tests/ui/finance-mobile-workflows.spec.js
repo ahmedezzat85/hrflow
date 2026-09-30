@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 async function navigateMobile(page, pageId) {
   // On mobile viewports (<900px), click admin hamburger menu to reveal sidebar
   await page.click('#admin-app .hamburger');
   await expect(page.locator('#adminSidebar')).toHaveClass(/open/);
-  await page.click(`#adminSidebar a[data-page="${pageId}"]`);
+  await openAdminPage(page, pageId);
 }
 
 test.describe('Story 8.2: Mobile Priority Workflows', () => {

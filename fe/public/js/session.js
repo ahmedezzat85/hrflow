@@ -72,6 +72,8 @@ function initMockAdminData(){
   const adminUser = employees[0];
   const avatarEl = document.getElementById('adminUserAvatar');
   if (avatarEl) avatarEl.textContent = getInitials(adminUser.name);
+  const railAvatarEl = document.getElementById('adminRailUserAvatar');
+  if (railAvatarEl) railAvatarEl.textContent = getInitials(adminUser.name);
   const nameEl = document.getElementById('adminUserName');
   if (nameEl) nameEl.textContent = adminUser.name;
   const roleEl = document.getElementById('adminUserRole');

@@ -1,9 +1,11 @@
         <section class="page-section" id="a-finance-bills">
           <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Vendor bills sub navigation">
+              <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Spend sub navigation">
                 <button class="filter-tab active" id="tabFinanceBills" role="tab" aria-selected="true" tabindex="0" onclick="switchBillSubTab('bills')"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
                 <button class="filter-tab" id="tabFinanceVendors" role="tab" aria-selected="false" tabindex="-1" onclick="switchBillSubTab('vendors')"><i class="fa-solid fa-truck-field"></i> Vendors</button>
+                <button class="filter-tab" id="tabFinanceSubscriptions" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav)AdminNav.go('a-finance-subscriptions')"><i class="fa-solid fa-repeat"></i> Subscriptions</button>
+                <button class="filter-tab" id="tabFinanceStatutory" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav)AdminNav.go('a-finance-statutory')"><i class="fa-solid fa-landmark"></i> Statutory</button>
               </div>
               <div class="search-box" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>

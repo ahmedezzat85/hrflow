@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Financial Reports & Excel Export UI Testing', () => {
 
@@ -8,7 +9,7 @@ test.describe('Financial Reports & Excel Export UI Testing', () => {
     await page.waitForLoadState('networkidle');
 
     // Navigate to Financial Reports via sidebar
-    await page.click('#adminSidebar a[data-page="a-finance-reports"]');
+    await openAdminPage(page, 'a-finance-reports');
     await page.waitForTimeout(400);
   });
 
