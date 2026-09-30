@@ -154,8 +154,26 @@ This document records durable product and architectural decisions approved by th
 - **Evidence / Reference:**
   - Owner-approved Project discussion (September 29, 2026), `docs/payroll/12-payroll-income-tax-calculation-spec.md`.
   - Implemented in `be/finance/services/payroll_calculation_helper.py`, `be/finance/services/payroll_service.py`, `be/finance/models.py`, `be/finance/routers/payroll.py`, `be/migrations/versions/0023_payroll_income_tax_settings.py`, and verified in `be/tests/test_payroll_income_tax.py`.
-  - *Implementation Status:* Backend Foundation Implemented (Phase 1).
 
+### D-010 — Admin Dual-Rail Navigation Redesign and Payroll Module Separation (N-1–N-10)
+- **Status:** Accepted
+- **Decision:**
+  - **Dual-Rail Shell:** The single 22-item scrollable admin sidebar is replaced by a dual-rail navigation structure consisting of a slim 64px module rail and a 232px collapsible contextual page panel. The Employee portal sidebar remains completely untouched (N-1, N-2).
+  - **Module Rail:** Features HR, Finance, and Payroll as top-level navigation modules (N-3). The rail remains permanently visible; only the contextual page panel collapses.
+  - **Finance Simplification:** The Finance panel is organized into 6 primary domain pages: Overview, Sales, Spend, Banking, Reports & Export, and Finance Settings (N-4). Nested child rows (Invoices, Bills, Subscriptions, Statutory, Bank Accounts) are removed from the sidebar (N-4/N-5).
+  - **Unified Spend Sub-Navigation:** In-page tabs carry sub-domain detail. A unified 4-button Spend sub-navigation bar (`Vendor Bills`, `Vendors`, `Subscriptions`, `Statutory`) is embedded across all three Spend pages (`a-finance-bills`, `a-finance-subscriptions`, `a-finance-statutory`) with identical labels, order, and bidirectional routing (N-5).
+  - **Payroll Separation (N-10):** Payroll is separated from `#adminFinanceNavGroup` into its own top-level module rail entry (`data-module="payroll"`), with a dedicated panel (`#adminPayrollNavGroup`) containing Payroll Runs and Payroll Settings. This supersedes Story 1.1 Acceptance Criteria 1 ('7 finance domains in sidebar') by validating 6 domains in the Finance panel while Payroll is independently reachable via its own module rail with Runs and Settings.
+  - **Terminology Renames:** HR page "Invoices" is renamed **Salary Payment Docs** (label, title, topbar, command palette) to prevent confusion with Finance Sales Invoices (N-6). Finance Settings is labeled **Finance Settings** (N-7).
+  - **Independent State Persistence:** Admin panel collapsed/expanded state is persisted under its own key `hrflow.admin.navPanelCollapsed`. The Employee portal's collapse key (`hrflow-sidebar-collapsed`) is preserved independently without cross-portal sync (N-8).
+  - **Active State & Backward Compatibility:** Legacy child routes (`a-finance-invoices`, `a-finance-bills`, etc.) and programmatic attention links resolve cleanly through `financeParentMap`, activating the corresponding parent item and view with single highlighting (no double-highlighting).
+  - **Gated Module Access:** Permissions remain unchanged; module rail visibility for Finance and Payroll reuses existing role/permission checks (`AdminNav.canSeeModule`) without modifying backend RBAC (N-9).
+- **Rationale:**
+  - Solves cognitive overload and excessive scrolling caused by the legacy 22-item flat navigation list while maintaining 100% backward compatibility for all existing tests, deep-linking, and legacy section routes.
+- **Evidence / Reference:**
+  - Implementation plan: `docs/ui-design/dual-rail-navigation-plan-v2.md`.
+  - Visual reference: `docs/ui-design/hrflow-dual-rail-design.html`.
+  - Branch `ui/dual-rail-nav`, commit `c5b6b67`. Verified across 252 tests with 0 regressions.
+  - *Implementation Status:* Complete.
 
 ---
 
