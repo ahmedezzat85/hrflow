@@ -108,6 +108,24 @@ def init_db():
     except Exception:
         pass
 
+    # Idempotently seed default payroll tax settings (2026-01-01) if none exist
+    try:
+        import json
+        from finance.models import PayrollTaxSettingsDB
+        from finance.services.payroll_calculation_helper import DEFAULT_TAX_BRACKETS, DEFAULT_TAX_LIMIT_P
+        with get_db_context() as db:
+            if db.query(PayrollTaxSettingsDB).count() == 0:
+                default_tax = PayrollTaxSettingsDB(
+                    effective_from="2026-01-01",
+                    tax_limit_p_egp=DEFAULT_TAX_LIMIT_P,
+                    brackets_json=json.dumps(DEFAULT_TAX_BRACKETS),
+                    created_by="system_seed",
+                )
+                db.add(default_tax)
+                db.commit()
+    except Exception:
+        pass
+
 
 def reset_engine_for_testing(custom_url: str = None):
     """Utility for test fixtures to bind a fresh in-memory or temporary database."""

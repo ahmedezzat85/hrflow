@@ -17,6 +17,7 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
     EmployeeCompensationPlanDB,
+    PayrollTaxSettingsDB,
 )
 from db import get_session_factory
 
@@ -60,6 +61,19 @@ def seed_payroll_env(db_session):
     if not pt:
         pt = PaymentTypeDB(name="Outbound Wire", code="OUTBOUND_TRANS", is_active=True)
         db_session.add(pt)
+
+    # Ensure dated tax setting exists for internal salary tax calculations
+    tax_setting = db_session.query(PayrollTaxSettingsDB).filter_by(effective_from="2026-01-01").first()
+    if not tax_setting:
+        import json
+        tax_setting = PayrollTaxSettingsDB(
+            effective_from="2026-01-01",
+            tax_limit_p_egp=20000.0,
+            brackets_json=json.dumps([{"upper_bound": None, "rate": 0.0, "fixed": 0.0, "base": None}]),
+            created_by="system",
+        )
+        db_session.add(tax_setting)
+        db_session.commit()
 
     # Clean existing payroll runs & test employees
     db_session.query(PayrollLineDB).delete()
@@ -177,9 +191,33 @@ def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed
     assert "No Active Compensation Plan" in titles
 
     bank_exc = next(e for e in excs if e["title"] == "Missing Bank Wire Details")
-    assert bank_exc["severity"] == "blocking"
+    assert bank_exc["severity"] == "warning"
     plan_exc = next(e for e in excs if e["title"] == "No Active Compensation Plan")
     assert plan_exc["severity"] == "blocking"
+
+    # Verify default FX rate fallback
+    assert data["fx_rate_value"] == 50.0
+    assert data["fx_rate_source"] == "first_of_month"
+
+
+def test_payroll_preview_fx_rate_override_and_recipients(app_client, admin_cookies, seed_payroll_env):
+    """Verifies that manual FX rate override is honored in preview and recipients are structured correctly."""
+    res = app_client.post(
+        "/api/finance/payroll/runs/preview",
+        json={
+            "period_label": "2026-09",
+            "period_start": "2026-09-01",
+            "period_end": "2026-09-30",
+            "fx_rate_value": 49.25,
+            "bank_account_id": seed_payroll_env["bank_id"],
+        },
+        cookies=admin_cookies,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["fx_rate_value"] == 49.25
+    assert "recipients" in data
+    assert len(data["recipients"]) > 0
 
 
 def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_payroll_env):
@@ -493,6 +531,11 @@ def test_maker_checker_segregation_blocks_self_approval(app_client, admin_cookie
     assert app_res.status_code == 400
     assert "maker-checker" in app_res.json()["detail"].lower()
 
+    # When allow_self_approval=true is provided (e.g. from single-admin UI Submit & Approve), self-approval succeeds
+    app_bypass_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
+    assert app_bypass_res.status_code == 200
+    assert app_bypass_res.json()["status"] == "approved"
+
 
 def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_cookies, db_session, seed_payroll_env):
     """Verifies that employees without compensation plans produce blocking exceptions and no preview lines."""
@@ -524,3 +567,132 @@ def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_c
     bob_lines = [l for l in data["lines"] if l["employee_id"] == seed_payroll_env["emp2_id"]]
     assert len(alice_lines) == 1
     assert len(bob_lines) == 1
+
+
+def test_payroll_preview_and_direct_generation_exception_and_line_parity(app_client, admin_cookies, db_session, seed_payroll_env):
+    """
+    Verifies that preview_run and direct generation (/runs/generate) produce
+    identical line snapshots, totals, and MISSING_BANK_DETAILS exceptions.
+    """
+    # Ensure emp3 (Charlie) has an active compensation plan so /runs/generate succeeds
+    p3 = EmployeeCompensationPlanDB(
+        employee_id=seed_payroll_env["emp3_id"],
+        component_type="internal_usd_cash",
+        amount=2000.0,
+        currency="USD",
+        effective_start_date="2026-01-01",
+    )
+    db_session.add(p3)
+    db_session.commit()
+
+    period_payload = {
+        "period_label": "2026-11",
+        "period_start": "2026-11-01",
+        "period_end": "2026-11-30",
+        "bank_account_id": seed_payroll_env["bank_id"],
+        "fx_rate_value": 50.0,
+    }
+
+    # 1. Preview run
+    preview_res = app_client.post("/api/finance/payroll/runs/preview", json=period_payload, cookies=admin_cookies)
+    assert preview_res.status_code == 200
+    preview_data = preview_res.json()
+
+    # 2. Direct generation run
+    gen_res = app_client.post("/api/finance/payroll/runs/generate", json=period_payload, cookies=admin_cookies)
+    assert gen_res.status_code == 201
+    gen_data = gen_res.json()
+
+    # 3. Assert totals parity
+    assert preview_data["headcount"] == gen_data["headcount"]
+    assert preview_data["total_gross"] == gen_data["total_gross"]
+    assert preview_data["total_net"] == gen_data["total_net"]
+    assert preview_data["total_deductions"] == gen_data["total_deductions"]
+    assert preview_data["total_employer_cost"] == gen_data["total_employer_cost"]
+    assert preview_data["total_employee_tax_egp"] == gen_data["total_employee_tax_egp"]
+    assert preview_data["total_social_insurance_egp"] == gen_data["total_social_insurance_egp"]
+
+    # 4. Assert MISSING_BANK_DETAILS exception parity
+    preview_bank_excs = [e for e in preview_data["exceptions"] if e["code"] == "MISSING_BANK_DETAILS"]
+    gen_bank_excs = [e for e in gen_data["exceptions"] if e["code"] == "MISSING_BANK_DETAILS"]
+
+    assert len(preview_bank_excs) == 1
+    assert len(gen_bank_excs) == 1
+
+    p_exc = preview_bank_excs[0]
+    g_exc = gen_bank_excs[0]
+
+    assert p_exc["employee_id"] == g_exc["employee_id"] == seed_payroll_env["emp2_id"]
+    assert p_exc["code"] == g_exc["code"] == "MISSING_BANK_DETAILS"
+    assert p_exc["severity"] == g_exc["severity"] == "warning"
+    assert p_exc["title"] == g_exc["title"]
+    assert p_exc["description"] == g_exc["description"]
+    assert p_exc["correction_path"] == g_exc["correction_path"]
+
+    # 5. Assert line calculation parity
+    preview_lines = sorted(preview_data["lines"], key=lambda x: (x["employee_id"], x["compensation_type"]))
+    gen_lines = sorted(gen_data["lines"], key=lambda x: (x["employee_id"], x["compensation_type"]))
+
+    assert len(preview_lines) == len(gen_lines)
+    for pl, gl in zip(preview_lines, gen_lines):
+        assert pl["employee_id"] == gl["employee_id"]
+        assert pl["compensation_type"] == gl["compensation_type"]
+        assert pl["base_salary"] == gl["base_salary"]
+        assert pl["net_pay"] == gl["net_pay"]
+        assert pl["deductions_total"] == gl["deductions_total"]
+        assert pl["employer_cost_extra"] == gl["employer_cost_extra"]
+        assert pl["bank_account_masked"] == gl["bank_account_masked"]
+
+
+def test_payroll_approval_and_finalization_succeeds_with_missing_bank_warning(app_client, admin_cookies, db_session, seed_payroll_env):
+    """
+    D-006 Verification:
+    Verifies that a payroll run containing only MISSING_BANK_DETAILS warning
+    (with valid compensation plans) can be previewed, approved, and finalized without being blocked.
+    """
+    # Configure comp plan for emp3 (Charlie) so only emp2 (Bob) has missing bank account
+    p3 = EmployeeCompensationPlanDB(
+        employee_id=seed_payroll_env["emp3_id"],
+        component_type="internal_usd_cash",
+        amount=3000.0,
+        currency="USD",
+        effective_start_date="2026-01-01",
+    )
+    db_session.add(p3)
+    db_session.commit()
+
+    period_payload = {
+        "period_label": "2026-12",
+        "period_start": "2026-12-01",
+        "period_end": "2026-12-31",
+        "bank_account_id": seed_payroll_env["bank_id"],
+    }
+
+    # 1. Preview: has_blocking_exceptions must be False
+    prev_res = app_client.post("/api/finance/payroll/runs/preview", json=period_payload, cookies=admin_cookies)
+    assert prev_res.status_code == 200
+    prev_data = prev_res.json()
+    assert prev_data["has_blocking_exceptions"] is False
+    bank_excs = [e for e in prev_data["exceptions"] if e["code"] == "MISSING_BANK_DETAILS"]
+    assert len(bank_excs) == 1
+    assert bank_excs[0]["severity"] == "warning"
+
+    # 2. Create Run: succeeds in draft
+    create_res = app_client.post("/api/finance/payroll/runs", json=period_payload, cookies=admin_cookies)
+    assert create_res.status_code == 201
+    run_id = create_res.json()["id"]
+
+    # 3. Approve: succeeds (not blocked by missing bank details)
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    assert app_res.status_code == 200
+    assert app_res.json()["status"] == "approved"
+
+    # 4. Finalize: succeeds
+    fin_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
+    assert fin_res.status_code == 200
+    assert fin_res.json()["status"] == "finalized"
+
+    # 5. Warning remains stored in run exceptions
+    run_data = fin_res.json()
+    assert any(e["code"] == "MISSING_BANK_DETAILS" and e["severity"] == "warning" for e in run_data["exceptions"])
+

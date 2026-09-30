@@ -51,6 +51,16 @@
               <label>New Amount <span class="opt">USD</span> <span class="req">*</span></label>
               <input type="number" id="compPlanAmount" step="0.01" min="0.01" placeholder="e.g. 2500">
             </div>
+            <div class="form-field" id="compPlanSalaryBasisContainer" style="display:none;">
+              <label>Salary Basis <span class="req">*</span></label>
+              <select id="compPlanSalaryBasis">
+                <option value="NET" selected>NET (Target Net Pay Protected)</option>
+                <option value="GROSS">GROSS (Local Statutory Deductions Apply)</option>
+              </select>
+              <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
+                NET guarantees configured USD payout; GROSS deducts employee statutory SI from base.
+              </span>
+            </div>
             <div class="form-field">
               <label>Effective Start Date <span class="req">*</span></label>
               <input type="date" id="compPlanStartDate">
@@ -75,6 +85,7 @@
               <thead>
                 <tr>
                   <th>Component</th>
+                  <th>Basis</th>
                   <th>Amount</th>
                   <th>Start Date</th>
                   <th>End Date</th>

@@ -79,6 +79,7 @@ class CompensationPlanRepository:
         effective_start_date: str,
         notes: str = "",
         currency: str = "USD",
+        salary_basis: str = "NET",
     ) -> EmployeeCompensationPlanDB:
         """
         Create a new active compensation plan row.
@@ -95,6 +96,7 @@ class CompensationPlanRepository:
             component_type=component_type,
             amount=round(float(amount), 2),
             currency=currency or "USD",
+            salary_basis=(salary_basis or "NET").upper(),
             effective_start_date=effective_start_date,
             effective_end_date=None,
             notes=notes or "",

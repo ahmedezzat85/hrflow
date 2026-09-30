@@ -4,6 +4,7 @@ Pydantic request and response schemas for Finance domain resources.
 """
 from datetime import date, datetime
 from enum import Enum
+import json
 from typing import Optional, List, Dict, Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator, field_validator
 
@@ -1928,6 +1929,32 @@ class PayrollLineResponse(BaseModel):
     employee_name: Optional[str] = None
     department: Optional[str] = None
     compensation_type: Optional[str] = "internal_usd_cash"
+    base_salary: Optional[float] = None
+    deductions_total: Optional[float] = 0.0
+    employer_cost_extra: Optional[float] = 0.0
+    is_insurable: Optional[bool] = True
+    insured_base_snapshot: Optional[float] = 0.0
+    employee_rate_snapshot: Optional[float] = 0.0
+    employer_rate_snapshot: Optional[float] = 0.0
+    salary_basis_snapshot: Optional[str] = None
+    configured_internal_salary_usd_snapshot: Optional[float] = 0.0
+    insured_base_egp_snapshot: Optional[float] = 0.0
+    fx_rate_snapshot: Optional[float] = None
+    base_gross_egp: Optional[float] = 0.0
+    variable_gross_egp: Optional[float] = 0.0
+    employee_social_insurance_egp: Optional[float] = 0.0
+    employer_social_insurance_egp: Optional[float] = 0.0
+    total_social_insurance_egp: Optional[float] = 0.0
+    employee_tax_egp: Optional[float] = 0.0
+    employee_social_insurance_usd_equivalent: Optional[float] = 0.0
+    employee_tax_usd_equivalent: Optional[float] = 0.0
+    final_internal_net_egp: Optional[float] = 0.0
+    final_internal_payment_usd: Optional[float] = None
+    taxable_gross_egp: Optional[float] = 0.0
+    tax_employee_si_egp: Optional[float] = 0.0
+    annual_taxed_salary_egp: Optional[float] = 0.0
+    annual_tax_egp: Optional[float] = 0.0
+    tax_settings_version_id: Optional[int] = None
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2065,6 +2092,9 @@ class PayrollRecipientPreview(BaseModel):
     department: Optional[str] = "General"
     base_int_amount: float = 0.0
     base_ext_amount: float = 0.0
+    int_deductions_total: float = 0.0
+    deductions_label: Optional[str] = None
+    employer_cost_extra: float = 0.0
     int_adjustments_total: float = 0.0
     ext_adjustments_total: float = 0.0
     final_int_amount: float = 0.0
@@ -2096,13 +2126,18 @@ class PayrollRunPreviewResponse(BaseModel):
     headcount: int = 0
     recipient_count: int = 0
     payment_line_count: int = 0
+    total_gross: Optional[float] = None
+    total_deductions: Optional[float] = 0.0
     total_net: float = 0.0
+    total_employer_cost: Optional[float] = None
     total_payment_amount: float = 0.0
     total_commissions: float = 0.0
     total_bonuses: float = 0.0
     total_additions: float = 0.0
     final_int_total: float = 0.0
     final_ext_total: float = 0.0
+    total_employee_tax_egp: Optional[float] = 0.0
+    total_social_insurance_egp: Optional[float] = 0.0
     prior_period_total: float = 0.0
     change_amount: float = 0.0
     has_blocking_exceptions: bool = False
@@ -2139,7 +2174,10 @@ class PayrollRunResponse(BaseModel):
     period_end: str
     payment_date: Optional[str] = None
     status: str  # draft | submitted | approved | finalized | paid | partially_paid | cancelled
+    total_gross: Optional[float] = None
+    total_deductions: Optional[float] = 0.0
     total_net: float
+    total_employer_cost: Optional[float] = None
     total_payment_amount: Optional[float] = None
     headcount: int = 0
     recipient_count: Optional[int] = None
@@ -2175,6 +2213,9 @@ class PayrollRunResponse(BaseModel):
     total_commissions: Optional[float] = 0.0
     total_bonuses: Optional[float] = 0.0
     total_additions: Optional[float] = 0.0
+    total_employee_tax_egp: Optional[float] = 0.0
+    total_social_insurance_egp: Optional[float] = 0.0
+    tax_settings_version_id: Optional[int] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -2205,6 +2246,10 @@ class EmployeePayslipResponse(BaseModel):
     employee_id: int
     employee_name: str
     department: str
+    base_salary: Optional[float] = None
+    deductions_total: Optional[float] = 0.0
+    employer_cost_extra: Optional[float] = 0.0
+    deductions_label: Optional[str] = None
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2213,6 +2258,18 @@ class EmployeePayslipResponse(BaseModel):
     bank_name: Optional[str] = None
     bank_account_masked: Optional[str] = None
     compensation_type: Optional[str] = None
+    salary_basis_snapshot: Optional[str] = None
+    insured_base_egp_snapshot: Optional[float] = None
+    fx_rate_snapshot: Optional[float] = None
+    base_gross_egp: Optional[float] = None
+    variable_gross_egp: Optional[float] = None
+    employee_social_insurance_egp: Optional[float] = None
+    employer_social_insurance_egp: Optional[float] = None
+    total_social_insurance_egp: Optional[float] = None
+    employee_tax_egp: Optional[float] = None
+    employee_social_insurance_usd_equivalent: Optional[float] = None
+    final_internal_net_egp: Optional[float] = None
+    final_internal_payment_usd: Optional[float] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -2316,6 +2373,7 @@ class CompensationComponentSetRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Component amount in USD, must be greater than 0")
     effective_start_date: str = Field(..., description="Effective start date in YYYY-MM-DD format")
     notes: Optional[str] = Field("", description="Optional notes or rationale")
+    salary_basis: Optional[str] = Field("NET", description="Salary basis: NET or GROSS (internal_usd_cash only)")
 
 
 class CompensationComponentResponse(BaseModel):
@@ -2324,6 +2382,7 @@ class CompensationComponentResponse(BaseModel):
     component_type: str
     amount: float
     currency: str = "USD"
+    salary_basis: Optional[str] = "NET"
     effective_start_date: str
     effective_end_date: Optional[str] = None
     notes: str = ""
@@ -2467,6 +2526,72 @@ class PayableStatusReportResponse(BaseModel):
     total_settled: float = 0.0
     grand_total: float = 0.0
     employee_breakdown: Optional[List[EmployeePayableStatusItem]] = None
+
+
+class PayrollSettingsUpdate(BaseModel):
+    employee_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+    employer_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class PayrollSettingsResponse(BaseModel):
+    id: int
+    employee_rate: float
+    employer_rate: float
+    updated_at: Optional[Union[str, datetime]] = None
+    updated_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TaxBracket(BaseModel):
+    upper_bound: Optional[float] = None
+    rate: float = Field(..., ge=0.0, le=1.0)
+    base: Optional[float] = None
+    fixed: float = 0.0
+
+
+class PayrollTaxSettingsCreate(BaseModel):
+    effective_from: str = Field(..., pattern=r"^\d{4}-\d{2}-01$")
+    tax_limit_p_egp: float = Field(20000.0, ge=0.0)
+    brackets: List[TaxBracket] = Field(..., min_length=1)
+
+
+class PayrollTaxSettingsResponse(BaseModel):
+    id: int
+    effective_from: str
+    tax_limit_p_egp: float
+    brackets: List[TaxBracket]
+    created_at: Optional[Union[str, datetime]] = None
+    created_by: Optional[str] = None
+    updated_at: Optional[Union[str, datetime]] = None
+    updated_by: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_brackets(cls, data: Any) -> Any:
+        if hasattr(data, "brackets_json"):
+            bj = data.brackets_json
+            parsed = json.loads(bj) if isinstance(bj, str) else (bj or [])
+            return {
+                "id": data.id,
+                "effective_from": data.effective_from,
+                "tax_limit_p_egp": data.tax_limit_p_egp,
+                "brackets": parsed,
+                "created_at": data.created_at,
+                "created_by": data.created_by,
+                "updated_at": data.updated_at,
+                "updated_by": data.updated_by,
+            }
+        elif isinstance(data, dict):
+            bj = data.get("brackets_json")
+            if bj and "brackets" not in data:
+                data["brackets"] = json.loads(bj) if isinstance(bj, str) else bj
+        return data
+
+    class Config:
+        from_attributes = True
+
 
 
 

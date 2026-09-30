@@ -64,10 +64,13 @@ def set_compensation_component(
     Closes the existing active row (effective_end_date = effective_start_date - 1 day)
     and records the new active row.
     """
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.set_component(
         employee_id=employee_id,
         component_type=component_type,
         amount=payload.amount,
         effective_start_date=payload.effective_start_date,
         notes=payload.notes or "",
+        salary_basis=payload.salary_basis,
+        user_email=user_email,
     )

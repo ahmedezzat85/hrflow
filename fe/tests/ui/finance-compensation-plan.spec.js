@@ -90,5 +90,47 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     // Confirm salary table reflects updated external USD amount
     await expect(firstRow.locator('.comp-val-external')).toContainText('11,500');
   });
+
+  test('FUX-421: Selecting internal_usd_cash displays Salary Basis selector and saves GROSS basis', async ({ page }) => {
+    const tbody = page.locator('#salaryTableBody');
+    const firstRow = tbody.locator('tr').first();
+
+    // Click edit button for internal USD
+    await firstRow.locator('.btn-comp-int').click();
+
+    const modal = page.locator('#compensationPlanModal');
+    await expect(modal).toBeVisible();
+
+    // Salary basis container should be visible for internal_usd_cash
+    const basisContainer = modal.locator('#compPlanSalaryBasisContainer');
+    await expect(basisContainer).toBeVisible();
+    const basisSelect = modal.locator('#compPlanSalaryBasis');
+    await expect(basisSelect).toBeVisible();
+
+    // Select GROSS basis
+    await basisSelect.selectOption('GROSS');
+
+    // Fill amount and submit
+    await modal.locator('#compPlanAmount').fill('6500');
+    await modal.locator('#compPlanStartDate').fill('2026-10-01');
+    await modal.locator('#compPlanNotes').fill('Internal Gross basis test');
+    await modal.locator('#compPlanSaveBtn').click();
+
+    // Active summary should show (GROSS)
+    await expect(modal.locator('#compPlanActiveInternal')).toContainText('GROSS');
+
+    // History table should show GROSS badge
+    const histBody = modal.locator('#compPlanHistoryBody');
+    await expect(histBody).toContainText('GROSS');
+
+    // Switching to external_usd hides basis container
+    await modal.locator('#compPlanComponentType').selectOption('external_usd');
+    await expect(basisContainer).not.toBeVisible();
+
+    // Close modal
+    await modal.locator('#compPlanCloseBtn').click();
+    await expect(modal).not.toBeVisible();
+  });
 });
+
 

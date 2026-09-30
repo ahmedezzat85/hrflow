@@ -121,8 +121,10 @@ document.addEventListener("DOMContentLoaded", () => {
       loadFinanceInvoices();
     } else if (targetPage === "a-finance-spend" || targetPage === "a-finance-bills") {
       loadFinanceBills();
-    } else if (targetPage === "a-finance-payroll") {
-      loadFinancePayroll();
+    } else if (targetPage === "a-finance-payroll" || targetPage === "a-finance-payroll-runs") {
+      loadFinancePayroll("list");
+    } else if (targetPage === "a-finance-payroll-settings") {
+      loadFinancePayroll("settings");
     } else if (targetPage === "a-finance-banking" || targetPage === "a-finance-accounts") {
       if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "statements") {
         loadFinanceStatements();

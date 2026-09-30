@@ -47,6 +47,10 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "finance.subscription.read", "description": "View vendor subscriptions"},
     {"key": "finance.subscription.write", "description": "Create and manage vendor subscriptions"},
     {"key": "finance.report.read", "description": "View finance summary reports and metrics"},
+    {"key": "finance.statutory.read", "description": "View statutory obligations and payments"},
+    {"key": "finance.statutory.write", "description": "Create and manage statutory obligations and payments"},
+    {"key": "finance.payroll_tax.read", "description": "View payroll income tax settings"},
+    {"key": "finance.payroll_tax.write", "description": "Create and update payroll income tax settings"},
     {"key": "finance.settings.write", "description": "Manage finance settings, feature flags, and rollout controls"},
 ]
 

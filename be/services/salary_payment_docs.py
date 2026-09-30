@@ -128,16 +128,24 @@ def build_template_context(employee: dict, payment_year: int, payment_month: int
     addr2 = (employee.get("address_line_2") or "").strip()
     address_display = f"{addr1}\n{addr2}" if addr2 else addr1
 
+    emp_name = (employee.get("name") or "").strip()
+    month_name = MONTH_NAMES[payment_month].capitalize() if 1 <= payment_month <= 12 else ""
+
     return {
         "invoice_number": doc_number,
         "invoice_date": format_document_date(now),
         "due_date": format_due_date(now),
-        "employee_name": (employee.get("name") or "").strip(),
+        "employee_name": emp_name,
+        "employee_full_name": emp_name,
         "employee_address": address_display,
+        "address_line_1": addr1,
+        "address_line_2": addr2,
+        "current_month": month_name,
         "consultant_description": format_consultant_description(payment_year, payment_month),
         "amount": format_usd_amount(amount_num),
         "total_amount": format_usd_amount(amount_num),
     }
+
 
 
 def render_invoice_document(context: dict) -> bytes:
