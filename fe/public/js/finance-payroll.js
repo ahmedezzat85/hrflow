@@ -1969,11 +1969,22 @@
     drawFundingAccounts() {
       const selExt = document.getElementById('payrollTargetExternalAccount');
       const selInt = document.getElementById('payrollTargetInternalAccount');
+      const formatOpt = (b, selectedId) => {
+        let numStr = (b.number || '').trim();
+        let masked = numStr;
+        if (typeof FinanceFormat !== 'undefined' && typeof FinanceFormat.formatMaskedAccountNumber === 'function') {
+          masked = FinanceFormat.formatMaskedAccountNumber(numStr);
+        } else if (numStr.length > 4) {
+          masked = `•••• ${numStr.slice(-4)}`;
+        }
+        const isSel = String(b.id) === String(selectedId) ? 'selected' : '';
+        return `<option value="${b.id}" ${isSel}>${b.name} (${b.currency} ${masked})</option>`;
+      };
       if (selExt) {
-        selExt.innerHTML = this.banks.map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+        selExt.innerHTML = this.banks.map(b => formatOpt(b, this.selectedExternalAccountId)).join('');
       }
       if (selInt) {
-        selInt.innerHTML = this.banks.map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+        selInt.innerHTML = this.banks.map(b => formatOpt(b, this.selectedInternalAccountId)).join('');
       }
     },
 

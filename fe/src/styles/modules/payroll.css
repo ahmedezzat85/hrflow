@@ -1634,73 +1634,11 @@ table.payroll-worksheet td.payroll-bonus-col {
    Payroll Settings — Premium Redesign
    ===================================================================== */
 
-/* Settings Hero Header */
-.payroll-settings-hero {
+/* Settings Header (Standard section-title-group container) */
+.payroll-settings-header {
   padding: 22px 28px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
   background: var(--surface);
-}
-
-.payroll-settings-hero-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-  min-width: 0;
-}
-
-.payroll-settings-hero-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  box-shadow: 0 4px 14px rgba(32, 86, 232, 0.28);
-  flex-shrink: 0;
-}
-
-.payroll-settings-hero-text {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.payroll-settings-hero-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.payroll-settings-hero-title-row h2 {
-  font-family: var(--font-head);
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0;
-  letter-spacing: -0.015em;
-}
-
-.payroll-settings-hero .payroll-subtitle {
-  color: var(--text2);
-  font-size: 0.86rem;
-  line-height: 1.4;
-  margin: 0;
-}
-
-.payroll-settings-hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
 }
 
 /* Settings Grid */
@@ -1881,11 +1819,11 @@ table.payroll-worksheet td.payroll-bonus-col {
   opacity: 0.85;
 }
 
-/* Standard Inputs & Selects */
-.funding-form input,
-.funding-form select,
-.month-form input,
-.month-form select {
+/* Standard Inputs & Selects — Scoped to outrank #a-finance-payroll input (Phase B) */
+#a-finance-payroll .funding-form input,
+#a-finance-payroll .funding-form select,
+#a-finance-payroll .month-form input,
+#a-finance-payroll .month-form select {
   font-family: inherit;
   font-size: 13.5px;
   font-weight: 500;
@@ -1898,11 +1836,11 @@ table.payroll-worksheet td.payroll-bonus-col {
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   box-sizing: border-box;
-  height: 42px;
+  height: 40px;
 }
 
-.funding-form select,
-.month-form select {
+#a-finance-payroll .funding-form select,
+#a-finance-payroll .month-form select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -1913,23 +1851,23 @@ table.payroll-worksheet td.payroll-bonus-col {
   background-position: right 14px center;
 }
 
-.funding-form input:hover,
-.funding-form select:hover,
-.month-form input:hover,
-.month-form select:hover {
+#a-finance-payroll .funding-form input:hover,
+#a-finance-payroll .funding-form select:hover,
+#a-finance-payroll .month-form input:hover,
+#a-finance-payroll .month-form select:hover {
   border-color: var(--border2);
 }
 
-.funding-form input:focus,
-.funding-form select:focus,
-.month-form input:focus,
-.month-form select:focus {
+#a-finance-payroll .funding-form input:focus,
+#a-finance-payroll .funding-form select:focus,
+#a-finance-payroll .month-form input:focus,
+#a-finance-payroll .month-form select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* Affix Input Groups (for %, EGP, Currency) */
-.input-affix-group {
+#a-finance-payroll .input-affix-group {
   display: flex;
   align-items: stretch;
   border: 1px solid var(--border);
@@ -1937,14 +1875,14 @@ table.payroll-worksheet td.payroll-bonus-col {
   background: var(--surface);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   overflow: hidden;
-  height: 42px;
+  height: 40px;
 }
 
-.input-affix-group:hover {
+#a-finance-payroll .input-affix-group:hover {
   border-color: var(--border2);
 }
 
-.input-affix-group:focus-within {
+#a-finance-payroll .input-affix-group:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -2074,12 +2012,8 @@ table.payroll-worksheet td.payroll-bonus-col {
   background: var(--bg);
 }
 
-[data-theme="dark"] .payroll-settings-hero {
-  background: var(--surface);
-}
-
-[data-theme="dark"] .funding-form select,
-[data-theme="dark"] .month-form select {
+[data-theme="dark"] #a-finance-payroll .funding-form select,
+[data-theme="dark"] #a-finance-payroll .month-form select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239aa0b4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
