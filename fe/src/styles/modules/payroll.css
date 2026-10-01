@@ -7,41 +7,6 @@
   width: 100%;
 }
 
-.payroll-topbar {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  padding: 12px 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.payroll-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.payroll-brand-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 1.05rem;
-}
-
-.payroll-nav-links {
-  display: flex;
-  gap: 6px;
-}
 
 .payroll-nav-link {
   padding: 7px 14px;
@@ -1978,12 +1943,12 @@ table.payroll-worksheet td.payroll-bonus-col {
 .save-bar {
   padding: 16px 24px;
   border-top: 1px solid var(--border);
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 16px !important;
-  flex-wrap: wrap !important;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   background: var(--surface2);
 }
 
@@ -2157,27 +2122,6 @@ table.payroll-worksheet td.payroll-bonus-col {
   }
 }
 
-@media (max-width: 640px) {
-  .month-form {
-    grid-template-columns: 1fr;
-  }
-  .payroll-settings-hero {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .payroll-settings-hero-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-  .save-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .save-bar-actions {
-    justify-content: flex-end;
-  }
-}
-
 @media (max-width: 940px) {
   #a-finance-payroll .grid,
   #a-finance-payroll .stats,
@@ -2187,6 +2131,16 @@ table.payroll-worksheet td.payroll-bonus-col {
 }
 
 @media (max-width: 640px) {
+  .month-form {
+    grid-template-columns: 1fr;
+  }
+  .save-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .save-bar-actions {
+    justify-content: flex-end;
+  }
   #a-finance-payroll .grid,
   #a-finance-payroll .stats,
   #a-finance-payroll .payroll-stats,
@@ -2196,12 +2150,4 @@ table.payroll-worksheet td.payroll-bonus-col {
   #a-finance-payroll .title-row {
     padding: 12px 14px 2px;
   }
-  #a-finance-payroll .payroll-topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-.payroll-hidden {
-  display: none !important;
 }
