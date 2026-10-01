@@ -154,6 +154,9 @@ const titles = {
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
   'a-finance-bills':['Vendor Bills','Track supplier bills and accounts payable.'],
   'a-finance-accounts':['Company Bank Accounts','Manage company treasury and operating accounts.'],
+  'a-finance-transfers':['Account Transfers','Manage transfers between company bank and cash accounts.'],
+  'a-finance-cheques':['Cheque Register','Track issued and received bank cheques.'],
+  'a-finance-statements':['Statements & Reconciliation','Import bank statements and reconcile operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
   'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
@@ -171,6 +174,9 @@ function showSection(pageId, portal){
     'a-finance-sales': 'a-finance-invoices',
     'a-finance-spend': 'a-finance-bills',
     'a-finance-banking': 'a-finance-accounts',
+    'a-finance-transfers': 'a-finance-accounts',
+    'a-finance-cheques': 'a-finance-accounts',
+    'a-finance-statements': 'a-finance-accounts',
     'a-finance-payroll-runs': 'a-finance-payroll',
     'a-finance-payroll-settings': 'a-finance-payroll',
   };
@@ -221,6 +227,15 @@ function showSection(pageId, portal){
         PayrollApp.showPage('list');
       } else if(pageId === 'a-finance-payroll-settings') {
         PayrollApp.showPage('settings');
+      }
+    }
+    if(typeof switchFinanceAccountsSubTab === 'function') {
+      if(pageId === 'a-finance-transfers') {
+        switchFinanceAccountsSubTab('transfers');
+      } else if(pageId === 'a-finance-cheques') {
+        switchFinanceAccountsSubTab('cheques');
+      } else if(pageId === 'a-finance-statements') {
+        switchFinanceAccountsSubTab('statements');
       }
     }
     if(window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {

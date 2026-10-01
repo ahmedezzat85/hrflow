@@ -479,9 +479,23 @@ function openAttentionItem(targetRoute, targetId, targetFilterEncoded) {
     } catch (e) {}
   }
 
+  // Check if target is a banking sub-pane
+  let bankingTab = null;
+  if (target === "a-finance-transfers") {
+    bankingTab = "transfers";
+  } else if (target === "a-finance-cheques") {
+    bankingTab = "cheques";
+  } else if (target === "a-finance-statements") {
+    bankingTab = "statements";
+  }
+
   // Navigate to target section
   if (typeof window.showSection === "function") {
     window.showSection(target, "admin");
+  }
+
+  if (bankingTab && typeof switchFinanceAccountsSubTab === "function") {
+    switchFinanceAccountsSubTab(bankingTab);
   }
 
   // Domain loader triggers
@@ -489,14 +503,14 @@ function openAttentionItem(targetRoute, targetId, targetFilterEncoded) {
     if (typeof loadFinanceInvoices === "function") loadFinanceInvoices();
   } else if (target === "a-finance-bills") {
     if (typeof loadFinanceBills === "function") loadFinanceBills(filter);
+  } else if (target === "a-finance-transfers" || bankingTab === "transfers") {
+    if (typeof loadFinanceTransfers === "function") loadFinanceTransfers();
+  } else if (target === "a-finance-cheques" || bankingTab === "cheques") {
+    if (typeof loadFinanceCheques === "function") loadFinanceCheques();
+  } else if (target === "a-finance-statements" || bankingTab === "statements") {
+    if (typeof loadFinanceStatements === "function") loadFinanceStatements();
   } else if (target === "a-finance-accounts") {
     if (typeof loadFinanceAccounts === "function") loadFinanceAccounts();
-  } else if (target === "a-finance-transfers") {
-    if (typeof loadFinanceTransfers === "function") loadFinanceTransfers();
-  } else if (target === "a-finance-cheques") {
-    if (typeof loadFinanceCheques === "function") loadFinanceCheques();
-  } else if (target === "a-finance-statements") {
-    if (typeof loadFinanceStatements === "function") loadFinanceStatements();
   } else if (target === "a-finance-payroll") {
     if (typeof loadFinancePayroll === "function") loadFinancePayroll();
   }
