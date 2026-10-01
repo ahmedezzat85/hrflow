@@ -1,31 +1,5 @@
 /* HRFlow In-Page Payroll Module Styles — Approved v9 Prototype Port */
 
-#a-finance-payroll {
-  --accent: #2056e8;
-  --accent2: #4f7af8;
-  --accent-soft: #e8eeff;
-  --success: #0ea966;
-  --success-soft: rgba(14, 169, 102, .12);
-  --warning: #e07d10;
-  --warning-soft: rgba(224, 125, 16, .12);
-  --danger: #d63b3b;
-  --danger-soft: rgba(214, 59, 59, .12);
-  --info: #4f7af8;
-  --bg: #f7f8fb;
-  --surface: #fff;
-  --surface2: #fafbfd;
-  --border: rgba(30, 60, 140, .08);
-  --border2: rgba(30, 60, 140, .15);
-  --text: #141e30;
-  --text2: #7a8ea8;
-  --text3: #c2cedc;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius: 18px;
-  --shadow: 0 2px 12px rgba(20, 50, 120, .07);
-  --font-head: 'Sora', sans-serif;
-  --font-body: 'Inter', sans-serif;
-}
 
 .payroll-shell {
   display: grid;

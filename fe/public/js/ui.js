@@ -135,6 +135,7 @@ document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('clic
 const titles = {
   'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
   'a-employees':['Employees',"Manage employee profiles and information."],
+  'a-employee-detail':['Employee Profile',"View and manage employee profile and records."],
   'a-requests':['Pending Requests',"Review and action employee requests."],
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
   'a-invoices':['Salary Payment Docs',"Generate and manage external-salary invoices."],
