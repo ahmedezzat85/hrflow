@@ -706,8 +706,8 @@ table.payroll-worksheet td.payroll-num {
   font-weight: 700;
 }
 
-td.col-id,
-th.col-id,
+table.payroll-worksheet td.col-id,
+table.payroll-worksheet th.col-id,
 th.payroll-id-th,
 td.payroll-id-th {
   width: 38px;
@@ -716,12 +716,12 @@ td.payroll-id-th {
   font-weight: 600;
 }
 
-td.col-actions {
+table.payroll-worksheet td.col-actions {
   width: 44px;
   text-align: center;
 }
 
-.tname,
+table.payroll-worksheet .tname,
 .payroll-name-th {
   display: flex;
   align-items: center;
@@ -729,7 +729,7 @@ td.col-actions {
   font-weight: 600;
 }
 
-.avatar {
+table.payroll-worksheet .avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -743,7 +743,7 @@ td.col-actions {
   flex-shrink: 0;
 }
 
-.chip {
+table.payroll-worksheet .chip {
   display: inline-block;
   background: var(--accent-soft);
   color: var(--accent);
@@ -754,7 +754,7 @@ td.col-actions {
   margin: 1px;
 }
 
-.plus {
+table.payroll-worksheet .plus {
   width: 21px;
   height: 21px;
   border: 1px solid var(--border2);
@@ -772,23 +772,23 @@ td.col-actions {
   transition: all 0.15s ease;
 }
 
-.plus:hover {
+table.payroll-worksheet .plus:hover {
   background: var(--accent-soft);
   border-color: var(--accent2);
 }
 
-td.num.strong,
-.num.strong {
+table.payroll-worksheet td.num.strong,
+table.payroll-worksheet .num.strong {
   font-weight: 800;
   color: var(--text);
 }
 
-td.num.accent,
-.num.accent {
+table.payroll-worksheet td.num.accent,
+table.payroll-worksheet .num.accent {
   color: var(--accent) !important;
 }
 
-.pill-info {
+#a-finance-payroll .pill-info {
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;

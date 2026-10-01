@@ -145,6 +145,7 @@ tbody td {
   padding: 13px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
+  vertical-align: middle;
 }
 
 tbody tr:last-child td {
@@ -153,6 +154,28 @@ tbody tr:last-child td {
 
 tbody tr:hover {
   background: var(--surface2);
+}
+
+td.col-id {
+  color: var(--text2);
+  font-weight: 600;
+}
+
+td.col-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.col-actions .icon-action {
+  margin-left: 6px;
+}
+
+td.col-actions .icon-action:first-child {
+  margin-left: 0;
+}
+
+thead th.col-actions {
+  text-align: right;
 }
 
 .tname {
