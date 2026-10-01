@@ -53,6 +53,33 @@
   /* Fonts */
   --font-head: 'Sora', sans-serif;
   --font-body: 'Inter', sans-serif;
+
+  /* Compatibility Token Aliases (Phase A1) */
+  --primary: var(--accent);
+  --text-muted: var(--text2);
+  --text-main: var(--text);
+  --text-primary: var(--text);
+  --bg-secondary: var(--surface2);
+  --border-color: var(--border);
+
+  /* Semantic, Surface & Component Aliases */
+  --color-primary: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --bg-card: var(--surface);
+  --bg-card-subtle: var(--surface2);
+  --bg-subtle: var(--surface2);
+  --bg2: var(--surface2);
+  --bg3: var(--border);
+  --surface-2: var(--surface2);
+  --surface3: var(--surface2);
+  --primary-soft: var(--accent-soft);
+  --warning-border: var(--warning);
+  --warning-bg: var(--warning-soft);
+  --warning-dark: var(--warning);
+  --shadow-md: var(--shadow);
+  --trans: all .15s ease;
 }
 
 [data-theme="dark"] {

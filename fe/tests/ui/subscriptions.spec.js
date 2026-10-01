@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 4.4: Recurring Spend and Subscriptions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
-    await page.click('#adminSidebar a[data-page="a-finance-subscriptions"]');
+    await openAdminPage(page, 'a-finance-subscriptions');
     await expect(page.locator('#a-finance-subscriptions')).toBeVisible();
   });
 

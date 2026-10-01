@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Finance Module UI Testing', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,7 +8,7 @@ test.describe('Finance Module UI Testing', () => {
   });
 
   test('Finance Overview: stat cards horizontal grid & typography', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-dashboard"]');
+    await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
 
     const statsGrid = page.locator('#a-finance-dashboard .grid.g4');
@@ -21,7 +22,7 @@ test.describe('Finance Module UI Testing', () => {
   });
 
   test('Sales Invoices: toolbar, filter-select dropdown, and modal', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Verify filter dropdown has theme class and is visible
@@ -45,7 +46,7 @@ test.describe('Finance Module UI Testing', () => {
   });
 
   test('Vendor Bills: segmented tabs and filter-select dropdown', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
 
     // Verify tabs
@@ -66,7 +67,7 @@ test.describe('Finance Module UI Testing', () => {
   });
 
   test('Bank Accounts: tabs & withdraw modal', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Verify withdraw cash modal can open with background
@@ -81,7 +82,7 @@ test.describe('Finance Module UI Testing', () => {
   });
 
   test('Theme toggle: dark mode styling works seamlessly', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     
     // Toggle dark mode
     const themeToggle = page.locator('#themeToggle, button[title*="theme" i], button[title*="dark" i]').first();

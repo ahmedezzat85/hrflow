@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-414 — Collapsible Bills status tab bar into status pill + panel', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('FUX-414 — Collapsible Bills status tab bar into status pill + p
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
     // Navigate to Vendor Bills section
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });

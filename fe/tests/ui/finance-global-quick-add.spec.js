@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-505: Global Quick-Add Transaction', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
 
   test('Topbar button opens global quick-add modal with account selector', async ({ page }) => {
     // Navigate to a non-account page, e.g. Invoices or Reports
-    await page.click('#adminSidebar a[data-page="a-finance-invoices"]');
+    await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
     // Verify topbar Add Transaction button exists
@@ -148,7 +149,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
   });
 
   test('Workspace-scoped "Record Transaction" retains account lock and hides global account selector', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+    await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on first account

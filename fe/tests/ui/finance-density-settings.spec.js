@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-415 — Global Table Row Density Setting', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,7 +15,7 @@ test.describe('FUX-415 — Global Table Row Density Setting', () => {
 
   test('AC 1: No Finance list page renders per-page density switcher in its toolbar', async ({ page }) => {
     // 1. Bills page
-    await page.click('#adminSidebar a[data-page="a-finance-spend"]');
+    await openAdminPage(page, 'a-finance-spend');
     await expect(page.locator('#financeBillsTable tbody tr').first()).toBeVisible();
     await expect(page.locator('#financeBillDensityControl')).toHaveCount(0);
     await expect(page.locator('#a-finance-bills .density-toggle-group')).toHaveCount(0);
@@ -28,20 +29,20 @@ test.describe('FUX-415 — Global Table Row Density Setting', () => {
     }
 
     // 3. Invoices page
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#financeInvoicesTable tbody tr').first()).toBeVisible();
     await expect(page.locator('#financeInvoiceDensityControl')).toHaveCount(0);
     await expect(page.locator('#a-finance-invoices .density-toggle-group')).toHaveCount(0);
 
     // 4. Banking / Transactions page
-    await page.click('#adminSidebar a[data-page="a-finance-banking"]');
+    await openAdminPage(page, 'a-finance-banking');
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
     await expect(page.locator('#a-finance-accounts .density-toggle-group')).toHaveCount(0);
   });
 
   test('AC 2: Finance -> Settings -> Display contains exactly one 3-option segmented control (Regular, Compact, Spacious)', async ({ page }) => {
     // Navigate to Finance Settings
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await expect(page.locator('#a-finance-settings')).toBeVisible();
 
     // Verify Display subtab exists and click it
@@ -86,7 +87,7 @@ test.describe('FUX-415 — Global Table Row Density Setting', () => {
 
   test('AC 3 & 4: Changing setting updates density across multiple finance pages live and persists across reload', async ({ page }) => {
     // Navigate to Finance Settings -> Display
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await page.click('#subtabSettingsDisplay');
 
     const control = page.locator('#financeSettingsPaneDisplay #financeGlobalDensityControl');
@@ -103,15 +104,15 @@ test.describe('FUX-415 — Global Table Row Density Setting', () => {
     expect(stored).toBe('compact');
 
     // Navigate to Bills in the same session: verify compact class is applied
-    await page.click('#adminSidebar a[data-page="a-finance-spend"]');
+    await openAdminPage(page, 'a-finance-spend');
     await expect(page.locator('#financeBillsTable')).toHaveClass(/density-compact/);
 
     // Navigate to Invoices in the same session: verify compact class is applied
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#financeInvoicesTable')).toHaveClass(/density-compact/);
 
     // Go back to Settings -> Display and set Spacious
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await page.click('#subtabSettingsDisplay');
     await spacBtn.click();
     await expect(spacBtn).toHaveClass(/active/);
@@ -125,15 +126,15 @@ test.describe('FUX-415 — Global Table Row Density Setting', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
     // Navigate to Invoices after reload: must still be spacious
-    await page.click('#adminSidebar a[data-page="a-finance-sales"]');
+    await openAdminPage(page, 'a-finance-sales');
     await expect(page.locator('#financeInvoicesTable')).toHaveClass(/density-spacious/);
 
     // Navigate to Bills after reload: must still be spacious
-    await page.click('#adminSidebar a[data-page="a-finance-spend"]');
+    await openAdminPage(page, 'a-finance-spend');
     await expect(page.locator('#financeBillsTable')).toHaveClass(/density-spacious/);
 
     // Navigate to Settings -> Display: Spacious button must be active
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await page.click('#subtabSettingsDisplay');
     const spacBtnAfterReload = page.locator('#financeSettingsPaneDisplay button[data-density="spacious"]');
     await expect(spacBtnAfterReload).toHaveClass(/active/);
@@ -141,7 +142,7 @@ test.describe('FUX-415 — Global Table Row Density Setting', () => {
   });
 
   test('AC 5: Keyboard accessibility allows cycling through density options', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-settings"]');
+    await openAdminPage(page, 'a-finance-settings');
     await page.click('#subtabSettingsDisplay');
 
     const control = page.locator('#financeSettingsPaneDisplay #financeGlobalDensityControl');

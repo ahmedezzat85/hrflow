@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-419: Compensation Spend & Variance Reporting UI Suite', () => {
 
@@ -10,7 +11,7 @@ test.describe('FUX-419: Compensation Spend & Variance Reporting UI Suite', () =>
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Financial Reports
-    await page.click('#adminSidebar a[data-page="a-finance-reports"]');
+    await openAdminPage(page, 'a-finance-reports');
     await expect(page.locator('#a-finance-reports')).toBeVisible({ timeout: 5000 });
   });
 

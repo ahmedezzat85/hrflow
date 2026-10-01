@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 4.3 — Vendor profile and payment-data security', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('Story 4.3 — Vendor profile and payment-data security', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
     // Navigate to Vendor Bills
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
 
     // Switch to Vendors sub-tab

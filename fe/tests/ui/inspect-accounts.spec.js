@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Inspect Bank Accounts UI Overflow', () => {
   for (const width of [1440, 1280, 1024, 768, 390]) {
@@ -8,7 +9,7 @@ test.describe('Inspect Bank Accounts UI Overflow', () => {
       if (width < 900) {
         await page.click('#admin-app .hamburger');
       }
-      await page.click('#adminSidebar a[data-page="a-finance-accounts"]');
+      await openAdminPage(page, 'a-finance-accounts');
       await page.waitForTimeout(600);
 
       const report = await page.evaluate(() => {

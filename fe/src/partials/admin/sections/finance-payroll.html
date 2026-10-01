@@ -603,102 +603,204 @@
 
             <!-- ===================== 3. SETTINGS PAGE ===================== -->
             <div class="payroll-card payroll-hidden" id="payrollViewSettings">
-              <div class="payroll-header-row">
-                <div>
-                  <h2 style="font-size:1.25rem; font-weight:800; margin:0;"><i class="fa-solid fa-sliders"></i> Payroll Settings</h2>
-                  <div class="payroll-subtitle">One-time / infrequent configuration — funding accounts and the payroll month.</div>
+              <div class="payroll-settings-header">
+                <div class="section-title-group">
+                  <h2 class="section-title"><i class="fa-solid fa-sliders"></i> Payroll Settings</h2>
+                  <p class="section-subtitle">Configure disbursement funding accounts, active cycle periods, FX conversion rates, and statutory tax &amp; social insurance parameters.</p>
                 </div>
-                <button class="btn btn-ghost" onclick="PayrollApp.showPage('list')">
-                  <i class="fa-solid fa-arrow-left"></i> Back to payroll runs
-                </button>
               </div>
 
               <div class="payroll-settings-grid">
-                <div class="payroll-card" style="box-shadow:none;">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Funding bank accounts</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Choose target accounts used to disburse External and Internal salaries.</div>
+                <!-- Card 1: Funding Bank Accounts -->
+                <div class="payroll-settings-card" id="payrollFundingAccountsSettingsCard">
+                  <div class="payroll-settings-card-header">
+                    <div class="card-header-left">
+                      <div class="settings-icon-chip chip-blue">
+                        <i class="fa-solid fa-building-columns"></i>
+                      </div>
+                      <div>
+                        <div class="payroll-panel-title">Funding bank accounts</div>
+                        <div class="payroll-subtitle">Target accounts used to disburse External and Internal salaries.</div>
+                      </div>
                     </div>
+                    <span class="settings-pill pill-blue"><i class="fa-solid fa-wallet"></i> Disbursement</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">
-                      <label for="payrollTargetExternalAccount">Target Account for External Salaries</label>
+                      <label for="payrollTargetExternalAccount">
+                        <i class="fa-solid fa-globe"></i> Target Account for External Salaries
+                      </label>
                       <select id="payrollTargetExternalAccount" onchange="PayrollApp.setFundingAccount('external', this.value)">
                         <!-- Populated dynamically with active bank accounts -->
                       </select>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Used for international USD contractor pay &amp; remittances
+                      </div>
                     </div>
                     <div class="field">
-                      <label for="payrollTargetInternalAccount">Target Account for Internal Salaries</label>
+                      <label for="payrollTargetInternalAccount">
+                        <i class="fa-solid fa-building"></i> Target Account for Internal Salaries
+                      </label>
                       <select id="payrollTargetInternalAccount" onchange="PayrollApp.setFundingAccount('internal', this.value)">
                         <!-- Populated dynamically with active bank accounts -->
                       </select>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Clears domestic EGP net pay directly to local employee accounts
+                      </div>
+                    </div>
+                    <div class="settings-card-callout callout-blue">
+                      <i class="fa-solid fa-shield-halved"></i>
+                      <span>Disbursements require sufficient cleared balance in designated accounts prior to finalizing stage 5 payouts.</span>
                     </div>
                   </div>
                 </div>
 
-                <div class="payroll-card" style="box-shadow:none;">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Payroll month & FX Rate</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Defines the period, pay date, and currency conversion rate for the run.</div>
+                <!-- Card 2: Payroll Month & FX Rate -->
+                <div class="payroll-settings-card" id="payrollMonthFxSettingsCard">
+                  <div class="payroll-settings-card-header">
+                    <div class="card-header-left">
+                      <div class="settings-icon-chip chip-amber">
+                        <i class="fa-solid fa-calendar-days"></i>
+                      </div>
+                      <div>
+                        <div class="payroll-panel-title">Payroll month &amp; FX Rate</div>
+                        <div class="payroll-subtitle">Defines the period, pay date, and currency conversion rate for the run.</div>
+                      </div>
                     </div>
+                    <span class="settings-pill pill-amber"><i class="fa-solid fa-clock"></i> Active Cycle</span>
                   </div>
                   <div class="month-form">
-                    <div class="field"><label>Payroll month</label><input type="month" id="payrollSetMonth" value="2026-09" /></div>
-                    <div class="field"><label>Pay date</label><input type="date" id="payrollSetPayDate" value="2026-09-30" /></div>
-                    <div class="field"><label>Period start</label><input type="date" id="payrollSetStart" value="2026-09-01" /></div>
-                    <div class="field"><label>Period end</label><input type="date" id="payrollSetEnd" value="2026-09-30" /></div>
-                    <div class="field"><label>FX Rate Override (USD &rarr; EGP)</label><input type="number" step="0.0001" min="1" id="payrollSetFxRate" placeholder="Leave empty for auto / fallback (50.0000)" /></div>
+                    <div class="field">
+                      <label for="payrollSetMonth"><i class="fa-regular fa-calendar"></i> Payroll month</label>
+                      <input type="month" id="payrollSetMonth" value="2026-09" />
+                    </div>
+                    <div class="field">
+                      <label for="payrollSetPayDate"><i class="fa-regular fa-calendar-check"></i> Pay date</label>
+                      <input type="date" id="payrollSetPayDate" value="2026-09-30" />
+                    </div>
+                    <div class="field">
+                      <label for="payrollSetStart"><i class="fa-solid fa-hourglass-start"></i> Period start</label>
+                      <input type="date" id="payrollSetStart" value="2026-09-01" />
+                    </div>
+                    <div class="field">
+                      <label for="payrollSetEnd"><i class="fa-solid fa-hourglass-end"></i> Period end</label>
+                      <input type="date" id="payrollSetEnd" value="2026-09-30" />
+                    </div>
+                    <div class="field full-width">
+                      <label for="payrollSetFxRate"><i class="fa-solid fa-right-left"></i> FX Rate Override (USD &rarr; EGP)</label>
+                      <div class="input-affix-group">
+                        <span class="input-affix prefix">1 USD =</span>
+                        <input type="number" step="0.0001" min="1" id="payrollSetFxRate" placeholder="Leave empty for auto / fallback (50.0000)" />
+                        <span class="input-affix suffix">EGP</span>
+                      </div>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Overrides automatic market rate lookup for this payroll calculation
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="payroll-card" style="box-shadow:none;" id="payrollSocialInsuranceSettingsCard">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Social Insurance Contribution Rates</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Organization-wide statutory rates (internal estimates). Requires finance settings write permission.</div>
+                <!-- Card 3: Social Insurance Contribution Rates -->
+                <div class="payroll-settings-card" id="payrollSocialInsuranceSettingsCard">
+                  <div class="payroll-settings-card-header">
+                    <div class="card-header-left">
+                      <div class="settings-icon-chip chip-emerald">
+                        <i class="fa-solid fa-shield-halved"></i>
+                      </div>
+                      <div>
+                        <div class="payroll-panel-title">Social Insurance Contribution Rates</div>
+                        <div class="payroll-subtitle">Organization-wide statutory rates (internal estimates). Requires finance settings write permission.</div>
+                      </div>
                     </div>
+                    <span class="settings-pill pill-emerald"><i class="fa-solid fa-gavel"></i> Law 148</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">
-                      <label for="payrollEmployeeInsuranceRate">Employee Contribution Rate (%)</label>
-                      <input type="number" step="0.01" min="0" max="100" id="payrollEmployeeInsuranceRate" placeholder="11.00" value="11.00" />
-                      <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">Standard deduction rate (default 11%).</span>
+                      <label for="payrollEmployeeInsuranceRate">
+                        <i class="fa-solid fa-user-shield"></i> Employee Contribution Rate (%)
+                      </label>
+                      <div class="input-affix-group">
+                        <input type="number" step="0.01" min="0" max="100" id="payrollEmployeeInsuranceRate" placeholder="11.00" value="11.00" />
+                        <span class="input-affix suffix">%</span>
+                      </div>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Standard deduction rate from employee gross wages (default 11.00%)
+                      </div>
                     </div>
                     <div class="field">
-                      <label for="payrollEmployerInsuranceRate">Employer Contribution Rate (%)</label>
-                      <input type="number" step="0.01" min="0" max="100" id="payrollEmployerInsuranceRate" placeholder="18.00" value="18.00" />
-                      <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">Employer cost extra estimate (default 18%).</span>
+                      <label for="payrollEmployerInsuranceRate">
+                        <i class="fa-solid fa-building-shield"></i> Employer Contribution Rate (%)
+                      </label>
+                      <div class="input-affix-group">
+                        <input type="number" step="0.01" min="0" max="100" id="payrollEmployerInsuranceRate" placeholder="18.00" value="18.00" />
+                        <span class="input-affix suffix">%</span>
+                      </div>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Employer extra cost contribution burden estimate (default 18.00%)
+                      </div>
+                    </div>
+                    <div class="settings-card-callout callout-emerald">
+                      <i class="fa-solid fa-circle-check"></i>
+                      <span>Computed against statutory insurance wage caps up to monthly regulatory maximum limits.</span>
                     </div>
                   </div>
                 </div>
 
-                <div class="payroll-card" style="box-shadow:none;" id="payrollTaxSettingsCard">
-                  <div class="payroll-header-row" style="padding:12px 16px;">
-                    <div>
-                      <div class="payroll-panel-title">Egyptian Income Tax Settings &amp; Personal Exemption</div>
-                      <div class="payroll-subtitle" style="font-size:0.78rem;">Effective-dated statutory parameters (system_admin only).</div>
+                <!-- Card 4: Egyptian Income Tax Settings & Personal Exemption -->
+                <div class="payroll-settings-card" id="payrollTaxSettingsCard">
+                  <div class="payroll-settings-card-header">
+                    <div class="card-header-left">
+                      <div class="settings-icon-chip chip-purple">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                      </div>
+                      <div>
+                        <div class="payroll-panel-title">Egyptian Income Tax Settings &amp; Personal Exemption</div>
+                        <div class="payroll-subtitle">Effective-dated statutory parameters (system_admin only).</div>
+                      </div>
                     </div>
+                    <span class="settings-pill pill-purple"><i class="fa-solid fa-landmark"></i> Tax Authority</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">
-                      <label for="payrollTaxLimitP">Annual Personal Exemption — Tax_limit_P (EGP)</label>
-                      <input type="number" step="1" min="0" id="payrollTaxLimitP" placeholder="20000" value="20000" />
-                      <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">Annual personal exemption limit (TAX_LIMIT_P, default 20,000 EGP).</span>
+                      <label for="payrollTaxLimitP">
+                        <i class="fa-solid fa-coins"></i> Annual Personal Exemption — Tax_limit_P (EGP)
+                      </label>
+                      <div class="input-affix-group">
+                        <input type="number" step="1" min="0" id="payrollTaxLimitP" placeholder="20000" value="20000" />
+                        <span class="input-affix suffix">EGP / yr</span>
+                      </div>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Annual personal exemption limit (TAX_LIMIT_P, default 20,000 EGP)
+                      </div>
                     </div>
                     <div class="field">
-                      <label for="payrollTaxEffectiveFrom">Effective From</label>
+                      <label for="payrollTaxEffectiveFrom">
+                        <i class="fa-regular fa-calendar"></i> Effective From
+                      </label>
                       <input type="month" id="payrollTaxEffectiveFrom" value="2026-01" />
-                      <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">Effective start month for this tax exemption version (YYYY-MM).</span>
+                      <div class="field-hint">
+                        <i class="fa-solid fa-circle-info"></i> Effective start month for this tax exemption version (YYYY-MM)
+                      </div>
+                    </div>
+                    <div class="settings-card-callout callout-purple">
+                      <i class="fa-solid fa-calculator"></i>
+                      <span>Personal exemption is pro-rated across months and applied before progressive tax brackets.</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div class="save-bar">
-                <button class="btn btn-ghost" onclick="PayrollApp.showPage('list')">Cancel</button>
-                <button class="btn btn-primary" onclick="PayrollApp.saveSettings()">Save settings</button>
+                <div class="save-bar-info">
+                  <i class="fa-solid fa-shield-halved"></i>
+                  <span>All settings are automatically validated and applied to current &amp; upcoming payroll cycles.</span>
+                </div>
+                <div class="save-bar-actions">
+                  <button class="btn btn-ghost" onclick="PayrollApp.showPage('list')">Cancel</button>
+                  <button class="btn btn-primary" onclick="PayrollApp.saveSettings()">
+                    <i class="fa-solid fa-check"></i> Save settings
+                  </button>
+                </div>
               </div>
             </div>
           </div>

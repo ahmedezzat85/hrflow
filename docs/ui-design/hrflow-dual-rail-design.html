@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HRFlow Dual-Rail Navigation (design prototype, not repo code)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ===== Tokens copied from fe/src/styles/tokens.css ===== */
+:root{
+  --accent:#2056e8;--accent2:#4f7af8;--accent-soft:#e8eeff;
+  --success:#0ea966;--success-soft:rgba(14,169,102,.12);
+  --warning:#e07d10;--warning-soft:rgba(224,125,16,.12);
+  --danger:#d63b3b;--danger-soft:rgba(214,59,59,.12);
+  --info:#4f7af8;--info-soft:rgba(79,122,248,.12);
+  --bg:#f7f8fb;--surface:#ffffff;--surface2:#fafbfd;
+  --border:rgba(30,60,140,.08);--border2:rgba(30,60,140,.15);
+  --text:#141e30;--text2:#7a8ea8;--text3:#c2cedc;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;
+  --radius-xs:6px;--radius-sm:10px;--radius-md:14px;--radius-lg:18px;--radius-xl:22px;--radius-full:9999px;
+  --shadow-sm:0 1px 3px rgba(20,50,120,.05);--shadow:0 2px 12px rgba(20,50,120,.07);--shadow-lg:0 20px 60px rgba(20,50,120,.13);
+  --font-head:'Sora',sans-serif;--font-body:'Inter',sans-serif;
+}
+[data-theme="dark"]{
+  --accent:#3e72f8;--accent2:#5d86f9;--accent-soft:rgba(32,86,232,.18);
+  --success:#1fc27a;--success-soft:rgba(31,194,122,.18);
+  --warning:#f09228;--warning-soft:rgba(240,146,40,.18);
+  --danger:#e25353;--danger-soft:rgba(226,83,83,.18);
+  --info:#5d86f9;--info-soft:rgba(93,134,249,.18);
+  --bg:#0f1117;--surface:#171a24;--surface2:#1d2130;
+  --border:#2a2e3d;--border2:rgba(255,255,255,.14);
+  --text:#f1f2f6;--text2:#9aa0b4;--text3:#6b7280;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.3);--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);--shadow-lg:0 10px 40px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:flex;height:100vh}
+
+/* ===== Dual rail ===== */
+.side{position:relative;display:flex;flex-shrink:0;height:100vh;z-index:30}
+.rail{width:64px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:18px 0 14px;gap:4px}
+.rail-logo{width:40px;height:40px;display:grid;place-items:center;margin-bottom:14px;font-size:24px}
+.rail-logo i{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.rail-sep{width:28px;height:1px;background:var(--border);margin:2px 0 8px}
+.rbtn{position:relative;width:50px;padding:9px 0 7px;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text2);transition:background .15s,color .15s}
+.rbtn i{font-size:16px}
+.rbtn span{font-size:10px;font-weight:600;letter-spacing:.01em}
+.rbtn:hover{background:var(--surface2);color:var(--text)}
+.rbtn.on{background:var(--accent-soft);color:var(--accent)}
+.rbtn.on::before{content:"";position:absolute;left:-7px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.rbtn .dot{position:absolute;top:6px;right:8px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--surface);box-sizing:content-box}
+.rail-sp{flex:1}
+.rail .avatar{margin-bottom:6px}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.rbtn.logout:hover{background:var(--danger-soft);color:var(--danger)}
+.panel{width:232px;background:var(--surface);border-right:1px solid var(--border);overflow:hidden;transition:width .22s ease;display:flex;flex-direction:column}
+.panel.hidden{width:0;border-right-color:transparent}
+.panel-inner{width:232px;height:100%;display:flex;flex-direction:column;padding:22px 14px 14px}
+.ph{padding:6px 10px 14px}
+.ph h2{margin:0;font-family:var(--font-head);font-size:17px;font-weight:600;letter-spacing:-.01em}
+.ph small{display:block;color:var(--text2);font-size:11.5px;margin-top:3px;line-height:1.35}
+.nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+.nav::-webkit-scrollbar{width:4px}.nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.nav-section-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:600;margin:16px 10px 6px;opacity:.8}
+.nav-section-label:first-child{margin-top:4px}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:11px;color:var(--text2);font-size:13.5px;font-weight:500;letter-spacing:.01em;margin-bottom:2px;position:relative;text-align:left;transition:background .15s,color .15s}
+.nav-item i{width:18px;text-align:center;font-size:14.5px;opacity:.85;flex-shrink:0}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav-item.active i{opacity:1}
+.nav-item .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:10px}
+.nav-item .badge.warn{background:var(--warning)}
+.panel-foot{border-top:1px solid var(--border);padding:12px 10px 0;margin-top:8px;display:flex;align-items:center;gap:10px;font-size:12.5px}
+.panel-foot .who{line-height:1.3;min-width:0}
+.panel-foot .who b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel-foot .who small{color:var(--text2);font-size:11.5px}
+.collapse-btn{position:absolute;top:22px;right:-13px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:10.5px;box-shadow:var(--shadow);z-index:5;transition:.15s}
+.collapse-btn:hover{color:var(--accent);border-color:var(--accent)}
+.collapse-btn i{transition:transform .22s}
+.side.col .collapse-btn i{transform:rotate(180deg)}
+.backdrop{display:none}
+
+/* ===== Main / topbar (matches app screenshot) ===== */
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;flex-shrink:0}
+.crumb{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px}
+.crumb b{color:var(--text);font-weight:600}
+.hamb{display:none;width:38px;height:38px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);border:1px solid var(--border);place-items:center;margin-right:10px}
+.tools{display:flex;align-items:center;gap:12px}
+.pill-btn{background:var(--accent);color:#fff;font-weight:600;font-size:12.5px;padding:9px 16px;border-radius:var(--radius-sm);box-shadow:0 4px 14px rgba(32,86,232,.3);display:flex;gap:7px;align-items:center}
+.round{width:38px;height:38px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);border:1px solid var(--border);display:grid;place-items:center;color:var(--text2);position:relative}
+.round:hover{color:var(--accent)}
+.round .rd{position:absolute;top:8px;right:9px;width:7px;height:7px;background:var(--danger);border-radius:50%}
+.content{flex:1;overflow:auto;padding:4px 28px 40px}
+.card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:28px 32px;max-width:1180px;border:1px solid var(--border)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-family:var(--font-head);font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}
+.sub{color:var(--text2);font-size:13px;margin-top:4px}
+.chip{font-size:11px;font-weight:700;border-radius:var(--radius-full);padding:5px 11px;background:var(--accent-soft);color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
+.fx{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:var(--radius-full);padding:4px 6px 4px 10px;font-size:11px;color:var(--text2)}
+.fx code{background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:var(--radius-full);font-weight:700}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.step{display:flex;align-items:center;gap:7px;border:1px solid var(--border2);border-radius:var(--radius-full);padding:6px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface)}
+.step .n{width:16px;height:16px;border-radius:50%;background:var(--border2);color:var(--surface);font-size:9px;display:grid;place-items:center;font-weight:700}
+.step.done{background:var(--success-soft);color:var(--success);border-color:transparent}
+.step.done .n{background:var(--success);color:#fff}
+.step.cur{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.step.cur .n{background:var(--accent);color:#fff}
+.sect{font-family:var(--font-head);font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:9px;margin:0 0 14px}
+.sect i{color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;background:var(--surface2)}
+.kpi small{display:block;color:var(--text2);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.kpi b{display:block;font-family:var(--font-head);font-size:19px;margin:3px 0 1px}
+.kpi span{font-size:11px;color:var(--text2)}
+.kpi.hi b{color:var(--accent)}
+.tabs{display:flex;gap:6px;margin:0 0 20px;flex-wrap:wrap}
+.tab{padding:7px 14px;border-radius:var(--radius-full);border:1px solid var(--border2);font-size:12.5px;font-weight:600;color:var(--text2)}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.filters{display:flex;gap:10px;margin-bottom:16px}
+.inp{border:1px solid var(--border2);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:9px 12px;font:inherit;font-size:13px;min-width:210px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--text2);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;padding:10px 12px;background:var(--surface2);font-weight:600}
+td{padding:13px 12px;border-bottom:1px solid var(--border)}
+.n-r{text-align:right;font-variant-numeric:tabular-nums}
+.emp{display:flex;align-items:center;gap:10px;font-weight:600}
+.emp i{width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-style:normal;font-size:10.5px;font-weight:700;display:grid;place-items:center}
+tr.tot td{background:var(--accent-soft);font-weight:700;border-top:2px solid var(--accent);border-bottom:0}
+tr.tot td.hl{color:var(--accent)}
+.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.btn{border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 15px;font-size:12.5px;font-weight:600;background:var(--surface);color:var(--text);display:flex;gap:7px;align-items:center}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.p:hover{color:#fff;filter:brightness(1.08)}
+.sk{display:inline-block;height:10px;border-radius:6px;background:var(--border2);opacity:.6}
+.note{margin-top:22px;font-size:11.5px;color:var(--text2);border-top:1px dashed var(--border2);padding-top:12px}
+#tip{position:fixed;z-index:99;background:var(--text);color:var(--surface);font-size:12px;font-weight:600;padding:6px 10px;border-radius:var(--radius-xs);pointer-events:none;opacity:0;transition:opacity .08s;white-space:nowrap;box-shadow:var(--shadow)}
+
+/* prototype controls (not part of the design) */
+#ctl{position:fixed;right:16px;bottom:16px;z-index:80;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);width:250px;font-size:12px}
+#ctl header{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-weight:700;font-family:var(--font-head);font-size:12px}
+#ctl .body{padding:0 12px 12px;display:flex;flex-direction:column;gap:9px}
+#ctl.min .body{display:none}
+#ctl label{color:var(--text2);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+.seg{display:flex;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden}
+.seg button{flex:1;padding:6px 4px;font-weight:600;font-size:12px;color:var(--text2)}
+.seg button.on{background:var(--accent-soft);color:var(--accent)}
+#ctl select{width:100%;border:1px solid var(--border2);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:6px;font:inherit}
+
+/* ===== Responsive: rail+panel become a drawer ===== */
+@media (max-width:860px){
+  .side{position:fixed;left:0;top:0;bottom:0;transform:translateX(-105%);transition:transform .25s;box-shadow:var(--shadow-lg)}
+  .side.open{transform:none}
+  .side .panel.hidden{width:232px}
+  .collapse-btn{display:none}
+  .hamb{display:grid}
+  .backdrop.on{display:block;position:fixed;inset:0;background:rgba(10,15,30,.45);z-index:25}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .tools .pill-btn{display:none}
+  #ctl{width:210px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side" aria-label="Primary navigation"></aside>
+  <div class="backdrop" id="backdrop"></div>
+  <main>
+    <div class="top">
+      <div style="display:flex;align-items:center"><button class="hamb" id="hamb" aria-label="Open navigation"><i class="fa-solid fa-bars"></i></button><div class="crumb" id="crumb"></div></div>
+      <div class="tools">
+        <button class="pill-btn"><i class="fa-solid fa-plus"></i> Add Transaction</button>
+        <button class="round" aria-label="Export"><i class="fa-solid fa-file-export"></i></button>
+        <button class="round" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button class="round" aria-label="Notifications"><i class="fa-regular fa-bell"></i><span class="rd"></span></button>
+        <button class="round" id="themeBtn" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+<div id="tip" role="tooltip"></div>
+<div id="ctl"><header><span>Prototype controls</span><button id="ctlMin" aria-label="Minimize controls"><i class="fa-solid fa-minus"></i></button></header>
+ <div class="body">
+  <div><label for="selRole">Role</label><select id="selRole"><option value="admin">Admin (all modules)</option><option value="hr">HR (no finance perms)</option><option value="finance">Finance / payroll only</option></select></div>
+  <div><label>Panel</label><div class="seg" id="segCol"><button data-c="0">Expanded</button><button data-c="1">Collapsed</button></div></div>
+  <div><label>Pending requests</label><div class="seg" id="segBadge"><button data-b="0">0</button><button data-b="3">3</button></div></div>
+  <div style="color:var(--text2);line-height:1.45">Nav items visible now: <b id="cnt" style="color:var(--accent)"></b> (today: 22). Resize below 860px to see the drawer.</div>
+ </div></div>
+
+<script>
+const PAGES={
+ 'hr-dash':{t:'Dashboard',i:'fa-grip',s:'Headcount, leave and request overview'},
+ 'hr-emp':{t:'Employees',i:'fa-users',s:'Employee records, bank accounts and compensation history'},
+ 'hr-req':{t:'Pending Requests',i:'fa-inbox',s:'Leave, claims and document requests awaiting action',badge:1},
+ 'hr-sal':{t:'Salary & Raises',i:'fa-sack-dollar',s:'Compensation history and raise approvals'},
+ 'hr-vac':{t:'Vacations',i:'fa-umbrella-beach',s:'Leave balances and calendar'},
+ 'hr-ins':{t:'Medical Insurance',i:'fa-briefcase-medical',s:'Insurance enrolment and dependents'},
+ 'hr-doc':{t:'Document Hub',i:'fa-folder-open',s:'Employee and company documents'},
+ 'hr-pay':{t:'Salary Payment Docs',i:'fa-file-signature',s:'HR-owned salary payment documents (distinct from Finance sales invoices)'},
+ 'fin-ov':{t:'Overview',i:'fa-chart-line',s:'Cash position and open items'},
+ 'fin-sales':{t:'Sales',i:'fa-arrow-trend-up',s:'Sales invoices and receivables',warn:'4'},
+ 'fin-spend':{t:'Spend',i:'fa-receipt',s:'Vendor bills, subscriptions and statutory obligations',tabs:['Bills','Subscriptions','Statutory'],warn:'2'},
+ 'fin-bank':{t:'Banking',i:'fa-building-columns',s:'Company accounts, statements, cheques and transfers',tabs:['Accounts','Statements','Cheques','Transfers']},
+ 'fin-rep':{t:'Reports & Export',i:'fa-file-excel',s:'Financial reports and exports'},
+ 'fin-set':{t:'Finance Settings',i:'fa-gear',s:'Categories, payment types and display',tabs:['Categories','Payment types','Display']},
+ 'pay-runs':{t:'Payroll Runs',i:'fa-clock-rotate-left',s:'Every cycle, from initiation to statutory payments'},
+ 'pay-set':{t:'Payroll Settings',i:'fa-sliders',s:'Payroll month, bank accounts and defaults'}
+};
+const MOD={
+ hr:{n:'HR',d:'People, leave and salary documents',i:'fa-people-group',groups:[['People',['hr-dash','hr-emp','hr-req','hr-sal']],['Time & benefits',['hr-vac','hr-ins']],['Documents',['hr-doc','hr-pay']]]},
+ finance:{n:'Finance',d:'Ledger, bills, banking and reports',i:'fa-coins',groups:[['',['fin-ov']],['Money',['fin-sales','fin-spend','fin-bank']],['Reporting',['fin-rep','fin-set']]]},
+ payroll:{n:'Payroll',d:'Runs, review and disbursal',i:'fa-money-check-dollar',groups:[['Cycles',['pay-runs']],['Configuration',['pay-set']]]}
+};
+const S={role:'admin',col:0,badge:0,mod:'hr',page:'hr-dash',tab:0,theme:'light'};
+const mods=()=>S.role==='hr'?['hr']:S.role==='finance'?['finance','payroll']:['hr','finance','payroll'];
+const flat=m=>MOD[m].groups.flatMap(g=>g[1]);
+function valid(){if(!mods().includes(S.mod)){S.mod=mods()[0];S.page=flat(S.mod)[0];S.tab=0;}if(!flat(S.mod).includes(S.page)){S.page=flat(S.mod)[0];}}
+function navItem(id){
+ const p=PAGES[id],a=S.page===id;let b='';
+ if(p.badge&&S.badge>0)b=`<span class="badge" aria-label="${S.badge} pending">${S.badge}</span>`;
+ if(p.warn)b=`<span class="badge warn" aria-label="${p.warn} open">${p.warn}</span>`;
+ return `<button class="nav-item${a?' active':''}" data-page="${id}"${a?' aria-current="page"':''}><i class="fa-solid ${p.i}"></i><span>${p.t}</span>${b}</button>`;
+}
+function renderSide(){
+ const m=MOD[S.mod];
+ const rail=mods().map(k=>{const dot=k==='hr'&&S.badge>0?'<span class="dot" aria-label="pending requests"></span>':'';
+  return `<button class="rbtn${k===S.mod?' on':''}" data-mod="${k}" data-tip="${MOD[k].n}" aria-label="${MOD[k].n} module"${k===S.mod?' aria-current="true"':''}><i class="fa-solid ${MOD[k].i}"></i><span>${MOD[k].n}</span>${dot}</button>`}).join('');
+ const groups=m.groups.map(g=>(g[0]?`<div class="nav-section-label">${g[0]}</div>`:'')+g[1].map(navItem).join('')).join('');
+ const side=document.getElementById('side');
+ side.className='side'+(S.col?' col':'')+(side.classList.contains('open')?' open':'');
+ side.innerHTML=`<div class="rail"><div class="rail-logo" data-tip="HRFlow"><i class="fa-solid fa-heart-pulse"></i></div><div class="rail-sep"></div>${rail}
+  <div class="rail-sp"></div><div class="avatar" data-tip="F. Nasser · Payroll Admin">FN</div>
+  <button class="rbtn logout" data-tip="Logout" aria-label="Logout"><i class="fa-solid fa-right-from-bracket"></i></button></div>
+  <div class="panel${S.col?' hidden':''}" aria-hidden="${S.col?'true':'false'}"><div class="panel-inner">
+   <div class="ph"><h2>${m.n}</h2><small>${m.d}</small></div>
+   <nav class="nav" aria-label="${m.n} pages">${groups}</nav>
+   <div class="panel-foot"><div class="who"><b>F. Nasser</b><small>Payroll Admin</small></div></div>
+  </div></div>
+  <button class="collapse-btn" id="colBtn" data-tip="${S.col?'Expand panel':'Collapse panel'}" aria-label="Toggle navigation panel"><i class="fa-solid fa-chevron-left"></i></button>`;
+}
+function payrollBody(){
+ const st=['Initiation','Approve','Processing','Payment Preview','Confirm Disbursal','Statutory Payments'];
+ return `<div class="steps">${st.map((s,i)=>`<span class="step ${i===0?'done':i===1?'cur':''}"><span class="n">${i===0?'<i class="fa-solid fa-check" style="font-size:8px"></i>':i+1}</span>${s}</span>`).join('')}</div>
+ <div class="sect"><i class="fa-solid fa-list-check"></i>Compensation Review</div>
+ <div class="kpis"><div class="kpi"><small>Headcount</small><b>2</b><span>Active recipients</span></div><div class="kpi"><small>Base compensation</small><b>$2,097.00</b><span>Fixed salary pool</span></div><div class="kpi"><small>Bonus / commission</small><b>$0.00</b><span>Dynamic additions</span></div><div class="kpi hi"><small>Total compensation</small><b>$2,097.00</b><span>Gross / net disbursal</span></div></div>
+ <div class="filters"><input class="inp" placeholder="Search employee name or ID." aria-label="Search employee"><select class="inp" aria-label="Bonus type"><option>All bonus types</option></select></div>
+ <table><thead><tr><th>ID</th><th>Employee</th><th class="n-r">Base ext</th><th class="n-r">Base int</th><th class="n-r">Bonus / commission</th><th class="n-r">Total comp</th></tr></thead><tbody>
+ <tr><td>15</td><td><div class="emp"><i>JP</i>James Parker</div></td><td class="n-r">$250.00</td><td class="n-r">$500.00</td><td class="n-r">—</td><td class="n-r">$750.00</td></tr>
+ <tr><td>16</td><td><div class="emp"><i>JS</i>John Smith</div></td><td class="n-r">$1,000.00</td><td class="n-r">$375.00</td><td class="n-r">—</td><td class="n-r">$1,375.00</td></tr>
+ <tr class="tot"><td colspan="2">Totals</td><td class="n-r">$1,250.00</td><td class="n-r">$875.00</td><td class="n-r">$0.00</td><td class="n-r hl">$2,125.00</td></tr></tbody></table>
+ <div class="actions"><button class="btn"><i class="fa-solid fa-arrow-left"></i>Back</button><button class="btn"><i class="fa-regular fa-floppy-disk"></i>Save Draft</button><button class="btn p">Submit &amp; Approve <i class="fa-solid fa-check"></i></button></div>`;
+}
+function genericBody(p,tab){
+ const rows=[0,1,2,3].map(i=>`<tr><td><span class="sk" style="width:${90+i*16}px"></span></td><td><span class="sk" style="width:${140-i*14}px"></span></td><td class="n-r"><span class="sk" style="width:64px"></span></td></tr>`).join('');
+ return `<div class="kpis">${['Open','Due soon','This month','Total'].map(k=>`<div class="kpi"><small>${k}</small><b>—</b><span>${tab||p.t}</span></div>`).join('')}</div>
+ <table><thead><tr><th>Name</th><th>Details</th><th class="n-r">Amount</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderMain(){
+ const p=PAGES[S.page],tab=p.tabs?p.tabs[S.tab]:null;
+ document.getElementById('crumb').innerHTML=`<span>${MOD[S.mod].n}</span><i class="fa-solid fa-chevron-right" style="font-size:9px"></i><b>${p.t}${tab?'</b><i class="fa-solid fa-chevron-right" style="font-size:9px"></i><b>'+tab:''}</b>`;
+ const pay=S.page==='pay-runs';
+ document.getElementById('content').innerHTML=`<div class="card"><div class="card-head"><div><h1>${pay?'Payroll cycle — 2026-09':p.t}</h1>${pay?'':`<div class="sub">${p.s}</div>`}</div>
+ ${pay?`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="fx"><i class="fa-solid fa-coins"></i><code>50.0000</code>EGP/USD · System Fallback (50.0)</div><span class="chip">Submitted</span></div>`:''}</div>
+ ${p.tabs?`<div class="tabs" role="tablist">${p.tabs.map((t,i)=>`<button class="tab${i===S.tab?' on':''}" role="tab" aria-selected="${i===S.tab}" data-tab="${i}">${t}</button>`).join('')}</div>`:''}
+ ${pay?payrollBody():genericBody(p,tab)}<div class="note">Mock content. This prototype tests navigation, naming and theming, not data.</div></div>`;
+}
+function render(){
+ valid();renderSide();renderMain();
+ document.querySelectorAll('#segCol button').forEach(b=>b.classList.toggle('on',+b.dataset.c===S.col));
+ document.querySelectorAll('#segBadge button').forEach(b=>b.classList.toggle('on',+b.dataset.b===S.badge));
+ document.getElementById('selRole').value=S.role;
+ document.getElementById('cnt').textContent=flat(S.mod).length;
+ document.documentElement.setAttribute('data-theme',S.theme);
+ document.querySelector('#themeBtn i').className='fa-solid '+(S.theme==='dark'?'fa-sun':'fa-moon');
+}
+const tip=document.getElementById('tip');
+function showTip(el){
+ const t=el.dataset.tip;if(!t)return;
+ tip.textContent=t;const r=el.getBoundingClientRect();
+ tip.style.left=(r.right+10)+'px';tip.style.top=(r.top+r.height/2-14)+'px';tip.style.opacity=1;
+}
+document.addEventListener('mouseover',e=>{const el=e.target.closest('[data-tip]');if(el)showTip(el);});
+document.addEventListener('mouseout',e=>{if(e.target.closest('[data-tip]'))tip.style.opacity=0;});
+document.addEventListener('focusin',e=>{const el=e.target.closest('[data-tip]');if(el)showTip(el);});
+document.addEventListener('focusout',()=>tip.style.opacity=0);
+const side=document.getElementById('side'),bd=document.getElementById('backdrop');
+function drawer(open){side.classList.toggle('open',open);bd.classList.toggle('on',open);}
+document.addEventListener('click',e=>{
+ const t=e.target;
+ const mb=t.closest('[data-mod]');if(mb){S.mod=mb.dataset.mod;S.page=flat(S.mod)[0];S.tab=0;if(S.col)S.col=0;render();return;}
+ const nb=t.closest('.nav-item');if(nb){S.page=nb.dataset.page;S.tab=0;drawer(false);render();return;}
+ const tb=t.closest('.tab');if(tb){S.tab=+tb.dataset.tab;renderMain();return;}
+ if(t.closest('#colBtn')){S.col=S.col?0:1;render();return;}
+ if(t.closest('#hamb')){drawer(true);return;}
+ if(t.closest('#backdrop')){drawer(false);return;}
+ if(t.closest('#themeBtn')){S.theme=S.theme==='dark'?'light':'dark';render();return;}
+ if(t.closest('#ctlMin')){document.getElementById('ctl').classList.toggle('min');return;}
+ const c=t.closest('#segCol button');if(c){S.col=+c.dataset.c;render();return;}
+ const b=t.closest('#segBadge button');if(b){S.badge=+b.dataset.b;render();return;}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')drawer(false);});
+document.getElementById('selRole').addEventListener('change',e=>{S.role=e.target.value;render();});
+render();
+</script>
+</body>
+</html>

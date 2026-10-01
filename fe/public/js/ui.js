@@ -69,23 +69,33 @@ function renderLoadingTableRow(colCount, message = 'Loading...') {
 }
 
 function toggleSidebarCollapse(id){
+  if (id === 'adminSidebar') {
+    const sidebar = document.getElementById('adminSidebar');
+    if (!sidebar) return;
+    sidebar.classList.toggle('panel-collapsed');
+    const collapsed = sidebar.classList.contains('panel-collapsed');
+    localStorage.setItem('hrflow.admin.navPanelCollapsed', collapsed ? '1' : '0');
+    return;
+  }
   const sidebar = document.getElementById(id);
   if(!sidebar) return;
   sidebar.classList.toggle('collapsed');
   const collapsed = sidebar.classList.contains('collapsed');
   localStorage.setItem('hrflow-sidebar-collapsed', collapsed ? '1' : '0');
-  ['adminSidebar','empSidebar'].forEach(sid=>{
-    const el = document.getElementById(sid);
-    if(el && sid !== id) el.classList.toggle('collapsed', collapsed);
-  });
 }
 function applySavedSidebarCollapse(){
-  const collapsed = localStorage.getItem('hrflow-sidebar-collapsed') === '1';
-  if(!collapsed) return;
-  ['adminSidebar','empSidebar'].forEach(sid=>{
-    const el = document.getElementById(sid);
-    if(el) el.classList.add('collapsed');
-  });
+  const adminCollapsed = localStorage.getItem('hrflow.admin.navPanelCollapsed') === '1';
+  const adminSidebar = document.getElementById('adminSidebar');
+  if (adminSidebar && adminCollapsed) {
+    adminSidebar.classList.add('panel-collapsed');
+  }
+
+  const empCollapsed = localStorage.getItem('hrflow-sidebar-collapsed') === '1';
+  if(!empCollapsed) return;
+  const empSidebar = document.getElementById('empSidebar');
+  if (empSidebar) {
+    empSidebar.classList.add('collapsed');
+  }
 }
 
 function getInitials(name){
@@ -114,15 +124,21 @@ function closeAllSidebars(){
   });
 }
 
-document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'admin')); });
+document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection(el.dataset.page, 'admin');
+  });
+});
 document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'employee')); });
 document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
 const titles = {
   'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
   'a-employees':['Employees',"Manage employee profiles and information."],
+  'a-employee-detail':['Employee Profile',"View and manage employee profile and records."],
   'a-requests':['Pending Requests',"Review and action employee requests."],
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
-  'a-invoices':['Invoices',"Generate and manage external-salary invoices."],
+  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary invoices."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
   'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
   'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
@@ -138,6 +154,9 @@ const titles = {
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
   'a-finance-bills':['Vendor Bills','Track supplier bills and accounts payable.'],
   'a-finance-accounts':['Company Bank Accounts','Manage company treasury and operating accounts.'],
+  'a-finance-transfers':['Account Transfers','Manage transfers between company bank and cash accounts.'],
+  'a-finance-cheques':['Cheque Register','Track issued and received bank cheques.'],
+  'a-finance-statements':['Statements & Reconciliation','Import bank statements and reconcile operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
   'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
@@ -155,6 +174,9 @@ function showSection(pageId, portal){
     'a-finance-sales': 'a-finance-invoices',
     'a-finance-spend': 'a-finance-bills',
     'a-finance-banking': 'a-finance-accounts',
+    'a-finance-transfers': 'a-finance-accounts',
+    'a-finance-cheques': 'a-finance-accounts',
+    'a-finance-statements': 'a-finance-accounts',
     'a-finance-payroll-runs': 'a-finance-payroll',
     'a-finance-payroll-settings': 'a-finance-payroll',
   };
@@ -167,6 +189,16 @@ function showSection(pageId, portal){
   }
 
   const isPayrollSubItem = (p) => p === 'a-finance-payroll-runs' || p === 'a-finance-payroll-settings';
+  const financeParentMap = {
+    'a-finance-invoices': 'a-finance-sales',
+    'a-finance-bills': 'a-finance-spend',
+    'a-finance-subscriptions': 'a-finance-spend',
+    'a-finance-statutory': 'a-finance-spend',
+    'a-finance-accounts': 'a-finance-banking',
+    'a-finance-transfers': 'a-finance-banking',
+    'a-finance-cheques': 'a-finance-banking',
+    'a-finance-statements': 'a-finance-banking',
+  };
   document.querySelectorAll(appSel+' .nav-item[data-page]').forEach(n=>{
     const p = n.dataset.page;
     let isActive = false;
@@ -176,7 +208,7 @@ function showSection(pageId, portal){
       isActive = true;
     } else if (p === 'a-finance-payroll-runs' && pageId === 'a-finance-payroll') {
       isActive = true;
-    } else if (!isPayrollSubItem(p) && (financeDomainMap[p] === targetSectionId || financeDomainMap[pageId] === p)) {
+    } else if (!isPayrollSubItem(p) && (financeParentMap[pageId] === p || financeDomainMap[p] === targetSectionId || financeDomainMap[pageId] === p)) {
       isActive = true;
     }
     n.classList.toggle('active', isActive);
@@ -189,6 +221,27 @@ function showSection(pageId, portal){
   }
   closeAllSidebars();
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
+  if(portal === 'admin') {
+    if(typeof PayrollApp !== 'undefined' && PayrollApp.showPage) {
+      if(pageId === 'a-finance-payroll' || pageId === 'a-finance-payroll-runs') {
+        PayrollApp.showPage('list');
+      } else if(pageId === 'a-finance-payroll-settings') {
+        PayrollApp.showPage('settings');
+      }
+    }
+    if(typeof switchFinanceAccountsSubTab === 'function') {
+      if(pageId === 'a-finance-transfers') {
+        switchFinanceAccountsSubTab('transfers');
+      } else if(pageId === 'a-finance-cheques') {
+        switchFinanceAccountsSubTab('cheques');
+      } else if(pageId === 'a-finance-statements') {
+        switchFinanceAccountsSubTab('statements');
+      }
+    }
+    if(window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {
+      window.AdminNav.syncFromPage(pageId);
+    }
+  }
 }
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,7 +10,7 @@ test.describe('FUX-418: Commission & Bonus Entry within a Payroll Run', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Payroll section
-    await page.click('#adminSidebar a[data-page="a-finance-payroll"]');
+    await openAdminPage(page, 'a-finance-payroll');
     await expect(page.locator('#a-finance-payroll')).toBeVisible();
   });
 

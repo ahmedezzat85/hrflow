@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 7.2: Core Accounting and Aging Reports', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,7 +10,7 @@ test.describe('Story 7.2: Core Accounting and Aging Reports', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Finance Reports
-    await page.click('#adminSidebar a[data-page="a-finance-reports"]');
+    await openAdminPage(page, 'a-finance-reports');
     await expect(page.locator('#a-finance-reports')).toBeVisible({ timeout: 5000 });
   });
 

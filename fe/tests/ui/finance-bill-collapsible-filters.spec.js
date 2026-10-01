@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX-412 — Collapsible bill list filters', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,7 +17,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
 
   test('AC 1: Filters are collapsed by default on first visit and toolbar occupies a single compact row', async ({ page }) => {
     // Navigate to Vendor Bills
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
@@ -45,7 +46,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
   });
 
   test('AC 2: Clicking toggle expands/collapses panel without resetting list state or reload', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
 
@@ -76,7 +77,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
   });
 
   test('AC 3: Active-filter count badge reflects non-default filters even while collapsed', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
 
@@ -125,7 +126,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
   });
 
   test('AC 4: Filter preference persists in localStorage across page reloads', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
 
@@ -144,7 +145,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
     // Reload page
     await page.reload();
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
 
@@ -161,7 +162,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
     // Navigate to Vendor Bills
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
@@ -188,7 +189,7 @@ test.describe('FUX-412 — Collapsible bill list filters', () => {
   });
 
   test('AC 6: Keyboard accessibility - toggle operates via Enter and Space with ARIA attributes', async ({ page }) => {
-    await page.click('#adminSidebar a[data-page="a-finance-bills"]');
+    await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
 
