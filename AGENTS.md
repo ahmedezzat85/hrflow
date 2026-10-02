@@ -2,6 +2,10 @@
 
 This file is the durable operating guide for humans and coding agents working in HRFlow. Read it before making changes. Keep it concise, current, and actionable; move lengthy rationale and completed project history to `docs/`.
 
+## Project Context
+
+Start with `docs/project-context/00-project-start-here.md`. Current code, migrations, and tests are the source of truth; where a document disagrees with them, fix the document.
+
 ## Product
 
 HRFlow is an internal HR and finance management system for one company (Voyance Health / HRFlow branding). It provides:
@@ -13,12 +17,12 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 ## Stack and Boundaries
 
 - **Backend:** `be/` — Python, FastAPI, `uvicorn`.
-- **Data store:** Google Sheets through `gspread`; one sheet tab represents a logical table.
-- **File storage:** Google Drive, owned by the service account. Employee documents use employee subfolders; shared documents use the Company Documents folder.
-- **Authentication:** Google Sign-In. The backend verifies the Google ID token and then issues HRFlow's own short-lived JWT session token using `PyJWT`.
+- **Data store:** relational SQL through SQLAlchemy and Alembic (SQLite for local development and tests, PostgreSQL for staging and production). `Config` rejects any `STORAGE_ENGINE` other than `sql`. Google Sheets is an export destination only (`be/sheets_client.py`, `be/services/export.py`).
+- **File storage:** `StorageClient` (`be/storage.py`) with a Google Drive driver owned by the service account (`be/drive_client.py`) and a local filesystem driver. Employee documents use employee subfolders; shared documents use the Company Documents folder.
+- **Authentication:** Google Sign-In. The backend verifies the Google ID token and then issues HRFlow's own short-lived JWT session token using `PyJWT`, stored in an `HttpOnly` cookie (`hrflow_session`).
 - **Frontend:** `fe/` — vanilla HTML/CSS/JavaScript, bundled with Vite and `vite-plugin-singlefile` into a single deployable HTML artifact (`fe/dist/index.html`). Source of truth is `fe/src/`.
 - **No React:** do not introduce React or another frontend framework unless explicitly approved.
-- **Configuration:** `fe/config.js` is gitignored and contains `API_BASE_URL` and `GOOGLE_CLIENT_ID`; use `config.example.js` as the template. Never commit secrets or environment-specific configuration.
+- **Configuration:** `fe/config.js` is gitignored and contains `API_BASE_URL` and `GOOGLE_CLIENT_ID`; use `config-example.js` as the template. Never commit secrets or environment-specific configuration.
 
 ## Non-Negotiables
 
@@ -26,7 +30,7 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 - Do not expose service-account credentials, JWTs, Google Drive IDs, storage paths, signed URLs, or sensitive personal/financial data in client code, logs, errors, fixtures, or commits.
 - Reuse the nearest established repository pattern before introducing a dependency, a parallel abstraction, a new persistence mechanism, or a new API convention.
 - Do not silently weaken validation, authorization, idempotency, duplicate detection, audit behavior, financial controls, or workflow safeguards to make a feature pass.
-- Analyze compatibility before changing an API contract, Google Sheet schema, financial calculation, permission meaning, workflow state, or persisted-data format.
+- Analyze compatibility before changing an API contract, database schema or migration, financial calculation, permission meaning, workflow state, or persisted-data format.
 - Keep changes scoped to the task. Do not mix unrelated refactoring, formatting churn, dependency upgrades, or generated-file changes into a feature fix.
 - Maintain strict token efficiency: NEVER poll background commands or tasks in loops (`manage_task(status)`). Rely on reactive system notifications, execute single targeted tests during development, and use compact output reporters (`--reporter=line`, `-q`).
 - Never commit secrets, local configuration, temporary scripts, test output, traces, screenshots, coverage artifacts, or generated files unless the repository explicitly tracks them.
@@ -38,11 +42,11 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 - Preserve the double-checked locking pattern and `_instance_lock` when modifying these clients.
 - Do not replace the pattern with unsynchronized `__new__` logic.
 
-### Google Sheets Type Normalization
-Google Sheets may auto-type cell values. For example, a document named `6` (e.g. `6.jpg`) is returned by `get_all_records()` as a Python `int 6`, not string `"6"`.
-- Treat sheet-backed values crossing into frontend payloads as untrusted types.
-- Defensively normalize document identifiers, filenames, codes, and similar display values to strings unless they are intentionally numeric on both backend and frontend.
-- Existing normalization helpers in `be/main.py` include `_normalize_document_record` and `_normalize_company_document_record`; follow this pattern.
+### Google Sheets (Export Only)
+Operational data lives in SQL. Google Sheets is written only by the export pipeline (`be/services/export.py`). Sheets may auto-type cell values when read back, so treat any value read from a sheet as untrusted and normalize identifiers and filenames to strings. The old `_normalize_document_record` helpers no longer exist in `be/main.py`. Dormant Sheets repositories remain under `be/repositories/sheets/` and `dual/`; do not extend them (`routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`).
+
+### Startup and Seeding
+`be/main.py` calls `init_db()` (`be/db.py`) at import time: it creates tables, adds missing columns, and seeds RBAC, finance lookups, and default payroll tax settings, logging but not raising on failure. Schema changes still require Alembic migrations. See `docs/project-context/rbac/technical-spec.md` for the planned change to RBAC seeding.
 
 ### Session Expiry
 The common 401 issue is HRFlow's own JWT session expiry (`TOKEN_EXPIRY_HOURS`), not expiration of Google service-account credentials (which auto-refresh).
@@ -165,5 +169,5 @@ Before declaring a task complete:
 
 - Update this file when a durable, repeated rule, architectural decision, recurring failure mode, or command changes.
 - Do not add transient branch status, one-off task plans, lengthy historical narrative, or completed migration checklists here.
-- Put detailed design rationale in `docs/architecture/` or ADR-style documents; link to them from this file when relevant.
+- Put detailed design rationale in `docs/project-context/` (architecture, decision log, roadmap, open questions) or ADR-style documents; link to them from this file when relevant.
 - Keep instructions imperative, specific, and verifiable.

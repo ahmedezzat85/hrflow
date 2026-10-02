@@ -1,8 +1,9 @@
 # HRFlow Open Questions
 
 **Status:** Draft — needs owner decisions  
-**Last verified against:** `main` at `9d6394aeeaa3631d1787a6a94b8181da3c0c3690`  
-**Last updated:** September 22, 2026  
+**Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
+**Last updated:** October 1, 2026  
+**Branch note:** Q-006 to Q-013 were added on `feature/rbac` and are not part of `main` until the branch is merged. On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
 **Authority:** Repository baseline and unreconciled owner-level questions  
 
 ---
@@ -31,7 +32,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 - **Known Current Context:**  
   - Baseline analysis in [01-repository-baseline.md](01-repository-baseline.md) confirms that current code records net-pay disbursements against selected funding accounts.  
   - Decisions `D-001` and `D-002` in [04-decision-log.md](04-decision-log.md) require explicit separation between internal estimates, portal-confirmed liabilities, actual paid amounts, and variance.  
-  - Neither option is formally approved as the durable product rule.  
+  - Neither option is formally approved as the durable product rule. Code reconciliation (October 1, 2026): `payroll_service.post_journal` posts only net-disbursement entries (never deduction, tax, employer-cost, or liability lines), which matches Option A in behavior.  
 - **Decision Needed from Owner:**  
   Select Option A or B, and define whether the non-disbursed portion is accrued as an independent statutory obligation.  
 - **Related References:**  
@@ -111,6 +112,114 @@ This register tracks unresolved product, accounting, and technical architecture 
 - **Related References:**  
   - [01-repository-baseline.md](01-repository-baseline.md)  
   - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md)  
+
+### Q-006 — Restoring Archived Users
+- **Status:** Open — interim treatment approved October 1, 2026  
+- **Question:**  
+  Can an archived user ever be restored? The owner wants history kept and a guarantee that they never regain access. Options: (a) archive is terminal and a returning person needs a new record (but `users.email` is unique, so the old record must free the email or be reused); (b) Super-Admin-only, audited restore.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: Archived blocks access; restore is not built until decided.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+
+### Q-007 — Payroll-Maker Access to Funding Accounts
+- **Status:** Open — interim treatment approved October 1, 2026  
+- **Question:**  
+  Payroll-Maker data access. Creating a run takes company funding-account IDs; listing them needs `finance.account.read`, which the role lacks. Owner chose to keep as is for now.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: No grant; verify during implementation.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+
+### Q-008 — Ownership of Employee Compensation Plans
+- **Status:** Open — interim treatment approved October 1, 2026  
+- **Question:**  
+  Who maintains employee compensation plans? The endpoints sit under `finance.payroll.*` but HR-Admin has no finance access.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: Mapped to `finance.payroll.prepare`.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+
+### Q-009 — Splitting `finance.account` Permissions
+- **Status:** Open — interim treatment approved October 1, 2026  
+- **Question:**  
+  Split `finance.account.*` (bank accounts, ledger, transfers, cheques, statements, rules, categories, payment types)?  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: Keep one pair; revisit if a role needs a subset.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+
+### Q-010 — Permission-Catalog Sync Strategy
+- **Status:** Resolved — D-011 (October 1, 2026): sync permission rows and Super-Admin at application start through the existing `init_db()` path; grant new keys to editable roles only through migrations.  
+- **Question:**  
+  When does the catalog sync run: at application start, in migrations only, or by an explicit command?  
+- **Known Current Context:**  
+  - Correction to the original draft: a startup path already exists. `be/main.py` calls `init_db()` at import, which runs `seed_rbac` on every start (and re-links users to roles from the legacy `users.role`; that re-link is removed by D-011).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`)  
+
+### Q-011 — Employee Self-Service Writes
+- **Status:** Open — interim treatment approved October 1, 2026  
+- **Question:**  
+  Employee self-service writes: confirm own-document upload/delete stays (current behavior) and whether own bank-detail edits are wanted (not included).  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: As stated.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+
+### Q-012 — Post-Journal Permission for Payroll
+- **Status:** Open — interim treatment approved October 1, 2026  
+- **Question:**  
+  `post-journal` assigned to `finance.payroll.pay` — confirm.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: As stated.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+
+### Q-013 — Self-Approval Bypass After the Payroll Split
+- **Status:** Resolved — D-011 (October 2, 2026): the `allow_self_approval` bypass is honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve` (by default only Super-Admin).  
+- **Question:**  
+  `approve_run` blocks approval by the user who submitted a run, but any `finance.payroll.write` holder can bypass it with the `allow_self_approval=true` query parameter (and the env var `ENFORCE_MAKER_CHECKER=false` disables it globally). After the prepare/approve/pay split, should the bypass be honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve` (by default only Super-Admin)?  
+- **Why It Matters:**  
+  Without this, Payroll-Maker would still be able to approve their own run by passing the parameter if they ever held an approve key, and Super-Admin could not do both steps as the owner intends.  
+- **Known Current Context:**  
+  - Code: `be/finance/services/payroll_service.py` (`approve_run`) and `be/finance/routers/payroll.py` (`allow_self_approval` query parameter).  
+  - Current behavior is unchanged until RBAC slice 4 implements the decision.  
+- **Decision Needed from Owner:**  
+  None; approved by the owner on October 2, 2026.  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`)  
+  - [rbac/implementation-plan.md](rbac/implementation-plan.md)  
 
 ---
 
