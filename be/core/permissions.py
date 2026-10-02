@@ -28,13 +28,16 @@ def get_user_permissions(user_id: int, db: Session) -> Set[str]:
     perms = {r[0] for r in results}
 
     roles = (
-        db.query(RoleDB.name)
+        db.query(RoleDB)
         .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
         .filter(UserRoleDB.user_id == user_id)
         .all()
     )
-    user_roles = {r[0] for r in roles}
-    if "system_admin" in user_roles:
+    is_super = any(
+        getattr(r, "system_key", None) == "super_admin" or r.name in ("Super-Admin", "system_admin")
+        for r in roles
+    )
+    if is_super:
         perms.add("*")
 
     return perms
@@ -68,26 +71,29 @@ def get_current_user_permissions(
         user_record = db.query(UserDB).filter(UserDB.id == user_id).first()
 
     perms: Set[str] = set()
-    user_roles: Set[str] = set()
+    is_super_role = False
     if user_id is not None:
         perms = get_user_permissions(user_id, db)
         roles = (
-            db.query(RoleDB.name)
+            db.query(RoleDB)
             .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
             .filter(UserRoleDB.user_id == user_id)
             .all()
         )
-        user_roles = {r[0] for r in roles}
+        is_super_role = any(
+            getattr(r, "system_key", None) == "super_admin" or r.name in ("Super-Admin", "system_admin")
+            for r in roles
+        )
 
     # Super admin / Admin wildcard grant:
     # If the user has role 'admin' / 'superadmin' / 'super_admin' in token claims or UserDB record,
-    # or has 'system_admin' role assigned in RBAC, always grant administrative wildcard '*'.
+    # or has 'super_admin' / 'Super-Admin' / 'system_admin' role assigned in RBAC, always grant administrative wildcard '*'.
     role_claims = {
         str(current_user.get("role", "")).lower(),
         str(getattr(user_record, "role", "")).lower() if user_record else "",
     }
     admin_indicators = {"admin", "superadmin", "super_admin", "system_admin"}
-    if role_claims.intersection(admin_indicators) or "system_admin" in user_roles:
+    if role_claims.intersection(admin_indicators) or is_super_role:
         perms.add("*")
 
     request.state.user_permissions = perms

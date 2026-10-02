@@ -97,7 +97,8 @@ try:
     from db import init_db
     init_db()
 except Exception as _init_err:
-    logger.warning("Database schema auto-sync encountered non-fatal error: %s", _init_err)
+    logger.error("Database initialization failed: %s", _init_err, exc_info=True)
+    raise
 
 _CSP_POLICY = (
     "default-src 'self'; "

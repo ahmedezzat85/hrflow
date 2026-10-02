@@ -25,8 +25,11 @@ class UserDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=True)
     role = Column(String(50), nullable=False, default="employee")
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
+    archived_at = Column(DateTime, nullable=True)
+    archived_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     employee = relationship("EmployeeDB", back_populates="user", foreign_keys=[employee_id])

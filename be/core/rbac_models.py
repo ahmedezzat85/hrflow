@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     UniqueConstraint,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 
@@ -33,6 +34,8 @@ class RoleDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
+    system_key = Column(String(50), unique=True, nullable=True, index=True)
+    is_locked = Column(Boolean, nullable=False, default=False)
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

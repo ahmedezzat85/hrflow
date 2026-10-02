@@ -92,13 +92,15 @@ def init_db():
                         conn.execute(text(f"ALTER TABLE {t_name} ADD COLUMN {col.name} {type_str}"))
         conn.commit()
 
-    # Idempotently seed RBAC roles, permissions, and initial user links
+    # Idempotently synchronize RBAC catalog permissions and Super-Admin grants
     try:
-        from core.rbac_seed import seed_rbac
+        from core.role_seed import sync_catalog
         with get_db_context() as db:
-            seed_rbac(db)
-    except Exception:
-        pass
+            sync_catalog(db)
+    except Exception as _rbac_err:
+        import logging
+        logging.getLogger(__name__).error("Fatal error synchronizing RBAC catalog: %s", _rbac_err, exc_info=True)
+        raise
 
     # Idempotently seed default finance lookup categories and payment types (FUX-409)
     try:
