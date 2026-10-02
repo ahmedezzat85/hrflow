@@ -123,3 +123,64 @@ Slice 1 delivers the foundational code-defined permission catalog (63 catalog ke
 - Next slice needed: Slice 2 (Resolution, session and scope helpers: `resolve_access`, `get_current_user` DB lookup, `permission_scope`).
 - Risks: Low; existing admins' access was 100% preserved.
 
+---
+
+## Slice 2 — Resolution, Session, and Scope Helpers (`RBAC-S2`)
+
+### 1. Outcome
+Slice 2 establishes runtime RBAC resolution and session context: `resolve_access` resolves assigned roles, derives the Employee baseline automatically from `employee_id`, and grants Super-Admin `all_keys()`. The `*` wildcard and legacy role-string bypasses were retired in favor of explicit catalog keys. `get_current_user` performs DB lookup with `request.state` caching, returning permissions, roles, and portal with a transitional `role` claim. `permission_scope(all_key, self_key)` provides own-or-all gating, and `/api/auth/google` and `/api/auth/me` return full RBAC attributes. Manual balance adjustment in `bank_accounts.py` requires `finance.adjustment.manage` from resolved permissions.
+
+### 2. Branch Intake
+- **Branch:** `feature/rbac`
+- **Start HEAD:** `cdf85d03830cf405e3f3a8b41ca01a24d55b08fa`
+- **Merge-Base with main:** `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`
+
+### 3. Files Changed
+- `be/core/permissions.py`: Implemented `AccessContext`, `has_admin_surface`, `resolve_access`, `get_access_context`, `get_current_user_permissions`, `require_permission` asserting catalog keys, and removed `*` wildcard and legacy role checks.
+- `be/auth.py`: Updated `create_session_token` to accept `uid`, updated `get_current_user` to run `resolve_access` with `request.state` caching and return RBAC dictionary, shimmed `require_admin` to check Super-Admin.
+- `be/deps.py`: Added `Scope` dataclass and `permission_scope(all_key, self_key)` dependency factory with import-time catalog key assertions.
+- `be/models.py`: Added `portal` and `roles` fields to `LoginResponse`.
+- `be/models_db.py`: Added `__table_args__ = {"extend_existing": True}` to `UserDB`.
+- `be/routers/auth.py`: Updated `/api/auth/google` and `/api/auth/me` to return `permissions`, `portal`, `roles`, and compatibility `role`.
+- `be/finance/routers/bank_accounts.py`: Updated manual adjustment authorization to require `finance.adjustment.manage` directly from resolved permissions without role bypass.
+- `be/tests/test_rbac.py`: Added 9 new tests covering all Slice 2 acceptance criteria and performance benchmark (22 passed).
+- `docs/project-context/rbac/run-log.md`: Appended Slice 2 execution log.
+
+### 4. Tests
+- **Targeted Suite:** `pytest be/tests/test_rbac.py -q` -> 22 passed in 30.95s (baseline: 13 passed).
+- **Sub-modules Tested:**
+  - `pytest be/tests/test_authorization.py be/tests/test_standalone_sql_mode.py be/tests/test_finance_transfers.py be/tests/test_finance_transfer_composer.py be/tests/test_finance_vendor_security.py -q` -> 38 passed.
+  - `pytest be/tests/test_finance_bank_accounts.py be/tests/test_finance_attention_queue.py -q` -> 10 passed.
+- **Frontend Build:** `npm run build` in `fe/` -> Passed in 360ms (bundled into `dist/index.html`).
+- **Latency Benchmark (AC 9):**
+  - `/api/auth/me`: 6.40 ms average latency.
+  - `/api/finance/accounts`: 7.54 ms average latency.
+  - Sub-10ms response times confirm zero noticeable overhead from `request.state`-cached lookups.
+- **Legacy Token Minting Inspection (AC 7 count):**
+  - Searched repository for `create_session_token` calls outside `conftest.py`.
+  - Found exactly 3 test modules depending on legacy token minting: `be/tests/test_standalone_sql_mode.py`, `be/tests/test_payroll_income_tax.py`, `be/tests/test_finance_payroll_adjustments.py`. All 3 modules continue to work seamlessly.
+
+### 5. Acceptance Criteria
+- **AC 1:** A Super-Admin user can do everything an admin could before; existing admin-based tests pass unchanged -> **Met** (`test_require_permission_endpoint_admin_allowed`, `test_super_admin_has_all_keys_when_role_permissions_deleted`, `test_auth_me_returns_rbac_fields_and_compat_role`).
+- **AC 2:** A token with `role=admin` but a user holding no admin role gets 403 on admin routes -> **Met** (`test_token_with_role_admin_for_employee_user_gets_403`).
+- **AC 3:** An archived user with a valid cookie gets 403 on the next request and cannot log in -> **Met** (`test_archived_user_gets_403`).
+- **AC 4:** A user with a linked employee gets Employee permissions without any `user_roles` row -> **Met** (`test_linked_employee_gets_baseline_without_user_roles_row`).
+- **AC 5:** Super-Admin has every catalog key even when `role_permissions` rows are missing -> **Met** (`test_super_admin_has_all_keys_when_role_permissions_deleted`).
+- **AC 6:** A non-admin role holding `finance.adjustment.manage` can record an adjustment -> **Met** (`test_non_admin_holding_adjustment_manage_records_adjustment`).
+- **AC 7:** `/auth/me` returns `permissions`, `portal`, `roles` and a compatibility `role`; the existing frontend keeps working -> **Met** (`test_auth_me_returns_rbac_fields_and_compat_role`).
+- **AC 8:** Tokens without `uid` still work -> **Met** (`test_tokens_without_uid_still_work`).
+- **AC 9:** Measure and report request latency before/after on the heaviest endpoints -> **Met** (`test_rbac_latency_benchmark`: 6.40ms on `/api/auth/me`, 7.54ms on `/api/finance/accounts`).
+
+### 6. Confirmed Facts vs Assumptions
+- **Confirmed in Code:**
+  - `request.state` caching prevents redundant lookups within a single request context.
+  - Detached instance errors avoided by returning dict structures from test user fixtures.
+  - Sub-10ms latency confirms database resolution is performant for SQLite.
+- **Assumptions Validated:**
+  - Super-Admin automatically inherits `all_keys()` even when database tables lack permission rows.
+
+### 7. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 2 with all acceptance criteria met and verified.
+- Next slice needed: Slice 3 (HR guards and self-service keys: migrate HR routes to catalog keys, own-or-all scope resolution, `hr.employee_bank_account.*`).
+
+

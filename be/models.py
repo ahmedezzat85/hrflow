@@ -31,6 +31,8 @@ class LoginResponse(BaseModel):
     employee_id: Optional[int] = None
     name: Optional[str] = None
     permissions: List[str] = Field(default_factory=list)
+    portal: str = "employee"
+    roles: List[str] = Field(default_factory=list)
 
 
 class EmployeeCreate(BaseModel):

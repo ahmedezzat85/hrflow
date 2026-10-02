@@ -4,15 +4,71 @@ Shared FastAPI dependencies and small cross-router helpers, pulled out of
 main.py during the router-decomposition refactor (docs/analysis/
 architecture-review-plan.md).
 """
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Request
 
 from logging_config import get_logger
 from auth import get_current_user
 
 logger = get_logger("main")
+
+
+@dataclass
+class Scope:
+    is_all: bool
+    employee_id: Optional[int] = None
+
+    @classmethod
+    def all(cls) -> "Scope":
+        return cls(is_all=True, employee_id=None)
+
+    @classmethod
+    def own(cls, emp_id: int) -> "Scope":
+        return cls(is_all=False, employee_id=emp_id)
+
+
+def permission_scope(all_key: str, self_key: str):
+    """
+    FastAPI dependency factory for own-or-all scope resolution.
+    Asserts at import time that all_key and self_key exist in the permission catalog.
+    Returns Scope.all() if caller holds all_key, Scope.own(emp_id) if caller holds self_key,
+    or raises 403 Forbidden.
+    """
+    from core.permission_catalog import all_keys
+    catalog_keys = all_keys()
+    assert all_key in catalog_keys, f"Unknown permission key in permission_scope: '{all_key}'"
+    assert self_key in catalog_keys, f"Unknown permission key in permission_scope: '{self_key}'"
+
+    def dep(
+        request: Request,
+        current_user: dict = Depends(get_current_user),
+    ) -> Scope:
+        ctx = getattr(request.state, "access_context", None)
+        if ctx is not None:
+            perms = ctx.permissions
+            emp_id = ctx.employee_id
+        else:
+            perms = set(current_user.get("permissions", []))
+            if not perms and current_user.get("role") == "admin":
+                perms = set(catalog_keys)
+            emp_id = current_user.get("employee_id")
+
+        if all_key in perms:
+            return Scope.all()
+        if self_key in perms and emp_id is not None:
+            return Scope.own(emp_id)
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied: requires '{all_key}' or '{self_key}'",
+        )
+
+    dep.hrflow_permission_all = all_key
+    dep.hrflow_permission_self = self_key
+    return dep
+
 
 
 def current_user_employee_scope(current_user: dict = Depends(get_current_user)) -> Optional[int]:

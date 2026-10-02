@@ -132,7 +132,7 @@ def test_get_user_permissions_resolution(app_client):
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
         admin_perms = get_user_permissions(admin_user.id, db)
-        assert "*" in admin_perms
+        assert len(admin_perms) == 64
         assert "hr.employee.write" in admin_perms
         assert "hr.employee.read" in admin_perms
         assert "self.profile.read" in admin_perms
@@ -322,3 +322,427 @@ def test_failing_rbac_sync_fails_startup(app_client, monkeypatch):
 
     with pytest.raises(RuntimeError, match="Simulated RBAC synchronization fatal conflict"):
         init_db()
+
+
+# ============================================================================
+# Slice 2 Acceptance Criteria Tests: Resolution, Session, and Scope Helpers
+# ============================================================================
+
+def _create_test_user_with_roles(db, email, role_names=None, system_keys=None, employee_id=None, is_archived=False):
+    import datetime
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+    if not user:
+        user = UserDB(
+            email=email,
+            name=email.split("@")[0].title(),
+            employee_id=employee_id,
+            role="admin" if "Super-Admin" in (role_names or []) or "super_admin" in (system_keys or []) else "employee",
+        )
+        db.add(user)
+        db.flush()
+    else:
+        user.employee_id = employee_id
+        if "Super-Admin" in (role_names or []) or "super_admin" in (system_keys or []):
+            user.role = "admin"
+        else:
+            user.role = "employee"
+
+    if is_archived:
+        user.archived_at = datetime.datetime.utcnow()
+        user.archived_by = "admin@hrflow.test"
+    else:
+        user.archived_at = None
+        user.archived_by = None
+    db.flush()
+
+    db.query(UserRoleDB).filter(UserRoleDB.user_id == user.id).delete()
+    db.flush()
+
+    # Ensure default roles exist with their permissions in test database
+    for key, role_def in DEFAULT_ROLES.items():
+        r = db.query(RoleDB).filter(RoleDB.system_key == key).first()
+        if not r:
+            r = RoleDB(
+                name=role_def.name,
+                system_key=role_def.system_key,
+                is_locked=role_def.is_locked,
+                description=role_def.description,
+            )
+            db.add(r)
+            db.flush()
+        perm_count = db.query(RolePermissionDB).filter(RolePermissionDB.role_id == r.id).count()
+        if perm_count == 0:
+            for perm_key in role_def.permissions:
+                p = db.query(PermissionDB).filter(PermissionDB.key == perm_key).first()
+                if p:
+                    db.add(RolePermissionDB(role_id=r.id, permission_id=p.id))
+            db.flush()
+
+    target_roles = []
+    if system_keys:
+        target_roles.extend(db.query(RoleDB).filter(RoleDB.system_key.in_(system_keys)).all())
+    if role_names:
+        target_roles.extend(db.query(RoleDB).filter(RoleDB.name.in_(role_names)).all())
+
+    for r in set(target_roles):
+        db.add(UserRoleDB(user_id=user.id, role_id=r.id))
+    db.commit()
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "name": user.name,
+        "employee_id": user.employee_id,
+        "archived_at": user.archived_at,
+    }
+
+
+def _make_user_cookies(user, legacy_role_claim=None, include_uid=True):
+    from auth import create_session_token
+    from config import Config
+    user_id = user["id"] if isinstance(user, dict) else user.id
+    email = user["email"] if isinstance(user, dict) else user.email
+    role = user["role"] if isinstance(user, dict) else user.role
+    emp_id = user["employee_id"] if isinstance(user, dict) else user.employee_id
+    name = (user["name"] if isinstance(user, dict) else user.name) or email.split("@")[0]
+    role_claim = legacy_role_claim if legacy_role_claim is not None else role
+    token = create_session_token(
+        email=email,
+        role=role_claim,
+        employee_id=emp_id,
+        name=name,
+        uid=user_id if include_uid else None,
+    )
+    return {Config.SESSION_COOKIE_NAME: token}
+
+
+def test_token_with_role_admin_for_employee_user_gets_403(app_client):
+    """AC 2: A token with role=admin but a user holding no admin role gets 403 on admin routes."""
+    with get_db_context() as db:
+        user = _create_test_user_with_roles(
+            db,
+            email="forged_admin@voyance.health",
+            system_keys=["employee"],
+            employee_id=10,
+        )
+
+    # Token claims role='admin', but user in DB has only Employee role
+    cookies = _make_user_cookies(user, legacy_role_claim="admin")
+
+    # POST to bank accounts requires finance.account.write (an admin permission)
+    resp = app_client.post(
+        "/api/finance/accounts",
+        json={
+            "account_name": "Unauthorized Account",
+            "bank_name": "Fake Bank",
+            "account_number": "UA-1234",
+            "currency": "USD",
+            "opening_balance": 100.0,
+        },
+        cookies=cookies,
+    )
+    assert resp.status_code == 403
+    assert "Permission denied" in resp.text or "finance.account.write" in resp.text
+
+
+def test_archived_user_gets_403(app_client):
+    """AC 3: An archived user with a valid cookie gets 403 on the next request and cannot access endpoints."""
+    with get_db_context() as db:
+        user = _create_test_user_with_roles(
+            db,
+            email="archived_person@voyance.health",
+            system_keys=["employee"],
+            employee_id=11,
+            is_archived=True,
+        )
+
+    cookies = _make_user_cookies(user)
+
+    resp = app_client.get("/api/auth/me", cookies=cookies)
+    assert resp.status_code == 403
+    assert "archived" in resp.json()["detail"].lower()
+
+
+def test_linked_employee_gets_baseline_without_user_roles_row(app_client):
+    """AC 4: A user with a linked employee gets Employee permissions without any user_roles row."""
+    from core.permissions import resolve_access
+    with get_db_context() as db:
+        sync_catalog(db)
+        user = db.query(UserDB).filter(UserDB.email == "baseline_emp@voyance.health").first()
+        if not user:
+            user = UserDB(
+                email="baseline_emp@voyance.health",
+                name="Baseline Employee",
+                employee_id=42,
+                role="employee",
+            )
+            db.add(user)
+            db.flush()
+        else:
+            user.employee_id = 42
+            db.flush()
+
+        # Explicitly delete any UserRole rows for this user
+        db.query(UserRoleDB).filter(UserRoleDB.user_id == user.id).delete()
+        db.commit()
+
+        ctx = resolve_access(db, {"uid": user.id, "email": user.email})
+        assert len(ctx.permissions) == 13
+        assert "self.profile.read" in ctx.permissions
+        assert "self.vacation.write" in ctx.permissions
+        assert "self.vacation.read" in ctx.permissions
+        assert "hr.company_document.read" in ctx.permissions
+        assert ctx.portal == "employee"
+        assert ctx.role_names == []  # Baseline role is excluded from display roles
+
+
+def test_super_admin_has_all_keys_when_role_permissions_deleted(app_client):
+    """AC 5: Super-Admin has every catalog key even when role_permissions rows are missing."""
+    from core.permissions import resolve_access
+    with get_db_context() as db:
+        sync_catalog(db)
+        user = _create_test_user_with_roles(
+            db,
+            email="sa_stripped@voyance.health",
+            system_keys=["super_admin"],
+        )
+
+        super_admin_role = db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
+        # Delete all role_permissions rows for Super-Admin
+        db.query(RolePermissionDB).filter(RolePermissionDB.role_id == super_admin_role.id).delete()
+        db.commit()
+
+        ctx = resolve_access(db, {"uid": user["id"], "email": user["email"]})
+        assert len(ctx.permissions) == len(all_keys())
+        assert "system.users.manage" in ctx.permissions
+        assert "finance.adjustment.manage" in ctx.permissions
+        assert ctx.is_super_admin is True
+        assert ctx.portal == "admin"
+
+        # Restore Super-Admin role permissions
+        sync_catalog(db)
+
+
+def test_non_admin_holding_adjustment_manage_records_adjustment(app_client):
+    """AC 6: A non-admin role holding finance.adjustment.manage can record an adjustment."""
+    from finance.models import FinanceBankAccountDB, TransactionCategoryDB, PaymentTypeDB
+    with get_db_context() as db:
+        sync_catalog(db)
+        # Create bank account, category, payment type if missing
+        acct = db.query(FinanceBankAccountDB).filter_by(account_number="ADJ-TEST-01").first()
+        if not acct:
+            acct = FinanceBankAccountDB(
+                account_name="Adjustment Bank",
+                bank_name="Test Bank",
+                account_number="ADJ-TEST-01",
+                currency="USD",
+                opening_balance=1000.0,
+                current_balance=1000.0,
+                is_active=True,
+            )
+            db.add(acct)
+
+        cat = db.query(TransactionCategoryDB).filter_by(name="Operations").first()
+        if not cat:
+            cat = TransactionCategoryDB(name="Operations", kind="cost", is_active=True, sort_order=1)
+            db.add(cat)
+
+        pt = db.query(PaymentTypeDB).filter_by(code="TRANSFER").first()
+        if not pt:
+            pt = PaymentTypeDB(name="Transfer", code="TRANSFER", is_active=True)
+            db.add(pt)
+        db.commit()
+
+        # Financial-Admin role has finance.account.write AND finance.adjustment.manage
+        fin_user = _create_test_user_with_roles(
+            db,
+            email="fin_admin_adj@voyance.health",
+            system_keys=["financial_admin"],
+        )
+        fin_cookies = _make_user_cookies(fin_user)
+
+        # Create a user with only finance.account.write but WITHOUT finance.adjustment.manage
+        limited_role = db.query(RoleDB).filter_by(name="Limited-Writer").first()
+        if not limited_role:
+            limited_role = RoleDB(name="Limited-Writer", description="Write account only", is_locked=False)
+            db.add(limited_role)
+            db.flush()
+            p_write = db.query(PermissionDB).filter_by(key="finance.account.write").first()
+            p_read = db.query(PermissionDB).filter_by(key="finance.account.read").first()
+            db.add(RolePermissionDB(role_id=limited_role.id, permission_id=p_write.id))
+            db.add(RolePermissionDB(role_id=limited_role.id, permission_id=p_read.id))
+            db.commit()
+
+        writer_user = _create_test_user_with_roles(
+            db,
+            email="writer_only@voyance.health",
+            role_names=["Limited-Writer"],
+        )
+        writer_cookies = _make_user_cookies(writer_user)
+        acct_id = acct.id
+
+    # 1. Limited writer tries to post an adjustment -> 403
+    fail_resp = app_client.post(
+        f"/api/finance/accounts/{acct_id}/transactions",
+        json={
+            "entry_type": "adjustment",
+            "direction": "in",
+            "amount": 50.0,
+            "currency": "USD",
+            "date": "2026-10-01",
+            "reason": "Unauthorized adjustment",
+            "description": "Unauthorized adjustment",
+        },
+        cookies=writer_cookies,
+    )
+    assert fail_resp.status_code == 403
+    assert "finance.adjustment.manage" in fail_resp.text
+
+    # 2. Financial-Admin (non-Super-Admin) posts adjustment -> Success (201)
+    ok_resp = app_client.post(
+        f"/api/finance/accounts/{acct_id}/transactions",
+        json={
+            "entry_type": "adjustment",
+            "direction": "in",
+            "amount": 50.0,
+            "currency": "USD",
+            "date": "2026-10-01",
+            "reason": "Authorized audit balance true-up",
+            "description": "Authorized audit balance true-up",
+        },
+        cookies=fin_cookies,
+    )
+    assert ok_resp.status_code == 201
+    assert ok_resp.json()["entry_type"] == "adjustment"
+
+
+def test_auth_me_returns_rbac_fields_and_compat_role(app_client):
+    """AC 7: /api/auth/me returns permissions, portal, roles, and compatibility role."""
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa_user = _create_test_user_with_roles(
+            db,
+            email="sa_me@voyance.health",
+            system_keys=["super_admin"],
+        )
+        emp_user = _create_test_user_with_roles(
+            db,
+            email="emp_me@voyance.health",
+            system_keys=["employee"],
+            employee_id=99,
+        )
+
+    sa_cookies = _make_user_cookies(sa_user)
+    sa_resp = app_client.get("/api/auth/me", cookies=sa_cookies)
+    assert sa_resp.status_code == 200
+    sa_data = sa_resp.json()
+    assert sa_data["portal"] == "admin"
+    assert sa_data["role"] == "admin"
+    assert "Super-Admin" in sa_data["roles"]
+    assert len(sa_data["permissions"]) == len(all_keys())
+
+    emp_cookies = _make_user_cookies(emp_user)
+    emp_resp = app_client.get("/api/auth/me", cookies=emp_cookies)
+    assert emp_resp.status_code == 200
+    emp_data = emp_resp.json()
+    assert emp_data["portal"] == "employee"
+    assert emp_data["role"] == "employee"
+    assert emp_data["roles"] == []
+    assert len(emp_data["permissions"]) == 13
+
+
+def test_tokens_without_uid_still_work(app_client):
+    """AC 8: Tokens without uid claim resolve by email lookup."""
+    with get_db_context() as db:
+        user = _create_test_user_with_roles(
+            db,
+            email="no_uid_user@voyance.health",
+            system_keys=["employee"],
+            employee_id=55,
+        )
+
+    cookies = _make_user_cookies(user, include_uid=False)
+    resp = app_client.get("/api/auth/me", cookies=cookies)
+    assert resp.status_code == 200
+    assert resp.json()["employee_id"] == 55
+
+
+def test_permission_scope_own_and_all(app_client):
+    """Test permission_scope dependency factory for Scope.all vs Scope.own vs 403."""
+    from deps import permission_scope, Scope
+    from core.permissions import AccessContext
+    from unittest.mock import MagicMock
+    from fastapi import HTTPException
+
+    scope_dep = permission_scope("hr.vacation.read", "self.vacation.read")
+
+    # 1. Caller with all_key gets Scope.all()
+    req1 = MagicMock()
+    req1.state.access_context = AccessContext(
+        user_id=1,
+        email="hr@voyance.health",
+        employee_id=None,
+        permissions={"hr.vacation.read"},
+        role_names=["HR-Admin"],
+        portal="admin",
+    )
+    scope1 = scope_dep(req1, current_user={"role": "employee"})
+    assert scope1.is_all is True
+    assert scope1.employee_id is None
+
+    # 2. Caller with self_key and employee_id gets Scope.own(emp_id)
+    req2 = MagicMock()
+    req2.state.access_context = AccessContext(
+        user_id=2,
+        email="emp@voyance.health",
+        employee_id=22,
+        permissions={"self.vacation.read"},
+        role_names=[],
+        portal="employee",
+    )
+    scope2 = scope_dep(req2, current_user={"role": "employee"})
+    assert scope2.is_all is False
+    assert scope2.employee_id == 22
+
+    # 3. Caller with neither key raises 403
+    req3 = MagicMock()
+    req3.state.access_context = AccessContext(
+        user_id=3,
+        email="finance@voyance.health",
+        employee_id=33,
+        permissions={"finance.report.read"},
+        role_names=["Financial-Admin"],
+        portal="admin",
+    )
+    with pytest.raises(HTTPException) as exc:
+        scope_dep(req3, current_user={"role": "employee"})
+    assert exc.value.status_code == 403
+
+
+def test_rbac_latency_benchmark(app_client, admin_cookies):
+    """AC 9: Benchmark and record latency on representative authenticated endpoints."""
+    import time
+    iterations = 50
+
+    # 1. Benchmark /api/auth/me
+    t0 = time.perf_counter()
+    for _ in range(iterations):
+        resp = app_client.get("/api/auth/me", cookies=admin_cookies)
+        assert resp.status_code == 200
+    t1 = time.perf_counter()
+    auth_me_avg_ms = ((t1 - t0) / iterations) * 1000.0
+
+    # 2. Benchmark /api/finance/accounts
+    t0 = time.perf_counter()
+    for _ in range(iterations):
+        resp = app_client.get("/api/finance/accounts", cookies=admin_cookies)
+        assert resp.status_code == 200
+    t1 = time.perf_counter()
+    accounts_avg_ms = ((t1 - t0) / iterations) * 1000.0
+
+    print(f"\n[BENCHMARK] /api/auth/me average latency: {auth_me_avg_ms:.2f} ms")
+    print(f"[BENCHMARK] /api/finance/accounts average latency: {accounts_avg_ms:.2f} ms")
+    assert auth_me_avg_ms < 50.0  # Well within acceptable boundaries
+    assert accounts_avg_ms < 100.0
+
+

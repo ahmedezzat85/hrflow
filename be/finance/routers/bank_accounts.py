@@ -147,8 +147,7 @@ def create_account_transaction(
     """Records a manual continuous ledger transaction and recomputes running balances."""
     if (payload.entry_type or "").lower() == "adjustment":
         perms = set(current_user.get("permissions", [])) if isinstance(current_user, dict) else set()
-        role = (current_user.get("role") or "").lower() if isinstance(current_user, dict) else ""
-        if "*" not in perms and "finance.adjustment.manage" not in perms and role not in ("admin", "system_admin"):
+        if "finance.adjustment.manage" not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Manual balance adjustments require 'finance.adjustment.manage' authorization",

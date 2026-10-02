@@ -12,12 +12,15 @@ the API consumes the session via get_current_user / require_admin, which
 read the cookie automatically on every request.
 """
 import time
+from typing import Optional
 import jwt
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
 
 from config import Config
+from db import get_db
 from sheets_client import get_client
 from repositories.sheets.auth import SheetsUserRepository
 
@@ -47,7 +50,7 @@ def verify_google_credential(credential: str) -> dict:
     return payload
 
 
-def create_session_token(email: str, role: str, employee_id, name: str = ""):
+def create_session_token(email: str, role: str, employee_id, name: str = "", uid: Optional[int] = None):
     payload = {
         "email": email,
         "role": role,
@@ -55,6 +58,8 @@ def create_session_token(email: str, role: str, employee_id, name: str = ""):
         "name": name,
         "exp": int(time.time()) + Config.TOKEN_EXPIRY_HOURS * 3600,
     }
+    if uid is not None:
+        payload["uid"] = uid
     return jwt.encode(payload, Config.SECRET_KEY, algorithm="HS256")
 
 
@@ -82,18 +87,31 @@ def login_with_google(credential: str, user_repo=None):
     user = _find_user_by_email(email, user_repo=user_repo)
     if not user:
         return None
-    token = create_session_token(user["email"], user["role"], user.get("employee_id"), name)
-    return {"token": token, "role": user["role"], "employee_id": user.get("employee_id"), "name": name, "email": user["email"]}
+    token = create_session_token(
+        user["email"],
+        user["role"],
+        user.get("employee_id"),
+        name,
+        uid=user.get("id"),
+    )
+    return {
+        "token": token,
+        "role": user["role"],
+        "employee_id": user.get("employee_id"),
+        "name": name,
+        "email": user["email"],
+        "uid": user.get("id"),
+    }
 
 
-def get_current_user(request: Request) -> dict:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> dict:
     """
     Reads the session from the HttpOnly cookie (Config.SESSION_COOKIE_NAME).
-    There is intentionally no Authorization-header / bearer-token path and
-    no `?token=` query-string path anymore - every request, including the
-    document preview/download streaming endpoints, now authenticates via
-    this same cookie, which the browser attaches automatically.
+    Resolves permissions and roles via resolve_access and caches on request.state.
     """
+    if hasattr(request.state, "current_user") and request.state.current_user:
+        return request.state.current_user
+
     token = request.cookies.get(Config.SESSION_COOKIE_NAME)
     if not token:
         raise HTTPException(
@@ -106,10 +124,31 @@ def get_current_user(request: Request) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session. Please sign in again.",
         )
-    return payload
+
+    from core.permissions import resolve_access
+    ctx = resolve_access(db, payload)
+    request.state.access_context = ctx
+
+    user_dict = {
+        "user_id": ctx.user_id,
+        "id": ctx.user_id,
+        "email": ctx.email,
+        "employee_id": ctx.employee_id,
+        "name": payload.get("name", "") or ctx.email.split("@")[0],
+        "permissions": sorted(list(ctx.permissions)),
+        "roles": ctx.role_names,
+        "portal": ctx.portal,
+        "role": "admin" if ctx.is_super_admin else "employee",
+        "is_super_admin": ctx.is_super_admin,
+    }
+    request.state.current_user = user_dict
+    return user_dict
 
 
 def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """
+    Temporary transitional shim: holds Super-Admin.
+    """
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
     return current_user
