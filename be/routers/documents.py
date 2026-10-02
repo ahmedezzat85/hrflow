@@ -11,7 +11,8 @@ from fastapi.responses import StreamingResponse
 
 import drive_client
 from logging_config import get_logger
-from auth import get_current_user, require_admin
+from auth import get_current_user
+from core.permissions import require_permission
 from deps import audit_log
 from services.uploads import validate_upload_content, safe_content_disposition_filename
 from models import CompanyDocumentCreate
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/company-documents", tags=["Document Hub"])
 
 @router.get("")
 def get_company_documents(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("hr.company_document.read")),
     doc_repo: CompanyDocumentRepository = Depends(get_company_document_repo),
 ):
     docs = doc_repo.list_all()
@@ -35,7 +36,7 @@ def get_company_documents(
 @router.post("", status_code=201)
 def upload_company_document(
     payload: CompanyDocumentCreate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.company_document.write")),
     doc_repo: CompanyDocumentRepository = Depends(get_company_document_repo),
 ):
     logger.info("Company document upload requested: name='%s', file_type=%s, category=%s, by=%s",
@@ -80,7 +81,7 @@ def upload_company_document(
 def stream_company_document(
     doc_id: int,
     download: bool = Query(False),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("hr.company_document.read")),
     doc_repo: CompanyDocumentRepository = Depends(get_company_document_repo),
 ):
     doc = doc_repo.get_by_id(doc_id)
@@ -105,7 +106,7 @@ def stream_company_document(
 @router.delete("/{doc_id}")
 def delete_company_document(
     doc_id: int,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.company_document.write")),
     doc_repo: CompanyDocumentRepository = Depends(get_company_document_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):

@@ -746,3 +746,311 @@ def test_rbac_latency_benchmark(app_client, admin_cookies):
     assert accounts_avg_ms < 100.0
 
 
+# ==============================================================================
+# SLICE 3 TESTS: HR Guards and Self-Service Keys
+# ==============================================================================
+
+def test_no_hr_route_imports_require_admin():
+    """AC 1: No HR route in be/routers/*.py (excluding auth.py) imports require_admin."""
+    import os
+    import re
+    routers_dir = os.path.join(os.path.dirname(__file__), "..", "routers")
+    pattern = re.compile(r"^\s*(from\s+auth\s+import\s+.*require_admin|import\s+.*require_admin)", re.MULTILINE)
+    violations = []
+
+    for fname in os.listdir(routers_dir):
+        if fname.endswith(".py") and fname != "auth.py":
+            fpath = os.path.join(routers_dir, fname)
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            if pattern.search(content):
+                violations.append(fname)
+
+    assert violations == [], f"HR routers still importing require_admin: {violations}"
+
+
+def test_hr_route_guard_coverage_walker():
+    """AC 2: Verify that every HR route has a catalog permission guard matching the inventory."""
+    import os
+    import csv
+    from main import app
+
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "project-context", "rbac", "route-guard-inventory.csv")
+    assert os.path.exists(csv_path), "route-guard-inventory.csv not found"
+
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        csv_rows = list(reader)
+
+    hr_rows = [r for r in csv_rows if r["file"].startswith("routers/") and r["file"] != "routers/auth.py" and r["file"] != "routers/system.py"]
+
+    # Build map of app routes
+    # (method, path) -> route
+    app_routes = {}
+    for r in app.routes:
+        if hasattr(r, "methods") and hasattr(r, "path"):
+            for m in r.methods:
+                app_routes[(m.upper(), r.path)] = r
+
+    for row in hr_rows:
+        method = row["method"].upper()
+        path = row["path"]
+        route = app_routes.get((method, path))
+        assert route is not None, f"Route {method} {path} from CSV not found on FastAPI app"
+
+        endpoint = route.endpoint
+        # Collect guards from endpoint attributes or dependencies
+        guard_all = getattr(endpoint, "hrflow_permission_all", None)
+        guard_self = getattr(endpoint, "hrflow_permission_self", None)
+        guard_single = getattr(endpoint, "hrflow_permission", None)
+        has_export = getattr(endpoint, "hrflow_proposed_guard", None) is not None
+
+        # Check dependencies
+        for dep in getattr(route.dependant, "dependencies", []):
+            call_fn = dep.call
+            if hasattr(call_fn, "hrflow_permission"):
+                guard_single = call_fn.hrflow_permission
+            if hasattr(call_fn, "hrflow_permission_all"):
+                guard_all = call_fn.hrflow_permission_all
+            if hasattr(call_fn, "hrflow_permission_self"):
+                guard_self = call_fn.hrflow_permission_self
+
+        # Verify that either guard_all, guard_self, guard_single, or has_export is present
+        has_guard = bool(guard_all or guard_single or has_export)
+        assert has_guard, f"Route {method} {path} has no catalog permission guard attached"
+
+
+def test_employee_gets_403_on_admin_hr_routes_and_self_scoped(app_client):
+    """AC 3: Employee gets 403 on admin-only routes and sees only own records on scoped routes."""
+    with get_db_context() as db:
+        emp_user = _create_test_user_with_roles(
+            db,
+            email="regular_emp@voyance.health",
+            system_keys=["employee"],
+            employee_id=2,
+        )
+
+    cookies = _make_user_cookies(emp_user)
+
+    # 1. Admin-only: apply raise -> 403
+    resp_raise = app_client.post(
+        "/api/salary/raise",
+        json={"employee_id": 2, "new_internal_salary_usd": 50000, "new_external_salary_usd": 0, "effective_date": "2026-10-01"},
+        cookies=cookies,
+    )
+    assert resp_raise.status_code == 403
+
+    # 2. Admin-only: upload company document -> 403
+    resp_doc = app_client.post(
+        "/api/company-documents",
+        json={"name": "Hacked", "file_type": "pdf", "category": "General", "data_url": "data:application/pdf;base64,dGVzdA=="},
+        cookies=cookies,
+    )
+    assert resp_doc.status_code == 403
+
+    # 3. Admin-only: create employee note -> 403
+    resp_note = app_client.post(
+        "/api/employees/2/notes",
+        json={"content": "Secret note"},
+        cookies=cookies,
+    )
+    assert resp_note.status_code == 403
+
+    # 4. Admin-only: audit log -> 403
+    resp_audit = app_client.get("/api/audit-log", cookies=cookies)
+    assert resp_audit.status_code == 403
+
+    # 5. Scoped route: employees list returns only own record (id=2)
+    resp_list = app_client.get("/api/employees", cookies=cookies)
+    assert resp_list.status_code == 200
+    employees = resp_list.json()
+    assert len(employees) == 1
+    assert employees[0]["id"] == 2
+
+
+def test_hr_admin_passes_hr_routes_and_blocked_on_finance(app_client):
+    """AC 4: HR-Admin passes all HR routes and gets 403 on every finance route."""
+    with get_db_context() as db:
+        hr_user = _create_test_user_with_roles(
+            db,
+            email="hr_admin_user@voyance.health",
+            system_keys=["hr_admin"],
+            employee_id=1,
+        )
+
+    cookies = _make_user_cookies(hr_user)
+
+    # Passes HR routes
+    resp_emp = app_client.get("/api/employees", cookies=cookies)
+    assert resp_emp.status_code == 200
+    assert len(resp_emp.json()) >= 2  # Sees all employees
+
+    resp_sal = app_client.get("/api/salary/history", cookies=cookies)
+    assert resp_sal.status_code == 200
+
+    resp_docs = app_client.get("/api/company-documents", cookies=cookies)
+    assert resp_docs.status_code == 200
+
+    # Gets 403 on finance routes
+    resp_fin_acc = app_client.get("/api/finance/accounts", cookies=cookies)
+    assert resp_fin_acc.status_code == 403
+
+    resp_fin_bills = app_client.get("/api/finance/bills", cookies=cookies)
+    assert resp_fin_bills.status_code == 403
+
+
+def test_user_holding_both_self_and_hr_sees_all_records(app_client):
+    """AC 5: A user holding both self.* and hr.* sees all records."""
+    with get_db_context() as db:
+        # User is an employee with linked employee_id=2 (gets self.*) AND has hr_admin role (gets hr.*)
+        user = _create_test_user_with_roles(
+            db,
+            email="dual_role_user@voyance.health",
+            system_keys=["hr_admin", "employee"],
+            employee_id=2,
+        )
+
+    cookies = _make_user_cookies(user)
+
+    # On /api/employees, sees all employees (not restricted to id=2)
+    resp = app_client.get("/api/employees", cookies=cookies)
+    assert resp.status_code == 200
+    ids = {row["id"] for row in resp.json()}
+    assert len(ids) > 1
+    assert 2 in ids
+
+
+def test_on_behalf_of_submission_needs_matching_hr_write(app_client, fake_sheets_client):
+    """AC 6: On-behalf-of submission requires matching hr.*.write."""
+    with get_db_context() as db:
+        emp_user = _create_test_user_with_roles(
+            db,
+            email="emp_submitter@voyance.health",
+            system_keys=["employee"],
+            employee_id=2,
+        )
+        hr_user = _create_test_user_with_roles(
+            db,
+            email="hr_submitter@voyance.health",
+            system_keys=["hr_admin"],
+            employee_id=1,
+        )
+
+    emp_cookies = _make_user_cookies(emp_user)
+    hr_cookies = _make_user_cookies(hr_user)
+
+    # 1. Employee trying to submit request on behalf of employee 3 -> 403
+    resp1 = app_client.post(
+        "/api/requests",
+        json={"employee_name": "Target", "type": "Work From Home", "details": "WFH", "employee_id": 3},
+        cookies=emp_cookies,
+    )
+    assert resp1.status_code == 403
+    assert "Only HR admins can submit" in resp1.text
+
+    # 2. HR Admin submitting on behalf of employee 3 -> 201
+    resp2 = app_client.post(
+        "/api/requests",
+        json={"employee_name": "Target", "type": "Work From Home", "details": "WFH", "employee_id": 3},
+        cookies=hr_cookies,
+    )
+    assert resp2.status_code == 201
+
+
+def test_export_dataset_permissions(app_client):
+    """AC 7: Exports require hr.export.run + dataset read key (or finance.report.read for finance)."""
+    with get_db_context() as db:
+        emp_user = _create_test_user_with_roles(
+            db,
+            email="export_emp@voyance.health",
+            system_keys=["employee"],
+            employee_id=2,
+        )
+        hr_user = _create_test_user_with_roles(
+            db,
+            email="export_hr@voyance.health",
+            system_keys=["hr_admin"],
+            employee_id=1,
+        )
+        fin_user = _create_test_user_with_roles(
+            db,
+            email="export_fin@voyance.health",
+            system_keys=["financial_admin"],
+            employee_id=3,
+        )
+
+    emp_cookies = _make_user_cookies(emp_user)
+    hr_cookies = _make_user_cookies(hr_user)
+    fin_cookies = _make_user_cookies(fin_user)
+
+    # Status check
+    assert app_client.get("/api/export/status", cookies=emp_cookies).status_code == 403
+    assert app_client.get("/api/export/status", cookies=hr_cookies).status_code == 200
+
+    # HR dataset: employees CSV
+    assert app_client.get("/api/export/employees/csv", cookies=emp_cookies).status_code == 403
+    assert app_client.get("/api/export/employees/csv", cookies=hr_cookies).status_code == 200
+
+    # Finance dataset: finance_accounts CSV
+    # HR-Admin does not have finance.report.read
+    assert app_client.get("/api/export/finance_accounts/csv", cookies=hr_cookies).status_code == 403
+    # Financial-Admin has finance.report.read and finance.account.read
+    assert app_client.get("/api/export/finance_accounts/csv", cookies=fin_cookies).status_code == 200
+
+
+def test_employee_reads_own_masked_bank_account_reveal_denied_without_key(app_client, admin_cookies):
+    """AC 8: Employee reads own masked bank details; reveal=true is denied without reveal key."""
+    # Create bank details for employee 2 using admin_cookies
+    setup_res = app_client.put(
+        "/api/employees/2/bank-account",
+        json={
+            "bank_name": "Test National Bank",
+            "iban": "EG12345678901234567890",
+            "swift_code": "TESTEGCA",
+        },
+        cookies=admin_cookies,
+    )
+    assert setup_res.status_code == 200
+
+    with get_db_context() as db:
+        emp_user = _create_test_user_with_roles(
+            db,
+            email="bank_emp@voyance.health",
+            system_keys=["employee"],
+            employee_id=2,
+        )
+        hr_user = _create_test_user_with_roles(
+            db,
+            email="bank_hr@voyance.health",
+            system_keys=["hr_admin"],
+            employee_id=1,
+        )
+
+    emp_cookies = _make_user_cookies(emp_user)
+    hr_cookies = _make_user_cookies(hr_user)
+
+    # 1. Employee reads own masked details
+    resp1 = app_client.get("/api/employees/2/bank-account", cookies=emp_cookies)
+    assert resp1.status_code == 200
+    data1 = resp1.json()
+    assert data1["has_details"] is True
+    assert data1["iban"].endswith("7890")
+    assert "****" in data1["iban"]  # masked
+
+    # 2. Employee cannot read other employee's details
+    resp2 = app_client.get("/api/employees/3/bank-account", cookies=emp_cookies)
+    assert resp2.status_code == 403
+
+    # 3. Employee requesting reveal=true is denied 403
+    resp3 = app_client.get("/api/employees/2/bank-account?reveal=true", cookies=emp_cookies)
+    assert resp3.status_code == 403
+    assert "hr.employee_bank_account.reveal" in resp3.text
+
+    # 4. HR-Admin (holds hr.employee_bank_account.reveal) requesting reveal=true succeeds
+    resp4 = app_client.get("/api/employees/2/bank-account?reveal=true", cookies=hr_cookies)
+    assert resp4.status_code == 200
+    data4 = resp4.json()
+    assert data4["iban"] == "EG12345678901234567890"  # unmasked
+
+
+

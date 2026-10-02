@@ -8,8 +8,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from auth import get_current_user, require_admin
-from deps import audit_log
+from auth import get_current_user
+from core.permissions import require_permission
+from deps import audit_log, permission_scope, Scope
 from models import RaiseApply
 from repositories.interfaces import SalaryRepository, AuditRepository
 from repositories.deps import get_salary_repo, get_audit_repo
@@ -20,21 +21,24 @@ router = APIRouter(prefix="/api/salary", tags=["Salary"])
 @router.get("/history")
 def get_salary_history(
     employee_id: Optional[int] = Query(None),
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.salary.read", "self.salary.read")),
     salary_repo: SalaryRepository = Depends(get_salary_repo),
 ):
-    if current_user["role"] != "admin":
-        my_id = str(current_user["employee_id"])
+    if not scope.is_all:
+        my_id = str(scope.employee_id)
         return salary_repo.get_history(employee_id=my_id)
     elif employee_id is not None:
         return salary_repo.get_history(employee_id=employee_id)
     return salary_repo.get_history()
 
+get_salary_history.hrflow_permission_all = "hr.salary.read"
+get_salary_history.hrflow_permission_self = "self.salary.read"
+
 
 @router.post("/raise", status_code=201)
 def apply_raise(
     payload: RaiseApply,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary.write")),
     salary_repo: SalaryRepository = Depends(get_salary_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):

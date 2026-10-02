@@ -7,7 +7,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 
-from auth import require_admin
+from core.permissions import require_permission
 from repositories.interfaces import AuditRepository
 from repositories.deps import get_audit_repo
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["System"])
 
 @router.get("/audit-log")
 def get_audit_log(
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("system.audit.read")),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     return audit_repo.list_all()

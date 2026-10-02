@@ -9,8 +9,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from auth import get_current_user, require_admin
-from deps import resolve_target_employee, audit_log, current_user_employee_scope
+from auth import get_current_user
+from core.permissions import require_permission
+from deps import resolve_target_employee, audit_log, permission_scope, Scope
 from models import RequestCreate, RequestAction
 from repositories.interfaces import RequestRepository, EmployeeRepository, AuditRepository
 from repositories.deps import get_request_repo, get_employee_repo, get_audit_repo
@@ -21,10 +22,14 @@ router = APIRouter(prefix="/api/requests", tags=["Requests"])
 @router.get("")
 def get_requests(
     type: Optional[str] = Query(None),
-    scoped_employee_id: Optional[int] = Depends(current_user_employee_scope),
+    scope: Scope = Depends(permission_scope("hr.request.read", "self.requests.read")),
     request_repo: RequestRepository = Depends(get_request_repo),
 ):
+    scoped_employee_id = None if scope.is_all else scope.employee_id
     return request_repo.list_requests(type_filter=type, scoped_employee_id=scoped_employee_id)
+
+get_requests.hrflow_permission_all = "hr.request.read"
+get_requests.hrflow_permission_self = "self.requests.read"
 
 
 @router.post("", status_code=201)
@@ -34,8 +39,19 @@ def create_request(
     request_repo: RequestRepository = Depends(get_request_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
+    perms = set(current_user.get("permissions", []))
+    has_write_all = "hr.request.write" in perms or current_user.get("role") == "admin"
+    has_write_own = "self.requests.write" in perms
+
+    if not has_write_all and not has_write_own:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: 'hr.request.write' or 'self.requests.write' required",
+        )
+
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
-        employee_repo, current_user, payload.employee_id, payload.employee_name
+        employee_repo, current_user, payload.employee_id, payload.employee_name,
+        required_permission="hr.request.write"
     )
 
     record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
@@ -56,12 +72,15 @@ def create_request(
     new_id = request_repo.create(row)
     return {"message": "Request submitted", "id": new_id}
 
+create_request.hrflow_permission_all = "hr.request.write"
+create_request.hrflow_permission_self = "self.requests.write"
+
 
 @router.post("/{req_id}/action")
 def action_request(
     req_id: int,
     payload: RequestAction,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.request.write")),
     request_repo: RequestRepository = Depends(get_request_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):

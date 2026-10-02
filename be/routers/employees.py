@@ -12,8 +12,8 @@ from fastapi.responses import StreamingResponse
 
 import drive_client
 from logging_config import get_logger
-from auth import get_current_user, require_admin
-from deps import audit_log, current_user_employee_scope
+from auth import get_current_user
+from deps import audit_log, permission_scope, Scope
 from services.uploads import validate_upload_content, safe_content_disposition_filename
 from models import EmployeeCreate, EmployeeUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
 from repositories.interfaces import EmployeeRepository, AuditRepository
@@ -26,26 +26,32 @@ router = APIRouter(prefix="/api/employees", tags=["Employees"])
 
 @router.get("")
 def get_employees(
-    scoped_employee_id: Optional[int] = Depends(current_user_employee_scope),
+    scope: Scope = Depends(permission_scope("hr.employee.read", "self.profile.read")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
-    """Employee ownership is resolved by current_user_employee_scope
-    before this route executes."""
+    """Employee ownership is resolved by permission_scope before this route executes."""
+    scoped_employee_id = None if scope.is_all else scope.employee_id
     return employee_repo.list_all(scoped_employee_id=scoped_employee_id)
+
+get_employees.hrflow_permission_all = "hr.employee.read"
+get_employees.hrflow_permission_self = "self.profile.read"
 
 
 @router.get("/{emp_id}")
 def get_employee(
     emp_id: int,
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.employee.read", "self.profile.read")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
-    if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
+    if not scope.is_all and str(scope.employee_id) != str(emp_id):
         raise HTTPException(status_code=403, detail="You can only view your own profile")
     emp = employee_repo.get_by_id(emp_id)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     return emp
+
+get_employee.hrflow_permission_all = "hr.employee.read"
+get_employee.hrflow_permission_self = "self.profile.read"
 
 
 @router.post("", status_code=201)
@@ -81,7 +87,7 @@ def create_employee(
 def update_employee(
     emp_id: int,
     payload: EmployeeUpdate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
@@ -96,7 +102,7 @@ def update_employee(
 @router.delete("/{emp_id}")
 def delete_employee(
     emp_id: int,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
@@ -110,7 +116,7 @@ def delete_employee(
 @router.get("/{emp_id}/notes")
 def get_employee_notes(
     emp_id: int,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.employee.read")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     return employee_repo.get_notes(emp_id)
@@ -120,7 +126,7 @@ def get_employee_notes(
 def create_employee_note(
     emp_id: int,
     payload: EmployeeNoteCreate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     if not employee_repo.get_by_id(emp_id):
@@ -137,7 +143,7 @@ def create_employee_note(
 @router.delete("/notes/{note_id}")
 def delete_employee_note(
     note_id: int,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     ok = employee_repo.delete_note(note_id)
@@ -146,32 +152,36 @@ def delete_employee_note(
     return {"message": "Note deleted"}
 
 
-def _check_document_access(current_user, emp_id):
-    if current_user["role"] != "admin" and str(current_user["employee_id"]) != str(emp_id):
-        logger.warning("User %s attempted to access documents for employee_id=%s without permission", current_user.get("email"), emp_id)
+def _check_document_access(scope: Scope, emp_id: int):
+    if not scope.is_all and str(scope.employee_id) != str(emp_id):
+        logger.warning("Attempted to access documents for employee_id=%s without permission", emp_id)
         raise HTTPException(status_code=403, detail="You can only access your own documents")
 
 
 @router.get("/{emp_id}/documents", tags=["Documents"])
 def get_employee_documents(
     emp_id: int,
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.employee_document.read", "self.document.read")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
-    _check_document_access(current_user, emp_id)
+    _check_document_access(scope, emp_id)
     docs = employee_repo.get_documents(emp_id)
     logger.debug("Listed %d documents for employee_id=%s", len(docs), emp_id)
     return docs
+
+get_employee_documents.hrflow_permission_all = "hr.employee_document.read"
+get_employee_documents.hrflow_permission_self = "self.document.read"
 
 
 @router.post("/{emp_id}/documents", status_code=201, tags=["Documents"])
 def upload_employee_document(
     emp_id: int,
     payload: EmployeeDocumentCreate,
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.employee_document.write", "self.document.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    current_user: dict = Depends(get_current_user),
 ):
-    _check_document_access(current_user, emp_id)
+    _check_document_access(scope, emp_id)
     emp = employee_repo.get_by_id(emp_id)
     if not emp:
         logger.warning("Document upload rejected: employee_id=%s not found", emp_id)
@@ -216,19 +226,23 @@ def upload_employee_document(
     logger.info("Document upload complete: doc_id=%s, employee_id=%s, drive_file_id=%s", doc_id, emp_id, uploaded["file_id"])
     return {"message": "Document uploaded", "id": doc_id}
 
+upload_employee_document.hrflow_permission_all = "hr.employee_document.write"
+upload_employee_document.hrflow_permission_self = "self.document.write"
+
 
 @router.get("/documents/{doc_id}/stream", tags=["Documents"])
 def stream_employee_document(
     doc_id: int,
     download: bool = Query(False),
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.employee_document.read", "self.document.read")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    current_user: dict = Depends(get_current_user),
 ):
     doc = employee_repo.get_document_by_id(doc_id)
     if not doc:
         logger.warning("Document stream rejected: doc_id=%s not found", doc_id)
         raise HTTPException(status_code=404, detail="Document not found")
-    _check_document_access(current_user, doc["employee_id"])
+    _check_document_access(scope, doc["employee_id"])
 
     drive = drive_client.get_drive_client()
     try:
@@ -243,19 +257,23 @@ def stream_employee_document(
     logger.info("Streaming doc_id=%s to %s (disposition=%s, %d bytes)", doc_id, current_user.get("email"), disposition, len(raw_bytes))
     return StreamingResponse(iter([raw_bytes]), media_type=mime, headers=headers)
 
+stream_employee_document.hrflow_permission_all = "hr.employee_document.read"
+stream_employee_document.hrflow_permission_self = "self.document.read"
+
 
 @router.delete("/documents/{doc_id}", tags=["Documents"])
 def delete_employee_document(
     doc_id: int,
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.employee_document.write", "self.document.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
+    current_user: dict = Depends(get_current_user),
 ):
     doc = employee_repo.get_document_by_id(doc_id)
     if not doc:
         logger.warning("Document delete rejected: doc_id=%s not found", doc_id)
         raise HTTPException(status_code=404, detail="Document not found")
-    _check_document_access(current_user, doc["employee_id"])
+    _check_document_access(scope, doc["employee_id"])
     logger.info("Deleting document doc_id=%s (drive_file_id=%s) requested by %s", doc_id, doc.get("drive_file_id"), current_user.get("email"))
     drive = drive_client.get_drive_client()
     drive_deleted = drive.delete_file(doc.get("drive_file_id"))
@@ -265,3 +283,6 @@ def delete_employee_document(
     logger.info("Document delete complete: doc_id=%s", doc_id)
     audit_log(audit_repo, "document.delete", current_user.get("email"), "employee_document", doc_id, f"employee_id={doc['employee_id']}")
     return {"message": "Document deleted"}
+
+delete_employee_document.hrflow_permission_all = "hr.employee_document.write"
+delete_employee_document.hrflow_permission_self = "self.document.write"

@@ -71,44 +71,89 @@ def permission_scope(all_key: str, self_key: str):
 
 
 
-def current_user_employee_scope(current_user: dict = Depends(get_current_user)) -> Optional[int]:
+def current_user_employee_scope(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> Optional[int]:
     """
     Resolves an employee-data list scope for endpoints without an
-    employee_id query parameter. Admins receive None, meaning unrestricted
-    access; employees receive their own employee_id.
+    employee_id query parameter. Admins or users with elevated HR read permissions
+    receive None, meaning unrestricted access; employees receive their own employee_id.
     """
-    if current_user["role"] == "admin":
+    ctx = getattr(request.state, "access_context", None)
+    if ctx is not None:
+        perms = ctx.permissions
+        emp_id = ctx.employee_id
+    else:
+        perms = set(current_user.get("permissions", []))
+        emp_id = current_user.get("employee_id")
+
+    if current_user.get("role") == "admin" or "hr.employee.read" in perms:
         return None
-    return current_user["employee_id"]
+    return emp_id
 
 
 def resolve_employee_scope(
+    request: Request,
     employee_id: Optional[int] = Query(None),
     current_user: dict = Depends(get_current_user),
 ) -> Optional[int]:
     """
     Resolves the employee-data scope for history/aggregation endpoints
-    with an optional employee_id query parameter. Admins may request all
-    records (None) or a specific employee. Non-admins are always forced
-    to their own employee_id, ignoring any supplied query parameter.
+    with an optional employee_id query parameter. Admins or users with elevated HR read
+    permissions may request all records (None) or a specific employee. Non-admins without
+    elevated read are always forced to their own employee_id, ignoring any supplied query parameter.
     """
-    if current_user["role"] != "admin":
-        return current_user["employee_id"]
-    return employee_id
+    ctx = getattr(request.state, "access_context", None)
+    if ctx is not None:
+        perms = ctx.permissions
+        emp_id = ctx.employee_id
+    else:
+        perms = set(current_user.get("permissions", []))
+        emp_id = current_user.get("employee_id")
+
+    hr_reads = {"hr.salary.read", "hr.vacation.read", "hr.insurance.read", "hr.employee.read", "hr.request.read"}
+    if current_user.get("role") == "admin" or bool(perms & hr_reads):
+        return employee_id
+    return emp_id
 
 
-def resolve_target_employee(repo_or_client, current_user, employee_id, fallback_name):
+def resolve_target_employee(
+    repo_or_client,
+    current_user: dict,
+    employee_id: Optional[int],
+    fallback_name: str,
+    required_permission: Optional[str] = None,
+):
     """
     Shared helper for admin-on-behalf-of-employee creation across
     requests/vacations/claims. Returns (emp_id, employee_name, submitted_by_admin).
-    Non-admins may never pass employee_id; if they try, this raises 403.
-    Admin-provided employee_id is resolved against the real Employees store
-    so the employee's name is never trusted from client input.
+    Submitting on behalf of another employee requires the corresponding hr.*.write
+    permission (or legacy admin). Non-admins attempting to submit on behalf of
+    another employee without permission receive 403.
     """
     if employee_id is not None:
-        if current_user["role"] != "admin":
-            logger.warning("User %s (role=%s) attempted to submit on behalf of employee_id=%s without admin rights", current_user.get("email"), current_user.get("role"), employee_id)
-            raise HTTPException(status_code=403, detail="Only HR admins can submit this on behalf of another employee")
+        is_self = str(employee_id) == str(current_user.get("employee_id"))
+        if not is_self:
+            perms = set(current_user.get("permissions", []))
+            has_permission = False
+            if required_permission:
+                has_permission = required_permission in perms
+            else:
+                has_permission = any(p in perms for p in ("hr.request.write", "hr.vacation.write", "hr.insurance.write"))
+
+            if not has_permission and current_user.get("role") != "admin":
+                logger.warning(
+                    "User %s attempted to submit on behalf of employee_id=%s without required permission (%s)",
+                    current_user.get("email"),
+                    employee_id,
+                    required_permission,
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only HR admins can submit this on behalf of another employee",
+                )
+
         if hasattr(repo_or_client, "get_by_id"):
             target = repo_or_client.get_by_id(employee_id)
         elif hasattr(repo_or_client, "get_all_records"):
@@ -118,10 +163,10 @@ def resolve_target_employee(repo_or_client, current_user, employee_id, fallback_
             target = None
 
         if not target:
-            logger.warning("Admin %s tried to act on behalf of unknown employee_id=%s", current_user.get("email"), employee_id)
+            logger.warning("Tried to act on behalf of unknown employee_id=%s", employee_id)
             raise HTTPException(status_code=404, detail="Employee not found")
-        return target["id"], target["name"], True
-    return current_user["employee_id"], fallback_name, False
+        return target["id"], target["name"], (not is_self)
+    return current_user.get("employee_id"), fallback_name, False
 
 
 def audit_log(repo_or_client, action: str, actor_email: str, target_type: str, target_id, details: str = ""):

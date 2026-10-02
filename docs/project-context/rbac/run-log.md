@@ -184,3 +184,93 @@ Slice 2 establishes runtime RBAC resolution and session context: `resolve_access
 - Next slice needed: Slice 3 (HR guards and self-service keys: migrate HR routes to catalog keys, own-or-all scope resolution, `hr.employee_bank_account.*`).
 
 
+---
+
+## Run Log: Slice 3 — HR Guards and Self-Service Keys
+
+### 1. Packet Intake & Scope
+- **Slice:** Slice 3 — HR guards and self-service keys
+- **Branch:** `feature/rbac`
+- **Head commit before slice:** `b7372d8`
+- **Primary Objectives:**
+  - Migrate all HR routes in `be/routers/*.py` (except `auth.py`) onto catalog keys per `route-guard-inventory.csv`.
+  - Rewrite `current_user_employee_scope`, `resolve_employee_scope`, `resolve_target_employee`, and `_check_document_access` onto catalog permissions and `permission_scope(all_key, self_key)`.
+  - Ensure on-behalf-of submissions (requests, vacations, claims) require the matching `hr.*.write` permission.
+  - Implement own-or-all employee scoping for profiles, documents, bank details, vacation history, requests, and medical insurance.
+  - Implement employee-side read of masked bank details, requiring `hr.employee_bank_account.reveal` for `reveal=true`.
+  - Ensure exports validate `hr.export.run` + dataset read key (HR) and `finance.report.read` + dataset read key (Finance).
+  - Guarantee 0 occurrences of `require_admin` across all HR routers.
+
+### 2. Implementation Summary
+- **`be/deps.py`:**
+  - Rewrote `current_user_employee_scope` to check `hr.employee.read` or admin rather than blanket `hr.*` wildcards (which previously matched `hr.company_document.read`).
+  - Rewrote `resolve_employee_scope` to check relevant HR read keys (`{"hr.salary.read", "hr.vacation.read", "hr.insurance.read", "hr.employee.read", "hr.request.read"}`).
+  - Rewrote `resolve_target_employee` to accept `required_permission: Optional[str] = None` and check that permission (or admin) when submitting on behalf of another employee (`employee_id != current_user.employee_id`).
+- **`be/routers/employees.py`:**
+  - `GET /api/employees` and `GET /api/employees/{emp_id}` migrated to `permission_scope("hr.employee.read", "self.profile.read")`.
+  - `_check_document_access` and document routes (`GET/POST /{emp_id}/documents`, `GET /documents/{doc_id}/stream`, `DELETE /documents/{doc_id}`) migrated to `permission_scope("hr.employee_document.read", "self.document.read")` and `permission_scope("hr.employee_document.write", "self.document.write")`.
+  - Employee notes and CRUD endpoints migrated to `hr.employee.read` and `hr.employee.write`.
+  - Removed `require_admin`.
+- **`be/routers/employee_bank_accounts.py`:**
+  - `GET /{emp_id}/bank-account` migrated to `hr.employee_bank_account.read` (all) | `self.bank_account.read` (own).
+  - `reveal=true` strictly requires `hr.employee_bank_account.reveal`.
+  - `PUT /{emp_id}/bank-account` migrated to `hr.employee_bank_account.write`.
+- **`be/routers/documents.py`:**
+  - Company documents migrated to `hr.company_document.read` and `hr.company_document.write`.
+  - Removed `require_admin`.
+- **`be/routers/export.py`:**
+  - `GET /api/export/status` guarded by `hr.export.run`.
+  - `GET /api/export/{dataset}/csv` and `POST /api/export/{dataset}/sheets` guarded by `check_export_permission`: requires `hr.export.run` + HR dataset read key for HR datasets, and `finance.report.read` + dataset read key for finance datasets.
+  - Removed `require_admin`.
+- **`be/routers/insurance.py`:**
+  - Categories read guarded by `hr.insurance.read | self.claim.read`; write/update/delete by `hr.insurance.write`.
+  - `GET /api/insurance/consumption` and `GET /api/insurance/claims` migrated to `permission_scope("hr.insurance.read", "self.claim.read")`.
+  - `POST /api/insurance/claims` requires `hr.insurance.write` (on behalf) | `self.claim.write` (own).
+  - `POST /api/insurance/claims/{claim_id}/action` requires `hr.insurance.write`.
+  - Removed `require_admin`.
+- **`be/routers/requests.py`:**
+  - `GET /api/requests` migrated to `permission_scope("hr.request.read", "self.requests.read")`.
+  - `POST /api/requests` requires `hr.request.write` (on behalf) | `self.requests.write` (own).
+  - `POST /api/requests/{req_id}/action` requires `hr.request.write`.
+  - Removed `require_admin`.
+- **`be/routers/salary.py`:**
+  - `GET /api/salary/history` migrated to `permission_scope("hr.salary.read", "self.salary.read")`.
+  - `POST /api/salary/raise` requires `hr.salary.write`.
+  - Removed `require_admin`.
+- **`be/routers/salary_payment_docs.py`:**
+  - `GET /eligible`, `GET /`, `GET /{invoice_id}`, `GET /{invoice_id}/stream` guarded by `hr.salary_payment_doc.read`.
+  - `POST /generate` and `POST /generate/{employee_id}` guarded by `hr.salary_payment_doc.write`.
+  - Both `/api/salary-payment-docs` and legacy `/api/invoices` routes updated identically.
+  - Removed `require_admin`.
+- **`be/routers/system.py`:**
+  - `GET /api/audit-log` guarded by `system.audit.read`.
+  - Removed `require_admin`.
+- **`be/routers/vacations.py`:**
+  - `GET /api/vacations/history` migrated to `permission_scope("hr.vacation.read", "self.vacation.read")`.
+  - `POST /api/vacations/request` requires `hr.vacation.write` (on behalf) | `self.vacation.write` (own).
+  - Removed `require_admin`.
+
+### 3. Verification & Test Execution
+- **Targeted Suite:** `pytest be/tests/test_rbac.py -q` -> 30 passed in 40.77s (8 new Slice 3 acceptance tests added).
+- **Regression Suites:**
+  - `pytest be/tests/test_employee_scope.py be/tests/test_authorization.py be/tests/test_domain_crud.py -q` -> 45 passed in 100% clean execution.
+- **`require_admin` Sweep:** Searched `be/routers/*.py` (excluding `auth.py`) for `require_admin` -> exactly 0 occurrences found.
+- **Frontend Build:** `npm run build` in `fe/` -> Passed in 1.90s.
+
+### 4. Acceptance Criteria
+- **AC 1:** No HR route imports `require_admin` -> **Met** (`test_no_hr_route_imports_require_admin`).
+- **AC 2:** For every HR route the guard equals the CSV `proposed_guard` -> **Met** (`test_hr_route_guard_coverage_walker`).
+- **AC 3:** Employee role gets 403 on admin-only routes and sees only its own records on scoped routes -> **Met** (`test_employee_gets_403_on_admin_hr_routes_and_self_scoped`).
+- **AC 4:** HR-Admin passes all HR routes and gets 403 on every finance route -> **Met** (`test_hr_admin_passes_hr_routes_and_blocked_on_finance`).
+- **AC 5:** A user holding both `self.*` and `hr.*` sees all records -> **Met** (`test_user_holding_both_self_and_hr_sees_all_records`).
+- **AC 6:** On-behalf-of submission needs matching `hr.*.write` -> **Met** (`test_on_behalf_of_submission_needs_matching_hr_write`).
+- **AC 7:** Exports: HR dataset needs `hr.export.run` + read key; finance datasets need `finance.report.read` + read key -> **Met** (`test_export_dataset_permissions`).
+- **AC 8:** An employee reads their own masked bank details; reveal is denied without the reveal key -> **Met** (`test_employee_reads_own_masked_bank_account_reveal_denied_without_key`).
+- **AC 9:** Update `test_employee_scope.py` and `test_authorization.py` without weakening them; one test per role-scoped registration -> **Met** (All 45 tests pass).
+
+### 5. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 3 with all acceptance criteria met and verified.
+- Next slice: Slice 4 (Finance guards and payroll split: replace `finance.payroll.write` with `prepare`/`approve`/`pay`, statutory routes, vendor payments, migration `0025_...`).
+
+
+

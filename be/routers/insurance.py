@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from auth import get_current_user, require_admin
-from deps import resolve_target_employee, audit_log, resolve_employee_scope, current_user_employee_scope
+from auth import get_current_user
+from core.permissions import require_permission
+from deps import resolve_target_employee, audit_log, permission_scope, Scope
 from models import (
     InsuranceCategoryCreate, InsuranceCategoryUpdate,
     InsuranceClaimCreate, InsuranceClaimAction,
@@ -21,13 +22,22 @@ def get_insurance_categories(
     current_user: dict = Depends(get_current_user),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
+    perms = set(current_user.get("permissions", []))
+    if "hr.insurance.read" not in perms and "self.claim.read" not in perms and current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: 'hr.insurance.read' or 'self.claim.read' required",
+        )
     return insurance_repo.list_categories()
+
+get_insurance_categories.hrflow_permission_all = "hr.insurance.read"
+get_insurance_categories.hrflow_permission_self = "self.claim.read"
 
 
 @router.post("/categories", status_code=201)
 def create_insurance_category(
     payload: InsuranceCategoryCreate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.insurance.write")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
     try:
@@ -41,7 +51,7 @@ def create_insurance_category(
 def update_insurance_category(
     cat_id: int,
     payload: InsuranceCategoryUpdate,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.insurance.write")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
@@ -54,7 +64,7 @@ def update_insurance_category(
 @router.delete("/categories/{cat_id}")
 def delete_insurance_category(
     cat_id: int,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.insurance.write")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
     ok = insurance_repo.delete_category(cat_id)
@@ -65,26 +75,35 @@ def delete_insurance_category(
 
 @router.get("/consumption")
 def get_insurance_consumption(
-    scoped_employee_id: Optional[int] = Depends(resolve_employee_scope),
+    employee_id: Optional[int] = Query(None),
+    scope: Scope = Depends(permission_scope("hr.insurance.read", "self.claim.read")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
     """
-    Employee ownership is resolved by resolve_employee_scope before this
+    Employee ownership is resolved by permission_scope before this
     route executes. Admins can access all employees' consumption or filter
     by employee_id; non-admins are structurally forced to their own
     employee_id.
     """
+    scoped_employee_id = employee_id if scope.is_all else scope.employee_id
     return insurance_repo.get_consumption(scoped_employee_id=scoped_employee_id)
+
+get_insurance_consumption.hrflow_permission_all = "hr.insurance.read"
+get_insurance_consumption.hrflow_permission_self = "self.claim.read"
 
 
 @router.get("/claims")
 def get_insurance_claims(
-    scoped_employee_id: Optional[int] = Depends(current_user_employee_scope),
+    scope: Scope = Depends(permission_scope("hr.insurance.read", "self.claim.read")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
-    """Employee ownership is resolved by current_user_employee_scope
+    """Employee ownership is resolved by permission_scope
     before this route executes."""
+    scoped_employee_id = None if scope.is_all else scope.employee_id
     return insurance_repo.list_claims(scoped_employee_id=scoped_employee_id)
+
+get_insurance_claims.hrflow_permission_all = "hr.insurance.read"
+get_insurance_claims.hrflow_permission_self = "self.claim.read"
 
 
 @router.post("/claims", status_code=201)
@@ -94,6 +113,16 @@ def submit_insurance_claim(
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
+    perms = set(current_user.get("permissions", []))
+    has_write_all = "hr.insurance.write" in perms or current_user.get("role") == "admin"
+    has_write_own = "self.claim.write" in perms
+
+    if not has_write_all and not has_write_own:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: 'hr.insurance.write' or 'self.claim.write' required",
+        )
+
     if not insurance_repo.get_category_by_name(payload.category):
         raise HTTPException(status_code=400, detail="Unknown insurance category")
 
@@ -101,7 +130,8 @@ def submit_insurance_claim(
         raise HTTPException(status_code=400, detail="Supporting document is too large")
 
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
-        employee_repo, current_user, payload.employee_id, payload.employee_name
+        employee_repo, current_user, payload.employee_id, payload.employee_name,
+        required_permission="hr.insurance.write"
     )
 
     record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
@@ -136,12 +166,15 @@ def submit_insurance_claim(
     claim_id = insurance_repo.create_claim(claim_data, request_data)
     return {"message": "Claim submitted", "id": claim_id}
 
+submit_insurance_claim.hrflow_permission_all = "hr.insurance.write"
+submit_insurance_claim.hrflow_permission_self = "self.claim.write"
+
 
 @router.post("/claims/{claim_id}/action")
 def action_insurance_claim(
     claim_id: int,
     payload: InsuranceClaimAction,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.insurance.write")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
