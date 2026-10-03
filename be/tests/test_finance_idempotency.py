@@ -74,7 +74,8 @@ def db_session():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    session.add(models_db.UserDB(email="finance.admin@example.com", role="admin"))
+    from conftest import add_test_user
+    add_test_user(session, "finance.admin@example.com", role_key="super_admin")
     usd_acc = FinanceBankAccountDB(
         account_name="USD Operating",
         bank_name="Chase",

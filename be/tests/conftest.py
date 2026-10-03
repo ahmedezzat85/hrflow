@@ -268,32 +268,38 @@ def seed_default_roles(db):
     db.commit()
 
 
-def create_test_user(email, role_key=None, employee_id=None, name=None):
-    """Create (or reset) a users row in the active test database with at most one
-    assigned role (by system_key) and return a session cookie dict for it.
-    The employee baseline comes from employee_id, never from a role row."""
-    import auth as auth_module
-    import config as config_module
-    from db import get_db_context
+def add_test_user(db, email, role_key=None, employee_id=None, name=None):
+    """Create (or reset) a users row on the given session with at most one assigned
+    role (by system_key). The employee baseline comes from employee_id, never from a
+    role row. Seeds the catalog and default roles first. Commits and returns the user id."""
     from models_db import UserDB
     from core.rbac_models import RoleDB, UserRoleDB
 
+    seed_default_roles(db)
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+    if user is None:
+        user = UserDB(email=email)
+        db.add(user)
+    user.name = name or email.split("@")[0]
+    user.employee_id = employee_id
+    user.archived_at = None
+    db.flush()
+    db.query(UserRoleDB).filter(UserRoleDB.user_id == user.id).delete()
+    if role_key:
+        role = db.query(RoleDB).filter(RoleDB.system_key == role_key).one()
+        db.add(UserRoleDB(user_id=user.id, role_id=role.id))
+    db.commit()
+    return user.id
+
+
+def create_test_user(email, role_key=None, employee_id=None, name=None):
+    """add_test_user on the active test database; returns a session cookie dict for the user."""
+    import auth as auth_module
+    import config as config_module
+    from db import get_db_context
+
     with get_db_context() as db:
-        seed_default_roles(db)
-        user = db.query(UserDB).filter(UserDB.email == email).first()
-        if user is None:
-            user = UserDB(email=email)
-            db.add(user)
-        user.name = name or email.split("@")[0]
-        user.employee_id = employee_id
-        user.archived_at = None
-        db.flush()
-        db.query(UserRoleDB).filter(UserRoleDB.user_id == user.id).delete()
-        if role_key:
-            role = db.query(RoleDB).filter(RoleDB.system_key == role_key).one()
-            db.add(UserRoleDB(user_id=user.id, role_id=role.id))
-        db.commit()
-        uid = user.id
+        uid = add_test_user(db, email, role_key=role_key, employee_id=employee_id, name=name)
     token = auth_module.create_session_token(email, employee_id=employee_id, name=name or email.split("@")[0], uid=uid)
     return {config_module.Config.SESSION_COOKIE_NAME: token}
 

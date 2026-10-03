@@ -334,8 +334,8 @@ def test_needs_attention_queue_surfaces_statutory_obligations(app_client, admin_
 
         att_svc = AttentionQueueService(db)
         queue = att_svc.get_attention_queue(
-            current_user={"id": 1, "email": "admin@hrflow.test", "role": "admin"},
-            user_permissions={"*"},
+            current_user={"id": 1, "email": "admin@hrflow.test", "is_super_admin": True},
+            user_permissions=set(),
             item_type="all",
             severity="all",
         )

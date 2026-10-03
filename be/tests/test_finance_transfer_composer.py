@@ -46,7 +46,8 @@ def db_session():
     session = Session()
 
     # Seed admin user
-    session.add(models_db.UserDB(email="finance.admin@example.com", role="admin"))
+    from conftest import add_test_user
+    add_test_user(session, "finance.admin@example.com", role_key="super_admin")
 
     # Seed Bank Accounts
     usd_acc = FinanceBankAccountDB(

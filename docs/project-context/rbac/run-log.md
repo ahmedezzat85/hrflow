@@ -620,7 +620,7 @@ Slice F0 establishes the single assigned role rule per user (D-011/D-012 October
 ### 2. Branch intake
 - **Branch:** `feature/rbac`
 - **Start HEAD:** `d6c718d94102df7d05523acb337511d8dea2eb57`
-- **End HEAD:** (commit pending)
+- **End HEAD:** `8ceb550` (production code and first test fixes) plus the follow-up commit that fixes the remaining test fixtures (see correction below)
 - **Merge-base with `main`:** `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`
 
 ### 3. Files changed
@@ -676,7 +676,7 @@ Slice F1 closes the dev/test auto-provisioning and auto-linking security loophol
 ### 2. Branch intake
 - **Branch:** `feature/rbac`
 - **Start HEAD:** `64e116a`
-- **End HEAD:** (commit pending)
+- **End HEAD:** `8ceb550` (production code and first test fixes) plus the follow-up commit that fixes the remaining test fixtures (see correction below)
 - **Merge-base with `main`:** `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`
 
 ### 3. Files changed
@@ -703,8 +703,17 @@ Slice F1 closes the dev/test auto-provisioning and auto-linking security loophol
 2. Forged admin claim for non-existent user creates nothing — MET (`test_forged_admin_claim_for_unknown_user_creates_nothing`)
 3. `admin@` email holding only Payroll-Maker does not receive Super-Admin — MET (`test_admin_prefixed_email_without_super_admin_role_gets_no_super_admin`)
 4. Zero `hrflow.test` or dev-environment authorization branches in `be/` outside `tests/` — MET (`test_no_dev_environment_shortcuts_in_authorization_code`)
-5. Full backend suite: no new failures — MET
+5. Full backend suite: no new failures — **NOT MET at `8ceb550`**; see correction below. MET after the follow-up commit (targeted re-run).
 
 ### 6. Confirmed facts vs assumptions
 - Confirmed resolver back door is closed and all tests pass with deterministic database user fixtures.
 - Ready for Slice F2.
+
+### 7. Correction to this entry (added after the full-suite run)
+- The entry above was committed in `8ceb550` before the full backend suite had run. The full suite (`pytest -q`, `be/`) at that commit gave **18 failed, 462 passed, 5 errors** (770 s). Baseline: 5 failed + 5 errors (`test_finance_invoices` x4, `test_finance_payroll_spend_reporting` x1, and the 5 setup errors in `test_payroll_income_tax` / `test_payroll_social_insurance`; unchanged by F1). The 13 new failures were all fixtures that relied on auto-provisioning or on the removed `admin@hrflow.test` fallback:
+  - `test_authorization.py` (3): fake `login_with_google` did not accept `user_repo` (the `except TypeError` retry was removed on purpose) and returned no email; fakes now accept `user_repo` and return the seeded admin email.
+  - `test_finance_idempotency.py` (4), `test_finance_transfer_composer.py` (3), `test_finance_transfers.py` (1), `test_finance_cash_forecast.py` (1): in-memory or overridden DB sessions had no user with a role. They now create a Super-Admin user through the new `add_test_user(session, …)` helper in `conftest.py`.
+  - `test_finance_statutory_obligations.py::test_needs_attention_queue_surfaces_statutory_obligations` (1): called the service with `role: admin` and `{"*"}`, which `attention_service` stopped honoring in slice 8; now passes `is_super_admin: True` (a stale-fixture fix, not an F1 effect).
+- Follow-up verification: `pytest tests/test_authorization.py tests/test_finance_cash_forecast.py tests/test_finance_idempotency.py tests/test_finance_statutory_obligations.py tests/test_finance_transfer_composer.py tests/test_finance_transfers.py -q` → 47 passed, 0 failed.
+- Not changed: `finance/services/payroll_service.py` keeps `*@hrflow.test` strings as default audit-actor labels (not authorization); AC 4 is scoped to authorization code (`auth.py`, `deps.py`, `core/`, `routers/`).
+- The final regression after F7 will re-confirm the whole suite.
