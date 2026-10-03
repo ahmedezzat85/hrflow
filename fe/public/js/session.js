@@ -50,7 +50,6 @@ const MOCK_PERMISSIONS_ALL = [
   ...MOCK_PERMISSIONS_EMPLOYEE.filter(k => !MOCK_PERMISSIONS_HR.includes(k)),
   ...MOCK_PERMISSIONS_FINANCE,
   "finance.payroll.prepare",
-  "finance.payroll.write",
 ];
 
 async function handleLoginSuccess(data){
@@ -200,7 +199,7 @@ async function bootstrapAppFromSession(){
   const mockParam = (urlParams.get('mock') || '').toLowerCase();
   if (mockParam) {
     if (mockParam === 'admin' || mockParam === 'super_admin') {
-      SessionInfo.set({ role: 'admin', portal: 'admin', roles: ['Super-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_ALL });
+      SessionInfo.set({ portal: 'admin', roles: ['Super-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_ALL });
       hideAppLoader();
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('loginThemeToggle').style.display = 'none';
@@ -211,7 +210,7 @@ async function bootstrapAppFromSession(){
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       return;
     } else if (mockParam === 'hr' || mockParam === 'hr_admin') {
-      SessionInfo.set({ role: 'hr_admin', portal: 'admin', roles: ['HR-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_HR });
+      SessionInfo.set({ portal: 'admin', roles: ['HR-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_HR });
       hideAppLoader();
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('loginThemeToggle').style.display = 'none';
@@ -222,7 +221,7 @@ async function bootstrapAppFromSession(){
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       return;
     } else if (mockParam === 'finance' || mockParam === 'financial_admin') {
-      SessionInfo.set({ role: 'financial_admin', portal: 'admin', roles: ['Financial-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_FINANCE });
+      SessionInfo.set({ portal: 'admin', roles: ['Financial-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_FINANCE });
       hideAppLoader();
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('loginThemeToggle').style.display = 'none';
@@ -233,7 +232,7 @@ async function bootstrapAppFromSession(){
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       return;
     } else if (mockParam === 'payroll' || mockParam === 'payroll_maker') {
-      SessionInfo.set({ role: 'payroll_maker', portal: 'admin', roles: ['Payroll-Maker'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_PAYROLL });
+      SessionInfo.set({ portal: 'admin', roles: ['Payroll-Maker'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_PAYROLL });
       hideAppLoader();
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('loginThemeToggle').style.display = 'none';
@@ -244,7 +243,7 @@ async function bootstrapAppFromSession(){
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       return;
     } else if (mockParam === 'employee') {
-      SessionInfo.set({ role: 'employee', portal: 'employee', roles: [], employee_id: 2, name: 'John Doe', permissions: MOCK_PERMISSIONS_EMPLOYEE });
+      SessionInfo.set({ portal: 'employee', roles: [], employee_id: 2, name: 'John Doe', permissions: MOCK_PERMISSIONS_EMPLOYEE });
       hideAppLoader();
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('loginThemeToggle').style.display = 'none';

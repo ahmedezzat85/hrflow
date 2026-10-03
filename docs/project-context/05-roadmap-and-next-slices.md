@@ -1,9 +1,9 @@
 # HRFlow Roadmap and Next Slices
 
 **Status:** Draft — planning baseline  
-**Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 1, 2026  
-**Branch note:** Sections 3A and 4A were added on `feature/rbac` (accepted by the owner on October 1, 2026) and are not part of `main` until the branch is merged.  
+**Last verified against:** `feature/rbac` after the review-fix run (October 3, 2026); `main` is at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`  
+**Last updated:** October 3, 2026  
+**Branch note:** Sections 3A and 4A were added on `feature/rbac` (accepted by the owner on October 1, 2026); the RBAC work they describe is implemented on that branch and is not part of `main` until the branch is merged.  
 **Authority:** Main-branch repository evidence and project-context documents  
 
 ---
@@ -24,10 +24,10 @@ This roadmap defines a sequenced series of delivery slices for HRFlow:
 
 Verified main-branch evidence establishes the delivery position:
 
-- **Relational SQL Foundation:** SQL migration via SQLAlchemy and Alembic (23 migrations up to `0023_payroll_income_tax_settings.py`) is complete. Google Sheets is an export destination only.
+- **Relational SQL Foundation:** SQL migration via SQLAlchemy and Alembic is complete (23 migrations up to `0023_payroll_income_tax_settings.py` on `main`; 27 up to `0027_single_assigned_role` on `feature/rbac`). Google Sheets is an export destination only.
 - **Core Platform Monolith:** Core HR and foundational Finance modules (Accounts, Ledger, Bills, Invoices, Cheques, Statements, Reconciliation) are functional.
-- **Authorization Discrepancy:** Finance is gated by fine-grained RBAC (`require_permission`) except three routes; in HR, 31 route registrations use legacy `require_admin` and 13 are role-scoped. Addressed by the RBAC initiative (section 3A).
-- **Specialist Roles:** only `system_admin` and `employee` are seeded; the Phase 7 plan (`accountant`, `hr_admin`, `hr_staff`) is replaced by the five-role model in D-011 (section 3A).
+- **Authorization:** on `main`, finance is gated by fine-grained RBAC except three routes, while HR still uses legacy `require_admin`. On `feature/rbac` every route is guarded by a catalog permission (section 3A); this is closed once the branch is merged.
+- **Specialist Roles:** on `main` only `system_admin` and `employee` are seeded. On `feature/rbac` the five-role model of D-011 is implemented (section 3A) and replaces the Phase 7 plan.
 - **Incomplete Payslip UI:** Backend payslip endpoints exist, but the employee self-service view (`fe/src/partials/employee/sections/payslips.html`) calls `refreshMyPayslips()`, which is not defined.
 - **Legacy Code & Drift:** Dormant repositories (`be/repositories/sheets/`, `dual/`) remain (`routers/insurance.py` still imports from `sheets/insurance.py`), and the `be/main.py` docstring still describes Google Sheets as a database (`AGENTS.md` was corrected on October 1, 2026).
 - **Synchronous Constraint:** High-latency tasks (PDF OCR parsing, statement imports, Excel exports) run synchronously in request threads; no background queue exists.
@@ -140,8 +140,9 @@ Replaces Slices 2 and 3 above with a permission-based RBAC (decisions D-011 to D
 | R7b | Frontend Roles and Users pages | L | R5, R7a |
 | R8 | Cleanup and documentation | M | all |
 
-- **Gates:** the pre-migration data check on a copy of the production database (G3) blocks R1. Q-010 and Q-013 are resolved (D-011). Q-006 to Q-009, Q-011 and Q-012 carry approved interim treatments in the register.
-- **Caution:** Do not assign HR-Admin, Financial-Admin or Payroll-Maker to real users until R3 and R4 land.
+- **Status (October 3, 2026):** slices R1–R8 and the review-fix slices F0–F7 are implemented on `feature/rbac` and logged in [rbac/run-log.md](rbac/run-log.md); the review fixes are specified in [rbac/review-fix-handoff.md](rbac/review-fix-handoff.md). Remaining before merge or deployment: the pre-migration data check on a copy of the production database (G3), PostgreSQL runs of migrations `0024`–`0027`, an owner decision on the older integer Boolean `server_default` literals (`0005`, `0018`, `0021`), and owner review of the branch. Q-006 (restore of archived users) stays open; restore is not built.
+- **Gates:** Q-010 and Q-013 are resolved (D-011). Q-006 to Q-009, Q-011 and Q-012 carry approved interim treatments in the register.
+- **Caution:** Do not assign HR-Admin, Financial-Admin or Payroll-Maker to real users until the data check and the PostgreSQL migration runs are done.
 - **Note:** The slice labels R0–R8 in this section correspond to slices 0–8 in the implementation plan.
 
 ---
@@ -180,7 +181,7 @@ The following areas are explicitly non-active for near-term planning:
 
 ## 6. Recommended Immediate Next Action
 
-Run the read-only pre-migration data check on a **copy** of the production database (users without a linked employee and without roles, duplicate emails), then start RBAC slice R1 (see [rbac/implementation-plan.md](rbac/implementation-plan.md)) after the owner's go-ahead. The payroll scope audit (Slice 1) remains available as a parallel read-only task.
+Run the read-only pre-migration data check on a **copy** of the production database (users without a linked employee and without roles, duplicate emails) and the RBAC migrations (`0024`–`0027`) on PostgreSQL, then review and merge `feature/rbac` (see [rbac/run-log.md](rbac/run-log.md) for the final report). The payroll scope audit (Slice 1) remains available as a parallel read-only task.
 
 ---
 

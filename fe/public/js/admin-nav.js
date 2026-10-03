@@ -85,10 +85,7 @@
   function canSeeModule(moduleId) {
     if (typeof SessionInfo === 'undefined') return true;
     const perms = typeof SessionInfo.getPermissions === 'function' ? SessionInfo.getPermissions() : [];
-    if (perms.length === 0) {
-      const role = SessionInfo.getRole();
-      if (!role) return true;
-    }
+    if (perms.length === 0 && !SessionInfo.isKnown()) return true;
     if (moduleId === 'hr') {
       return perms.some((p) => p.startsWith('hr.'));
     }

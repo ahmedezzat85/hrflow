@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Query, Request
+from fastapi import Depends, HTTPException, Request
 
 from logging_config import get_logger
 from auth import get_current_user
@@ -66,54 +66,6 @@ def permission_scope(all_key: str, self_key: str):
     dep.hrflow_permission_all = all_key
     dep.hrflow_permission_self = self_key
     return dep
-
-
-
-def current_user_employee_scope(
-    request: Request,
-    current_user: dict = Depends(get_current_user),
-) -> Optional[int]:
-    """
-    Resolves an employee-data list scope for endpoints without an
-    employee_id query parameter. Admins or users with elevated HR read permissions
-    receive None, meaning unrestricted access; employees receive their own employee_id.
-    """
-    ctx = getattr(request.state, "access_context", None)
-    if ctx is not None:
-        perms = ctx.permissions
-        emp_id = ctx.employee_id
-    else:
-        perms = set(current_user.get("permissions", []))
-        emp_id = current_user.get("employee_id")
-
-    if "hr.employee.read" in perms:
-        return None
-    return emp_id
-
-
-def resolve_employee_scope(
-    request: Request,
-    employee_id: Optional[int] = Query(None),
-    current_user: dict = Depends(get_current_user),
-) -> Optional[int]:
-    """
-    Resolves the employee-data scope for history/aggregation endpoints
-    with an optional employee_id query parameter. Admins or users with elevated HR read
-    permissions may request all records (None) or a specific employee. Non-admins without
-    elevated read are always forced to their own employee_id, ignoring any supplied query parameter.
-    """
-    ctx = getattr(request.state, "access_context", None)
-    if ctx is not None:
-        perms = ctx.permissions
-        emp_id = ctx.employee_id
-    else:
-        perms = set(current_user.get("permissions", []))
-        emp_id = current_user.get("employee_id")
-
-    hr_reads = {"hr.salary.read", "hr.vacation.read", "hr.insurance.read", "hr.employee.read", "hr.request.read"}
-    if bool(perms & hr_reads):
-        return employee_id
-    return emp_id
 
 
 def resolve_target_employee(

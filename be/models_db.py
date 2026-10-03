@@ -35,22 +35,6 @@ class UserDB(Base):
     employee = relationship("EmployeeDB", back_populates="user", foreign_keys=[employee_id])
     user_roles = relationship("UserRoleDB", back_populates="user", cascade="all, delete-orphan")
 
-    def __init__(self, **kwargs):
-        # Gracefully accept and ignore deprecated 'role' argument for backwards compatibility
-        kwargs.pop("role", None)
-        super().__init__(**kwargs)
-
-    @property
-    def role(self) -> str:
-        for ur in (self.user_roles or []):
-            if getattr(ur.role, "system_key", None) == "super_admin":
-                return "admin"
-        return "employee" if self.employee_id is not None else "user"
-
-    @role.setter
-    def role(self, value: str):
-        pass
-
 
 # Import and re-export RBAC models so they are attached to Base.metadata
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401

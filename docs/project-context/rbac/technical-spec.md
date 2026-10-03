@@ -126,9 +126,9 @@ def resolve_access(db, session_payload) -> AccessContext:
 - **Single authority:** the `role` claim, `users.role`, the `*` wildcard and the role-name `system_admin` are not consulted for authorization. A token whose claim still says `admin` but whose user has no admin role gets no admin access.
 - **Where it runs:** inside `get_current_user` (now with `request` and `db`), cached on `request.state`. This adds one indexed lookup plus one roles query per authenticated request, and it is what makes archiving take effect on the next request even with a valid cookie.
 - **Return shape:** `get_current_user` keeps returning a dict (so existing handlers keep working) and adds `user_id`, `permissions` (sorted list) and `roles`. This also fixes the inline `finance.adjustment.manage` check, which reads `permissions` from that dict today and always finds none.
-- **Transitional `role` in the returned dict:** until slice 8 the dict's `role` is `"admin"` only for Super-Admin and `"employee"` for everyone else, so un-migrated `role == "admin"` checks keep their current meaning. This is separate from the compatibility `role` returned by the auth endpoints for the old frontend (below), which follows `portal`.
-- **Token:** add a `uid` claim at login. Tokens without it fall back to email lookup. The `role` claim is still written during the transition for the old frontend and is removed in the final slice; extra or missing claims never invalidate existing cookies.
-- **Portal:** `has_admin_surface(perms)` is true when the user holds any permission outside `self.*` and `hr.company_document.read`. `/api/auth/login` and `/api/auth/me` return `permissions`, `portal`, `roles` (names, excluding the baseline) and, until the frontend is migrated, a compatibility `role` (`"admin"` when `portal == "admin"`, else `"employee"`).
+- **No `role` in the returned dict (removed in review-fix slice F7):** `get_current_user` returns identity, `user_id`, `permissions`, `roles` and `is_super_admin`; nothing reads a role string.
+- **Token:** add a `uid` claim at login. Tokens without it fall back to email lookup. The `role` claim is no longer written (removed in F7) and is ignored if an old cookie still carries it; extra or missing claims never invalidate existing cookies.
+- **Portal:** `has_admin_surface(perms)` is true when the user holds any permission outside `self.*` and `hr.company_document.read`. `/api/auth/login` and `/api/auth/me` return `permissions`, `portal`, `roles` (names, excluding the baseline).
 - **Baseline derivation is by `employee_id`:** deleting or detaching the employee removes the baseline automatically.
 - **One assigned role (amended October 3, 2026):** `user_roles` holds at most one row per user. The only union is that role plus the derived Employee baseline.
 
@@ -196,7 +196,7 @@ Prefix `/api/access`. Roles and catalog endpoints require `system.roles.manage`;
 | POST | `/users/{id}/archive` | Rules R1, R2, R10. |
 | POST | `/users/{id}/restore` | Not built until Q-006. |
 
-Changed existing endpoints: `/api/auth/google` and `/api/auth/me` return `permissions`, `portal`, `roles` and the compatibility `role`. HR and finance routes change guards as listed in the inventory CSV.
+Changed existing endpoints: `/api/auth/google` and `/api/auth/me` return `permissions`, `portal`, `roles` (no `role`; removed in F7). HR and finance routes change guards as listed in the inventory CSV.
 
 ## 11. Sign-in changes (D-013)
 
@@ -209,7 +209,7 @@ Changed existing endpoints: `/api/auth/google` and `/api/auth/me` return `permis
 
 Vanilla JS, no framework (per `AGENTS.md`); run `npm run build` in `fe/` after any change; keep mock mode working.
 
-- **`SessionInfo` (`fe/api.js`):** `hasPermission(key)` is a plain membership test; the `role` shortcuts and `*` are removed. `getPortal()` returns the server's `portal`. `getRole()` remains only until callers are migrated.
+- **`SessionInfo` (`fe/api.js`):** `hasPermission(key)` is a plain membership test; the `role` shortcuts and `*` are removed. `getPortal()` returns the server's `portal`; `getRole()` no longer exists and `isKnown()` is true once a session is set.
 - **Portal selection (`session.js`):** choose admin or employee portal from `portal` (two places: login success and session restore).
 - **`AdminNav` (`admin-nav.js`):** module visibility is derived from permissions:
   - HR: any `hr.*` key (HR no longer always visible).

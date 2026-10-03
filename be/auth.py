@@ -119,7 +119,6 @@ def login_with_google(credential: str, user_repo=None):
     )
     return {
         "token": token,
-        "role": user.get("role", "employee"),
         "employee_id": user.get("employee_id"),
         "name": name,
         "email": user["email"],

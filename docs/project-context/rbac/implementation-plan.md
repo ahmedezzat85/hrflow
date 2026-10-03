@@ -1,6 +1,6 @@
 # RBAC Implementation Plan
 
-**Status:** Plan accepted by the owner on October 1, 2026 (D-011–D-013 accepted); documentation only on `feature/rbac`, no code changes. Implementation starts only after the gates in section 2 are cleared and the owner gives the go-ahead.  
+**Status:** Implemented on `feature/rbac` (slices 1-8 plus the October 3, 2026 review-fix slices F0-F7; see `run-log.md` and `review-fix-handoff.md`). Plan accepted by the owner on October 1, 2026 (D-011 to D-013 accepted). Remaining before merge: gate G3 (pre-migration data check on a production copy) and PostgreSQL runs of the migrations.  
 **Date:** October 1, 2026  
 **Branch intake:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main` / `origin/main`). Alembic head: `0023_payroll_income_tax_settings`. Baseline test status: **not run** (git and a shell are unavailable on the owner's machine in this session); D-010 cites 252 passing tests on the previous branch.  
 **Inputs:** `../04-decision-log.md` (D-011–D-013), `permission-matrix.md`, `technical-spec.md`, `route-guard-inventory.csv`.  

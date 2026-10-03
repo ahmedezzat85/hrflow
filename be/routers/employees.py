@@ -82,7 +82,7 @@ def create_employee(
     })
     logger.info("Admin %s created employee id=%s (%s)", current_user.get("email"), new_id, payload.email)
     audit_log(audit_repo, "employee.create", current_user.get("email"), "employee", new_id, f"name={payload.name}, email={payload.email}")
-    return {"message": "Employee created. They can now sign in with their Google Workspace account.", "id": new_id}
+    return {"message": "Employee created. They can now sign in with their Google account.", "id": new_id}
 
 
 @router.put("/{emp_id}")

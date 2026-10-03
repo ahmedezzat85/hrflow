@@ -52,14 +52,13 @@ def api_google_login(
             status_code=403,
             detail="This Google account is not registered in HRFlow. Ask your HR admin to add you as an employee first.",
         )
-    logger.info("Google login successful: role=%s, employee_id=%s", result.get("role"), result.get("employee_id"))
+    logger.info("Google login successful: employee_id=%s", result.get("employee_id"))
     _set_session_cookie(response, result["token"])
 
     user_payload = {"uid": result.get("uid"), "email": result.get("email")}
     ctx = resolve_access(db, user_payload)
 
     return LoginResponse(
-        role="admin" if ctx.portal == "admin" else "employee",
         portal=ctx.portal,
         roles=ctx.role_names,
         employee_id=ctx.employee_id,
@@ -79,7 +78,6 @@ def api_get_current_session(
         ctx = resolve_access(db, current_user)
 
     return LoginResponse(
-        role="admin" if ctx.portal == "admin" else "employee",
         portal=ctx.portal,
         roles=ctx.role_names,
         employee_id=ctx.employee_id,

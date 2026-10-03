@@ -53,7 +53,6 @@ def source_and_dest_dbs(tmp_path):
         user = UserDB(
             id=1,
             email="john@example.com",
-            role="employee",
             employee_id=1,
         )
         db.add(user)

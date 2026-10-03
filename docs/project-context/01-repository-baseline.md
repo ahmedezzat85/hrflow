@@ -4,7 +4,7 @@
 **Auditor:** Antigravity (Advanced Agentic Coding Agent)  
 **Repository Branch:** `feature/payroll-deductions` (Commit: `1695cfc`, synced with `main`)  
 **Status:** Read-only baseline snapshot; reconciled with code on October 1, 2026  
-**Reconciliation:** Counts, lifecycle names, guard coverage, startup behavior, and legacy-code claims were rechecked against `feature/rbac` at `c236b00` (equal to `main`) on October 1, 2026. Line numbers cited below are approximate. Test results were **not** re-run in that pass.  
+**Reconciliation:** Counts, lifecycle names, guard coverage, startup behavior, and legacy-code claims were rechecked against `feature/rbac` at `c236b00` (equal to `main`) on October 1, 2026. The RBAC sections (access control, migrations, guard coverage, startup) were updated on October 3, 2026 to describe `feature/rbac` after the RBAC slices and the review-fix run (Alembic head `0027_single_assigned_role`); they do not describe `main` until the branch is merged. Line numbers cited below are approximate. Test results were **not** re-run for the non-RBAC sections.  
 
 ---
 
@@ -17,10 +17,10 @@ HRFlow is an internal operations platform combining Human Resources Management a
 - **Data Persistence Reality:** Persistence is exclusively relational SQL (`sqlite` for local/testing, `postgresql` for staging/production). Google Sheets is strictly an export destination; startup fails fast with a `RuntimeError` if `STORAGE_ENGINE != "sql"` (`be/config.py:180`).
 - **Storage Subsystem:** File storage supports Google Drive via service account (`be/drive_client.py`) and a local filesystem driver (`be/storage.py`) for air-gapped or local development.
 - **Authentication & Security:** Google Sign-In OAuth 2.0 credential verification with optional Workspace domain restriction (`ALLOWED_WORKSPACE_DOMAIN`). Session tokens are HMAC-SHA256 JWTs stored exclusively in an `HttpOnly`, `SameSite=Lax` cookie (`hrflow_session`).
-- **Access Control:** An internal Role-Based Access Control (RBAC) engine (`be/core/permissions.py`) gates routes using structured permission strings (`<module>.<resource>.<action>`), supplemented by wildcard administrative overrides.
+- **Access Control:** An internal Role-Based Access Control (RBAC) engine (`be/core/permissions.py`) gates every route by structured permission strings (`<module>.<resource>.<action>`) from a code-defined catalog; there are no wildcard overrides. A user holds one assigned role plus the derived Employee baseline (on `feature/rbac`).
 - **Current State of Implementation:**
   - All core HR modules (Employees, Salary & Splits, Bank Accounts, Vacations, Claims, Invoices/Payment Docs, Requests) are fully implemented and backed by SQL.
-  - The Finance module has progressed far beyond its initial blueprint, featuring 23 Alembic migrations, double-entry ledger transactions, cheques lifecycle, AP bill workflows with PDF OCR extraction, sales invoices, bank statement parsing, automated reconciliation rules, statutory obligations, and a payroll runner with income-tax and social-insurance calculation (run lifecycle: `draft` → `submitted` → `approved` → `finalized` → `partially_paid` / `paid`).
+  - The Finance module has progressed far beyond its initial blueprint, featuring 27 Alembic migrations (23 on `main`), double-entry ledger transactions, cheques lifecycle, AP bill workflows with PDF OCR extraction, sales invoices, bank statement parsing, automated reconciliation rules, statutory obligations, and a payroll runner with income-tax and social-insurance calculation (run lifecycle: `draft` → `submitted` → `approved` → `finalized` → `partially_paid` / `paid`).
   - 67 backend test modules (`be/tests/test_*.py`) and 62 Playwright UI specs (`fe/tests/ui/`) validate business rules and end-to-end workflows.
 
 ---
@@ -49,7 +49,10 @@ hrflow/
 │   ├── core/                                  # Core Security & RBAC
 │   │   ├── permissions.py                     # RBAC permission resolver and require_permission route guard
 │   │   ├── rbac_models.py                     # PermissionDB, RoleDB, RolePermissionDB, UserRoleDB
-│   │   └── rbac_seed.py                       # Idempotent permissions and starter role seeding
+│   │   ├── permission_catalog.py              # Code-defined permission catalog (63 keys)
+│   │   ├── role_seed.py                       # Seeded roles and idempotent catalog sync
+│   │   ├── access_service.py                  # Roles/users rules and employee lifecycle hooks
+│   │   └── rbac_seed.py                       # Thin wrapper around role_seed.sync_catalog
 │   ├── routers/                               # HR Domain Endpoints
 │   │   ├── auth.py                            # /api/auth (session, login, logout, me)
 │   │   ├── employees.py                       # /api/employees (CRUD, search, compensation)
@@ -79,7 +82,7 @@ hrflow/
 │   │   └── dual/                              # 11 dual-write transition repositories
 │   ├── migrations/                            # Alembic Database Migrations
 │   │   ├── env.py                             # Alembic environment runner
-│   │   └── versions/                          # 23 migrations (0001_initial_schema to 0023_payroll_income_tax_settings)
+│   │   └── versions/                          # 27 migrations (0001_initial_schema to 0027_single_assigned_role)
 │   ├── services/                              # HR & Utility Services (export, pdf_converter, uploads)
 │   ├── scripts/                               # Migration & backfill utility scripts
 │   └── tests/                                 # 67 pytest test modules plus conftest.py
@@ -114,8 +117,8 @@ hrflow/
 | :--- | :--- | :--- | :--- |
 | **Auth** | Sign in with Google | Implemented | `be/auth.py:27`, `fe/public/js/session.js`, `fe/src/partials/shell/login-screen.html` |
 | **Auth** | HttpOnly Cookie Session | Implemented | `be/auth.py:89`, `be/config.py:41` (`SESSION_COOKIE_NAME`) |
-| **Auth** | Workspace Domain Guard | Implemented | `be/auth.py:40-47` (`ALLOWED_WORKSPACE_DOMAIN`) |
-| **Security** | RBAC Engine & Route Guards | Implemented | `be/core/permissions.py`, `be/core/rbac_models.py`, `be/core/rbac_seed.py` |
+| **Auth** | Google Sign-In (any verified Google account that has an active HRFlow user; no workspace-domain gate) | Implemented on `feature/rbac` | `be/auth.py` (`login_with_google`), `be/routers/auth.py` |
+| **Security** | RBAC Engine & Route Guards (guard coverage enforced by `test_all_routes_guard_coverage_walker`) | Implemented on `feature/rbac` | `be/core/permissions.py`, `be/core/permission_catalog.py`, `be/core/rbac_models.py`, `be/core/role_seed.py`, `be/core/access_service.py`, `be/routers/access.py` |
 | **Security** | Security Headers & CSP | Implemented | `be/main.py:101-122` (`security_headers` middleware) |
 | **HR** | Employee Directory & CRUD | Implemented | `be/routers/employees.py`, `be/repositories/sql/employees.py`, `fe/public/js/employees.js` |
 | **HR** | Split Compensation Tracking | Implemented | `be/routers/salary.py`, `be/models_db.py:77-78` (`internal_salary_usd`, `external_salary_usd`) |
@@ -155,8 +158,8 @@ hrflow/
 ## 4. Partially Implemented or Placeholder Capabilities
 
 1. **Granular Role Expansion (Phase 7 of `01-implementation-plan.md`):**
-   - *Status:* **Partially implemented / Schema-ready**.
-   - *Evidence:* In `be/core/rbac_seed.py`, `SEED_ROLES` defines only `system_admin` and `employee`. In `be/models_db.py`, `UserDB.role` stores a single role string. The planned specialist roles (`accountant`, `hr_admin`, `hr_staff`) are defined conceptually with fine-grained permissions, but have not been seeded or wired into a user management UI. Superseded by the RBAC initiative (D-011): five roles (Super-Admin, HR-Admin, Financial-Admin, Payroll-Maker, Employee) replace this plan.
+   - *Status:* **Implemented on `feature/rbac`** (five roles, one assigned role per user, Roles and Users pages).
+   - *Evidence:* `be/core/role_seed.py` seeds Super-Admin (locked), HR-Admin, Financial-Admin, Payroll-Maker and Employee (D-011); `user_roles` holds at most one row per user (`0027_single_assigned_role`); `users.role` was dropped (`0026_drop_users_role`). The planned specialist roles (`accountant`, `hr_admin`, `hr_staff`) were replaced by this five-role model. On `main` (before the merge) only `system_admin` and `employee` exist.
 2. **Automated Subscription Bill Generation (Background Cron):**
    - *Status:* **Partially implemented**.
    - *Evidence:* `SubscriptionDB.auto_generate_bill` exists in `be/finance/models.py:382`. However, there is no background daemon, scheduler, or queue (no Celery, RQ, or APScheduler) in the backend. Bill generation from subscriptions is executed on-demand via `subscriptions_service.log_charge(create_bill=True)` rather than automated cron triggers.
@@ -186,7 +189,7 @@ hrflow/
 | **Phase 4** | Core CRUD Operations | **Implemented** | Full repository/service/router CRUD active for bank accounts, customers, vendors, sales invoices, bills, and subscriptions. |
 | **Phase 5** | Payroll Engine | **Implemented (Re-architected)** | Moved from a simple runner to a lifecycle of `draft` → `submitted` → `approved` → `finalized` → `partially_paid` / `paid` (with a runtime submitter-cannot-approve check) in `be/finance/routers/payroll.py`, `be/finance/services/payroll_service.py`, and `fe/public/js/finance-payroll.js`. Supports dual funding accounts (FUX-420), employee salary split, inline bonuses, and ledger disbursements. |
 | **Phase 6** | Reporting Layer | **Implemented** | Comprehensive `reports_service.py` (115KB) implements Balances, Revenue, P&L, Balance Sheet, Cash Flow, General Ledger, Spend reporting, and audited Excel exports. |
-| **Phase 7** | Role Expansion (`accountant`, `hr_admin`, `hr_staff`) | **Planned only** | Roles remain unseeded in `be/core/rbac_seed.py`; superseded by the RBAC initiative (D-011). |
+| **Phase 7** | Role Expansion (`accountant`, `hr_admin`, `hr_staff`) | **Superseded / implemented on `feature/rbac`** | Replaced by the RBAC initiative (D-011): five seeded roles in `be/core/role_seed.py`. |
 | **Beyond Plan** | FUX-406 to FUX-420 Stories | **Implemented** | Added settlement linking (406), bill repository (407), combined bill payment guard (408), payment method naming (409), statutory obligations (410), bill defaults (411), collapsible filters (412), PDF extraction (413), collapsible status bar (414), density setting (415), compensation plans (416-418), dual funding accounts (420). |
 
 ---
@@ -199,24 +202,22 @@ hrflow/
   - Configured in `be/db.py` with SQLAlchemy `create_engine` using `pool_pre_ping=True`, `DB_POOL_SIZE` (default 10), `DB_MAX_OVERFLOW` (default 20), and `DB_POOL_RECYCLE` (default 1800s).
   - FastAPI dependency `get_db` yields sessions; context manager `get_db_context` manages standalone commits/rollbacks for background scripts.
 - **Migration & Schema Synchronization:**
-  - Alembic manages migrations (`be/migrations/versions/`) covering 23 sequential revisions (head `0023_payroll_income_tax_settings`).
-  - `init_db()` (`be/db.py`) runs when `be/main.py` is imported (wrapped in a `try/except` that logs a warning). It calls `create_all`, adds missing columns with `ALTER TABLE ... ADD COLUMN` on **any** database (not only SQLite), then seeds RBAC (`seed_rbac`), finance lookups, and default payroll tax settings (effective 2026-01-01, only when none exist). Each seed step swallows exceptions silently.
-  - `seed_rbac` runs on every start: it re-grants every seeded permission to `system_admin` and re-links each user to `system_admin` or `employee` from the legacy `users.role` value if that link is missing.
+  - Alembic manages migrations (`be/migrations/versions/`) covering 27 sequential revisions on `feature/rbac` (head `0027_single_assigned_role`; 23 revisions, head `0023_payroll_income_tax_settings`, on `main`). The RBAC migrations (`0024`–`0027`) are written to be valid on PostgreSQL but have only been run on SQLite; `0005`, `0018` and `0021` use integer Boolean `server_default` literals that PostgreSQL rejects.
+  - `init_db()` (`be/db.py`) runs when `be/main.py` is imported. It calls `create_all`, adds missing columns with `ALTER TABLE ... ADD COLUMN` on **any** database (not only SQLite), runs `sync_catalog` (a failure raises and stops startup), then seeds finance lookups and default payroll tax settings (effective 2026-01-01, only when none exist); the last two swallow exceptions silently. Schema changes still require Alembic migrations.
+  - `sync_catalog` (`be/core/role_seed.py`) is idempotent and safe for concurrent workers (savepoints around inserts): it inserts missing permission rows, keeps Super-Admin equal to the full catalog, adopts a legacy `system_admin` role if the app starts before `alembic upgrade`, and never grants keys to editable roles or re-links users.
 
 ### Authentication & Token Flow
 - **Provider:** Google Identity Services ("Sign in with Google") OAuth 2.0.
 - **Verification:** `be/auth.py:verify_google_credential` validates the token signature against Google's public certs using `google.oauth2.id_token.verify_oauth2_token`.
 - **Domain Restriction:** `ALLOWED_WORKSPACE_DOMAIN` validates the `hd` (hosted domain) claim. When `ENVIRONMENT=production`, `Config.validate()` mandates this setting.
-- **Session Cookie:** On valid login, `be/auth.py:create_session_token` signs an HMAC-SHA256 JWT containing `email`, `role`, `employee_id`, `name`, and `exp` (default 12 hours). The token is set in an `HttpOnly`, `SameSite=Lax` cookie named `hrflow_session`. JavaScript cannot access this cookie directly, eliminating XSS token exfiltration.
+- **Session Cookie:** On valid login, `be/auth.py:create_session_token` signs an HMAC-SHA256 JWT containing `email`, `uid`, `employee_id`, `name`, and `exp` (default 12 hours). Authorization never reads claims other than identity: roles and permissions are resolved from the database on every request. The token is set in an `HttpOnly`, `SameSite=Lax` cookie named `hrflow_session`. JavaScript cannot access this cookie directly, eliminating XSS token exfiltration.
 
 ### Authorization & RBAC Enforcement
 - **Permission Modeling:** Modeled in `be/core/rbac_models.py` (`PermissionDB`, `RoleDB`, `RolePermissionDB`, `UserRoleDB`). Permissions follow `<module>.<resource>.<action>`.
-- **Resolution & Caching:** `be/core/permissions.py:get_current_user_permissions` resolves effective permissions through all assigned roles and caches the set on `request.state.user_permissions` for the request lifecycle.
-- **Administrative Wildcards:** A user whose JWT or `UserDB` role is one of `admin`, `superadmin`, `super_admin`, `system_admin`, or who holds the `system_admin` RBAC role, receives the wildcard permission `*`.
-- **Enforcement Discrepancy:**
-  - Finance domain (`be/finance/routers/*.py`): 180 route registrations; all use `require_permission(...)` except three that only require a signed-in user (`activity` timeline and two `observability` GETs).
-  - HR domain (`be/routers/*.py`, 56 registrations): 31 use legacy `require_admin` (`be/auth.py:112`, checks `role == "admin"`; 6 are legacy `/api/invoices` aliases), 13 are role-scoped through `get_current_user` and helpers in `be/deps.py`, 4 use `hr.*` permissions, and 8 are public/session routes.
-- **Payroll maker-checker (runtime):** `approve_run` rejects approval by the user who submitted the run, unless the env var `ENFORCE_MAKER_CHECKER` is `false` or the request passes `allow_self_approval=true` (any holder of `finance.payroll.write` can pass it).
+- **Resolution & Caching:** `be/core/permissions.py:resolve_access` looks the user up by `uid` (else email), rejects unknown users (401) and archived users (403), and builds the effective permission set from the one assigned role plus the Employee baseline (the database Employee role, derived from `employee_id`). Super-Admin (`system_key == "super_admin"`) receives the full catalog. The context is cached on `request.state.access_context` for the request.
+- **No wildcards:** there is no `*` permission, no role-name or token-claim shortcut, and no development auto-provisioning; `require_admin` was removed.
+- **Guard coverage:** all 245 route registrations are guarded by a catalog permission found in the route's dependency tree (`require_permission`, `permission_scope` for own-or-all, and two dynamic guards for exports and entity activity) or are on the public allow-list (`/api/auth/google`, `/api/auth/logout`, `/api/auth/me`, `/api/health`). `test_all_routes_guard_coverage_walker` fails otherwise; markers set on endpoint functions do not count.
+- **Payroll maker-checker (runtime):** `approve_run` rejects approval by the user who submitted the run, unless the env var `ENFORCE_MAKER_CHECKER` is `false` or the request passes `allow_self_approval=true` (any holder of `finance.payroll.approve` can pass it; Q-013).
 
 ### Document Storage Security
 - **Backend Storage:** `be/storage.py` routes uploads either to Google Drive (`DriveStorageClient`) or local disk (`LocalStorageClient`).
@@ -266,15 +267,15 @@ hrflow/
    - `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) are left over from the database migration phase. `be/repositories/deps.py` hard-wires `Sql*Repository`, but `be/routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`, so that function must be relocated before the directory can be removed.
 3. **Dead Imports in `be/auth.py` (Low):**
    - `be/auth.py:21-22` imports `get_client` from `sheets_client` and `SheetsUserRepository` from `repositories.sheets.auth`, neither of which is used anywhere in the file.
-4. **Inconsistent Authorization Guards across HR vs Finance (Medium):**
-   - Finance routers enforce RBAC via `require_permission(...)` except three routes (activity timeline, two observability GETs).
-   - 31 route registrations in `be/routers/*.py` (HR domain) still use `require_admin` (`be/auth.py:112`) and 13 more are role-scoped, checking a coarse role string instead of granular permissions.
+4. **Inconsistent Authorization Guards across HR vs Finance (Resolved on `feature/rbac`):**
+   - All HR and finance routes now use catalog permission guards; the three previously open finance routes are guarded as well.
+   - `require_admin` and the role-string checks were removed. On `main` (before the merge) the previous state still applies.
 5. **Absence of Background Task Infrastructure (Medium):**
    - High-latency tasks—such as PDF OCR extraction (`bill_extractor.py`), multi-period financial report compilation (`reports_service.py`), and statement import parsing—run synchronously in the HTTP request thread. There is no queue or worker pool.
 6. **Monolithic Frontend Script Injection (Low/Medium):**
    - Inlining 28 JavaScript files into a single `<script>` block in `dist/index.html` creates a brittle runtime context: an uncaught syntax error in any single file halts the entire application execution.
 7. **Silent Startup Seeding (Medium):**
-   - `init_db()` runs at import time and each seed step (`seed_rbac`, lookups, default tax settings) is wrapped in `except Exception: pass`, so a failed seed is invisible. `seed_rbac` also re-creates user-role links from the legacy `users.role` value on every start, which would undo any role revocation made through RBAC.
+   - `init_db()` runs at import time. The RBAC catalog sync now fails startup loudly and no longer re-creates user-role links; the finance-lookup and default-tax seeds are still wrapped in `except Exception: pass`, so a failure there is invisible.
 8. **Document Generation Platform Coupling (Medium):**
    - `be/services/pdf_converter.py` couples PDF generation to Windows COM (`win32com.client`) or local LibreOffice binaries. Linux production containers require `libreoffice` pre-installed or fallback to Google Drive API.
 

@@ -8,14 +8,12 @@ const API_BASE_URL = window.HRFLOW_CONFIG.API_BASE_URL;
 const GOOGLE_CLIENT_ID = window.HRFLOW_CONFIG.GOOGLE_CLIENT_ID;
 
 const SessionInfo = {
-  _role: null,
   _portal: null,
   _roles: [],
   _employeeId: null,
   _name: null,
   _permissions: [],
   set(data) {
-    this._role = data.role ?? null;
     this._portal = data.portal ?? 'employee';
     this._roles = Array.isArray(data.roles) ? data.roles : [];
     this._employeeId = data.employee_id ?? null;
@@ -24,7 +22,6 @@ const SessionInfo = {
     window.dispatchEvent(new CustomEvent("hrflow:session-changed", { detail: data }));
   },
   clear() {
-    this._role = null;
     this._portal = null;
     this._roles = [];
     this._employeeId = null;
@@ -32,7 +29,6 @@ const SessionInfo = {
     this._permissions = [];
     window.dispatchEvent(new CustomEvent("hrflow:session-changed", { detail: null }));
   },
-  getRole() { return this._role; },
   getPortal() { return this._portal; },
   getRoles() { return this._roles; },
   getEmployeeId() { return this._employeeId; },
@@ -41,7 +37,7 @@ const SessionInfo = {
   hasPermission(key) {
     return this._permissions.includes(key);
   },
-  isKnown() { return this._role !== null; },
+  isKnown() { return this._portal !== null; },
 };
 
 let _sessionExpiredHandled = false;

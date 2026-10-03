@@ -345,16 +345,11 @@ def _create_test_user_with_roles(db, email, role_names=None, system_keys=None, e
             email=email,
             name=email.split("@")[0].title(),
             employee_id=employee_id,
-            role="admin" if "Super-Admin" in (role_names or []) or "super_admin" in (system_keys or []) else "employee",
         )
         db.add(user)
         db.flush()
     else:
         user.employee_id = employee_id
-        if "Super-Admin" in (role_names or []) or "super_admin" in (system_keys or []):
-            user.role = "admin"
-        else:
-            user.role = "employee"
 
     if is_archived:
         user.archived_at = datetime.datetime.utcnow()
@@ -402,7 +397,6 @@ def _create_test_user_with_roles(db, email, role_names=None, system_keys=None, e
     return {
         "id": user.id,
         "email": user.email,
-        "role": user.role,
         "name": user.name,
         "employee_id": user.employee_id,
         "archived_at": user.archived_at,
@@ -414,13 +408,11 @@ def _make_user_cookies(user, legacy_role_claim=None, include_uid=True):
     from config import Config
     user_id = user["id"] if isinstance(user, dict) else user.id
     email = user["email"] if isinstance(user, dict) else user.email
-    role = user["role"] if isinstance(user, dict) else user.role
     emp_id = user["employee_id"] if isinstance(user, dict) else user.employee_id
     name = (user["name"] if isinstance(user, dict) else user.name) or email.split("@")[0]
-    role_claim = legacy_role_claim if legacy_role_claim is not None else role
     token = create_session_token(
         email=email,
-        role=role_claim,
+        role=legacy_role_claim,
         employee_id=emp_id,
         name=name,
         uid=user_id if include_uid else None,
@@ -486,7 +478,6 @@ def test_linked_employee_gets_baseline_without_user_roles_row(app_client):
                 email="baseline_emp@voyance.health",
                 name="Baseline Employee",
                 employee_id=42,
-                role="employee",
             )
             db.add(user)
             db.flush()
@@ -2346,7 +2337,7 @@ def test_slice6_user_without_effective_access_rejected_at_signin(app_client, mon
         # Create external user with no employee and no roles
         u = db.query(UserDB).filter_by(email="empty_access@vendor.com").first()
         if not u:
-            u = UserDB(email="empty_access@vendor.com", name="No Access", employee_id=None, role="employee")
+            u = UserDB(email="empty_access@vendor.com", name="No Access", employee_id=None)
             db.add(u)
             db.commit()
         db.query(UserRoleDB).filter_by(user_id=u.id).delete()
@@ -2413,25 +2404,10 @@ def test_slice8_drop_users_role_and_compatibility():
     insp_down = sa.inspect(test_mig_engine)
     assert "role" in [c["name"] for c in insp_down.get_columns("users")], "Migration 0026 downgrade failed to re-add 'role'"
 
-    # 4. UserDB backwards compatibility
-    u1 = UserDB(email="test_no_role@test.com", name="Test No Role")
-    assert u1.role == "user"
-
-    # Deprecated role kwarg silently ignored
-    u2 = UserDB(email="test_compat_role@test.com", name="Test Compat Role", role="admin")
-    assert u2.role == "user"
-    u2.role = "employee"
-    assert u2.role == "user"
-
-    # Employee ID returns 'employee'
-    u3 = UserDB(email="emp@test.com", employee_id=123)
-    assert u3.role == "employee"
-
-    # Super-Admin role returns 'admin'
-    sa_role = RoleDB(name="Super-Admin", system_key="super_admin")
-    ur = UserRoleDB(role=sa_role)
-    u4 = UserDB(email="sa@test.com", employee_id=123, user_roles=[ur])
-    assert u4.role == "admin"
+    # 4. The compatibility `role` property and constructor argument are gone (F7)
+    assert not hasattr(UserDB, "role")
+    with pytest.raises(TypeError):
+        UserDB(email="legacy_role_arg@test.com", role="admin")
 
 
 GUARD_MARKERS = ("hrflow_permission", "hrflow_permission_all", "hrflow_permission_self", "hrflow_permission_any")
