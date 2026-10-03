@@ -25,7 +25,7 @@ from core.permission_catalog import (
 from core.role_seed import DEFAULT_ROLES, sync_catalog
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB
 from core.permissions import get_user_permissions
-from models_db import UserDB
+from models_db import UserDB, EmployeeDB
 from db import get_db_context, init_db
 
 
@@ -1506,6 +1506,724 @@ def test_slice4_migration_payroll_write_eradication(app_client):
         for r in db.query(RoleDB).all():
             keys = {perm.key for perm in r.permissions}
             assert "finance.payroll.write" not in keys, f"Role {r.name} should not have finance.payroll.write"
+
+
+# =============================================================================
+# Slice 5: Access Service, API, and Employee Lifecycle (R1–R14)
+# =============================================================================
+
+def test_slice5_r1_self_action_prohibition(app_client):
+    """
+    R1: An actor cannot delete, archive, or revoke the access of their own user.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        emp1 = db.query(EmployeeDB).filter(EmployeeDB.id == 101).first()
+        if not emp1:
+            emp1 = EmployeeDB(id=101, name="SA 1", email="sa1_self@voyance.health", dept="Tech", job_role="Eng")
+            db.add(emp1)
+        emp2 = db.query(EmployeeDB).filter(EmployeeDB.id == 102).first()
+        if not emp2:
+            emp2 = EmployeeDB(id=102, name="SA 2", email="sa2_self@voyance.health", dept="Tech", job_role="Eng")
+            db.add(emp2)
+        db.flush()
+
+        # Create SA user 1
+        sa1 = _create_test_user_with_roles(db, email="sa1_self@voyance.health", system_keys=["super_admin"], employee_id=101)
+        # Create SA user 2
+        sa2 = _create_test_user_with_roles(db, email="sa2_self@voyance.health", system_keys=["super_admin"], employee_id=102)
+        sa1_id = sa1["id"]
+        sa2_id = sa2["id"]
+
+    sa1_cookies = _make_user_cookies(sa1)
+    sa2_cookies = _make_user_cookies(sa2)
+
+    # 1. Negative: SA1 tries to archive self -> 409
+    resp_archive_self = app_client.post(f"/api/access/users/{sa1_id}/archive", cookies=sa1_cookies)
+    assert resp_archive_self.status_code == 409
+    assert "own user" in resp_archive_self.text
+
+    # 2. Negative: SA1 tries to revoke roles from self -> 409
+    resp_revoke_self = app_client.put(f"/api/access/users/{sa1_id}/roles", json={"role_ids": []}, cookies=sa1_cookies)
+    assert resp_revoke_self.status_code == 409
+    assert "own user" in resp_revoke_self.text
+
+    # 3. Negative: SA1 tries to delete own employee record -> 409
+    resp_del_self_emp = app_client.delete(f"/api/employees/101", cookies=sa1_cookies)
+    assert resp_del_self_emp.status_code == 409
+    assert "own user" in resp_del_self_emp.text
+
+    # 4. Positive: SA2 archives a normal other user -> 200
+    with get_db_context() as db:
+        other_user = _create_test_user_with_roles(db, email="other_user@voyance.health", system_keys=["hr_admin"])
+        other_id = other_user["id"]
+    resp_archive_other = app_client.post(f"/api/access/users/{other_id}/archive", cookies=sa2_cookies)
+    assert resp_archive_other.status_code == 200
+
+
+def test_slice5_r2_last_active_super_admin_protection(app_client):
+    """
+    R2: The last active Super-Admin cannot be revoked, archived, or deleted.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        emp = db.query(EmployeeDB).filter(EmployeeDB.id == 201).first()
+        if not emp:
+            emp = EmployeeDB(id=201, name="Sole SA", email="sole_sa@voyance.health", dept="Tech", job_role="Eng")
+            db.add(emp)
+        db.flush()
+
+        sa_role = db.query(RoleDB).filter_by(system_key="super_admin").first()
+        hr_role = db.query(RoleDB).filter_by(system_key="hr_admin").first()
+        if not hr_role:
+            hr_role = RoleDB(name="HR-Admin", system_key="hr_admin", is_locked=False)
+            db.add(hr_role)
+            db.flush()
+
+        # Archive all other Super-Admins so exactly 1 is active
+        all_sa_users = (
+            db.query(UserDB)
+            .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
+            .filter(RoleDB.system_key == "super_admin")
+            .all()
+        )
+        import datetime
+        for u in all_sa_users:
+            u.archived_at = datetime.datetime.utcnow()
+        db.flush()
+
+        # Create the sole active Super-Admin
+        sole_sa = _create_test_user_with_roles(db, email="sole_sa@voyance.health", system_keys=["super_admin"], employee_id=201)
+        # Create non-SA manager who has system.users.manage and hr.employee.write
+        manager_role = db.query(RoleDB).filter_by(name="Custom-Manager").first()
+        if not manager_role:
+            manager_role = RoleDB(name="Custom-Manager", is_locked=False)
+            db.add(manager_role)
+            db.flush()
+            p_um = db.query(PermissionDB).filter_by(key="system.users.manage").first()
+            p_ew = db.query(PermissionDB).filter_by(key="hr.employee.write").first()
+            db.add(RolePermissionDB(role_id=manager_role.id, permission_id=p_um.id))
+            db.add(RolePermissionDB(role_id=manager_role.id, permission_id=p_ew.id))
+            db.commit()
+
+        manager_user = _create_test_user_with_roles(db, email="mgr@voyance.health", role_names=["Custom-Manager"])
+        sole_sa_id = sole_sa["id"]
+        hr_role_id = hr_role.id
+
+    mgr_cookies = _make_user_cookies(manager_user)
+
+    # 1. Negative: Manager tries to revoke Super-Admin from the sole active SA -> 409
+    resp_revoke = app_client.put(f"/api/access/users/{sole_sa_id}/roles", json={"role_ids": [hr_role_id]}, cookies=mgr_cookies)
+    assert resp_revoke.status_code == 409
+    assert "last active Super-Admin" in resp_revoke.text
+
+    # 2. Negative: Manager tries to archive the sole active SA -> 409
+    resp_archive = app_client.post(f"/api/access/users/{sole_sa_id}/archive", cookies=mgr_cookies)
+    assert resp_archive.status_code == 409
+    assert "last active Super-Admin" in resp_archive.text
+
+    # 3. Negative: Manager tries to delete employee of the sole active SA -> 409
+    resp_delete_emp = app_client.delete(f"/api/employees/201", cookies=mgr_cookies)
+    assert resp_delete_emp.status_code == 409
+
+    # 4. Positive: When second active SA exists, revoking SA from the first one succeeds
+    with get_db_context() as db:
+        sa2 = _create_test_user_with_roles(db, email="second_sa@voyance.health", system_keys=["super_admin"])
+    resp_revoke_ok = app_client.put(f"/api/access/users/{sole_sa_id}/roles", json={"role_ids": [hr_role_id]}, cookies=mgr_cookies)
+    assert resp_revoke_ok.status_code == 200
+
+
+def test_slice5_r3_external_user_role_invariants(app_client):
+    """
+    R3: External user without linked employee must keep >= 1 role; revoking last role rejected.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_ext@voyance.health", system_keys=["super_admin"])
+        hr_role = db.query(RoleDB).filter_by(system_key="hr_admin").first()
+        hr_role_id = hr_role.id
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Positive: Create external user with 1 role -> 201
+    resp_create = app_client.post(
+        "/api/access/users",
+        json={
+            "email": "consultant@external-advisor.com",
+            "name": "External Consultant",
+            "role_ids": [hr_role_id],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_create.status_code == 201
+    data = resp_create.json()
+    assert data["is_external"] is True
+    assert data["employee_id"] is None
+    ext_user_id = data["id"]
+
+    # 2. Negative: Creating external user with 0 roles -> 422
+    resp_bad_create = app_client.post(
+        "/api/access/users",
+        json={
+            "email": "zero_roles@external.com",
+            "name": "Zero Roles",
+            "role_ids": [],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_bad_create.status_code == 422
+
+    # 3. Negative: Revoking the last role of an external user -> 409
+    resp_revoke_last = app_client.put(
+        f"/api/access/users/{ext_user_id}/roles",
+        json={"role_ids": []},
+        cookies=sa_cookies,
+    )
+    assert resp_revoke_last.status_code == 409
+    assert "at least one role" in resp_revoke_last.text
+
+
+def test_slice5_r4_r5_employee_deletion_lifecycle(app_client):
+    """
+    R4: Deleting employee rejected if linked user has elevated roles (409 pointing to Users page).
+    R5: Deleting baseline-only employee deletes linked user in same transaction.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_del_emp@voyance.health", system_keys=["super_admin"])
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Create baseline-only employee via API
+    resp_emp1 = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Baseline Worker",
+            "email": "baseline_worker@voyance.health",
+            "dept": "Operations",
+            "job_role": "Specialist",
+            "internal_salary_usd": 0.0,
+            "external_salary_usd": 0.0,
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_emp1.status_code == 201
+    emp1_id = resp_emp1.json()["id"]
+
+    # Verify linked user exists in DB with no elevated roles
+    with get_db_context() as db:
+        u1 = db.query(UserDB).filter_by(employee_id=emp1_id).first()
+        assert u1 is not None
+        u1_id = u1.id
+
+    # R5: Delete baseline employee -> 200, linked user deleted in DB
+    resp_del1 = app_client.delete(f"/api/employees/{emp1_id}", cookies=sa_cookies)
+    assert resp_del1.status_code == 200
+    with get_db_context() as db:
+        assert db.query(UserDB).filter_by(id=u1_id).first() is None
+
+    # 2. Create elevated employee
+    resp_emp2 = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Elevated Worker",
+            "email": "elevated_worker@voyance.health",
+            "dept": "Finance",
+            "job_role": "Analyst",
+            "internal_salary_usd": 0.0,
+            "external_salary_usd": 0.0,
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_emp2.status_code == 201
+    emp2_id = resp_emp2.json()["id"]
+
+    # Assign Financial-Admin role to emp2's user
+    with get_db_context() as db:
+        u2 = db.query(UserDB).filter_by(employee_id=emp2_id).first()
+        fin_role = db.query(RoleDB).filter_by(system_key="financial_admin").first()
+        db.add(UserRoleDB(user_id=u2.id, role_id=fin_role.id))
+        db.commit()
+
+    # R4: Delete elevated employee -> 409 pointing to Users page
+    resp_del2 = app_client.delete(f"/api/employees/{emp2_id}", cookies=sa_cookies)
+    assert resp_del2.status_code == 409
+    assert "Users page" in resp_del2.text
+
+
+def test_slice5_r6_locked_role_immutability(app_client):
+    """
+    R6: Locked roles cannot be edited, renamed, or deleted.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_lock@voyance.health", system_keys=["super_admin"])
+        locked_role = db.query(RoleDB).filter_by(system_key="super_admin").first()
+        locked_id = locked_role.id
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Negative: Edit locked role -> 409
+    resp_edit = app_client.put(
+        f"/api/access/roles/{locked_id}",
+        json={"name": "New Super Admin", "description": "Attempted edit"},
+        cookies=sa_cookies,
+    )
+    assert resp_edit.status_code == 409
+    assert "locked role" in resp_edit.text
+
+    # 2. Negative: Delete locked role -> 409
+    resp_del = app_client.delete(f"/api/access/roles/{locked_id}", cookies=sa_cookies)
+    assert resp_del.status_code == 409
+    assert "locked role" in resp_del.text
+
+
+def test_slice5_r7_assigned_role_deletion_protection(app_client):
+    """
+    R7: Assigned roles cannot be deleted.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_r7@voyance.health", system_keys=["super_admin"])
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Create a custom role
+    resp_create = app_client.post(
+        "/api/access/roles",
+        json={
+            "name": "Temporary-Role-R7",
+            "description": "Will be deleted",
+            "permissions": ["hr.employee.read"],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_create.status_code == 201
+    role_id = resp_create.json()["id"]
+
+    # 2. Assign custom role to a test user
+    with get_db_context() as db:
+        test_user = _create_test_user_with_roles(db, email="assigned_user_r7@voyance.health")
+        db.add(UserRoleDB(user_id=test_user["id"], role_id=role_id))
+        db.commit()
+
+    # 3. Negative: Deleting assigned role -> 409
+    resp_del_assigned = app_client.delete(f"/api/access/roles/{role_id}", cookies=sa_cookies)
+    assert resp_del_assigned.status_code == 409
+    assert "assigned to 1 user" in resp_del_assigned.text
+
+    # 4. Positive: Unassign role and delete -> 200
+    with get_db_context() as db:
+        db.query(UserRoleDB).filter_by(role_id=role_id).delete()
+        db.commit()
+
+    resp_del_ok = app_client.delete(f"/api/access/roles/{role_id}", cookies=sa_cookies)
+    assert resp_del_ok.status_code == 200
+    assert resp_del_ok.json()["message"] == "Role deleted"
+
+
+def test_slice5_r8_role_permission_closure_and_validation(app_client):
+    """
+    R8: Role saving applies closure, rejects unknown/non-assignable keys, returns implied_added.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_r8@voyance.health", system_keys=["super_admin"])
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Positive: Save role with hr.employee.write -> returns implied_added hr.employee.read
+    resp_create = app_client.post(
+        "/api/access/roles",
+        json={
+            "name": "Writer-With-Closure",
+            "description": "Tests closure computation",
+            "permissions": ["hr.employee.write"],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_create.status_code == 201
+    data = resp_create.json()
+    assert "hr.employee.read" in data["permissions"]
+    assert "hr.employee.write" in data["permissions"]
+    assert "hr.employee.read" in data["implied_added"]
+
+    # 2. Negative: Unknown permission key -> 422
+    resp_unknown = app_client.post(
+        "/api/access/roles",
+        json={
+            "name": "Bad-Perm-Role",
+            "permissions": ["hr.nonexistent.fake"],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_unknown.status_code == 422
+    assert "Invalid permission keys" in resp_unknown.text
+
+    # 3. Negative: Non-assignable permission key (system.users.manage) -> 422
+    resp_non_assignable = app_client.post(
+        "/api/access/roles",
+        json={
+            "name": "Non-Assignable-Perm-Role",
+            "permissions": ["system.users.manage"],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_non_assignable.status_code == 422
+    assert "Invalid permission keys" in resp_non_assignable.text
+
+
+def test_slice5_r9_role_assignment_authorization(app_client):
+    """
+    R9: Role assignment guarded by system.users.manage.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        # Create user without system.users.manage
+        hr_user = _create_test_user_with_roles(db, email="hr_no_um@voyance.health", system_keys=["hr_admin"])
+        # Create target user
+        target = _create_test_user_with_roles(db, email="target_r9@voyance.health")
+        target_id = target["id"]
+
+    hr_cookies = _make_user_cookies(hr_user)
+
+    # Negative: HR-Admin (lacks system.users.manage) -> 403
+    resp = app_client.put(f"/api/access/users/{target_id}/roles", json={"role_ids": []}, cookies=hr_cookies)
+    assert resp.status_code == 403
+    assert "system.users.manage" in resp.text
+
+
+def test_slice5_r10_r11_archived_user_lifecycle(app_client):
+    """
+    R10: Archiving sets archived_at and archived_by, preserves roles, blocks access.
+    R11: Archived user cannot have roles changed.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_arch@voyance.health", system_keys=["super_admin"])
+        fin_role = db.query(RoleDB).filter_by(system_key="financial_admin").first()
+        target = _create_test_user_with_roles(db, email="to_archive@voyance.health", system_keys=["financial_admin"])
+        target_id = target["id"]
+        fin_role_id = fin_role.id
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Archive user -> 200
+    resp_archive = app_client.post(f"/api/access/users/{target_id}/archive", cookies=sa_cookies)
+    assert resp_archive.status_code == 200
+
+    # Verify DB state: archived_at and archived_by set, roles preserved
+    with get_db_context() as db:
+        u = db.query(UserDB).filter_by(id=target_id).first()
+        assert u.archived_at is not None
+        assert u.archived_by == "sa_arch@voyance.health"
+        roles = [ur.role_id for ur in u.user_roles]
+        assert fin_role_id in roles
+
+    # 2. R11 Negative: Modifying roles of an archived user -> 409
+    resp_mod = app_client.put(f"/api/access/users/{target_id}/roles", json={"role_ids": [fin_role_id]}, cookies=sa_cookies)
+    assert resp_mod.status_code == 409
+    assert "archived user" in resp_mod.text
+
+
+def test_slice5_r12_employee_provisioning_rules(app_client):
+    """
+    R12: Provisioning links existing non-archived user; rejects archived user with 409.
+    Creating employee creates linked user with no explicit role rows and full baseline access.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_r12@voyance.health", system_keys=["super_admin"])
+        # Create an existing external user with financial_admin role
+        fin_role = db.query(RoleDB).filter_by(system_key="financial_admin").first()
+        ext_user = _create_test_user_with_roles(
+            db, email="ext_to_link@voyance.health", system_keys=["financial_admin"]
+        )
+        # Create an archived user
+        arch_user = _create_test_user_with_roles(db, email="archived_person@voyance.health", is_archived=True)
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Negative: Attempt to create employee with email of archived user -> 409
+    resp_arch = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Archived Person",
+            "email": "archived_person@voyance.health",
+            "dept": "Sales",
+            "job_role": "Rep",
+            "internal_salary_usd": 0.0,
+            "external_salary_usd": 0.0,
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_arch.status_code == 409
+    assert "archived user already exists" in resp_arch.text
+
+    # 2. Positive: Create employee with email of existing external user -> links user and preserves roles
+    resp_link = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Linked Consultant",
+            "email": "ext_to_link@voyance.health",
+            "dept": "Finance",
+            "job_role": "Director",
+            "internal_salary_usd": 0.0,
+            "external_salary_usd": 0.0,
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_link.status_code == 201
+    emp_id = resp_link.json()["id"]
+
+    with get_db_context() as db:
+        u = db.query(UserDB).filter_by(email="ext_to_link@voyance.health").first()
+        assert u.employee_id == emp_id
+        # Roles preserved
+        role_keys = {ur.role.system_key for ur in u.user_roles}
+        assert "financial_admin" in role_keys
+
+    # 3. Positive: Creating employee with brand new email provisions user with baseline access
+    resp_new = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Fresh Hire",
+            "email": "fresh_hire@voyance.health",
+            "dept": "Engineering",
+            "job_role": "Developer",
+            "internal_salary_usd": 0.0,
+            "external_salary_usd": 0.0,
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_new.status_code == 201
+    fresh_emp_id = resp_new.json()["id"]
+
+    with get_db_context() as db:
+        fresh_user = db.query(UserDB).filter_by(email="fresh_hire@voyance.health").first()
+        assert fresh_user is not None
+        assert fresh_user.employee_id == fresh_emp_id
+        # Baseline access: no explicit elevated roles
+        assert len(fresh_user.user_roles) == 0
+
+
+def test_slice5_r13_role_naming_and_uniqueness(app_client):
+    """
+    R13: Role name 1-100 chars, unique, reserved names protected.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_r13@voyance.health", system_keys=["super_admin"])
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Negative: Empty name -> 409
+    resp_empty = app_client.post(
+        "/api/access/roles",
+        json={"name": "   ", "permissions": ["hr.employee.read"]},
+        cookies=sa_cookies,
+    )
+    assert resp_empty.status_code == 409
+    assert "between 1 and 100 characters" in resp_empty.text
+
+    # 2. Negative: Name > 100 chars -> 409
+    resp_long = app_client.post(
+        "/api/access/roles",
+        json={"name": "X" * 105, "permissions": ["hr.employee.read"]},
+        cookies=sa_cookies,
+    )
+    assert resp_long.status_code == 409
+
+    # 3. Negative: Reserved name -> 409
+    resp_res = app_client.post(
+        "/api/access/roles",
+        json={"name": "super-admin", "permissions": ["hr.employee.read"]},
+        cookies=sa_cookies,
+    )
+    assert resp_res.status_code == 409
+    assert "reserved" in resp_res.text
+
+    # 4. Positive & Duplicate: Create unique role, then try duplicate -> 409
+    resp_ok = app_client.post(
+        "/api/access/roles",
+        json={"name": "My-Unique-Role-1", "permissions": ["hr.employee.read"]},
+        cookies=sa_cookies,
+    )
+    assert resp_ok.status_code == 201
+
+    resp_dup = app_client.post(
+        "/api/access/roles",
+        json={"name": "My-Unique-Role-1", "permissions": ["hr.employee.read"]},
+        cookies=sa_cookies,
+    )
+    assert resp_dup.status_code == 409
+    assert "already exists" in resp_dup.text
+
+
+def test_slice5_r14_employee_email_update_sync(app_client):
+    """
+    R14: Employee email update keeps users.email synchronized.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_r14@voyance.health", system_keys=["super_admin"])
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Create employee with email v1
+    resp_create = app_client.post(
+        "/api/employees",
+        json={
+            "name": "Sync Person",
+            "email": "sync_v1@voyance.health",
+            "dept": "Design",
+            "job_role": "UI Designer",
+            "internal_salary_usd": 0.0,
+            "external_salary_usd": 0.0,
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_create.status_code == 201
+    emp_id = resp_create.json()["id"]
+
+    # Verify user email matches v1
+    with get_db_context() as db:
+        u = db.query(UserDB).filter_by(employee_id=emp_id).first()
+        assert u.email == "sync_v1@voyance.health"
+
+    # 2. Update employee email to v2
+    resp_update = app_client.put(
+        f"/api/employees/{emp_id}",
+        json={"email": "sync_v2@voyance.health"},
+        cookies=sa_cookies,
+    )
+    assert resp_update.status_code == 200
+
+    # Verify user email synchronized to v2
+    with get_db_context() as db:
+        u = db.query(UserDB).filter_by(employee_id=emp_id).first()
+        assert u.email == "sync_v2@voyance.health"
+
+
+def test_slice5_audit_logging_coverage(app_client):
+    """
+    Acceptance 7: Every mutation writes an audit entry via deps.audit_log:
+    role.create, role.update, role.delete, user.create_external, user.roles_update, user.archive.
+    """
+    from models_db import AuditLogDB
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_audit@voyance.health", system_keys=["super_admin"])
+        hr_role = db.query(RoleDB).filter_by(system_key="hr_admin").first()
+        hr_role_id = hr_role.id
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. role.create
+    resp_rc = app_client.post(
+        "/api/access/roles",
+        json={"name": "Audit-Role-Test", "permissions": ["hr.employee.read"]},
+        cookies=sa_cookies,
+    )
+    assert resp_rc.status_code == 201
+    role_id = resp_rc.json()["id"]
+
+    # 2. role.update
+    resp_ru = app_client.put(
+        f"/api/access/roles/{role_id}",
+        json={"description": "Updated audit description"},
+        cookies=sa_cookies,
+    )
+    assert resp_ru.status_code == 200
+
+    # 3. role.delete
+    resp_rd = app_client.delete(f"/api/access/roles/{role_id}", cookies=sa_cookies)
+    assert resp_rd.status_code == 200
+
+    # 4. user.create_external
+    resp_uc = app_client.post(
+        "/api/access/users",
+        json={
+            "email": "audit_ext@external.com",
+            "name": "Audit Ext",
+            "role_ids": [hr_role_id],
+        },
+        cookies=sa_cookies,
+    )
+    assert resp_uc.status_code == 201
+    ext_id = resp_uc.json()["id"]
+
+    # 5. user.roles_update
+    resp_uu = app_client.put(
+        f"/api/access/users/{ext_id}/roles",
+        json={"role_ids": [hr_role_id]},
+        cookies=sa_cookies,
+    )
+    assert resp_uu.status_code == 200
+
+    # 6. user.archive
+    resp_ua = app_client.post(f"/api/access/users/{ext_id}/archive", cookies=sa_cookies)
+    assert resp_ua.status_code == 200
+
+    # Verify audit entries in AuditLogDB
+    with get_db_context() as db:
+        actions = {
+            a.action for a in db.query(AuditLogDB).filter(AuditLogDB.actor_email == "sa_audit@voyance.health").all()
+        }
+        assert "role.create" in actions
+        assert "role.update" in actions
+        assert "role.delete" in actions
+        assert "user.create_external" in actions
+        assert "user.roles_update" in actions
+        assert "user.archive" in actions
+
+
+def test_slice5_catalog_and_users_listing(app_client):
+    """
+    Catalog and Users list endpoints with filters (all, employees, external, archived) and search.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa = _create_test_user_with_roles(db, email="sa_list@voyance.health", system_keys=["super_admin"])
+
+    sa_cookies = _make_user_cookies(sa)
+
+    # 1. Catalog list
+    resp_cat = app_client.get("/api/access/catalog", cookies=sa_cookies)
+    assert resp_cat.status_code == 200
+    groups = resp_cat.json()
+    assert len(groups) > 0
+    group_names = [g["group"] for g in groups]
+    assert any("HR" in g or "Human" in g or "hr" in g.lower() for g in group_names)
+
+    # 2. Roles list
+    resp_roles = app_client.get("/api/access/roles", cookies=sa_cookies)
+    assert resp_roles.status_code == 200
+    roles = resp_roles.json()
+    assert any(r["name"] == "Super-Admin" for r in roles)
+
+    # 3. Users list with filters
+    resp_all = app_client.get("/api/access/users?filter=all", cookies=sa_cookies)
+    assert resp_all.status_code == 200
+
+    resp_ext = app_client.get("/api/access/users?filter=external", cookies=sa_cookies)
+    assert resp_ext.status_code == 200
+    for u in resp_ext.json():
+        assert u["is_external"] is True
+        assert u["employee_id"] is None
+
+    resp_emp = app_client.get("/api/access/users?filter=employees", cookies=sa_cookies)
+    assert resp_emp.status_code == 200
+    for u in resp_emp.json():
+        assert u["is_external"] is False
+        assert u["employee_id"] is not None
+
+    resp_arch = app_client.get("/api/access/users?filter=archived", cookies=sa_cookies)
+    assert resp_arch.status_code == 200
+    for u in resp_arch.json():
+        assert u["archived_at"] is not None
+
 
 
 

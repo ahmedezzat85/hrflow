@@ -19,6 +19,9 @@ from models import EmployeeCreate, EmployeeUpdate, EmployeeNoteCreate, EmployeeD
 from repositories.interfaces import EmployeeRepository, AuditRepository
 from repositories.deps import get_employee_repo, get_audit_repo
 from core.permissions import require_permission
+from db import get_db
+from sqlalchemy.orm import Session
+from core.access_service import AccessService
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
@@ -60,7 +63,12 @@ def create_employee(
     current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
+    db: Session = Depends(get_db),
 ):
+    # Enforce R12 validation before creating
+    access_service = AccessService(db, audit_repo)
+    access_service.validate_employee_provisioning(payload.email)
+
     # `salary` (legacy, total) is derived inside employee_repo.create()
     new_id = employee_repo.create({
         "name": payload.name,
@@ -90,8 +98,14 @@ def update_employee(
     current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
+    db: Session = Depends(get_db),
 ):
+    if not employee_repo.get_by_id(emp_id):
+        raise HTTPException(status_code=404, detail="Employee not found")
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if "email" in updates:
+        access_service = AccessService(db, audit_repo)
+        access_service.on_employee_email_update(emp_id, updates["email"])
     ok = employee_repo.update(emp_id, updates)
     if not ok:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -105,7 +119,14 @@ def delete_employee(
     current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
+    db: Session = Depends(get_db),
 ):
+    emp = employee_repo.get_by_id(emp_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    # Enforce R1, R2, R4, R5 via AccessService
+    access_service = AccessService(db, audit_repo)
+    access_service.on_employee_delete(emp_id, current_user)
     ok = employee_repo.delete(emp_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Employee not found")

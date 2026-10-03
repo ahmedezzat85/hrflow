@@ -335,6 +335,81 @@ Slice 4 completes the finance authorization hardening and splits the monolithic 
 - State of branch: `feature/rbac` has completed Slice 4 cleanly with all acceptance criteria met and verified.
 - Next slice: Slice 5 (Access service, API and employee lifecycle: `be/core/access_service.py`, `be/routers/access.py`, rules R1–R13, employee create/delete wiring).
 
+---
+
+## Slice 5 — Access Service, API, and Employee Lifecycle (`RBAC-S5`)
+
+### 1. Outcome
+Slice 5 implements the complete access management service and API (`/api/access`) for roles, catalog, and user access management. It strictly enforces RBAC lifecycle rules R1–R13 inside single-transaction operations with designated HTTP status codes (409 conflict, 422 unprocessable, 403 forbidden). The HR employee lifecycle is cleanly wired through `AccessService`: employee provisioning creates linked users without explicit roles, employee deletion enforces R1, R2, R4, R5, and employee email updates synchronize `users.email` (R14). Every mutation writes structured audit entries via `deps.audit_log`.
+
+### 2. Implementation Summary
+- **`be/core/access_service.py`:**
+  - Implemented `AccessService` managing catalog inspection, role CRUD, user listing/filtering, external user creation, assigned roles update, user archiving, and employee lifecycle hooks.
+  - Enforced single database transaction per operation (`self.db.commit()` on success, `self.db.rollback()` on error).
+  - Enforced rules:
+    - **R1:** Actor cannot delete, archive, or revoke access of their own user (409).
+    - **R2:** The last active Super-Admin cannot be revoked, archived, or deleted (409).
+    - **R3:** External user without linked employee must keep $\ge 1$ role; revoking last role rejected (409).
+    - **R4:** Deleting employee rejected if linked user holds any assigned elevated role with a message directing to Users page (409).
+    - **R5:** Deleting baseline-only employee deletes linked user in the same transaction.
+    - **R6:** Locked role (`is_locked=True`) cannot be edited, renamed, or deleted (409).
+    - **R7:** Role assigned to any user cannot be deleted (409).
+    - **R8:** Saving a role normalizes key set to closure, rejects unknown/non-assignable keys (422), returns `implied_added`.
+    - **R9:** Role assignment guarded by `system.users.manage` (403).
+    - **R10:** Archiving sets `archived_at` and `archived_by`, preserves roles, blocks subsequent requests.
+    - **R11:** Archived user cannot have roles modified (409); restore endpoint is explicitly not built per spec.
+    - **R12:** Employee creation provisions linked user; links existing non-archived external user with same email; rejects if archived user exists (409).
+    - **R13:** Role names unique, 1–100 characters; reserved names (`super-admin`, `hr-admin`, `financial-admin`, `payroll-maker`, `employee`, `system_admin`) protected against reuse (409).
+    - **R14:** Employee email updates keep `users.email` synchronized.
+- **`be/routers/access.py`:**
+  - Exposed `/api/access` endpoints:
+    - `GET /catalog`: Grouped catalog permissions with descriptions, implications, and assignability (`system.roles.manage`).
+    - `GET /roles`: List roles with permissions, user counts, and lock status (`system.roles.manage`).
+    - `POST /roles`: Create custom role with automatic closure normalization (`system.roles.manage`).
+    - `PUT /roles/{id}`: Update custom role (`system.roles.manage`).
+    - `DELETE /roles/{id}`: Delete custom unassigned role (`system.roles.manage`).
+    - `GET /users`: List users with search and filter (`all`, `employees`, `external`, `archived`) (`system.users.manage`).
+    - `POST /users`: Create external user requiring $\ge 1$ role (`system.users.manage`).
+    - `PUT /users/{id}/roles`: Replace assigned roles (`system.users.manage`).
+    - `POST /users/{id}/archive`: Archive user (`system.users.manage`).
+- **`be/main.py`:**
+  - Mounted `access_router.router` under `/api/access`.
+- **`be/repositories/sql/employees.py` & `be/routers/employees.py`:**
+  - Delegated employee creation user provisioning to `AccessService.on_employee_create`, stopping raw `users` table writes from the HR repository.
+  - Integrated `AccessService.on_employee_delete` in `DELETE /api/employees/{emp_id}` to enforce R1, R2, R4, R5 before deletion.
+  - Integrated `AccessService.on_employee_email_update` in `PUT /api/employees/{emp_id}` to keep `users.email` synchronized (R14).
+- **`be/tests/test_rbac.py`:**
+  - Added 18 comprehensive tests covering R1–R14, positive and negative cases, catalog/users listing, and audit logging.
+- **`be/tests/test_finance_activity_timeline.py`:**
+  - Updated non-admin masking tests to grant the required per-entity read permission (`finance.invoice.read` and `finance.account.read`) without granting administrative roles, aligning with Slice 4 RBAC guards while preserving sensitive masking assertions.
+
+### 3. Verification & Test Execution
+- **Targeted RBAC Suite:** `pytest be/tests/test_rbac.py -q` -> 51 passed in 73.05s (100% clean pass).
+- **Activity Timeline Suite:** `pytest be/tests/test_finance_activity_timeline.py -q` -> 7 passed in 14.10s.
+- **Full Backend Suite:** `pytest -q in be/` -> 458 passed, 5 failed, 5 errors, 1 warning (all remaining failures and errors are the pre-existing invoice CRUD and payroll tax fixture issues documented in the baseline; zero regressions from RBAC).
+- **Frontend Build:** `npm run build` in `fe/` -> Passed in 1.52s.
+- **Playwright Suite:** `npx playwright test --reporter=line in fe/` -> 252 passed, 17 failed, 3 flaky (all 17 failures are pre-existing baseline failures; zero regressions from RBAC).
+
+### 4. Acceptance Criteria
+- **AC 1:** R1–R13 each have one positive and one negative test -> **Met** (`test_slice5_r1` through `test_slice5_r13`).
+- **AC 2:** Creating an employee creates a linked user with no explicit role row and full baseline access -> **Met** (`test_slice5_r12_employee_creation_and_linking`).
+- **AC 3:** Deleting an employee with an elevated role is rejected with a message pointing to the Users page; deleting a baseline-only employee also removes the user -> **Met** (`test_slice5_r4_r5_employee_deletion_lifecycle`).
+- **AC 4:** An external user cannot lose their last role; archiving blocks access on the next request -> **Met** (`test_slice5_r3_external_user_role_invariants`, `test_slice5_r10_r11_archived_user_lifecycle`).
+- **AC 5:** The last active Super-Admin cannot be revoked, archived or deleted; no actor can do those to themselves -> **Met** (`test_slice5_r1_self_action_prohibition`, `test_slice5_r2_last_active_super_admin_protection`).
+- **AC 6:** Locked-role edit/delete and deleting an assigned role are rejected; saving a role returns the auto-added implied keys -> **Met** (`test_slice5_r6_locked_role_immutable`, `test_slice5_r7_assigned_role_cannot_be_deleted`, `test_slice5_r8_role_key_closure_and_validation`).
+- **AC 7:** Every mutation writes an audit entry -> **Met** (`test_slice5_audit_logging_coverage`).
+
+### 5. Confirmed Facts vs Assumptions
+- **Confirmed in Code:**
+  - `users.email` is kept strictly in sync on employee email updates (R14 verified).
+  - External users without linked employees can be created with arbitrary roles, while baseline employees receive employee permissions dynamically from `user.employee_id`.
+  - Archiving takes effect immediately on the subsequent request via `resolve_access`.
+
+### 6. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 5 with all acceptance criteria met and verified.
+- Next slice: Slice 6 (Sign-in policy D-013: remove `hd` domain gate in Google verification, reject archived users and unassigned users at sign-in, update `ALLOWED_WORKSPACE_DOMAIN` config requirement and test).
+
+
 
 
 

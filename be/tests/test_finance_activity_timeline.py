@@ -94,7 +94,29 @@ def test_invoice_activity_sensitive_masking_non_admin(app_client, admin_cookies,
     assert inv_res.status_code == 201
     inv_id = inv_res.json()["id"]
 
-    # Fetch as employee
+    # Grant non-admin employee finance.invoice.read so they pass entity read guard while remaining non-admin
+    from db import get_db_context
+    from core.role_seed import sync_catalog
+    from core.rbac_models import RoleDB, PermissionDB, RolePermissionDB, UserRoleDB
+    from models_db import UserDB
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        role = db.query(RoleDB).filter_by(name="Invoice-Reader-Custom").first()
+        if not role:
+            role = RoleDB(name="Invoice-Reader-Custom", is_locked=False)
+            db.add(role)
+            db.flush()
+            p = db.query(PermissionDB).filter_by(key="finance.invoice.read").first()
+            if p:
+                db.add(RolePermissionDB(role_id=role.id, permission_id=p.id))
+            db.flush()
+        user = db.query(UserDB).filter_by(email="employee@hrflow.test").first()
+        if user:
+            db.add(UserRoleDB(user_id=user.id, role_id=role.id))
+            db.commit()
+
+    # Fetch as non-admin employee
     act_res = app_client.get(f"/api/finance/activity/invoice/{inv_id}", cookies=employee_cookies)
     assert act_res.status_code == 200
     data = act_res.json()
@@ -187,7 +209,28 @@ def test_cheque_activity_timeline_and_masking(app_client, admin_cookies, employe
     assert len(d_admin["timeline"]) >= 1
     assert "issued to Cairo Office Landlord" in d_admin["timeline"][0]["plain_text"]
 
-    # 3. Non-admin fetch -> masked
+    # 3. Non-admin fetch -> masked (grant finance.account.read so non-admin passes read guard)
+    from db import get_db_context
+    from core.role_seed import sync_catalog
+    from core.rbac_models import RoleDB, PermissionDB, RolePermissionDB, UserRoleDB
+    from models_db import UserDB
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        role = db.query(RoleDB).filter_by(name="Account-Reader-Custom").first()
+        if not role:
+            role = RoleDB(name="Account-Reader-Custom", is_locked=False)
+            db.add(role)
+            db.flush()
+            p = db.query(PermissionDB).filter_by(key="finance.account.read").first()
+            if p:
+                db.add(RolePermissionDB(role_id=role.id, permission_id=p.id))
+            db.flush()
+        user = db.query(UserDB).filter_by(email="employee@hrflow.test").first()
+        if user:
+            db.add(UserRoleDB(user_id=user.id, role_id=role.id))
+            db.commit()
+
     act_emp = app_client.get(f"/api/finance/activity/cheque/{chq_id}", cookies=employee_cookies)
     assert act_emp.status_code == 200
     d_emp = act_emp.json()

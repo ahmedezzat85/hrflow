@@ -113,13 +113,14 @@ class SqlEmployeeRepository:
             db.add(emp)
             db.flush()
 
-            user = UserDB(
-                email=data.get("email"),
-                role=data.get("role", "employee"),
+            from core.access_service import AccessService
+            access_service = AccessService(db)
+            access_service.on_employee_create(
                 employee_id=emp.id,
+                email=data.get("email"),
+                name=data.get("name", ""),
+                role=data.get("role", "employee"),
             )
-            db.add(user)
-            db.flush()
 
             # Fix 2a: Write-through to CompensationPlanService
             if internal_salary > 0 or external_salary > 0:
@@ -226,6 +227,9 @@ class SqlEmployeeRepository:
             emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
             if not emp:
                 return False
+            user = db.query(UserDB).filter(UserDB.employee_id == emp.id).first()
+            if user:
+                db.delete(user)
             db.delete(emp)
             db.commit()
             return True
