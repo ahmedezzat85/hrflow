@@ -9,6 +9,9 @@
         <button class="modal-close" onclick="closeModal('roleModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <div id="roleModalLockedBanner" style="display:none; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--surface2); color:var(--text2); font-size:13px;">
+          <i class="fa-solid fa-lock" style="margin-right:6px;"></i>This role is locked. It always holds every permission and cannot be edited, renamed or deleted.
+        </div>
         <div class="form-section">
           <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Role Details <span class="line"></span></div>
           <div class="form-grid">

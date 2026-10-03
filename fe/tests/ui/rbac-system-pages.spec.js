@@ -8,6 +8,10 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
   });
 
   test('Navigate to Roles page and verify seeded roles render with proper action constraints', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => errors.push(String(err)));
+    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.location().url.includes('favicon')) errors.push(msg.text()); });
+
     // Click System module rail button
     await page.click('#systemRailBtn');
     await expect(page.locator('#adminSystemNavGroup')).toBeVisible();
@@ -16,23 +20,59 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     await page.click('#systemNavRoles');
     await expect(page.locator('#a-system-roles')).toBeVisible();
 
-    // Check table rows
+    // Five seeded roles, each with the System badge (is_locked / system_key come from the API shape)
     const tbody = page.locator('#rolesTableBody');
-    await expect(tbody.locator('tr')).toHaveCount(4);
+    await expect(tbody.locator('tr')).toHaveCount(5);
+    await expect(tbody.locator('.badge:has-text("System")')).toHaveCount(5);
 
-    // Verify Super-Admin constraints
+    // Super-Admin: locked. Edit opens a read-only view with the banner; delete is disabled.
     const superAdminRow = tbody.locator('tr:has-text("Super-Admin")');
     await expect(superAdminRow).toBeVisible();
-    await expect(superAdminRow.locator('.btn-edit-role')).toBeDisabled();
+    await expect(superAdminRow.locator('.btn-edit-role')).toBeEnabled();
     await expect(superAdminRow.locator('.btn-delete-role')).toBeDisabled();
+    await superAdminRow.locator('.btn-edit-role').click();
+    const modal = page.locator('#roleModal');
+    await expect(modal).toHaveClass(/active/);
+    await expect(page.locator('#roleModalLockedBanner')).toBeVisible();
+    await expect(page.locator('#roleModalSaveBtn')).toBeHidden();
+    await expect(modal.locator('#fRoleName')).toHaveJSProperty('readOnly', true);
+    await expect(modal.locator('input[data-perm-key="system.users.manage"]')).toBeChecked();
+    await expect(modal.locator('input[data-perm-key="hr.employee.write"]')).toBeDisabled();
+    await modal.locator('.modal-close').click();
+    await expect(modal).not.toHaveClass(/active/);
 
-    // Verify HR-Admin has Edit enabled but Delete disabled
+    // HR-Admin has Edit enabled but Delete disabled; system.* keys are not offered
     const hrAdminRow = tbody.locator('tr:has-text("HR-Admin")');
     await expect(hrAdminRow.locator('.btn-edit-role')).toBeEnabled();
-    await expect(hrAdminRow.locator('.btn-delete-role')).toBeDisabled();
+    await hrAdminRow.locator('.btn-edit-role').click();
+    await expect(modal).toHaveClass(/active/);
+    await expect(modal.locator('#roleModalLockedBanner')).toBeHidden();
+    await expect(modal.locator('#fRoleName')).toHaveJSProperty('readOnly', true);
+    await expect(modal.locator('input[data-perm-key^="system."]')).toHaveCount(0);
+    await expect(modal.locator('input[data-perm-key="hr.employee.write"]')).toBeChecked();
+    await modal.locator('.modal-close').click();
+
+    // HR-Admin is assigned to a user: delete is offered and the server rule (R7) message is shown verbatim
+    page.once('dialog', async dialog => { await dialog.accept(); });
+    await hrAdminRow.locator('.btn-delete-role').click();
+    await expect(page.locator('#toast, .toast').filter({ hasText: "Cannot delete role 'HR-Admin' while it is assigned" }).first()).toBeVisible();
+    await expect(hrAdminRow).toBeVisible();
+
+    // Employee role: editable, never deletable
+    const employeeRow = tbody.locator('tr[data-role-id="5"]');
+    await expect(employeeRow).toContainText('Employee');
+    await expect(employeeRow.locator('.btn-edit-role')).toBeEnabled();
+    await expect(employeeRow.locator('.btn-delete-role')).toBeDisabled();
+
+    expect(errors).toEqual([]);
   });
 
-  test('Implication auto-ticking in Create Role Modal and role lifecycle', async ({ page }) => {
+  test('Implication ticking, rename, escaping and role lifecycle', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => errors.push(String(err)));
+    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.location().url.includes('favicon')) errors.push(msg.text()); });
+    page.on('dialog', async dialog => { await dialog.accept(); });
+
     await page.click('#systemRailBtn');
     await page.click('#systemNavRoles');
 
@@ -43,46 +83,50 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
 
     const writeCb = modal.locator('input[data-perm-key="hr.employee.write"]');
     const readCb = modal.locator('input[data-perm-key="hr.employee.read"]');
-    const impliedBadge = modal.locator('[data-implied-badge="hr.employee.read"]');
 
-    // Initially readCb is unchecked and enabled
-    expect(await readCb.isChecked()).toBe(false);
-    expect(await readCb.isDisabled()).toBe(false);
+    // Initially unchecked
+    await expect(readCb).not.toBeChecked();
 
-    // Check writeCb -> readCb must become checked and disabled (auto-ticked)
+    // Ticking write ticks read; both stay editable
     await writeCb.check();
-    expect(await readCb.isChecked()).toBe(true);
-    expect(await readCb.isDisabled()).toBe(true);
-    await expect(impliedBadge).toBeVisible();
+    await expect(readCb).toBeChecked();
+    await expect(readCb).toBeEnabled();
 
-    // Uncheck writeCb -> readCb must revert to unchecked and enabled
-    await writeCb.uncheck();
-    expect(await readCb.isChecked()).toBe(false);
-    expect(await readCb.isDisabled()).toBe(false);
-    await expect(impliedBadge).toBeHidden();
+    // Unticking read unticks write
+    await readCb.uncheck();
+    await expect(writeCb).not.toBeChecked();
+    await expect(readCb).not.toBeChecked();
 
-    // Fill form and create Custom-Auditor role
-    await modal.locator('#fRoleName').fill('Custom-Auditor');
+    // Create a role whose name is markup: it must render as text
+    const markupName = '<img src=x onerror=alert(1)>';
+    await modal.locator('#fRoleName').fill(markupName);
     await modal.locator('#fRoleDescription').fill('Test role for auditing reports');
     await modal.locator('input[data-perm-key="finance.report.read"]').check();
-
     await modal.locator('#roleModalSaveBtn').click();
     await expect(modal).not.toHaveClass(/active/);
 
-    // Verify Custom-Auditor appears in table
-    const customRow = page.locator('#rolesTableBody tr:has-text("Custom-Auditor")');
+    const customRow = page.locator('#rolesTableBody tr', { hasText: markupName });
     await expect(customRow).toBeVisible();
+    await expect(page.locator('#rolesTableBody img')).toHaveCount(0);
     await expect(customRow.locator('.btn-edit-role')).toBeEnabled();
     await expect(customRow.locator('.btn-delete-role')).toBeEnabled();
 
-    // Handle delete confirm
-    page.on('dialog', async dialog => {
-      await dialog.accept();
-    });
+    // Rename the custom role (seeded roles keep a read-only name)
+    await customRow.locator('.btn-edit-role').click();
+    await expect(modal).toHaveClass(/active/);
+    await expect(modal.locator('#fRoleName')).toHaveJSProperty('readOnly', false);
+    await modal.locator('#fRoleName').fill('Custom-Auditor');
+    await modal.locator('#roleModalSaveBtn').click();
+    await expect(modal).not.toHaveClass(/active/);
+    const renamedRow = page.locator('#rolesTableBody tr:has-text("Custom-Auditor")');
+    await expect(renamedRow).toBeVisible();
+    await expect(page.locator('#rolesTableBody tr', { hasText: markupName })).toHaveCount(0);
 
     // Delete Custom-Auditor
-    await customRow.locator('.btn-delete-role').click();
+    await renamedRow.locator('.btn-delete-role').click();
     await expect(page.locator('#rolesTableBody tr:has-text("Custom-Auditor")')).toHaveCount(0);
+
+    expect(errors).toEqual([]);
   });
 
   test('Users page: table rendering, searching, filtering, role assignment and archiving', async ({ page }) => {

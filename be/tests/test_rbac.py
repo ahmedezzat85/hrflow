@@ -2985,3 +2985,47 @@ def test_employee_repository_has_no_user_writes():
     path = os.path.join(os.path.dirname(__file__), "..", "repositories", "sql", "employees.py")
     with open(path, "r", encoding="utf-8") as fh:
         assert "UserDB" not in fh.read()
+
+
+# ============================================================================
+# RBAC-F4: Roles page contract (API shape and mock catalog parity)
+# ============================================================================
+
+def test_access_api_shape_matches_roles_page_contract(app_client):
+    """F4 AC1: the catalog is a list of groups and roles carry system_key / is_locked (what the Roles page reads)."""
+    from conftest import create_test_user
+    admin = create_test_user("f4_admin@voyance.health", role_key="super_admin")
+
+    catalog = app_client.get("/api/access/catalog", cookies=admin).json()
+    assert isinstance(catalog, list) and catalog
+    assert all({"group", "permissions"} <= set(g) for g in catalog)
+    flat = [p for g in catalog for p in g["permissions"]]
+    assert all({"key", "description", "implies", "assignable"} <= set(p) for p in flat)
+    assert {p["key"] for p in flat} == all_keys()
+
+    roles = app_client.get("/api/access/roles", cookies=admin).json()
+    seeded = {r["system_key"]: r for r in roles if r["system_key"]}
+    assert set(seeded) == {"super_admin", "hr_admin", "financial_admin", "payroll_maker", "employee"}
+    assert all("is_system" not in r for r in roles)
+    assert [k for k, r in seeded.items() if r["is_locked"]] == ["super_admin"]
+
+
+def test_frontend_mock_catalog_matches_backend_catalog():
+    """F4: DEFAULT_CATALOG in system-access.js (mock mode) mirrors be/core/permission_catalog.py."""
+    import json
+    import os
+    import re
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "fe", "public", "js", "system-access.js")
+    with open(path, "r", encoding="utf-8") as fh:
+        source = fh.read()
+    block = source[source.index("const DEFAULT_CATALOG = ["):]
+    block = block[:block.index("\n  ];")]
+    pattern = re.compile(r'^\s*\{ key: (".*?"), group: (".*?"), description: (".*"), assignable: (true|false), implies: (\[.*?\]) \},?$')
+    mock = {}
+    for line in block.splitlines():
+        m = pattern.match(line)
+        if not m:
+            continue
+        mock[json.loads(m.group(1))] = (json.loads(m.group(2)), m.group(4) == "true", tuple(json.loads(m.group(5))))
+    real = {p.key: (p.group, p.assignable, tuple(p.implies)) for p in CATALOG}
+    assert mock == real
