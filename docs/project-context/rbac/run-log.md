@@ -732,3 +732,15 @@ Slice F1 closes the dev/test auto-provisioning and auto-linking security loophol
    - Tests changed for intentional behaviour: `_create_test_user_with_roles` skips the Employee key, `test_user_holding_both_self_and_hr_sees_all_records` assigns only `hr_admin`, `test_finance_activity_timeline.py` replaces the existing row.
 8. **Documentation updates needed:** none.
 9. **Handoff:** F3 changes the Employee baseline to come from the database role and makes lifecycle hooks transactional; it depends on the single-role constraint now present.
+
+## F3 — Employee lifecycle and editable Employee role (`RBAC-F3`)
+
+1. **Outcome:** Lifecycle hooks no longer commit. Employee create links/creates the user in the repository transaction; delete is split into `validate_employee_delete` (router, no writes) and `remove_user_for_employee` (repository, same transaction); an email change is validated (409 on collision) and `users.email` is synced inside the employee update transaction. The Employee baseline is now the database Employee role, so edits to it (including removing a permission) apply to every linked employee on the next request.
+2. **Branch intake:** `feature/rbac`, start HEAD `f54db0b`, merge-base `c236b00`.
+3. **Files changed:** `be/core/access_service.py` (hooks, `delete_role` guard), `be/core/permissions.py` (baseline from DB role, code default only when the row is missing), `be/repositories/sql/employees.py` (no `UserDB`; calls `AccessService`), `be/routers/employees.py`, `be/tests/test_rbac.py`.
+4. **Tests:** `pytest tests/test_rbac.py tests/test_employee_salary_split.py tests/test_employee_scope.py tests/test_standalone_sql_mode.py -q` → 102 passed, 0 failed. Full suites deferred to the final regression.
+5. **Acceptance:** 1 met (`test_employee_role_edit_changes_baseline_access`); 2 met (`test_employee_delete_failure_after_user_removal_rolls_back_both`); 3 met (`test_employee_create_failure_leaves_no_employee_and_no_user`); 4 met (`test_employee_email_change_collision_returns_409_and_changes_nothing`, plus `test_employee_email_change_keeps_user_email_in_sync`); 5 met (`test_employee_repository_has_no_user_writes`); 6 met (R1, R2, R4, R5, R12, R14 tests in the same file still pass unchanged).
+6. **Facts vs assumptions:** the app's global exception handler turns the forced failures into HTTP 500; the tests assert 500 and then the database state. `get_db_context` rolls back on exception, which is what makes the single-transaction behaviour hold.
+7. **Deviations and defects:** Rule added for the integrity of decision 2 (as the handoff instructs): the Employee role cannot be deleted (409 "The Employee role provides baseline access and cannot be deleted."). The old hook names `on_employee_delete` / `on_employee_email_update` (mentioned in the S5 entry above) no longer exist; that earlier entry is history and is left unchanged.
+8. **Documentation updates needed:** none (technical-spec R14 already says the email must stay in sync).
+9. **Handoff:** F4 reworks the Roles page; the Employee role is now editable with real effect, so its permission picker must not hide or special-case it.

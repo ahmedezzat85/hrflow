@@ -278,6 +278,13 @@ class AccessService:
         if role.is_locked:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Cannot edit or delete locked role '{role.name}'.")
 
+        # The Employee role provides the baseline for every linked employee
+        if role.system_key == "employee":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="The Employee role provides baseline access and cannot be deleted.",
+            )
+
         # R7: Assigned check
         assigned_count = self.db.query(UserRoleDB).filter(UserRoleDB.role_id == role.id).count()
         if assigned_count > 0:
@@ -596,6 +603,7 @@ class AccessService:
         R12: Provisions linked user for new employee.
         If existing non-archived external user exists with email, links it.
         If existing archived user exists, raises 409.
+        Works in the caller's session and does not commit; the caller commits once.
         """
         clean_email = (email or "").strip().lower()
         existing = self.db.query(UserDB).filter(func.lower(UserDB.email) == clean_email).first()
@@ -608,7 +616,7 @@ class AccessService:
             existing.employee_id = employee_id
             if name and not existing.name:
                 existing.name = name
-            self.db.commit()
+            self.db.flush()
             return existing
 
         user = UserDB(
@@ -618,16 +626,15 @@ class AccessService:
             created_at=datetime.utcnow(),
         )
         self.db.add(user)
-        self.db.commit()
+        self.db.flush()
         return user
 
-    def on_employee_delete(self, employee_id: int, actor_user: dict) -> None:
+    def validate_employee_delete(self, employee_id: int, actor_user: dict) -> None:
         """
-        Enforces R1, R2, R4, R5 when deleting an employee.
+        Enforces R1, R2, R4 before an employee is deleted. Performs no writes.
         R1: Actor cannot delete own user.
         R2: Cannot delete last active Super-Admin.
         R4: Deleting employee is rejected if linked user holds any assigned role other than baseline.
-        R5: Deleting baseline-only employee deletes linked user in the same transaction.
         """
         user = self.db.query(UserDB).filter(UserDB.employee_id == employee_id).first()
         if not user:
@@ -668,16 +675,38 @@ class AccessService:
                 detail="Cannot delete employee with assigned roles. Revoke roles on the Users page first.",
             )
 
-        # R5: Baseline-only employee: delete linked user in same transaction
-        self.db.delete(user)
-        self.db.commit()
-
-    def on_employee_email_update(self, employee_id: int, new_email: str) -> None:
+    def remove_user_for_employee(self, employee_id: int) -> None:
         """
-        R14 check/fix: Keeps users.email in sync when employee email changes.
+        R5: Deletes the baseline-only user linked to the employee. Does not commit: it runs
+        inside the repository transaction that deletes the employee.
+        """
+        user = self.db.query(UserDB).filter(UserDB.employee_id == employee_id).first()
+        if user:
+            self.db.delete(user)
+            self.db.flush()
+
+    def validate_employee_email_change(self, employee_id: int, new_email: str) -> None:
+        """Rejects (409) an employee email that another user, archived or not, already has."""
+        clean_email = (new_email or "").strip().lower()
+        clash = (
+            self.db.query(UserDB)
+            .filter(func.lower(UserDB.email) == clean_email)
+            .filter(or_(UserDB.employee_id.is_(None), UserDB.employee_id != employee_id))
+            .first()
+        )
+        if clash:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Another user already has this email.",
+            )
+
+    def sync_user_email_for_employee(self, employee_id: int, new_email: str) -> None:
+        """
+        R14: Keeps users.email in sync when the employee email changes. Does not commit: it runs
+        in the same transaction as the employee update.
         """
         clean_email = (new_email or "").strip().lower()
         user = self.db.query(UserDB).filter(UserDB.employee_id == employee_id).first()
         if user and user.email != clean_email:
             user.email = clean_email
-            self.db.commit()
+            self.db.flush()

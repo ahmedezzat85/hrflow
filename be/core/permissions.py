@@ -82,6 +82,7 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
     )
     roles_set = set(assigned_roles)
 
+    emp_role = None
     if user.employee_id is not None:
         emp_role = db.query(RoleDB).filter(RoleDB.system_key == "employee").first()
         if emp_role:
@@ -102,7 +103,8 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
                 .all()
             )
             raw_perms = {k[0] for k in rp_keys}
-        if user.employee_id is not None:
+        if user.employee_id is not None and emp_role is None:
+            # The baseline is the database Employee role; the code default only applies when that row is missing
             emp_base = DEFAULT_ROLES.get("employee")
             if emp_base:
                 raw_perms.update(emp_base.permissions)

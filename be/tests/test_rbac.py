@@ -2856,3 +2856,132 @@ def test_no_integer_literal_written_to_boolean_in_migrations():
                 if pattern.search(line):
                     offenders.append(f"{fname}:{lineno}")
     assert offenders == [], offenders
+
+
+# ============================================================================
+# RBAC-F3: employee lifecycle and editable Employee role
+# ============================================================================
+
+def _super_admin_cookies():
+    from conftest import create_test_user
+    return create_test_user("f3_admin@voyance.health", role_key="super_admin")
+
+
+def _employee_role(app_client, cookies):
+    roles = app_client.get("/api/access/roles", cookies=cookies).json()
+    return next(r for r in roles if r["system_key"] == "employee")
+
+
+def test_employee_role_edit_changes_baseline_access(app_client):
+    """F3 AC1: removing self.salary.read from the Employee role removes it for baseline-only employees."""
+    from conftest import create_test_user
+    admin = _super_admin_cookies()
+    employee = create_test_user("f3_baseline@voyance.health", employee_id=2)
+    role = _employee_role(app_client, admin)
+    assert "self.salary.read" in role["permissions"]
+    assert app_client.get("/api/salary/history", cookies=employee).status_code == 200
+
+    reduced = [k for k in role["permissions"] if k != "self.salary.read"]
+    resp = app_client.put(f"/api/access/roles/{role['id']}", json={"permissions": reduced}, cookies=admin)
+    assert resp.status_code == 200, resp.text
+    assert app_client.get("/api/salary/history", cookies=employee).status_code == 403
+
+    resp = app_client.put(f"/api/access/roles/{role['id']}", json={"permissions": role["permissions"]}, cookies=admin)
+    assert resp.status_code == 200, resp.text
+    assert app_client.get("/api/salary/history", cookies=employee).status_code == 200
+
+
+def test_employee_role_cannot_be_deleted(app_client):
+    """F3: the Employee role provides baseline access and cannot be deleted."""
+    admin = _super_admin_cookies()
+    role = _employee_role(app_client, admin)
+    resp = app_client.delete(f"/api/access/roles/{role['id']}", cookies=admin)
+    assert resp.status_code == 409
+    assert "baseline" in resp.text
+
+
+def test_employee_delete_failure_after_user_removal_rolls_back_both(app_client, monkeypatch):
+    """F3 AC2: if the delete fails after the user removal, neither row is gone."""
+    from core.access_service import AccessService
+    admin = _super_admin_cookies()
+    resp = app_client.post("/api/employees", json={"name": "Rollback Delete", "email": "rollback_delete@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 0, "external_salary_usd": 0}, cookies=admin)
+    assert resp.status_code == 201, resp.text
+    emp_id = resp.json()["id"]
+
+    original = AccessService.remove_user_for_employee
+
+    def remove_then_fail(self, employee_id):
+        original(self, employee_id)
+        raise RuntimeError("forced failure after user removal")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(AccessService, "remove_user_for_employee", remove_then_fail)
+        assert app_client.delete(f"/api/employees/{emp_id}", cookies=admin).status_code == 500
+
+    with get_db_context() as db:
+        assert db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first() is not None
+        assert db.query(UserDB).filter(UserDB.email == "rollback_delete@voyance.health").first() is not None
+
+    assert app_client.delete(f"/api/employees/{emp_id}", cookies=admin).status_code == 200
+    with get_db_context() as db:
+        assert db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first() is None
+        assert db.query(UserDB).filter(UserDB.email == "rollback_delete@voyance.health").first() is None
+
+
+def test_employee_create_failure_leaves_no_employee_and_no_user(app_client, monkeypatch):
+    """F3 AC3: a later step failing in employee creation leaves neither an employees nor a users row."""
+    from finance.services.compensation_plan_service import CompensationPlanService
+    admin = _super_admin_cookies()
+
+    def failing_set_component(self, *args, **kwargs):
+        raise RuntimeError("forced failure in compensation sync")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(CompensationPlanService, "set_component", failing_set_component)
+        resp = app_client.post(
+            "/api/employees",
+            json={"name": "Rollback Create", "email": "rollback_create@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 500, "external_salary_usd": 0},
+            cookies=admin,
+        )
+        assert resp.status_code == 500
+
+    with get_db_context() as db:
+        assert db.query(EmployeeDB).filter(EmployeeDB.email == "rollback_create@voyance.health").first() is None
+        assert db.query(UserDB).filter(UserDB.email == "rollback_create@voyance.health").first() is None
+
+
+def test_employee_email_change_collision_returns_409_and_changes_nothing(app_client):
+    """F3 AC4: an employee email that another user holds is rejected with 409 without any change."""
+    from conftest import create_test_user
+    admin = _super_admin_cookies()
+    create_test_user("f3_taken@voyance.health", role_key="hr_admin")
+    with get_db_context() as db:
+        before_email = db.query(EmployeeDB).filter(EmployeeDB.id == 2).first().email
+        before_user = db.query(UserDB).filter(UserDB.employee_id == 2).first().email
+
+    resp = app_client.put("/api/employees/2", json={"email": "f3_taken@voyance.health", "dept": "Changed Dept"}, cookies=admin)
+    assert resp.status_code == 409
+
+    with get_db_context() as db:
+        emp = db.query(EmployeeDB).filter(EmployeeDB.id == 2).first()
+        assert emp.email == before_email
+        assert emp.dept != "Changed Dept"
+        assert db.query(UserDB).filter(UserDB.employee_id == 2).first().email == before_user
+
+
+def test_employee_email_change_keeps_user_email_in_sync(app_client):
+    """R14: a free email updates the employee and the linked user in one transaction."""
+    admin = _super_admin_cookies()
+    resp = app_client.put("/api/employees/2", json={"email": "employee2.renamed@voyance.health"}, cookies=admin)
+    assert resp.status_code == 200, resp.text
+    with get_db_context() as db:
+        assert db.query(EmployeeDB).filter(EmployeeDB.id == 2).first().email == "employee2.renamed@voyance.health"
+        assert db.query(UserDB).filter(UserDB.employee_id == 2).first().email == "employee2.renamed@voyance.health"
+
+
+def test_employee_repository_has_no_user_writes():
+    """F3 AC5: the HR repository neither queries nor deletes UserDB itself."""
+    import os
+    path = os.path.join(os.path.dirname(__file__), "..", "repositories", "sql", "employees.py")
+    with open(path, "r", encoding="utf-8") as fh:
+        assert "UserDB" not in fh.read()
