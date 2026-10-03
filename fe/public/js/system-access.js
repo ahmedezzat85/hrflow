@@ -12,6 +12,8 @@
   let _currentEditingRoleId = null;
   let _currentAssignUserId = null;
   let _userExplicitPermissions = new Set();
+  let _pickerReadOnly = false;
+  let _userSearchTimer = null;
 
   function isMockMode() {
     return typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
@@ -154,11 +156,12 @@
 
   // Same shape as GET /api/access/users: one assigned role (or null). Employee access is derived, never listed.
   const INITIAL_MOCK_USERS = [
-    { id: 1, name: "Sarah Connor", email: "sarah@voyance.com", employee_id: 1, is_external: false, archived_at: null, role: { id: 1, name: "Super-Admin", system_key: "super_admin" } },
+    { id: 1, name: "Sarah Connor", email: "sarah@voyance.com", employee_id: 1, is_external: false, is_self: true, archived_at: null, role: { id: 1, name: "Super-Admin", system_key: "super_admin" } },
     { id: 2, name: "John Doe", email: "john@voyance.com", employee_id: 2, is_external: false, archived_at: null, role: null },
     { id: 3, name: "Alex Rivera", email: "alex@voyance.com", employee_id: 3, is_external: false, archived_at: null, role: { id: 2, name: "HR-Admin", system_key: "hr_admin" } },
     { id: 4, name: "Elena Rostova", email: "elena@voyance.com", employee_id: 4, is_external: false, archived_at: null, role: { id: 3, name: "Financial-Admin", system_key: "financial_admin" } },
-    { id: 5, name: "Marcus Vance", email: "marcus@voyance.com", employee_id: 5, is_external: false, archived_at: null, role: { id: 4, name: "Payroll-Maker", system_key: "payroll_maker" } }
+    { id: 5, name: "Marcus Vance", email: "marcus@voyance.com", employee_id: 5, is_external: false, archived_at: null, role: { id: 4, name: "Payroll-Maker", system_key: "payroll_maker" } },
+    { id: 6, name: "Priya Nair", email: "priya@partner.example", employee_id: null, is_external: true, archived_at: null, role: { id: 3, name: "Financial-Admin", system_key: "financial_admin" } }
   ];
 
   function escHtml(val) {
@@ -298,6 +301,7 @@
   }
 
   function renderPermissionPicker(readOnly) {
+    _pickerReadOnly = !!readOnly;
     const container = document.getElementById('rolePermissionsContainer');
     if (!container) return;
 
@@ -511,6 +515,14 @@
      USERS LOGIC
      ========================================================================== */
 
+  function currentUsersFilter() {
+    return document.getElementById('systemUsersFilter')?.value || 'all';
+  }
+
+  function currentUsersSearch() {
+    return (document.getElementById('systemUsersSearch')?.value || '').trim();
+  }
+
   async function loadUsers() {
     const loadingBar = document.getElementById('usersTableLoadingBar');
     if (loadingBar) loadingBar.style.display = 'block';
@@ -520,7 +532,8 @@
           _systemUsers = JSON.parse(JSON.stringify(INITIAL_MOCK_USERS));
         }
       } else {
-        const data = await Api.getUsers();
+        // Filter and search are applied by the server (GET /api/access/users?filter=&search=)
+        const data = await Api.getUsers({ filter: currentUsersFilter(), search: currentUsersSearch() });
         _systemUsers = Array.isArray(data) ? data : (data.users || []);
       }
       renderUsersTable();
@@ -531,18 +544,32 @@
     }
   }
 
+  // Mock mode applies the same All / Employees / External / Archived rules the server does.
+  function matchesUsersFilter(u, filter) {
+    const archived = !!u.archived_at;
+    if (filter === 'archived') return archived;
+    if (archived) return filter === 'all';
+    if (filter === 'employees') return !!u.employee_id;
+    if (filter === 'external') return !u.employee_id;
+    return true;
+  }
+
   function renderUsersTable() {
     const tbody = document.getElementById('systemUsersTableBody');
     if (!tbody) return;
 
-    const q = (document.getElementById('systemUsersSearch')?.value || '').toLowerCase().trim();
+    const q = currentUsersSearch().toLowerCase();
     const roleFilter = document.getElementById('systemUsersRoleFilter')?.value || 'all';
+    const mock = isMockMode();
+    const filter = currentUsersFilter();
 
     const filtered = _systemUsers.filter(u => {
       const roleName = (getUserRole(u) || {}).name || '';
-      const matchesSearch = !q || (u.name && u.name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q)) || roleName.toLowerCase().includes(q);
+      // Real mode: the server already applied filter and search; only the role dropdown is client-side.
+      const matchesSearch = !mock || !q || (u.name && u.name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q)) || roleName.toLowerCase().includes(q);
+      const matchesKind = !mock || matchesUsersFilter(u, filter);
       const matchesRole = roleFilter === 'all' || roleName === roleFilter;
-      return matchesSearch && matchesRole;
+      return matchesSearch && matchesKind && matchesRole;
     });
 
     if (filtered.length === 0) {
@@ -551,7 +578,9 @@
     }
 
     tbody.innerHTML = filtered.map(u => {
-      const isArchived = !!u.is_archived || !!u.archived_at;
+      const uid = Number(u.id);
+      const isArchived = !!u.archived_at;
+      const isSelf = !!u.is_self;
       const statusPill = isArchived
         ? `<span class="badge" style="background:var(--danger-soft, #fee2e2); color:var(--danger, #ef4444);"><i class="fa-solid fa-circle-xmark"></i> Archived</span>`
         : `<span class="badge" style="background:var(--success-soft, #dcfce7); color:var(--success, #10b981);"><i class="fa-solid fa-circle-check"></i> Active</span>`;
@@ -561,27 +590,34 @@
         ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent); margin-right:4px;">${escHtml(assignedRole.name)}</span>`
         : `<span style="color:var(--text3); font-size:12px;">${u.employee_id ? 'Employee access only' : 'No role'}</span>`;
 
+      const selfTitle = 'You cannot change your own access';
+      let actions;
+      if (isArchived) {
+        // Archived users keep their record but offer no actions (no reinstatement control until Q-006 is decided)
+        actions = '<span style="color:var(--text3); font-size:12px;">—</span>';
+      } else {
+        actions = `
+            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}"` : 'title="Assign role"'}>
+              <i class="fa-solid fa-user-gear"></i> Role
+            </button>
+            <button class="btn btn-sm btn-outline btn-archive-user" onclick="archiveUser(${uid})" ${isSelf ? `disabled title="${selfTitle}"` : 'title="Archive user account"'} style="${isSelf ? 'opacity:0.4; cursor:not-allowed;' : 'color:var(--danger); border-color:var(--danger);'}">
+              <i class="fa-solid fa-user-slash"></i> Archive
+            </button>`;
+      }
+
       return `
-        <tr data-user-id="${u.id}">
+        <tr data-user-id="${uid}">
           <td data-label="User" class="tname">
-            <div class="avatar">${initials(u.name || u.email)}</div>
+            <div class="avatar">${escHtml(initials(u.name || u.email))}</div>
             <div>
               <div style="font-weight:600; color:var(--text);">${escHtml(u.name || 'External User')}</div>
-              ${u.employee_id ? `<div style="font-size:11px; color:var(--text3);">Employee #${u.employee_id}</div>` : `<div style="font-size:11px; color:var(--text3);">External Account</div>`}
+              ${u.employee_id ? `<div style="font-size:11px; color:var(--text3);">Employee #${escHtml(u.employee_id)}</div>` : `<span class="badge badge-external" style="font-size:10.5px; padding:1px 6px; background:var(--surface2); color:var(--text2);">External</span>`}
             </div>
           </td>
           <td data-label="Email" style="color:var(--text2); font-size:13px;">${escHtml(u.email)}</td>
-          <td data-label="Role">${roleBadges}</td>
+          <td data-label="Role">${isArchived ? '<span style="color:var(--text3); font-size:12px;">—</span>' : roleBadges}</td>
           <td data-label="Status">${statusPill}</td>
-          <td data-label="Actions" class="col-actions">
-            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${u.id})" title="Assign role">
-              <i class="fa-solid fa-user-gear"></i> Role
-            </button>
-            ${isArchived
-              ? `<button class="btn btn-sm btn-outline btn-unarchive-user" onclick="toggleUserArchive(${u.id}, false)" title="Restore user access" style="color:var(--success); border-color:var(--success);"><i class="fa-solid fa-rotate-left"></i> Restore</button>`
-              : `<button class="btn btn-sm btn-outline btn-archive-user" onclick="toggleUserArchive(${u.id}, true)" title="Archive user account" style="color:var(--danger); border-color:var(--danger);"><i class="fa-solid fa-user-slash"></i> Archive</button>`
-            }
-          </td>
+          <td data-label="Actions" class="col-actions">${actions}</td>
         </tr>
       `;
     }).join('');
@@ -676,30 +712,86 @@
     }
   };
 
-  window.toggleUserArchive = async function(userId, archive) {
+  window.archiveUser = async function(userId) {
     const user = _systemUsers.find(u => u.id === userId);
-    if (!user) return;
+    if (!user || user.is_self) return;
 
-    const actionText = archive ? 'archive' : 'restore';
-    if (!confirm(`Are you sure you want to ${actionText} user account "${user.email}"?`)) return;
+    if (!confirm(`Are you sure you want to archive user account "${user.email}"?`)) return;
 
     try {
       if (isMockMode()) {
-        user.is_archived = archive;
-        user.archived_at = archive ? new Date().toISOString() : null;
-        toast(`User account ${archive ? 'archived' : 'restored'}`);
+        user.archived_at = new Date().toISOString();
+        toast('User account archived');
         renderUsersTable();
       } else {
-        if (archive) {
-          await Api.archiveUser(userId);
-        } else {
-          await Api.unarchiveUser(userId);
-        }
-        toast(`User account ${archive ? 'archived' : 'restored'}`);
+        await Api.archiveUser(userId);
+        toast('User account archived');
         await loadUsers();
       }
     } catch (err) {
-      toast(err.message || `Failed to ${actionText} user`, 'fa-solid fa-triangle-exclamation');
+      toast(err.message || 'Failed to archive user', 'fa-solid fa-triangle-exclamation');
+    }
+  };
+
+  window.openExternalUserModal = async function() {
+    await loadRoles();
+    document.getElementById('fExtUserEmail').value = '';
+    document.getElementById('fExtUserName').value = '';
+    // One role is required; the derived Employee role is never offered
+    const select = document.getElementById('fExtUserRole');
+    select.innerHTML = '<option value="">Select a role…</option>' + _systemRoles
+      .filter(role => !isEmployeeBaselineRole(role))
+      .map(role => `<option value="${Number(role.id)}">${escHtml(role.name)}</option>`)
+      .join('');
+    openModal('externalUserModal');
+  };
+
+  window.saveExternalUser = async function(evt) {
+    const btn = (evt && evt.currentTarget) || document.getElementById('extUserSaveBtn');
+    const email = document.getElementById('fExtUserEmail').value.trim();
+    const name = document.getElementById('fExtUserName').value.trim();
+    const roleId = parseInt(document.getElementById('fExtUserRole').value, 10);
+
+    if (!email) {
+      toast('Please enter an email address', 'fa-solid fa-triangle-exclamation');
+      return;
+    }
+    if (isNaN(roleId)) {
+      toast('Please select a role for the external user', 'fa-solid fa-triangle-exclamation');
+      return;
+    }
+
+    setButtonLoading(btn, true, 'Saving...');
+    try {
+      if (isMockMode()) {
+        if (_systemUsers.some(u => (u.email || '').toLowerCase() === email.toLowerCase())) {
+          throw new Error('A user with this email already exists.');
+        }
+        const picked = _systemRoles.find(r => r.id === roleId);
+        const newId = _systemUsers.length ? Math.max(..._systemUsers.map(u => u.id)) + 1 : 1;
+        _systemUsers.push({
+          id: newId,
+          name: name || email.split('@')[0],
+          email,
+          employee_id: null,
+          is_external: true,
+          is_self: false,
+          archived_at: null,
+          role: picked ? { id: picked.id, name: picked.name, system_key: picked.system_key || null } : null
+        });
+        toast('External user added');
+        closeModal('externalUserModal');
+        renderUsersTable();
+      } else {
+        await Api.createExternalUser({ email, name, role_id: roleId });
+        toast('External user added');
+        closeModal('externalUserModal');
+        await loadUsers();
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to add external user', 'fa-solid fa-triangle-exclamation');
+    } finally {
+      setButtonLoading(btn, false);
     }
   };
 
@@ -707,12 +799,23 @@
   document.addEventListener('DOMContentLoaded', () => {
     const permSearch = document.getElementById('rolePermSearch');
     if (permSearch) {
-      permSearch.addEventListener('input', () => renderPermissionPicker());
+      permSearch.addEventListener('input', () => renderPermissionPicker(_pickerReadOnly));
     }
 
     const userSearch = document.getElementById('systemUsersSearch');
     if (userSearch) {
-      userSearch.addEventListener('input', () => renderUsersTable());
+      userSearch.addEventListener('input', () => {
+        if (isMockMode()) { renderUsersTable(); return; }
+        clearTimeout(_userSearchTimer);
+        _userSearchTimer = setTimeout(() => loadUsers(), 250);
+      });
+    }
+
+    const kindFilter = document.getElementById('systemUsersFilter');
+    if (kindFilter) {
+      kindFilter.addEventListener('change', () => {
+        if (isMockMode()) renderUsersTable(); else loadUsers();
+      });
     }
 
     const roleFilter = document.getElementById('systemUsersRoleFilter');

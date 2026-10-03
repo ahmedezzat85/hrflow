@@ -11,6 +11,7 @@ Verifies:
 - Fatal error handling when RBAC sync fails on startup
 - require_permission route protection
 """
+import datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -3029,3 +3030,84 @@ def test_frontend_mock_catalog_matches_backend_catalog():
         mock[json.loads(m.group(1))] = (json.loads(m.group(2)), m.group(4) == "true", tuple(json.loads(m.group(5))))
     real = {p.key: (p.group, p.assignable, tuple(p.implies)) for p in CATALOG}
     assert mock == real
+
+
+# ============================================================================
+# RBAC-F5: Users page (no restore, filters, is_self)
+# ============================================================================
+
+def test_restore_endpoints_removed_and_no_restore_text_in_frontend(app_client):
+    """F5 AC1: unarchive/restore routes are gone (404/405) and the frontend has no restore control."""
+    import os
+    from conftest import create_test_user
+    admin = create_test_user("f5_admin@voyance.health", role_key="super_admin")
+    target = create_test_user("f5_target@voyance.health", role_key="payroll_maker")
+    with get_db_context() as db:
+        target_id = db.query(UserDB).filter(UserDB.email == "f5_target@voyance.health").first().id
+    assert app_client.post(f"/api/access/users/{target_id}/archive", cookies=admin).status_code == 200
+    for suffix in ("unarchive", "restore"):
+        resp = app_client.post(f"/api/access/users/{target_id}/{suffix}", cookies=admin)
+        assert resp.status_code in (404, 405), (suffix, resp.status_code)
+    with get_db_context() as db:
+        assert db.query(UserDB).filter(UserDB.id == target_id).first().archived_at is not None
+
+    fe_dir = os.path.join(os.path.dirname(__file__), "..", "..", "fe")
+    for rel in ("api.js", os.path.join("public", "js", "system-access.js"),
+                os.path.join("src", "partials", "admin", "sections", "system-users.html"),
+                os.path.join("src", "partials", "modals", "assign-roles-modal.html")):
+        with open(os.path.join(fe_dir, rel), "r", encoding="utf-8") as fh:
+            text = fh.read().lower()
+        assert "unarchive" not in text, rel
+        assert "restore" not in text.replace("restoresession", ""), rel
+
+
+def test_users_list_filters_search_and_is_self(app_client):
+    """F5 AC2/AC3: filters return the right rows, External users are flagged, and the acting user's row has is_self."""
+    from conftest import create_test_user
+    admin = create_test_user("f5_lister@voyance.health", role_key="super_admin", name="F5 Lister")
+    create_test_user("f5_external@voyance.health", role_key="hr_admin", name="F5 External")
+    create_test_user("f5_archived@voyance.health", role_key="payroll_maker", name="F5 Archived")
+    with get_db_context() as db:
+        archived = db.query(UserDB).filter(UserDB.email == "f5_archived@voyance.health").first()
+        archived.archived_at = datetime.datetime.utcnow()
+        db.commit()
+
+    def emails(query):
+        resp = app_client.get(f"/api/access/users{query}", cookies=admin)
+        assert resp.status_code == 200
+        return resp.json()
+
+    everyone = emails("")
+    by_email = {u["email"]: u for u in everyone}
+    assert by_email["f5_lister@voyance.health"]["is_self"] is True
+    assert sum(1 for u in everyone if u["is_self"]) == 1
+
+    external = emails("?filter=external")
+    assert external and all(u["is_external"] and u["archived_at"] is None for u in external)
+    assert "f5_external@voyance.health" in {u["email"] for u in external}
+    assert "f5_archived@voyance.health" not in {u["email"] for u in external}
+
+    employees = emails("?filter=employees")
+    assert employees and all(u["employee_id"] is not None and u["archived_at"] is None for u in employees)
+
+    archived_rows = emails("?filter=archived")
+    assert [u["email"] for u in archived_rows] == ["f5_archived@voyance.health"]
+
+    found = emails("?search=F5%20External")
+    assert [u["email"] for u in found] == ["f5_external@voyance.health"]
+
+
+def test_create_external_user_requires_a_role_and_rejects_employee_role(app_client):
+    """F5 AC4 (server side): the form's rules are enforced by POST /api/access/users."""
+    from conftest import create_test_user
+    admin = create_test_user("f5_creator@voyance.health", role_key="super_admin")
+    roles = app_client.get("/api/access/roles", cookies=admin).json()
+    hr = next(r for r in roles if r["system_key"] == "hr_admin")
+    employee = next(r for r in roles if r["system_key"] == "employee")
+
+    assert app_client.post("/api/access/users", json={"email": "norole@partner.example", "name": "No Role"}, cookies=admin).status_code == 422
+    assert app_client.post("/api/access/users", json={"email": "emp@partner.example", "name": "Emp", "role_id": employee["id"]}, cookies=admin).status_code == 422
+    resp = app_client.post("/api/access/users", json={"email": "ok@partner.example", "name": "Ok User", "role_id": hr["id"]}, cookies=admin)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["is_external"] is True
+    assert resp.json()["role"]["system_key"] == "hr_admin"

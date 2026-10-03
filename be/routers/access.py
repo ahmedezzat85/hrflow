@@ -74,6 +74,7 @@ class UserAccessRowResponse(BaseModel):
     is_external: bool
     role: Optional[RoleSummary] = None
     archived_at: Optional[str] = None
+    is_self: bool = False
 
 
 class UserCreateExternalRequest(BaseModel):
@@ -182,7 +183,7 @@ def list_users(
     current_user: dict = Depends(require_permission("system.users.manage")),
 ):
     """Lists users with search and filter: all, employees, external, archived."""
-    return service.list_users(search=search, filter_type=filter or "all")
+    return service.list_users(search=search, filter_type=filter or "all", actor_user=current_user)
 
 
 @router.post("/users", response_model=UserAccessRowResponse, status_code=status.HTTP_201_CREATED)
@@ -226,17 +227,6 @@ def archive_user(
     return service.archive_user(user_id=user_id, actor_user=current_user)
 
 
-@router.post("/users/{user_id}/unarchive")
-@router.post("/users/{user_id}/restore")
-def unarchive_user(
-    user_id: int = Path(..., description="User ID to unarchive"),
-    service: AccessService = Depends(get_access_service),
-    current_user: dict = Depends(require_permission("system.users.manage")),
-):
-    """Restores an archived user."""
-    return service.unarchive_user(user_id=user_id, actor_user=current_user)
-
-
 get_catalog.hrflow_permission_all = "system.roles.manage"
 list_roles.hrflow_permission_all = "system.roles.manage"
 create_role.hrflow_permission_all = "system.roles.manage"
@@ -246,4 +236,3 @@ list_users.hrflow_permission_all = "system.users.manage"
 create_external_user.hrflow_permission_all = "system.users.manage"
 set_user_role.hrflow_permission_all = "system.users.manage"
 archive_user.hrflow_permission_all = "system.users.manage"
-unarchive_user.hrflow_permission_all = "system.users.manage"

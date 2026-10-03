@@ -455,13 +455,18 @@ const Api = {
   createRole(payload) { return apiRequest("POST", "/api/access/roles", payload); },
   updateRole(roleId, payload) { return apiRequest("PUT", `/api/access/roles/${encodeURIComponent(roleId)}`, payload); },
   deleteRole(roleId) { return apiRequest("DELETE", `/api/access/roles/${encodeURIComponent(roleId)}`); },
-  getUsers() { return apiRequest("GET", "/api/access/users"); },
+  getUsers(params) {
+    const q = new URLSearchParams();
+    if (params && params.filter && params.filter !== "all") q.set("filter", params.filter);
+    if (params && params.search) q.set("search", params.search);
+    return apiRequest("GET", `/api/access/users${q.toString() ? `?${q.toString()}` : ""}`);
+  },
+  createExternalUser(payload) { return apiRequest("POST", "/api/access/users", payload); },
   // One assigned role per user. roleId null clears it (linked employees only; Employee access is derived).
   setUserRole(userId, roleId) {
     return apiRequest("PUT", `/api/access/users/${encodeURIComponent(userId)}/role`, { role_id: roleId ?? null });
   },
   archiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/archive`); },
-  unarchiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/unarchive`); },
 
   health() { return apiRequest("GET", "/api/health", null, false); },
   getLastCorrelationId() { return _lastCorrelationId; },

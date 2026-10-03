@@ -130,26 +130,49 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
   });
 
   test('Users page: table rendering, searching, filtering, role assignment and archiving', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => errors.push(String(err)));
+    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.location().url.includes('favicon')) errors.push(msg.text()); });
+
     await page.click('#systemRailBtn');
     await page.click('#systemNavUsers');
     await expect(page.locator('#a-system-users')).toBeVisible();
 
     const tbody = page.locator('#systemUsersTableBody');
-    await expect(tbody.locator('tr')).toHaveCount(5);
+    await expect(tbody.locator('tr')).toHaveCount(6);
+
+    // Own row: Role and Archive are disabled with the explanation
+    const selfRow = tbody.locator('tr:has-text("Sarah Connor")');
+    await expect(selfRow.locator('.btn-assign-roles')).toBeDisabled();
+    await expect(selfRow.locator('.btn-archive-user')).toBeDisabled();
+    await expect(selfRow.locator('.btn-archive-user')).toHaveAttribute('title', 'You cannot change your own access');
 
     // Search filter
     await page.fill('#systemUsersSearch', 'Elena');
     await expect(tbody.locator('tr')).toHaveCount(1);
     await expect(tbody.locator('tr:has-text("Elena Rostova")')).toBeVisible();
     await page.fill('#systemUsersSearch', '');
-    await expect(tbody.locator('tr')).toHaveCount(5);
+    await expect(tbody.locator('tr')).toHaveCount(6);
 
-    // Role filter
+    // Role filter (client side, second filter)
     await page.selectOption('#systemUsersRoleFilter', 'Payroll-Maker');
     await expect(tbody.locator('tr')).toHaveCount(1);
     await expect(tbody.locator('tr:has-text("Marcus Vance")')).toBeVisible();
     await page.selectOption('#systemUsersRoleFilter', 'all');
+    await expect(tbody.locator('tr')).toHaveCount(6);
+
+    // Kind filter: All / Employees / External / Archived
+    await page.selectOption('#systemUsersFilter', 'employees');
     await expect(tbody.locator('tr')).toHaveCount(5);
+    await expect(tbody.locator('tr:has-text("Priya Nair")')).toHaveCount(0);
+    await page.selectOption('#systemUsersFilter', 'external');
+    await expect(tbody.locator('tr')).toHaveCount(1);
+    await expect(tbody.locator('tr:has-text("Priya Nair") .badge:has-text("External")')).toBeVisible();
+    await page.selectOption('#systemUsersFilter', 'archived');
+    await expect(tbody.locator('tr')).toHaveCount(1);
+    await expect(tbody).toContainText('No users found.');
+    await page.selectOption('#systemUsersFilter', 'all');
+    await expect(tbody.locator('tr')).toHaveCount(6);
 
     // Assign Role to John Doe
     const johnRow = tbody.locator('tr:has-text("John Doe")');
@@ -174,17 +197,54 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     await expect(johnRow.locator('.badge:has-text("Payroll-Maker")')).toBeVisible();
     await expect(johnRow.locator('.badge:has-text("HR-Admin")')).toHaveCount(0);
 
-    // Archive Marcus Vance
+    // Archive Marcus Vance: archived rows show no Role, no Archive, and there is no restore
     page.on('dialog', async dialog => {
       await dialog.accept();
     });
     const marcusRow = tbody.locator('tr:has-text("Marcus Vance")');
     await marcusRow.locator('.btn-archive-user').click();
     await expect(marcusRow.locator('.badge:has-text("Archived")')).toBeVisible();
+    await expect(marcusRow.locator('.btn-assign-roles')).toHaveCount(0);
+    await expect(marcusRow.locator('.btn-archive-user')).toHaveCount(0);
+    await expect(marcusRow.locator('.btn-unarchive-user')).toHaveCount(0);
+    await expect(marcusRow).not.toContainText('Restore');
+    await page.selectOption('#systemUsersFilter', 'archived');
+    await expect(tbody.locator('tr')).toHaveCount(1);
+    await page.selectOption('#systemUsersFilter', 'all');
 
-    // Restore Marcus Vance
-    await marcusRow.locator('.btn-unarchive-user').click();
-    await expect(marcusRow.locator('.badge:has-text("Active")')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('Users page: add an external user requires a role and shows the External badge', async ({ page }) => {
+    await page.click('#systemRailBtn');
+    await page.click('#systemNavUsers');
+    const tbody = page.locator('#systemUsersTableBody');
+    await expect(tbody.locator('tr')).toHaveCount(6);
+
+    await page.click('#btnAddExternalUser');
+    const modal = page.locator('#externalUserModal');
+    await expect(modal).toHaveClass(/active/);
+
+    // The derived Employee role is not offered
+    await expect(modal.locator('#fExtUserRole option', { hasText: 'Employee' })).toHaveCount(0);
+    await expect(modal.locator('#fExtUserRole option', { hasText: 'HR-Admin' })).toHaveCount(1);
+
+    // Without a role the form is blocked
+    await modal.locator('#fExtUserEmail').fill('auditor@partner.example');
+    await modal.locator('#fExtUserName').fill('Ada Auditor');
+    await modal.locator('#extUserSaveBtn').click();
+    await expect(modal).toHaveClass(/active/);
+    await expect(tbody.locator('tr')).toHaveCount(6);
+
+    // With a role the user appears with the External badge
+    await modal.locator('#fExtUserRole').selectOption({ label: 'HR-Admin' });
+    await modal.locator('#extUserSaveBtn').click();
+    await expect(modal).not.toHaveClass(/active/);
+    const row = tbody.locator('tr:has-text("Ada Auditor")');
+    await expect(row).toBeVisible();
+    await expect(row.locator('.badge:has-text("External")')).toBeVisible();
+    await expect(row.locator('.badge:has-text("HR-Admin")')).toBeVisible();
+    await expect(tbody.locator('tr')).toHaveCount(7);
   });
 
 });

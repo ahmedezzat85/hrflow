@@ -312,12 +312,14 @@ class AccessService:
     # -------------------------------------------------------------------------
     # Users
     # -------------------------------------------------------------------------
-    def list_users(self, search: Optional[str] = None, filter_type: str = "all") -> List[Dict[str, Any]]:
+    def list_users(self, search: Optional[str] = None, filter_type: str = "all", actor_user: Optional[dict] = None) -> List[Dict[str, Any]]:
         """
         Lists users with search and filter.
         Filters: all | employees | external | archived
-        Row: id, email, name, employee_id, employee_name, is_external, role (single assigned role or null; Employee baseline never listed), archived_at.
+        Row: id, email, name, employee_id, employee_name, is_external, role (single assigned role or null; Employee baseline never listed), archived_at, is_self (the row is the acting user).
         """
+        actor_uid = (actor_user or {}).get("uid") or (actor_user or {}).get("id")
+        actor_email = ((actor_user or {}).get("email") or "").strip().lower()
         query = self.db.query(UserDB)
 
         clean_filter = (filter_type or "all").lower().strip()
@@ -354,6 +356,7 @@ class AccessService:
                 "is_external": is_external,
                 "role": _role_summary(_assigned_role(u)),
                 "archived_at": u.archived_at.isoformat() if u.archived_at else None,
+                "is_self": bool(actor_user) and ((actor_uid is not None and u.id == actor_uid) or (bool(actor_email) and u.email.strip().lower() == actor_email)),
             })
         return result
 
@@ -561,29 +564,6 @@ class AccessService:
             )
 
         return {"message": "User archived", "id": user.id}
-
-    def unarchive_user(self, user_id: int, actor_user: dict) -> Dict[str, Any]:
-        """
-        Restores an archived user account.
-        """
-        user = self.get_user_by_id(user_id)
-        actor_email = (actor_user.get("email") or "").strip().lower()
-
-        user.archived_at = None
-        user.archived_by = None
-        self.db.commit()
-
-        if self.audit_repo:
-            audit_log(
-                self.audit_repo,
-                "user.unarchive",
-                actor_email,
-                "user",
-                user.id,
-                f"unarchived_by={actor_email}",
-            )
-
-        return {"message": "User restored", "id": user.id}
 
     # -------------------------------------------------------------------------
     # Employee Lifecycle Hooks (R4, R5, R12, R14)

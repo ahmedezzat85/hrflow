@@ -756,3 +756,15 @@ Slice F1 closes the dev/test auto-provisioning and auto-linking security loophol
 7. **Deviations and defects:** Playwright tests changed for intentional behavior listed in F4: five roles (was four), Super-Admin Edit is now an enabled "View", seeded non-locked roles can be deleted when unassigned (server R7 decides), no "(implied)" disabled ticks. Not fixed: the permission filter input `#rolePermSearch` has no event handler (pre-existing).
 8. **Documentation updates needed:** none.
 9. **Handoff:** F5 removes restore and extends the Users page; it uses the same `openModal` fix and the same mock shapes.
+
+## F5 — Users page (`RBAC-F5`)
+
+1. **Outcome:** Restore of archived users is removed (routes, service method, API call, button, test step). `GET /api/access/users` rows carry `is_self`; the page disables Role and Archive on the signed-in user's row ("You cannot change your own access"), archived rows show no Role and no Archive, users without an employee carry an **External** badge, an All / Employees / External / Archived filter and the search are sent to the server (`?filter=`, `?search=`), and "Add external user" (email, name, one role; Employee not offered) posts to `POST /api/access/users`. Mock mode reproduces all of it.
+2. **Branch intake:** `feature/rbac`, start HEAD `3e92563`, merge-base `c236b00`.
+3. **Files changed:** `be/routers/access.py`, `be/core/access_service.py`, `be/tests/test_rbac.py`, `fe/api.js` (`getUsers(params)`, `createExternalUser`, `unarchiveUser` removed), `fe/public/js/system-access.js`, `fe/src/partials/admin/sections/system-users.html`, `fe/src/partials/modals/external-user-modal.html` (new), `fe/src/index.html`, `fe/tests/ui/rbac-system-pages.spec.js`.
+4. **Tests:** `pytest tests/test_rbac.py -q` → 86 passed. `npm run build` OK. `npx playwright test tests/ui/rbac-system-pages.spec.js tests/ui/rbac-navigation-gating.spec.js --reporter=line` → 9 passed. Full suites deferred to the final regression.
+5. **Acceptance:** 1 met (`test_restore_endpoints_removed_and_no_restore_text_in_frontend`); 2 met on the server (`test_users_list_filters_search_and_is_self`) and in mock mode (Playwright users test); not browser-tested against a live backend; 3 met (Playwright users test, `is_self` in the server test); 4 met (Playwright "add an external user…" and `test_create_external_user_requires_a_role_and_rejects_employee_role`); 5 met.
+6. **Facts vs assumptions:** In real mode the page lets the server filter and search and keeps only the role dropdown client-side; in mock mode the same filter rules run in the browser.
+7. **Deviations and defects:** Playwright users test changed for intentional behavior (6 mock users incl. one External user, Restore step removed). Correction to the F4 entry: `#rolePermSearch` **is** wired (DOMContentLoaded listener); F4 had broken it for locked roles only and F5 keeps the read-only state when re-rendering.
+8. **Documentation updates needed:** none; Q-006 stays open.
+9. **Handoff:** F6 makes the coverage test read markers from the dependency tree.

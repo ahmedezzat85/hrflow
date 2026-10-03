@@ -5,6 +5,15 @@
               <p class="section-subtitle">Manage user identity, the assigned role, and account access status.</p>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-fill" id="btnAddExternalUser" onclick="openExternalUserModal()"><i class="fa-solid fa-user-plus"></i> Add external user</button>
+              <div class="filter-group">
+                <select id="systemUsersFilter" class="filter-select" aria-label="Show users" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); font-size: 13px;">
+                  <option value="all">All</option>
+                  <option value="employees">Employees</option>
+                  <option value="external">External</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
               <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="systemUsersSearch" placeholder="Search by name, email, or role...">
