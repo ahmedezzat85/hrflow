@@ -56,6 +56,17 @@
         'a-finance-payroll-settings',
       ],
     },
+    system: {
+      id: 'system',
+      title: 'System',
+      sub: 'Roles, permissions and user accounts',
+      icon: 'fa-shield-halved',
+      groupId: 'adminSystemNavGroup',
+      pages: [
+        'a-system-roles',
+        'a-system-users',
+      ],
+    },
   };
 
   let activeModuleId = 'hr';
@@ -72,15 +83,25 @@
   }
 
   function canSeeModule(moduleId) {
-    if (moduleId === 'hr') return true;
-    if (moduleId === 'finance' || moduleId === 'payroll') {
-      if (typeof SessionInfo === 'undefined') return true;
+    if (typeof SessionInfo === 'undefined') return true;
+    const perms = typeof SessionInfo.getPermissions === 'function' ? SessionInfo.getPermissions() : [];
+    if (perms.length === 0) {
       const role = SessionInfo.getRole();
-      const perms = typeof SessionInfo.getPermissions === 'function' ? SessionInfo.getPermissions() : [];
-      const hasFinancePerm = perms.some((p) => p.startsWith('finance.'));
-      return role === 'admin' || role === 'system_admin' || hasFinancePerm;
+      if (!role) return true;
     }
-    return true;
+    if (moduleId === 'hr') {
+      return perms.some((p) => p.startsWith('hr.'));
+    }
+    if (moduleId === 'finance') {
+      return perms.some((p) => p.startsWith('finance.') && !p.startsWith('finance.payroll.') && !p.startsWith('finance.payroll_tax.'));
+    }
+    if (moduleId === 'payroll') {
+      return perms.some((p) => p.startsWith('finance.payroll.') || p.startsWith('finance.payroll_tax.'));
+    }
+    if (moduleId === 'system') {
+      return perms.includes('system.roles.manage') || perms.includes('system.users.manage');
+    }
+    return false;
   }
 
   function setModule(moduleId) {
@@ -106,35 +127,22 @@
     if (subEl) subEl.textContent = MODULES[moduleId].sub;
 
     // Switch visible nav group in panel
-    const hrGroup = document.getElementById('adminHrNavGroup');
-    const financeGroup = document.getElementById('adminFinanceNavGroup');
-    const payrollGroup = document.getElementById('adminPayrollNavGroup');
+    const groups = {
+      hr: document.getElementById('adminHrNavGroup'),
+      finance: document.getElementById('adminFinanceNavGroup'),
+      payroll: document.getElementById('adminPayrollNavGroup'),
+      system: document.getElementById('adminSystemNavGroup'),
+    };
 
-    if (moduleId === 'hr') {
-      if (hrGroup) hrGroup.removeAttribute('hidden');
-      if (financeGroup) financeGroup.setAttribute('hidden', 'until-found');
-      if (payrollGroup) payrollGroup.setAttribute('hidden', 'until-found');
-    } else if (moduleId === 'finance') {
-      if (hrGroup) hrGroup.setAttribute('hidden', 'until-found');
-      if (financeGroup) {
-        if (canSeeModule('finance')) {
-          financeGroup.removeAttribute('hidden');
-        } else {
-          financeGroup.setAttribute('hidden', 'until-found');
-        }
+    Object.keys(groups).forEach((modId) => {
+      const el = groups[modId];
+      if (!el) return;
+      if (modId === moduleId && canSeeModule(modId)) {
+        el.removeAttribute('hidden');
+      } else {
+        el.setAttribute('hidden', 'until-found');
       }
-      if (payrollGroup) payrollGroup.setAttribute('hidden', 'until-found');
-    } else if (moduleId === 'payroll') {
-      if (hrGroup) hrGroup.setAttribute('hidden', 'until-found');
-      if (financeGroup) financeGroup.setAttribute('hidden', 'until-found');
-      if (payrollGroup) {
-        if (canSeeModule('payroll')) {
-          payrollGroup.removeAttribute('hidden');
-        } else {
-          payrollGroup.setAttribute('hidden', 'until-found');
-        }
-      }
-    }
+    });
   }
 
   function syncFromPage(pageId) {
@@ -183,26 +191,25 @@
   }
 
   function syncModuleVisibility() {
-    const financeBtn = document.getElementById('financeRailBtn');
-    if (financeBtn) {
-      if (canSeeModule('finance')) {
-        financeBtn.style.display = '';
-      } else {
-        financeBtn.style.display = 'none';
-        if (activeModuleId === 'finance') {
-          setModule('hr');
-        }
+    const modules = ['hr', 'finance', 'payroll', 'system'];
+    modules.forEach((modId) => {
+      const btn = document.getElementById(`${modId}RailBtn`);
+      if (btn) {
+        btn.style.display = canSeeModule(modId) ? '' : 'none';
       }
-    }
-    const payrollBtn = document.getElementById('payrollRailBtn');
-    if (payrollBtn) {
-      if (canSeeModule('payroll')) {
-        payrollBtn.style.display = '';
-      } else {
-        payrollBtn.style.display = 'none';
-        if (activeModuleId === 'payroll') {
-          setModule('hr');
-        }
+    });
+
+    if (!canSeeModule(activeModuleId)) {
+      const firstVisible = modules.find((modId) => canSeeModule(modId));
+      if (firstVisible) {
+        setModule(firstVisible);
+        const defaultPages = {
+          hr: 'a-dashboard',
+          finance: 'a-finance-dashboard',
+          payroll: 'a-finance-payroll-runs',
+          system: 'a-system-roles',
+        };
+        go(defaultPages[firstVisible]);
       }
     }
   }

@@ -445,7 +445,62 @@ Slice 6 implements the provisioned Google account sign-in policy per Decision D-
 
 ### 5. Handoff Summary
 - State of branch: `feature/rbac` has completed Slice 6 with all acceptance criteria met and verified.
-- Next slice: Slice 7a (Frontend: session, navigation and control gating per Spec §12: `hasPermission`, portal selection, `AdminNav` module visibility, control gating, mock sessions).
+## Slice 7a — Frontend Session, Navigation & Control Gating (`RBAC-S7a`)
+
+### 1. Outcome
+Slice 7a implements frontend session hydration, strict permission evaluation, dynamic multi-module dual-rail navigation, and action control gating across the user interface. `SessionInfo.hasPermission(key)` is enforced as a strict membership check without `admin` or `*` bypasses. The admin rail and panel now dynamically expose `hr`, `finance`, `payroll`, and `system` modules based purely on user permissions, automatically switching landing pages for restricted roles (e.g. Payroll-Maker). Mutation and reveal controls across the UI (add/edit/delete employee, salary raises, bank details reveal, payroll approve/pay, statutory obligations) are cleanly hidden when the user lacks the prerequisite permissions. Five deterministic mock session profiles (`admin`/`super_admin`, `hr_admin`, `financial_admin`, `payroll_maker`, `employee`) enable exhaustive, reliable UI verification.
+
+### 2. Implementation Summary
+- **`fe/api.js`:**
+  - Updated `SessionInfo`: added `_portal`, `_roles`, `getPortal()`, and `getRoles()`.
+  - Replaced `hasPermission(key)` with strict membership `this._permissions.includes(key)` (no wildcard or role bypasses).
+- **`fe/public/js/session.js`:**
+  - Added mock permission lists (`MOCK_PERMISSIONS_HR`, `MOCK_PERMISSIONS_FINANCE`, `MOCK_PERMISSIONS_PAYROLL`, `MOCK_PERMISSIONS_EMPLOYEE`, `MOCK_PERMISSIONS_ALL`).
+  - Updated `handleLoginSuccess` and `bootstrapAppFromSession` to resolve portal directly from `portal` claim.
+  - Added support for 5 mock roles: `admin`/`super_admin`, `hr`/`hr_admin`, `finance`/`financial_admin`, `payroll`/`payroll_maker`, `employee`.
+- **`fe/src/partials/admin/sidebar.html` & `fe/public/js/admin-nav.js`:**
+  - Added `system` module to `MODULES` and rail (`#systemRailBtn`, `data-module="system"`).
+  - Added `#adminSystemNavGroup` panel group with links to `a-system-roles` and `a-system-users`.
+  - Added `id="hrRailBtn"` to HR module rail button.
+  - Updated `canSeeModule(moduleId)`:
+    - `hr`: any permission starting with `hr.`.
+    - `finance`: any permission starting with `finance.` except `finance.payroll.` and `finance.payroll_tax.`.
+    - `payroll`: any permission starting with `finance.payroll.` or `finance.payroll_tax.`.
+    - `system`: `system.roles.manage` or `system.users.manage`.
+  - Updated `syncModuleVisibility`: dynamically displays/hides rail buttons and automatically defaults active module to the first visible module on page load.
+- **Control Gating in Views:**
+  - Add employee (`#btnAddEmployee`): hidden if lacking `hr.employee.write`.
+  - Edit & Delete employee row buttons: omitted if lacking `hr.employee.write`.
+  - Bank account modal reveal (`#bankRevealBtn`): hidden if lacking `hr.employee_bank_account.reveal`.
+  - Salary raise (`#btnOpenRaiseModal` & row buttons): hidden if lacking `hr.salary.write`.
+  - Payroll cycle actions (`#btnPayrollApprove`, `#btnP2Approve`): hidden if lacking `finance.payroll.approve`.
+  - Payroll payment actions (`#btnPayrollMarkPaid`): hidden if lacking `finance.payroll.pay`.
+  - Statutory obligation create (`#financeAddStatutoryBtn`): hidden if lacking `finance.statutory.write`.
+  - Company bank account reveal (`#btnRevealAccountNumber`): hidden if lacking `finance.bank_account.reveal`.
+- **Partials:**
+  - Added `fe/src/partials/admin/sections/system-roles.html` (`#a-system-roles`).
+  - Added `fe/src/partials/admin/sections/system-users.html` (`#a-system-users`).
+  - Included both partials in `fe/src/index.html`.
+- **`fe/tests/ui/rbac-navigation-gating.spec.js`:**
+  - Comprehensive Playwright test suite covering all 5 mock roles, rail module visibility, automatic module redirection, strict permission checks, and portal selection.
+
+### 3. Verification & Test Execution
+- **Targeted UI Suite:** `npx playwright test tests/ui/rbac-navigation-gating.spec.js --reporter=line` -> 5 passed in 8.8s.
+- **Navigation Regression Suite:** `npx playwright test tests/ui/admin-dual-rail.spec.js --reporter=line` -> 15 passed in 35.4s.
+- **Frontend Build:** `npm run build` in `fe/` -> Succeeded in 208ms.
+
+### 4. Acceptance Criteria
+- **AC 1:** Strict membership check in `hasPermission(key)` -> **Met**.
+- **AC 2:** Portal selection uses `portal` claim -> **Met**.
+- **AC 3:** Dynamic module visibility for all 4 modules (`hr`, `finance`, `payroll`, `system`) -> **Met**.
+- **AC 4:** Landing module switches to first visible module (e.g. Payroll-Maker lands in Payroll) -> **Met**.
+- **AC 5:** Control gating hides mutation and reveal buttons when permissions missing -> **Met**.
+- **AC 6:** Mock sessions work deterministically for all 5 roles -> **Met**.
+
+### 5. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 7a with all acceptance criteria met and verified.
+- Next slice: Slice 7b (Frontend: Roles and Users management pages, implication auto-ticking, modal logic, and mock handlers).
+
 
 
 

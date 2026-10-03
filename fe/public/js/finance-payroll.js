@@ -721,6 +721,11 @@
     drawScreen2() {
       this.drawStats();
       this.drawTable();
+      const p2ApproveBtn = document.getElementById('btnP2Approve');
+      if (p2ApproveBtn) {
+        const canApprove = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.approve') : true;
+        p2ApproveBtn.style.display = canApprove ? '' : 'none';
+      }
     },
 
     drawStats() {

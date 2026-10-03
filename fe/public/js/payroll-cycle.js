@@ -290,9 +290,12 @@ const PayrollCycleManager = {
     const btnPaid = document.getElementById('btnPayrollMarkPaid');
     const btnReopen = document.getElementById('btnPayrollReopenDraft');
 
+    const canApprove = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.approve') : true;
+    const canPay = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.pay') : true;
+
     if (btnSubmit) btnSubmit.style.display = status === 'DRAFT' ? 'inline-flex' : 'none';
-    if (btnApprove) btnApprove.style.display = status === 'REVIEW' ? 'inline-flex' : 'none';
-    if (btnPaid) btnPaid.style.display = status === 'APPROVED' ? 'inline-flex' : 'none';
+    if (btnApprove) btnApprove.style.display = (status === 'REVIEW' && canApprove) ? 'inline-flex' : 'none';
+    if (btnPaid) btnPaid.style.display = (status === 'APPROVED' && canPay) ? 'inline-flex' : 'none';
     if (btnReopen) btnReopen.style.display = status !== 'DRAFT' ? 'inline-flex' : 'none';
   }
 };
