@@ -240,6 +240,11 @@ function showSection(pageId, portal){
         switchFinanceAccountsSubTab('statements');
       }
     }
+    if(pageId === 'a-system-roles' && window.SystemAccess && typeof window.SystemAccess.loadRoles === 'function') {
+      window.SystemAccess.loadRoles();
+    } else if(pageId === 'a-system-users' && window.SystemAccess && typeof window.SystemAccess.loadUsers === 'function') {
+      window.SystemAccess.loadUsers();
+    }
     if(window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {
       window.AdminNav.syncFromPage(pageId);
     }

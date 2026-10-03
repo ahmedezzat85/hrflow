@@ -449,6 +449,17 @@ const Api = {
     const filename = `${dataset}_export_${new Date().toISOString().slice(0, 10)}.csv`;
     return _downloadDocumentViaFetch(`/api/export/${encodeURIComponent(dataset)}/csv${qs}`, filename);
   },
+  // RBAC Access & Identity
+  getPermissionCatalog() { return apiRequest("GET", "/api/access/catalog"); },
+  getRoles() { return apiRequest("GET", "/api/access/roles"); },
+  createRole(payload) { return apiRequest("POST", "/api/access/roles", payload); },
+  updateRole(roleId, payload) { return apiRequest("PUT", `/api/access/roles/${encodeURIComponent(roleId)}`, payload); },
+  deleteRole(roleId) { return apiRequest("DELETE", `/api/access/roles/${encodeURIComponent(roleId)}`); },
+  getUsers() { return apiRequest("GET", "/api/access/users"); },
+  assignUserRoles(userId, roles) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/roles`, { roles }); },
+  archiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/archive`); },
+  unarchiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/unarchive`); },
+
   health() { return apiRequest("GET", "/api/health", null, false); },
   getLastCorrelationId() { return _lastCorrelationId; },
 };

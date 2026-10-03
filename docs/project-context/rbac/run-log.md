@@ -501,6 +501,53 @@ Slice 7a implements frontend session hydration, strict permission evaluation, dy
 - State of branch: `feature/rbac` has completed Slice 7a with all acceptance criteria met and verified.
 - Next slice: Slice 7b (Frontend: Roles and Users management pages, implication auto-ticking, modal logic, and mock handlers).
 
+---
+
+## Slice 7b — Frontend Roles and Users Pages (`RBAC-S7b`)
+
+### 1. Outcome
+Slice 7b completes the frontend administrative surface for RBAC under the System module (`a-system-roles` and `a-system-users`). The Roles page delivers complete lifecycle management for custom and seeded roles with permission-based visual indicators, protection for system roles (disabling deletion and Super-Admin editing), and permission picker with live implication auto-ticking (e.g. checking write automatically selects and disables implied read). The Users page provides comprehensive identity management, search and role filtering, multi-role assignment modals, and account archive/restore actions with safety protections. Both live backend endpoints (`/api/access/*`) and deterministic mock state are fully integrated.
+
+### 2. Implementation Summary
+- **`fe/api.js`:**
+  - Added RBAC access API methods: `getPermissionCatalog()`, `getRoles()`, `createRole()`, `updateRole()`, `deleteRole()`, `getUsers()`, `assignUserRoles()`, `archiveUser()`, `unarchiveUser()`.
+- **`fe/public/js/system-access.js`:**
+  - Built comprehensive controller for roles and users views.
+  - Implemented dynamic permission tree grouped by functional domain with category badges and live filtering.
+  - Implemented transitive implication auto-ticking (`computeImpliedPermissions` and `syncImplicationUI`), ensuring that parent permissions automatically tick and lock implied dependencies.
+  - Implemented role creation and editing modal (`#roleModal`) with name, description, and permission assignment.
+  - Implemented system role protections (preventing deletion of built-in roles and modification of Super-Admin).
+  - Implemented users table with avatar rendering, email, assigned role pills, and active/archived status badges.
+  - Implemented live text search and dropdown role filtering for user accounts.
+  - Implemented role assignment modal (`#assignRolesModal`) allowing multi-selection of roles.
+  - Implemented user account archiving and restoration with confirmation prompts.
+  - Provided full deterministic mock state for mock testing (`?mock=admin`).
+- **`fe/src/partials/modals/role-modal.html` & `assign-roles-modal.html`:**
+  - Created modal templates and included them in `fe/src/index.html`.
+- **`fe/public/js/ui.js` & `fe/vite.config.js`:**
+  - Injected `system-access.js` in `APP_SCRIPT_ORDER`.
+  - Added routing hooks in `showSection` to automatically invoke `SystemAccess.loadRoles()` and `SystemAccess.loadUsers()`.
+- **`fe/tests/ui/rbac-system-pages.spec.js`:**
+  - Automated Playwright suite verifying role rendering, Super-Admin constraints, implication auto-ticking in the modal, custom role creation/deletion, user search/filtering, role assignment, and archive/restore flows.
+
+### 3. Verification & Test Execution
+- **Slice 7b Targeted UI Suite:** `npx playwright test tests/ui/rbac-system-pages.spec.js --reporter=line` -> 3 passed in 9.3s.
+- **Combined 7a + 7b Suite:** `npx playwright test tests/ui/rbac-navigation-gating.spec.js tests/ui/rbac-system-pages.spec.js --reporter=line` -> 8 passed in 12.2s.
+- **Frontend Production Build:** `npm run build` in `fe/` -> Succeeded in 243ms.
+
+### 4. Acceptance Criteria
+- **AC 1:** Roles page lists seeded roles and respects Super-Admin / system role constraints -> **Met**.
+- **AC 2:** Permission picker renders categories and correctly executes implication auto-ticking -> **Met**.
+- **AC 3:** Custom roles can be created, edited, and deleted -> **Met**.
+- **AC 4:** Users page renders all accounts, status badges, and supports search and role filters -> **Met**.
+- **AC 5:** Role assignment modal updates user role assignments -> **Met**.
+- **AC 6:** User archiving and restoration actions operate reliably -> **Met**.
+
+### 5. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 7b with all acceptance criteria met and verified.
+- Next slice: Slice 8 (Cleanup, drop `users.role` column via migration `0026_drop_users_role`, verify route guard inventory coverage, update documentation).
+
+
 
 
 

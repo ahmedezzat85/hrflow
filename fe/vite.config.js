@@ -22,6 +22,7 @@ const APP_SCRIPT_ORDER = [
   'dochub.js',
   'charts.js',
   'export.js',
+  'system-access.js',
   // Modular finance domains
   'finance-core.js',
   'finance-dashboard.js',
