@@ -2225,6 +2225,154 @@ def test_slice5_catalog_and_users_listing(app_client):
         assert u["archived_at"] is not None
 
 
+# =============================================================================
+# Slice 6: Sign-In Policy (D-013)
+# =============================================================================
+
+def test_slice6_verified_google_account_any_domain_signs_in(app_client, monkeypatch):
+    """
+    Acceptance: A verified Google account of any domain signs in if and only if
+    a non-archived user with that email exists (case-insensitive).
+    """
+    import auth as auth_module
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        # Create external contractor with @gmail.com (outside company domain)
+        contractor = _create_test_user_with_roles(
+            db, email="contractor.external@gmail.com", system_keys=["financial_admin"]
+        )
+
+    # Mock Google verification returning uppercase email and verified
+    monkeypatch.setattr(
+        auth_module.google_id_token,
+        "verify_oauth2_token",
+        lambda cred, req, aud: {
+            "email": "CONTRACTOR.EXTERNAL@GMAIL.COM",
+            "name": "External Contractor",
+            "email_verified": True,
+            "hd": "gmail.com",
+        },
+    )
+
+    resp = app_client.post("/api/auth/google", json={"credential": "valid_token_any_domain"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "External Contractor"
+    assert "finance.invoice.read" in data["permissions"]
+    assert resp.cookies.get("hrflow_session") is not None
+
+
+def test_slice6_unverified_email_rejected(app_client, monkeypatch):
+    """
+    Acceptance: Unverified emails from Google are rejected with 401.
+    """
+    import auth as auth_module
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        _create_test_user_with_roles(db, email="unverified@somecorp.org", system_keys=["hr_admin"])
+
+    monkeypatch.setattr(
+        auth_module.google_id_token,
+        "verify_oauth2_token",
+        lambda cred, req, aud: {
+            "email": "unverified@somecorp.org",
+            "name": "Unverified User",
+            "email_verified": False,
+        },
+    )
+
+    resp = app_client.post("/api/auth/google", json={"credential": "unverified_token"})
+    assert resp.status_code == 401
+    assert "not verified" in resp.text
+
+
+def test_slice6_unknown_email_rejected(app_client, monkeypatch):
+    """
+    Acceptance: Unknown emails (no HRFlow user record) are rejected with 403.
+    """
+    import auth as auth_module
+
+    monkeypatch.setattr(
+        auth_module.google_id_token,
+        "verify_oauth2_token",
+        lambda cred, req, aud: {
+            "email": "stranger_unknown@unknowncompany.com",
+            "name": "Stranger",
+            "email_verified": True,
+        },
+    )
+
+    resp = app_client.post("/api/auth/google", json={"credential": "unknown_user_token"})
+    assert resp.status_code == 403
+    assert "not registered in HRFlow" in resp.text
+
+
+def test_slice6_archived_user_rejected_at_signin(app_client, monkeypatch):
+    """
+    Acceptance: Archived users get a clear 403 at sign-in.
+    """
+    import auth as auth_module
+    import datetime
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        u = _create_test_user_with_roles(db, email="departed_employee@voyance.health", system_keys=["hr_admin"])
+        # Archive the user
+        db_u = db.query(UserDB).filter_by(email="departed_employee@voyance.health").first()
+        db_u.archived_at = datetime.datetime.utcnow()
+        db.commit()
+
+    monkeypatch.setattr(
+        auth_module.google_id_token,
+        "verify_oauth2_token",
+        lambda cred, req, aud: {
+            "email": "departed_employee@voyance.health",
+            "name": "Departed Employee",
+            "email_verified": True,
+        },
+    )
+
+    resp = app_client.post("/api/auth/google", json={"credential": "archived_user_token"})
+    assert resp.status_code == 403
+    assert "archived" in resp.text.lower()
+
+
+def test_slice6_user_without_effective_access_rejected_at_signin(app_client, monkeypatch):
+    """
+    Acceptance: A user record with no effective access (no employee baseline and no roles)
+    is rejected with 403 'No access assigned'.
+    """
+    import auth as auth_module
+
+    with get_db_context() as db:
+        sync_catalog(db)
+        # Create external user with no employee and no roles
+        u = db.query(UserDB).filter_by(email="empty_access@vendor.com").first()
+        if not u:
+            u = UserDB(email="empty_access@vendor.com", name="No Access", employee_id=None, role="employee")
+            db.add(u)
+            db.commit()
+        db.query(UserRoleDB).filter_by(user_id=u.id).delete()
+        db.commit()
+
+    monkeypatch.setattr(
+        auth_module.google_id_token,
+        "verify_oauth2_token",
+        lambda cred, req, aud: {
+            "email": "empty_access@vendor.com",
+            "name": "No Access",
+            "email_verified": True,
+        },
+    )
+
+    resp = app_client.post("/api/auth/google", json={"credential": "no_access_token"})
+    assert resp.status_code == 403
+    assert "no access assigned" in resp.text.lower()
+
+
+
 
 
 

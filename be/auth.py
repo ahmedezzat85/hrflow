@@ -40,13 +40,6 @@ def verify_google_credential(credential: str) -> dict:
     if not payload.get("email_verified", False):
         raise HTTPException(status_code=401, detail="Google email is not verified")
 
-    if Config.ALLOWED_WORKSPACE_DOMAIN:
-        hd = payload.get("hd", "")
-        if hd.lower() != Config.ALLOWED_WORKSPACE_DOMAIN.lower():
-            raise HTTPException(
-                status_code=403,
-                detail=f"Only @{Config.ALLOWED_WORKSPACE_DOMAIN} Google Workspace accounts are allowed",
-            )
     return payload
 
 
@@ -79,7 +72,8 @@ def _find_user_by_email(email: str, user_repo=None):
 
 def login_with_google(credential: str, user_repo=None):
     """Verifies the Google credential and matches it to a user.
-    Returns None if the email has no HRFlow account yet."""
+    Returns None if the email has no HRFlow account yet.
+    Raises 403 if the user is archived or has no effective access assigned."""
     google_payload = verify_google_credential(credential)
     email = google_payload["email"]
     name = google_payload.get("name", "")
@@ -87,6 +81,35 @@ def login_with_google(credential: str, user_repo=None):
     user = _find_user_by_email(email, user_repo=user_repo)
     if not user:
         return None
+
+    if user.get("archived_at") is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is archived",
+        )
+
+    # Effective access check: user must have a linked employee, an assigned role, or admin role
+    has_effective_access = bool(user.get("employee_id") is not None or user.get("has_roles") or user.get("role") == "admin")
+    if not has_effective_access:
+        from db import get_db_context
+        from models_db import UserDB
+        with get_db_context() as db:
+            db_u = db.query(UserDB).filter(UserDB.email.ilike(email.strip())).first()
+            if db_u:
+                if db_u.archived_at is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="User account is archived",
+                    )
+                if db_u.employee_id is not None or len(db_u.user_roles) > 0 or db_u.role == "admin":
+                    has_effective_access = True
+
+    if not has_effective_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No access assigned. Contact your administrator.",
+        )
+
     token = create_session_token(
         user["email"],
         user["role"],

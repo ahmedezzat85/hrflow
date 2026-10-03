@@ -14,8 +14,11 @@ def _user_to_dict(u: UserDB) -> dict:
     return {
         "id": u.id,
         "email": u.email,
+        "name": u.name,
         "role": u.role,
         "employee_id": u.employee_id,
+        "archived_at": u.archived_at,
+        "has_roles": len(u.user_roles) > 0,
     }
 
 

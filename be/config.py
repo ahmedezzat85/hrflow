@@ -202,11 +202,6 @@ class Config:
                     "ALLOWED_ORIGINS is '*' while ENVIRONMENT=production. Set an "
                     "explicit comma-separated list of allowed frontend origins."
                 )
-            if not cls.ALLOWED_WORKSPACE_DOMAIN:
-                errors.append(
-                    "ALLOWED_WORKSPACE_DOMAIN is not set while ENVIRONMENT=production. "
-                    "Without it, any Google account (not just your Workspace) can sign in."
-                )
 
         if errors:
             raise RuntimeError(

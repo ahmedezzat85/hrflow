@@ -409,6 +409,45 @@ Slice 5 implements the complete access management service and API (`/api/access`
 - State of branch: `feature/rbac` has completed Slice 5 with all acceptance criteria met and verified.
 - Next slice: Slice 6 (Sign-in policy D-013: remove `hd` domain gate in Google verification, reject archived users and unassigned users at sign-in, update `ALLOWED_WORKSPACE_DOMAIN` config requirement and test).
 
+---
+
+## Slice 6 — Sign-In Policy (`RBAC-S6`) (D-013)
+
+### 1. Outcome
+Slice 6 implements the provisioned Google account sign-in policy per Decision D-013. The `hd` domain gate in `verify_google_credential` is removed while keeping `email_verified` strictly mandatory, allowing external users on non-corporate domains (e.g., external contractors or accountants) to sign in. `login_with_google` validates that matched users are neither archived (403 with clear explanation) nor stripped of all effective access (403 with "No access assigned" explanation). `Config.validate()` in `be/config.py` was updated to no longer mandate `ALLOWED_WORKSPACE_DOMAIN` in production, and unit tests in `be/tests/test_config_validation.py` were updated and pass cleanly.
+
+### 2. Implementation Summary
+- **`be/auth.py`:**
+  - Removed `ALLOWED_WORKSPACE_DOMAIN` domain enforcement (`hd` check) in `verify_google_credential`. Retained mandatory `email_verified` verification.
+  - Added archived check to `login_with_google`: raises `HTTPException(403, detail="User account is archived")`.
+  - Added effective access check to `login_with_google`: raises `HTTPException(403, detail="No access assigned. Contact your administrator.")` if the user has neither a linked employee (which would derive baseline role), an assigned role in `user_roles`, nor admin status.
+- **`be/repositories/sql/auth.py`:**
+  - Included `name`, `archived_at`, and `has_roles` in `_user_to_dict` return dictionary for `SqlUserRepository`.
+- **`be/config.py`:**
+  - In `Config.validate()`, removed the check under `if cls.IS_PRODUCTION:` that rejected startup when `ALLOWED_WORKSPACE_DOMAIN` was empty.
+- **`be/tests/test_config_validation.py`:**
+  - Updated `test_validate_raises_in_production_without_workspace_domain` to `test_validate_passes_in_production_without_workspace_domain`.
+- **`be/tests/test_rbac.py`:**
+  - Added 5 new tests (`test_slice6_*`) covering verified accounts from any domain, rejection of unverified emails (401), rejection of unknown emails (403), rejection of archived accounts (403), and rejection of users with zero effective access (403).
+
+### 3. Verification & Test Execution
+- **Slice 6 Targeted Suite:** `pytest be/tests/test_rbac.py -k "slice6" -q` -> 5 passed in 10.53s.
+- **Config Validation Suite:** `pytest be/tests/test_config_validation.py -q` -> 9 passed in 0.07s.
+- **Combined RBAC Suite:** `pytest be/tests/test_rbac.py -q` -> 56 passed in 79.57s.
+- **Frontend Build:** `npm run build` in `fe/` -> Passed in 264ms.
+
+### 4. Acceptance Criteria
+- **AC 1:** A verified Google account of any domain signs in if and only if a non-archived user with that email exists (case-insensitive) -> **Met** (`test_slice6_verified_google_account_any_domain_signs_in`).
+- **AC 2:** Unverified emails are rejected with 401 -> **Met** (`test_slice6_unverified_email_rejected`).
+- **AC 3:** Unknown emails are rejected with 403 -> **Met** (`test_slice6_unknown_email_rejected`).
+- **AC 4:** Archived users get a clear 403 -> **Met** (`test_slice6_archived_user_rejected_at_signin`).
+- **AC 5:** Config test is updated and passes without `ALLOWED_WORKSPACE_DOMAIN` -> **Met** (`test_validate_passes_in_production_without_workspace_domain`).
+
+### 5. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 6 with all acceptance criteria met and verified.
+- Next slice: Slice 7a (Frontend: session, navigation and control gating per Spec §12: `hasPermission`, portal selection, `AdminNav` module visibility, control gating, mock sessions).
+
+
 
 
 
