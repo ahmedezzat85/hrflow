@@ -159,7 +159,7 @@ def sync_catalog(db: Session) -> Dict[str, int]:
         if not super_admin_role:
             super_admin_role = (
                 db.query(RoleDB)
-                .filter(RoleDB.name.in_(["Super-Admin", "system_admin"]))
+                .filter(RoleDB.name == "Super-Admin")
                 .first()
             )
 
@@ -180,7 +180,7 @@ def sync_catalog(db: Session) -> Dict[str, int]:
                     db.query(RoleDB)
                     .filter(RoleDB.system_key == "super_admin")
                     .first()
-                ) or db.query(RoleDB).filter(RoleDB.name.in_(["Super-Admin", "system_admin"])).first()
+                ) or db.query(RoleDB).filter(RoleDB.name == "Super-Admin").first()
 
         if not super_admin_role:
             raise RuntimeError("Unable to locate or initialize Super-Admin role during sync_catalog")

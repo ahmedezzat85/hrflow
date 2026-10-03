@@ -51,7 +51,7 @@ def get_company_bank_account(
     """Fetches a specific company bank account by ID. Masked by default unless reveal is authorized."""
     if reveal:
         perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-        if "*" not in perms and "finance.bank_account.reveal" not in perms:
+        if "finance.bank_account.reveal" not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permission denied: 'finance.bank_account.reveal' required to reveal unmasked account identifier",

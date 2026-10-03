@@ -72,7 +72,7 @@ def get_vendor_360(
     """Returns 360 profile summary for a vendor with spend metrics and payment instructions."""
     if reveal:
         perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-        if "*" not in perms and "finance.vendor_payment.reveal" not in perms:
+        if "finance.vendor_payment.reveal" not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permission denied: 'finance.vendor_payment.reveal' required to reveal unmasked payment data",
@@ -125,7 +125,7 @@ def list_vendor_payment_instructions(
     """Lists payment instructions for a vendor. Masked by default unless reveal is authorized."""
     if reveal:
         perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-        if "*" not in perms and "finance.vendor_payment.reveal" not in perms:
+        if "finance.vendor_payment.reveal" not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permission denied: 'finance.vendor_payment.reveal' required to reveal unmasked payment data",
@@ -143,7 +143,7 @@ def create_vendor_payment_instruction(
 ):
     """Creates a new payment instruction for a vendor. Requires write/manage permission."""
     perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-    if "*" not in perms and "finance.vendor_payment.manage" not in perms:
+    if "finance.vendor_payment.manage" not in perms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: 'finance.vendor_payment.manage' required",
@@ -163,7 +163,7 @@ def update_vendor_payment_instruction(
 ):
     """Updates an existing payment instruction for a vendor."""
     perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-    if "*" not in perms and "finance.vendor_payment.manage" not in perms:
+    if "finance.vendor_payment.manage" not in perms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: 'finance.vendor_payment.manage' required",
@@ -183,7 +183,7 @@ def verify_vendor_payment_instruction(
 ):
     """Verifies or rejects a payment instruction for a vendor."""
     perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-    if "*" not in perms and "finance.vendor_payment.verify" not in perms:
+    if "finance.vendor_payment.verify" not in perms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: 'finance.vendor_payment.verify' required",

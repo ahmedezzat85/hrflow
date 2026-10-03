@@ -243,8 +243,7 @@ def approve_payroll_run(
     effective_self_approval = False
     if allow_self_approval:
         perms = get_current_user_permissions(request, current_user=current_user, db=db)
-        is_admin = bool(current_user.get("is_admin")) or ("*" in perms) or (current_user.get("role") == "admin")
-        if is_admin or ("finance.payroll.prepare" in perms and "finance.payroll.approve" in perms):
+        if bool(current_user.get("is_super_admin")) or ("finance.payroll.prepare" in perms and "finance.payroll.approve" in perms):
             effective_self_approval = True
     return service.approve_run(run_id=run_id, user_email=user_email, allow_self_approval=effective_self_approval)
 
@@ -395,7 +394,7 @@ def create_tax_settings(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll_tax.write")),
 ):
-    """Create a new effective-dated payroll tax settings version (system_admin only)."""
+    """Create a new effective-dated payroll tax settings version (Super-Admin / Financial-Admin only)."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     brackets_dicts = [b.model_dump() for b in payload.brackets]
     return service.create_tax_settings(

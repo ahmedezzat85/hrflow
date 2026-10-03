@@ -64,7 +64,7 @@ def get_entity_activity(
     plain-language activity timeline for a financial entity. Masking sensitive fields unless admin.
     """
     perms = get_current_user_permissions(request, current_user=current_user, db=db)
-    is_admin = bool(current_user.get("is_admin")) or ("*" in perms) or (current_user.get("role") == "admin")
+    is_admin = bool(current_user.get("is_super_admin"))
 
     norm_type = entity_type.lower().strip()
 
@@ -841,3 +841,7 @@ def get_entity_activity(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported entity type for activity drawer: '{entity_type}'"
         )
+
+
+get_entity_activity.hrflow_proposed_guard = "per entity type: invoice->finance.invoice.read; bill->finance.bill.read; vendor->finance.vendor.read; customer->finance.customer.read; transfer/cheque/transaction->finance.account.read"
+

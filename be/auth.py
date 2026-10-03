@@ -8,7 +8,7 @@ HttpOnly cookie (see Config.SESSION_COOKIE_NAME) rather than being handed to
 JavaScript. This means the token is never readable by page scripts (no XSS
 exfiltration path) and is never carried in a URL query string (no leakage
 into server access logs / browser history / Referer headers). The rest of
-the API consumes the session via get_current_user / require_admin, which
+the API consumes the session via get_current_user and RBAC permissions, which
 read the cookie automatically on every request.
 """
 import time
@@ -43,14 +43,15 @@ def verify_google_credential(credential: str) -> dict:
     return payload
 
 
-def create_session_token(email: str, role: str, employee_id, name: str = "", uid: Optional[int] = None):
+def create_session_token(email: str, role: Optional[str] = None, employee_id = None, name: str = "", uid: Optional[int] = None):
     payload = {
         "email": email,
-        "role": role,
         "employee_id": employee_id,
         "name": name,
         "exp": int(time.time()) + Config.TOKEN_EXPIRY_HOURS * 3600,
     }
+    if role is not None:
+        payload["role"] = role
     if uid is not None:
         payload["uid"] = uid
     return jwt.encode(payload, Config.SECRET_KEY, algorithm="HS256")
@@ -88,8 +89,8 @@ def login_with_google(credential: str, user_repo=None):
             detail="User account is archived",
         )
 
-    # Effective access check: user must have a linked employee, an assigned role, or admin role
-    has_effective_access = bool(user.get("employee_id") is not None or user.get("has_roles") or user.get("role") == "admin")
+    # Effective access check: user must have a linked employee or an assigned role
+    has_effective_access = bool(user.get("employee_id") is not None or user.get("has_roles"))
     if not has_effective_access:
         from db import get_db_context
         from models_db import UserDB
@@ -101,7 +102,7 @@ def login_with_google(credential: str, user_repo=None):
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="User account is archived",
                     )
-                if db_u.employee_id is not None or len(db_u.user_roles) > 0 or db_u.role == "admin":
+                if db_u.employee_id is not None or len(db_u.user_roles) > 0:
                     has_effective_access = True
 
     if not has_effective_access:
@@ -112,14 +113,13 @@ def login_with_google(credential: str, user_repo=None):
 
     token = create_session_token(
         user["email"],
-        user["role"],
-        user.get("employee_id"),
-        name,
+        employee_id=user.get("employee_id"),
+        name=name,
         uid=user.get("id"),
     )
     return {
         "token": token,
-        "role": user["role"],
+        "role": user.get("role", "employee"),
         "employee_id": user.get("employee_id"),
         "name": name,
         "email": user["email"],
@@ -161,17 +161,8 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> dict:
         "permissions": sorted(list(ctx.permissions)),
         "roles": ctx.role_names,
         "portal": ctx.portal,
-        "role": "admin" if ctx.is_super_admin else "employee",
         "is_super_admin": ctx.is_super_admin,
     }
     request.state.current_user = user_dict
     return user_dict
 
-
-def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
-    """
-    Temporary transitional shim: holds Super-Admin.
-    """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
-    return current_user

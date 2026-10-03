@@ -41,7 +41,7 @@ def request_vacation(
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     perms = set(current_user.get("permissions", []))
-    has_write_all = "hr.vacation.write" in perms or current_user.get("role") == "admin"
+    has_write_all = "hr.vacation.write" in perms
     has_write_own = "self.vacation.write" in perms
 
     if not has_write_all and not has_write_own:

@@ -376,7 +376,6 @@ class AccessService:
         user = UserDB(
             email=clean_email,
             name=clean_name,
-            role="admin" if is_super_admin else "employee",
             employee_id=None,
             created_at=datetime.utcnow(),
         )
@@ -595,7 +594,6 @@ class AccessService:
             email=clean_email,
             name=name,
             employee_id=employee_id,
-            role=role,
             created_at=datetime.utcnow(),
         )
         self.db.add(user)

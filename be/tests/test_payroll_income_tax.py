@@ -9,7 +9,7 @@ Phase 1 verification tests for Egyptian Income Tax calculation foundation:
 - Variable compensation (bonuses, commissions) added to taxable gross
 - Effective-dated tax settings resolution and run immutability
 - Blocking exception MISSING_TAX_SETTINGS enforcement
-- RBAC permissions for tax settings endpoints (system_admin only)
+- RBAC permissions for tax settings endpoints (Super-Admin / Financial-Admin)
 """
 from decimal import Decimal
 import json

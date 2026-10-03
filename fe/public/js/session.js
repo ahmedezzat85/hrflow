@@ -59,7 +59,7 @@ async function handleLoginSuccess(data){
   document.getElementById('loginErr').style.display = 'none';
   showAppLoader('Signing you in', 'Loading your HR workspace...');
   try{
-    const portal = data.portal || (data.role === 'admin' || data.role === 'system_admin' ? 'admin' : 'employee');
+    const portal = data.portal || 'employee';
     if(portal === 'admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
@@ -270,7 +270,7 @@ async function bootstrapAppFromSession(){
   document.getElementById('loginThemeToggle').style.display = 'none';
   document.getElementById('loginErr').style.display = 'none';
   try{
-    const portal = session.portal || (session.role === 'admin' || session.role === 'system_admin' ? 'admin' : 'employee');
+    const portal = session.portal || 'employee';
     if(portal === 'admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');

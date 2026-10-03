@@ -189,7 +189,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-011 — RBAC Role Model: Permission-Based Roles, Code-Defined Catalog, Seeded Roles
 
-- **Status:** Accepted (owner approval, October 1, 2026; implementation Planned, branch `feature/rbac`)
+- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
 - **Decision:**
   - **Single authority. [Agreed]** RBAC (`roles`, `role_permissions`, `user_roles`) is the sole authorization authority. The legacy `users.role` string, the `role` claim in the session token, and the `*` wildcard are retired. This is a long-term direction delivered in slices; legacy paths stay until each consumer is migrated.
   - **Permissions are code. [Agreed]** Permission keys are defined in a code catalog with the format `<module>.<resource>.<action>`. Roles are database rows composed from catalog keys. There are no prefix wildcards.
@@ -225,7 +225,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-012 — Identity Lifecycle: Users Page, External Users, Archiving, Self-Protection
 
-- **Status:** Accepted (owner approval, October 1, 2026; implementation Planned, branch `feature/rbac`)
+- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
 - **Decision:**
   - **Users page. [Agreed]** A Super-Admin-only Users page (Core domain), alongside a Roles page, in a new Super-Admin-only System area of the admin navigation. Roles are not assigned from the Employees page.
   - **One creation path. [Agreed]** An employee is created only on the Employees page; a user is provisioned for them automatically. No second creation step.
@@ -248,7 +248,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-013 — Sign-In Policy: Provisioned Google Accounts of Any Domain
 
-- **Status:** Accepted (owner approval, October 1, 2026; implementation Planned, branch `feature/rbac`)
+- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
 - **Decision:**
   - **Google-only. [Agreed]** Sign-in remains Google Sign-In only. No passwords or other providers.
   - **Any domain. [Agreed]** Accounts outside the company Workspace domain are allowed, so external users can sign in.

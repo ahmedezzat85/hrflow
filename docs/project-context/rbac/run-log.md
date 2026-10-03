@@ -547,6 +547,48 @@ Slice 7b completes the frontend administrative surface for RBAC under the System
 - State of branch: `feature/rbac` has completed Slice 7b with all acceptance criteria met and verified.
 - Next slice: Slice 8 (Cleanup, drop `users.role` column via migration `0026_drop_users_role`, verify route guard inventory coverage, update documentation).
 
+---
+
+## Slice 8 — Cleanup, Route Guard Verification & Documentation (`RBAC-S8`)
+
+### 1. Outcome
+Slice 8 concludes the RBAC initiative across the entire repository. The legacy `users.role` database column is dropped via Alembic migration `0026_drop_users_role`, while `UserDB` preserves full backwards compatibility via a dynamic Python property. Legacy authorization artifacts—including `require_admin`, hardcoded `role == "admin"` and `role === 'admin'` checks, wildcard grants (`"*" in perms`), and active references to legacy role name `system_admin`—have been eradicated across the backend and frontend codebases. Full route guard coverage is verified: all FastAPI endpoints have an attached catalog permission or reside on the named public allow-list (`/api/auth/google`, `/api/auth/logout`, `/api/auth/me`, `/api/health`). Architecture documentation, repository baselines, and decision statuses (D-011, D-012, D-013) have been brought into complete alignment with the implemented system.
+
+### 2. Implementation Summary
+- **Database & Alembic Migration:**
+  - Created `be/migrations/versions/0026_drop_users_role.py` dropping `users.role` with batch alter operations for SQLite and PostgreSQL compatibility. Downgrade restores the column with nullable default.
+  - In `be/models_db.py`, removed `role = Column(...)` from `UserDB`, accepted and discarded deprecated `role` kwargs in `__init__`, and added `@property def role` / `@role.setter def role` returning `"admin"` if holding Super-Admin, `"employee"` if linked to an employee, or `"user"` otherwise.
+- **Legacy Authorization Eradication:**
+  - Deleted `require_admin` dependency from `be/auth.py`.
+  - Removed transitional `role == "admin"` and `* in perms` shortcuts in `be/auth.py`, `be/deps.py`, `be/routers/insurance.py`, `be/routers/vacations.py`, `be/routers/requests.py`, `be/routers/export.py`, `be/finance/routers/payroll.py`, `be/finance/routers/activity.py`, `be/finance/routers/vendors.py`, `be/finance/routers/bank_accounts.py`, and `be/finance/services/attention_service.py`.
+  - Modernized `be/core/rbac_seed.py` to delegate directly to `core.role_seed.sync_catalog`.
+  - Removed remaining legacy `system_admin` references in `fe/public/js/payroll-cycle.js`, `fe/public/js/session.js`, `fe/public/js/finance-nav.js`, `fe/api.js`, `fe/src/partials/admin/sections/finance-payroll.html`, `be/core/role_seed.py`, `be/core/permissions.py`, and test fixtures.
+- **Route Guard Verification & Testing:**
+  - Added `test_slice8_drop_users_role_and_compatibility` in `be/tests/test_rbac.py` verifying Base metadata, migration 0026 upgrade/downgrade, and `UserDB` compatibility.
+  - Added `test_all_routes_guard_coverage_walker` verifying 100% of FastAPI routes have catalog permission guards or are on the public allow-list.
+  - Added `test_catalog_usage` verifying that all route guards and seeded roles reference valid keys in `all_keys()`.
+  - Added `test_no_require_admin_or_legacy_role_or_wildcard_in_code` verifying that zero legacy authorization checks exist in backend code.
+- **Documentation Updates:**
+  - Updated `04-decision-log.md`: D-011, D-012, D-013 statuses updated to Accepted / Implemented on `feature/rbac`.
+  - Updated `02-architecture-and-domain-boundaries.md`: updated cross-cutting architecture rules §5 (rules 2–4) and eliminated resolved boundary gaps in §7.
+
+### 3. Verification & Test Execution
+- **Targeted RBAC Backend Suite:** `pytest be/tests/test_rbac.py -q` -> 63 passed in 88.5s (100% clean pass).
+- **Targeted UI Suite:** `npx playwright test tests/ui/rbac-navigation-gating.spec.js tests/ui/rbac-system-pages.spec.js --reporter=line` -> 8 passed in 16.3s.
+- **Frontend Production Build:** `npm run build` in `fe/` -> Succeeded in 208ms.
+
+### 4. Acceptance Criteria
+- **AC 1:** Users table drops `role` column via migration `0026_drop_users_role`, with backwards-compatible `UserDB` property -> **Met** (`test_slice8_drop_users_role_and_compatibility`).
+- **AC 2:** All routes have catalog permission guards or are on named allow-list -> **Met** (`test_all_routes_guard_coverage_walker`).
+- **AC 3:** All route guards and seeded roles use catalog permission keys -> **Met** (`test_catalog_usage`).
+- **AC 4:** Zero references to `require_admin`, `role == "admin"`, or `* in perms` remain in backend code -> **Met** (`test_no_require_admin_or_legacy_role_or_wildcard_in_code`).
+- **AC 5:** Decisions D-011, D-012, D-013 marked Accepted / Implemented in decision log -> **Met**.
+- **AC 6:** Architecture guide updated to reflect unified RBAC and completed boundary resolutions -> **Met**.
+
+### 5. Initiative Completion Summary
+The Unified RBAC initiative (Slices 1 through 8) is fully implemented, verified, and delivered on branch `feature/rbac`.
+
+
 
 
 

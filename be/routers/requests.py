@@ -40,7 +40,7 @@ def create_request(
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     perms = set(current_user.get("permissions", []))
-    has_write_all = "hr.request.write" in perms or current_user.get("role") == "admin"
+    has_write_all = "hr.request.write" in perms
     has_write_own = "self.requests.write" in perms
 
     if not has_write_all and not has_write_own:

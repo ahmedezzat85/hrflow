@@ -54,14 +54,14 @@ def test_rbac_models_and_seed_data(app_client):
                 db.commit()
 
         roles = {r.name: r for r in db.query(RoleDB).all()}
-        assert "Super-Admin" in roles or "system_admin" in roles
-        assert "Employee" in roles or "employee" in roles
+        assert "Super-Admin" in roles
+        assert "Employee" in roles
         assert "HR-Admin" in roles
         assert "Financial-Admin" in roles
         assert "Payroll-Maker" in roles
 
         super_admin = db.query(RoleDB).filter(
-            (RoleDB.system_key == "super_admin") | (RoleDB.name.in_(["Super-Admin", "system_admin"]))
+            (RoleDB.system_key == "super_admin") | (RoleDB.name == "Super-Admin")
         ).first()
         assert super_admin is not None
         assert super_admin.is_locked is True
@@ -118,6 +118,12 @@ def test_rbac_unique_constraints(app_client):
 
         # Duplicate user_role should raise IntegrityError
         existing_ur = db.query(UserRoleDB).first()
+        if not existing_ur:
+            u = db.query(UserDB).first()
+            r = db.query(RoleDB).first()
+            existing_ur = UserRoleDB(user_id=u.id, role_id=r.id)
+            db.add(existing_ur)
+            db.commit()
         assert existing_ur is not None
         dup_ur = UserRoleDB(user_id=existing_ur.user_id, role_id=existing_ur.role_id)
         db.add(dup_ur)
@@ -279,7 +285,7 @@ def test_revocation_persists_across_restart(app_client):
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
         super_admin = db.query(RoleDB).filter(
-            (RoleDB.system_key == "super_admin") | (RoleDB.name.in_(["Super-Admin", "system_admin"]))
+            (RoleDB.system_key == "super_admin") | (RoleDB.name == "Super-Admin")
         ).first()
 
         # Ensure user has the role
@@ -2370,6 +2376,183 @@ def test_slice6_user_without_effective_access_rejected_at_signin(app_client, mon
     resp = app_client.post("/api/auth/google", json={"credential": "no_access_token"})
     assert resp.status_code == 403
     assert "no access assigned" in resp.text.lower()
+
+
+def test_slice8_drop_users_role_and_compatibility():
+    """AC: users table has dropped the role column, migration 0026 drops/adds it, and UserDB maintains backwards compatibility."""
+    import sqlalchemy as sa
+    from db import Base
+    from models_db import UserDB
+    from core.rbac_models import RoleDB, UserRoleDB
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    import importlib
+
+    # 1. Base.metadata check: UserDB no longer maps 'role'
+    assert "role" not in Base.metadata.tables["users"].columns, "UserDB table definition still includes 'role' column"
+
+    # 2. Fresh schema creation has no 'role' column in users
+    fresh_engine = sa.create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=fresh_engine)
+    insp_fresh = sa.inspect(fresh_engine)
+    fresh_cols = [c["name"] for c in insp_fresh.get_columns("users")]
+    assert "role" not in fresh_cols, f"'role' column unexpectedly found in fresh users table: {fresh_cols}"
+
+    # 3. Test Migration 0026 upgrade and downgrade directly
+    test_mig_engine = sa.create_engine("sqlite:///:memory:")
+    with test_mig_engine.connect() as conn:
+        conn.execute(sa.text("CREATE TABLE users (id INTEGER PRIMARY KEY, email VARCHAR(255), role VARCHAR(50), employee_id INTEGER)"))
+        conn.commit()
+
+    mig_0026 = importlib.import_module("migrations.versions.0026_drop_users_role")
+
+    with test_mig_engine.connect() as conn:
+        ctx = MigrationContext.configure(conn)
+        with Operations.context(ctx):
+            mig_0026.upgrade()
+        conn.commit()
+
+    insp_after = sa.inspect(test_mig_engine)
+    assert "role" not in [c["name"] for c in insp_after.get_columns("users")], "Migration 0026 upgrade failed to drop 'role'"
+
+    with test_mig_engine.connect() as conn:
+        ctx = MigrationContext.configure(conn)
+        with Operations.context(ctx):
+            mig_0026.downgrade()
+        conn.commit()
+
+    insp_down = sa.inspect(test_mig_engine)
+    assert "role" in [c["name"] for c in insp_down.get_columns("users")], "Migration 0026 downgrade failed to re-add 'role'"
+
+    # 4. UserDB backwards compatibility
+    u1 = UserDB(email="test_no_role@test.com", name="Test No Role")
+    assert u1.role == "user"
+
+    # Deprecated role kwarg silently ignored
+    u2 = UserDB(email="test_compat_role@test.com", name="Test Compat Role", role="admin")
+    assert u2.role == "user"
+    u2.role = "employee"
+    assert u2.role == "user"
+
+    # Employee ID returns 'employee'
+    u3 = UserDB(email="emp@test.com", employee_id=123)
+    assert u3.role == "employee"
+
+    # Super-Admin role returns 'admin'
+    sa_role = RoleDB(name="Super-Admin", system_key="super_admin")
+    ur = UserRoleDB(role=sa_role)
+    u4 = UserDB(email="sa@test.com", employee_id=123, user_roles=[ur])
+    assert u4.role == "admin"
+
+
+def test_all_routes_guard_coverage_walker():
+    """
+    Slice 8 Acceptance:
+    Every route on FastAPI app has a catalog permission marker or is on the named allow-list:
+    {'/api/auth/google', '/api/auth/logout', '/api/auth/me', '/api/health'}.
+    """
+    from main import app
+    from fastapi.routing import APIRoute
+
+    allow_list = {"/api/auth/google", "/api/auth/logout", "/api/auth/me", "/api/health"}
+
+    uncovered = []
+    for r in app.routes:
+        if not isinstance(r, APIRoute):
+            continue
+        if r.path in allow_list:
+            continue
+        endpoint = r.endpoint
+        guard_single = getattr(endpoint, "hrflow_permission", None)
+        guard_all = getattr(endpoint, "hrflow_permission_all", None)
+        guard_self = getattr(endpoint, "hrflow_permission_self", None)
+        has_export = getattr(endpoint, "hrflow_proposed_guard", None) is not None
+
+        for dep in getattr(r.dependant, "dependencies", []):
+            call_fn = dep.call
+            if hasattr(call_fn, "hrflow_permission"):
+                guard_single = call_fn.hrflow_permission
+            if hasattr(call_fn, "hrflow_permission_all"):
+                guard_all = call_fn.hrflow_permission_all
+            if hasattr(call_fn, "hrflow_permission_self"):
+                guard_self = call_fn.hrflow_permission_self
+
+        if not (guard_single or guard_all or guard_self or has_export):
+            uncovered.append((list(r.methods), r.path))
+
+    assert uncovered == [], f"Routes lacking catalog permission guard: {uncovered}"
+
+
+def test_catalog_usage():
+    """
+    Slice 8 Acceptance:
+    All permission keys attached to route guards or defined in role matrices belong to all_keys().
+    """
+    from main import app
+    from fastapi.routing import APIRoute
+    from core.permission_catalog import all_keys
+    from core.role_seed import DEFAULT_ROLES
+
+    valid_keys = set(all_keys())
+
+    # Check all role matrices
+    for rdef in DEFAULT_ROLES.values():
+        for p in rdef.permissions:
+            assert p in valid_keys, f"Role {rdef.name} has non-catalog permission '{p}'"
+
+    # Check all route guards
+    for r in app.routes:
+        if not isinstance(r, APIRoute):
+            continue
+        endpoint = r.endpoint
+        guard_single = getattr(endpoint, "hrflow_permission", None)
+        guard_all = getattr(endpoint, "hrflow_permission_all", None)
+        guard_self = getattr(endpoint, "hrflow_permission_self", None)
+
+        for dep in getattr(r.dependant, "dependencies", []):
+            call_fn = dep.call
+            if hasattr(call_fn, "hrflow_permission"):
+                guard_single = call_fn.hrflow_permission
+            if hasattr(call_fn, "hrflow_permission_all"):
+                guard_all = call_fn.hrflow_permission_all
+            if hasattr(call_fn, "hrflow_permission_self"):
+                guard_self = call_fn.hrflow_permission_self
+
+        for g in [guard_single, guard_all, guard_self]:
+            if g and isinstance(g, str):
+                assert g in valid_keys, f"Route {r.path} uses non-catalog permission key '{g}'"
+
+
+def test_no_require_admin_or_legacy_role_or_wildcard_in_code():
+    """
+    Slice 8 Acceptance:
+    Repository code has no require_admin, no role == 'admin', no '*' in perms.
+    """
+    import os
+
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+    violations = []
+    for root, _, files in os.walk(base_dir):
+        if "migrations" in root or ".pytest_cache" in root or "__pycache__" in root:
+            continue
+        for f in files:
+            if not f.endswith(".py"):
+                continue
+            path = os.path.join(root, f)
+            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                content = fh.read()
+            if "require_admin" in content and "test_" not in f:
+                violations.append(f"require_admin found in {path}")
+            if ('role == "admin"' in content or "role == 'admin'" in content) and "test_" not in f:
+                violations.append(f"role == 'admin' found in {path}")
+            if ('"*" in perms' in content or "'*' in perms" in content) and "test_" not in f:
+                violations.append(f"'*' in perms found in {path}")
+
+    assert violations == [], f"Found forbidden legacy authorization patterns: {violations}"
+
+
+
 
 
 

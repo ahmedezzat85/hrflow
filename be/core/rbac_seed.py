@@ -58,11 +58,11 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
 
 SEED_ROLES: List[Dict[str, str]] = [
     {
-        "name": "system_admin",
+        "name": "Super-Admin",
         "description": "Full system and domain administrative access",
     },
     {
-        "name": "employee",
+        "name": "Employee",
         "description": "Standard self-service employee access",
     },
 ]
@@ -75,80 +75,7 @@ EMPLOYEE_PERMISSIONS = {
 
 
 def seed_rbac(db: Session) -> Dict[str, int]:
-    """
-    Idempotently seeds permissions, roles, role-permission links, and
-    backfills user-role links for existing users.
-    Returns counts of created entities.
-    """
-    stats = {
-        "permissions_created": 0,
-        "roles_created": 0,
-        "role_permissions_created": 0,
-        "user_roles_created": 0,
-    }
+    """Delegates to canonical sync_catalog."""
+    from core.role_seed import sync_catalog
+    return sync_catalog(db)
 
-    # 1. Seed Permissions
-    existing_perms = {p.key: p for p in db.query(PermissionDB).all()}
-    for perm_def in SEED_PERMISSIONS:
-        key = perm_def["key"]
-        if key not in existing_perms:
-            p = PermissionDB(key=key, description=perm_def.get("description", ""))
-            db.add(p)
-            db.flush()
-            existing_perms[key] = p
-            stats["permissions_created"] += 1
-
-    # 2. Seed Roles
-    existing_roles = {r.name: r for r in db.query(RoleDB).all()}
-    for role_def in SEED_ROLES:
-        name = role_def["name"]
-        if name not in existing_roles:
-            r = RoleDB(name=name, description=role_def.get("description", ""))
-            db.add(r)
-            db.flush()
-            existing_roles[name] = r
-            stats["roles_created"] += 1
-
-    admin_role = existing_roles["system_admin"]
-    employee_role = existing_roles["employee"]
-
-    # 3. Seed Role-Permissions
-    existing_rp = {
-        (rp.role_id, rp.permission_id) for rp in db.query(RolePermissionDB).all()
-    }
-
-    # system_admin receives ALL seeded permissions
-    for p in existing_perms.values():
-        pair = (admin_role.id, p.id)
-        if pair not in existing_rp:
-            db.add(RolePermissionDB(role_id=admin_role.id, permission_id=p.id))
-            existing_rp.add(pair)
-            stats["role_permissions_created"] += 1
-
-    # employee receives self.* permissions
-    for key in EMPLOYEE_PERMISSIONS:
-        p = existing_perms.get(key)
-        if p:
-            pair = (employee_role.id, p.id)
-            if pair not in existing_rp:
-                db.add(RolePermissionDB(role_id=employee_role.id, permission_id=p.id))
-                existing_rp.add(pair)
-                stats["role_permissions_created"] += 1
-
-    db.flush()
-
-    # 4. Backfill existing Users
-    existing_ur = {
-        (ur.user_id, ur.role_id) for ur in db.query(UserRoleDB).all()
-    }
-    users = db.query(UserDB).all()
-    for u in users:
-        target_role = admin_role if str(u.role).lower() == "admin" else employee_role
-        pair = (u.id, target_role.id)
-        if pair not in existing_ur:
-            db.add(UserRoleDB(user_id=u.id, role_id=target_role.id))
-            existing_ur.add(pair)
-            stats["user_roles_created"] += 1
-
-    db.commit()
-    return stats

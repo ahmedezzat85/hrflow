@@ -23,7 +23,7 @@ def get_insurance_categories(
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
     perms = set(current_user.get("permissions", []))
-    if "hr.insurance.read" not in perms and "self.claim.read" not in perms and current_user.get("role") != "admin":
+    if "hr.insurance.read" not in perms and "self.claim.read" not in perms:
         raise HTTPException(
             status_code=403,
             detail="Permission denied: 'hr.insurance.read' or 'self.claim.read' required",
@@ -114,7 +114,7 @@ def submit_insurance_claim(
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     perms = set(current_user.get("permissions", []))
-    has_write_all = "hr.insurance.write" in perms or current_user.get("role") == "admin"
+    has_write_all = "hr.insurance.write" in perms
     has_write_own = "self.claim.write" in perms
 
     if not has_write_all and not has_write_own:

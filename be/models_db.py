@@ -27,7 +27,6 @@ class UserDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=True)
-    role = Column(String(50), nullable=False, default="employee")
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
     archived_at = Column(DateTime, nullable=True)
     archived_by = Column(String(255), nullable=True)
@@ -35,6 +34,22 @@ class UserDB(Base):
 
     employee = relationship("EmployeeDB", back_populates="user", foreign_keys=[employee_id])
     user_roles = relationship("UserRoleDB", back_populates="user", cascade="all, delete-orphan")
+
+    def __init__(self, **kwargs):
+        # Gracefully accept and ignore deprecated 'role' argument for backwards compatibility
+        kwargs.pop("role", None)
+        super().__init__(**kwargs)
+
+    @property
+    def role(self) -> str:
+        for ur in (self.user_roles or []):
+            if getattr(ur.role, "system_key", None) == "super_admin" or getattr(ur.role, "name", None) == "Super-Admin":
+                return "admin"
+        return "employee" if self.employee_id is not None else "user"
+
+    @role.setter
+    def role(self, value: str):
+        pass
 
 
 # Import and re-export RBAC models so they are attached to Base.metadata

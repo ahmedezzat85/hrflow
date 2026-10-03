@@ -52,8 +52,6 @@ def permission_scope(all_key: str, self_key: str):
             emp_id = ctx.employee_id
         else:
             perms = set(current_user.get("permissions", []))
-            if not perms and current_user.get("role") == "admin":
-                perms = set(catalog_keys)
             emp_id = current_user.get("employee_id")
 
         if all_key in perms:
@@ -88,7 +86,7 @@ def current_user_employee_scope(
         perms = set(current_user.get("permissions", []))
         emp_id = current_user.get("employee_id")
 
-    if current_user.get("role") == "admin" or "hr.employee.read" in perms:
+    if "hr.employee.read" in perms:
         return None
     return emp_id
 
@@ -113,7 +111,7 @@ def resolve_employee_scope(
         emp_id = current_user.get("employee_id")
 
     hr_reads = {"hr.salary.read", "hr.vacation.read", "hr.insurance.read", "hr.employee.read", "hr.request.read"}
-    if current_user.get("role") == "admin" or bool(perms & hr_reads):
+    if bool(perms & hr_reads):
         return employee_id
     return emp_id
 
@@ -142,7 +140,7 @@ def resolve_target_employee(
             else:
                 has_permission = any(p in perms for p in ("hr.request.write", "hr.vacation.write", "hr.insurance.write"))
 
-            if not has_permission and current_user.get("role") != "admin":
+            if not has_permission:
                 logger.warning(
                     "User %s attempted to submit on behalf of employee_id=%s without required permission (%s)",
                     current_user.get("email"),

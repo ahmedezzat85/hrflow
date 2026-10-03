@@ -16,7 +16,7 @@ const SessionInfo = {
   _permissions: [],
   set(data) {
     this._role = data.role ?? null;
-    this._portal = data.portal ?? (data.role === 'admin' || data.role === 'system_admin' ? 'admin' : 'employee');
+    this._portal = data.portal ?? 'employee';
     this._roles = Array.isArray(data.roles) ? data.roles : [];
     this._employeeId = data.employee_id ?? null;
     this._name = data.name ?? null;

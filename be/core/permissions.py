@@ -74,7 +74,6 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
                 email=email.strip().lower(),
                 name=session_payload.get("name") or (emp.name if emp else email.split("@")[0]),
                 employee_id=emp_id,
-                role=role_claim,
             )
             db.add(user)
             db.flush()
@@ -107,8 +106,8 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
     )
     roles_set = set(assigned_roles)
 
-    # In dev/test, if user.role == "admin" but no Super-Admin role in user_roles, auto-link
-    if getattr(user, "role", None) == "admin" and not any(r.system_key == "super_admin" for r in roles_set):
+    # In dev/test, if admin email but no Super-Admin role in user_roles, auto-link
+    if getattr(user, "email", "") and getattr(user, "email", "").lower().startswith("admin@") and not any(r.system_key == "super_admin" for r in roles_set):
         if Config.ENVIRONMENT in ("development", "test"):
             sa_role = db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
             if not sa_role:
@@ -126,7 +125,7 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
             roles_set.add(emp_role)
 
     is_super_admin = any(
-        getattr(r, "system_key", None) == "super_admin" or r.name in ("Super-Admin", "system_admin")
+        getattr(r, "system_key", None) == "super_admin" or r.name == "Super-Admin"
         for r in roles_set
     )
 
@@ -220,10 +219,7 @@ def get_current_user_permissions(
             pass
     if ctx:
         return ctx.permissions
-    perms = set(current_user.get("permissions", []))
-    if not perms and current_user.get("role") == "admin":
-        perms = set(all_keys())
-    return perms
+    return set(current_user.get("permissions", []))
 
 
 def require_permission(permission_key: str):

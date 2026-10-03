@@ -76,15 +76,10 @@ const PayrollCycleManager = {
   },
 
   checkAdminPermission() {
-    let role = '';
-    if (typeof SessionInfo !== 'undefined' && typeof SessionInfo.getRole === 'function') {
-      role = SessionInfo.getRole();
-    } else if (typeof currentPortal !== 'undefined' && currentPortal === 'admin') {
-      role = 'admin';
-    } else if (typeof Api !== 'undefined' && typeof Api.getCurrentUser === 'function') {
-      role = Api.getCurrentUser()?.role || '';
+    if (typeof SessionInfo !== 'undefined' && typeof SessionInfo.hasPermission === 'function') {
+      return SessionInfo.hasPermission('finance.payroll.approve') || SessionInfo.hasPermission('finance.payroll.prepare');
     }
-    return role === 'admin' || role === 'system_admin';
+    return typeof currentPortal !== 'undefined' && currentPortal === 'admin';
   },
 
   async submitForReview() {

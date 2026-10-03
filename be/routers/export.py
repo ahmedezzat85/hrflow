@@ -76,9 +76,6 @@ FINANCE_DATASET_PERMISSIONS = {
 
 def check_export_permission(current_user: dict, dataset: str) -> None:
     perms = set(current_user.get("permissions", []))
-    if current_user.get("role") == "admin":
-        return
-
     dataset_key = dataset.lower().strip()
     if dataset_key in HR_DATASET_PERMISSIONS:
         needed_read = HR_DATASET_PERMISSIONS[dataset_key]

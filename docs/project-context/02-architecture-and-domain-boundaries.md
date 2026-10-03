@@ -64,13 +64,13 @@ To prevent cross-domain confusion, use these canonical terms and paths:
 ## 5. Cross-Cutting Architecture Rules
 
 1. **Persistence and Migrations:** All persistent schema updates must use Alembic migrations in `be/migrations/versions/`. Maintain cross-compatibility between SQLite (development) and PostgreSQL (production).
-2. **Authentication Flow:** Authenticate via Google Sign-In OAuth 2.0 ([be/auth.py](../../be/auth.py)). Session tokens are HS256 JWTs stored in an `HttpOnly`, `SameSite=Lax` cookie (`hrflow_session`). Production currently mandates domain validation (`ALLOWED_WORKSPACE_DOMAIN`, `Config.validate()`). Decision D-013 replaces this with provisioned Google accounts of any domain; the code has not changed yet.
-3. **Authorization Model (current code; D-011 replaces it in slices):**
-   - **Finance:** gated by `require_permission(...)` ([be/core/permissions.py](../../be/core/permissions.py)) on all but three routes (the activity timeline and two observability GETs require only a signed-in user).
-   - **HR:** 31 route registrations use legacy `require_admin`, 13 are role-scoped through `be/deps.py` helpers, and 4 use `hr.*` permissions. Existing `require_admin` guards must not be bypassed; they are replaced by RBAC permissions under D-011.
-   - A user whose role claim or `users.role` is `admin`, `superadmin`, `super_admin`, or `system_admin`, or who holds the `system_admin` RBAC role, receives the wildcard permission `*`. D-011 retires the wildcard.
-   - Payroll approval enforces at runtime that the submitter cannot approve the same run (`ENFORCE_MAKER_CHECKER`, `allow_self_approval`).
-4. **Data Masking:** IBANs, bank accounts, and vendor remittance details are masked by default. Unmasking of company and vendor details is restricted to `finance.bank_account.reveal` and `finance.vendor_payment.reveal`; unmasking an employee IBAN is restricted by `require_admin`.
+2. **Authentication Flow:** Authenticate via Google Sign-In OAuth 2.0 ([be/auth.py](../../be/auth.py)). Session tokens are HS256 JWTs stored in an `HttpOnly`, `SameSite=Lax` cookie (`hrflow_session`). Per D-013, verified Google accounts of any domain are supported for provisioned users (matched case-insensitively against active HRFlow users).
+3. **Authorization Model (Unified RBAC per D-011):**
+   - **Single Authority:** Relational RBAC (`roles`, `role_permissions`, `user_roles`) is the sole authorization authority across both HR and Finance domains. Legacy `require_admin`, `users.role`, role claims, and `*` wildcards are eliminated.
+   - **All Routes Gated:** Every route across HR and Finance enforces fine-grained catalog permissions via `require_permission(...)` or scoped dependencies (`permission_scope(...)`), except the public allow-list (`/api/auth/google`, `/api/auth/logout`, `/api/auth/me`, `/api/health`).
+   - **Five Seeded Roles:** Super-Admin (locked, all catalog permissions), HR-Admin, Financial-Admin, Payroll-Maker, Employee (derived baseline for linked employees).
+   - **Payroll Separation:** Payroll actions are partitioned into `finance.payroll.prepare`, `finance.payroll.approve`, and `finance.payroll.pay`. Runtime maker-checker prevents self-approval unless holding both prepare and approve.
+4. **Data Masking:** IBANs, bank accounts, and vendor remittance details are masked by default. Unmasking of company and vendor details is restricted to `finance.bank_account.reveal` and `finance.vendor_payment.reveal`; unmasking employee bank details is restricted to `hr.employee_bank_account.reveal`.
 5. **Storage Gating:** Direct storage links are never exposed. File access streams through authenticated endpoints ([be/routers/documents.py](../../be/routers/documents.py)) enforcing employee ownership or admin rights.
 6. **Synchronous Execution Note:** Long-running processes (PDF OCR extraction via `pypdf`, statement imports, Excel exports via `openpyxl`) run **synchronously** within FastAPI request handlers. Do not assume background job queues (Celery/Redis) exist.
 
@@ -94,9 +94,6 @@ When resolving technical conflicts, apply the following order of precedence:
 
 ## 7. Current Known Boundary Gaps
 
-- **HR Route Guard Inconsistency:** 31 route registrations in `be/routers/` use `require_admin` and 13 more are role-scoped; three finance routes have no permission guard. Addressed by the RBAC initiative (D-011, roadmap section 3A).
-- **Specialist Roles:** `SEED_ROLES` ([be/core/rbac_seed.py](../../be/core/rbac_seed.py)) still seeds only `system_admin` and `employee`. The five-role model in D-011 is accepted but not implemented.
-- **Startup Seeding:** `init_db()` runs at import of `be/main.py`, swallows seeding errors, and re-links users to roles from the legacy `users.role` on every start. Must change before users are managed through RBAC.
 - **Dormant Repositories:** `be/repositories/sheets/` and `be/repositories/dual/` are migration relics, but `be/routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`.
 - **Incomplete Payslip Self-Service:** the employee payslip section ([fe/src/partials/employee/sections/payslips.html](../../fe/src/partials/employee/sections/payslips.html)) calls `refreshMyPayslips()`, which is not defined; the API client already exposes `getMyPayslips`.
 - **No Background Processing Layer:** Heavy tasks run synchronously in-process, needing careful query and payload optimization.
