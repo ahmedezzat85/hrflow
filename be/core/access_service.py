@@ -557,6 +557,29 @@ class AccessService:
 
         return {"message": "User archived", "id": user.id}
 
+    def unarchive_user(self, user_id: int, actor_user: dict) -> Dict[str, Any]:
+        """
+        Restores an archived user account.
+        """
+        user = self.get_user_by_id(user_id)
+        actor_email = (actor_user.get("email") or "").strip().lower()
+
+        user.archived_at = None
+        user.archived_by = None
+        self.db.commit()
+
+        if self.audit_repo:
+            audit_log(
+                self.audit_repo,
+                "user.unarchive",
+                actor_email,
+                "user",
+                user.id,
+                f"unarchived_by={actor_email}",
+            )
+
+        return {"message": "User restored", "id": user.id}
+
     # -------------------------------------------------------------------------
     # Employee Lifecycle Hooks (R4, R5, R12, R14)
     # -------------------------------------------------------------------------

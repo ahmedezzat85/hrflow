@@ -2552,6 +2552,59 @@ def test_no_require_admin_or_legacy_role_or_wildcard_in_code():
     assert violations == [], f"Found forbidden legacy authorization patterns: {violations}"
 
 
+def test_assign_super_admin_role_methods_and_payloads(app_client):
+    """
+    Verification: Setting Super-Admin role to a user succeeds using:
+    - PUT /api/access/users/{id}/roles with role_ids
+    - POST /api/access/users/{id}/roles with roles: ['super_admin']
+    - POST /api/access/users/{id}/roles with roles: ['Super-Admin']
+    - PUT /api/access/users/{id} with role: 'super_admin'
+    - POST /api/access/users/{id}/unarchive succeeds
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        sa_actor = _create_test_user_with_roles(db, email="sa_assigner@voyance.health", system_keys=["super_admin"])
+        target = _create_test_user_with_roles(db, email="sa_target@voyance.health", system_keys=["hr_admin"])
+        sa_actor_id = sa_actor["id"]
+        target_id = target["id"]
+
+    sa_cookies = _make_user_cookies(sa_actor)
+
+    # 1. PUT with role_ids by name/key
+    resp_put = app_client.put(
+        f"/api/access/users/{target_id}/roles",
+        json={"roles": ["super_admin"]},
+        cookies=sa_cookies,
+    )
+    assert resp_put.status_code == 200, resp_put.text
+    data = resp_put.json()
+    assert any(r["system_key"] == "super_admin" for r in data["roles"])
+
+    # 2. POST with roles: ['Super-Admin']
+    resp_post = app_client.post(
+        f"/api/access/users/{target_id}/roles",
+        json={"roles": ["Super-Admin"]},
+        cookies=sa_cookies,
+    )
+    assert resp_post.status_code == 200, resp_post.text
+    assert any(r["name"] == "Super-Admin" for r in resp_post.json()["roles"])
+
+    # 3. PUT alias on /api/access/users/{id} with role: 'super_admin'
+    resp_alias = app_client.put(
+        f"/api/access/users/{target_id}",
+        json={"role": "super_admin"},
+        cookies=sa_cookies,
+    )
+    assert resp_alias.status_code == 200, resp_alias.text
+
+    # 4. Archive then Unarchive
+    resp_arch = app_client.post(f"/api/access/users/{target_id}/archive", cookies=sa_cookies)
+    assert resp_arch.status_code == 200
+    resp_unarch = app_client.post(f"/api/access/users/{target_id}/unarchive", cookies=sa_cookies)
+    assert resp_unarch.status_code == 200
+    assert resp_unarch.json()["message"] == "User restored"
+
+
 
 
 

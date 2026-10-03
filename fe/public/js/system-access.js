@@ -509,7 +509,10 @@
         : `<span class="badge" style="background:var(--success-soft, #dcfce7); color:var(--success, #10b981);"><i class="fa-solid fa-circle-check"></i> Active</span>`;
 
       const roleBadges = (u.roles && u.roles.length > 0)
-        ? u.roles.map(r => `<span class="badge" style="background:var(--accent-soft); color:var(--accent); margin-right:4px;">${r}</span>`).join('')
+        ? u.roles.map(r => {
+            const roleName = typeof r === 'object' && r !== null ? (r.name || r.system_key || r.id) : r;
+            return `<span class="badge" style="background:var(--accent-soft); color:var(--accent); margin-right:4px;">${roleName}</span>`;
+          }).join('')
         : `<span style="color:var(--text3); font-size:12px;">No custom roles</span>`;
 
       return `
@@ -548,13 +551,18 @@
     const display = document.getElementById('assignUserDisplay');
     if (display) display.textContent = `Assign roles for ${user.name || user.email} (${user.email})`;
 
+    const userRoleIds = (user.roles || []).map(r => (typeof r === 'object' && r !== null ? r.id : r));
+    const userRoleNames = (user.roles || []).map(r => (typeof r === 'object' && r !== null ? (r.name || r.system_key) : r));
+
     const checklist = document.getElementById('assignRolesChecklist');
     if (checklist) {
       checklist.innerHTML = _systemRoles.map(role => {
-        const isChecked = (user.roles || []).includes(role.name);
+        const isChecked = userRoleIds.includes(role.id) ||
+                          userRoleNames.includes(role.name) ||
+                          userRoleNames.includes(role.system_key);
         return `
           <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:6px; background:var(--surface); cursor:pointer;">
-            <input type="checkbox" data-role-name="${role.name}" ${isChecked ? 'checked' : ''}>
+            <input type="checkbox" data-role-id="${role.id}" data-role-name="${role.name}" ${isChecked ? 'checked' : ''}>
             <div>
               <div style="font-weight:600; font-size:13px; color:var(--text);">${role.name}</div>
               <div style="font-size:11.5px; color:var(--text2);">${role.description || ''}</div>
@@ -572,20 +580,23 @@
     const user = _systemUsers.find(u => u.id === _currentAssignUserId);
     if (!user) return;
 
-    const selectedRoles = [];
+    const selectedRoleIds = [];
+    const selectedRoleNames = [];
     document.querySelectorAll('#assignRolesChecklist input[type="checkbox"]:checked').forEach(cb => {
-      selectedRoles.push(cb.dataset.roleName);
+      const rid = parseInt(cb.dataset.roleId, 10);
+      if (!isNaN(rid)) selectedRoleIds.push(rid);
+      if (cb.dataset.roleName) selectedRoleNames.push(cb.dataset.roleName);
     });
 
     setButtonLoading(btn, true, 'Saving...');
     try {
       if (isMockMode()) {
-        user.roles = selectedRoles;
+        user.roles = selectedRoleNames;
         toast('Roles assigned successfully');
         closeModal('assignRolesModal');
         renderUsersTable();
       } else {
-        await Api.assignUserRoles(_currentAssignUserId, selectedRoles);
+        await Api.assignUserRoles(_currentAssignUserId, selectedRoleIds);
         toast('Roles assigned successfully');
         closeModal('assignRolesModal');
         await loadUsers();

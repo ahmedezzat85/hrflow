@@ -5,12 +5,13 @@ Guards:
 - Catalog and Roles endpoints: system.roles.manage
 - Users endpoints: system.users.manage
 """
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, Path, status
+from typing import List, Optional, Union
+from fastapi import APIRouter, Depends, Query, Path, status, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from db import get_db
+from models_db import RoleDB
 from core.permissions import require_permission
 from core.access_service import AccessService
 from repositories.deps import get_audit_repo
@@ -83,7 +84,9 @@ class UserCreateExternalRequest(BaseModel):
 
 
 class UserRolesUpdateRequest(BaseModel):
-    role_ids: List[int]
+    role_ids: Optional[List[Union[int, str]]] = None
+    roles: Optional[List[Union[int, str]]] = None
+    role: Optional[Union[int, str]] = None
 
 
 # -----------------------------------------------------------------------------
@@ -201,6 +204,11 @@ def create_external_user(
 
 
 @router.put("/users/{user_id}/roles", response_model=UserAccessRowResponse)
+@router.post("/users/{user_id}/roles", response_model=UserAccessRowResponse)
+@router.put("/users/{user_id}/role", response_model=UserAccessRowResponse)
+@router.post("/users/{user_id}/role", response_model=UserAccessRowResponse)
+@router.put("/users/{user_id}", response_model=UserAccessRowResponse)
+@router.patch("/users/{user_id}", response_model=UserAccessRowResponse)
 def update_user_roles(
     user_id: int = Path(..., description="User ID"),
     payload: UserRolesUpdateRequest = ...,
@@ -208,9 +216,42 @@ def update_user_roles(
     current_user: dict = Depends(require_permission("system.users.manage")),
 ):
     """Replaces assigned roles for a user (rules R1, R2, R3, R9, R11)."""
+    raw_list = payload.role_ids if payload.role_ids is not None else payload.roles
+    if raw_list is None and payload.role is not None:
+        raw_list = [payload.role]
+    if raw_list is None:
+        raw_list = []
+
+    all_db_roles = service.db.query(RoleDB).all()
+    lookup = {}
+    for r in all_db_roles:
+        lookup[str(r.id)] = r.id
+        if r.system_key:
+            lookup[r.system_key.strip().lower()] = r.id
+            lookup[r.system_key.strip().lower().replace("_", "-")] = r.id
+        if r.name:
+            lookup[r.name.strip().lower()] = r.id
+            lookup[r.name.strip().lower().replace("-", "_")] = r.id
+
+    resolved_ids: List[int] = []
+    for item in raw_list:
+        if isinstance(item, int):
+            resolved_ids.append(item)
+        elif isinstance(item, str):
+            clean = item.strip().lower()
+            if clean in lookup:
+                resolved_ids.append(lookup[clean])
+            elif clean.isdigit():
+                resolved_ids.append(int(clean))
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Role '{item}' not recognized.",
+                )
+
     return service.update_user_roles(
         user_id=user_id,
-        role_ids=payload.role_ids,
+        role_ids=resolved_ids,
         actor_user=current_user,
     )
 
@@ -225,6 +266,17 @@ def archive_user(
     return service.archive_user(user_id=user_id, actor_user=current_user)
 
 
+@router.post("/users/{user_id}/unarchive")
+@router.post("/users/{user_id}/restore")
+def unarchive_user(
+    user_id: int = Path(..., description="User ID to unarchive"),
+    service: AccessService = Depends(get_access_service),
+    current_user: dict = Depends(require_permission("system.users.manage")),
+):
+    """Restores an archived user."""
+    return service.unarchive_user(user_id=user_id, actor_user=current_user)
+
+
 get_catalog.hrflow_permission_all = "system.roles.manage"
 list_roles.hrflow_permission_all = "system.roles.manage"
 create_role.hrflow_permission_all = "system.roles.manage"
@@ -234,3 +286,4 @@ list_users.hrflow_permission_all = "system.users.manage"
 create_external_user.hrflow_permission_all = "system.users.manage"
 update_user_roles.hrflow_permission_all = "system.users.manage"
 archive_user.hrflow_permission_all = "system.users.manage"
+unarchive_user.hrflow_permission_all = "system.users.manage"
