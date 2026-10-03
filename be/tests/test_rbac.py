@@ -134,6 +134,8 @@ def test_rbac_unique_constraints(app_client):
 
 def test_get_user_permissions_resolution(app_client):
     """Verify get_user_permissions resolves correct permission sets based on UserRole."""
+    from conftest import create_test_user
+    create_test_user("admin@hrflow.test", role_key="super_admin", employee_id=1)
     with get_db_context() as db:
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
@@ -2635,3 +2637,60 @@ def test_r4_blocks_delete_for_custom_role_holder(app_client):
     assert "Users page" in resp.text
     with get_db_context() as db:
         assert db.query(UserDB).filter(UserDB.id == holder_id).first() is not None
+
+
+# ============================================================================
+# RBAC-F1: resolver back door closed
+# ============================================================================
+
+@pytest.mark.parametrize("environment", ["development", "test", "production"])
+def test_unknown_user_gets_401_in_every_environment(app_client, monkeypatch, environment):
+    """F1 AC1: a valid token for an email without a users row is rejected, in any environment."""
+    from auth import create_session_token
+    from config import Config
+    monkeypatch.setattr(Config, "ENVIRONMENT", environment)
+    token = create_session_token("nobody@voyance.health", name="Nobody")
+    resp = app_client.get("/api/auth/me", cookies={Config.SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 401
+
+
+def test_forged_admin_claim_for_unknown_user_creates_nothing(app_client):
+    """F1 AC2: a token claiming role=admin for a non-existent user creates no user."""
+    from auth import create_session_token
+    from config import Config
+    with get_db_context() as db:
+        before = db.query(UserDB).count()
+    token = create_session_token("ghost@voyance.health", role="admin", employee_id=1, name="Ghost")
+    for path in ("/api/auth/me", "/api/access/users", "/api/employees"):
+        resp = app_client.get(path, cookies={Config.SESSION_COOKIE_NAME: token})
+        assert resp.status_code == 401
+    with get_db_context() as db:
+        assert db.query(UserDB).count() == before
+        assert db.query(UserDB).filter(UserDB.email == "ghost@voyance.health").first() is None
+
+
+def test_admin_prefixed_email_without_super_admin_role_gets_no_super_admin(app_client):
+    """F1 AC3: an `admin@` email holding only Payroll-Maker does not receive Super-Admin."""
+    from conftest import create_test_user
+    cookies = create_test_user("admin@voyance.health", role_key="payroll_maker")
+    me = app_client.get("/api/auth/me", cookies=cookies)
+    assert me.status_code == 200
+    perms = set(me.json()["permissions"])
+    assert perms == DEFAULT_ROLES["payroll_maker"].permissions
+    assert app_client.get("/api/access/users", cookies=cookies).status_code == 403
+
+
+def test_no_dev_environment_shortcuts_in_authorization_code():
+    """F1 AC4: no hrflow.test fallback or development/test environment branch in authorization code."""
+    import os
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    targets = [os.path.join(base_dir, "auth.py"), os.path.join(base_dir, "deps.py")]
+    for folder in ("core", "routers"):
+        for fname in os.listdir(os.path.join(base_dir, folder)):
+            if fname.endswith(".py"):
+                targets.append(os.path.join(base_dir, folder, fname))
+    for path in targets:
+        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            content = fh.read()
+        assert "hrflow.test" not in content, f"hrflow.test fallback in {path}"
+        assert 'ENVIRONMENT in ("development", "test")' not in content, f"environment branch in {path}"

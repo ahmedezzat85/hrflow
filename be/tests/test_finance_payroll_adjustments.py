@@ -494,12 +494,9 @@ def test_stale_preview_rejection_and_immutability(app_client, admin_cookies, see
 
     # 5. Maker-checker enforcement: Submitter cannot approve their own run
     # (admin@hrflow.test created it, so approving as admin with allow_self_approval=False fails)
-    import auth as auth_module
-    import config as config_module
-    submitter_token = auth_module.create_session_token("preparer@voyance.health", "admin", 99, name="Preparer")
-    checker_token = auth_module.create_session_token("checker@voyance.health", "admin", 98, name="Checker")
-    submitter_cookies = {config_module.Config.SESSION_COOKIE_NAME: submitter_token}
-    checker_cookies = {config_module.Config.SESSION_COOKIE_NAME: checker_token}
+    from conftest import create_test_user
+    submitter_cookies = create_test_user("preparer@voyance.health", role_key="super_admin", name="Preparer")
+    checker_cookies = create_test_user("checker@voyance.health", role_key="super_admin", name="Checker")
 
     # Create run as preparer
     prep_prev = app_client.post(

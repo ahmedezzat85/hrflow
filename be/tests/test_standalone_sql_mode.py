@@ -63,9 +63,8 @@ def standalone_sql_app(monkeypatch, tmp_path):
 
 
 def _get_auth_cookies(email: str, role: str = "admin", employee_id: int = 1) -> dict:
-    import auth as auth_module
-    token = auth_module.create_session_token(email, role, employee_id, name="Admin")
-    return {config.Config.SESSION_COOKIE_NAME: token}
+    from conftest import create_test_user
+    return create_test_user(email, role_key="super_admin" if role == "admin" else None, employee_id=employee_id, name="Admin")
 
 
 def test_standalone_sql_employee_crud(standalone_sql_app):

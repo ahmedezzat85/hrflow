@@ -63,34 +63,10 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
         user = db.query(UserDB).filter(UserDB.email.ilike(email.strip())).first()
 
     if user is None:
-        # In development/test mode, auto-provision unseeded test users
-        if Config.ENVIRONMENT in ("development", "test") and email:
-            from models_db import EmployeeDB
-            emp = db.query(EmployeeDB).filter(EmployeeDB.email.ilike(email.strip())).first()
-            emp_id = session_payload.get("employee_id") or (emp.id if emp else None)
-            role_claim = session_payload.get("role", "employee")
-
-            user = UserDB(
-                email=email.strip().lower(),
-                name=session_payload.get("name") or (emp.name if emp else email.split("@")[0]),
-                employee_id=emp_id,
-            )
-            db.add(user)
-            db.flush()
-            if role_claim == "admin":
-                sa_role = db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
-                if not sa_role:
-                    from core.role_seed import sync_catalog
-                    sync_catalog(db)
-                    sa_role = db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
-                if sa_role:
-                    db.add(UserRoleDB(user_id=user.id, role_id=sa_role.id))
-            db.commit()
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
 
     if user.archived_at is not None:
         raise HTTPException(
@@ -106,28 +82,12 @@ def resolve_access(db: Session, session_payload: dict) -> AccessContext:
     )
     roles_set = set(assigned_roles)
 
-    # In dev/test, if admin email but no Super-Admin role in user_roles, auto-link
-    if getattr(user, "email", "") and getattr(user, "email", "").lower().startswith("admin@") and not any(r.system_key == "super_admin" for r in roles_set):
-        if Config.ENVIRONMENT in ("development", "test"):
-            sa_role = db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
-            if not sa_role:
-                from core.role_seed import sync_catalog
-                sync_catalog(db)
-                sa_role = db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
-            if sa_role:
-                db.add(UserRoleDB(user_id=user.id, role_id=sa_role.id))
-                db.commit()
-                roles_set.add(sa_role)
-
     if user.employee_id is not None:
         emp_role = db.query(RoleDB).filter(RoleDB.system_key == "employee").first()
         if emp_role:
             roles_set.add(emp_role)
 
-    is_super_admin = any(
-        getattr(r, "system_key", None) == "super_admin" or r.name == "Super-Admin"
-        for r in roles_set
-    )
+    is_super_admin = any(r.system_key == "super_admin" for r in roles_set)
 
     if is_super_admin:
         perms = set(all_keys())
@@ -212,11 +172,8 @@ def get_current_user_permissions(
         return request.state.access_context.permissions
     ctx: Optional[AccessContext] = None
     if current_user and ("permissions" in current_user or "email" in current_user):
-        try:
-            ctx = resolve_access(db, current_user)
-            request.state.access_context = ctx
-        except Exception:
-            pass
+        ctx = resolve_access(db, current_user)
+        request.state.access_context = ctx
     if ctx:
         return ctx.permissions
     return set(current_user.get("permissions", []))

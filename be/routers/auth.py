@@ -45,10 +45,7 @@ def api_google_login(
     db: Session = Depends(get_db),
 ):
     logger.info("Google login attempt received")
-    try:
-        result = login_with_google(payload.credential, user_repo=user_repo)
-    except TypeError:
-        result = login_with_google(payload.credential)
+    result = login_with_google(payload.credential, user_repo=user_repo)
     if not result:
         logger.warning("Google login rejected: credential valid but no matching HRFlow user found")
         raise HTTPException(
@@ -59,16 +56,6 @@ def api_google_login(
     _set_session_cookie(response, result["token"])
 
     user_payload = {"uid": result.get("uid"), "email": result.get("email")}
-    if not user_payload["email"] and not user_payload["uid"]:
-        from models_db import UserDB
-        if result.get("employee_id"):
-            u = db.query(UserDB).filter(UserDB.employee_id == result["employee_id"]).first()
-            if u:
-                user_payload["uid"] = u.id
-                user_payload["email"] = u.email
-        if not user_payload["email"]:
-            user_payload["email"] = "admin@hrflow.test" if result.get("role") == "admin" else "employee@hrflow.test"
-
     ctx = resolve_access(db, user_payload)
 
     return LoginResponse(

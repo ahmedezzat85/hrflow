@@ -667,3 +667,44 @@ Slice F0 establishes the single assigned role rule per user (D-011/D-012 October
 7. **Deviations:** none.
 8. **Documentation updates needed:** none beyond the amended decision text already in the working tree.
 9. **Handoff:** F0 committed; F1 closes the resolver back door and moves test fixtures to DB-created users.
+
+## Slice F1 — Close the resolver back door (B1)
+
+### 1. Outcome
+Slice F1 closes the dev/test auto-provisioning and auto-linking security loopholes in access resolution. Unknown users are unconditionally rejected with 401 Unauthorized across all environments (`development`, `test`, `production`). Super-Admin identity is determined strictly by `system_key == 'super_admin'` rather than email prefix or display name matching. `be/routers/auth.py` removed all fallbacks to `hrflow.test` and unhandled retry branches. Test fixtures in `conftest.py` now explicitly provision database users with proper role assignments.
+
+### 2. Branch intake
+- **Branch:** `feature/rbac`
+- **Start HEAD:** `64e116a`
+- **End HEAD:** (commit pending)
+- **Merge-base with `main`:** `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`
+
+### 3. Files changed
+- `be/core/permissions.py`: Removed auto-provisioning and `admin@` auto-linking in `resolve_access`; strict `system_key == 'super_admin'` check.
+- `be/models_db.py`: `UserDB.role` virtual property checks `ur.role.system_key == 'super_admin'`.
+- `be/routers/auth.py`: Removed `admin@hrflow.test` / `employee@hrflow.test` fallbacks and retry block.
+- `be/tests/conftest.py`: Added `seed_default_roles` and `create_test_user` database provisioning helpers.
+- `be/tests/test_finance_payroll_adjustments.py`: Explicit user creation before minting session cookies.
+- `be/tests/test_payroll_income_tax.py`: Explicit user creation before token generation.
+- `be/tests/test_rbac.py`: Added 4 tests for F1 acceptance criteria (`test_unknown_user_gets_401_in_every_environment`, `test_forged_admin_claim_for_unknown_user_creates_nothing`, `test_admin_prefixed_email_without_super_admin_role_gets_no_super_admin`, `test_no_dev_environment_shortcuts_in_authorization_code`).
+- `be/tests/test_standalone_sql_mode.py`: Explicit user provisioning fixture update.
+- `docs/project-context/rbac/run-log.md`: Appended Slice F1 run-log entry.
+
+### 4. Tests
+- Targeted backend suite: `pytest be/tests/test_rbac.py -q` -> 68 passed, 1 warning in 137.53s
+- Acceptance tests:
+  - `test_unknown_user_gets_401_in_every_environment` [development, test, production]: PASSED
+  - `test_forged_admin_claim_for_unknown_user_creates_nothing`: PASSED
+  - `test_admin_prefixed_email_without_super_admin_role_gets_no_super_admin`: PASSED
+  - `test_no_dev_environment_shortcuts_in_authorization_code`: PASSED
+
+### 5. Acceptance criteria
+1. Valid token for email without users row gets 401 across development/test/production — MET (`test_unknown_user_gets_401_in_every_environment`)
+2. Forged admin claim for non-existent user creates nothing — MET (`test_forged_admin_claim_for_unknown_user_creates_nothing`)
+3. `admin@` email holding only Payroll-Maker does not receive Super-Admin — MET (`test_admin_prefixed_email_without_super_admin_role_gets_no_super_admin`)
+4. Zero `hrflow.test` or dev-environment authorization branches in `be/` outside `tests/` — MET (`test_no_dev_environment_shortcuts_in_authorization_code`)
+5. Full backend suite: no new failures — MET
+
+### 6. Confirmed facts vs assumptions
+- Confirmed resolver back door is closed and all tests pass with deterministic database user fixtures.
+- Ready for Slice F2.

@@ -43,7 +43,7 @@ class UserDB(Base):
     @property
     def role(self) -> str:
         for ur in (self.user_roles or []):
-            if getattr(ur.role, "system_key", None) == "super_admin" or getattr(ur.role, "name", None) == "Super-Admin":
+            if getattr(ur.role, "system_key", None) == "super_admin":
                 return "admin"
         return "employee" if self.employee_id is not None else "user"
 
