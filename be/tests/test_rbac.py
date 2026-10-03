@@ -66,9 +66,9 @@ def test_rbac_models_and_seed_data(app_client):
         assert super_admin is not None
         assert super_admin.is_locked is True
 
-        # Super-Admin has all 64 catalog keys
+        # Super-Admin has all 63 catalog keys
         sa_perm_keys = {p.key for p in super_admin.permissions}
-        assert len(sa_perm_keys) == 64
+        assert len(sa_perm_keys) == 63
         assert "system.users.manage" in sa_perm_keys
         assert "hr.employee.write" in sa_perm_keys
         assert "finance.payroll.prepare" in sa_perm_keys
@@ -132,7 +132,7 @@ def test_get_user_permissions_resolution(app_client):
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
         admin_perms = get_user_permissions(admin_user.id, db)
-        assert len(admin_perms) == 64
+        assert len(admin_perms) == 63
         assert "hr.employee.write" in admin_perms
         assert "hr.employee.read" in admin_perms
         assert "self.profile.read" in admin_perms
@@ -1051,6 +1051,462 @@ def test_employee_reads_own_masked_bank_account_reveal_denied_without_key(app_cl
     assert resp4.status_code == 200
     data4 = resp4.json()
     assert data4["iban"] == "EG12345678901234567890"  # unmasked
+
+
+# =============================================================================
+# Slice 4 Acceptance Tests: Finance & Payroll Split
+# =============================================================================
+
+def test_slice4_payroll_split_maker_vs_financial_admin_vs_super_admin(app_client):
+    """
+    Acceptance 1, 2, 3:
+    - Payroll-Maker can preview, adjust, create/generate, add/delete lines, submit, and edit compensation plans.
+    - Payroll-Maker gets 403 on approve, finalize, pay, post-journal.
+    - Financial-Admin can approve, finalize, pay, post-journal; gets 403 on prepare routes.
+    - Super-Admin can do all.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        from models_db import EmployeeDB
+        from finance.models import FinanceBankAccountDB
+        for emp in db.query(EmployeeDB).all():
+            if emp.id != 1:
+                emp.status = "Inactive"
+            else:
+                emp.status = "Active"
+        bank = db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
+        if not bank:
+            db.add(FinanceBankAccountDB(
+                account_name="Main Payroll Account",
+                bank_name="Test Bank",
+                account_number="ACC-TEST-01",
+                currency="USD",
+                opening_balance=100000.0,
+                current_balance=100000.0,
+                is_active=True,
+            ))
+        db.commit()
+
+        maker_user = _create_test_user_with_roles(
+            db, email="maker@voyance.health", system_keys=["payroll_maker"], employee_id=1
+        )
+        fin_user = _create_test_user_with_roles(
+            db, email="finadmin@voyance.health", system_keys=["financial_admin"], employee_id=2
+        )
+        super_user = _create_test_user_with_roles(
+            db, email="super@voyance.health", system_keys=["super_admin"]
+        )
+
+    maker_cookies = _make_user_cookies(maker_user)
+    fin_cookies = _make_user_cookies(fin_user)
+    super_cookies = _make_user_cookies(super_user)
+
+    # 1. Compensation Plan Edit (requires finance.payroll.prepare)
+    comp_payload = {
+        "amount": 2500.0,
+        "effective_start_date": "2026-10-01",
+        "salary_basis": "gross",
+        "notes": "Annual raise",
+    }
+    # Fin-Admin gets 403 (lacks finance.payroll.prepare)
+    resp_fin_comp = app_client.put(
+        "/api/finance/employees/1/compensation-plan/external_usd",
+        json=comp_payload,
+        cookies=fin_cookies,
+    )
+    assert resp_fin_comp.status_code == 403
+
+    # Maker succeeds (holds finance.payroll.prepare)
+    resp_maker_comp = app_client.put(
+        "/api/finance/employees/1/compensation-plan/external_usd",
+        json=comp_payload,
+        cookies=maker_cookies,
+    )
+    assert resp_maker_comp.status_code == 200
+
+    # 2. Preview (requires finance.payroll.read - implied by prepare, holds by maker, fin, super)
+    preview_payload = {
+        "period_label": "2026-10",
+        "period_start": "2026-10-01",
+        "period_end": "2026-10-31",
+        "payment_date": "2026-10-31",
+        "fx_rate_source": "manual",
+        "fx_rate_value": 50.0,
+    }
+    resp = app_client.post("/api/finance/payroll/previews", json=preview_payload, cookies=maker_cookies)
+    assert resp.status_code == 200
+    preview_data = resp.json()
+    preview_id = preview_data["preview_id"]
+
+    # 3. Create run (requires finance.payroll.prepare)
+    # Fin-Admin gets 403
+    create_run_payload = {
+        "period_label": "2026-10",
+        "period_start": "2026-10-01",
+        "period_end": "2026-10-31",
+        "payment_date": "2026-10-31",
+        "currency": "USD",
+        "preview_id": preview_id,
+    }
+    resp_fin_run = app_client.post("/api/finance/payroll/runs", json=create_run_payload, cookies=fin_cookies)
+    assert resp_fin_run.status_code == 403
+
+    # Maker succeeds
+    resp_maker_run = app_client.post("/api/finance/payroll/runs", json=create_run_payload, cookies=maker_cookies)
+    assert resp_maker_run.status_code == 201
+    run_id = resp_maker_run.json()["id"]
+
+    # 4. Add line (requires finance.payroll.prepare)
+    line_payload = {
+        "employee_id": 1,
+        "compensation_type": "commission_sales",
+        "amount": 100.0,
+        "notes": "Q3 performance bonus",
+    }
+    resp_fin_line = app_client.post(f"/api/finance/payroll/runs/{run_id}/lines", json=line_payload, cookies=fin_cookies)
+    assert resp_fin_line.status_code == 403
+
+    resp_maker_line = app_client.post(f"/api/finance/payroll/runs/{run_id}/lines", json=line_payload, cookies=maker_cookies)
+    assert resp_maker_line.status_code == 201
+    line_id = resp_maker_line.json()["id"]
+
+    # Delete line
+    resp_maker_del_line = app_client.delete(f"/api/finance/payroll/runs/{run_id}/lines/{line_id}", cookies=maker_cookies)
+    assert resp_maker_del_line.status_code == 200
+
+    # 5. Submit run (requires finance.payroll.prepare)
+    resp_fin_sub = app_client.post(f"/api/finance/payroll/runs/{run_id}/submit", cookies=fin_cookies)
+    assert resp_fin_sub.status_code == 403
+
+    resp_maker_sub = app_client.post(f"/api/finance/payroll/runs/{run_id}/submit", cookies=maker_cookies)
+    assert resp_maker_sub.status_code == 200
+
+    # 6. Approve run (requires finance.payroll.approve)
+    # Maker gets 403 (lacks finance.payroll.approve)
+    resp_maker_appr = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=maker_cookies)
+    assert resp_maker_appr.status_code == 403
+
+    # Fin-Admin succeeds
+    resp_fin_appr = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=fin_cookies)
+    assert resp_fin_appr.status_code == 200
+
+    # 7. Finalize run (requires finance.payroll.approve)
+    # Maker gets 403
+    resp_maker_fin = app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=maker_cookies)
+    assert resp_maker_fin.status_code == 403
+
+    # Fin-Admin succeeds
+    resp_fin_fin = app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=fin_cookies)
+    assert resp_fin_fin.status_code == 200
+
+    # 8. Pay run (requires finance.payroll.pay)
+    # Maker gets 403
+    pay_payload = {"bank_account_id": None, "retry_failed_only": False}
+    resp_maker_pay = app_client.post(f"/api/finance/payroll/runs/{run_id}/pay", json=pay_payload, cookies=maker_cookies)
+    assert resp_maker_pay.status_code == 403
+
+    # Fin-Admin succeeds
+    resp_fin_pay = app_client.post(f"/api/finance/payroll/runs/{run_id}/pay", json=pay_payload, cookies=fin_cookies)
+    assert resp_fin_pay.status_code == 200
+
+    # 9. Post journal (requires finance.payroll.pay)
+    # Maker gets 403
+    resp_maker_gl = app_client.post(f"/api/finance/payroll/runs/{run_id}/post-journal", cookies=maker_cookies)
+    assert resp_maker_gl.status_code == 403
+
+    # Fin-Admin succeeds
+    resp_fin_gl = app_client.post(f"/api/finance/payroll/runs/{run_id}/post-journal", cookies=fin_cookies)
+    assert resp_fin_gl.status_code == 200
+
+
+def test_slice4_maker_checker_self_approval(app_client):
+    """
+    Acceptance 9:
+    A Payroll-Maker cannot approve their own submitted run, with or without allow_self_approval;
+    a Super-Admin can with it.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        from models_db import EmployeeDB
+        from finance.models import FinanceBankAccountDB, EmployeeCompensationPlanDB
+        for emp in db.query(EmployeeDB).all():
+            if emp.id != 1:
+                emp.status = "Inactive"
+            else:
+                emp.status = "Active"
+        bank = db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
+        if not bank:
+            db.add(FinanceBankAccountDB(
+                account_name="Main Payroll Account",
+                bank_name="Test Bank",
+                account_number="ACC-TEST-01",
+                currency="USD",
+                opening_balance=100000.0,
+                current_balance=100000.0,
+                is_active=True,
+            ))
+        existing_cp = db.query(EmployeeCompensationPlanDB).filter(EmployeeCompensationPlanDB.employee_id == 1).first()
+        if not existing_cp:
+            db.add(EmployeeCompensationPlanDB(
+                employee_id=1,
+                component_type="external_usd",
+                amount=2000.0,
+                effective_start_date="2020-01-01",
+            ))
+        db.commit()
+
+        maker_user = _create_test_user_with_roles(
+            db, email="maker_mc@voyance.health", system_keys=["payroll_maker"], employee_id=1
+        )
+        super_user = _create_test_user_with_roles(
+            db, email="super_mc@voyance.health", system_keys=["super_admin"]
+        )
+
+    maker_cookies = _make_user_cookies(maker_user)
+    super_cookies = _make_user_cookies(super_user)
+
+    # Super-Admin generates and submits a run
+    gen_payload = {
+        "period_label": "2029-01",
+        "period_start": "2029-01-01",
+        "period_end": "2029-01-31",
+        "payment_date": "2029-01-31",
+        "fx_rate_source": "manual",
+        "fx_rate_value": 50.0,
+    }
+    resp = app_client.post("/api/finance/payroll/runs/generate", json=gen_payload, cookies=super_cookies)
+    assert resp.status_code == 201
+    run_id = resp.json()["id"]
+
+    # Submit by Super-Admin
+    resp_sub = app_client.post(f"/api/finance/payroll/runs/{run_id}/submit", cookies=super_cookies)
+    assert resp_sub.status_code == 200
+
+    # 1. Maker attempts to approve (even with allow_self_approval=true) -> 403 Forbidden
+    resp_maker = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=maker_cookies)
+    assert resp_maker.status_code == 403
+
+    # 2. Super-Admin without allow_self_approval fails maker-checker self-approval (400)
+    resp_sa_blocked = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=false", cookies=super_cookies)
+    assert resp_sa_blocked.status_code == 400
+    assert "Maker-checker violation" in resp_sa_blocked.text
+
+    # 3. Super-Admin with allow_self_approval=true succeeds
+    resp_sa_ok = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=super_cookies)
+    assert resp_sa_ok.status_code == 200
+    assert resp_sa_ok.json()["status"] == "approved"
+
+
+def test_slice4_vendor_payment_instructions_tightening(app_client):
+    """
+    Acceptance 4:
+    A role holding only finance.vendor.write can no longer create, update, or verify payment instructions.
+    Only finance.vendor_payment.manage / verify are accepted.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        vendor_write_role = db.query(RoleDB).filter(RoleDB.name == "Vendor-Writer-Only").first()
+        if not vendor_write_role:
+            vendor_write_role = RoleDB(name="Vendor-Writer-Only", is_locked=False, description="Write vendors only")
+            db.add(vendor_write_role)
+            db.flush()
+        db.query(RolePermissionDB).filter(RolePermissionDB.role_id == vendor_write_role.id).delete()
+        for pk in ["finance.vendor.write", "finance.vendor.read"]:
+            p = db.query(PermissionDB).filter(PermissionDB.key == pk).first()
+            if p:
+                db.add(RolePermissionDB(role_id=vendor_write_role.id, permission_id=p.id))
+        db.commit()
+
+        writer_user = _create_test_user_with_roles(
+            db, email="vendor_writer@voyance.health", role_names=["Vendor-Writer-Only"]
+        )
+        fin_user = _create_test_user_with_roles(
+            db, email="fin_vp@voyance.health", system_keys=["financial_admin"]
+        )
+
+    writer_cookies = _make_user_cookies(writer_user)
+    fin_cookies = _make_user_cookies(fin_user)
+
+    # 1. Create a vendor using writer_cookies (has finance.vendor.write)
+    v_resp = app_client.post("/api/finance/vendors", json={"name": "Test Vendor PI", "legal_name": "Test Vendor Legal"}, cookies=writer_cookies)
+    assert v_resp.status_code == 201
+    vendor_id = v_resp.json()["id"]
+
+    # 2. Writer attempts to create payment instruction -> 403 Forbidden (finance.vendor.write alias removed)
+    pi_payload = {
+        "payment_method": "bank_transfer",
+        "bank_name": "HSBC",
+        "account_number": "1234567890",
+        "account_holder_name": "Test Vendor",
+    }
+    resp_writer_create = app_client.post(f"/api/finance/vendors/{vendor_id}/payment-instructions", json=pi_payload, cookies=writer_cookies)
+    assert resp_writer_create.status_code == 403
+    assert "finance.vendor_payment.manage" in resp_writer_create.text
+
+    # 3. Fin-Admin succeeds in creating instruction (has finance.vendor_payment.manage)
+    resp_fin_create = app_client.post(f"/api/finance/vendors/{vendor_id}/payment-instructions", json=pi_payload, cookies=fin_cookies)
+    assert resp_fin_create.status_code == 201
+    inst_id = resp_fin_create.json()["id"]
+
+    # 4. Writer attempts to update instruction -> 403
+    resp_writer_upd = app_client.put(f"/api/finance/vendors/{vendor_id}/payment-instructions/{inst_id}", json={"bank_name": "CIB"}, cookies=writer_cookies)
+    assert resp_writer_upd.status_code == 403
+
+    # 5. Writer attempts to verify instruction -> 403
+    verify_payload = {"status": "verified", "notes": "Approved"}
+    resp_writer_ver = app_client.post(f"/api/finance/vendors/{vendor_id}/payment-instructions/{inst_id}/verify", json=verify_payload, cookies=writer_cookies)
+    assert resp_writer_ver.status_code == 403
+
+
+def test_slice4_statutory_routes_permissions(app_client):
+    """
+    Acceptance 5:
+    Statutory routes accept finance.statutory.* and reject finance.bill.* alone.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        bill_only_role = db.query(RoleDB).filter(RoleDB.name == "Bill-Only-Role").first()
+        if not bill_only_role:
+            bill_only_role = RoleDB(name="Bill-Only-Role", is_locked=False, description="Bill read and write only")
+            db.add(bill_only_role)
+            db.flush()
+        db.query(RolePermissionDB).filter(RolePermissionDB.role_id == bill_only_role.id).delete()
+        for pk in ["finance.bill.read", "finance.bill.write"]:
+            p = db.query(PermissionDB).filter(PermissionDB.key == pk).first()
+            if p:
+                db.add(RolePermissionDB(role_id=bill_only_role.id, permission_id=p.id))
+        db.commit()
+
+        bill_user = _create_test_user_with_roles(
+            db, email="bill_only@voyance.health", role_names=["Bill-Only-Role"]
+        )
+        fin_user = _create_test_user_with_roles(
+            db, email="fin_stat@voyance.health", system_keys=["financial_admin"]
+        )
+
+    bill_cookies = _make_user_cookies(bill_user)
+    fin_cookies = _make_user_cookies(fin_user)
+
+    # 1. Bill user tries to list statutory obligations -> 403 (needs finance.statutory.read)
+    resp_b_list = app_client.get("/api/finance/statutory-obligations", cookies=bill_cookies)
+    assert resp_b_list.status_code == 403
+    assert "finance.statutory.read" in resp_b_list.text
+
+    # 2. Bill user tries to create statutory obligation -> 403 (needs finance.statutory.write)
+    stat_payload = {
+        "obligation_type": "social_insurance_employee",
+        "period": "2026-09",
+        "amount_accrued": 1500.0,
+        "currency": "EGP",
+        "due_date": "2026-10-15",
+    }
+    resp_b_create = app_client.post("/api/finance/statutory-obligations", json=stat_payload, cookies=bill_cookies)
+    assert resp_b_create.status_code == 403
+    assert "finance.statutory.write" in resp_b_create.text
+
+    # 3. Financial-Admin (holds finance.statutory.read/write) succeeds
+    resp_fin_list = app_client.get("/api/finance/statutory-obligations", cookies=fin_cookies)
+    assert resp_fin_list.status_code == 200
+
+    resp_fin_create = app_client.post("/api/finance/statutory-obligations", json=stat_payload, cookies=fin_cookies)
+    assert resp_fin_create.status_code == 201
+
+
+def test_slice4_activity_timeline_guards_and_no_nameerror(app_client):
+    """
+    Acceptance 6:
+    Activity timeline: no read key for the entity means 403; no NameError for non-admins.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        inv_read_role = db.query(RoleDB).filter(RoleDB.name == "Invoice-Read-Only").first()
+        if not inv_read_role:
+            inv_read_role = RoleDB(name="Invoice-Read-Only", is_locked=False, description="Invoice read only")
+            db.add(inv_read_role)
+            db.flush()
+        db.query(RolePermissionDB).filter(RolePermissionDB.role_id == inv_read_role.id).delete()
+        p = db.query(PermissionDB).filter(PermissionDB.key == "finance.invoice.read").first()
+        if p:
+            db.add(RolePermissionDB(role_id=inv_read_role.id, permission_id=p.id))
+        db.commit()
+
+        inv_user = _create_test_user_with_roles(
+            db, email="inv_reader@voyance.health", role_names=["Invoice-Read-Only"]
+        )
+        fin_user = _create_test_user_with_roles(
+            db, email="fin_act@voyance.health", system_keys=["financial_admin"]
+        )
+
+    inv_cookies = _make_user_cookies(inv_user)
+    fin_cookies = _make_user_cookies(fin_user)
+
+    # 1. Invoice reader tries to access vendor activity -> 403 Forbidden
+    resp1 = app_client.get("/api/finance/activity/vendor/1", cookies=inv_cookies)
+    assert resp1.status_code == 403
+    assert "finance.vendor.read" in resp1.text
+
+    # 2. Invoice reader tries to access bill activity -> 403 Forbidden
+    resp2 = app_client.get("/api/finance/activity/bill/1", cookies=inv_cookies)
+    assert resp2.status_code == 403
+    assert "finance.bill.read" in resp2.text
+
+    # 3. Non-admin Fin-Admin accesses vendor activity -> No NameError! (200 or 404)
+    resp3 = app_client.get("/api/finance/activity/vendor/1", cookies=fin_cookies)
+    assert resp3.status_code in (200, 404)
+
+
+def test_slice4_observability_tightening(app_client):
+    """
+    Acceptance 7:
+    Feature-flag and metrics GETs reject users without finance.settings.read;
+    Financial-Admin / Super-Admin succeed.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        maker_user = _create_test_user_with_roles(
+            db, email="maker_obs@voyance.health", system_keys=["payroll_maker"], employee_id=1
+        )
+        fin_user = _create_test_user_with_roles(
+            db, email="fin_obs@voyance.health", system_keys=["financial_admin"]
+        )
+
+    maker_cookies = _make_user_cookies(maker_user)
+    fin_cookies = _make_user_cookies(fin_user)
+
+    # 1. Payroll-Maker lacks finance.settings.read -> 403
+    resp1 = app_client.get("/api/finance/feature-flags", cookies=maker_cookies)
+    assert resp1.status_code == 403
+    assert "finance.settings.read" in resp1.text
+
+    resp2 = app_client.get("/api/finance/observability/metrics", cookies=maker_cookies)
+    assert resp2.status_code == 403
+    assert "finance.settings.read" in resp2.text
+
+    # 2. Fin-Admin (has finance.settings.write which implies finance.settings.read) -> 200
+    resp3 = app_client.get("/api/finance/feature-flags", cookies=fin_cookies)
+    assert resp3.status_code == 200
+    assert "flags" in resp3.json()
+
+    resp4 = app_client.get("/api/finance/observability/metrics", cookies=fin_cookies)
+    assert resp4.status_code == 200
+    assert "uptime_seconds" in resp4.json()
+
+
+def test_slice4_migration_payroll_write_eradication(app_client):
+    """
+    Acceptance 8:
+    finance.payroll.write no longer exists in permissions table or role_permissions after migration.
+    """
+    with get_db_context() as db:
+        sync_catalog(db)
+        p = db.query(PermissionDB).filter(PermissionDB.key == "finance.payroll.write").first()
+        assert p is None, "finance.payroll.write must not exist in permissions table"
+
+        # Check all roles
+        for r in db.query(RoleDB).all():
+            keys = {perm.key for perm in r.permissions}
+            assert "finance.payroll.write" not in keys, f"Role {r.name} should not have finance.payroll.write"
+
 
 
 

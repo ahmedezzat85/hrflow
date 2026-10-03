@@ -197,8 +197,9 @@ def sync_catalog(db: Session) -> Dict[str, int]:
             for rp in db.query(RolePermissionDB).filter(RolePermissionDB.role_id == super_admin_role.id).all()
         }
 
-        for perm in existing_perms.values():
-            if perm.id not in existing_rp_ids:
+        for p_def in CATALOG:
+            perm = existing_perms.get(p_def.key)
+            if perm and perm.id not in existing_rp_ids:
                 try:
                     rp = RolePermissionDB(role_id=super_admin_role.id, permission_id=perm.id)
                     db.add(rp)
@@ -208,6 +209,20 @@ def sync_catalog(db: Session) -> Dict[str, int]:
                 except IntegrityError:
                     db.rollback()
                     # Concurrent worker inserted it
+
+        # Clean up any stale permissions on Super-Admin not in CATALOG
+        catalog_perm_ids = {perm.id for p_def in CATALOG if (perm := existing_perms.get(p_def.key))}
+        if catalog_perm_ids:
+            stale_rps = (
+                db.query(RolePermissionDB)
+                .filter(RolePermissionDB.role_id == super_admin_role.id)
+                .filter(~RolePermissionDB.permission_id.in_(catalog_perm_ids))
+                .all()
+            )
+            for s_rp in stale_rps:
+                db.delete(s_rp)
+            if stale_rps:
+                db.flush()
 
         db.commit()
         return stats

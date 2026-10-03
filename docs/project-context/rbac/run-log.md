@@ -272,5 +272,69 @@ Slice 2 establishes runtime RBAC resolution and session context: `resolve_access
 - State of branch: `feature/rbac` has completed Slice 3 with all acceptance criteria met and verified.
 - Next slice: Slice 4 (Finance guards and payroll split: replace `finance.payroll.write` with `prepare`/`approve`/`pay`, statutory routes, vendor payments, migration `0025_...`).
 
+---
+
+## Slice 4 — Finance Guards and Payroll Split (`RBAC-S4`)
+
+### 1. Outcome
+Slice 4 completes the finance authorization hardening and splits the monolithic `finance.payroll.write` into three distinct permissions: `finance.payroll.prepare`, `finance.payroll.approve`, and `finance.payroll.pay`. Statutory obligations are guarded by `finance.statutory.*` rather than generic bill permissions, vendor payment instructions have their `finance.vendor.write` alias removed, finance entity activity timelines enforce per-entity read keys with sensitive masking and fixed non-admin NameError, and observability routes are tightened to `finance.settings.read`. Alembic migration `0025_payroll_split.py` migrates existing roles and eradicates `finance.payroll.write` across the system.
+
+### 2. Implementation Summary
+- **`be/finance/routers/payroll.py`:**
+  - Migrated adjustments (`POST`, `PATCH`, `DELETE`), run generation/creation, line addition/deletion, and submit endpoints to `finance.payroll.prepare`.
+  - Migrated run approval and finalization endpoints to `finance.payroll.approve`.
+  - Migrated run payment and journal posting endpoints to `finance.payroll.pay`.
+  - In `approve_payroll_run`, enforced that `allow_self_approval` query parameter is only effective if the caller holds both `finance.payroll.prepare` AND `finance.payroll.approve` (or admin).
+- **`be/finance/routers/compensation_plans.py`:**
+  - `PUT /{component_type}` migrated from `finance.payroll.write` to `finance.payroll.prepare`.
+- **`be/finance/routers/statutory.py`:**
+  - `list_statutory_obligations` and `get_statutory_obligation` migrated from `finance.bill.read` to `finance.statutory.read`.
+  - `create_statutory_obligation`, `confirm_or_adjust_statutory_obligation`, `settle_statutory_obligation`, and `update_statutory_obligation` migrated from `finance.bill.write` to `finance.statutory.write`.
+- **`be/finance/routers/vendors.py`:**
+  - In payment instructions endpoints (`create`, `update`, `verify`), removed the `finance.vendor.write` alias, strictly requiring `finance.vendor_payment.manage` (for create/update) and `finance.vendor_payment.verify` (for verify).
+- **`be/finance/routers/activity.py`:**
+  - Injected `Request` and resolved runtime permissions via `get_current_user_permissions`.
+  - Enforced per-entity type read permission check (`invoice` -> `finance.invoice.read`, `bill` -> `finance.bill.read`, `vendor` -> `finance.vendor.read`, `customer` -> `finance.customer.read`, `transfer`/`cheque`/`transaction` -> `finance.account.read`, `subscription` -> `finance.subscription.read`).
+  - Fixed `NameError` on vendor activity branch: replaced undefined `user_permissions` with resolved `perms` for the `finance.vendor_payment.reveal` check.
+- **`be/finance/routers/observability.py`:**
+  - Tightened `GET /api/finance/feature-flags` and `GET /api/finance/observability/metrics` to `require_permission("finance.settings.read")`.
+  - Audited frontend call sites beforehand: confirmed these endpoints are only queried within `fe/api/finance/core.js` and tests; no employee-facing screen calls them on startup.
+- **`be/core/permission_catalog.py` & `be/core/role_seed.py`:**
+  - Removed transitional deprecated key `finance.payroll.write` from `CATALOG` (catalog count is now 63 active keys).
+  - Updated `sync_catalog` to synchronize Super-Admin grants strictly against active `CATALOG` keys and purge any stale permissions.
+  - Updated legacy `be/core/rbac_seed.py` to seed `prepare`, `approve`, `pay` instead of `write`.
+- **`be/migrations/versions/0025_payroll_split.py`:**
+  - Created Alembic migration ensuring `finance.payroll.read`, `prepare`, `approve`, `pay` exist, granting all 4 to any role holding `finance.payroll.write`, deleting `finance.payroll.write` grants from `role_permissions`, and dropping the key from `permissions`.
+  - Upgraded database to head.
+
+### 3. Interim Questions & Clarifications
+- **Q-007 (Payroll-Maker creating runs without `finance.account.read`):**
+  - **Backend behavior:** On the backend API, a user holding only `Payroll-Maker` (`finance.payroll.prepare`) CAN create a run via `POST /api/finance/payroll/runs` or `POST /api/finance/payroll/runs/generate` without holding `finance.account.read`. If `bank_account_id` is omitted, the service automatically defaults to the first active `FinanceBankAccountDB`.
+  - **Frontend UI implication:** In the frontend, if the payroll creation modal makes an independent call to `GET /api/finance/accounts` to populate the bank account dropdown, that call will receive a 403 unless the user also holds `finance.account.read` or the frontend handles the 403 gracefully by falling back to the default account. As directed by handoff instructions, `finance.account.read` was NOT granted to `Payroll-Maker`.
+
+### 4. Verification & Test Execution
+- **Slice 4 Targeted Suite:** `pytest be/tests/test_rbac.py -k "slice4" -q` -> 7 passed in 29.18s.
+- **Finance Regressions:**
+  - `pytest be/tests/test_finance_compensation_plan.py be/tests/test_finance_statutory_obligations.py -q` -> 13 passed in 33.12s.
+  - `pytest be/tests/test_finance_guided_payroll.py -q` -> 11 passed in 38.28s.
+- **Frontend Build:** `npm run build` in `fe/` -> Passed in 1.05s.
+
+### 5. Acceptance Criteria
+- **AC 1:** Payroll-Maker can preview, adjust, generate/create, add/delete lines, submit and edit compensation plans; gets 403 on approve, finalize, pay, post-journal -> **Met** (`test_slice4_payroll_split_maker_vs_financial_admin_vs_super_admin`).
+- **AC 2:** Financial-Admin can approve, finalize, pay, post-journal; gets 403 on prepare routes -> **Met** (`test_slice4_payroll_split_maker_vs_financial_admin_vs_super_admin`).
+- **AC 3:** Super-Admin can do all -> **Met** (`test_slice4_payroll_split_maker_vs_financial_admin_vs_super_admin`).
+- **AC 4:** A role holding only `finance.vendor.write` can no longer create, update or verify payment instructions -> **Met** (`test_slice4_vendor_payment_instructions_tightening`).
+- **AC 5:** Statutory routes accept `finance.statutory.*` and reject `finance.bill.*` alone -> **Met** (`test_slice4_statutory_routes_permissions`).
+- **AC 6:** Activity timeline: no read key for the entity means 403; no `NameError` for non-admins -> **Met** (`test_slice4_activity_timeline_guards_and_no_nameerror`).
+- **AC 7:** Feature-flag and metrics GETs reject users without `finance.settings.read`; no employee screen breaks -> **Met** (`test_slice4_observability_tightening`).
+- **AC 8:** `finance.payroll.write` no longer exists after migration; existing payroll tests pass with Super-Admin -> **Met** (`test_slice4_migration_payroll_write_eradication`, regression test suites).
+- **AC 9:** A Payroll-Maker cannot approve their own submitted run, with or without `allow_self_approval`; a Super-Admin can with it -> **Met** (`test_slice4_maker_checker_self_approval`).
+- **AC 10:** Report whether Payroll-Maker can create a run without `finance.account.read` (Q-007) -> **Met** (documented in §3 above).
+
+### 6. Handoff Summary
+- State of branch: `feature/rbac` has completed Slice 4 cleanly with all acceptance criteria met and verified.
+- Next slice: Slice 5 (Access service, API and employee lifecycle: `be/core/access_service.py`, `be/routers/access.py`, rules R1–R13, employee create/delete wiring).
+
+
 
 

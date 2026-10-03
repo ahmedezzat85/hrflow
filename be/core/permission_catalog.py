@@ -3,7 +3,7 @@ be/core/permission_catalog.py
 Authoritative code-defined catalog of RBAC permissions and implication rules.
 Provides:
 - PermissionDef data structure
-- CATALOG definition of all 63 keys + deprecated finance.payroll.write (64 total)
+- CATALOG definition of all 63 keys
 - all_keys()
 - closure(keys)
 - validate_role_keys(keys)
@@ -406,14 +406,6 @@ CATALOG: Tuple[PermissionDef, ...] = (
         group="Payroll / Tax settings",
         description="Create and update payroll income tax settings",
         implies=("finance.payroll_tax.read",),
-    ),
-
-    # Transitional deprecated key
-    PermissionDef(
-        key="finance.payroll.write",
-        group="Payroll / Runs",
-        description="Create and manage company payroll runs (deprecated, split into prepare/approve/pay)",
-        implies=("finance.payroll.read",),
     ),
 )
 

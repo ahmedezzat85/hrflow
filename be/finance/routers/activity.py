@@ -7,7 +7,7 @@ for all finance entities (invoices, bills, transfers, cheques, transactions, acc
 import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -54,6 +54,7 @@ def _mask_sensitive(val: Optional[str], is_admin: bool) -> str:
 def get_entity_activity(
     entity_type: str,
     entity_id: int,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
     audit_repo: AuditRepository = Depends(get_audit_repo),
@@ -62,9 +63,41 @@ def get_entity_activity(
     Returns the comprehensive detail summary, related records, attachments, and chronological
     plain-language activity timeline for a financial entity. Masking sensitive fields unless admin.
     """
+    perms = get_current_user_permissions(request, current_user=current_user, db=db)
+    is_admin = bool(current_user.get("is_admin")) or ("*" in perms) or (current_user.get("role") == "admin")
+
     norm_type = entity_type.lower().strip()
-    user_role = current_user.get("role", "")
-    is_admin = (user_role == "admin")
+
+    # Per-entity permission check
+    type_permission_map = {
+        "invoice": "finance.invoice.read",
+        "sales_invoice": "finance.invoice.read",
+        "invoices": "finance.invoice.read",
+        "bill": "finance.bill.read",
+        "bills": "finance.bill.read",
+        "vendor_bill": "finance.bill.read",
+        "transfer": "finance.account.read",
+        "transfers": "finance.account.read",
+        "account_transfer": "finance.account.read",
+        "cheque": "finance.account.read",
+        "cheques": "finance.account.read",
+        "transaction": "finance.account.read",
+        "transactions": "finance.account.read",
+        "ledger": "finance.account.read",
+        "customer": "finance.customer.read",
+        "customers": "finance.customer.read",
+        "vendor": "finance.vendor.read",
+        "vendors": "finance.vendor.read",
+        "subscription": "finance.subscription.read",
+        "subscriptions": "finance.subscription.read",
+    }
+
+    req_perm = type_permission_map.get(norm_type)
+    if not is_admin and req_perm and req_perm not in perms:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission denied: '{req_perm}' required to view {entity_type} activity",
+        )
 
     # 1. Sales Invoice
     if norm_type in ("invoice", "sales_invoice", "invoices"):
@@ -760,7 +793,7 @@ def get_entity_activity(
             ))
 
         # Payment instructions info
-        can_reveal = is_admin or ("finance.vendor_payment.reveal" in user_permissions)
+        can_reveal = is_admin or ("finance.vendor_payment.reveal" in perms)
         instructions = vend.payment_instructions or []
         pi_summary_parts = []
         for pi in instructions:
