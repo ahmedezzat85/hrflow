@@ -619,8 +619,8 @@ def test_non_admin_holding_adjustment_manage_records_adjustment(app_client):
     assert ok_resp.json()["entry_type"] == "adjustment"
 
 
-def test_auth_me_returns_rbac_fields_and_compat_role(app_client):
-    """AC 7: /api/auth/me returns permissions, portal, roles, and compatibility role."""
+def test_auth_me_returns_rbac_fields_without_compat_role(app_client):
+    """AC 7: /api/auth/me returns permissions, portal and roles; the compatibility role was removed in F7."""
     with get_db_context() as db:
         sync_catalog(db)
         sa_user = _create_test_user_with_roles(
@@ -640,7 +640,7 @@ def test_auth_me_returns_rbac_fields_and_compat_role(app_client):
     assert sa_resp.status_code == 200
     sa_data = sa_resp.json()
     assert sa_data["portal"] == "admin"
-    assert sa_data["role"] == "admin"
+    assert "role" not in sa_data
     assert "Super-Admin" in sa_data["roles"]
     assert len(sa_data["permissions"]) == len(all_keys())
 
@@ -649,7 +649,7 @@ def test_auth_me_returns_rbac_fields_and_compat_role(app_client):
     assert emp_resp.status_code == 200
     emp_data = emp_resp.json()
     assert emp_data["portal"] == "employee"
-    assert emp_data["role"] == "employee"
+    assert "role" not in emp_data
     assert emp_data["roles"] == []
     assert len(emp_data["permissions"]) == 13
 

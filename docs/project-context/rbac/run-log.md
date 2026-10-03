@@ -792,3 +792,34 @@ Slice F1 closes the dev/test auto-provisioning and auto-linking security loophol
 7. **Deviations and defects:** `test_slice8_drop_users_role_and_compatibility` section 4 now asserts the property and constructor argument are gone (intentional behavior change). `UserDB(role=...)` kwargs were removed from three test helpers.
 8. **Documentation updates needed:** the owner should review decision-log wording that still mentions the compatibility `role` or `system_admin` as live (not edited, per instructions).
 9. **Handoff:** final regression and report below.
+
+## Final regression and report (review-fix run F0–F7, October 3, 2026)
+
+### Final regression (run once after F7, HEAD `87505dd`)
+- **Backend** `pytest -q` in `be/`: 7 failed, 494 passed, 5 errors, 0 skipped (1139 s). Baseline: 5 failed, 5 errors (413 passed of 423).
+  - Pre-existing (unchanged, same names as the baseline): `test_finance_invoices.py` x4, `test_finance_payroll_spend_reporting.py::test_statutory_remitted_report_and_payable_status`, and the 5 setup errors in `test_payroll_income_tax.py` (x4) and `test_payroll_social_insurance.py::test_locked_fx_rate_variance`.
+  - Two new failures, both caused by F7 and fixed in the follow-up commit: `test_rbac.py::test_auth_me_returns_rbac_fields_and_compat_role` (renamed `..._without_compat_role`, now asserts `role` is absent) and `test_sql_repositories.py::test_sql_employee_and_user_repository` (asserted the removed `role` key). Re-run after the fix: both pass (`pytest -k "auth_me or sql_employee_and_user"` → 2 passed). The full suite was **not** re-run after this two-line test fix; expected result: 5 failed (baseline), 5 errors (baseline).
+- **Playwright** `npx playwright test --reporter=line` in `fe/`: 17 failed, 1 flaky, 263 passed, 0 skipped (15.1 min). Baseline: 20 failed, 4 flaky, 248 passed. Every failing spec is in the baseline failure list (finance-bills-approval, finance-dialogs-forms, finance-guided-payroll, finance-navigation, finance-payroll-commission-bonus, finance-payroll-runner-adjustments, finance-payroll-split, finance-payroll-table-cycle, finance-semantics, reports); no RBAC spec failed.
+- `npm run build` OK on the final tree.
+
+### Summary per slice
+- **F0** `64e116a`: single assigned role per user (`PUT /api/access/users/{id}/role` only), Employee role not assignable, R4 counts custom roles.
+- **F1** `8ceb550` (committed by another actor before I finished; first full run showed 13 fixture failures) + `ad7967c`: unknown users always 401, no `admin@` auto-link, Super-Admin by `system_key` only; fixtures create real users.
+- **F2** `f54db0b`: migrations 0024/0025 portable, `0027` one-role constraint, `sync_catalog` adopts legacy `system_admin` and uses savepoints; found and fixed the missing unique `ix_roles_system_key` on SQLite.
+- **F3** `e452d92`: transactional lifecycle hooks, email collision 409, Employee baseline from the database role, Employee role cannot be deleted.
+- **F4** `3e92563`: Roles page on the server catalog and role flags, bidirectional implication, escaping, read-only locked role; fixed the second-open modal bug.
+- **F5** `1fd4028`: restore removed; Users page filters, External badge, own-row protection, external-user form.
+- **F6** `8f96132`: eight inline-checked routes converted to dependency guards; coverage tests read the dependency tree only.
+- **F7** `87505dd` + follow-up: compatibility `role`, `UserDB.role`, dead scope helpers removed; documents updated.
+
+### Limitations and unresolved items
+- PostgreSQL: migrations `0024`–`0027` are written for it but **untested**. Older migrations `0005`, `0018`, `0021` use integer Boolean `server_default` literals that PostgreSQL rejects (applied migrations were not edited).
+- Roles and Users pages were verified in mock mode plus API-contract tests; no browser run against a live backend.
+- `system_admin` still appears outside migrations in `core/role_seed.py` (legacy adoption, required by F2) and `RESERVED_ROLE_NAMES`.
+- The first F1 commit and its run-log entry were written by another actor and claimed a clean full suite; corrected in the F1 entry.
+- Pre-existing failures listed above remain; they are unrelated to RBAC.
+
+### What the owner must do next
+1. Run the pre-migration data check (gate G3) on a copy of the production database and the RBAC migrations on PostgreSQL; decide how to handle the older integer Boolean defaults.
+2. Review the branch (`git log 7c99712..HEAD`) and decide on merge; do not assign non-Super-Admin roles to real users before steps 1–2.
+3. Decide Q-006 (restore of archived users) when wanted; update decision-log wording that still mentions the compatibility `role` or `system_admin` as live.

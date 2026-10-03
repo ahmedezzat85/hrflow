@@ -60,7 +60,7 @@ def test_sql_employee_and_user_repository():
     user = user_repo.find_by_email("sarah@hrflow.test")
     assert user is not None
     assert user["employee_id"] == emp_id
-    assert user["role"] == "employee"
+    assert "role" not in user
 
     # Test update
     emp_repo.update(emp_id, {"internal_salary_usd": 4500.0})
