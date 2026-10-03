@@ -19,19 +19,10 @@ router = APIRouter(prefix="/api/insurance", tags=["Insurance"])
 
 @router.get("/categories")
 def get_insurance_categories(
-    current_user: dict = Depends(get_current_user),
+    scope: Scope = Depends(permission_scope("hr.insurance.read", "self.claim.read")),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
 ):
-    perms = set(current_user.get("permissions", []))
-    if "hr.insurance.read" not in perms and "self.claim.read" not in perms:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: 'hr.insurance.read' or 'self.claim.read' required",
-        )
     return insurance_repo.list_categories()
-
-get_insurance_categories.hrflow_permission_all = "hr.insurance.read"
-get_insurance_categories.hrflow_permission_self = "self.claim.read"
 
 
 @router.post("/categories", status_code=201)
@@ -88,9 +79,6 @@ def get_insurance_consumption(
     scoped_employee_id = employee_id if scope.is_all else scope.employee_id
     return insurance_repo.get_consumption(scoped_employee_id=scoped_employee_id)
 
-get_insurance_consumption.hrflow_permission_all = "hr.insurance.read"
-get_insurance_consumption.hrflow_permission_self = "self.claim.read"
-
 
 @router.get("/claims")
 def get_insurance_claims(
@@ -102,27 +90,15 @@ def get_insurance_claims(
     scoped_employee_id = None if scope.is_all else scope.employee_id
     return insurance_repo.list_claims(scoped_employee_id=scoped_employee_id)
 
-get_insurance_claims.hrflow_permission_all = "hr.insurance.read"
-get_insurance_claims.hrflow_permission_self = "self.claim.read"
-
 
 @router.post("/claims", status_code=201)
 def submit_insurance_claim(
     payload: InsuranceClaimCreate,
+    scope: Scope = Depends(permission_scope("hr.insurance.write", "self.claim.write")),
     current_user: dict = Depends(get_current_user),
     insurance_repo: InsuranceRepository = Depends(get_insurance_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
-    perms = set(current_user.get("permissions", []))
-    has_write_all = "hr.insurance.write" in perms
-    has_write_own = "self.claim.write" in perms
-
-    if not has_write_all and not has_write_own:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: 'hr.insurance.write' or 'self.claim.write' required",
-        )
-
     if not insurance_repo.get_category_by_name(payload.category):
         raise HTTPException(status_code=400, detail="Unknown insurance category")
 
@@ -165,9 +141,6 @@ def submit_insurance_claim(
 
     claim_id = insurance_repo.create_claim(claim_data, request_data)
     return {"message": "Claim submitted", "id": claim_id}
-
-submit_insurance_claim.hrflow_permission_all = "hr.insurance.write"
-submit_insurance_claim.hrflow_permission_self = "self.claim.write"
 
 
 @router.post("/claims/{claim_id}/action")

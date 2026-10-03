@@ -96,6 +96,18 @@ def check_export_permission(current_user: dict, dataset: str) -> None:
         pass
 
 
+def require_export_permission(dataset: str, current_user: dict = Depends(get_current_user)) -> dict:
+    """Dependency: applies the per-dataset export rule to the `dataset` path parameter."""
+    check_export_permission(current_user, dataset)
+    return current_user
+
+
+# Every key this dependency can require, so the coverage test reads the marker from the dependency itself.
+require_export_permission.hrflow_permission_any = tuple(sorted(
+    {"hr.export.run", "finance.report.read", *HR_DATASET_PERMISSIONS.values(), *FINANCE_DATASET_PERMISSIONS.values()}
+))
+
+
 def _extract_dataset_data(
     dataset: str,
     year: Optional[int] = None,
@@ -157,11 +169,10 @@ def export_dataset_csv(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_export_permission),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     """Exports the specified HR dataset as a local CSV download (UTF-8 with BOM)."""
-    check_export_permission(current_user, dataset)
     dataset_key = dataset.lower().strip()
     headers, rows = _extract_dataset_data(
         dataset_key,
@@ -195,18 +206,15 @@ def export_dataset_csv(
         },
     )
 
-export_dataset_csv.hrflow_proposed_guard = "hr.export.run + dataset read key (HR datasets) | finance.report.read + dataset read key (finance_* datasets)"
-
 
 @router.post("/{dataset}/sheets")
 def export_dataset_to_google_sheets(
     dataset: str,
     payload: SheetsExportRequest = SheetsExportRequest(),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_export_permission),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     """Exports the specified HR dataset to a worksheet in Google Sheets."""
-    check_export_permission(current_user, dataset)
     dataset_key = dataset.lower().strip()
 
     # Verify Google Sheets configuration
@@ -258,5 +266,4 @@ def export_dataset_to_google_sheets(
         "rows_count": result["rows_count"],
     }
 
-export_dataset_to_google_sheets.hrflow_proposed_guard = "hr.export.run + dataset read key (HR datasets) | finance.report.read + dataset read key (finance_* datasets)"
 

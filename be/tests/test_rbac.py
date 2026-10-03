@@ -810,25 +810,8 @@ def test_hr_route_guard_coverage_walker():
         route = app_routes.get((method, path))
         assert route is not None, f"Route {method} {path} from CSV not found on FastAPI app"
 
-        endpoint = route.endpoint
-        # Collect guards from endpoint attributes or dependencies
-        guard_all = getattr(endpoint, "hrflow_permission_all", None)
-        guard_self = getattr(endpoint, "hrflow_permission_self", None)
-        guard_single = getattr(endpoint, "hrflow_permission", None)
-        has_export = getattr(endpoint, "hrflow_proposed_guard", None) is not None
-
-        # Check dependencies
-        for dep in getattr(route.dependant, "dependencies", []):
-            call_fn = dep.call
-            if hasattr(call_fn, "hrflow_permission"):
-                guard_single = call_fn.hrflow_permission
-            if hasattr(call_fn, "hrflow_permission_all"):
-                guard_all = call_fn.hrflow_permission_all
-            if hasattr(call_fn, "hrflow_permission_self"):
-                guard_self = call_fn.hrflow_permission_self
-
-        # Verify that either guard_all, guard_self, guard_single, or has_export is present
-        has_guard = bool(guard_all or guard_single or has_export)
+        # Markers are read from the route's dependency tree only
+        has_guard = bool(_dependency_guard_keys(route.dependant))
         assert has_guard, f"Route {method} {path} has no catalog permission guard attached"
 
 
@@ -2451,47 +2434,97 @@ def test_slice8_drop_users_role_and_compatibility():
     assert u4.role == "admin"
 
 
+GUARD_MARKERS = ("hrflow_permission", "hrflow_permission_all", "hrflow_permission_self", "hrflow_permission_any")
+PUBLIC_ALLOW_LIST = {"/api/auth/google", "/api/auth/logout", "/api/auth/me", "/api/health"}
+
+
+def _dependency_guard_keys(dependant):
+    """Permission keys declared by guard dependencies in the route's dependency tree (never by the endpoint itself)."""
+    keys = set()
+    for dep in getattr(dependant, "dependencies", []):
+        for marker in GUARD_MARKERS:
+            value = getattr(dep.call, marker, None)
+            if isinstance(value, str):
+                keys.add(value)
+            elif isinstance(value, (tuple, list, set, frozenset)):
+                keys.update(value)
+        keys |= _dependency_guard_keys(dep)
+    return keys
+
+
+def _unguarded_routes(app, allow_list=PUBLIC_ALLOW_LIST):
+    from fastapi.routing import APIRoute
+    return [
+        (sorted(r.methods), r.path)
+        for r in app.routes
+        if isinstance(r, APIRoute) and r.path not in allow_list and not _dependency_guard_keys(r.dependant)
+    ]
+
+
 def test_all_routes_guard_coverage_walker():
     """
-    Slice 8 Acceptance:
-    Every route on FastAPI app has a catalog permission marker or is on the named allow-list:
-    {'/api/auth/google', '/api/auth/logout', '/api/auth/me', '/api/health'}.
+    Every route on the FastAPI app has a catalog permission marker in its dependency tree
+    or is on the named allow-list: {'/api/auth/google', '/api/auth/logout', '/api/auth/me', '/api/health'}.
+    Markers set on the endpoint function do not count: the marker and the enforcement must be the same object.
     """
+    from main import app
+    uncovered = _unguarded_routes(app)
+    assert uncovered == [], f"Routes lacking catalog permission guard: {uncovered}"
+
+
+def test_walker_detects_routes_without_guard_dependency():
+    """F6 AC1: a route without a guard dependency fails the walker, even with a hand-set endpoint marker."""
+    from fastapi import APIRouter, Depends, FastAPI
+    from core.permissions import require_permission
+
+    probe = FastAPI()
+    router = APIRouter()
+
+    @router.get("/probe/guarded")
+    def guarded(user: dict = Depends(require_permission("hr.employee.read"))):
+        return {}
+
+    @router.get("/probe/unguarded")
+    def unguarded():
+        return {}
+
+    @router.get("/probe/hand_marked")
+    def hand_marked():
+        return {}
+
+    hand_marked.hrflow_permission_all = "hr.employee.read"
+    probe.include_router(router)
+
+    flagged = [path for _, path in _unguarded_routes(probe, allow_list=set())]
+    assert flagged == ["/probe/unguarded", "/probe/hand_marked"]
+
+
+def test_no_endpoint_level_markers_or_proposed_guards():
+    """F6 AC2: no hrflow_proposed_guard, and no marker assigned on an endpoint function."""
+    import os
     from main import app
     from fastapi.routing import APIRoute
 
-    allow_list = {"/api/auth/google", "/api/auth/logout", "/api/auth/me", "/api/health"}
-
-    uncovered = []
     for r in app.routes:
-        if not isinstance(r, APIRoute):
+        if isinstance(r, APIRoute):
+            for marker in GUARD_MARKERS:
+                assert not hasattr(r.endpoint, marker), f"{r.path}: endpoint carries marker {marker}"
+
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    offenders = []
+    for root, _, files in os.walk(base_dir):
+        if "tests" in root.split(os.sep) or "__pycache__" in root:
             continue
-        if r.path in allow_list:
-            continue
-        endpoint = r.endpoint
-        guard_single = getattr(endpoint, "hrflow_permission", None)
-        guard_all = getattr(endpoint, "hrflow_permission_all", None)
-        guard_self = getattr(endpoint, "hrflow_permission_self", None)
-        has_export = getattr(endpoint, "hrflow_proposed_guard", None) is not None
-
-        for dep in getattr(r.dependant, "dependencies", []):
-            call_fn = dep.call
-            if hasattr(call_fn, "hrflow_permission"):
-                guard_single = call_fn.hrflow_permission
-            if hasattr(call_fn, "hrflow_permission_all"):
-                guard_all = call_fn.hrflow_permission_all
-            if hasattr(call_fn, "hrflow_permission_self"):
-                guard_self = call_fn.hrflow_permission_self
-
-        if not (guard_single or guard_all or guard_self or has_export):
-            uncovered.append((list(r.methods), r.path))
-
-    assert uncovered == [], f"Routes lacking catalog permission guard: {uncovered}"
+        for f in files:
+            if f.endswith(".py"):
+                with open(os.path.join(root, f), "r", encoding="utf-8", errors="ignore") as fh:
+                    if "hrflow_proposed_guard" in fh.read():
+                        offenders.append(f)
+    assert offenders == []
 
 
 def test_catalog_usage():
     """
-    Slice 8 Acceptance:
     All permission keys attached to route guards or defined in role matrices belong to all_keys().
     """
     from main import app
@@ -2506,27 +2539,26 @@ def test_catalog_usage():
         for p in rdef.permissions:
             assert p in valid_keys, f"Role {rdef.name} has non-catalog permission '{p}'"
 
-    # Check all route guards
+    # Check all route guards (read from the dependency tree only)
     for r in app.routes:
         if not isinstance(r, APIRoute):
             continue
-        endpoint = r.endpoint
-        guard_single = getattr(endpoint, "hrflow_permission", None)
-        guard_all = getattr(endpoint, "hrflow_permission_all", None)
-        guard_self = getattr(endpoint, "hrflow_permission_self", None)
+        for g in _dependency_guard_keys(r.dependant):
+            assert g in valid_keys, f"Route {r.path} uses non-catalog permission key '{g}'"
 
-        for dep in getattr(r.dependant, "dependencies", []):
-            call_fn = dep.call
-            if hasattr(call_fn, "hrflow_permission"):
-                guard_single = call_fn.hrflow_permission
-            if hasattr(call_fn, "hrflow_permission_all"):
-                guard_all = call_fn.hrflow_permission_all
-            if hasattr(call_fn, "hrflow_permission_self"):
-                guard_self = call_fn.hrflow_permission_self
 
-        for g in [guard_single, guard_all, guard_self]:
-            if g and isinstance(g, str):
-                assert g in valid_keys, f"Route {r.path} uses non-catalog permission key '{g}'"
+def test_dynamic_guards_apply_to_path_parameters(app_client):
+    """F6: export and activity guards read the path parameter; unknown entity types fail before any data access."""
+    from conftest import create_test_user
+    payroll_maker = create_test_user("f6_maker@voyance.health", role_key="payroll_maker")
+    hr_admin = create_test_user("f6_hr@voyance.health", role_key="hr_admin")
+
+    assert app_client.get("/api/export/employees/csv", cookies=payroll_maker).status_code == 403
+    assert app_client.get("/api/export/employees/csv", cookies=hr_admin).status_code == 200
+    assert app_client.get("/api/export/finance_ledger/csv", cookies=hr_admin).status_code == 403
+
+    assert app_client.get("/api/finance/activity/not_an_entity/1", cookies=hr_admin).status_code == 400
+    assert app_client.get("/api/finance/activity/invoice/1", cookies=hr_admin).status_code == 403
 
 
 def test_no_require_admin_or_legacy_role_or_wildcard_in_code():

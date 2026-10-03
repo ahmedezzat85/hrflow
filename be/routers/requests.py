@@ -28,27 +28,15 @@ def get_requests(
     scoped_employee_id = None if scope.is_all else scope.employee_id
     return request_repo.list_requests(type_filter=type, scoped_employee_id=scoped_employee_id)
 
-get_requests.hrflow_permission_all = "hr.request.read"
-get_requests.hrflow_permission_self = "self.requests.read"
-
 
 @router.post("", status_code=201)
 def create_request(
     payload: RequestCreate,
+    scope: Scope = Depends(permission_scope("hr.request.write", "self.requests.write")),
     current_user: dict = Depends(get_current_user),
     request_repo: RequestRepository = Depends(get_request_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
-    perms = set(current_user.get("permissions", []))
-    has_write_all = "hr.request.write" in perms
-    has_write_own = "self.requests.write" in perms
-
-    if not has_write_all and not has_write_own:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: 'hr.request.write' or 'self.requests.write' required",
-        )
-
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
         employee_repo, current_user, payload.employee_id, payload.employee_name,
         required_permission="hr.request.write"
@@ -71,9 +59,6 @@ def create_request(
     }
     new_id = request_repo.create(row)
     return {"message": "Request submitted", "id": new_id}
-
-create_request.hrflow_permission_all = "hr.request.write"
-create_request.hrflow_permission_self = "self.requests.write"
 
 
 @router.post("/{req_id}/action")

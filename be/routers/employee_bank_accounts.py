@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth import get_current_user
 from core.permissions import require_permission
-from deps import audit_log
+from deps import audit_log, permission_scope, Scope
 from logging_config import get_logger
 from models import EmployeeBankAccountUpsert
 from repositories.interfaces import EmployeeBankAccountRepository, AuditRepository
@@ -32,15 +32,14 @@ router = APIRouter(prefix="/api/employees", tags=["Employee Bank Accounts"])
 def get_bank_account(
     emp_id: int,
     reveal: bool = Query(False),
+    scope: Scope = Depends(permission_scope("hr.employee_bank_account.read", "self.bank_account.read")),
     current_user: dict = Depends(get_current_user),
     bank_repo: EmployeeBankAccountRepository = Depends(get_employee_bank_repo),
 ):
     """Return the employee's personal bank account details. IBAN is masked unless reveal=true."""
     perms = set(current_user.get("permissions", []))
-    has_all = "hr.employee_bank_account.read" in perms
-    is_own = ("self.bank_account.read" in perms) and (current_user.get("employee_id") == emp_id)
 
-    if not has_all and not is_own:
+    if not scope.is_all and scope.employee_id != emp_id:
         raise HTTPException(
             status_code=403,
             detail="Permission denied: 'hr.employee_bank_account.read' or 'self.bank_account.read' (own record) required",
@@ -55,9 +54,6 @@ def get_bank_account(
     result = bank_repo.get_by_employee_id(emp_id, reveal=reveal)
     logger.debug("Employee bank account fetched for employee_id=%s by %s (reveal=%s)", emp_id, current_user.get("email"), reveal)
     return result
-
-get_bank_account.hrflow_permission_all = "hr.employee_bank_account.read"
-get_bank_account.hrflow_permission_self = "self.bank_account.read"
 
 
 @router.put("/{emp_id}/bank-account")

@@ -29,27 +29,15 @@ def get_vacation_history(
     scoped_employee_id = employee_id if scope.is_all else scope.employee_id
     return vacation_repo.get_history(scoped_employee_id=scoped_employee_id)
 
-get_vacation_history.hrflow_permission_all = "hr.vacation.read"
-get_vacation_history.hrflow_permission_self = "self.vacation.read"
-
 
 @router.post("/request", status_code=201)
 def request_vacation(
     payload: VacationRequestCreate,
+    scope: Scope = Depends(permission_scope("hr.vacation.write", "self.vacation.write")),
     current_user: dict = Depends(get_current_user),
     vacation_repo: VacationRepository = Depends(get_vacation_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
-    perms = set(current_user.get("permissions", []))
-    has_write_all = "hr.vacation.write" in perms
-    has_write_own = "self.vacation.write" in perms
-
-    if not has_write_all and not has_write_own:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: 'hr.vacation.write' or 'self.vacation.write' required",
-        )
-
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
         employee_repo, current_user, payload.employee_id, payload.employee_name,
         required_permission="hr.vacation.write"
@@ -84,6 +72,3 @@ def request_vacation(
 
     vac_id = vacation_repo.create_vacation_request(vacation_data, request_data)
     return {"message": "Vacation request submitted", "id": vac_id}
-
-request_vacation.hrflow_permission_all = "hr.vacation.write"
-request_vacation.hrflow_permission_self = "self.vacation.write"

@@ -36,9 +36,6 @@ def get_employees(
     scoped_employee_id = None if scope.is_all else scope.employee_id
     return employee_repo.list_all(scoped_employee_id=scoped_employee_id)
 
-get_employees.hrflow_permission_all = "hr.employee.read"
-get_employees.hrflow_permission_self = "self.profile.read"
-
 
 @router.get("/{emp_id}")
 def get_employee(
@@ -52,9 +49,6 @@ def get_employee(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     return emp
-
-get_employee.hrflow_permission_all = "hr.employee.read"
-get_employee.hrflow_permission_self = "self.profile.read"
 
 
 @router.post("", status_code=201)
@@ -190,9 +184,6 @@ def get_employee_documents(
     logger.debug("Listed %d documents for employee_id=%s", len(docs), emp_id)
     return docs
 
-get_employee_documents.hrflow_permission_all = "hr.employee_document.read"
-get_employee_documents.hrflow_permission_self = "self.document.read"
-
 
 @router.post("/{emp_id}/documents", status_code=201, tags=["Documents"])
 def upload_employee_document(
@@ -247,9 +238,6 @@ def upload_employee_document(
     logger.info("Document upload complete: doc_id=%s, employee_id=%s, drive_file_id=%s", doc_id, emp_id, uploaded["file_id"])
     return {"message": "Document uploaded", "id": doc_id}
 
-upload_employee_document.hrflow_permission_all = "hr.employee_document.write"
-upload_employee_document.hrflow_permission_self = "self.document.write"
-
 
 @router.get("/documents/{doc_id}/stream", tags=["Documents"])
 def stream_employee_document(
@@ -278,9 +266,6 @@ def stream_employee_document(
     logger.info("Streaming doc_id=%s to %s (disposition=%s, %d bytes)", doc_id, current_user.get("email"), disposition, len(raw_bytes))
     return StreamingResponse(iter([raw_bytes]), media_type=mime, headers=headers)
 
-stream_employee_document.hrflow_permission_all = "hr.employee_document.read"
-stream_employee_document.hrflow_permission_self = "self.document.read"
-
 
 @router.delete("/documents/{doc_id}", tags=["Documents"])
 def delete_employee_document(
@@ -305,5 +290,3 @@ def delete_employee_document(
     audit_log(audit_repo, "document.delete", current_user.get("email"), "employee_document", doc_id, f"employee_id={doc['employee_id']}")
     return {"message": "Document deleted"}
 
-delete_employee_document.hrflow_permission_all = "hr.employee_document.write"
-delete_employee_document.hrflow_permission_self = "self.document.write"

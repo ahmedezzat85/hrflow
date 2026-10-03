@@ -227,12 +227,3 @@ def archive_user(
     return service.archive_user(user_id=user_id, actor_user=current_user)
 
 
-get_catalog.hrflow_permission_all = "system.roles.manage"
-list_roles.hrflow_permission_all = "system.roles.manage"
-create_role.hrflow_permission_all = "system.roles.manage"
-update_role.hrflow_permission_all = "system.roles.manage"
-delete_role.hrflow_permission_all = "system.roles.manage"
-list_users.hrflow_permission_all = "system.users.manage"
-create_external_user.hrflow_permission_all = "system.users.manage"
-set_user_role.hrflow_permission_all = "system.users.manage"
-archive_user.hrflow_permission_all = "system.users.manage"

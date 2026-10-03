@@ -31,9 +31,6 @@ def get_salary_history(
         return salary_repo.get_history(employee_id=employee_id)
     return salary_repo.get_history()
 
-get_salary_history.hrflow_permission_all = "hr.salary.read"
-get_salary_history.hrflow_permission_self = "self.salary.read"
-
 
 @router.post("/raise", status_code=201)
 def apply_raise(
