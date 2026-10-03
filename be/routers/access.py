@@ -5,13 +5,12 @@ Guards:
 - Catalog and Roles endpoints: system.roles.manage
 - Users endpoints: system.users.manage
 """
-from typing import List, Optional, Union
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, Path, status, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from db import get_db
-from models_db import RoleDB
 from core.permissions import require_permission
 from core.access_service import AccessService
 from repositories.deps import get_audit_repo
@@ -73,20 +72,19 @@ class UserAccessRowResponse(BaseModel):
     employee_id: Optional[int] = None
     employee_name: Optional[str] = None
     is_external: bool
-    roles: List[RoleSummary]
+    role: Optional[RoleSummary] = None
     archived_at: Optional[str] = None
 
 
 class UserCreateExternalRequest(BaseModel):
     email: EmailStr
     name: Optional[str] = None
-    role_ids: List[int]
+    role_id: int
 
 
-class UserRolesUpdateRequest(BaseModel):
-    role_ids: Optional[List[Union[int, str]]] = None
-    roles: Optional[List[Union[int, str]]] = None
-    role: Optional[Union[int, str]] = None
+class UserRoleUpdateRequest(BaseModel):
+    # None clears the assigned role; allowed only for a user with a linked employee.
+    role_id: Optional[int] = None
 
 
 # -----------------------------------------------------------------------------
@@ -193,65 +191,27 @@ def create_external_user(
     service: AccessService = Depends(get_access_service),
     current_user: dict = Depends(require_permission("system.users.manage")),
 ):
-    """Creates an external user without linked employee. Requires at least 1 role (R3)."""
+    """Creates an external user without linked employee. Requires exactly one role (R3)."""
     actor_email = current_user.get("email") or "system"
     return service.create_external_user(
         email=payload.email,
         name=payload.name or "",
-        role_ids=payload.role_ids,
+        role_id=payload.role_id,
         actor_email=actor_email,
     )
 
 
-@router.put("/users/{user_id}/roles", response_model=UserAccessRowResponse)
-@router.post("/users/{user_id}/roles", response_model=UserAccessRowResponse)
 @router.put("/users/{user_id}/role", response_model=UserAccessRowResponse)
-@router.post("/users/{user_id}/role", response_model=UserAccessRowResponse)
-@router.put("/users/{user_id}", response_model=UserAccessRowResponse)
-@router.patch("/users/{user_id}", response_model=UserAccessRowResponse)
-def update_user_roles(
+def set_user_role(
     user_id: int = Path(..., description="User ID"),
-    payload: UserRolesUpdateRequest = ...,
+    payload: UserRoleUpdateRequest = ...,
     service: AccessService = Depends(get_access_service),
     current_user: dict = Depends(require_permission("system.users.manage")),
 ):
-    """Replaces assigned roles for a user (rules R1, R2, R3, R9, R11)."""
-    raw_list = payload.role_ids if payload.role_ids is not None else payload.roles
-    if raw_list is None and payload.role is not None:
-        raw_list = [payload.role]
-    if raw_list is None:
-        raw_list = []
-
-    all_db_roles = service.db.query(RoleDB).all()
-    lookup = {}
-    for r in all_db_roles:
-        lookup[str(r.id)] = r.id
-        if r.system_key:
-            lookup[r.system_key.strip().lower()] = r.id
-            lookup[r.system_key.strip().lower().replace("_", "-")] = r.id
-        if r.name:
-            lookup[r.name.strip().lower()] = r.id
-            lookup[r.name.strip().lower().replace("-", "_")] = r.id
-
-    resolved_ids: List[int] = []
-    for item in raw_list:
-        if isinstance(item, int):
-            resolved_ids.append(item)
-        elif isinstance(item, str):
-            clean = item.strip().lower()
-            if clean in lookup:
-                resolved_ids.append(lookup[clean])
-            elif clean.isdigit():
-                resolved_ids.append(int(clean))
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"Role '{item}' not recognized.",
-                )
-
-    return service.update_user_roles(
+    """Sets the user's single assigned role (rules R1, R2, R3, R9, R11). The Employee baseline is derived, never assigned."""
+    return service.set_user_role(
         user_id=user_id,
-        role_ids=resolved_ids,
+        role_id=payload.role_id,
         actor_user=current_user,
     )
 
@@ -284,6 +244,6 @@ update_role.hrflow_permission_all = "system.roles.manage"
 delete_role.hrflow_permission_all = "system.roles.manage"
 list_users.hrflow_permission_all = "system.users.manage"
 create_external_user.hrflow_permission_all = "system.users.manage"
-update_user_roles.hrflow_permission_all = "system.users.manage"
+set_user_role.hrflow_permission_all = "system.users.manage"
 archive_user.hrflow_permission_all = "system.users.manage"
 unarchive_user.hrflow_permission_all = "system.users.manage"

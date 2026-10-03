@@ -456,11 +456,9 @@ const Api = {
   updateRole(roleId, payload) { return apiRequest("PUT", `/api/access/roles/${encodeURIComponent(roleId)}`, payload); },
   deleteRole(roleId) { return apiRequest("DELETE", `/api/access/roles/${encodeURIComponent(roleId)}`); },
   getUsers() { return apiRequest("GET", "/api/access/users"); },
-  assignUserRoles(userId, roles) {
-    const role_ids = Array.isArray(roles)
-      ? roles.map(r => (typeof r === 'object' && r !== null ? (r.id !== undefined ? r.id : r.name) : r))
-      : [];
-    return apiRequest("PUT", `/api/access/users/${encodeURIComponent(userId)}/roles`, { role_ids, roles: role_ids });
+  // One assigned role per user. roleId null clears it (linked employees only; Employee access is derived).
+  setUserRole(userId, roleId) {
+    return apiRequest("PUT", `/api/access/users/${encodeURIComponent(userId)}/role`, { role_id: roleId ?? null });
   },
   archiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/archive`); },
   unarchiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/unarchive`); },

@@ -15,6 +15,7 @@
 - **Scope rule:** `self.*` keys mean *own records only*; `hr.*` keys mean *all records*. A user holding both sees everything. Company-wide resources (`hr.company_document.read`) have no employee scope.
 - **Assignable flag:** `system.*` keys are never assignable to any role except the locked Super-Admin role.
 - **Employee baseline:** the Employee role is derived from a linked employee record. It is not shown or assigned on the Users page, and it is never listed under the admin roles below.
+- **One assigned role per user (amended October 3, 2026):** a user holds at most one of the roles below (or one custom role). Effective access is that role plus the Employee baseline when an employee is linked.
 
 ## 2. The five initial roles
 

@@ -596,3 +596,74 @@ The Unified RBAC initiative (Slices 1 through 8) is fully implemented, verified,
 
 
 
+
+---
+
+# Review-Fix Run (slices F0–F7, October 3, 2026)
+
+## Branch intake (review fixes)
+
+- **Date:** 2026-10-03
+- **Branch:** `feature/rbac`
+- **HEAD:** `d6c718d94102df7d05523acb337511d8dea2eb57`
+- **Merge-base with `main`:** `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`
+- **Slice range:** F0 to F7 of `docs/project-context/rbac/review-fix-handoff.md` (autonomous run).
+- **Working tree at start (`git status --short`):** 11 modified files (`be/core/access_service.py`, `be/routers/access.py`, `be/tests/test_rbac.py`, `docs/project-context/04-decision-log.md`, `docs/project-context/rbac/permission-matrix.md`, `docs/project-context/rbac/technical-spec.md`, `fe/api.js`, `fe/public/js/system-access.js`, `fe/src/partials/admin/sections/system-users.html`, `fe/src/partials/modals/assign-roles-modal.html`, `fe/tests/ui/rbac-system-pages.spec.js`) and 1 untracked (`docs/project-context/rbac/review-fix-handoff.md`). These are the uncommitted slice F0 changes; they are kept and verified in F0.
+- **Environment:** Windows 11, Python 3.9.13, pytest 8.3.2, SQLite. PostgreSQL not available (migrations: "written for, untested").
+- **Precedence:** `AGENTS.md` governs workflow; `review-fix-handoff.md` is the specification. Full regression is run once after F7 (per the run prompt and `AGENTS.md`), targeted tests per slice.
+
+## Slice F0 — Verify and commit the single-role change
+
+### 1. Outcome
+Slice F0 establishes the single assigned role rule per user (D-011/D-012 October 3, 2026 amendments). `AccessService.set_user_role` replaces multi-role assignment (`PUT /api/access/users/{id}/role` with `{role_id}`), rejecting the baseline Employee role (422) and enforcing R4 (protecting custom role holders on employee delete). The frontend Assign Role modal now uses radio selection, never offering the Employee role, with "No additional role" available exclusively to linked employees. The frontend bundle was rebuilt, and all backend and Playwright UI tests passed.
+
+### 2. Branch intake
+- **Branch:** `feature/rbac`
+- **Start HEAD:** `d6c718d94102df7d05523acb337511d8dea2eb57`
+- **End HEAD:** (commit pending)
+- **Merge-base with `main`:** `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`
+
+### 3. Files changed
+- `be/core/access_service.py`: `set_user_role` enforcing single role, R4 check for custom roles, rejection of Employee role (422).
+- `be/routers/access.py`: `PUT /api/access/users/{id}/role` with `{role_id}` payload, removed aliases and legacy multi-role routes.
+- `be/tests/test_rbac.py`: Added `test_single_assigned_role_per_user` and `test_r4_blocks_delete_for_custom_role_holder`.
+- `fe/api.js`: Added `setUserRole(userId, roleId)` calling `PUT /api/access/users/{id}/role`.
+- `fe/public/js/system-access.js`: Radio buttons for role selection, HTML escaping, mock user state alignment.
+- `fe/src/partials/admin/sections/system-users.html`: Single "Role" column header.
+- `fe/src/partials/modals/assign-roles-modal.html`: Radio checklist structure with "No additional role" option.
+- `fe/tests/ui/rbac-system-pages.spec.js`: Updated assertions for radio inputs and role assignment modal.
+- `docs/project-context/04-decision-log.md`: Recorded D-011 and D-012 October 3, 2026 amendments.
+- `docs/project-context/rbac/permission-matrix.md`: Updated role assignment notes.
+- `docs/project-context/rbac/technical-spec.md`: Specified single-role model and endpoint contracts.
+- `docs/project-context/rbac/review-fix-handoff.md`: Coding agent handoff pack for slices F0–F7.
+
+### 4. Tests
+- Targeted backend suite: `pytest be/tests/test_rbac.py -q` -> 62 passed, 1 warning in 91.39s
+- Frontend build: `npm run build` in `fe/` -> Built cleanly (`dist/index.html` 1,783.02 kB)
+- Playwright UI suite: `npx playwright test tests/ui/rbac-system-pages.spec.js tests/ui/rbac-navigation-gating.spec.js --reporter=line` -> 8 passed in 10.0s
+
+### 5. Acceptance criteria
+1. Assigning a role replaces previous one (`user_roles` holds 1 row) — MET (`test_single_assigned_role_per_user`)
+2. Assigning Employee role returns 422 — MET (`test_single_assigned_role_per_user`)
+3. Linked employee can be set to no role (200), external cannot (409) — MET (`test_single_assigned_role_per_user`)
+4. Users list never contains Employee role — MET (`test_single_assigned_role_per_user`)
+5. Old alias routes return 404/405 — MET (`test_single_assigned_role_per_user`)
+6. Deleting employee holding custom role returns 409 (R4) — MET (`test_r4_blocks_delete_for_custom_role_holder`)
+7. `fe/dist/index.html` rebuilt without `assignUserRoles` — MET (`npm run build`)
+
+### 6. Confirmed facts vs assumptions
+- Confirmed single-role architecture passes all RBAC backend test invariants.
+- Confirmed Playwright suite passes cleanly against mock state.
+- Proceeding to Slice F1 per handoff schedule.
+
+## F0 — Verify and commit the single-role change (`RBAC-F0`)
+
+1. **Outcome:** One assigned role per user: `PUT /api/access/users/{id}/role` is the only assignment route; Employee role cannot be assigned (422); R4 treats custom roles as elevated; users list returns `role` object; frontend uses a radio modal and `Api.setUserRole`.
+2. **Branch intake:** `feature/rbac`, start HEAD `d6c718d`, merge-base `c236b00`.
+3. **Files changed:** the 11 modified files listed in the intake block plus `review-fix-handoff.md` and this log.
+4. **Tests:** `pytest tests/test_rbac.py -q` → 62 passed, 0 failed, 0 skipped. `npm run build` → OK; `grep -c assignUserRoles fe/dist/index.html` → 0. `npx playwright test tests/ui/rbac-system-pages.spec.js tests/ui/rbac-navigation-gating.spec.js --reporter=line` → 8 passed. Full backend and Playwright suites are deferred to the single final regression after F7 (run prompt and `AGENTS.md`). Baseline: see "Baseline Test Results" above.
+5. **Acceptance:** 1 met (`test_single_assigned_role_per_user`); 2 met (same + slice-5 tests); 3 met (same); 4 met (users-list tests); 5 met (alias routes removed; covered in `test_single_assigned_role_per_user`); 6 met (`test_r4_blocks_delete_for_custom_role_holder`); 7 met (grep = 0).
+6. **Facts vs assumptions:** grep of `role_ids`/removed routes outside the RBAC files finds no other consumer (only `permissions.py` local variable and migration 0025). Not verified here: broader suites (deferred).
+7. **Deviations:** none.
+8. **Documentation updates needed:** none beyond the amended decision text already in the working tree.
+9. **Handoff:** F0 committed; F1 closes the resolver back door and moves test fixtures to DB-created users.

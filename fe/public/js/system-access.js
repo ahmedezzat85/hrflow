@@ -141,13 +141,29 @@
     }
   ];
 
+  // Same shape as GET /api/access/users: one assigned role (or null). Employee access is derived, never listed.
   const INITIAL_MOCK_USERS = [
-    { id: 1, name: "Sarah Connor", email: "sarah@voyance.com", employee_id: 1, is_admin: true, is_archived: false, roles: ["Super-Admin"] },
-    { id: 2, name: "John Doe", email: "john@voyance.com", employee_id: 2, is_admin: false, is_archived: false, roles: [] },
-    { id: 3, name: "Alex Rivera", email: "alex@voyance.com", employee_id: 3, is_admin: false, is_archived: false, roles: ["HR-Admin"] },
-    { id: 4, name: "Elena Rostova", email: "elena@voyance.com", employee_id: 4, is_admin: false, is_archived: false, roles: ["Financial-Admin"] },
-    { id: 5, name: "Marcus Vance", email: "marcus@voyance.com", employee_id: 5, is_admin: false, is_archived: false, roles: ["Payroll-Maker"] }
+    { id: 1, name: "Sarah Connor", email: "sarah@voyance.com", employee_id: 1, is_external: false, archived_at: null, role: { id: 1, name: "Super-Admin", system_key: "super_admin" } },
+    { id: 2, name: "John Doe", email: "john@voyance.com", employee_id: 2, is_external: false, archived_at: null, role: null },
+    { id: 3, name: "Alex Rivera", email: "alex@voyance.com", employee_id: 3, is_external: false, archived_at: null, role: { id: 2, name: "HR-Admin", system_key: "hr_admin" } },
+    { id: 4, name: "Elena Rostova", email: "elena@voyance.com", employee_id: 4, is_external: false, archived_at: null, role: { id: 3, name: "Financial-Admin", system_key: "financial_admin" } },
+    { id: 5, name: "Marcus Vance", email: "marcus@voyance.com", employee_id: 5, is_external: false, archived_at: null, role: { id: 4, name: "Payroll-Maker", system_key: "payroll_maker" } }
   ];
+
+  function escHtml(val) {
+    return String(val ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+
+  // The user's single assigned role as { id, name, system_key } or null.
+  function getUserRole(u) {
+    const r = u ? u.role : null;
+    return (r && typeof r === 'object') ? r : null;
+  }
+
+  // The Employee role is derived from the employee link and is never assignable to a user.
+  function isEmployeeBaselineRole(role) {
+    return !!role && (role.system_key === 'employee' || role.name === 'Employee');
+  }
 
   // Helper: Transitive implication closure
   function computeImpliedPermissions(keys) {
@@ -492,8 +508,9 @@
     const roleFilter = document.getElementById('systemUsersRoleFilter')?.value || 'all';
 
     const filtered = _systemUsers.filter(u => {
-      const matchesSearch = !q || (u.name && u.name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q)) || ((u.roles || []).some(r => r.toLowerCase().includes(q)));
-      const matchesRole = roleFilter === 'all' || (u.roles || []).includes(roleFilter);
+      const roleName = (getUserRole(u) || {}).name || '';
+      const matchesSearch = !q || (u.name && u.name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q)) || roleName.toLowerCase().includes(q);
+      const matchesRole = roleFilter === 'all' || roleName === roleFilter;
       return matchesSearch && matchesRole;
     });
 
@@ -508,28 +525,26 @@
         ? `<span class="badge" style="background:var(--danger-soft, #fee2e2); color:var(--danger, #ef4444);"><i class="fa-solid fa-circle-xmark"></i> Archived</span>`
         : `<span class="badge" style="background:var(--success-soft, #dcfce7); color:var(--success, #10b981);"><i class="fa-solid fa-circle-check"></i> Active</span>`;
 
-      const roleBadges = (u.roles && u.roles.length > 0)
-        ? u.roles.map(r => {
-            const roleName = typeof r === 'object' && r !== null ? (r.name || r.system_key || r.id) : r;
-            return `<span class="badge" style="background:var(--accent-soft); color:var(--accent); margin-right:4px;">${roleName}</span>`;
-          }).join('')
-        : `<span style="color:var(--text3); font-size:12px;">No custom roles</span>`;
+      const assignedRole = getUserRole(u);
+      const roleBadges = assignedRole
+        ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent); margin-right:4px;">${escHtml(assignedRole.name)}</span>`
+        : `<span style="color:var(--text3); font-size:12px;">${u.employee_id ? 'Employee access only' : 'No role'}</span>`;
 
       return `
         <tr data-user-id="${u.id}">
           <td data-label="User" class="tname">
             <div class="avatar">${initials(u.name || u.email)}</div>
             <div>
-              <div style="font-weight:600; color:var(--text);">${u.name || 'External User'}</div>
+              <div style="font-weight:600; color:var(--text);">${escHtml(u.name || 'External User')}</div>
               ${u.employee_id ? `<div style="font-size:11px; color:var(--text3);">Employee #${u.employee_id}</div>` : `<div style="font-size:11px; color:var(--text3);">External Account</div>`}
             </div>
           </td>
-          <td data-label="Email" style="color:var(--text2); font-size:13px;">${u.email}</td>
-          <td data-label="Assigned Roles">${roleBadges}</td>
+          <td data-label="Email" style="color:var(--text2); font-size:13px;">${escHtml(u.email)}</td>
+          <td data-label="Role">${roleBadges}</td>
           <td data-label="Status">${statusPill}</td>
           <td data-label="Actions" class="col-actions">
-            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${u.id})" title="Assign roles">
-              <i class="fa-solid fa-user-gear"></i> Roles
+            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${u.id})" title="Assign role">
+              <i class="fa-solid fa-user-gear"></i> Role
             </button>
             ${isArchived
               ? `<button class="btn btn-sm btn-outline btn-unarchive-user" onclick="toggleUserArchive(${u.id}, false)" title="Restore user access" style="color:var(--success); border-color:var(--success);"><i class="fa-solid fa-rotate-left"></i> Restore</button>`
@@ -548,28 +563,48 @@
 
     await loadRoles();
 
+    const isLinkedEmployee = !!user.employee_id;
     const display = document.getElementById('assignUserDisplay');
-    if (display) display.textContent = `Assign roles for ${user.name || user.email} (${user.email})`;
+    if (display) display.textContent = `Assign a role for ${user.name || user.email} (${user.email})`;
 
-    const userRoleIds = (user.roles || []).map(r => (typeof r === 'object' && r !== null ? r.id : r));
-    const userRoleNames = (user.roles || []).map(r => (typeof r === 'object' && r !== null ? (r.name || r.system_key) : r));
+    const note = document.getElementById('assignRoleNote');
+    if (note) {
+      note.textContent = isLinkedEmployee
+        ? 'Employee access is automatic for this user. You can add one role on top of it.'
+        : 'External user: exactly one role is required. To remove access, archive the user.';
+    }
+
+    const current = getUserRole(user);
+    const optionStyle = 'display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:6px; background:var(--surface); cursor:pointer;';
 
     const checklist = document.getElementById('assignRolesChecklist');
     if (checklist) {
-      checklist.innerHTML = _systemRoles.map(role => {
-        const isChecked = userRoleIds.includes(role.id) ||
-                          userRoleNames.includes(role.name) ||
-                          userRoleNames.includes(role.system_key);
+      // One role per user: radio buttons. The Employee role is derived, so it is never offered.
+      const options = _systemRoles.filter(role => !isEmployeeBaselineRole(role)).map(role => {
+        const isChecked = !!current && (current.id === role.id || current.name === role.name);
         return `
-          <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:6px; background:var(--surface); cursor:pointer;">
-            <input type="checkbox" data-role-id="${role.id}" data-role-name="${role.name}" ${isChecked ? 'checked' : ''}>
+          <label style="${optionStyle}">
+            <input type="radio" name="assignRoleChoice" data-role-id="${role.id}" data-role-name="${escHtml(role.name)}" ${isChecked ? 'checked' : ''}>
             <div>
-              <div style="font-weight:600; font-size:13px; color:var(--text);">${role.name}</div>
-              <div style="font-size:11.5px; color:var(--text2);">${role.description || ''}</div>
+              <div style="font-weight:600; font-size:13px; color:var(--text);">${escHtml(role.name)}</div>
+              <div style="font-size:11.5px; color:var(--text2);">${escHtml(role.description || '')}</div>
             </div>
           </label>
         `;
-      }).join('');
+      });
+
+      // Only a linked employee may have no assigned role (they keep the Employee baseline).
+      const noneOption = isLinkedEmployee ? `
+          <label style="${optionStyle}">
+            <input type="radio" name="assignRoleChoice" data-role-id="" data-role-name="" ${current ? '' : 'checked'}>
+            <div>
+              <div style="font-weight:600; font-size:13px; color:var(--text);">No additional role</div>
+              <div style="font-size:11.5px; color:var(--text2);">Employee access only</div>
+            </div>
+          </label>
+        ` : '';
+
+      checklist.innerHTML = noneOption + options.join('');
     }
 
     document.getElementById('assignRolesModal').classList.add('active');
@@ -580,29 +615,31 @@
     const user = _systemUsers.find(u => u.id === _currentAssignUserId);
     if (!user) return;
 
-    const selectedRoleIds = [];
-    const selectedRoleNames = [];
-    document.querySelectorAll('#assignRolesChecklist input[type="checkbox"]:checked').forEach(cb => {
-      const rid = parseInt(cb.dataset.roleId, 10);
-      if (!isNaN(rid)) selectedRoleIds.push(rid);
-      if (cb.dataset.roleName) selectedRoleNames.push(cb.dataset.roleName);
-    });
+    const selected = document.querySelector('#assignRolesChecklist input[name="assignRoleChoice"]:checked');
+    const parsedId = selected ? parseInt(selected.dataset.roleId, 10) : NaN;
+    const roleId = isNaN(parsedId) ? null : parsedId;
+
+    if (roleId === null && !user.employee_id) {
+      toast('An external user must have a role. Archive the user to remove access.', 'fa-solid fa-triangle-exclamation');
+      return;
+    }
 
     setButtonLoading(btn, true, 'Saving...');
     try {
       if (isMockMode()) {
-        user.roles = selectedRoleNames;
-        toast('Roles assigned successfully');
+        const picked = _systemRoles.find(r => r.id === roleId);
+        user.role = picked ? { id: picked.id, name: picked.name, system_key: picked.system_key || null } : null;
+        toast('Role saved');
         closeModal('assignRolesModal');
         renderUsersTable();
       } else {
-        await Api.assignUserRoles(_currentAssignUserId, selectedRoleIds);
-        toast('Roles assigned successfully');
+        await Api.setUserRole(_currentAssignUserId, roleId);
+        toast('Role saved');
         closeModal('assignRolesModal');
         await loadUsers();
       }
     } catch (err) {
-      toast(err.message || 'Failed to assign roles', 'fa-solid fa-triangle-exclamation');
+      toast(err.message || 'Failed to save role', 'fa-solid fa-triangle-exclamation');
     } finally {
       setButtonLoading(btn, false);
     }

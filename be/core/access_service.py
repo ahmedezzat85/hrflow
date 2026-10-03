@@ -31,6 +31,24 @@ RESERVED_ROLE_NAMES = {
     "system_admin",
 }
 
+def _assigned_role(user: UserDB) -> Optional[RoleDB]:
+    """
+    Returns the user's single assigned role (D-011 amendment: one assigned role per user).
+    The derived Employee baseline is never an assigned role. If legacy data still holds
+    more than one row, Super-Admin wins, then the lowest role id.
+    """
+    roles = [ur.role for ur in (user.user_roles or []) if ur.role is not None and ur.role.system_key != "employee"]
+    if not roles:
+        return None
+    roles.sort(key=lambda r: (0 if r.system_key == "super_admin" else 1, r.id))
+    return roles[0]
+
+
+def _role_summary(role: Optional[RoleDB]) -> Optional[Dict[str, Any]]:
+    if role is None:
+        return None
+    return {"id": role.id, "name": role.name, "system_key": role.system_key}
+
 
 class AccessService:
     def __init__(self, db: Session, audit_repo=None):
@@ -291,7 +309,7 @@ class AccessService:
         """
         Lists users with search and filter.
         Filters: all | employees | external | archived
-        Row: id, email, name, employee_id, employee_name, is_external, roles (excluding Employee baseline), archived_at.
+        Row: id, email, name, employee_id, employee_name, is_external, role (single assigned role or null; Employee baseline never listed), archived_at.
         """
         query = self.db.query(UserDB)
 
@@ -319,21 +337,15 @@ class AccessService:
             emp_name = u.employee.name if u.employee else None
             is_external = (u.employee_id is None)
 
-            # Exclude Employee baseline role from display
-            assigned_roles = [
-                {"id": r.id, "name": r.name, "system_key": r.system_key}
-                for ur in u.user_roles
-                if (r := ur.role) and r.system_key != "employee"
-            ]
-
+            # One assigned role per user; the Employee baseline is derived and never listed
             result.append({
                 "id": u.id,
                 "email": u.email,
-                "name": u.name or (u.email.split("@")[0].title() if u.email else ""),
+                "name": emp_name or u.name or (u.email.split("@")[0].title() if u.email else ""),
                 "employee_id": u.employee_id,
                 "employee_name": emp_name,
                 "is_external": is_external,
-                "roles": assigned_roles,
+                "role": _role_summary(_assigned_role(u)),
                 "archived_at": u.archived_at.isoformat() if u.archived_at else None,
             })
         return result
@@ -344,10 +356,22 @@ class AccessService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
         return user
 
-    def create_external_user(self, email: str, name: str, role_ids: List[int], actor_email: str) -> Dict[str, Any]:
+    def _get_assignable_role(self, role_id: int) -> RoleDB:
+        """Loads a role that may be assigned to a user. The Employee role is derived, never assigned."""
+        role = self.db.query(RoleDB).filter(RoleDB.id == role_id).first()
+        if not role:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="The specified role ID is invalid.")
+        if role.system_key == "employee":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="The Employee role is derived from the linked employee record and cannot be assigned.",
+            )
+        return role
+
+    def create_external_user(self, email: str, name: str, role_id: Optional[int], actor_email: str) -> Dict[str, Any]:
         """
         Creates an external user without linked employee.
-        Requires at least 1 role (R3). Rejects duplicate email.
+        Requires exactly one role (R3). Rejects duplicate email.
         """
         clean_email = (email or "").strip().lower()
         if not clean_email or "@" not in clean_email:
@@ -357,8 +381,8 @@ class AccessService:
         if not clean_name:
             clean_name = clean_email.split("@")[0].title()
 
-        if not role_ids or len(role_ids) == 0:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="External users must have at least one assigned role.")
+        if role_id is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="External users must be given a role.")
 
         existing = self.db.query(UserDB).filter(func.lower(UserDB.email) == clean_email).first()
         if existing:
@@ -366,12 +390,7 @@ class AccessService:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this email already exists and is archived.")
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this email already exists.")
 
-        # Validate role IDs
-        roles = self.db.query(RoleDB).filter(RoleDB.id.in_(role_ids)).all()
-        if len(roles) != len(set(role_ids)):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="One or more specified role IDs are invalid.")
-
-        is_super_admin = any(r.system_key == "super_admin" for r in roles)
+        role = self._get_assignable_role(role_id)
 
         user = UserDB(
             email=clean_email,
@@ -382,8 +401,7 @@ class AccessService:
         self.db.add(user)
         self.db.flush()
 
-        for r in roles:
-            self.db.add(UserRoleDB(user_id=user.id, role_id=r.id))
+        self.db.add(UserRoleDB(user_id=user.id, role_id=role.id))
 
         self.db.commit()
         self.db.refresh(user)
@@ -395,13 +413,8 @@ class AccessService:
                 actor_email,
                 "user",
                 user.id,
-                f"email={user.email}, roles={[r.name for r in roles]}",
+                f"email={user.email}, role={role.name}",
             )
-
-        assigned_roles = [
-            {"id": r.id, "name": r.name, "system_key": r.system_key}
-            for r in roles if r.system_key != "employee"
-        ]
 
         return {
             "id": user.id,
@@ -410,7 +423,7 @@ class AccessService:
             "employee_id": None,
             "employee_name": None,
             "is_external": True,
-            "roles": assigned_roles,
+            "role": _role_summary(role),
             "archived_at": None,
         }
 
@@ -425,9 +438,11 @@ class AccessService:
         )
         return {r[0] for r in rows}
 
-    def update_user_roles(self, user_id: int, role_ids: List[int], actor_user: dict) -> Dict[str, Any]:
+    def set_user_role(self, user_id: int, role_id: Optional[int], actor_user: dict) -> Dict[str, Any]:
         """
-        Replaces user's assigned roles enforcing R1, R2, R3, R9, R11.
+        Sets the user's single assigned role, enforcing R1, R2, R3, R9, R11.
+        role_id=None clears the assigned role and is allowed only for a user with a linked
+        employee (who keeps the derived Employee baseline).
         """
         user = self.get_user_by_id(user_id)
         actor_email = (actor_user.get("email") or "").strip().lower()
@@ -447,44 +462,31 @@ class AccessService:
                 detail="Cannot modify roles for an archived user.",
             )
 
-        # R3: External user without employee must have >= 1 role
-        if user.employee_id is None and not role_ids:
+        # R3: External user without employee must always have a role
+        if user.employee_id is None and role_id is None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="A user without a linked employee must always keep at least one role. Archive the user instead.",
+                detail="A user without a linked employee must always have a role. Archive the user instead.",
             )
 
-        # Validate target roles
-        new_roles = []
-        if role_ids:
-            new_roles = self.db.query(RoleDB).filter(RoleDB.id.in_(role_ids)).all()
-            if len(new_roles) != len(set(role_ids)):
-                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="One or more specified role IDs are invalid.")
+        new_role = self._get_assignable_role(role_id) if role_id is not None else None
 
         # R2: Last active Super-Admin cannot be revoked
-        super_admin_role = self.db.query(RoleDB).filter(RoleDB.system_key == "super_admin").first()
-        super_admin_role_id = super_admin_role.id if super_admin_role else None
         active_sa_ids = self._get_active_super_admin_user_ids()
-
         if user.id in active_sa_ids:
-            # Check if new roles revoke Super-Admin
-            will_have_sa = any(r.system_key == "super_admin" for r in new_roles)
+            will_have_sa = new_role is not None and new_role.system_key == "super_admin"
             if not will_have_sa and len(active_sa_ids) <= 1:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Cannot revoke the last active Super-Admin.",
                 )
 
-        # Replace UserRoleDB rows
+        # Replace every existing row (including any legacy Employee row) with the single role
         self.db.query(UserRoleDB).filter(UserRoleDB.user_id == user.id).delete()
         self.db.flush()
 
-        for r in new_roles:
-            self.db.add(UserRoleDB(user_id=user.id, role_id=r.id))
-
-        # Update compatibility role column
-        is_sa = any(r.system_key == "super_admin" for r in new_roles)
-        user.role = "admin" if is_sa else "employee"
+        if new_role is not None:
+            self.db.add(UserRoleDB(user_id=user.id, role_id=new_role.id))
 
         self.db.commit()
         self.db.refresh(user)
@@ -496,22 +498,18 @@ class AccessService:
                 actor_email,
                 "user",
                 user.id,
-                f"roles={[r.name for r in new_roles]}",
+                f"role={new_role.name if new_role else None}",
             )
 
-        assigned_roles = [
-            {"id": r.id, "name": r.name, "system_key": r.system_key}
-            for r in new_roles if r.system_key != "employee"
-        ]
-
+        emp_name = user.employee.name if user.employee else None
         return {
             "id": user.id,
             "email": user.email,
-            "name": user.name,
+            "name": emp_name or user.name,
             "employee_id": user.employee_id,
-            "employee_name": user.employee.name if user.employee else None,
+            "employee_name": emp_name,
             "is_external": user.employee_id is None,
-            "roles": assigned_roles,
+            "role": _role_summary(new_role),
             "archived_at": None,
         }
 
@@ -653,14 +651,17 @@ class AccessService:
                 detail="Cannot delete the last active Super-Admin.",
             )
 
-        # R4: Reject if linked user holds elevated assigned roles
-        elevated_roles = (
-            self.db.query(RoleDB)
-            .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
-            .filter(UserRoleDB.user_id == user.id)
-            .filter(RoleDB.system_key != "employee")
-            .all()
-        )
+        # R4: Reject if linked user holds any assigned role other than the baseline.
+        # Filtered in Python: custom roles have system_key NULL, and SQL "!= 'employee'" drops NULL rows.
+        elevated_roles = [
+            r for r in (
+                self.db.query(RoleDB)
+                .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
+                .filter(UserRoleDB.user_id == user.id)
+                .all()
+            )
+            if r.system_key != "employee"
+        ]
         if elevated_roles:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

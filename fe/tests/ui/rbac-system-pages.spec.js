@@ -114,13 +114,21 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     const assignModal = page.locator('#assignRolesModal');
     await expect(assignModal).toHaveClass(/active/);
 
-    // Grant Payroll-Maker role
+    // One role per user: radio buttons, and the derived Employee role is never offered
+    await expect(assignModal.locator('#assignRolesChecklist input[type="checkbox"]')).toHaveCount(0);
+    await expect(assignModal.locator('input[data-role-name="Employee"]')).toHaveCount(0);
+    await expect(assignModal.locator('#assignRolesChecklist label:has-text("No additional role") input')).toBeChecked();
+
+    // Selecting a second role replaces the first
+    await assignModal.locator('input[data-role-name="HR-Admin"]').check();
     await assignModal.locator('input[data-role-name="Payroll-Maker"]').check();
+    await expect(assignModal.locator('input[data-role-name="HR-Admin"]')).not.toBeChecked();
     await assignModal.locator('#assignRolesSaveBtn').click();
     await expect(assignModal).not.toHaveClass(/active/);
 
     // John Doe now displays Payroll-Maker badge
     await expect(johnRow.locator('.badge:has-text("Payroll-Maker")')).toBeVisible();
+    await expect(johnRow.locator('.badge:has-text("HR-Admin")')).toHaveCount(0);
 
     // Archive Marcus Vance
     page.on('dialog', async dialog => {

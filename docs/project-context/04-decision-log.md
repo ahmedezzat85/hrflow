@@ -222,6 +222,12 @@ This document records durable product and architectural decisions approved by th
   - Frontend `SessionInfo.hasPermission` and `AdminNav.canSeeModule` stop shortcutting on role strings.
   - Full detail: `rbac/technical-spec.md`, `rbac/implementation-plan.md`.
 - **Evidence / Reference:** `be/core/permissions.py`, `be/core/rbac_seed.py`, `be/core/rbac_models.py`, `be/db.py` (`init_db`), `be/deps.py`, `be/auth.py`, `be/finance/services/payroll_service.py` (`approve_run`), `be/finance/routers/payroll.py`, `vendors.py`, `activity.py`, `observability.py`, `bank_accounts.py`; route inventory in `rbac/route-guard-inventory.csv` (236 route registrations).
+- **Amendment (owner decision, October 3, 2026) — one assigned role per user:**
+  - Supersedes the **Composition** bullet above ("Union of roles only").
+  - A user holds **at most one assigned role**. Effective permissions are that role plus the derived Employee baseline when an employee is linked (for example Employee + Payroll-Maker, or Employee + Super-Admin). Still no deny rules and no role inheritance.
+  - The Employee role stays editable on the Roles page but is never assigned to, or shown on, a user.
+  - Whether a custom role may combine `finance.payroll.prepare` with `approve` or `pay` is left to the Super-Admin's judgment; the role editor does not block it.
+  - Existing development data is not migrated: the access service replaces whatever rows a user holds with the single role the next time the role is set. No database constraint is added yet.
 
 ### D-012 — Identity Lifecycle: Users Page, External Users, Archiving, Self-Protection
 
@@ -245,6 +251,10 @@ This document records durable product and architectural decisions approved by th
   - New `users` columns for archive state and external-user name; an access service; roles and users APIs; two new frontend pages and navigation entries; a per-request database check in `get_current_user`.
   - Today employee creation inserts a `users` row with the legacy role and no `user_roles` row; employee deletion deletes only the employee, leaving the `users` row in place (read from code, not executed). Both change.
 - **Evidence / Reference:** `be/routers/employees.py`, `be/repositories/sql/employees.py` (`create`, `delete`), `be/models_db.py` (`UserDB`), `be/repositories/sql/auth.py`.
+- **Amendment (owner decision, October 3, 2026) — one assigned role per user:**
+  - **Assigning roles:** a user created from the Users page (external user) must be given **exactly one** role, replacing "at least one role".
+  - **Always one effective role:** an external user's role can be changed but not cleared; to remove access the user is archived. A user with a linked employee has zero or one assigned role; zero means Employee baseline only.
+  - API: `PUT /api/access/users/{id}/role` with `{role_id}` replaces `PUT /users/{id}/roles`; assigning the Employee role is rejected.
 
 ### D-013 — Sign-In Policy: Provisioned Google Accounts of Any Domain
 

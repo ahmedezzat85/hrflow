@@ -4,6 +4,7 @@
 **Date:** October 1, 2026  
 **Branch intake:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main` / `origin/main`). Alembic head on this branch: `0023_payroll_income_tax_settings`.  
 **Governing decisions:** D-011, D-012, D-013 in `../04-decision-log.md`. Role grants: `permission-matrix.md`. Route mapping: `route-guard-inventory.csv`.  
+**Amended October 3, 2026 (D-011/D-012 amendments):** one assigned role per user; the Employee baseline stays derived. Sections 6, 9, 10 and 12 below reflect this.  
 **Risk class:** High-risk change under `AGENTS.md` (permissions, authentication, migrations, data lifecycle). This document is the "Feature Specification & Ingestion" step; the plan is in `implementation-plan.md`.  
 **Status labels used below:** implemented · partial · planned · open · unknown.
 
@@ -129,6 +130,7 @@ def resolve_access(db, session_payload) -> AccessContext:
 - **Token:** add a `uid` claim at login. Tokens without it fall back to email lookup. The `role` claim is still written during the transition for the old frontend and is removed in the final slice; extra or missing claims never invalidate existing cookies.
 - **Portal:** `has_admin_surface(perms)` is true when the user holds any permission outside `self.*` and `hr.company_document.read`. `/api/auth/login` and `/api/auth/me` return `permissions`, `portal`, `roles` (names, excluding the baseline) and, until the frontend is migrated, a compatibility `role` (`"admin"` when `portal == "admin"`, else `"employee"`).
 - **Baseline derivation is by `employee_id`:** deleting or detaching the employee removes the baseline automatically.
+- **One assigned role (amended October 3, 2026):** `user_roles` holds at most one row per user. The only union is that role plus the derived Employee baseline.
 
 ## 7. Scope resolution (own vs all)
 
@@ -164,7 +166,7 @@ New module `be/core/access_service.py`, called by the access routes and by HR em
 |---|---|---|
 | R1 | An actor cannot delete, archive, or revoke the access of their own user (including removing their own roles). | 409 |
 | R2 | The last active Super-Admin cannot be revoked, archived or deleted. | 409 |
-| R3 | A user without a linked employee must always keep at least one role. Revoking the last one is rejected; the user is archived instead. | 409 |
+| R3 | A user holds at most one assigned role. A user without a linked employee must always have exactly one: it can be changed but not cleared; the user is archived instead. A user with a linked employee may have none (baseline only). The Employee role itself cannot be assigned (422). | 409 |
 | R4 | Deleting an employee is rejected while the linked user holds any assigned role other than the baseline. The message tells the Super-Admin to revoke on the Users page first. | 409 |
 | R5 | Deleting a baseline-only employee also deletes the linked user in the same transaction. | — |
 | R6 | A locked role cannot be edited, renamed or deleted. | 409 |
@@ -188,9 +190,9 @@ Prefix `/api/access`. Roles and catalog endpoints require `system.roles.manage`;
 | POST | `/roles` | `{name, description, permissions[]}` → closure applied, `implied_added[]` returned. |
 | PUT | `/roles/{id}` | Same body; rejected for locked roles. |
 | DELETE | `/roles/{id}` | Rejected for locked or assigned roles. |
-| GET | `/users` | `?search=&filter=all\|employees\|external\|archived`. Row: id, email, name, `employee_id`, `employee_name`, `is_external`, assigned roles (baseline excluded), `archived_at`. |
-| POST | `/users` | Create external user: `{email, name, role_ids[≥1]}`. |
-| PUT | `/users/{id}/roles` | Replace the assigned-role set (rules R1–R3, R9). |
+| GET | `/users` | `?search=&filter=all\|employees\|external\|archived`. Row: id, email, name, `employee_id`, `employee_name`, `is_external`, `role` (the single assigned role or null; baseline never listed), `archived_at`. |
+| POST | `/users` | Create external user: `{email, name, role_id}` (exactly one role). |
+| PUT | `/users/{id}/role` | Set the single assigned role: `{role_id}`; `null` is allowed only for a linked employee (rules R1–R3, R9). |
 | POST | `/users/{id}/archive` | Rules R1, R2, R10. |
 | POST | `/users/{id}/restore` | Not built until Q-006. |
 
@@ -217,7 +219,7 @@ Vanilla JS, no framework (per `AGENTS.md`); run `npm run build` in `fe/` after a
   - The default active module becomes the first visible module (today it is hard-coded to HR). Landing page for a Payroll-Maker is the Payroll module. Legacy page-to-module routing (`financeParentMap`) is unchanged.
 - **Per-control gating:** admin controls (add/delete employee, salary raise, approve, pay, statutory create, reveal buttons) are hidden unless the key is present. Backend remains the authority.
 - **Roles page:** role list with user counts; permission editor grouped by catalog `group`; ticking a key also ticks everything it implies; unticking a key also unticks everything that implies it; non-assignable keys never shown for unlocked roles; the Super-Admin role is read-only with a banner; create/rename/delete with the R6/R7 messages.
-- **Users page:** filters (All, Employees, External, Archived); columns: name/email, linked employee or an **External** badge, assigned roles (Employee never shown), status; actions: edit roles, add external user (email, name, at least one role), archive. The signed-in user's own row has its destructive actions disabled with an explanation (R1). Server rule errors are shown verbatim.
+- **Users page:** filters (All, Employees, External, Archived); columns: name/email, linked employee or an **External** badge, the assigned role (Employee never shown), status; actions: set role (single choice; "No additional role" offered only for linked employees), add external user (email, name, exactly one role), archive. The signed-in user's own row has its destructive actions disabled with an explanation (R1). Server rule errors are shown verbatim.
 - **Employees page:** delete shows the server's R4 message when blocked.
 - **Mock mode (`?mock=...`):** add mock sessions for each seeded role and mock handlers for `/api/access/*`, so Playwright can cover navigation visibility and both pages without a backend.
 
