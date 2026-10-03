@@ -69,6 +69,7 @@ class UserRoleDB(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "role_id", name="uq_user_role"),
+        UniqueConstraint("user_id", name="uq_user_roles_user"),
     )
 
     user = relationship("UserDB", back_populates="user_roles")

@@ -165,9 +165,15 @@ def upgrade() -> None:
         with op.batch_alter_table('roles') as batch_op:
             if 'system_key' not in roles_cols:
                 batch_op.add_column(sa.Column('system_key', sa.String(length=50), nullable=True))
-                batch_op.create_index('ix_roles_system_key', ['system_key'], unique=True)
             if 'is_locked' not in roles_cols:
-                batch_op.add_column(sa.Column('is_locked', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+                batch_op.add_column(sa.Column('is_locked', sa.Boolean(), nullable=False, server_default=sa.false()))
+
+    # The unique index is created outside the batch block: inside it, SQLite batch mode
+    # silently skipped the index when the table was altered in place.
+    if 'roles' in tables:
+        role_indexes = [ix['name'] for ix in sa.inspect(bind).get_indexes('roles')]
+        if 'ix_roles_system_key' not in role_indexes:
+            op.create_index('ix_roles_system_key', 'roles', ['system_key'], unique=True)
 
     # 2. Column additions to users table
     if 'users' in tables:
@@ -204,42 +210,50 @@ def upgrade() -> None:
         role_by_name = {row[1]: row[0] for row in existing_roles_rows}
         role_by_key = {row[2]: row[0] for row in existing_roles_rows if row[2]}
 
+        # Rows added by an application start before this migration have is_locked NULL
+        session.execute(text("UPDATE roles SET is_locked = :unlocked WHERE is_locked IS NULL"), {"unlocked": False})
+
         # Rename or setup Super-Admin
         if "super_admin" not in role_by_key:
             if "system_admin" in role_by_name:
                 session.execute(
-                    text("UPDATE roles SET name = 'Super-Admin', system_key = 'super_admin', is_locked = 1 WHERE name = 'system_admin'")
+                    text("UPDATE roles SET name = 'Super-Admin', system_key = 'super_admin', is_locked = :locked WHERE name = 'system_admin'"),
+                    {"locked": True},
                 )
             elif "Super-Admin" in role_by_name:
                 session.execute(
-                    text("UPDATE roles SET system_key = 'super_admin', is_locked = 1 WHERE name = 'Super-Admin'")
+                    text("UPDATE roles SET system_key = 'super_admin', is_locked = :locked WHERE name = 'Super-Admin'"),
+                    {"locked": True},
                 )
             else:
                 session.execute(
                     text("INSERT INTO roles (name, system_key, is_locked, description, created_at) "
-                         "VALUES ('Super-Admin', 'super_admin', 1, 'Full system and domain administrative access', :now)"),
-                    {"now": datetime.utcnow()},
+                         "VALUES ('Super-Admin', 'super_admin', :locked, 'Full system and domain administrative access', :now)"),
+                    {"locked": True, "now": datetime.utcnow()},
                 )
         else:
             session.execute(
-                text("UPDATE roles SET is_locked = 1 WHERE system_key = 'super_admin'")
+                text("UPDATE roles SET is_locked = :locked WHERE system_key = 'super_admin'"),
+                {"locked": True},
             )
 
         # Rename or setup Employee
         if "employee" not in role_by_key:
             if "employee" in role_by_name:
                 session.execute(
-                    text("UPDATE roles SET name = 'Employee', system_key = 'employee', is_locked = 0 WHERE name = 'employee'")
+                    text("UPDATE roles SET name = 'Employee', system_key = 'employee', is_locked = :locked WHERE name = 'employee'"),
+                    {"locked": False},
                 )
             elif "Employee" in role_by_name:
                 session.execute(
-                    text("UPDATE roles SET system_key = 'employee', is_locked = 0 WHERE name = 'Employee'")
+                    text("UPDATE roles SET system_key = 'employee', is_locked = :locked WHERE name = 'Employee'"),
+                    {"locked": False},
                 )
             else:
                 session.execute(
                     text("INSERT INTO roles (name, system_key, is_locked, description, created_at) "
-                         "VALUES ('Employee', 'employee', 0, 'Standard self-service employee access', :now)"),
-                    {"now": datetime.utcnow()},
+                         "VALUES ('Employee', 'employee', :locked, 'Standard self-service employee access', :now)"),
+                    {"locked": False, "now": datetime.utcnow()},
                 )
 
         # Create HR-Admin, Financial-Admin, Payroll-Maker
@@ -256,8 +270,8 @@ def upgrade() -> None:
             if not role_exists:
                 session.execute(
                     text("INSERT INTO roles (name, system_key, is_locked, description, created_at) "
-                         "VALUES (:name, :key, 0, :desc, :now)"),
-                    {"name": r_name, "key": r_key, "desc": r_desc, "now": datetime.utcnow()},
+                         "VALUES (:name, :key, :locked, :desc, :now)"),
+                    {"name": r_name, "key": r_key, "locked": False, "desc": r_desc, "now": datetime.utcnow()},
                 )
             else:
                 session.execute(
@@ -329,9 +343,11 @@ def downgrade() -> None:
 
     if 'roles' in tables:
         roles_cols = [col['name'] for col in inspector.get_columns('roles')]
+        role_indexes = [ix['name'] for ix in inspector.get_indexes('roles')]
+        if 'ix_roles_system_key' in role_indexes:
+            op.drop_index('ix_roles_system_key', table_name='roles')
         with op.batch_alter_table('roles') as batch_op:
             if 'is_locked' in roles_cols:
                 batch_op.drop_column('is_locked')
             if 'system_key' in roles_cols:
-                batch_op.drop_index('ix_roles_system_key')
                 batch_op.drop_column('system_key')

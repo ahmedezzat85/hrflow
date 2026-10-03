@@ -113,6 +113,7 @@ def test_invoice_activity_sensitive_masking_non_admin(app_client, admin_cookies,
             db.flush()
         user = db.query(UserDB).filter_by(email="employee@hrflow.test").first()
         if user:
+            db.query(UserRoleDB).filter_by(user_id=user.id).delete()
             db.add(UserRoleDB(user_id=user.id, role_id=role.id))
             db.commit()
 
@@ -228,6 +229,7 @@ def test_cheque_activity_timeline_and_masking(app_client, admin_cookies, employe
             db.flush()
         user = db.query(UserDB).filter_by(email="employee@hrflow.test").first()
         if user:
+            db.query(UserRoleDB).filter_by(user_id=user.id).delete()
             db.add(UserRoleDB(user_id=user.id, role_id=role.id))
             db.commit()
 

@@ -132,14 +132,14 @@ def sync_catalog(db: Session) -> Dict[str, int]:
         for p_def in CATALOG:
             if p_def.key not in existing_perms:
                 try:
-                    p = PermissionDB(key=p_def.key, description=p_def.description)
-                    db.add(p)
-                    db.flush()
+                    with db.begin_nested():
+                        p = PermissionDB(key=p_def.key, description=p_def.description)
+                        db.add(p)
+                        db.flush()
                     existing_perms[p_def.key] = p
                     stats["permissions_created"] += 1
                 except IntegrityError:
-                    db.rollback()
-                    # Re-query if concurrent worker inserted it
+                    # Savepoint rolled back; earlier inserts are kept. Re-query if a concurrent worker inserted it
                     p = db.query(PermissionDB).filter(PermissionDB.key == p_def.key).first()
                     if p:
                         existing_perms[p_def.key] = p
@@ -162,20 +162,29 @@ def sync_catalog(db: Session) -> Dict[str, int]:
                 .filter(RoleDB.name == "Super-Admin")
                 .first()
             )
+        if not super_admin_role:
+            # Application started before `alembic upgrade`: adopt the legacy role instead of creating a second one
+            legacy_role = db.query(RoleDB).filter(RoleDB.name == "system_admin").first()
+            if legacy_role:
+                legacy_role.name = "Super-Admin"
+                legacy_role.system_key = "super_admin"
+                legacy_role.is_locked = True
+                db.flush()
+                super_admin_role = legacy_role
 
         # If Super-Admin role does not exist (e.g. pre-migration / raw test harness), create it
         if not super_admin_role:
             try:
-                super_admin_role = RoleDB(
-                    name="Super-Admin",
-                    system_key="super_admin",
-                    description="Full system and domain administrative access",
-                    is_locked=True,
-                )
-                db.add(super_admin_role)
-                db.flush()
+                with db.begin_nested():
+                    super_admin_role = RoleDB(
+                        name="Super-Admin",
+                        system_key="super_admin",
+                        description="Full system and domain administrative access",
+                        is_locked=True,
+                    )
+                    db.add(super_admin_role)
+                    db.flush()
             except IntegrityError:
-                db.rollback()
                 super_admin_role = (
                     db.query(RoleDB)
                     .filter(RoleDB.system_key == "super_admin")
@@ -201,14 +210,15 @@ def sync_catalog(db: Session) -> Dict[str, int]:
             perm = existing_perms.get(p_def.key)
             if perm and perm.id not in existing_rp_ids:
                 try:
-                    rp = RolePermissionDB(role_id=super_admin_role.id, permission_id=perm.id)
-                    db.add(rp)
-                    db.flush()
+                    with db.begin_nested():
+                        rp = RolePermissionDB(role_id=super_admin_role.id, permission_id=perm.id)
+                        db.add(rp)
+                        db.flush()
                     existing_rp_ids.add(perm.id)
                     stats["super_admin_grants_created"] += 1
                 except IntegrityError:
-                    db.rollback()
-                    # Concurrent worker inserted it
+                    # Concurrent worker inserted it; savepoint rolled back
+                    pass
 
         # Clean up any stale permissions on Super-Admin not in CATALOG
         catalog_perm_ids = {perm.id for p_def in CATALOG if (perm := existing_perms.get(p_def.key))}

@@ -392,7 +392,10 @@ def _create_test_user_with_roles(db, email, role_names=None, system_keys=None, e
     if role_names:
         target_roles.extend(db.query(RoleDB).filter(RoleDB.name.in_(role_names)).all())
 
+    # One assigned role per user; the Employee baseline is derived from employee_id, never stored.
     for r in set(target_roles):
+        if r.system_key == "employee":
+            continue
         db.add(UserRoleDB(user_id=user.id, role_id=r.id))
     db.commit()
     return {
@@ -910,11 +913,11 @@ def test_hr_admin_passes_hr_routes_and_blocked_on_finance(app_client):
 def test_user_holding_both_self_and_hr_sees_all_records(app_client):
     """AC 5: A user holding both self.* and hr.* sees all records."""
     with get_db_context() as db:
-        # User is an employee with linked employee_id=2 (gets self.*) AND has hr_admin role (gets hr.*)
+        # Linked employee_id=2 derives the Employee baseline (self.*); the single assigned role is hr_admin (hr.*)
         user = _create_test_user_with_roles(
             db,
             email="dual_role_user@voyance.health",
-            system_keys=["hr_admin", "employee"],
+            system_keys=["hr_admin"],
             employee_id=2,
         )
 
@@ -2694,3 +2697,162 @@ def test_no_dev_environment_shortcuts_in_authorization_code():
             content = fh.read()
         assert "hrflow.test" not in content, f"hrflow.test fallback in {path}"
         assert 'ENVIRONMENT in ("development", "test")' not in content, f"environment branch in {path}"
+
+
+# ============================================================================
+# RBAC-F2: migrations, startup and the one-role constraint
+# ============================================================================
+
+def _alembic_cfg(db_url, monkeypatch):
+    import os
+    from alembic.config import Config as AlembicConfig
+    from config import Config
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    monkeypatch.setattr(Config, "DATABASE_URL", db_url)
+    cfg = AlembicConfig(os.path.join(base_dir, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(base_dir, "migrations"))
+    return cfg
+
+
+def test_alembic_upgrade_downgrade_roundtrip(tmp_path, monkeypatch):
+    """F2 AC1: fresh upgrade, downgrade to 0023 and upgrade again all succeed (SQLite)."""
+    import sqlalchemy as sa
+    from alembic import command
+    url = f"sqlite:///{tmp_path / 'roundtrip.db'}"
+    cfg = _alembic_cfg(url, monkeypatch)
+    command.upgrade(cfg, "head")
+    engine = sa.create_engine(url)
+    assert "ix_roles_system_key" in [ix["name"] for ix in sa.inspect(engine).get_indexes("roles")]
+    command.downgrade(cfg, "0023_payroll_income_tax_settings")
+    assert "system_key" not in [c["name"] for c in sa.inspect(engine).get_columns("roles")]
+    command.upgrade(cfg, "head")
+    with engine.connect() as conn:
+        assert conn.execute(sa.text("SELECT COUNT(*) FROM roles WHERE system_key IS NOT NULL")).scalar() == 5
+    engine.dispose()
+
+
+def test_migration_0027_enforces_single_role_per_user(tmp_path, monkeypatch):
+    """F2 AC2: 0027 drops Employee rows, keeps one row per user, and the constraint rejects a second row."""
+    import sqlalchemy as sa
+    from alembic import command
+    url = f"sqlite:///{tmp_path / 'single_role.db'}"
+    cfg = _alembic_cfg(url, monkeypatch)
+    command.upgrade(cfg, "0026_drop_users_role")
+    engine = sa.create_engine(url)
+    with engine.begin() as conn:
+        role_id = {k: i for i, k in conn.execute(sa.text("SELECT id, system_key FROM roles WHERE system_key IS NOT NULL")).fetchall()}
+        for uid in (1, 2, 3):
+            conn.execute(sa.text("INSERT INTO users (id, email) VALUES (:i, :e)"), {"i": uid, "e": f"u{uid}@voyance.health"})
+        rows = [
+            (1, role_id["employee"]), (1, role_id["hr_admin"]),  # employee + one role -> hr_admin
+            (2, role_id["financial_admin"]), (2, role_id["super_admin"]), (2, role_id["employee"]),  # several -> super_admin
+            (3, role_id["employee"]),  # only employee -> no row
+        ]
+        for uid, rid in rows:
+            conn.execute(sa.text("INSERT INTO user_roles (user_id, role_id) VALUES (:u, :r)"), {"u": uid, "r": rid})
+    command.upgrade(cfg, "head")
+    with engine.begin() as conn:
+        result = {u: r for u, r in conn.execute(sa.text("SELECT user_id, role_id FROM user_roles")).fetchall()}
+        assert result == {1: role_id["hr_admin"], 2: role_id["super_admin"]}
+    with pytest.raises(IntegrityError):
+        with engine.begin() as conn:
+            conn.execute(sa.text("INSERT INTO user_roles (user_id, role_id) VALUES (1, :r)"), {"r": role_id["payroll_maker"]})
+    engine.dispose()
+
+
+def test_user_roles_unique_per_user_in_model(app_client):
+    """F2 AC2 (ORM): a second user_roles row for the same user is rejected."""
+    with get_db_context() as db:
+        sync_catalog(db)
+        user = UserDB(email="two_roles@voyance.health")
+        r1 = RoleDB(name="Two-Roles-A", is_locked=False)
+        r2 = RoleDB(name="Two-Roles-B", is_locked=False)
+        db.add_all([user, r1, r2])
+        db.flush()
+        db.add(UserRoleDB(user_id=user.id, role_id=r1.id))
+        db.commit()
+        db.add(UserRoleDB(user_id=user.id, role_id=r2.id))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+
+def test_start_before_migrate_ends_with_one_super_admin(tmp_path, monkeypatch):
+    """F2 AC3: app started (init_db) on a 0023 database, then migrated, leaves exactly one Super-Admin role."""
+    import sqlalchemy as sa
+    from alembic import command
+    from config import Config
+    from db import reset_engine_for_testing
+    url = f"sqlite:///{tmp_path / 'start_first.db'}"
+    cfg = _alembic_cfg(url, monkeypatch)
+    command.upgrade(cfg, "0023_payroll_income_tax_settings")
+    engine = sa.create_engine(url)
+    with engine.connect() as conn:  # migration 0003 seeded the legacy role names
+        assert conn.execute(sa.text("SELECT COUNT(*) FROM roles WHERE name = 'system_admin'")).scalar() == 1
+    monkeypatch.setattr(Config, "DB_TYPE", "sqlite")
+    reset_engine_for_testing(url)
+    try:
+        init_db()  # adds missing columns and runs sync_catalog before any migration
+    finally:
+        reset_engine_for_testing(None)
+    with engine.connect() as conn:
+        names = [r[0] for r in conn.execute(sa.text("SELECT name FROM roles WHERE system_key = 'super_admin' OR name IN ('system_admin', 'Super-Admin')")).fetchall()]
+        assert names == ["Super-Admin"]
+    command.upgrade(cfg, "head")
+    with engine.connect() as conn:
+        assert conn.execute(sa.text("SELECT COUNT(*) FROM roles WHERE system_key = 'super_admin'")).scalar() == 1
+        assert conn.execute(sa.text("SELECT COUNT(*) FROM roles WHERE name IN ('system_admin', 'Super-Admin')")).scalar() == 1
+    engine.dispose()
+
+
+def test_sync_catalog_conflict_keeps_earlier_inserts(app_client):
+    """F2 AC4: unique conflicts on some inserts (a concurrent worker) do not discard the other inserts."""
+    with get_db_context() as db:
+        sync_catalog(db)
+        removed = sorted(all_keys())[::2]
+        ids = [p.id for p in db.query(PermissionDB).filter(PermissionDB.key.in_(removed)).all()]
+        db.query(RolePermissionDB).filter(RolePermissionDB.permission_id.in_(ids)).delete(synchronize_session=False)
+        db.query(PermissionDB).filter(PermissionDB.id.in_(ids)).delete(synchronize_session=False)
+        db.commit()
+
+    with get_db_context() as db:
+        original_query = db.query
+        state = {"stale_served": False}
+
+        class _StaleQuery:
+            def all(self):
+                return []  # the other half of the rows exists but is not visible in this snapshot
+
+        def stale_once(*args, **kwargs):
+            if args and args[0] is PermissionDB and not state["stale_served"]:
+                state["stale_served"] = True
+                return _StaleQuery()
+            return original_query(*args, **kwargs)
+
+        db.query = stale_once
+        try:
+            sync_catalog(db)  # inserts of existing keys hit real unique conflicts
+        finally:
+            db.query = original_query
+
+    assert state["stale_served"] is True
+    with get_db_context() as db:
+        assert all_keys() <= {p.key for p in db.query(PermissionDB).all()}
+
+
+def test_no_integer_literal_written_to_boolean_in_migrations():
+    """F2 AC5: migrations on this branch (0024+) bind booleans instead of writing 0/1 literals."""
+    import os
+    import re
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "migrations", "versions"))
+    pattern = re.compile(r"is_locked\s*=\s*[01]\b|server_default=sa\.text\(['\"][01]['\"]\)")
+    offenders = []
+    for fname in sorted(os.listdir(base_dir)):
+        # Migrations before 0024 are already applied in production and are not edited (see run log).
+        if not fname.endswith(".py") or fname < "0024":
+            continue
+        with open(os.path.join(base_dir, fname), "r", encoding="utf-8") as fh:
+            for lineno, line in enumerate(fh, 1):
+                if pattern.search(line):
+                    offenders.append(f"{fname}:{lineno}")
+    assert offenders == [], offenders

@@ -717,3 +717,18 @@ Slice F1 closes the dev/test auto-provisioning and auto-linking security loophol
 - Follow-up verification: `pytest tests/test_authorization.py tests/test_finance_cash_forecast.py tests/test_finance_idempotency.py tests/test_finance_statutory_obligations.py tests/test_finance_transfer_composer.py tests/test_finance_transfers.py -q` → 47 passed, 0 failed.
 - Not changed: `finance/services/payroll_service.py` keeps `*@hrflow.test` strings as default audit-actor labels (not authorization); AC 4 is scoped to authorization code (`auth.py`, `deps.py`, `core/`, `routers/`).
 - The final regression after F7 will re-confirm the whole suite.
+
+## F2 — Migrations, startup and the one-role constraint (`RBAC-F2`)
+
+1. **Outcome:** `user_roles` now allows one row per user (migration `0027_single_assigned_role` + `uq_user_roles_user` on the model). Migrations 0024/0025 are portable (bound booleans, expanding `IN` binds); `sync_catalog` adopts a legacy `system_admin` role and uses savepoints instead of `db.rollback()`.
+2. **Branch intake:** `feature/rbac`, start HEAD `ad7967c`, merge-base `c236b00`.
+3. **Files changed:** `be/migrations/versions/0024_rbac_schema_and_roles.py` (edited in place, decision 6: `sa.false()` default, bound `:locked`, NULL `is_locked` fix, `ix_roles_system_key` created outside the batch block), `0025_payroll_split.py` (expanding binds in downgrade), new `0027_single_assigned_role.py`, `be/core/rbac_models.py`, `be/core/role_seed.py`, `be/tests/test_rbac.py`, `be/tests/test_finance_activity_timeline.py`.
+4. **Tests:** `pytest tests/test_rbac.py tests/test_finance_activity_timeline.py -q` → 81 passed, 0 failed. Manual CLI check: fresh `alembic upgrade head`, copy at `0023` → `head`, `downgrade 0023_payroll_income_tax_settings` → `upgrade head` all succeed on SQLite. Full suites deferred to the final regression. PostgreSQL: **written for, untested**.
+5. **Acceptance:** 1 met (`test_alembic_upgrade_downgrade_roundtrip`, CLI check); 2 met (`test_migration_0027_enforces_single_role_per_user`, `test_user_roles_unique_per_user_in_model`); 3 met (`test_start_before_migrate_ends_with_one_super_admin`); 4 met (`test_sync_catalog_conflict_keeps_earlier_inserts`, real unique conflicts through a stale snapshot); 5 met for migrations on this branch (`test_no_integer_literal_written_to_boolean_in_migrations`, 0024+).
+6. **Facts vs assumptions:** SQLite batch mode silently skipped the unique `ix_roles_system_key` index created inside the batch block in 0024 (so migrated databases lacked it and the 0024 downgrade failed with "No such index"); fixed in place. `begin_nested()` on pysqlite works in the tests; savepoint behaviour on PostgreSQL is standard but untested.
+7. **Deviations and defects:**
+   - FOLLOW-UP (not fixed, applied migrations must not be edited): migrations `0005`, `0018`, `0021` use `server_default=sa.text('0'/'1')` on Boolean columns; these are valid on SQLite and are known to be rejected by PostgreSQL for Boolean columns. The owner must decide how to handle them before the PostgreSQL move.
+   - `init_db()` adds missing columns as nullable without defaults, so `is_locked` can be NULL on rows touched before 0024; 0024 now normalises NULL to false.
+   - Tests changed for intentional behaviour: `_create_test_user_with_roles` skips the Employee key, `test_user_holding_both_self_and_hr_sees_all_records` assigns only `hr_admin`, `test_finance_activity_timeline.py` replaces the existing row.
+8. **Documentation updates needed:** none.
+9. **Handoff:** F3 changes the Employee baseline to come from the database role and makes lifecycle hooks transactional; it depends on the single-role constraint now present.

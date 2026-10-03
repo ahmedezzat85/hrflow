@@ -11,7 +11,7 @@ from datetime import datetime
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 
 # revision identifiers, used by Alembic.
@@ -122,8 +122,8 @@ def downgrade() -> None:
         split_pids = [
             row[0]
             for row in session.execute(
-                text("SELECT id FROM permissions WHERE key IN :keys"),
-                {"keys": tuple(split_keys)},
+                text("SELECT id FROM permissions WHERE key IN :keys").bindparams(bindparam("keys", expanding=True)),
+                {"keys": list(split_keys)},
             ).fetchall()
         ]
 
@@ -131,8 +131,8 @@ def downgrade() -> None:
             role_ids = {
                 row[0]
                 for row in session.execute(
-                    text("SELECT role_id FROM role_permissions WHERE permission_id IN :pids"),
-                    {"pids": tuple(split_pids)},
+                    text("SELECT role_id FROM role_permissions WHERE permission_id IN :pids").bindparams(bindparam("pids", expanding=True)),
+                    {"pids": list(split_pids)},
                 ).fetchall()
             }
             for r_id in role_ids:
