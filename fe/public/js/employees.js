@@ -121,7 +121,7 @@ function escRow(icon, label, valueHtml, opts = {}) {
 async function viewProfile(id) {
   const numId = Number(id);
   currentDetailEmployeeId = !isNaN(numId) ? numId : id;
-  showSection('a-employee-detail', 'admin');
+  showSection('a-employee-detail', 'admin', [id]);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
 
@@ -198,6 +198,8 @@ async function viewProfile(id) {
         Api.getEmployeeNotes(id),
         Api.getInsuranceConsumption(),
       ]);
+      // Sequence guard: a slower earlier profile load must not overwrite a later one
+      if (String(currentDetailEmployeeId) !== String(id)) return;
       const usedVacDays = vacHistory
         .filter(v => v.status === 'Approved' && (v.type === 'Annual Leave' || !v.type))
         .reduce((sum, v) => sum + (Number(v.days) || 0), 0);
@@ -368,6 +370,7 @@ async function submitBehalfClaim(evt) {
 async function loadEmployeeDocuments(empId) {
   try {
     const docs = await Api.getEmployeeDocuments(empId);
+    if (String(currentDetailEmployeeId) !== String(empId)) return;
     employeeDocuments = docs;
     renderEmployeeDocuments(docs);
   } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }

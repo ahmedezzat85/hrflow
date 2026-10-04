@@ -580,6 +580,7 @@
     async setStep(idx) {
       if (idx < 0) idx = 0;
       if (idx > 5) idx = 5;
+      if (window.Router) Router.setParams([(this.currentRun && this.currentRun.id) || 'current', idx + 1], ['a-finance-payroll-runs', 'a-finance-payroll']);
 
       // Lifecycle Gate: Finalize when entering Screen 3 (Processing)
       if (idx === 2 && this.currentRun && this.currentRun.status === 'approved') {
@@ -2127,6 +2128,7 @@
 
       if (!pageList || !pageRun || !pageSettings) return;
 
+      if (window.Router && page !== 'run') Router.setParams([], ['a-finance-payroll-runs', 'a-finance-payroll']);
       pageList.classList.toggle('payroll-hidden', page !== 'list');
       pageRun.classList.toggle('payroll-hidden', page !== 'run');
       pageSettings.classList.toggle('payroll-hidden', page !== 'settings');

@@ -355,6 +355,7 @@ let _workspaceLedgerDirectionFilter = "all";
 async function openAccountWorkspace(accountId, initialTab = "activity") {
   _activeWorkspaceAccountId = accountId;
   _isWorkspaceAccountNumberRevealed = false;
+  if (window.Router) Router.setParams([accountId], ["a-finance-accounts", "a-finance-banking"]);
 
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
   const paneStatements = document.getElementById("financeSubPaneStatements");
@@ -379,6 +380,7 @@ async function openAccountWorkspace(accountId, initialTab = "activity") {
   try {
     _isWorkspaceAccountNumberRevealed = false;
     const acc = await FinanceApi.getAccount(accountId, { reveal: false });
+    if (_activeWorkspaceAccountId !== accountId) return; // a later workspace was opened meanwhile
     _activeWorkspaceAccount = acc;
     renderWorkspaceHeader(acc);
     populateWorkspaceSettings(acc);
@@ -390,6 +392,7 @@ async function openAccountWorkspace(accountId, initialTab = "activity") {
 }
 
 function closeAccountWorkspace() {
+  if (window.Router) Router.setParams([], ["a-finance-accounts", "a-finance-banking"]);
   _activeWorkspaceAccountId = null;
   _activeWorkspaceAccount = null;
   _isWorkspaceAccountNumberRevealed = false;

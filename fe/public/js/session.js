@@ -77,6 +77,7 @@ async function handleLoginSuccess(data){
   } finally {
     try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
     hideAppLoader();
+    if (window.Router) Router.boot();
   }
 }
 
@@ -208,6 +209,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'hr' || mockParam === 'hr_admin') {
       SessionInfo.set({ portal: 'admin', roles: ['HR-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_HR });
@@ -219,6 +221,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'finance' || mockParam === 'financial_admin') {
       SessionInfo.set({ portal: 'admin', roles: ['Financial-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_FINANCE });
@@ -230,6 +233,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'payroll' || mockParam === 'payroll_maker') {
       SessionInfo.set({ portal: 'admin', roles: ['Payroll-Maker'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_PAYROLL });
@@ -241,6 +245,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'employee') {
       SessionInfo.set({ portal: 'employee', roles: [], employee_id: 2, name: 'John Doe', permissions: MOCK_PERMISSIONS_EMPLOYEE });
@@ -252,6 +257,7 @@ async function bootstrapAppFromSession(){
       initMockEmployeeData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     }
   }
@@ -296,6 +302,7 @@ async function bootstrapAppFromSession(){
   }
   try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
   hideAppLoader();
+  if (window.Router) await Router.boot();
 }
 
 window.addEventListener('DOMContentLoaded', () => { applySavedSidebarCollapse(); bootstrapAppFromSession(); });
