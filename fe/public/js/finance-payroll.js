@@ -802,10 +802,21 @@
       return src.filter(e => e.severity === 'blocking' && !e.is_resolved);
     },
 
+    // A saved draft keeps the issue list it was created with. True when today's data passes the live
+    // check but the saved run still carries old blocking issues.
+    savedRunIsStale() {
+      const run = this.currentRun;
+      if (!run || !run.id || run.status !== 'draft') return false;
+      const live = (this.currentPreview && this.currentPreview.exceptions) || [];
+      const liveBlocking = live.filter(e => e.severity === 'blocking' && !e.is_resolved).length;
+      return liveBlocking === 0 && this.blockingIssues().length > 0;
+    },
+
     drawReadiness() {
       const panel = document.getElementById('p2ReadinessPanel');
       if (!panel) return;
       const issues = this.blockingIssues();
+      const stale = this.savedRunIsStale();
       if (!issues.length) { panel.hidden = true; panel.innerHTML = ''; return; }
       const fixLabel = (code) => ({
         MISSING_COMP_PLAN: 'Set compensation plan',
@@ -819,6 +830,7 @@
           <strong>${issues.length} blocking issue${issues.length === 1 ? '' : 's'} must be fixed before this run can be submitted</strong>
           <button type="button" class="btn btn-sm btn-outline" data-action="payroll-recheck"><i class="fa-solid fa-rotate"></i> Re-check</button>
         </div>
+        ${stale ? `<p class="payroll-readiness-note"><i class="fa-solid fa-circle-info"></i> Your data now passes the live check, but saved run #${escapeHtml(this.currentRun.id)} still carries the issues found when it was created. A saved run is not recalculated when data is fixed, so it cannot be submitted until it is refreshed on the server.</p>` : ''}
         <ul class="payroll-readiness-list">
           ${issues.map(e => `<li>
             <span><strong>${escapeHtml(e.employee_name || (e.employee_id ? 'Employee #' + e.employee_id : 'Payroll settings'))}</strong>
@@ -846,7 +858,11 @@
     async recheckReadiness() {
       await this.fetchPreview();
       this.drawScreen2();
-      this.showBanner(this.blockingIssues().length ? 'Some blocking issues remain.' : 'No blocking issues. You can submit this run.', this.blockingIssues().length ? 'red' : 'green');
+      if (this.savedRunIsStale()) {
+        this.showBanner(`The data now passes the live check, but saved run #${this.currentRun.id} still holds the old issues and must be refreshed on the server.`, 'red');
+      } else {
+        this.showBanner(this.blockingIssues().length ? 'Some blocking issues remain.' : 'No blocking issues. You can submit this run.', this.blockingIssues().length ? 'red' : 'green');
+      }
     },
 
     drawScreen2() {

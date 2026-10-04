@@ -2030,3 +2030,9 @@
   flex-wrap: wrap;
   font-size: var(--fs-md);
 }
+
+#a-finance-payroll .payroll-readiness-note {
+  margin: 10px 0 0;
+  font-size: var(--fs-md);
+  color: var(--text);
+}
