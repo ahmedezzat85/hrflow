@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmDialog } from './helpers/confirm.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 async function selectBillQueue(page, tabSelector) {
@@ -178,13 +179,9 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const reverseBtn = paymentCard.locator('button.btn-reverse-payment');
     await expect(reverseBtn).toBeVisible();
 
-    // Accept prompt for reversal
-    page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('Enter reason for reversing payment');
-      await dialog.accept('Duplicate batch transmission reversal');
-    });
-
+    // Reversal asks for a reason in the shared confirmation dialog
     await reverseBtn.click();
+    await confirmDialog(page, 'Duplicate batch transmission reversal');
 
     // Verify reversal reflected
     await expect(page.locator('#financeDrawerRelatedList')).toContainText('REVERSED');

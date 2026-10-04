@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmDialog } from './helpers/confirm.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 6.3: Reconciliation Rules', () => {
@@ -89,10 +90,10 @@ test.describe('Story 6.3: Reconciliation Rules', () => {
     await expect(rulesModal).toBeVisible();
 
     // Rule 2 should have revert button visible
-    page.once('dialog', (dialog) => dialog.accept());
     const revertBtn = rulesModal.locator('#ruleRow_2 .btn-revert-rule');
     await expect(revertBtn).toBeVisible();
     await revertBtn.click();
+    await confirmDialog(page);
 
     // Close rules modal
     await rulesModal.locator('.modal-close').click();

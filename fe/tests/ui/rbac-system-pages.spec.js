@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmDialog } from './helpers/confirm.js';
 
 test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
 
@@ -53,8 +54,8 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     await modal.locator('.modal-close').click();
 
     // HR-Admin is assigned to a user: delete is offered and the server rule (R7) message is shown verbatim
-    page.once('dialog', async dialog => { await dialog.accept(); });
     await hrAdminRow.locator('.btn-delete-role').click();
+    await confirmDialog(page);
     await expect(page.locator('#toast, .toast').filter({ hasText: "Cannot delete role 'HR-Admin' while it is assigned" }).first()).toBeVisible();
     await expect(hrAdminRow).toBeVisible();
 
@@ -71,7 +72,6 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     const errors = [];
     page.on('pageerror', (err) => errors.push(String(err)));
     page.on('console', (msg) => { if (msg.type() === 'error' && !msg.location().url.includes('favicon')) errors.push(msg.text()); });
-    page.on('dialog', async dialog => { await dialog.accept(); });
 
     await page.click('#systemRailBtn');
     await page.click('#systemNavRoles');
@@ -124,6 +124,7 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
 
     // Delete Custom-Auditor
     await renamedRow.locator('.btn-delete-role').click();
+    await confirmDialog(page);
     await expect(page.locator('#rolesTableBody tr:has-text("Custom-Auditor")')).toHaveCount(0);
 
     expect(errors).toEqual([]);
@@ -198,11 +199,9 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     await expect(johnRow.locator('.badge:has-text("HR-Admin")')).toHaveCount(0);
 
     // Archive Marcus Vance: archived rows show no Role, no Archive, and there is no restore
-    page.on('dialog', async dialog => {
-      await dialog.accept();
-    });
     const marcusRow = tbody.locator('tr:has-text("Marcus Vance")');
     await marcusRow.locator('.btn-archive-user').click();
+    await confirmDialog(page);
     await expect(marcusRow.locator('.badge:has-text("Archived")')).toBeVisible();
     await expect(marcusRow.locator('.btn-assign-roles')).toHaveCount(0);
     await expect(marcusRow.locator('.btn-archive-user')).toHaveCount(0);
