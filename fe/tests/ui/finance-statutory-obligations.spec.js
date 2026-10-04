@@ -43,7 +43,7 @@ test.describe('FUX-410: Statutory Obligations Tracker', () => {
 
     // Adjust accrued amount to match government portal ($1,295.50)
     await page.fill('#statConfirmAccruedAmount', '1295.50');
-    await expect(page.locator('#statConfirmVarianceDisplay')).toContainText('+$45.50');
+    await expect(page.locator('#statConfirmVarianceDisplay')).toContainText('+EGP 45.50');
 
     // Enter explanation note
     await page.fill('#statConfirmVarianceNote', 'Government portal calculation true-up and processing fee');
@@ -55,7 +55,7 @@ test.describe('FUX-410: Statutory Obligations Tracker', () => {
     // Verify row transitioned to Accrued with visible variance
     await expect(row).toContainText('Accrued');
     await expect(row).toContainText('1,295.50');
-    await expect(row).toContainText('+$45.50');
+    await expect(row).toContainText('+EGP 45.50');
   });
 
   test('AC 1 & AC 10: Settle statutory obligation creating atomic remittance', async ({ page }) => {

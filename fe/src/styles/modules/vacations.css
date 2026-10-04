@@ -138,7 +138,7 @@
 }
 
 .vac-emp-link:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Time Off Request Card in Employee Portal */
@@ -182,7 +182,7 @@
 }
 
 .time-off-days-badge b {
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--font-head);
   font-size: 16px;
 }

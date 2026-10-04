@@ -810,7 +810,7 @@
         </div>
         <div class="stat payroll-card stat-card">
           <div class="lbl label">Total Compensation (gross)</div>
-          <div class="val value accent val-accent" style="color:var(--accent);">${this.money(totalGross)}</div>
+          <div class="val value accent val-accent" style="color:var(--accent-text);">${this.money(totalGross)}</div>
           <div class="hint sub">Before deductions</div>
         </div>
       `;
@@ -1264,7 +1264,7 @@
               <td class="num payroll-num">${emprSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
+              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1303,7 +1303,7 @@
               <td class="num payroll-num">${emprSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
+              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1436,7 +1436,7 @@
             <td data-label="Bank / Routing">${bankBadgeHtml}</td>
             <td class="num payroll-num" data-label="External (USD)">${this.money(extVal)}</td>
             <td class="num payroll-num" data-label="Internal (USD)">${this.money(intVal)}</td>
-            <td class="num payroll-num strong accent" data-label="Total Disbursement" style="font-weight:800; color:var(--accent);">${this.money(netVal)}</td>
+            <td class="num payroll-num strong accent" data-label="Total Disbursement" style="font-weight:800; color:var(--accent-text);">${this.money(netVal)}</td>
           </tr>
         `;
       });

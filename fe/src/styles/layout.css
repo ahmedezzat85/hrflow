@@ -108,7 +108,7 @@ html, body {
 }
 
 .sidebar-collapse-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -153,7 +153,7 @@ html, body {
 
 .nav-item.active {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -481,7 +481,7 @@ html, body {
 }
 
 .icon-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   box-shadow: 0 6px 18px rgba(20, 50, 120, .12);
   transform: translateY(-1px);
@@ -553,7 +553,7 @@ html, body {
   grid-template-columns: 1fr 2fr;
 }
 
-@media(max-width:1100px) {
+@media (max-width: 1024px) {
   .g4 {
     grid-template-columns: repeat(2, 1fr);
   }

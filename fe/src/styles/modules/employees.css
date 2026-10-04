@@ -24,7 +24,7 @@
 .emp-summary-card .esc-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 
 .emp-summary-card .esc-body{display:grid;grid-template-columns:1.3fr 1fr}
-@media (max-width:820px){
+@media (max-width: 768px){
   .emp-summary-card .esc-body{grid-template-columns:1fr}
 }
 
@@ -34,7 +34,7 @@
   background:linear-gradient(165deg, rgba(32,86,232,.035), rgba(32,86,232,0) 60%);
   border-right:1px solid var(--border);
 }
-@media (max-width:820px){
+@media (max-width: 768px){
   .emp-summary-card .esc-comp-zone{border-right:none;border-bottom:1px solid var(--border)}
 }
 .emp-summary-card .esc-zone-label{
@@ -43,7 +43,7 @@
 }
 .emp-summary-card .esc-comp-total{display:flex;align-items:baseline;gap:8px;margin-bottom:18px}
 .emp-summary-card .esc-comp-total .esc-amount{
-  font-family:var(--font-head);font-size:var(--fs-2xl);font-weight:800;color:var(--accent);
+  font-family:var(--font-head);font-size:var(--fs-2xl);font-weight:800;color:var(--accent-text);
   font-variant-numeric:tabular-nums;
 }
 .emp-summary-card .esc-comp-total .esc-unit{font-size:var(--fs-md);color:var(--text2);font-weight:600}
@@ -88,7 +88,7 @@
   background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;
   cursor:pointer;transition:.15s;font-size:var(--fs-md);flex-shrink:0;
 }
-.emp-summary-card .esc-edit-btn:hover{border-color:var(--accent);color:var(--accent)}
+.emp-summary-card .esc-edit-btn:hover{border-color:var(--accent);color:var(--accent-text)}
 
 /* ===== Employee detail page workspace redesign ===== */
 .employee-detail-workspace{
@@ -134,7 +134,7 @@
   gap:9px;
 }
 .card-head h3 i{
-  color:var(--accent);
+  color:var(--accent-text);
   font-size:var(--fs-md);
 }
 
@@ -145,7 +145,7 @@
 .action-btn{
   font-size:var(--fs-sm);
   font-weight:600;
-  color:var(--accent);
+  color:var(--accent-text);
   background:none;
   border:none;
   cursor:pointer;
@@ -253,7 +253,7 @@
 }
 .employee-quick-action i{
   width:16px;
-  color:var(--accent);
+  color:var(--accent-text);
   text-align:center;
 }
 .employee-quick-action:hover{
@@ -275,12 +275,12 @@
   transform:translateY(-1px);
 }
 
-@media(max-width:960px){
+@media (max-width: 1024px){
   .employee-detail-workspace{
     grid-template-columns:1fr;
   }
 }
-@media(max-width:680px){
+@media (max-width: 640px){
   .employee-detail-history-grid{
     grid-template-columns:1fr;
   }

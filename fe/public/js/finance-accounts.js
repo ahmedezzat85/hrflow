@@ -120,7 +120,7 @@ function renderFinanceAccounts(items) {
       <td data-label="Account">
         <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
           <i class="fa-solid ${isCash ?"fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
-          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;word-break:break-word;">
+          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent-text);text-decoration:none;word-break:break-word;">
             ${acc.account_name}
           </a>
         </div>
@@ -136,7 +136,7 @@ function renderFinanceAccounts(items) {
       <td data-label="Book Balance" class="cell-money" style="text-align:right;font-weight:700;">
         ${FinanceFormat.renderMoneyHtml(bookBal, acc.currency)}
       </td>
-      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent);">
+      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent-text);">
         ${FinanceFormat.renderMoneyHtml(availBal, acc.currency)}
       </td>
       <td data-label="Reconciled" class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">
@@ -870,7 +870,7 @@ async function loadFinanceCategories() {
 
 function filterFinanceCategories(filterType, btn) {
   _currentCategoryStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPaneCategories .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSettingsPaneCategories .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinanceCategories();
@@ -1071,7 +1071,7 @@ async function loadFinancePaymentTypes() {
 
 function filterFinancePaymentTypes(filterType, btn) {
   _currentPaymentTypeStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSettingsPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinancePaymentTypes();
@@ -2592,7 +2592,7 @@ function renderFinanceTransfers(items) {
           <td data-label="Inflow" class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
           <td data-label="FX Rate" style="text-align:right;">${fxDisplay}</td>
           <td data-label="Reference / Memo">
-            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--primary);">${t.exchange_reference}</strong><br>` : ""}
+            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--accent-text);">${t.exchange_reference}</strong><br>` : ""}
             <span style="font-size:12px; color:var(--text2);">${t.note || "—"}</span>
           </td>
           <td data-label="Legs Status" class="col-actions" style="text-align:center;">${legsStatus}</td>

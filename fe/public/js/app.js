@@ -107,7 +107,7 @@ function renderAdminPortal() {
       .slice(0, 5);
     raisesList.innerHTML = upcoming.length ? upcoming.map(e => `
       <li>
-        <div class="ic" style="background:var(--accent-soft);color:var(--accent);"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        <div class="ic" style="background:var(--accent-soft);color:var(--accent-text);"><i class="fa-solid fa-arrow-trend-up"></i></div>
         <div class="txt">
           <strong>${escapeHtml(e.name)}</strong>
           <p>${e.role || 'Employee'} • Raise due ${fmtDateShort(e.nextRaise)}</p>

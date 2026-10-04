@@ -69,7 +69,7 @@ function updateFinanceStatutoryMetrics() {
     varTotal += Number(obl.variance_amount || 0);
   }
 
-  const fmt = (v) => FinanceFormat.formatMoney(v, "USD");
+  const fmt = (v) => FinanceFormat.formatMoney(v, "EGP");
 
   const elEst = document.getElementById("statutorySummaryEstimated");
   const elAcc = document.getElementById("statutorySummaryAccrued");
@@ -114,7 +114,7 @@ function renderFinanceStatutoryTable() {
   }
   if (empty) empty.style.display = "none";
 
-  const fmt = (v) => FinanceFormat.formatMoney(v, "USD");
+  const fmt = (v) => FinanceFormat.formatMoney(v, "EGP");
 
   for (const obl of list) {
     const tr = document.createElement("tr");
@@ -223,7 +223,7 @@ function openStatutoryConfirmModal(id) {
 
   if (idEl) idEl.value = obl.id;
   const estVal = Number(obl.amount_estimated !== null && obl.amount_estimated !== undefined ? obl.amount_estimated : obl.amount_accrued);
-  if (estEl) estEl.textContent = `$${estVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${obl.currency}`;
+  if (estEl) estEl.textContent = FinanceFormat.formatMoney(estVal, obl.currency || 'EGP');
   if (accEl) accEl.value = obl.amount_accrued;
   if (varEl) varEl.textContent = "$0.00";
   if (noteEl) noteEl.value = obl.variance_note || "";
@@ -243,7 +243,7 @@ function calculateStatutoryConfirmVariance() {
   const diff = Math.round((newAccrued - est + Number.EPSILON) * 100) / 100;
 
   const sign = diff > 0 ? "+" : "";
-  varEl.textContent = `${sign}$${diff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  varEl.textContent = `${sign}${FinanceFormat.formatMoney(diff, 'EGP')}`;
   varEl.style.color = diff !== 0 ? (diff > 0 ? "#b91c1c" : "#15803d") : "#0f172a";
 }
 
@@ -303,9 +303,9 @@ async function openStatutorySettleModal(id) {
     infoEl.innerHTML = `
       <div style="font-size:14px; font-weight:700; color:var(--text-primary, #0f172a);">${typeLabel} (${obl.period})</div>
       <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px; color:var(--text-muted, #64748b);">
-        <span>Total Accrued: <strong>$${obl.amount_accrued.toFixed(2)}</strong></span>
-        <span>Already Remitted: <strong>$${(obl.amount_remitted || 0).toFixed(2)}</strong></span>
-        <span style="color:#2563eb; font-weight:700;">Remaining: $${remaining.toFixed(2)}</span>
+        <span>Total Accrued: <strong>${FinanceFormat.formatMoney(obl.amount_accrued, obl.currency || 'EGP')}</strong></span>
+        <span>Already Remitted: <strong>${FinanceFormat.formatMoney(obl.amount_remitted || 0, obl.currency || 'EGP')}</strong></span>
+        <span style="color:var(--accent-text); font-weight:700;">Remaining: ${FinanceFormat.formatMoney(remaining, obl.currency || 'EGP')}</span>
       </div>
     `;
   }
@@ -410,6 +410,8 @@ function openRecordStatutoryModal() {
     dueEl.value = `${nextYear}-${String(nextMonth).padStart(2, "0")}-15`;
   }
   if (notesEl) notesEl.value = "";
+  const currencyEl = document.getElementById("statRecordCurrency");
+  if (currencyEl) currencyEl.value = "EGP";
 
   if (typeof openModal === "function") openModal("statutoryRecordModal");
 }
@@ -428,7 +430,7 @@ async function submitRecordStatutoryModal() {
   const period = periodEl.value.trim();
   const amount_accrued = parseFloat(amtEl.value);
   const due_date = dueEl ? dueEl.value : null;
-  const currency = currEl ? currEl.value.trim() : "USD";
+  const currency = currEl ? currEl.value.trim() : "EGP";
   const notes = notesEl ? notesEl.value.trim() : "";
 
   if (!period || !/^\d{4}-\d{2}$/.test(period)) {

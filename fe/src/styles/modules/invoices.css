@@ -63,7 +63,7 @@
 .invoice-month-total {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--font-head);
 }
 
@@ -97,7 +97,7 @@
 
 .btn-sort-pill.active {
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
@@ -109,7 +109,7 @@
 }
 
 .th-sortable:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .th-sortable i {
@@ -121,7 +121,7 @@
 
 .th-sortable.active i {
   opacity: 1;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 
@@ -189,7 +189,7 @@
 .btn-secondary:hover {
   background: var(--surface2);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .invoice-toolbar-caption {
@@ -231,7 +231,7 @@
 
 .btn-filter-pill.active {
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 

@@ -954,7 +954,7 @@ function renderReconciliationLinesTable(lines) {
                 )
                 .join("")}
             </select>
-            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--primary, #2563eb);background:rgba(37,99,235,0.06);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
+            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--accent-text);background:rgba(37,99,235,0.06);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
               <i class="fa-solid fa-wand-magic-sparkles"></i> <span>${escapeHtml(suggestions[0].reason || 'Candidate match')}</span>
             </div>
           </div>
@@ -978,7 +978,7 @@ function renderReconciliationLinesTable(lines) {
         `;
       }
     } else if (line.status === "created") {
-      matchColContent = `<span style="color:var(--color-primary);font-size:12px;font-weight:600;"><i class="fa-solid fa-receipt"></i> Created Continuous Ledger Entry</span>`;
+      matchColContent = `<span style="color:var(--accent-text);font-size:12px;font-weight:600;"><i class="fa-solid fa-receipt"></i> Created Continuous Ledger Entry</span>`;
     } else if (line.status === "ignored") {
       matchColContent = `
         <div style="font-size:12px;color:var(--text-muted);">
@@ -1643,7 +1643,7 @@ function renderCompletionReport(r) {
             <td style="padding:6px 10px;"><strong>Auto-Created Continuous Ledger Entries</strong></td>
             <td style="padding:6px 10px; text-align:center;">${r.created_entries_count}</td>
             <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.created_entries_amount)}</td>
-            <td style="padding:6px 10px; color:var(--color-primary);"><i class="fa-solid fa-plus"></i> Posted to Ledger</td>
+            <td style="padding:6px 10px; color:var(--accent-text);"><i class="fa-solid fa-plus"></i> Posted to Ledger</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border-color);">
             <td style="padding:6px 10px;"><strong>Excluded / Ignored Statement Lines</strong></td>
@@ -1765,7 +1765,7 @@ function renderRulesTable(rules) {
 
     let actionDesc = "";
     if (r.action === "suggest_category") actionDesc = `Category: <strong>${escapeHtml(r.target_category || 'Uncategorized')}</strong>`;
-    else if (r.action === "auto_create") actionDesc = `<span style="color:var(--color-primary);font-weight:600;"><i class="fa-solid fa-plus"></i> Auto-create Entry</span>`;
+    else if (r.action === "auto_create") actionDesc = `<span style="color:var(--accent-text);font-weight:600;"><i class="fa-solid fa-plus"></i> Auto-create Entry</span>`;
     else if (r.action === "auto_ignore") actionDesc = `<span style="color:var(--color-danger);font-weight:600;"><i class="fa-solid fa-ban"></i> Auto-ignore (${escapeHtml(r.audit_reason || 'Documented')})</span>`;
 
     return `
