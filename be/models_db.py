@@ -22,11 +22,14 @@ from db import Base
 
 class UserDB(Base):
     __tablename__ = "users"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    role = Column(String(50), nullable=False, default="employee")
+    name = Column(String(255), nullable=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
+    archived_at = Column(DateTime, nullable=True)
+    archived_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     employee = relationship("EmployeeDB", back_populates="user", foreign_keys=[employee_id])

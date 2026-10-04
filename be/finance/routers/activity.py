@@ -7,7 +7,7 @@ for all finance entities (invoices, bills, transfers, cheques, transactions, acc
 import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -50,11 +50,63 @@ def _mask_sensitive(val: Optional[str], is_admin: bool) -> str:
     return "******" + val_str[-4:]
 
 
+# Read key required to view each entity type's activity
+ENTITY_READ_PERMISSIONS = {
+    "invoice": "finance.invoice.read",
+    "sales_invoice": "finance.invoice.read",
+    "invoices": "finance.invoice.read",
+    "bill": "finance.bill.read",
+    "bills": "finance.bill.read",
+    "vendor_bill": "finance.bill.read",
+    "transfer": "finance.account.read",
+    "transfers": "finance.account.read",
+    "account_transfer": "finance.account.read",
+    "cheque": "finance.account.read",
+    "cheques": "finance.account.read",
+    "transaction": "finance.account.read",
+    "transactions": "finance.account.read",
+    "ledger": "finance.account.read",
+    "customer": "finance.customer.read",
+    "customers": "finance.customer.read",
+    "vendor": "finance.vendor.read",
+    "vendors": "finance.vendor.read",
+    "subscription": "finance.subscription.read",
+    "subscriptions": "finance.subscription.read",
+}
+
+
+def require_entity_read_permission(
+    entity_type: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Dependency: rejects unknown entity types (400) and applies the per-entity read key (403)."""
+    norm_type = entity_type.lower().strip()
+    req_perm = ENTITY_READ_PERMISSIONS.get(norm_type)
+    if req_perm is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported entity type for activity drawer: '{entity_type}'",
+        )
+    perms = get_current_user_permissions(request, current_user=current_user, db=db)
+    if not bool(current_user.get("is_super_admin")) and req_perm not in perms:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission denied: '{req_perm}' required to view {entity_type} activity",
+        )
+    return current_user
+
+
+require_entity_read_permission.hrflow_permission_any = tuple(sorted(set(ENTITY_READ_PERMISSIONS.values())))
+
+
 @router.get("/{entity_type}/{entity_id}", response_model=EntityActivityResponse)
 def get_entity_activity(
     entity_type: str,
     entity_id: int,
-    current_user: dict = Depends(get_current_user),
+    request: Request,
+    current_user: dict = Depends(require_entity_read_permission),
     db: Session = Depends(get_db),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
@@ -62,9 +114,10 @@ def get_entity_activity(
     Returns the comprehensive detail summary, related records, attachments, and chronological
     plain-language activity timeline for a financial entity. Masking sensitive fields unless admin.
     """
+    perms = get_current_user_permissions(request, current_user=current_user, db=db)
+    is_admin = bool(current_user.get("is_super_admin"))
+
     norm_type = entity_type.lower().strip()
-    user_role = current_user.get("role", "")
-    is_admin = (user_role == "admin")
 
     # 1. Sales Invoice
     if norm_type in ("invoice", "sales_invoice", "invoices"):
@@ -760,7 +813,7 @@ def get_entity_activity(
             ))
 
         # Payment instructions info
-        can_reveal = is_admin or ("finance.vendor_payment.reveal" in user_permissions)
+        can_reveal = is_admin or ("finance.vendor_payment.reveal" in perms)
         instructions = vend.payment_instructions or []
         pi_summary_parts = []
         for pi in instructions:
@@ -808,3 +861,5 @@ def get_entity_activity(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported entity type for activity drawer: '{entity_type}'"
         )
+
+

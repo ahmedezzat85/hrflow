@@ -3,41 +3,162 @@ be/core/permissions.py
 Role-Based Access Control (RBAC) permission resolution and FastAPI route guards.
 Enforces permissions formatted as <module>.<resource>.<action>.
 """
-from typing import Set, Optional
+from dataclasses import dataclass
+from typing import Set, List, Optional, Union
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from config import Config
 from db import get_db
 from auth import get_current_user
 from models_db import UserDB
 from core.rbac_models import PermissionDB, RolePermissionDB, UserRoleDB, RoleDB
+from core.permission_catalog import all_keys, closure
+from core.role_seed import DEFAULT_ROLES
+
+
+@dataclass
+class AccessContext:
+    user_id: int
+    email: str
+    employee_id: Optional[int]
+    permissions: Set[str]
+    role_names: List[str]
+    portal: str
+    is_super_admin: bool = False
+
+
+def has_admin_surface(permissions: Set[str]) -> bool:
+    """
+    Returns True if user holds any permission outside self.* and hr.company_document.read.
+    """
+    for p in permissions:
+        if not p.startswith("self.") and p != "hr.company_document.read":
+            return True
+    return False
+
+
+def resolve_access(db: Session, session_payload: dict) -> AccessContext:
+    """
+    Resolves the AccessContext for a given session payload:
+    - User lookup by uid claim, else email (case-insensitive).
+    - Raises 401 for unknown users, 403 for archived users.
+    - Assigned roles resolved from user_roles.
+    - Baseline Employee role automatically derived when employee_id is set.
+    - Super-Admin gets all_keys() directly (even if role_permissions rows are deleted).
+    - Others get closure(union of role permissions).
+    - portal = 'admin' if has_admin_surface(perms) else 'employee'.
+    """
+    uid: Optional[int] = session_payload.get("uid") or session_payload.get("user_id") or session_payload.get("id")
+    email: Optional[str] = session_payload.get("email")
+
+    user = None
+    if uid is not None:
+        try:
+            user = db.query(UserDB).filter(UserDB.id == int(uid)).first()
+        except (ValueError, TypeError):
+            user = None
+
+    if user is None and email:
+        user = db.query(UserDB).filter(UserDB.email.ilike(email.strip())).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    if user.archived_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is archived",
+        )
+
+    assigned_roles = (
+        db.query(RoleDB)
+        .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
+        .filter(UserRoleDB.user_id == user.id)
+        .all()
+    )
+    roles_set = set(assigned_roles)
+
+    emp_role = None
+    if user.employee_id is not None:
+        emp_role = db.query(RoleDB).filter(RoleDB.system_key == "employee").first()
+        if emp_role:
+            roles_set.add(emp_role)
+
+    is_super_admin = any(r.system_key == "super_admin" for r in roles_set)
+
+    if is_super_admin:
+        perms = set(all_keys())
+    else:
+        role_ids = [r.id for r in roles_set]
+        raw_perms: Set[str] = set()
+        if role_ids:
+            rp_keys = (
+                db.query(PermissionDB.key)
+                .join(RolePermissionDB, RolePermissionDB.permission_id == PermissionDB.id)
+                .filter(RolePermissionDB.role_id.in_(role_ids))
+                .all()
+            )
+            raw_perms = {k[0] for k in rp_keys}
+        if user.employee_id is not None and emp_role is None:
+            # The baseline is the database Employee role; the code default only applies when that row is missing
+            emp_base = DEFAULT_ROLES.get("employee")
+            if emp_base:
+                raw_perms.update(emp_base.permissions)
+        perms = closure(raw_perms)
+
+    role_names = sorted(list({
+        r.name for r in assigned_roles
+        if getattr(r, "system_key", None) != "employee" and r.name not in ("Employee", "employee")
+    }))
+
+    portal = "admin" if has_admin_surface(perms) else "employee"
+
+    return AccessContext(
+        user_id=user.id,
+        email=user.email,
+        employee_id=user.employee_id,
+        permissions=perms,
+        role_names=role_names,
+        portal=portal,
+        is_super_admin=is_super_admin,
+    )
 
 
 def get_user_permissions(user_id: int, db: Session) -> Set[str]:
     """
-    Resolves the set of permission keys held by a user through all their assigned roles:
-    UserRole -> Role -> RolePermission -> Permission.
+    Resolves the set of permission keys held by a user through all their assigned roles
+    and baseline Employee role.
     """
-    results = (
-        db.query(PermissionDB.key)
-        .join(RolePermissionDB, RolePermissionDB.permission_id == PermissionDB.id)
-        .join(UserRoleDB, UserRoleDB.role_id == RolePermissionDB.role_id)
-        .filter(UserRoleDB.user_id == user_id)
-        .all()
-    )
-    perms = {r[0] for r in results}
+    user = db.query(UserDB).filter(UserDB.id == user_id).first()
+    if not user:
+        return set()
+    ctx = resolve_access(db, {"uid": user.id, "email": user.email})
+    return ctx.permissions
 
-    roles = (
-        db.query(RoleDB.name)
-        .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
-        .filter(UserRoleDB.user_id == user_id)
-        .all()
-    )
-    user_roles = {r[0] for r in roles}
-    if "system_admin" in user_roles:
-        perms.add("*")
 
-    return perms
+def get_access_context(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> AccessContext:
+    """
+    Resolves or retrieves the AccessContext for the current request.
+    Caches on request.state.access_context.
+    """
+    if hasattr(request.state, "access_context") and request.state.access_context:
+        return request.state.access_context
+
+    from auth import get_current_user
+    current_user = get_current_user(request, db=db)
+    if hasattr(request.state, "access_context") and request.state.access_context:
+        return request.state.access_context
+
+    ctx = resolve_access(db, current_user)
+    request.state.access_context = ctx
+    return ctx
 
 
 def get_current_user_permissions(
@@ -47,70 +168,41 @@ def get_current_user_permissions(
 ) -> Set[str]:
     """
     Resolves permissions for the authenticated request user.
-    Cached on request.state to ensure at most one DB resolution per HTTP request.
+    Cached on request.state to ensure at most one resolution per HTTP request.
     """
-    if hasattr(request.state, "user_permissions"):
-        return request.state.user_permissions
-
-    user_id: Optional[int] = current_user.get("user_id") or current_user.get("id")
-    email: Optional[str] = current_user.get("email")
-
-    user_record = None
-    if user_id is None and email:
-        user_record = (
-            db.query(UserDB)
-            .filter(UserDB.email.ilike(email.strip()))
-            .first()
-        )
-        if user_record:
-            user_id = user_record.id
-    elif user_id is not None:
-        user_record = db.query(UserDB).filter(UserDB.id == user_id).first()
-
-    perms: Set[str] = set()
-    user_roles: Set[str] = set()
-    if user_id is not None:
-        perms = get_user_permissions(user_id, db)
-        roles = (
-            db.query(RoleDB.name)
-            .join(UserRoleDB, UserRoleDB.role_id == RoleDB.id)
-            .filter(UserRoleDB.user_id == user_id)
-            .all()
-        )
-        user_roles = {r[0] for r in roles}
-
-    # Super admin / Admin wildcard grant:
-    # If the user has role 'admin' / 'superadmin' / 'super_admin' in token claims or UserDB record,
-    # or has 'system_admin' role assigned in RBAC, always grant administrative wildcard '*'.
-    role_claims = {
-        str(current_user.get("role", "")).lower(),
-        str(getattr(user_record, "role", "")).lower() if user_record else "",
-    }
-    admin_indicators = {"admin", "superadmin", "super_admin", "system_admin"}
-    if role_claims.intersection(admin_indicators) or "system_admin" in user_roles:
-        perms.add("*")
-
-    request.state.user_permissions = perms
-    return perms
+    if hasattr(request.state, "access_context") and request.state.access_context:
+        return request.state.access_context.permissions
+    ctx: Optional[AccessContext] = None
+    if current_user and ("permissions" in current_user or "email" in current_user):
+        ctx = resolve_access(db, current_user)
+        request.state.access_context = ctx
+    if ctx:
+        return ctx.permissions
+    return set(current_user.get("permissions", []))
 
 
 def require_permission(permission_key: str):
     """
     FastAPI dependency factory to gate routes by RBAC permission key.
+    Asserts at import time that permission_key is in the catalog.
     Raises 403 Forbidden if the authenticated user lacks the required permission.
     Returns the current_user dict on success.
     """
+    catalog_keys = all_keys()
+    assert permission_key in catalog_keys, f"Unknown permission key in require_permission: '{permission_key}'"
+
     def _dependency(
         request: Request,
         current_user: dict = Depends(get_current_user),
         db: Session = Depends(get_db),
     ) -> dict:
         perms = get_current_user_permissions(request, current_user=current_user, db=db)
-        if "*" not in perms and permission_key not in perms:
+        if permission_key not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permission denied: '{permission_key}' required",
             )
         return current_user
 
+    _dependency.hrflow_permission = permission_key
     return _dependency

@@ -159,6 +159,8 @@ const titles = {
   'a-finance-statements':['Statements & Reconciliation','Import bank statements and reconcile operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
   'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
+  'a-system-roles':['Roles & Permissions','Manage system roles, descriptions, and fine-grained permission assignments.'],
+  'a-system-users':['User Accounts & Access','Manage user identity, assigned RBAC roles, and account access status.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],
@@ -237,6 +239,11 @@ function showSection(pageId, portal){
       } else if(pageId === 'a-finance-statements') {
         switchFinanceAccountsSubTab('statements');
       }
+    }
+    if(pageId === 'a-system-roles' && window.SystemAccess && typeof window.SystemAccess.loadRoles === 'function') {
+      window.SystemAccess.loadRoles();
+    } else if(pageId === 'a-system-users' && window.SystemAccess && typeof window.SystemAccess.loadUsers === 'function') {
+      window.SystemAccess.loadUsers();
     }
     if(window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {
       window.AdminNav.syncFromPage(pageId);

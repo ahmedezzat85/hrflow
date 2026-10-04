@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from db import get_db_context
-from models_db import EmployeeDB, UserDB, EmployeeNoteDB, EmployeeDocumentDB
+from models_db import EmployeeDB, EmployeeNoteDB, EmployeeDocumentDB
 
 
 def _employee_to_dict(emp: EmployeeDB) -> dict:
@@ -113,13 +113,14 @@ class SqlEmployeeRepository:
             db.add(emp)
             db.flush()
 
-            user = UserDB(
-                email=data.get("email"),
-                role=data.get("role", "employee"),
+            from core.access_service import AccessService
+            access_service = AccessService(db)
+            access_service.on_employee_create(
                 employee_id=emp.id,
+                email=data.get("email"),
+                name=data.get("name", ""),
+                role=data.get("role", "employee"),
             )
-            db.add(user)
-            db.flush()
 
             # Fix 2a: Write-through to CompensationPlanService
             if internal_salary > 0 or external_salary > 0:
@@ -181,6 +182,10 @@ class SqlEmployeeRepository:
                     setattr(emp, k, v)
             db.flush()
 
+            if "email" in updates_dict:
+                from core.access_service import AccessService
+                AccessService(db).sync_user_email_for_employee(emp.id, updates_dict["email"])
+
             if has_salary_change:
                 from finance.services.compensation_plan_service import CompensationPlanService
                 from finance.models import PayrollRunDB
@@ -226,6 +231,8 @@ class SqlEmployeeRepository:
             emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
             if not emp:
                 return False
+            from core.access_service import AccessService
+            AccessService(db).remove_user_for_employee(emp.id)
             db.delete(emp)
             db.commit()
             return True

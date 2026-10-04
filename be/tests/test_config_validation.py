@@ -57,13 +57,13 @@ def test_validate_raises_in_production_with_wildcard_cors(monkeypatch):
         Config.validate()
 
 
-def test_validate_raises_in_production_without_workspace_domain(monkeypatch):
+def test_validate_passes_in_production_without_workspace_domain(monkeypatch):
+    """Per D-013, production start no longer requires ALLOWED_WORKSPACE_DOMAIN."""
     Config = _fresh_config(
         monkeypatch, SECRET_KEY="a-real-random-secret-value", ENVIRONMENT="production",
         ALLOWED_ORIGINS="https://app.hrflow.example.com",
     )
-    with pytest.raises(RuntimeError, match="ALLOWED_WORKSPACE_DOMAIN"):
-        Config.validate()
+    Config.validate()
 
 
 def test_validate_passes_in_production_with_all_settings_correct(monkeypatch):

@@ -6,10 +6,11 @@ router-decomposition refactor - pure structural move, no behavior change.
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth import get_current_user
-from deps import resolve_target_employee, resolve_employee_scope
+from core.permissions import require_permission
+from deps import resolve_target_employee, permission_scope, Scope
 from models import VacationRequestCreate
 from repositories.interfaces import VacationRepository, EmployeeRepository
 from repositories.deps import get_vacation_repo, get_employee_repo
@@ -19,23 +20,27 @@ router = APIRouter(prefix="/api/vacations", tags=["Vacations"])
 
 @router.get("/history")
 def get_vacation_history(
-    scoped_employee_id: Optional[int] = Depends(resolve_employee_scope),
+    employee_id: Optional[int] = Query(None),
+    scope: Scope = Depends(permission_scope("hr.vacation.read", "self.vacation.read")),
     vacation_repo: VacationRepository = Depends(get_vacation_repo),
 ):
-    """Employee ownership is resolved by resolve_employee_scope before
+    """Employee ownership is resolved by permission_scope before
     this route executes."""
+    scoped_employee_id = employee_id if scope.is_all else scope.employee_id
     return vacation_repo.get_history(scoped_employee_id=scoped_employee_id)
 
 
 @router.post("/request", status_code=201)
 def request_vacation(
     payload: VacationRequestCreate,
+    scope: Scope = Depends(permission_scope("hr.vacation.write", "self.vacation.write")),
     current_user: dict = Depends(get_current_user),
     vacation_repo: VacationRepository = Depends(get_vacation_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
-        employee_repo, current_user, payload.employee_id, payload.employee_name
+        employee_repo, current_user, payload.employee_id, payload.employee_name,
+        required_permission="hr.vacation.write"
     )
 
     end_date = payload.end_date or payload.start_date

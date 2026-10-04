@@ -34,7 +34,7 @@ def list_statutory_obligations(
     source_type: Optional[str] = Query(None, description="Filter by source type (payroll_run, manual, etc.)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    current_user: dict = Depends(require_permission("finance.bill.read")),
+    current_user: dict = Depends(require_permission("finance.statutory.read")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
 ):
     """Lists statutory obligations with optional filtering and pagination."""
@@ -51,7 +51,7 @@ def list_statutory_obligations(
 @router.get("/{obligation_id}", response_model=StatutoryObligationResponse)
 def get_statutory_obligation(
     obligation_id: int,
-    current_user: dict = Depends(require_permission("finance.bill.read")),
+    current_user: dict = Depends(require_permission("finance.statutory.read")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
 ):
     """Retrieve details of a single statutory obligation."""
@@ -61,7 +61,7 @@ def get_statutory_obligation(
 @router.post("", response_model=StatutoryObligationResponse, status_code=status.HTTP_201_CREATED)
 def create_statutory_obligation(
     payload: StatutoryObligationCreate,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    current_user: dict = Depends(require_permission("finance.statutory.write")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
 ):
     """
@@ -75,7 +75,7 @@ def create_statutory_obligation(
 def confirm_or_adjust_statutory_obligation(
     obligation_id: int,
     payload: StatutoryObligationConfirmAdjust,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    current_user: dict = Depends(require_permission("finance.statutory.write")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
 ):
     """
@@ -89,7 +89,7 @@ def confirm_or_adjust_statutory_obligation(
 def settle_statutory_obligation(
     obligation_id: int,
     payload: StatutoryObligationSettle,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    current_user: dict = Depends(require_permission("finance.statutory.write")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
 ):
     """
@@ -103,7 +103,7 @@ def settle_statutory_obligation(
 def update_statutory_obligation(
     obligation_id: int,
     payload: StatutoryObligationUpdate,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    current_user: dict = Depends(require_permission("finance.statutory.write")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
 ):
     """

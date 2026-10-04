@@ -8,7 +8,7 @@ import pytest
 
 
 def test_finance_stubs_admin_authorized(app_client, admin_cookies):
-    """Admin holding system_admin role can access all finance stub routes."""
+    """Admin holding Super-Admin role can access all finance stub routes."""
     # 1. Invoices — now a real endpoint; create a customer + invoice to verify schema.
     cust_resp = app_client.post(
         "/api/finance/customers",

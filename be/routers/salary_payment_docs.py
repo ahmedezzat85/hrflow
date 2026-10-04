@@ -2,14 +2,14 @@
 routers/salary_payment_docs.py
 External-salary "Consultant Fees" payment receipt document generation and history endpoints
 (docs/analysis/invoice-autopay-plan.md). Admin-only: these expose salary
-amounts and generate documents on behalf of employees, so access follows
-the same require_admin pattern as salary raises and employee CRUD.
+amounts and generate documents on behalf of employees, guarded by
+hr.salary_payment_doc.read and hr.salary_payment_doc.write.
 """
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from auth import require_admin
+from core.permissions import require_permission
 from deps import audit_log
 from models import SalaryPaymentDocGenerateRequest, InvoiceGenerateRequest
 from services.salary_payment_docs import (
@@ -33,7 +33,7 @@ compat_router = APIRouter(prefix="/api/invoices", tags=["Invoices (HR Legacy)"])
 def preview_eligible_employees(
     payment_year: int = Query(...),
     payment_month: int = Query(..., ge=1, le=12),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary_payment_doc.read")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
 ):
@@ -70,7 +70,7 @@ def preview_eligible_employees(
 @compat_router.post("/generate")
 def generate_invoices(
     payload: SalaryPaymentDocGenerateRequest,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary_payment_doc.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
@@ -92,7 +92,7 @@ def generate_invoices(
 def generate_invoice_single(
     employee_id: int,
     payload: SalaryPaymentDocGenerateRequest,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary_payment_doc.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
@@ -121,7 +121,7 @@ def list_invoices(
     payment_year: Optional[int] = Query(None),
     payment_month: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary_payment_doc.read")),
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
 ):
     return invoice_repo.list_all(
@@ -136,7 +136,7 @@ def list_invoices(
 @compat_router.get("/{invoice_id}")
 def get_invoice(
     invoice_id: int,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary_payment_doc.read")),
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
 ):
     inv = invoice_repo.get_by_id(invoice_id)
@@ -150,7 +150,7 @@ def get_invoice(
 def stream_invoice_pdf(
     invoice_id: int,
     download: bool = Query(False),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.salary_payment_doc.read")),
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
 ):
     import urllib.parse

@@ -1,0 +1,25 @@
+  <div class="modal-overlay" id="assignRolesModal">
+    <div class="modal modal-v2" style="max-width: 500px; width: 95%;">
+      <div class="modal-head">
+        <div class="modal-head-icon"><i class="fa-solid fa-users-gear"></i></div>
+        <div class="modal-head-text">
+          <h3 id="assignRolesModalTitle">Assign Role</h3>
+          <p id="assignUserDisplay">Select the role for this user.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('assignRolesModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <div class="form-section">
+          <div class="form-section-label"><i class="fa-solid fa-shield-halved"></i> Role <span class="line"></span></div>
+          <p id="assignRoleNote" style="font-size:12px; color:var(--text2); margin:0 0 10px;"></p>
+          <div id="assignRolesChecklist" role="radiogroup" aria-labelledby="assignRolesModalTitle" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- One role per user: radio buttons rendered dynamically -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="assignRolesCancelBtn" onclick="closeModal('assignRolesModal')">Cancel</button>
+        <button class="btn btn-fill" id="assignRolesSaveBtn" onclick="saveUserRoleAssignments(event)"><i class="fa-solid fa-check"></i> Save Role</button>
+      </div>
+    </div>
+  </div>

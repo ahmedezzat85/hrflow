@@ -76,15 +76,10 @@ const PayrollCycleManager = {
   },
 
   checkAdminPermission() {
-    let role = '';
-    if (typeof SessionInfo !== 'undefined' && typeof SessionInfo.getRole === 'function') {
-      role = SessionInfo.getRole();
-    } else if (typeof currentPortal !== 'undefined' && currentPortal === 'admin') {
-      role = 'admin';
-    } else if (typeof Api !== 'undefined' && typeof Api.getCurrentUser === 'function') {
-      role = Api.getCurrentUser()?.role || '';
+    if (typeof SessionInfo !== 'undefined' && typeof SessionInfo.hasPermission === 'function') {
+      return SessionInfo.hasPermission('finance.payroll.approve') || SessionInfo.hasPermission('finance.payroll.prepare');
     }
-    return role === 'admin' || role === 'system_admin';
+    return typeof currentPortal !== 'undefined' && currentPortal === 'admin';
   },
 
   async submitForReview() {
@@ -290,9 +285,12 @@ const PayrollCycleManager = {
     const btnPaid = document.getElementById('btnPayrollMarkPaid');
     const btnReopen = document.getElementById('btnPayrollReopenDraft');
 
+    const canApprove = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.approve') : true;
+    const canPay = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.pay') : true;
+
     if (btnSubmit) btnSubmit.style.display = status === 'DRAFT' ? 'inline-flex' : 'none';
-    if (btnApprove) btnApprove.style.display = status === 'REVIEW' ? 'inline-flex' : 'none';
-    if (btnPaid) btnPaid.style.display = status === 'APPROVED' ? 'inline-flex' : 'none';
+    if (btnApprove) btnApprove.style.display = (status === 'REVIEW' && canApprove) ? 'inline-flex' : 'none';
+    if (btnPaid) btnPaid.style.display = (status === 'APPROVED' && canPay) ? 'inline-flex' : 'none';
     if (btnReopen) btnReopen.style.display = status !== 'DRAFT' ? 'inline-flex' : 'none';
   }
 };

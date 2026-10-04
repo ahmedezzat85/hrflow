@@ -41,11 +41,7 @@ class AttentionQueueService:
         Gathers attention exceptions across authorized finance domains,
         applying deterministic priority scoring and permission redaction.
         """
-        is_admin = (
-            current_user.get("role") == "admin"
-            or "*" in user_permissions
-            or "admin" in user_permissions
-        )
+        is_admin = bool(current_user.get("is_super_admin"))
 
         can_invoices = is_admin or "finance.invoice.read" in user_permissions
         can_bills = is_admin or "finance.bill.read" in user_permissions

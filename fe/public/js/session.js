@@ -1,17 +1,74 @@
+const MOCK_PERMISSIONS_HR = [
+  "hr.employee.read", "hr.employee.write",
+  "hr.salary.read", "hr.salary.write",
+  "hr.employee_bank_account.read", "hr.employee_bank_account.write", "hr.employee_bank_account.reveal",
+  "hr.employee_document.read", "hr.employee_document.write",
+  "hr.company_document.read", "hr.company_document.write",
+  "hr.salary_payment_doc.read", "hr.salary_payment_doc.write",
+  "hr.vacation.read", "hr.vacation.write",
+  "hr.request.read", "hr.request.write",
+  "hr.insurance.read", "hr.insurance.write",
+  "hr.export.run",
+];
+
+const MOCK_PERMISSIONS_FINANCE = [
+  "finance.customer.read", "finance.customer.write",
+  "finance.invoice.read", "finance.invoice.write",
+  "finance.vendor.read", "finance.vendor.write",
+  "finance.vendor_payment.manage", "finance.vendor_payment.verify", "finance.vendor_payment.reveal",
+  "finance.bill.read", "finance.bill.write",
+  "finance.subscription.read", "finance.subscription.write",
+  "finance.statutory.read", "finance.statutory.write",
+  "finance.account.read", "finance.account.write",
+  "finance.bank_account.reveal", "finance.adjustment.manage",
+  "finance.report.read",
+  "finance.settings.read", "finance.settings.write",
+  "finance.payroll.read", "finance.payroll.approve", "finance.payroll.pay",
+  "finance.payroll_tax.read", "finance.payroll_tax.write",
+];
+
+const MOCK_PERMISSIONS_PAYROLL = [
+  "finance.payroll.read",
+  "finance.payroll.prepare",
+];
+
+const MOCK_PERMISSIONS_EMPLOYEE = [
+  "self.profile.read",
+  "self.payslip.read",
+  "self.requests.read", "self.requests.write",
+  "self.salary.read",
+  "self.vacation.read", "self.vacation.write",
+  "self.claim.read", "self.claim.write",
+  "self.bank_account.read",
+  "self.document.read", "self.document.write",
+  "hr.company_document.read",
+];
+
+const MOCK_PERMISSIONS_ALL = [
+  "system.users.manage", "system.roles.manage", "system.audit.read",
+  ...MOCK_PERMISSIONS_HR,
+  ...MOCK_PERMISSIONS_EMPLOYEE.filter(k => !MOCK_PERMISSIONS_HR.includes(k)),
+  ...MOCK_PERMISSIONS_FINANCE,
+  "finance.payroll.prepare",
+];
+
 async function handleLoginSuccess(data){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('loginThemeToggle').style.display = 'none';
   document.getElementById('loginErr').style.display = 'none';
   showAppLoader('Signing you in', 'Loading your HR workspace...');
   try{
-    if(data.role === 'admin' || data.role === 'system_admin'){
+    const portal = data.portal || 'employee';
+    if(portal === 'admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadAdminData();
     } else {
       currentPortal = 'employee';
       document.getElementById('employee-app').classList.add('active');
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadEmployeeData();
     }
@@ -139,26 +196,64 @@ function initMockEmployeeData(){
 // (see docs/analysis/security-analysis-plan.md, Phase 1 - SEC-04).
 async function bootstrapAppFromSession(){
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('mock') === 'admin') {
-    SessionInfo.set({ role: 'admin', employee_id: 1, name: 'Sarah Connor' });
-    hideAppLoader();
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('loginThemeToggle').style.display = 'none';
-    document.getElementById('admin-app').classList.add('active');
-    currentPortal = 'admin';
-    initMockAdminData();
-    if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
-    return;
-  } else if (urlParams.get('mock') === 'employee') {
-    SessionInfo.set({ role: 'employee', employee_id: 2, name: 'John Doe' });
-    hideAppLoader();
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('loginThemeToggle').style.display = 'none';
-    document.getElementById('employee-app').classList.add('active');
-    currentPortal = 'employee';
-    initMockEmployeeData();
-    if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
-    return;
+  const mockParam = (urlParams.get('mock') || '').toLowerCase();
+  if (mockParam) {
+    if (mockParam === 'admin' || mockParam === 'super_admin') {
+      SessionInfo.set({ portal: 'admin', roles: ['Super-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_ALL });
+      hideAppLoader();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('loginThemeToggle').style.display = 'none';
+      document.getElementById('admin-app').classList.add('active');
+      currentPortal = 'admin';
+      initMockAdminData();
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      return;
+    } else if (mockParam === 'hr' || mockParam === 'hr_admin') {
+      SessionInfo.set({ portal: 'admin', roles: ['HR-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_HR });
+      hideAppLoader();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('loginThemeToggle').style.display = 'none';
+      document.getElementById('admin-app').classList.add('active');
+      currentPortal = 'admin';
+      initMockAdminData();
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      return;
+    } else if (mockParam === 'finance' || mockParam === 'financial_admin') {
+      SessionInfo.set({ portal: 'admin', roles: ['Financial-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_FINANCE });
+      hideAppLoader();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('loginThemeToggle').style.display = 'none';
+      document.getElementById('admin-app').classList.add('active');
+      currentPortal = 'admin';
+      initMockAdminData();
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      return;
+    } else if (mockParam === 'payroll' || mockParam === 'payroll_maker') {
+      SessionInfo.set({ portal: 'admin', roles: ['Payroll-Maker'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_PAYROLL });
+      hideAppLoader();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('loginThemeToggle').style.display = 'none';
+      document.getElementById('admin-app').classList.add('active');
+      currentPortal = 'admin';
+      initMockAdminData();
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      return;
+    } else if (mockParam === 'employee') {
+      SessionInfo.set({ portal: 'employee', roles: [], employee_id: 2, name: 'John Doe', permissions: MOCK_PERMISSIONS_EMPLOYEE });
+      hideAppLoader();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('loginThemeToggle').style.display = 'none';
+      document.getElementById('employee-app').classList.add('active');
+      currentPortal = 'employee';
+      initMockEmployeeData();
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
+      if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      return;
+    }
   }
 
   showAppLoader('Reconnecting to HRFlow', 'Loading your data...');
@@ -174,14 +269,17 @@ async function bootstrapAppFromSession(){
   document.getElementById('loginThemeToggle').style.display = 'none';
   document.getElementById('loginErr').style.display = 'none';
   try{
-    if(session.role === 'admin' || session.role === 'system_admin'){
+    const portal = session.portal || 'employee';
+    if(portal === 'admin'){
       currentPortal = 'admin';
       document.getElementById('admin-app').classList.add('active');
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadAdminData();
     } else {
       currentPortal = 'employee';
       document.getElementById('employee-app').classList.add('active');
+      if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
       await loadEmployeeData();
     }

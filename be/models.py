@@ -27,10 +27,11 @@ class LoginResponse(BaseModel):
     never exposed to JavaScript in the response body (see docs/analysis/
     security-analysis-plan.md, Phase 1 - SEC-01 / SEC-04).
     """
-    role: str
     employee_id: Optional[int] = None
     name: Optional[str] = None
     permissions: List[str] = Field(default_factory=list)
+    portal: str = "employee"
+    roles: List[str] = Field(default_factory=list)
 
 
 class EmployeeCreate(BaseModel):

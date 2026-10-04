@@ -26,6 +26,11 @@ function renderSalaryPage(filter=''){
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
   const upcoming = employees.filter(e=>{ if (!e.nextRaise || isNaN(new Date(e.nextRaise).getTime())) return false; const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
+  const canWriteSalary = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.salary.write') : true;
+  const openRaiseModalBtn = document.getElementById('btnOpenRaiseModal');
+  if (openRaiseModalBtn) {
+    openRaiseModalBtn.style.display = canWriteSalary ? '' : 'none';
+  }
   const body = document.getElementById('salaryTableBody');
   body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f)).map(e=>{
     const last = (e.salaryHistory && e.salaryHistory.length) ? e.salaryHistory[e.salaryHistory.length-1] : null;
@@ -38,13 +43,13 @@ function renderSalaryPage(filter=''){
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
           <span class="comp-val-external">${fmtUSD(ext)}</span>
-          <button class="action-btn btn-comp-ext" title="Edit External USD" onclick="openCompPlanModal('${e.id}', 'external_usd')"><i class="fa-solid fa-pen"></i></button>
+          ${canWriteSalary ? `<button class="action-btn btn-comp-ext" title="Edit External USD" onclick="openCompPlanModal('${e.id}', 'external_usd')"><i class="fa-solid fa-pen"></i></button>` : ''}
         </div>
       </td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
           <span class="comp-val-internal">${fmtUSD(intCash)}</span>
-          <button class="action-btn btn-comp-int" title="Edit Internal USD Cash" onclick="openCompPlanModal('${e.id}', 'internal_usd_cash')"><i class="fa-solid fa-pen"></i></button>
+          ${canWriteSalary ? `<button class="action-btn btn-comp-int" title="Edit Internal USD Cash" onclick="openCompPlanModal('${e.id}', 'internal_usd_cash')"><i class="fa-solid fa-pen"></i></button>` : ''}
         </div>
       </td>
       <td><strong>${fmtUSD(total)}</strong></td>
@@ -52,8 +57,8 @@ function renderSalaryPage(filter=''){
       <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn btn-sm btn-fill" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>
-          <button class="btn btn-sm btn-comp-plan" onclick="openCompPlanModal('${e.id}')"><i class="fa-solid fa-file-contract"></i> Plan</button>
+          ${canWriteSalary ? `<button class="btn btn-sm btn-fill btn-raise-action" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>` : ''}
+          ${canWriteSalary ? `<button class="btn btn-sm btn-comp-plan" onclick="openCompPlanModal('${e.id}')"><i class="fa-solid fa-file-contract"></i> Plan</button>` : ''}
         </div>
       </td>
     </tr>`;

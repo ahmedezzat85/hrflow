@@ -3,7 +3,8 @@
 **Date of Audit:** September 22, 2026  
 **Auditor:** Antigravity (Advanced Agentic Coding Agent)  
 **Repository Branch:** `feature/payroll-deductions` (Commit: `1695cfc`, synced with `main`)  
-**Status:** Clean working tree, read-only baseline snapshot  
+**Status:** Read-only baseline snapshot; reconciled with code on October 1, 2026  
+**Reconciliation:** Counts, lifecycle names, guard coverage, startup behavior, and legacy-code claims were rechecked against `feature/rbac` at `c236b00` (equal to `main`) on October 1, 2026. The RBAC sections (access control, migrations, guard coverage, startup) were updated on October 3, 2026 to describe `feature/rbac` after the RBAC slices and the review-fix run (Alembic head `0027_single_assigned_role`); they do not describe `main` until the branch is merged. Line numbers cited below are approximate. Test results were **not** re-run for the non-RBAC sections.  
 
 ---
 
@@ -16,11 +17,11 @@ HRFlow is an internal operations platform combining Human Resources Management a
 - **Data Persistence Reality:** Persistence is exclusively relational SQL (`sqlite` for local/testing, `postgresql` for staging/production). Google Sheets is strictly an export destination; startup fails fast with a `RuntimeError` if `STORAGE_ENGINE != "sql"` (`be/config.py:180`).
 - **Storage Subsystem:** File storage supports Google Drive via service account (`be/drive_client.py`) and a local filesystem driver (`be/storage.py`) for air-gapped or local development.
 - **Authentication & Security:** Google Sign-In OAuth 2.0 credential verification with optional Workspace domain restriction (`ALLOWED_WORKSPACE_DOMAIN`). Session tokens are HMAC-SHA256 JWTs stored exclusively in an `HttpOnly`, `SameSite=Lax` cookie (`hrflow_session`).
-- **Access Control:** An internal Role-Based Access Control (RBAC) engine (`be/core/permissions.py`) gates routes using structured permission strings (`<module>.<resource>.<action>`), supplemented by wildcard administrative overrides.
+- **Access Control:** An internal Role-Based Access Control (RBAC) engine (`be/core/permissions.py`) gates every route by structured permission strings (`<module>.<resource>.<action>`) from a code-defined catalog; there are no wildcard overrides. A user holds one assigned role plus the derived Employee baseline (on `feature/rbac`).
 - **Current State of Implementation:**
   - All core HR modules (Employees, Salary & Splits, Bank Accounts, Vacations, Claims, Invoices/Payment Docs, Requests) are fully implemented and backed by SQL.
-  - The Finance module has progressed far beyond its initial blueprint, featuring 20 Alembic migrations, double-entry ledger transactions, cheques lifecycle, AP bill workflows with PDF OCR extraction, sales invoices, bank statement parsing, automated reconciliation rules, statutory obligations, and an in-page 4-step payroll runner (Draft $\rightarrow$ Approved $\rightarrow$ Processing $\rightarrow$ Paid).
-  - 66 backend test suites (`be/tests/`) and 55 Playwright UI specs (`fe/tests/ui/`) validate business rules and end-to-end workflows.
+  - The Finance module has progressed far beyond its initial blueprint, featuring 27 Alembic migrations (23 on `main`), double-entry ledger transactions, cheques lifecycle, AP bill workflows with PDF OCR extraction, sales invoices, bank statement parsing, automated reconciliation rules, statutory obligations, and a payroll runner with income-tax and social-insurance calculation (run lifecycle: `draft` → `submitted` → `approved` → `finalized` → `partially_paid` / `paid`).
+  - 67 backend test modules (`be/tests/test_*.py`) and 62 Playwright UI specs (`fe/tests/ui/`) validate business rules and end-to-end workflows.
 
 ---
 
@@ -48,10 +49,14 @@ hrflow/
 │   ├── core/                                  # Core Security & RBAC
 │   │   ├── permissions.py                     # RBAC permission resolver and require_permission route guard
 │   │   ├── rbac_models.py                     # PermissionDB, RoleDB, RolePermissionDB, UserRoleDB
-│   │   └── rbac_seed.py                       # Idempotent permissions and starter role seeding
+│   │   ├── permission_catalog.py              # Code-defined permission catalog (63 keys)
+│   │   ├── role_seed.py                       # Seeded roles and idempotent catalog sync
+│   │   ├── access_service.py                  # Roles/users rules and employee lifecycle hooks
+│   │   └── rbac_seed.py                       # Thin wrapper around role_seed.sync_catalog
 │   ├── routers/                               # HR Domain Endpoints
 │   │   ├── auth.py                            # /api/auth (session, login, logout, me)
 │   │   ├── employees.py                       # /api/employees (CRUD, search, compensation)
+│   │   ├── social_insurance.py                # employee social-insurance records
 │   │   ├── employee_bank_accounts.py          # /api/employee-bank-accounts
 │   │   ├── documents.py                       # /api/documents (employee docs & company Document Hub)
 │   │   ├── insurance.py                       # /api/insurance (claims, policy, consumption)
@@ -73,14 +78,14 @@ hrflow/
 │   │   ├── interfaces.py                      # Abstract repository interfaces
 │   │   ├── deps.py                            # Dependency injection hard-wired to SQL repositories
 │   │   ├── sql/                               # 11 active SQL repository implementations
-│   │   ├── sheets/                            # 11 legacy Google Sheets repository implementations
+│   │   ├── sheets/                            # 11 legacy Sheets files (insurance.py is still imported by routers/insurance.py)
 │   │   └── dual/                              # 11 dual-write transition repositories
 │   ├── migrations/                            # Alembic Database Migrations
 │   │   ├── env.py                             # Alembic environment runner
-│   │   └── versions/                          # 20 migrations (0001_initial_schema to 0020_fux_420_...)
+│   │   └── versions/                          # 27 migrations (0001_initial_schema to 0027_single_assigned_role)
 │   ├── services/                              # HR & Utility Services (export, pdf_converter, uploads)
 │   ├── scripts/                               # Migration & backfill utility scripts
-│   └── tests/                                 # 66 pytest test files
+│   └── tests/                                 # 67 pytest test modules plus conftest.py
 ├── fe/                                        # Frontend Application
 │   ├── package.json                           # Dependencies (@playwright/test, vite, vite-plugin-singlefile)
 │   ├── vite.config.js                         # Custom build pipeline with partial inliner & script injector
@@ -96,7 +101,7 @@ hrflow/
 │   │   ├── styles.css                         # Core CSS entrypoint
 │   │   ├── styles/modules/                    # Modular domain styles (payroll.css, etc.)
 │   │   └── partials/                          # HTML partials (admin, employee, modals, shell)
-│   └── tests/ui/                              # 55 Playwright UI specification suites
+│   └── tests/ui/                              # 62 Playwright UI specification suites
 ├── docs/                                      # Project Documentation
 │   ├── finance-module/                        # Architecture blueprints, FUX stories 406..415, plans
 │   ├── roadmap/                               # Feature gaps, security, database redesign roadmaps
@@ -112,8 +117,8 @@ hrflow/
 | :--- | :--- | :--- | :--- |
 | **Auth** | Sign in with Google | Implemented | `be/auth.py:27`, `fe/public/js/session.js`, `fe/src/partials/shell/login-screen.html` |
 | **Auth** | HttpOnly Cookie Session | Implemented | `be/auth.py:89`, `be/config.py:41` (`SESSION_COOKIE_NAME`) |
-| **Auth** | Workspace Domain Guard | Implemented | `be/auth.py:40-47` (`ALLOWED_WORKSPACE_DOMAIN`) |
-| **Security** | RBAC Engine & Route Guards | Implemented | `be/core/permissions.py`, `be/core/rbac_models.py`, `be/core/rbac_seed.py` |
+| **Auth** | Google Sign-In (any verified Google account that has an active HRFlow user; no workspace-domain gate) | Implemented on `feature/rbac` | `be/auth.py` (`login_with_google`), `be/routers/auth.py` |
+| **Security** | RBAC Engine & Route Guards (guard coverage enforced by `test_all_routes_guard_coverage_walker`) | Implemented on `feature/rbac` | `be/core/permissions.py`, `be/core/permission_catalog.py`, `be/core/rbac_models.py`, `be/core/role_seed.py`, `be/core/access_service.py`, `be/routers/access.py` |
 | **Security** | Security Headers & CSP | Implemented | `be/main.py:101-122` (`security_headers` middleware) |
 | **HR** | Employee Directory & CRUD | Implemented | `be/routers/employees.py`, `be/repositories/sql/employees.py`, `fe/public/js/employees.js` |
 | **HR** | Split Compensation Tracking | Implemented | `be/routers/salary.py`, `be/models_db.py:77-78` (`internal_salary_usd`, `external_salary_usd`) |
@@ -138,7 +143,10 @@ hrflow/
 | **Finance** | Subscriptions & Charges | Implemented | `be/finance/routers/subscriptions.py`, `be/finance/services/subscriptions_service.py` |
 | **Finance** | Statutory Obligations | Implemented | `be/finance/routers/statutory.py`, `be/finance/services/statutory_service.py` (FUX-410) |
 | **Finance** | Employee Compensation Plans | Implemented | `be/finance/routers/compensation_plans.py`, `be/finance/services/compensation_plan_service.py` (FUX-416) |
-| **Finance** | In-Page 4-Step Payroll Runner | Implemented | `be/finance/routers/payroll.py`, `be/finance/services/payroll_service.py`, `fe/public/js/finance-payroll.js` |
+| **Finance** | Payroll Runner (draft → submitted → approved → finalized → paid) | Implemented | `be/finance/routers/payroll.py`, `be/finance/services/payroll_service.py`, `fe/public/js/finance-payroll.js` |
+| **Finance** | Payroll Income Tax and Effective-Dated Settings (D-009) | Implemented | `be/finance/services/payroll_calculation_helper.py`, `be/migrations/versions/0023_payroll_income_tax_settings.py`, `be/finance/routers/payroll.py` (`/tax-settings`) |
+| **Finance** | Payroll Social Insurance and NET/GROSS Basis | Implemented | `be/migrations/versions/0021_*`, `0022_*`, `be/routers/social_insurance.py`, `be/services/social_insurance_service.py` |
+| **Admin UI** | Dual-Rail Navigation (D-010) | Implemented | `fe/public/js/admin-nav.js`, `fe/tests/ui/admin-dual-rail.spec.js` |
 | **Finance** | Dual Payroll Funding Setup | Implemented | `be/finance/models.py:540` (`funding_account_id_ext`, `funding_account_id_int`), `fe/public/js/finance-payroll.js` |
 | **Finance** | Financial Statements & Reports | Implemented | `be/finance/routers/reports.py`, `be/finance/services/reports_service.py` (P&L, Balance Sheet, Cashflow) |
 | **Finance** | 30/60/90-Day Cash Forecast | Implemented | `be/finance/services/forecast_service.py`, `fe/public/js/finance-reports.js` |
@@ -150,8 +158,8 @@ hrflow/
 ## 4. Partially Implemented or Placeholder Capabilities
 
 1. **Granular Role Expansion (Phase 7 of `01-implementation-plan.md`):**
-   - *Status:* **Partially implemented / Schema-ready**.
-   - *Evidence:* In `be/core/rbac_seed.py`, `SEED_ROLES` defines only `system_admin` and `employee`. In `be/models_db.py`, `UserDB.role` stores a single role string. The planned specialist roles (`accountant`, `hr_admin`, `hr_staff`) are defined conceptually with fine-grained permissions, but have not been seeded or wired into a user management UI.
+   - *Status:* **Implemented on `feature/rbac`** (five roles, one assigned role per user, Roles and Users pages).
+   - *Evidence:* `be/core/role_seed.py` seeds Super-Admin (locked), HR-Admin, Financial-Admin, Payroll-Maker and Employee (D-011); `user_roles` holds at most one row per user (`0027_single_assigned_role`); `users.role` was dropped (`0026_drop_users_role`). The planned specialist roles (`accountant`, `hr_admin`, `hr_staff`) were replaced by this five-role model. On `main` (before the merge) only `system_admin` and `employee` exist.
 2. **Automated Subscription Bill Generation (Background Cron):**
    - *Status:* **Partially implemented**.
    - *Evidence:* `SubscriptionDB.auto_generate_bill` exists in `be/finance/models.py:382`. However, there is no background daemon, scheduler, or queue (no Celery, RQ, or APScheduler) in the backend. Bill generation from subscriptions is executed on-demand via `subscriptions_service.log_charge(create_bill=True)` rather than automated cron triggers.
@@ -160,13 +168,13 @@ hrflow/
    - *Evidence:* `be/services/pdf_converter.py` attempts Windows COM automation (`win32com.client`) or local LibreOffice CLI (`soffice`), falling back to Google Drive API. On headless Linux containers without LibreOffice or Drive service credentials, PDF payslip/invoice compilation raises an error or outputs DOCX only.
 4. **Dormant Google Sheets Repositories:**
    - *Status:* **Dormant / Deprecated**.
-   - *Evidence:* `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) remain in the tree from the transition period. `be/repositories/deps.py` exclusively instantiates `Sql*Repository`, rendering these files inactive.
+   - *Evidence:* `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) remain in the tree from the transition period. `be/repositories/deps.py` exclusively instantiates `Sql*Repository`. They are **not entirely inactive**: `be/routers/insurance.py` imports `compute_consumption` from `repositories/sheets/insurance.py`, and `be/auth.py` imports (unused) `repositories.sheets.auth`. The directories cannot be deleted wholesale without relocating `compute_consumption`.
 5. **Frontend Mock Mode Parity:**
    - *Status:* **Partially implemented (Testing Utility)**.
    - *Evidence:* `fe/finance-api.js` provides `FinanceMockState` to support `?mock=admin` and `?mock=employee` testing without a running backend. While it mocks user interactions and state transitions for Playwright, mutations do not persist to SQL.
 6. **Employee Portal Payslips Self-Service:**
    - *Status:* **Partially implemented**.
-   - *Evidence:* Backend endpoint `GET /api/finance/payroll/lines/{id}/payslip` exists in `be/finance/routers/payroll.py`. The employee view `fe/src/partials/employee/sections/payslips.html` contains placeholder markup, but full self-service download and historical browsing are not yet hooked up end-to-end.
+   - *Evidence:* Backend endpoints `GET /api/finance/payroll/payslips/my` (guard `self.payslip.read`) and `GET /api/finance/payroll/runs/{run_id}/payslips/{employee_id}` (guard `finance.payroll.read`) exist in `be/finance/routers/payroll.py`, and the frontend API client exposes `getMyPayslips`. The employee view `fe/src/partials/employee/sections/payslips.html` has table markup whose Refresh button calls `refreshMyPayslips()`, but no such function is defined in `fe/public/js` or `fe/src`, so the page is not wired end-to-end.
 
 ---
 
@@ -177,11 +185,11 @@ hrflow/
 | **Phase 0** | Housekeeping & Naming Disambiguation | **Implemented** | Renamed `bank.py` $\rightarrow$ `employee_bank_accounts.py`, `invoices.py` $\rightarrow$ `salary_payment_docs.py`. Relegated `sheets_client.py` to export destination. Verified in `be/routers/`. |
 | **Phase 1** | Core RBAC Skeleton | **Implemented** | `be/core/rbac_models.py`, `be/core/permissions.py`, `be/core/rbac_seed.py` created and active. |
 | **Phase 2** | Placeholder Architecture & Stubs | **Implemented** | Initial static stub routers and frontend partials were established and subsequently replaced with functional components. |
-| **Phase 3** | Data Model & Migrations | **Implemented (Exceeded)** | All 11 core tables created via Alembic migrations. Scope expanded through 20 migrations (`0001` through `0020`), adding ledger transactions, cheques, statement imports, rules, attachments, and compensation plans. |
+| **Phase 3** | Data Model & Migrations | **Implemented (Exceeded)** | All 11 core tables created via Alembic migrations. Scope expanded through 23 migrations (`0001` through `0023`), adding ledger transactions, cheques, statement imports, rules, attachments, compensation plans, payroll social insurance, and income-tax settings. |
 | **Phase 4** | Core CRUD Operations | **Implemented** | Full repository/service/router CRUD active for bank accounts, customers, vendors, sales invoices, bills, and subscriptions. |
-| **Phase 5** | Payroll Engine | **Implemented (Re-architected)** | Moved from a simple runner to a modern in-page 4-step workflow (Draft $\rightarrow$ Approved $\rightarrow$ Processing $\rightarrow$ Paid) in `be/finance/routers/payroll.py`, `be/finance/services/payroll_service.py`, and `fe/public/js/finance-payroll.js`. Supports dual funding accounts (FUX-420), employee salary split, inline bonuses, and ledger disbursements. |
+| **Phase 5** | Payroll Engine | **Implemented (Re-architected)** | Moved from a simple runner to a lifecycle of `draft` → `submitted` → `approved` → `finalized` → `partially_paid` / `paid` (with a runtime submitter-cannot-approve check) in `be/finance/routers/payroll.py`, `be/finance/services/payroll_service.py`, and `fe/public/js/finance-payroll.js`. Supports dual funding accounts (FUX-420), employee salary split, inline bonuses, and ledger disbursements. |
 | **Phase 6** | Reporting Layer | **Implemented** | Comprehensive `reports_service.py` (115KB) implements Balances, Revenue, P&L, Balance Sheet, Cash Flow, General Ledger, Spend reporting, and audited Excel exports. |
-| **Phase 7** | Role Expansion (`accountant`, `hr_admin`, `hr_staff`) | **Planned only** | Schema and permissions are ready; roles remain unseeded in `be/core/rbac_seed.py`. |
+| **Phase 7** | Role Expansion (`accountant`, `hr_admin`, `hr_staff`) | **Superseded / implemented on `feature/rbac`** | Replaced by the RBAC initiative (D-011): five seeded roles in `be/core/role_seed.py`. |
 | **Beyond Plan** | FUX-406 to FUX-420 Stories | **Implemented** | Added settlement linking (406), bill repository (407), combined bill payment guard (408), payment method naming (409), statutory obligations (410), bill defaults (411), collapsible filters (412), PDF extraction (413), collapsible status bar (414), density setting (415), compensation plans (416-418), dual funding accounts (420). |
 
 ---
@@ -194,34 +202,34 @@ hrflow/
   - Configured in `be/db.py` with SQLAlchemy `create_engine` using `pool_pre_ping=True`, `DB_POOL_SIZE` (default 10), `DB_MAX_OVERFLOW` (default 20), and `DB_POOL_RECYCLE` (default 1800s).
   - FastAPI dependency `get_db` yields sessions; context manager `get_db_context` manages standalone commits/rollbacks for background scripts.
 - **Migration & Schema Synchronization:**
-  - Alembic manages migrations (`be/migrations/versions/`) covering 20 sequential revisions.
-  - Startup hook `init_db()` in `be/db.py:75` creates tables and dynamically executes `ALTER TABLE ADD COLUMN` for SQLite dev instances before seeding RBAC and lookup data.
+  - Alembic manages migrations (`be/migrations/versions/`) covering 27 sequential revisions on `feature/rbac` (head `0027_single_assigned_role`; 23 revisions, head `0023_payroll_income_tax_settings`, on `main`). The RBAC migrations (`0024`–`0027`) are written to be valid on PostgreSQL but have only been run on SQLite; `0005`, `0018` and `0021` use integer Boolean `server_default` literals that PostgreSQL rejects.
+  - `init_db()` (`be/db.py`) runs when `be/main.py` is imported. It calls `create_all`, adds missing columns with `ALTER TABLE ... ADD COLUMN` on **any** database (not only SQLite), runs `sync_catalog` (a failure raises and stops startup), then seeds finance lookups and default payroll tax settings (effective 2026-01-01, only when none exist); the last two swallow exceptions silently. Schema changes still require Alembic migrations.
+  - `sync_catalog` (`be/core/role_seed.py`) is idempotent and safe for concurrent workers (savepoints around inserts): it inserts missing permission rows, keeps Super-Admin equal to the full catalog, adopts a legacy `system_admin` role if the app starts before `alembic upgrade`, and never grants keys to editable roles or re-links users.
 
 ### Authentication & Token Flow
 - **Provider:** Google Identity Services ("Sign in with Google") OAuth 2.0.
 - **Verification:** `be/auth.py:verify_google_credential` validates the token signature against Google's public certs using `google.oauth2.id_token.verify_oauth2_token`.
 - **Domain Restriction:** `ALLOWED_WORKSPACE_DOMAIN` validates the `hd` (hosted domain) claim. When `ENVIRONMENT=production`, `Config.validate()` mandates this setting.
-- **Session Cookie:** On valid login, `be/auth.py:create_session_token` signs an HMAC-SHA256 JWT containing `email`, `role`, `employee_id`, `name`, and `exp` (default 12 hours). The token is set in an `HttpOnly`, `SameSite=Lax` cookie named `hrflow_session`. JavaScript cannot access this cookie directly, eliminating XSS token exfiltration.
+- **Session Cookie:** On valid login, `be/auth.py:create_session_token` signs an HMAC-SHA256 JWT containing `email`, `uid`, `employee_id`, `name`, and `exp` (default 12 hours). Authorization never reads claims other than identity: roles and permissions are resolved from the database on every request. The token is set in an `HttpOnly`, `SameSite=Lax` cookie named `hrflow_session`. JavaScript cannot access this cookie directly, eliminating XSS token exfiltration.
 
 ### Authorization & RBAC Enforcement
 - **Permission Modeling:** Modeled in `be/core/rbac_models.py` (`PermissionDB`, `RoleDB`, `RolePermissionDB`, `UserRoleDB`). Permissions follow `<module>.<resource>.<action>`.
-- **Resolution & Caching:** `be/core/permissions.py:get_current_user_permissions` resolves effective permissions through all assigned roles and caches the set on `request.state.user_permissions` for the request lifecycle.
-- **Administrative Wildcards:** Any user having `role='admin'` in their JWT token or `UserDB` record, or assigned `system_admin` in RBAC, automatically receives the wildcard permission `*`.
-- **Enforcement Discrepancy:**
-  - Finance domain (`be/finance/routers/*.py`): 100% gated via `require_permission(...)` (194 references).
-  - HR domain (`be/routers/*.py`): 35 routes still use legacy `require_admin` (`be/auth.py:112`), which checks `current_user.get("role") == "admin"` rather than granular permissions.
+- **Resolution & Caching:** `be/core/permissions.py:resolve_access` looks the user up by `uid` (else email), rejects unknown users (401) and archived users (403), and builds the effective permission set from the one assigned role plus the Employee baseline (the database Employee role, derived from `employee_id`). Super-Admin (`system_key == "super_admin"`) receives the full catalog. The context is cached on `request.state.access_context` for the request.
+- **No wildcards:** there is no `*` permission, no role-name or token-claim shortcut, and no development auto-provisioning; `require_admin` was removed.
+- **Guard coverage:** all 245 route registrations are guarded by a catalog permission found in the route's dependency tree (`require_permission`, `permission_scope` for own-or-all, and two dynamic guards for exports and entity activity) or are on the public allow-list (`/api/auth/google`, `/api/auth/logout`, `/api/auth/me`, `/api/health`). `test_all_routes_guard_coverage_walker` fails otherwise; markers set on endpoint functions do not count.
+- **Payroll maker-checker (runtime):** `approve_run` rejects approval by the user who submitted the run, unless the env var `ENFORCE_MAKER_CHECKER` is `false` or the request passes `allow_self_approval=true` (any holder of `finance.payroll.approve` can pass it; Q-013).
 
 ### Document Storage Security
 - **Backend Storage:** `be/storage.py` routes uploads either to Google Drive (`DriveStorageClient`) or local disk (`LocalStorageClient`).
 - **Authorization Gating:** Document streaming endpoints (`be/routers/documents.py:get_document`, `download_document`) authenticate through the session cookie and enforce employee ownership or administrative permissions before streaming bytes. No raw public Drive links are exposed to clients.
-- **Sensitive Data Masking:** Company and employee bank account numbers and IBANs are masked in standard API serialization, with unmasking strictly gated behind `finance.vendor_payment.reveal` or `finance.bank_account.reveal`.
+- **Sensitive Data Masking:** Company and employee bank account numbers and IBANs are masked in standard API serialization, with unmasking of company and vendor details gated behind `finance.vendor_payment.reveal` or `finance.bank_account.reveal`. Unmasking an employee IBAN (`?reveal=true` on `/api/employee-bank-accounts`) is gated by `require_admin`.
 
 ---
 
 ## 7. Test and Deployment Status
 
 ### Backend Test Suite (`be/tests/`)
-- **Total Test Files:** 66 test modules.
+- **Total Test Files:** 67 test modules plus `conftest.py` (test results not re-run in the October 1, 2026 reconciliation).
 - **Framework:** `pytest` 8.3.2 with `httpx` 0.27.2 for `TestClient` API testing.
 - **Coverage Areas:**
   - Authentication, session expiry, token decode, and RBAC permission checks (`test_authorization.py`, `test_rbac.py`).
@@ -231,7 +239,7 @@ hrflow/
   - Complete Finance domain workflows: AP bills approval, combined payments, PDF extraction, bank accounts, double-entry ledger, cheques lifecycle, statement parsing, reconciliation rules, payroll runner, compensation plans, and financial reports.
 
 ### Frontend UI Test Suite (`fe/tests/ui/`)
-- **Total Spec Files:** 55 Playwright UI specifications.
+- **Total Spec Files:** 62 Playwright UI specifications.
 - **Framework:** `@playwright/test` 1.63.0 against Chromium.
 - **Execution Mechanism:** Run via `npx playwright test tests/ui/<spec>.spec.js --reporter=line`.
 - **Environment:** Automated web server launches local Vite dev server on port 5173. Mock mode (`?mock=admin` or `?mock=employee`) provides deterministic fixtures and rapid verification.
@@ -253,41 +261,29 @@ hrflow/
 ## 8. Known Technical Debt and Inconsistencies
 
 1. **Documentation vs. Architecture Inconsistency (High):**
-   - `AGENTS.md` and the docstring of `be/main.py` state that HRFlow is "backed entirely by a Google Sheet".
+   - The docstring and API description in `be/main.py` (lines 3 and 80) still say HRFlow is "backed entirely by a Google Sheet" (`AGENTS.md` was corrected on October 1, 2026).
    - *Reality:* The application was completely migrated to relational SQL via SQLAlchemy and Alembic. Google Sheets is strictly an export destination; the application refuses to start if `STORAGE_ENGINE != "sql"` (`be/config.py:180`).
 2. **Dormant Migration Repositories (Medium):**
-   - The directories `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) are dead code left over from the database migration phase. `be/repositories/deps.py` hard-wires `Sql*Repository`.
+   - `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) are left over from the database migration phase. `be/repositories/deps.py` hard-wires `Sql*Repository`, but `be/routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`, so that function must be relocated before the directory can be removed.
 3. **Dead Imports in `be/auth.py` (Low):**
    - `be/auth.py:21-22` imports `get_client` from `sheets_client` and `SheetsUserRepository` from `repositories.sheets.auth`, neither of which is used anywhere in the file.
-4. **Inconsistent Authorization Guards across HR vs Finance (Medium):**
-   - All 20 Finance routers enforce RBAC via `require_permission(...)`.
-   - 35 endpoints in `be/routers/*.py` (HR domain) still use `require_admin` (`be/auth.py:112`), checking a coarse role string instead of granular permissions.
+4. **Inconsistent Authorization Guards across HR vs Finance (Resolved on `feature/rbac`):**
+   - All HR and finance routes now use catalog permission guards; the three previously open finance routes are guarded as well.
+   - `require_admin` and the role-string checks were removed. On `main` (before the merge) the previous state still applies.
 5. **Absence of Background Task Infrastructure (Medium):**
    - High-latency tasks—such as PDF OCR extraction (`bill_extractor.py`), multi-period financial report compilation (`reports_service.py`), and statement import parsing—run synchronously in the HTTP request thread. There is no queue or worker pool.
 6. **Monolithic Frontend Script Injection (Low/Medium):**
    - Inlining 28 JavaScript files into a single `<script>` block in `dist/index.html` creates a brittle runtime context: an uncaught syntax error in any single file halts the entire application execution.
-7. **Document Generation Platform Coupling (Medium):**
+7. **Silent Startup Seeding (Medium):**
+   - `init_db()` runs at import time. The RBAC catalog sync now fails startup loudly and no longer re-creates user-role links; the finance-lookup and default-tax seeds are still wrapped in `except Exception: pass`, so a failure there is invisible.
+8. **Document Generation Platform Coupling (Medium):**
    - `be/services/pdf_converter.py` couples PDF generation to Windows COM (`win32com.client`) or local LibreOffice binaries. Linux production containers require `libreoffice` pre-installed or fallback to Google Drive API.
 
 ---
 
-## 9. Recommended Next 5 Implementation Slices
+## 9. Recommended Next Slices
 
-1. **Slice 1: Implement Structured Payroll Deductions Workflow**
-   - *Context:* The repository is currently on branch `feature/payroll-deductions`.
-   - *Scope:* Extend the in-page payroll runner (`be/finance/routers/payroll.py`, `fe/public/js/finance-payroll.js`) to support structured, itemized deductions (social insurance, salary advances, tax withholdings, penalties) with inline breakdowns in the worksheet and payslip generation.
-2. **Slice 2: Harmonize HR Domain Routes with RBAC (`require_permission`)**
-   - *Context:* Eliminate the legacy `require_admin` role guard across 35 HR endpoints.
-   - *Scope:* Replace `require_admin` in `be/routers/*.py` with canonical RBAC permissions (`hr.employee.write`, `hr.salary.write`, `hr.vacation.write`, etc.), ensuring full parity with the Finance domain's authorization model.
-3. **Slice 3: Activate Phase 7 Role Expansion**
-   - *Context:* Complete the deferred role expansion from `docs/finance-module/01-implementation-plan.md`.
-   - *Scope:* Seed `accountant`, `hr_admin`, and `hr_staff` in `be/core/rbac_seed.py` with their pre-defined permission bundles; provide an admin UI or migration script to assign users to these roles.
-4. **Slice 4: Cleanup Dormant Sheets/Dual Repositories and Align Documentation**
-   - *Context:* Remove obsolete code paths and resolve docstring drift.
-   - *Scope:* Update `AGENTS.md` and `be/main.py` to document the SQL persistence engine accurately; clean up dead imports in `be/auth.py`; archive or remove `be/repositories/sheets/` and `be/repositories/dual/`.
-5. **Slice 5: Complete Employee Self-Service Payslip Portal**
-   - *Context:* Payslips can be generated on the backend, but the employee view is a placeholder.
-   - *Scope:* Wire `fe/src/partials/employee/sections/payslips.html` to `fe/finance-api.js` to enable authenticated employees to view historical pay runs and download generated PDF payslips on demand.
+The list that was recorded here on September 22, 2026 is superseded. The current sequence lives in [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md): the HR-route harmonization and role-expansion slices were replaced by the RBAC initiative (section 3A there), and the documentation and legacy cleanup and payslip slices remain.
 
 ---
 
@@ -295,7 +291,7 @@ hrflow/
 
 1. **Employer Tax/Contribution Handling on Payroll Settlement:**
    - *Question:* When payroll transitions to `status='paid'`, should `payroll_service.py` debit the bank account strictly by `total_net` (wages disbursed to employees), or also generate ledger disbursements for employer tax and insurance contributions?
-   - *Current Code Behavior:* It records net pay disbursements against the selected target bank accounts (`funding_account_id_ext`, `funding_account_id_int`).
+   - *Current Code Behavior:* It records net pay disbursements against the selected target bank accounts (`funding_account_id_ext`, `funding_account_id_int`). `post_journal` posts only net-disbursement entries and never generates deduction, tax, employer-cost, or liability lines.
 2. **Permanent Storage Destination for Production Files:**
    - *Question:* Is Google Drive intended as the permanent cloud file store, or should an S3-compatible object store (e.g. AWS S3, Cloudflare R2, MinIO) replace `drive_client.py` and `LocalStorageClient` for containerized cloud deployments?
 3. **Multi-Currency and Automated FX Feeds:**

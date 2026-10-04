@@ -98,9 +98,8 @@ function updateFinanceNavVisibility() {
   const canSee = window.AdminNav && typeof window.AdminNav.canSeeModule === "function"
     ? window.AdminNav.canSeeModule("finance")
     : (() => {
-        const role = SessionInfo.getRole();
         const perms = typeof SessionInfo.getPermissions === "function" ? SessionInfo.getPermissions() : [];
-        return role === "admin" || role === "system_admin" || perms.some((p) => p.startsWith("finance."));
+        return perms.some((p) => p.startsWith("finance."));
       })();
 
   if (group) {

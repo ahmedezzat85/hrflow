@@ -136,8 +136,8 @@ def test_security_headers_present_on_every_response(app_client):
 
 
 def test_login_response_never_contains_a_token_field(app_client, monkeypatch):
-    def fake_login_with_google(credential):
-        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
+    def fake_login_with_google(credential, user_repo=None):
+        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
 
     monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
 
@@ -155,8 +155,8 @@ def test_login_sets_httponly_session_cookie_with_correct_flags(app_client, monke
     Config.COOKIE_SECURE/COOKIE_SAMESITE, but be reflected in the real
     HTTP response header sent to the browser.
     """
-    def fake_login_with_google(credential):
-        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
+    def fake_login_with_google(credential, user_repo=None):
+        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
 
     monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
 
@@ -209,8 +209,8 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
     monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
-    def fake_login_with_google(credential):
-        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin"}
+    def fake_login_with_google(credential, user_repo=None):
+        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
     monkeypatch.setattr(auth_router_module, "login_with_google", fake_login_with_google)
 
     from fastapi.testclient import TestClient

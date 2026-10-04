@@ -139,7 +139,7 @@ class PayrollService:
         user_email: Optional[str] = None,
     ) -> PayrollTaxSettingsDB:
         """
-        Creates a new effective-dated payroll tax settings record (system_admin only).
+        Creates a new effective-dated payroll tax settings record (Super-Admin / Financial-Admin only).
         Validates effective_from is the first day of a month (YYYY-MM-01).
         """
         import re

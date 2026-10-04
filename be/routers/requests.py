@@ -9,8 +9,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from auth import get_current_user, require_admin
-from deps import resolve_target_employee, audit_log, current_user_employee_scope
+from auth import get_current_user
+from core.permissions import require_permission
+from deps import resolve_target_employee, audit_log, permission_scope, Scope
 from models import RequestCreate, RequestAction
 from repositories.interfaces import RequestRepository, EmployeeRepository, AuditRepository
 from repositories.deps import get_request_repo, get_employee_repo, get_audit_repo
@@ -21,21 +22,24 @@ router = APIRouter(prefix="/api/requests", tags=["Requests"])
 @router.get("")
 def get_requests(
     type: Optional[str] = Query(None),
-    scoped_employee_id: Optional[int] = Depends(current_user_employee_scope),
+    scope: Scope = Depends(permission_scope("hr.request.read", "self.requests.read")),
     request_repo: RequestRepository = Depends(get_request_repo),
 ):
+    scoped_employee_id = None if scope.is_all else scope.employee_id
     return request_repo.list_requests(type_filter=type, scoped_employee_id=scoped_employee_id)
 
 
 @router.post("", status_code=201)
 def create_request(
     payload: RequestCreate,
+    scope: Scope = Depends(permission_scope("hr.request.write", "self.requests.write")),
     current_user: dict = Depends(get_current_user),
     request_repo: RequestRepository = Depends(get_request_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
 ):
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
-        employee_repo, current_user, payload.employee_id, payload.employee_name
+        employee_repo, current_user, payload.employee_id, payload.employee_name,
+        required_permission="hr.request.write"
     )
 
     record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
@@ -61,7 +65,7 @@ def create_request(
 def action_request(
     req_id: int,
     payload: RequestAction,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permission("hr.request.write")),
     request_repo: RequestRepository = Depends(get_request_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):

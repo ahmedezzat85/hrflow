@@ -4,11 +4,11 @@ API router for Guided Payroll Runs, Lifecycle State Transitions,
 Disbursements, GL Journal Posting, and Employee Payslips (Story 8.1).
 """
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status, Response
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
-from core.permissions import require_permission
+from core.permissions import require_permission, get_current_user_permissions
 from finance.schemas import (
     PayrollRunResponse,
     PayrollRunPreviewRequest,
@@ -98,7 +98,7 @@ def create_preview_adjustment(
     preview_id: str = Path(..., description="Preview ID"),
     req: PayrollAdjustmentCreate = ...,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Adds a Commission or Bonus adjustment to a preview and immediately updates recipient and run totals."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -111,7 +111,7 @@ def update_preview_adjustment(
     adjustment_id: str = Path(..., description="Adjustment ID"),
     req: PayrollAdjustmentUpdate = ...,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Updates an existing adjustment on a preview and recalculates totals immediately."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -123,7 +123,7 @@ def delete_preview_adjustment(
     preview_id: str = Path(..., description="Preview ID"),
     adjustment_id: str = Path(..., description="Adjustment ID"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Removes an adjustment from a preview and recalculates totals immediately."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -134,7 +134,7 @@ def delete_preview_adjustment(
 def generate_payroll_run_from_plans(
     req: PayrollRunGenerateRequest,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Generates a payroll run and split net payment lines directly from active employee compensation plans."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -156,7 +156,7 @@ def generate_payroll_run_from_plans(
 def create_payroll_run(
     req: PayrollRunCreate,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Creates a net-payment payroll run and snapshots employee payment lines."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -195,7 +195,7 @@ def add_payroll_line(
     run_id: int = Path(..., description="Payroll Run ID"),
     req: PayrollLineCreate = ...,
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Adds an ad-hoc commission or bonus line to a draft payroll run."""
     return service.add_ad_hoc_line(
@@ -212,7 +212,7 @@ def delete_payroll_line(
     run_id: int = Path(..., description="Payroll Run ID"),
     line_id: int = Path(..., description="Payroll Line ID to delete"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Removes an ad-hoc or mistakenly added line from a draft payroll run."""
     return service.delete_line(run_id=run_id, line_id=line_id)
@@ -222,7 +222,7 @@ def delete_payroll_line(
 def submit_payroll_run(
     run_id: int = Path(..., description="Payroll Run ID to submit for approval"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """Submits a draft payroll run for maker-checker approval."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -231,21 +231,28 @@ def submit_payroll_run(
 
 @router.post("/runs/{run_id}/approve", response_model=PayrollRunResponse)
 def approve_payroll_run(
+    request: Request,
     run_id: int = Path(..., description="Payroll Run ID to approve"),
     allow_self_approval: bool = Query(False, description="Allow self-approval to bypass maker-checker"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.approve")),
+    db: Session = Depends(get_db),
 ):
     """Maker-checker approval for payroll run. Enforces blocking exception verification and prevents self-approval."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    return service.approve_run(run_id=run_id, user_email=user_email, allow_self_approval=allow_self_approval)
+    effective_self_approval = False
+    if allow_self_approval:
+        perms = get_current_user_permissions(request, current_user=current_user, db=db)
+        if bool(current_user.get("is_super_admin")) or ("finance.payroll.prepare" in perms and "finance.payroll.approve" in perms):
+            effective_self_approval = True
+    return service.approve_run(run_id=run_id, user_email=user_email, allow_self_approval=effective_self_approval)
 
 
 @router.post("/runs/{run_id}/finalize", response_model=PayrollRunResponse)
 def finalize_payroll_run(
     run_id: int = Path(..., description="Payroll Run ID to finalize"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.approve")),
 ):
     """Locks the payroll run against edits and enables funding/disbursement."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -272,7 +279,7 @@ def execute_payroll_payment(
     req: PayrollPaymentRequest,
     run_id: int = Path(..., description="Payroll Run ID to disburse"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.pay")),
 ):
     """
     Executes net salary funding and disbursements.
@@ -292,7 +299,7 @@ def execute_payroll_payment(
 def post_payroll_journal(
     run_id: int = Path(..., description="Payroll Run ID to post to GL"),
     service: PayrollService = Depends(get_payroll_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.pay")),
 ):
     """Generates and links a balanced General Ledger transaction for the payroll run."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
@@ -387,7 +394,7 @@ def create_tax_settings(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll_tax.write")),
 ):
-    """Create a new effective-dated payroll tax settings version (system_admin only)."""
+    """Create a new effective-dated payroll tax settings version (Super-Admin / Financial-Admin only)."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     brackets_dicts = [b.model_dump() for b in payload.brackets]
     return service.create_tax_settings(

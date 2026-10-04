@@ -1,5 +1,10 @@
 function renderEmployeesTable(filter = '') {
   const body = document.getElementById('employeesTableBody');
+  const addBtn = document.getElementById('btnAddEmployee');
+  const canWrite = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.employee.write') : true;
+  if (addBtn) {
+    addBtn.style.display = canWrite ? '' : 'none';
+  }
   const f = filter.toLowerCase();
   body.innerHTML = employees.filter(e => e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
     <td data-label="ID" class="col-id">${e.id}</td>
@@ -11,9 +16,9 @@ function renderEmployeesTable(filter = '') {
     <td data-label="Status">${statusPill(e.status)}</td>
     <td data-label="Actions" class="col-actions">
       <button class="icon-action" onclick="viewProfile('${e.id}')" title="View Profile"><i class="fa-solid fa-eye"></i></button>
-      <button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+      ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
       <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
-      <button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
     </td></tr>`).join('') || renderEmptyTableRow(7, 'No employees found.', 'fa-solid fa-user-slash');
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
@@ -627,7 +632,11 @@ async function openBankAccountModal() {
   ibanInput.value = '';
   ibanInput.readOnly = false;
   document.getElementById('fBankSwift').value = '';
-  revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+  const canRevealBank = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.employee_bank_account.reveal') : true;
+  if (revealBtn) {
+    revealBtn.style.display = canRevealBank ? '' : 'none';
+    revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+  }
   titleEl.textContent = _bankAccountHasDetails ? 'Edit Bank Account' : 'Add Bank Account';
   if (_bankAccountHasDetails) {
     try {

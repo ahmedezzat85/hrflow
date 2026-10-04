@@ -1,8 +1,9 @@
 # HRFlow Decision Log
 
 **Status:** Draft — needs owner review  
-**Last verified against:** `main` at `9d6394aeeaa3631d1787a6a94b8181da3c0c3690`  
-**Last updated:** September 22, 2026  
+**Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
+**Last updated:** October 1, 2026  
+**Branch note:** D-011 to D-013 and the D-008/D-009/D-010 amendments were added on `feature/rbac` (base `c236b00`) and accepted by the owner on October 1, 2026. They are not part of `main` until the branch is merged. The bullet tagged **[Pending owner OK]** (startup seeding) was found during the October 1, 2026 code reconciliation, after that approval, and is not yet accepted.  
 **Authority:** Owner-approved decisions, reconciled against repository context documents  
 
 ---
@@ -135,7 +136,12 @@ This document records durable product and architectural decisions approved by th
 - **Evidence / Reference:**
   - Owner-approved Project discussion (September 25, 2026), payroll UI journey redesign planning thread.
   - Verified against `feature/payroll-deductions` branch code: `be/finance/routers/payroll.py`, `be/finance/routers/statutory.py`, `be/finance/services/payroll_service.py`, `be/core/permissions.py`, `be/core/rbac_seed.py`, `be/finance/schemas.py`, `fe/api/finance/payroll-api.js`, `fe/api/finance/statutory-api.js`, `fe/public/js/finance-payroll.js`.
-  - *Implementation Status:* In progress (six-screen redesign implementation).
+  - *Implementation Status:* Implemented in code as of the October 1, 2026 reconciliation: Screen 6 creates statutory obligations with the `payroll_run_id:{id}` note tag and gates on `finance.statutory.write` in `fe/public/js/finance-payroll.js`; the backend statutory routes still enforce `finance.bill.*` until RBAC slice 4. The remaining screen-to-lifecycle mapping was not re-audited.
+- **Amendment (accepted via D-011, October 1, 2026):**
+  - The accepted frontend/backend gap is closed: the six statutory-obligation routes move to `finance.statutory.read` and `finance.statutory.write`.
+  - Financial-Admin receives `finance.statutory.*`, which satisfies this decision's condition for assigning it to a non-admin role.
+  - The deferral of custom roles ends: roles are defined by D-011.
+  - Unchanged: Screen 6 linkage via the manual statutory-obligations endpoint, the `payroll_run_id:{id}` note tag, and the six-screen-to-lifecycle mapping.
 
 ### D-009 — Payroll Income Tax Calculation, Effective-Dated Persistence, and NET Basis Solver
 - **Status:** Accepted
@@ -154,6 +160,9 @@ This document records durable product and architectural decisions approved by th
 - **Evidence / Reference:**
   - Owner-approved Project discussion (September 29, 2026), `docs/payroll/12-payroll-income-tax-calculation-spec.md`.
   - Implemented in `be/finance/services/payroll_calculation_helper.py`, `be/finance/services/payroll_service.py`, `be/finance/models.py`, `be/finance/routers/payroll.py`, `be/migrations/versions/0023_payroll_income_tax_settings.py`, and verified in `be/tests/test_payroll_income_tax.py`.
+- **Amendment (accepted via D-011, October 1, 2026):**
+  - "Restricted to `system_admin`" becomes "granted to Super-Admin and Financial-Admin". All other content is unchanged.
+- **Code reconciliation (October 1, 2026):** `init_db()` seeds default tax settings (effective 2026-01-01) at startup when none exist, so `MISSING_TAX_SETTINGS` applies to periods before the earliest settings record or if seeding failed. The rest was confirmed present: migration `0023`, `finance.payroll_tax.*` keys, and the `/api/finance/payroll/tax-settings` routes.
 
 ### D-010 — Admin Dual-Rail Navigation Redesign and Payroll Module Separation (N-1–N-10)
 - **Status:** Accepted
@@ -174,6 +183,90 @@ This document records durable product and architectural decisions approved by th
   - Visual reference: `docs/ui-design/hrflow-dual-rail-design.html`.
   - Branch `ui/dual-rail-nav`, commit `c5b6b67`. Verified across 252 tests with 0 regressions.
   - *Implementation Status:* Complete.
+- **Amendment (accepted via D-011, October 1, 2026):**
+  - N-9 is superseded for visibility rules: module visibility becomes permission-derived per module, and a Super-Admin-only System module is added. All other content is unchanged.
+
+
+### D-011 — RBAC Role Model: Permission-Based Roles, Code-Defined Catalog, Seeded Roles
+
+- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
+- **Decision:**
+  - **Single authority. [Agreed]** RBAC (`roles`, `role_permissions`, `user_roles`) is the sole authorization authority. The legacy `users.role` string, the `role` claim in the session token, and the `*` wildcard are retired. This is a long-term direction delivered in slices; legacy paths stay until each consumer is migrated.
+  - **Permissions are code. [Agreed]** Permission keys are defined in a code catalog with the format `<module>.<resource>.<action>`. Roles are database rows composed from catalog keys. There are no prefix wildcards.
+  - **Implication rule. [Agreed]** Write implies read. Action keys such as `approve`, `pay`, `prepare`, `reveal`, `manage` and `verify` imply read of the same resource and never imply another action. Implication is declared per key in the catalog, enforced in the role editor, and re-validated on the server when a role is saved. Role rows are stored closed under implication.
+  - **Maker / authorizer. [Agreed]** Payroll's single `finance.payroll.write` is split into `finance.payroll.prepare`, `finance.payroll.approve` and `finance.payroll.pay` (approve and pay are separate keys). Only the Super-Admin role holds all three. Payroll already enforces at runtime that the user who submitted a run cannot approve it (`approve_run`; bypassed by env `ENFORCE_MAKER_CHECKER=false` or by the `allow_self_approval` query parameter, which any `finance.payroll.write` holder can pass today); that check stays. **[Approved October 2, 2026; resolves Q-013]** After the split, `allow_self_approval` is honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve`, which only Super-Admin does by default.
+  - **Initial roles. [Agreed]** Five seeded roles: **Super-Admin**, **HR-Admin**, **Financial-Admin**, **Payroll-Maker**, **Employee** (grants in `rbac/permission-matrix.md`).
+    - Super-Admin: locked by a flag; cannot be edited, renamed or deleted by anyone, including a Super-Admin.
+    - The other four are editable by Super-Admin and are created once by the seed and never overwritten afterwards.
+    - Only Super-Admin may create, edit or delete roles and assign them.
+  - **`system.*` keys. [Agreed]** `system.users.manage`, `system.roles.manage` and `system.audit.read` are held only by the locked Super-Admin role and cannot be assigned to any other role.
+  - **Composition. [Agreed]** Union of roles only. No deny rules, no role inheritance.
+  - **Scope. [Agreed]** Data scope follows the keys: `self.*` means own records, `hr.*` means all records, and a user holding both sees all. Shared endpoints stop deciding scope from `role == "admin"`. Company-wide resources (company documents) carry no employee scope.
+  - **Role contents. [Agreed]**
+    - HR-Admin: full HR including salaries, employee bank details and salary payment documents; no finance or payroll.
+    - Financial-Admin: all finance and payroll including `finance.statutory.*` and `finance.payroll_tax.*`; can approve and pay payroll but not prepare it.
+    - Payroll-Maker: prepare only.
+    - Employee: own records, plus submitting requests, vacations and claims.
+    - New `self.*` keys are created for vacations, claims, bank details and documents ("do it properly").
+  - **Super-Admin completeness. [Approved]** Super-Admin's effective permissions are the full catalog, computed at resolution time, so a newly added key can never be missing for Super-Admin. Its `role_permissions` rows are kept in sync by the seed for display.
+  - **Catalog sync. [Approved; resolves Q-010]** An idempotent catalog sync inserts missing keys and never removes or re-grants keys on editable roles. It runs at application start through the existing `init_db()` startup path (permission rows and Super-Admin rows only). New keys are granted to editable roles only through migrations that carry a frozen key list.
+  - **Startup seeding. [Pending owner OK]** Verified in code: `seed_rbac` runs on every start, re-grants all keys to `system_admin`, and re-links users to roles from the legacy `users.role`. The re-link would undo role changes made on the Users page, so it is removed; role assignment is owned only by the access service and the migration. Seeding and sync errors are logged and fail startup instead of being swallowed by `except Exception: pass`.
+  - **Guard clean-up. [Approved]** (a) The `finance.vendor.write` alias that lets a vendor-writer manage and verify payment instructions is removed. (b) The finance activity timeline gets per-entity read guards. (c) Feature-flag and observability GETs get a new `finance.settings.read`. (d) The `finance.adjustment.manage` check reads resolved permissions instead of the session payload. (e) A coverage test fails any route that has neither a permission guard nor an explicit public/authenticated allow-list entry.
+- **Rationale:**
+  - The schema already models a role as a set of permissions. What is missing is a single authority (today a legacy admin string and a name-matched wildcard run alongside RBAC), role and user management, and guards on the 31 `require_admin` route registrations in the HR routers.
+  - Splitting payroll keys gives the maker/authorizer control the owner wants while letting the Super-Admin keep both for a small team.
+  - Keeping roles few and Super-Admin-defined avoids a complex permission matrix and corner cases (owner's stated goal).
+- **Implementation Implications:**
+  - New code module for the catalog and role seeds; new Alembic migration(s) for role columns; `core/permissions.py` rewrite; scope helpers in `be/deps.py` rewritten; all HR routers moved off `require_admin`.
+  - Test fixtures that mint session tokens with the legacy role must be reworked.
+  - Frontend `SessionInfo.hasPermission` and `AdminNav.canSeeModule` stop shortcutting on role strings.
+  - Full detail: `rbac/technical-spec.md`, `rbac/implementation-plan.md`.
+- **Evidence / Reference:** `be/core/permissions.py`, `be/core/rbac_seed.py`, `be/core/rbac_models.py`, `be/db.py` (`init_db`), `be/deps.py`, `be/auth.py`, `be/finance/services/payroll_service.py` (`approve_run`), `be/finance/routers/payroll.py`, `vendors.py`, `activity.py`, `observability.py`, `bank_accounts.py`; route inventory in `rbac/route-guard-inventory.csv` (236 route registrations).
+- **Amendment (owner decision, October 3, 2026) — one assigned role per user:**
+  - Supersedes the **Composition** bullet above ("Union of roles only").
+  - A user holds **at most one assigned role**. Effective permissions are that role plus the derived Employee baseline when an employee is linked (for example Employee + Payroll-Maker, or Employee + Super-Admin). Still no deny rules and no role inheritance.
+  - The Employee role stays editable on the Roles page but is never assigned to, or shown on, a user.
+  - Whether a custom role may combine `finance.payroll.prepare` with `approve` or `pay` is left to the Super-Admin's judgment; the role editor does not block it.
+  - Existing development data is not migrated: the access service replaces whatever rows a user holds with the single role the next time the role is set. No database constraint is added yet.
+
+### D-012 — Identity Lifecycle: Users Page, External Users, Archiving, Self-Protection
+
+- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
+- **Decision:**
+  - **Users page. [Agreed]** A Super-Admin-only Users page (Core domain), alongside a Roles page, in a new Super-Admin-only System area of the admin navigation. Roles are not assigned from the Employees page.
+  - **One creation path. [Agreed]** An employee is created only on the Employees page; a user is provisioned for them automatically. No second creation step.
+  - **Employee role is derived. [Agreed]** Any user with a linked employee record automatically receives the Employee role's permissions. It is not shown, highlighted or manually assigned. If the link disappears, so does the baseline.
+  - **Assigning roles. [Agreed]** From the Users page the Super-Admin picks an existing employee or creates a new **external user** (no linked employee), which is labeled External. A user created from the Users page must be given at least one role.
+  - **Always one effective role. [Agreed]** A user always has at least one effective role. For external users this means their last role cannot be revoked; they are archived instead.
+  - **Deletion rule. [Agreed]** An employee whose user holds a role above the Employee baseline cannot be deleted until the Users page revokes it. Deleting a baseline-only employee also removes the linked user. *(The user-removal half is the drafter's reading of the discussion; confirm.)*
+  - **Archived, not disabled. [Agreed]** There is no disable switch. External users who must be removed are **Archived**, so history is kept. The future employee equivalent is also called **Archived** (see the intake note).
+  - **Archived users keep roles but have no access. [Approved mechanism]** Roles stay on the record for history. Access is blocked by an archived check at sign-in and on every authenticated request, so a still-valid session cookie stops working immediately. Whether an archived user can ever be restored is open (Q-006).
+  - **Super-Admin management. [Agreed]** A Super-Admin can add other Super-Admins and can remove (revoke or archive) other Super-Admins, for example when one leaves the company.
+  - **Self-protection. [Agreed]** No user can delete, archive or revoke the access of their own account, whatever their role (examples: an HR-Admin deleting their own employee record; a Super-Admin archiving themselves; a Super-Admin revoking their own Super-Admin role). The last active Super-Admin cannot be revoked, archived or deleted.
+  - **One rules owner. [Approved]** All lifecycle rules live in one Core access service. HR calls it when creating and deleting employees; the HR repository stops writing the users table directly.
+- **Rationale:**
+  - Avoids duplicate user creation, supports non-employee users (for example an external accountant), keeps history, and gives a guarantee that departed people cannot return through an old session.
+  - HR owns employees and Core owns authentication and RBAC (doc 02 §3); a single access service keeps that boundary instead of letting two routers each enforce part of the rules.
+- **Implementation Implications:**
+  - New `users` columns for archive state and external-user name; an access service; roles and users APIs; two new frontend pages and navigation entries; a per-request database check in `get_current_user`.
+  - Today employee creation inserts a `users` row with the legacy role and no `user_roles` row; employee deletion deletes only the employee, leaving the `users` row in place (read from code, not executed). Both change.
+- **Evidence / Reference:** `be/routers/employees.py`, `be/repositories/sql/employees.py` (`create`, `delete`), `be/models_db.py` (`UserDB`), `be/repositories/sql/auth.py`.
+- **Amendment (owner decision, October 3, 2026) — one assigned role per user:**
+  - **Assigning roles:** a user created from the Users page (external user) must be given **exactly one** role, replacing "at least one role".
+  - **Always one effective role:** an external user's role can be changed but not cleared; to remove access the user is archived. A user with a linked employee has zero or one assigned role; zero means Employee baseline only.
+  - API: `PUT /api/access/users/{id}/role` with `{role_id}` replaces `PUT /users/{id}/roles`; assigning the Employee role is rejected.
+
+### D-013 — Sign-In Policy: Provisioned Google Accounts of Any Domain
+
+- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
+- **Decision:**
+  - **Google-only. [Agreed]** Sign-in remains Google Sign-In only. No passwords or other providers.
+  - **Any domain. [Agreed]** Accounts outside the company Workspace domain are allowed, so external users can sign in.
+  - **Provisioned only. [Agreed]** Access requires an existing, non-archived HRFlow user matched by verified Google email. There is no self-registration.
+  - **Verification kept. [Approved]** `email_verified` stays mandatory and email matching stays case-insensitive. The workspace-domain check (`ALLOWED_WORKSPACE_DOMAIN` against the Google `hd` claim) is dropped as an access gate; if retained at all it would become informational. The exact configuration change is for the spec to settle.
+- **Rationale:** External users cannot be provisioned if only Workspace accounts can sign in. The user table already acts as the allow-list, and the archived check closes the remaining gap.
+- **Implementation Implications:** amends `be/auth.py` (`verify_google_credential`), production configuration, and doc 02 §5 rule 2, which currently states that production mandates domain validation.
+- **Evidence / Reference:** `be/auth.py`, `be/config.py`.
 
 ---
 

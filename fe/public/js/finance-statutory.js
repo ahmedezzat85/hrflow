@@ -37,6 +37,11 @@ async function loadFinanceStatutory() {
 
     const data = await FinanceApi.listStatutoryObligations(params);
     _statutoryObligations = Array.isArray(data) ? data : [];
+    const addBtn = document.getElementById("financeAddStatutoryBtn");
+    if (addBtn) {
+      const canWrite = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.statutory.write') : true;
+      addBtn.style.display = canWrite ? '' : 'none';
+    }
     renderFinanceStatutoryTable();
     updateFinanceStatutoryMetrics();
   } catch (err) {

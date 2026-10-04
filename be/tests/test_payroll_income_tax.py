@@ -9,7 +9,7 @@ Phase 1 verification tests for Egyptian Income Tax calculation foundation:
 - Variable compensation (bonuses, commissions) added to taxable gross
 - Effective-dated tax settings resolution and run immutability
 - Blocking exception MISSING_TAX_SETTINGS enforcement
-- RBAC permissions for tax settings endpoints (system_admin only)
+- RBAC permissions for tax settings endpoints (Super-Admin / Financial-Admin)
 """
 from decimal import Decimal
 import json
@@ -478,9 +478,8 @@ def test_tax_settings_rbac_permissions(app_client, admin_cookies):
     assert created["tax_limit_p_egp"] == 25000.0
 
     # 4. Unauthorized employee access (role employee)
-    from auth import create_session_token
-    emp_token = create_session_token("emp@tax_test.com", "employee", 99, name="Employee")
-    emp_cookies = {"hrflow_session": emp_token}
+    from conftest import create_test_user
+    emp_cookies = create_test_user("emp@tax_test.com", name="Employee")
 
     emp_res = app_client.get("/api/finance/payroll/tax-settings", cookies=emp_cookies)
     assert emp_res.status_code in (401, 403)

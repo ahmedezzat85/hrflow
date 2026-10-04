@@ -1,0 +1,237 @@
+file,method,path,handler,current_guard,proposed_guard,change_type
+routers/auth.py,POST,/api/auth/google,api_google_login,NONE,public (login/logout) / authenticated (me),unchanged
+routers/auth.py,GET,/api/auth/me,api_get_current_session,get_current_user,public (login/logout) / authenticated (me),unchanged
+routers/auth.py,POST,/api/auth/logout,api_logout,NONE,public (login/logout) / authenticated (me),unchanged
+routers/documents.py,GET,/api/company-documents,get_company_documents,get_current_user,hr.company_document.read,new-key
+routers/documents.py,POST,/api/company-documents,upload_company_document,require_admin,hr.company_document.write,new-key
+routers/documents.py,GET,/api/company-documents/{doc_id}/stream,stream_company_document,get_current_user,hr.company_document.read,new-key
+routers/documents.py,DELETE,/api/company-documents/{doc_id},delete_company_document,require_admin,hr.company_document.write,new-key
+routers/employee_bank_accounts.py,GET,/api/employees/{emp_id}/bank-account,get_bank_account,require_admin,hr.employee_bank_account.read | self.bank_account.read (own); reveal=true needs hr.employee_bank_account.reveal,new-key
+routers/employee_bank_accounts.py,PUT,/api/employees/{emp_id}/bank-account,upsert_bank_account,require_admin,hr.employee_bank_account.write,new-key
+routers/employees.py,GET,/api/employees,get_employees,NONE,hr.employee.read (all) | self.profile.read (own record only),scope-by-permission
+routers/employees.py,GET,/api/employees/{emp_id},get_employee,get_current_user,hr.employee.read | self.profile.read (own),scope-by-permission
+routers/employees.py,POST,/api/employees,create_employee,hr.employee.write,hr.employee.write,unchanged
+routers/employees.py,PUT,/api/employees/{emp_id},update_employee,require_admin,hr.employee.write,key-from-admin
+routers/employees.py,DELETE,/api/employees/{emp_id},delete_employee,require_admin,hr.employee.write + lifecycle rules (blocked if elevated roles / self),key-from-admin
+routers/employees.py,GET,/api/employees/{emp_id}/notes,get_employee_notes,require_admin,hr.employee.read,key-from-admin
+routers/employees.py,POST,/api/employees/{emp_id}/notes,create_employee_note,require_admin,hr.employee.write,key-from-admin
+routers/employees.py,DELETE,/api/employees/notes/{note_id},delete_employee_note,require_admin,hr.employee.write,key-from-admin
+routers/employees.py,GET,/api/employees/{emp_id}/documents,get_employee_documents,get_current_user,hr.employee_document.read | self.document.read (own),scope-by-permission
+routers/employees.py,POST,/api/employees/{emp_id}/documents,upload_employee_document,get_current_user,hr.employee_document.write | self.document.write (own),scope-by-permission
+routers/employees.py,GET,/api/employees/documents/{doc_id}/stream,stream_employee_document,get_current_user,hr.employee_document.read | self.document.read (own),scope-by-permission
+routers/employees.py,DELETE,/api/employees/documents/{doc_id},delete_employee_document,get_current_user,hr.employee_document.write | self.document.write (own),scope-by-permission
+routers/export.py,GET,/api/export/status,get_export_status,require_admin,hr.export.run,key-from-admin
+routers/export.py,GET,/api/export/{dataset}/csv,export_dataset_csv,require_admin,hr.export.run + dataset read key (HR datasets) | finance.report.read + dataset read key (finance_* datasets),key-from-admin
+routers/export.py,POST,/api/export/{dataset}/sheets,export_dataset_to_google_sheets,require_admin,hr.export.run + dataset read key (HR datasets) | finance.report.read + dataset read key (finance_* datasets),key-from-admin
+routers/insurance.py,GET,/api/insurance/categories,get_insurance_categories,get_current_user,hr.insurance.read | self.claim.read,scope-by-permission
+routers/insurance.py,POST,/api/insurance/categories,create_insurance_category,require_admin,hr.insurance.write,key-from-admin
+routers/insurance.py,PUT,/api/insurance/categories/{cat_id},update_insurance_category,require_admin,hr.insurance.write,key-from-admin
+routers/insurance.py,DELETE,/api/insurance/categories/{cat_id},delete_insurance_category,require_admin,hr.insurance.write,key-from-admin
+routers/insurance.py,GET,/api/insurance/consumption,get_insurance_consumption,NONE,hr.insurance.read (all) | self.claim.read (own),scope-by-permission
+routers/insurance.py,GET,/api/insurance/claims,get_insurance_claims,NONE,hr.insurance.read (all) | self.claim.read (own),scope-by-permission
+routers/insurance.py,POST,/api/insurance/claims,submit_insurance_claim,get_current_user,hr.insurance.write (on behalf) | self.claim.write (own),scope-by-permission
+routers/insurance.py,POST,/api/insurance/claims/{claim_id}/action,action_insurance_claim,require_admin,hr.insurance.write,key-from-admin
+routers/requests.py,GET,/api/requests,get_requests,NONE,hr.request.read (all) | self.requests.read (own),scope-by-permission
+routers/requests.py,POST,/api/requests,create_request,get_current_user,hr.request.write (on behalf) | self.requests.write (own),scope-by-permission
+routers/requests.py,POST,/api/requests/{req_id}/action,action_request,require_admin,hr.request.write,key-from-admin
+routers/salary.py,GET,/api/salary/history,get_salary_history,get_current_user,hr.salary.read (all) | self.salary.read (own),scope-by-permission
+routers/salary.py,POST,/api/salary/raise,apply_raise,require_admin,hr.salary.write,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs/eligible,preview_eligible_employees,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs/eligible,preview_eligible_employees,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,POST,/api/salary-payment-docs/generate,generate_invoices,require_admin,hr.salary_payment_doc.write,key-from-admin
+routers/salary_payment_docs.py,POST,/api/salary-payment-docs/generate,generate_invoices,require_admin,hr.salary_payment_doc.write,key-from-admin
+routers/salary_payment_docs.py,POST,/api/salary-payment-docs/generate/{employee_id},generate_invoice_single,require_admin,hr.salary_payment_doc.write,key-from-admin
+routers/salary_payment_docs.py,POST,/api/salary-payment-docs/generate/{employee_id},generate_invoice_single,require_admin,hr.salary_payment_doc.write,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs,list_invoices,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs,list_invoices,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs/{invoice_id},get_invoice,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs/{invoice_id},get_invoice,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs/{invoice_id}/stream,stream_invoice_pdf,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/salary_payment_docs.py,GET,/api/salary-payment-docs/{invoice_id}/stream,stream_invoice_pdf,require_admin,hr.salary_payment_doc.read,key-from-admin
+routers/social_insurance.py,GET,/api/employees/{emp_id}/social-insurance,get_employee_social_insurance,hr.employee.read,hr.employee.read,unchanged
+routers/social_insurance.py,GET,/api/employees/{emp_id}/social-insurance/history,get_employee_social_insurance_history,hr.employee.read,hr.employee.read,unchanged
+routers/social_insurance.py,PUT,/api/employees/{emp_id}/social-insurance,set_employee_social_insurance,hr.salary.write,hr.salary.write,unchanged
+routers/system.py,GET,/api/audit-log,get_audit_log,require_admin,system.audit.read,new-key
+routers/system.py,GET,/api/health,health,NONE,public (health check),unchanged
+routers/vacations.py,GET,/api/vacations/history,get_vacation_history,NONE,hr.vacation.read (all) | self.vacation.read (own),scope-by-permission
+routers/vacations.py,POST,/api/vacations/request,request_vacation,get_current_user,hr.vacation.write (on behalf) | self.vacation.write (own),scope-by-permission
+finance/routers/activity.py,GET,/api/finance/activity/{entity_type}/{entity_id},get_entity_activity,get_current_user,per entity type: invoice->finance.invoice.read; bill->finance.bill.read; vendor->finance.vendor.read (+vendor_payment.reveal for unmasked); customer->finance.customer.read; transfer/cheque/transaction->finance.account.read,tightened
+finance/routers/bank_accounts.py,GET,/api/finance/accounts,list_company_bank_accounts,finance.account.read,finance.account.read,unchanged
+finance/routers/bank_accounts.py,GET,/api/finance/accounts/{account_id},get_company_bank_account,finance.account.read,finance.account.read,unchanged
+finance/routers/bank_accounts.py,POST,/api/finance/accounts,create_company_bank_account,finance.account.write,finance.account.write,unchanged
+finance/routers/bank_accounts.py,PUT,/api/finance/accounts/{account_id},update_company_bank_account,finance.account.write,finance.account.write,unchanged
+finance/routers/bank_accounts.py,DELETE,/api/finance/accounts/{account_id},deactivate_company_bank_account,finance.account.write,finance.account.write,unchanged
+finance/routers/bank_accounts.py,GET,/api/finance/accounts/{account_id}/transactions,list_account_transactions,finance.account.read,finance.account.read,unchanged
+finance/routers/bank_accounts.py,POST,/api/finance/accounts/{account_id}/transactions,create_account_transaction,finance.account.write,finance.account.write; entry_type=adjustment also needs finance.adjustment.manage (read from resolved permissions),bugfix
+finance/routers/bank_accounts.py,POST,/api/finance/accounts/{account_id}/transactions/preview,preview_account_transaction,finance.account.read,finance.account.read,unchanged
+finance/routers/bank_accounts.py,GET,/api/finance/accounts/{account_id}/transactions/petty-summary,get_account_petty_summary,finance.account.read,finance.account.read,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/extract,extract_bill_document,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,GET,/api/finance/bills/category-quality-report,get_bill_category_quality_report,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,GET,/api/finance/bills/queue-counts,get_bill_queue_counts,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/check-duplicate,check_bill_duplicate,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,GET,/api/finance/bills,list_vendor_bills,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,GET,/api/finance/bills/{bill_id},get_vendor_bill,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,POST,/api/finance/bills,create_vendor_bill,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/{bill_id}/approve,approve_vendor_bill,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/{bill_id}/schedule,schedule_vendor_bill,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,PUT,/api/finance/bills/{bill_id},update_vendor_bill,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,DELETE,/api/finance/bills/{bill_id},void_vendor_bill,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,GET,/api/finance/bills/{bill_id}/payments,list_bill_payments,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/{bill_id}/payments,record_bill_payment,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/{bill_id}/payments/{payment_id}/reverse,reverse_bill_payment,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,POST,/api/finance/bills/{bill_id}/attachment,upload_bill_attachment,finance.bill.write,finance.bill.write,unchanged
+finance/routers/bills.py,GET,/api/finance/bills/{bill_id}/attachment,get_bill_attachment,finance.bill.read,finance.bill.read,unchanged
+finance/routers/bills.py,DELETE,/api/finance/bills/{bill_id}/attachment,delete_bill_attachment,finance.bill.write,finance.bill.write,unchanged
+finance/routers/categories.py,GET,/api/finance/categories,list_categories,finance.account.read,finance.account.read,unchanged
+finance/routers/categories.py,GET,/api/finance/categories/{category_id},get_category,finance.account.read,finance.account.read,unchanged
+finance/routers/categories.py,POST,/api/finance/categories,create_category,finance.account.write,finance.account.write,unchanged
+finance/routers/categories.py,PATCH,/api/finance/categories/{category_id},update_category,finance.account.write,finance.account.write,unchanged
+finance/routers/categories.py,DELETE,/api/finance/categories/{category_id},deactivate_category,finance.account.write,finance.account.write,unchanged
+finance/routers/cheques.py,GET,/api/finance/cheques,list_cheques,finance.account.read,finance.account.read,unchanged
+finance/routers/cheques.py,GET,/api/finance/cheques/{cheque_id},get_cheque,finance.account.read,finance.account.read,unchanged
+finance/routers/cheques.py,POST,/api/finance/cheques,issue_cheque,finance.account.write,finance.account.write,unchanged
+finance/routers/cheques.py,PATCH,/api/finance/cheques/{cheque_id}/status,update_cheque_status,finance.account.write,finance.account.write,unchanged
+finance/routers/cheques.py,POST,/api/finance/cheques/{cheque_id}/replace,replace_cheque,finance.account.write,finance.account.write,unchanged
+finance/routers/compensation_plans.py,GET,/api/finance/employees/{employee_id}/compensation-plan,get_active_compensation_plan,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/compensation_plans.py,GET,/api/finance/employees/{employee_id}/compensation-plan/history,get_compensation_plan_history,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/compensation_plans.py,PUT,/api/finance/employees/{employee_id}/compensation-plan/{component_type},set_compensation_component,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/customers.py,POST,/api/finance/customers/check-duplicate,check_duplicate_customers,finance.customer.read,finance.customer.read,unchanged
+finance/routers/customers.py,GET,/api/finance/customers,list_customers,finance.customer.read,finance.customer.read,unchanged
+finance/routers/customers.py,GET,/api/finance/customers/{customer_id}/360,get_customer_360,finance.customer.read,finance.customer.read,unchanged
+finance/routers/customers.py,GET,/api/finance/customers/{customer_id},get_customer,finance.customer.read,finance.customer.read,unchanged
+finance/routers/customers.py,POST,/api/finance/customers,create_customer,finance.customer.write,finance.customer.write,unchanged
+finance/routers/customers.py,PUT,/api/finance/customers/{customer_id},update_customer,finance.customer.write,finance.customer.write,unchanged
+finance/routers/customers.py,DELETE,/api/finance/customers/{customer_id},deactivate_customer,finance.customer.write,finance.customer.write,unchanged
+finance/routers/observability.py,GET,/api/finance/feature-flags,get_feature_flags,get_current_user,finance.settings.read,tightened
+finance/routers/observability.py,PATCH,/api/finance/feature-flags,update_feature_flags,finance.settings.write,finance.settings.write,unchanged
+finance/routers/observability.py,GET,/api/finance/observability/metrics,get_observability_metrics,get_current_user,finance.settings.read,tightened
+finance/routers/payment_types.py,GET,/api/finance/payment-types,list_payment_types,finance.account.read,finance.account.read,unchanged
+finance/routers/payment_types.py,GET,/api/finance/payment-types/{pt_id},get_payment_type,finance.account.read,finance.account.read,unchanged
+finance/routers/payment_types.py,POST,/api/finance/payment-types,create_payment_type,finance.account.write,finance.account.write,unchanged
+finance/routers/payment_types.py,PATCH,/api/finance/payment-types/{pt_id},update_payment_type,finance.account.write,finance.account.write,unchanged
+finance/routers/payment_types.py,DELETE,/api/finance/payment-types/{pt_id},deactivate_payment_type,finance.account.write,finance.account.write,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/runs,list_payroll_runs,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,POST,/api/finance/payroll/previews,preview_payroll_run,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/preview,preview_payroll_run,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/previews/{preview_id},get_preview,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/previews/{preview_id}/adjustments,list_preview_adjustments,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,POST,/api/finance/payroll/previews/{preview_id}/adjustments,create_preview_adjustment,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,PATCH,/api/finance/payroll/previews/{preview_id}/adjustments/{adjustment_id},update_preview_adjustment,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,DELETE,/api/finance/payroll/previews/{preview_id}/adjustments/{adjustment_id},delete_preview_adjustment,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/generate,generate_payroll_run_from_plans,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,POST,/api/finance/payroll/runs,create_payroll_run,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,GET,/api/finance/payroll/runs/{run_id},get_payroll_run_detail,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/{run_id}/lines,add_payroll_line,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,DELETE,/api/finance/payroll/runs/{run_id}/lines/{line_id},delete_payroll_line,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/{run_id}/submit,submit_payroll_run,finance.payroll.write,finance.payroll.prepare,key-split
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/{run_id}/approve,approve_payroll_run,finance.payroll.write,finance.payroll.approve,key-split
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/{run_id}/finalize,finalize_payroll_run,finance.payroll.write,finance.payroll.approve,key-split
+finance/routers/payroll.py,GET,/api/finance/payroll/runs/{run_id}/export,export_payroll_run_csv,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/{run_id}/pay,execute_payroll_payment,finance.payroll.write,finance.payroll.pay,key-split
+finance/routers/payroll.py,POST,/api/finance/payroll/runs/{run_id}/post-journal,post_payroll_journal,finance.payroll.write,finance.payroll.pay,key-split
+finance/routers/payroll.py,GET,/api/finance/payroll/payslips/my,list_my_payslips,self.payslip.read,self.payslip.read,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/runs/{run_id}/payslips/{employee_id},get_employee_payslip,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/settings,get_payroll_settings,finance.payroll.read,finance.payroll.read,unchanged
+finance/routers/payroll.py,PUT,/api/finance/payroll/settings,update_payroll_settings,finance.settings.write,finance.settings.write,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/tax-settings/template,get_tax_brackets_template,finance.payroll_tax.read,finance.payroll_tax.read,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/tax-settings/effective,get_effective_tax_settings,finance.payroll_tax.read,finance.payroll_tax.read,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/tax-settings,list_tax_settings,finance.payroll_tax.read,finance.payroll_tax.read,unchanged
+finance/routers/payroll.py,POST,/api/finance/payroll/tax-settings,create_tax_settings,finance.payroll_tax.write,finance.payroll_tax.write,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/summary,get_finance_summary,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/attention-queue,get_attention_queue,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,POST,/api/finance/reports/attention-queue/{item_key:path}/review,review_attention_item,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/cash-forecast,get_cash_forecast,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/transactions,get_transactions_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/category-summary,get_category_summary_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/category-by-period-matrix,get_category_by_period_matrix,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/balances,get_point_in_time_balances,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/cheques,get_cheques_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/library,get_report_library,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/saved-views,list_saved_report_views,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,POST,/api/finance/reports/saved-views,create_saved_report_view,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,DELETE,/api/finance/reports/saved-views/{view_id},delete_saved_report_view,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/drilldown,get_report_drilldown,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/profit-and-loss,get_profit_and_loss,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/balance-sheet,get_balance_sheet,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/trial-balance,get_trial_balance,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/cash-flow,get_cash_flow_statement,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/ar-aging,get_ar_aging_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/ap-aging,get_ap_aging_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,POST,/api/finance/reports/export,export_report_file,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/export-audits,list_export_audits,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/schedules,list_report_schedules,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,POST,/api/finance/reports/schedules,create_report_schedule,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,DELETE,/api/finance/reports/schedules/{schedule_id},delete_report_schedule,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/compensation/employee/{employee_id},get_employee_compensation_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/compensation/company,get_company_compensation_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/statutory/remitted,get_statutory_remitted_report,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/payroll/payable-status,get_payroll_payable_status_report,finance.report.read,finance.report.read,unchanged
+finance/routers/rules.py,GET,/api/finance/rules,list_reconciliation_rules,finance.account.read,finance.account.read,unchanged
+finance/routers/rules.py,POST,/api/finance/rules,create_reconciliation_rule,finance.account.write,finance.account.write,unchanged
+finance/routers/rules.py,GET,/api/finance/rules/{rule_id},get_reconciliation_rule,finance.account.read,finance.account.read,unchanged
+finance/routers/rules.py,PUT,/api/finance/rules/{rule_id},update_reconciliation_rule,finance.account.write,finance.account.write,unchanged
+finance/routers/rules.py,DELETE,/api/finance/rules/{rule_id},delete_reconciliation_rule,finance.account.write,finance.account.write,unchanged
+finance/routers/rules.py,POST,/api/finance/rules/preview,preview_reconciliation_rule,finance.account.read,finance.account.read,unchanged
+finance/routers/rules.py,POST,/api/finance/statements/{statement_id}/apply-rules,apply_rules_to_statement,finance.account.write,finance.account.write,unchanged
+finance/routers/rules.py,POST,/api/finance/rules/{rule_id}/revert,revert_rule_applications,finance.account.write,finance.account.write,unchanged
+finance/routers/sales_invoices.py,GET,/api/finance/invoices,list_sales_invoices,finance.invoice.read,finance.invoice.read,unchanged
+finance/routers/sales_invoices.py,GET,/api/finance/invoices/{invoice_id},get_sales_invoice,finance.invoice.read,finance.invoice.read,unchanged
+finance/routers/sales_invoices.py,POST,/api/finance/invoices,create_sales_invoice,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/sales_invoices.py,PUT,/api/finance/invoices/{invoice_id},update_sales_invoice,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/sales_invoices.py,POST,/api/finance/invoices/{invoice_id}/send,send_sales_invoice,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/sales_invoices.py,DELETE,/api/finance/invoices/{invoice_id},void_sales_invoice,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/sales_invoices.py,GET,/api/finance/invoices/{invoice_id}/payments,list_invoice_payments,finance.invoice.read,finance.invoice.read,unchanged
+finance/routers/sales_invoices.py,POST,/api/finance/invoices/{invoice_id}/payments,record_invoice_payment,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/sales_invoices.py,POST,/api/finance/invoices/{invoice_id}/payments/{payment_id}/reverse,reverse_invoice_payment,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/sales_invoices.py,POST,/api/finance/invoices/{invoice_id}/remind,send_invoice_reminder,finance.invoice.write,finance.invoice.write,unchanged
+finance/routers/statements.py,POST,/api/finance/accounts/{account_id}/statements/preview,preview_bank_statement,finance.account.write,finance.account.write,unchanged
+finance/routers/statements.py,POST,/api/finance/accounts/{account_id}/statements,upload_bank_statement,finance.account.write;finance.account.write,finance.account.write;finance.account.write,unchanged
+finance/routers/statements.py,DELETE,/api/finance/statements/{statement_id},discard_statement_import,finance.account.write,finance.account.write,unchanged
+finance/routers/statements.py,GET,/api/finance/statements/templates,list_statement_templates,finance.account.read,finance.account.read,unchanged
+finance/routers/statements.py,POST,/api/finance/statements/templates,create_statement_template,finance.account.write,finance.account.write,unchanged
+finance/routers/statements.py,DELETE,/api/finance/statements/templates/{template_id},delete_statement_template,finance.account.write,finance.account.write,unchanged
+finance/routers/statements.py,GET,/api/finance/accounts/{account_id}/statements,list_account_statements,finance.account.read,finance.account.read,unchanged
+finance/routers/statements.py,GET,/api/finance/statements,list_all_statements,finance.account.read,finance.account.read,unchanged
+finance/routers/statements.py,GET,/api/finance/statements/{statement_id},get_statement_import,finance.account.read,finance.account.read,unchanged
+finance/routers/statements.py,GET,/api/finance/statements/{statement_id}/lines,get_statement_lines,finance.account.read,finance.account.read,unchanged
+finance/routers/statements.py,POST,/api/finance/statements/{statement_id}/lines/{line_id}/resolve,resolve_statement_line,finance.account.write;finance.account.write,finance.account.write;finance.account.write,unchanged
+finance/routers/statements.py,GET,/api/finance/statements/{statement_id}/summary,get_reconciliation_workspace_summary,finance.account.read,finance.account.read,unchanged
+finance/routers/statements.py,POST,/api/finance/statements/{statement_id}/reconcile,reconcile_statement_import,finance.account.write;finance.account.write,finance.account.write;finance.account.write,unchanged
+finance/routers/statements.py,POST,/api/finance/statements/{statement_id}/close,close_reconciliation_period,finance.account.write;finance.account.write,finance.account.write;finance.account.write,unchanged
+finance/routers/statements.py,POST,/api/finance/statements/{statement_id}/reopen,reopen_reconciliation_period,finance.account.write;finance.account.write,finance.account.write;finance.account.write,unchanged
+finance/routers/statements.py,GET,/api/finance/statements/{statement_id}/completion-report,get_reconciliation_completion_report,finance.account.read,finance.account.read,unchanged
+finance/routers/statutory.py,GET,/api/finance/statutory-obligations,list_statutory_obligations,finance.bill.read,finance.statutory.read,key-rename (D-008 amendment)
+finance/routers/statutory.py,GET,/api/finance/statutory-obligations/{obligation_id},get_statutory_obligation,finance.bill.read,finance.statutory.read,key-rename (D-008 amendment)
+finance/routers/statutory.py,POST,/api/finance/statutory-obligations,create_statutory_obligation,finance.bill.write,finance.statutory.write,key-rename (D-008 amendment)
+finance/routers/statutory.py,POST,/api/finance/statutory-obligations/{obligation_id}/confirm,confirm_or_adjust_statutory_obligation,finance.bill.write,finance.statutory.write,key-rename (D-008 amendment)
+finance/routers/statutory.py,POST,/api/finance/statutory-obligations/{obligation_id}/settle,settle_statutory_obligation,finance.bill.write,finance.statutory.write,key-rename (D-008 amendment)
+finance/routers/statutory.py,PATCH,/api/finance/statutory-obligations/{obligation_id},update_statutory_obligation,finance.bill.write,finance.statutory.write,key-rename (D-008 amendment)
+finance/routers/subscriptions.py,GET,/api/finance/subscriptions,list_subscriptions,finance.subscription.read,finance.subscription.read,unchanged
+finance/routers/subscriptions.py,POST,/api/finance/subscriptions,create_subscription,finance.subscription.write,finance.subscription.write,unchanged
+finance/routers/subscriptions.py,GET,/api/finance/subscriptions/{subscription_id},get_subscription,finance.subscription.read,finance.subscription.read,unchanged
+finance/routers/subscriptions.py,PATCH,/api/finance/subscriptions/{subscription_id},update_subscription,finance.subscription.write,finance.subscription.write,unchanged
+finance/routers/subscriptions.py,GET,/api/finance/subscriptions/{subscription_id}/charges,list_subscription_charges,finance.subscription.read,finance.subscription.read,unchanged
+finance/routers/subscriptions.py,POST,/api/finance/subscriptions/{subscription_id}/charges,log_subscription_charge,finance.subscription.write,finance.subscription.write,unchanged
+finance/routers/subscriptions.py,GET,/api/finance/attachments/{attachment_id}/download,download_finance_attachment,finance.subscription.read,finance.subscription.read,unchanged
+finance/routers/transactions.py,GET,/api/finance/transactions/duplicate-settlement-check,check_duplicate_settlement,finance.account.read,finance.account.read,unchanged
+finance/routers/transactions.py,GET,/api/finance/transactions/unlinked-settlement-candidates,get_unlinked_settlement_candidates,finance.account.read,finance.account.read,unchanged
+finance/routers/transactions.py,GET,/api/finance/transactions/{transaction_id},get_transaction,finance.account.read,finance.account.read,unchanged
+finance/routers/transactions.py,PATCH,/api/finance/transactions/{transaction_id},update_manual_transaction,finance.account.write,finance.account.write,unchanged
+finance/routers/transactions.py,PUT,/api/finance/transactions/{transaction_id},update_manual_transaction,finance.account.write,finance.account.write,unchanged
+finance/routers/transactions.py,DELETE,/api/finance/transactions/{transaction_id},delete_manual_transaction,finance.account.write,finance.account.write,unchanged
+finance/routers/transfers.py,GET,/api/finance/transfers,list_transfers,finance.account.read,finance.account.read,unchanged
+finance/routers/transfers.py,GET,/api/finance/transfers/{transfer_id},get_transfer,finance.account.read,finance.account.read,unchanged
+finance/routers/transfers.py,POST,/api/finance/transfers,create_transfer,finance.account.write,finance.account.write,unchanged
+finance/routers/transfers.py,POST,/api/finance/transfers/preview,preview_transfer,finance.account.read,finance.account.read,unchanged
+finance/routers/transfers.py,POST,/api/finance/transfers/{transfer_id}/match,match_transfer,finance.account.write,finance.account.write,unchanged
+finance/routers/vendors.py,POST,/api/finance/vendors/check-duplicate,check_vendor_duplicate,finance.vendor.read,finance.vendor.read,unchanged
+finance/routers/vendors.py,GET,/api/finance/vendors,list_vendors,finance.vendor.read,finance.vendor.read,unchanged
+finance/routers/vendors.py,GET,/api/finance/vendors/{vendor_id},get_vendor,finance.vendor.read,finance.vendor.read,unchanged
+finance/routers/vendors.py,GET,/api/finance/vendors/{vendor_id}/360,get_vendor_360,finance.vendor.read,finance.vendor.read,unchanged
+finance/routers/vendors.py,POST,/api/finance/vendors,create_vendor,finance.vendor.write,finance.vendor.write,unchanged
+finance/routers/vendors.py,PUT,/api/finance/vendors/{vendor_id},update_vendor,finance.vendor.write,finance.vendor.write,unchanged
+finance/routers/vendors.py,DELETE,/api/finance/vendors/{vendor_id},deactivate_vendor,finance.vendor.write,finance.vendor.write,unchanged
+finance/routers/vendors.py,GET,/api/finance/vendors/{vendor_id}/payment-instructions,list_vendor_payment_instructions,finance.vendor.read,finance.vendor.read,unchanged
+finance/routers/vendors.py,POST,/api/finance/vendors/{vendor_id}/payment-instructions,create_vendor_payment_instruction,finance.vendor.read,finance.vendor_payment.manage (finance.vendor.write alias removed),tightened
+finance/routers/vendors.py,PUT,/api/finance/vendors/{vendor_id}/payment-instructions/{instruction_id},update_vendor_payment_instruction,finance.vendor.read,finance.vendor_payment.manage (finance.vendor.write alias removed),tightened
+finance/routers/vendors.py,POST,/api/finance/vendors/{vendor_id}/payment-instructions/{instruction_id}/verify,verify_vendor_payment_instruction,finance.vendor.read,finance.vendor_payment.verify (finance.vendor.write alias removed),tightened

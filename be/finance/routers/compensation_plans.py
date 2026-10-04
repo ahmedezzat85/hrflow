@@ -57,7 +57,7 @@ def set_compensation_component(
         ..., description="Component type: external_usd or internal_usd_cash"
     ),
     service: CompensationPlanService = Depends(get_compensation_plan_service),
-    current_user: dict = Depends(require_permission("finance.payroll.write")),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
 ):
     """
     Set or update an employee's compensation component.

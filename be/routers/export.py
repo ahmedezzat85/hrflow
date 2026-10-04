@@ -11,7 +11,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 
-from auth import require_admin
+from auth import get_current_user
+from core.permissions import require_permission
 from config import Config
 from deps import audit_log
 from models import SheetsExportRequest
@@ -54,6 +55,58 @@ VALID_DATASETS = {
     "finance_subscriptions": "Software & SaaS Subscriptions",
 }
 
+HR_DATASET_PERMISSIONS = {
+    "employees": "hr.employee.read",
+    "insurance": "hr.insurance.read",
+    "salary": "hr.salary.read",
+    "vacations": "hr.vacation.read",
+    "invoices": "hr.salary_payment_doc.read",
+}
+
+FINANCE_DATASET_PERMISSIONS = {
+    "finance_ledger": "finance.account.read",
+    "finance_accounts": "finance.account.read",
+    "finance_invoices": "finance.invoice.read",
+    "finance_bills": "finance.bill.read",
+    "finance_cheques": "finance.account.read",
+    "finance_transfers": "finance.account.read",
+    "finance_subscriptions": "finance.subscription.read",
+}
+
+
+def check_export_permission(current_user: dict, dataset: str) -> None:
+    perms = set(current_user.get("permissions", []))
+    dataset_key = dataset.lower().strip()
+    if dataset_key in HR_DATASET_PERMISSIONS:
+        needed_read = HR_DATASET_PERMISSIONS[dataset_key]
+        if "hr.export.run" not in perms or needed_read not in perms:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission denied: HR export requires 'hr.export.run' and '{needed_read}'",
+            )
+    elif dataset_key in FINANCE_DATASET_PERMISSIONS:
+        needed_read = FINANCE_DATASET_PERMISSIONS[dataset_key]
+        if "finance.report.read" not in perms or needed_read not in perms:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission denied: Finance export requires 'finance.report.read' and '{needed_read}'",
+            )
+    else:
+        # Invalid dataset, _extract_dataset_data will raise 400
+        pass
+
+
+def require_export_permission(dataset: str, current_user: dict = Depends(get_current_user)) -> dict:
+    """Dependency: applies the per-dataset export rule to the `dataset` path parameter."""
+    check_export_permission(current_user, dataset)
+    return current_user
+
+
+# Every key this dependency can require, so the coverage test reads the marker from the dependency itself.
+require_export_permission.hrflow_permission_any = tuple(sorted(
+    {"hr.export.run", "finance.report.read", *HR_DATASET_PERMISSIONS.values(), *FINANCE_DATASET_PERMISSIONS.values()}
+))
+
 
 def _extract_dataset_data(
     dataset: str,
@@ -95,7 +148,7 @@ def _extract_dataset_data(
 
 
 @router.get("/status")
-def get_export_status(current_user: dict = Depends(require_admin)):
+def get_export_status(current_user: dict = Depends(require_permission("hr.export.run"))):
     """Checks whether the Google Sheets export integration is configured."""
     has_creds = bool(Config.GOOGLE_CREDENTIALS_FILE and os.path.exists(Config.GOOGLE_CREDENTIALS_FILE))
     has_sheet_id = bool(Config.SPREADSHEET_ID and Config.SPREADSHEET_ID.strip())
@@ -116,7 +169,7 @@ def export_dataset_csv(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_export_permission),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     """Exports the specified HR dataset as a local CSV download (UTF-8 with BOM)."""
@@ -158,7 +211,7 @@ def export_dataset_csv(
 def export_dataset_to_google_sheets(
     dataset: str,
     payload: SheetsExportRequest = SheetsExportRequest(),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_export_permission),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     """Exports the specified HR dataset to a worksheet in Google Sheets."""
@@ -212,3 +265,5 @@ def export_dataset_to_google_sheets(
         "spreadsheet_id": result["spreadsheet_id"],
         "rows_count": result["rows_count"],
     }
+
+

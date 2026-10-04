@@ -51,7 +51,7 @@ def get_company_bank_account(
     """Fetches a specific company bank account by ID. Masked by default unless reveal is authorized."""
     if reveal:
         perms = get_current_user_permissions(request, current_user=current_user, db=service.repo.db)
-        if "*" not in perms and "finance.bank_account.reveal" not in perms:
+        if "finance.bank_account.reveal" not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permission denied: 'finance.bank_account.reveal' required to reveal unmasked account identifier",
@@ -147,8 +147,7 @@ def create_account_transaction(
     """Records a manual continuous ledger transaction and recomputes running balances."""
     if (payload.entry_type or "").lower() == "adjustment":
         perms = set(current_user.get("permissions", [])) if isinstance(current_user, dict) else set()
-        role = (current_user.get("role") or "").lower() if isinstance(current_user, dict) else ""
-        if "*" not in perms and "finance.adjustment.manage" not in perms and role not in ("admin", "system_admin"):
+        if "finance.adjustment.manage" not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Manual balance adjustments require 'finance.adjustment.manage' authorization",

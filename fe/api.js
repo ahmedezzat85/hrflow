@@ -8,33 +8,36 @@ const API_BASE_URL = window.HRFLOW_CONFIG.API_BASE_URL;
 const GOOGLE_CLIENT_ID = window.HRFLOW_CONFIG.GOOGLE_CLIENT_ID;
 
 const SessionInfo = {
-  _role: null,
+  _portal: null,
+  _roles: [],
   _employeeId: null,
   _name: null,
   _permissions: [],
   set(data) {
-    this._role = data.role ?? null;
+    this._portal = data.portal ?? 'employee';
+    this._roles = Array.isArray(data.roles) ? data.roles : [];
     this._employeeId = data.employee_id ?? null;
     this._name = data.name ?? null;
     this._permissions = Array.isArray(data.permissions) ? data.permissions : [];
     window.dispatchEvent(new CustomEvent("hrflow:session-changed", { detail: data }));
   },
   clear() {
-    this._role = null;
+    this._portal = null;
+    this._roles = [];
     this._employeeId = null;
     this._name = null;
     this._permissions = [];
     window.dispatchEvent(new CustomEvent("hrflow:session-changed", { detail: null }));
   },
-  getRole() { return this._role; },
+  getPortal() { return this._portal; },
+  getRoles() { return this._roles; },
   getEmployeeId() { return this._employeeId; },
   getName() { return this._name; },
   getPermissions() { return this._permissions; },
   hasPermission(key) {
-    if (this._role === "admin" || this._role === "system_admin" || this._permissions.includes("*")) return true;
     return this._permissions.includes(key);
   },
-  isKnown() { return this._role !== null; },
+  isKnown() { return this._portal !== null; },
 };
 
 let _sessionExpiredHandled = false;
@@ -442,6 +445,25 @@ const Api = {
     const filename = `${dataset}_export_${new Date().toISOString().slice(0, 10)}.csv`;
     return _downloadDocumentViaFetch(`/api/export/${encodeURIComponent(dataset)}/csv${qs}`, filename);
   },
+  // RBAC Access & Identity
+  getPermissionCatalog() { return apiRequest("GET", "/api/access/catalog"); },
+  getRoles() { return apiRequest("GET", "/api/access/roles"); },
+  createRole(payload) { return apiRequest("POST", "/api/access/roles", payload); },
+  updateRole(roleId, payload) { return apiRequest("PUT", `/api/access/roles/${encodeURIComponent(roleId)}`, payload); },
+  deleteRole(roleId) { return apiRequest("DELETE", `/api/access/roles/${encodeURIComponent(roleId)}`); },
+  getUsers(params) {
+    const q = new URLSearchParams();
+    if (params && params.filter && params.filter !== "all") q.set("filter", params.filter);
+    if (params && params.search) q.set("search", params.search);
+    return apiRequest("GET", `/api/access/users${q.toString() ? `?${q.toString()}` : ""}`);
+  },
+  createExternalUser(payload) { return apiRequest("POST", "/api/access/users", payload); },
+  // One assigned role per user. roleId null clears it (linked employees only; Employee access is derived).
+  setUserRole(userId, roleId) {
+    return apiRequest("PUT", `/api/access/users/${encodeURIComponent(userId)}/role`, { role_id: roleId ?? null });
+  },
+  archiveUser(userId) { return apiRequest("POST", `/api/access/users/${encodeURIComponent(userId)}/archive`); },
+
   health() { return apiRequest("GET", "/api/health", null, false); },
   getLastCorrelationId() { return _lastCorrelationId; },
 };

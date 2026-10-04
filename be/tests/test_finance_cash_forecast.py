@@ -369,6 +369,8 @@ def test_multi_currency_warning(db_session):
 
 def test_api_cash_forecast_endpoint(app_client, admin_cookies, db_session):
     seed_forecast_data(db_session)
+    from conftest import add_test_user
+    add_test_user(db_session, "admin@hrflow.test", role_key="super_admin", employee_id=1)
     from main import app
     from db import get_db
     app.dependency_overrides[get_db] = lambda: db_session

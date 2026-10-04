@@ -3,7 +3,7 @@
       <div class="rail">
         <div class="rail-logo" title="HRFlow"><i class="fa-solid fa-heart-pulse"></i></div>
         <div class="rail-sep"></div>
-        <button class="rail-btn on active" data-module="hr" aria-label="HR module" aria-current="true" title="HR">
+        <button class="rail-btn on active" data-module="hr" id="hrRailBtn" aria-label="HR module" aria-current="true" title="HR">
           <i class="fa-solid fa-people-group"></i>
           <span>HR</span>
           <span class="dot" id="hrRailDot" style="display:none;" aria-label="pending requests"></span>
@@ -15,6 +15,10 @@
         <button class="rail-btn" data-module="payroll" id="payrollRailBtn" aria-label="Payroll module" title="Payroll">
           <i class="fa-solid fa-money-check-dollar"></i>
           <span>Payroll</span>
+        </button>
+        <button class="rail-btn" data-module="system" id="systemRailBtn" aria-label="System module" title="System">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>System</span>
         </button>
         <div class="rail-sp"></div>
         <div class="avatar" id="adminRailUserAvatar" title="Account">--</div>
@@ -59,6 +63,11 @@
               <div class="nav-section-label">Payroll</div>
               <a class="nav-item" href="#" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs" onclick="if(typeof PayrollApp!=='undefined'&amp;&amp;PayrollApp.showPage)PayrollApp.showPage('list')"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-label">Payroll Runs</span></a>
               <a class="nav-item" href="#" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings" onclick="if(typeof PayrollApp!=='undefined'&amp;&amp;PayrollApp.showPage)PayrollApp.showPage('settings')"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Payroll Settings</span></a>
+            </div>
+            <div id="adminSystemNavGroup" class="system-nav-group" hidden>
+              <div class="nav-section-label">Access &amp; Security</div>
+              <a class="nav-item" href="#" id="systemNavRoles" data-page="a-system-roles" title="Roles &amp; Permissions"><i class="fa-solid fa-user-shield"></i> <span class="nav-label">Roles &amp; Permissions</span></a>
+              <a class="nav-item" href="#" id="systemNavUsers" data-page="a-system-users" title="User Accounts"><i class="fa-solid fa-users-gear"></i> <span class="nav-label">User Accounts</span></a>
             </div>
           </nav>
           <div class="sidebar-footer">

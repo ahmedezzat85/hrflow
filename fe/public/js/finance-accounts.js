@@ -437,6 +437,8 @@ function renderWorkspaceHeader(acc) {
       : FinanceFormat.formatMaskedAccountNumber(acc.account_number, acc.account_type === "cash");
   }
   if (revBtn) {
+    const canRevealAcc = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.bank_account.reveal') : true;
+    revBtn.style.display = canRevealAcc ? '' : 'none';
     revBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Reveal';
   }
 

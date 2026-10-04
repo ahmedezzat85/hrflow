@@ -41,7 +41,7 @@ class FeatureFlagsUpdate(BaseModel):
     flags: Dict[str, bool]
 
 @router.get("/feature-flags")
-def get_feature_flags(current_user: dict = Depends(get_current_user)):
+def get_feature_flags(current_user: dict = Depends(require_permission("finance.settings.read"))):
     """Retrieve active feature flags and rollout status."""
     return {
         "status": "success",
@@ -67,7 +67,7 @@ def update_feature_flags(
     }
 
 @router.get("/observability/metrics")
-def get_observability_metrics(current_user: dict = Depends(get_current_user)):
+def get_observability_metrics(current_user: dict = Depends(require_permission("finance.settings.read"))):
     """Operational telemetry: latencies, command outcomes, idempotency, and throughput."""
     now = time.time()
     uptime = round(now - _METRICS["start_time"], 1)

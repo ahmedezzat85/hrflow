@@ -242,14 +242,73 @@ def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path):
         reset_engine_for_testing(None)
 
 
-def _login_cookie_for(app_client, email):
+def seed_default_roles(db):
+    """Create the permission catalog rows and the five seeded roles (create-once)."""
+    from core.role_seed import DEFAULT_ROLES, sync_catalog
+    from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB
+
+    sync_catalog(db)
+    for key, role_def in DEFAULT_ROLES.items():
+        role = db.query(RoleDB).filter(RoleDB.system_key == key).first()
+        if not role:
+            role = RoleDB(
+                name=role_def.name,
+                system_key=role_def.system_key,
+                is_locked=role_def.is_locked,
+                description=role_def.description,
+            )
+            db.add(role)
+            db.flush()
+        if db.query(RolePermissionDB).filter(RolePermissionDB.role_id == role.id).count() == 0:
+            for perm_key in role_def.permissions:
+                perm = db.query(PermissionDB).filter(PermissionDB.key == perm_key).first()
+                if perm:
+                    db.add(RolePermissionDB(role_id=role.id, permission_id=perm.id))
+            db.flush()
+    db.commit()
+
+
+def add_test_user(db, email, role_key=None, employee_id=None, name=None):
+    """Create (or reset) a users row on the given session with at most one assigned
+    role (by system_key). The employee baseline comes from employee_id, never from a
+    role row. Seeds the catalog and default roles first. Commits and returns the user id."""
+    from models_db import UserDB
+    from core.rbac_models import RoleDB, UserRoleDB
+
+    seed_default_roles(db)
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+    if user is None:
+        user = UserDB(email=email)
+        db.add(user)
+    user.name = name or email.split("@")[0]
+    user.employee_id = employee_id
+    user.archived_at = None
+    db.flush()
+    db.query(UserRoleDB).filter(UserRoleDB.user_id == user.id).delete()
+    if role_key:
+        role = db.query(RoleDB).filter(RoleDB.system_key == role_key).one()
+        db.add(UserRoleDB(user_id=user.id, role_id=role.id))
+    db.commit()
+    return user.id
+
+
+def create_test_user(email, role_key=None, employee_id=None, name=None):
+    """add_test_user on the active test database; returns a session cookie dict for the user."""
     import auth as auth_module
-    users = {"admin@hrflow.test": ("admin", 1), "employee@hrflow.test": ("employee", 2),
-             "employee3@hrflow.test": ("employee", 3)}
-    role, employee_id = users[email]
-    token = auth_module.create_session_token(email, role, employee_id, name=email.split("@")[0])
     import config as config_module
+    from db import get_db_context
+
+    with get_db_context() as db:
+        uid = add_test_user(db, email, role_key=role_key, employee_id=employee_id, name=name)
+    token = auth_module.create_session_token(email, employee_id=employee_id, name=name or email.split("@")[0], uid=uid)
     return {config_module.Config.SESSION_COOKIE_NAME: token}
+
+
+def _login_cookie_for(app_client, email):
+    users = {"admin@hrflow.test": ("super_admin", 1), "employee@hrflow.test": (None, 2),
+             "employee3@hrflow.test": (None, 3)}
+    role_key, employee_id = users[email]
+    return create_test_user(email, role_key=role_key, employee_id=employee_id)
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ from main.py during the router-decomposition refactor - pure structural
 move, no behavior change.
 """
 from typing import Set
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from config import Config
@@ -15,8 +15,7 @@ from models import GoogleLoginRequest, LoginResponse
 from repositories.interfaces import UserRepository
 from repositories.deps import get_user_repo
 from db import get_db
-from core.permissions import get_current_user_permissions, get_user_permissions
-from models_db import UserDB
+from core.permissions import resolve_access, AccessContext
 
 logger = get_logger("main")
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -46,49 +45,44 @@ def api_google_login(
     db: Session = Depends(get_db),
 ):
     logger.info("Google login attempt received")
-    try:
-        result = login_with_google(payload.credential, user_repo=user_repo)
-    except TypeError:
-        result = login_with_google(payload.credential)
+    result = login_with_google(payload.credential, user_repo=user_repo)
     if not result:
         logger.warning("Google login rejected: credential valid but no matching HRFlow user found")
         raise HTTPException(
             status_code=403,
             detail="This Google account is not registered in HRFlow. Ask your HR admin to add you as an employee first.",
         )
-    logger.info("Google login successful: role=%s, employee_id=%s", result.get("role"), result.get("employee_id"))
+    logger.info("Google login successful: employee_id=%s", result.get("employee_id"))
     _set_session_cookie(response, result["token"])
 
-    perms = set()
-    try:
-        email = result.get("email")
-        if email:
-            u = db.query(UserDB).filter(UserDB.email.ilike(email.strip())).first()
-            if u:
-                perms = get_user_permissions(u.id, db)
-        if str(result.get("role", "")).lower() in ("admin", "superadmin", "super_admin", "system_admin"):
-            perms.add("*")
-    except Exception as e:
-        logger.warning("Failed resolving user permissions on login: %s", e)
+    user_payload = {"uid": result.get("uid"), "email": result.get("email")}
+    ctx = resolve_access(db, user_payload)
 
     return LoginResponse(
-        role=result["role"],
-        employee_id=result.get("employee_id"),
+        portal=ctx.portal,
+        roles=ctx.role_names,
+        employee_id=ctx.employee_id,
         name=result.get("name"),
-        permissions=sorted(list(perms)),
+        permissions=sorted(list(ctx.permissions)),
     )
 
 
 @router.get("/me", response_model=LoginResponse)
 def api_get_current_session(
+    request: Request,
     current_user: dict = Depends(get_current_user),
-    perms: Set[str] = Depends(get_current_user_permissions),
+    db: Session = Depends(get_db),
 ):
+    ctx: AccessContext = getattr(request.state, "access_context", None)
+    if not ctx:
+        ctx = resolve_access(db, current_user)
+
     return LoginResponse(
-        role=current_user["role"],
-        employee_id=current_user.get("employee_id"),
+        portal=ctx.portal,
+        roles=ctx.role_names,
+        employee_id=ctx.employee_id,
         name=current_user.get("name"),
-        permissions=sorted(list(perms)),
+        permissions=sorted(list(ctx.permissions)),
     )
 
 
