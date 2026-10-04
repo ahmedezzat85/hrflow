@@ -1,13 +1,52 @@
 let paletteResults = [];
 let paletteSelectedIndex = -1;
 
+function paletteCan(permission) {
+  if (typeof SessionInfo === 'undefined' || typeof SessionInfo.hasPermission !== 'function') return true;
+  if (typeof SessionInfo.isKnown === 'function' && !SessionInfo.isKnown()) return true;
+  return SessionInfo.hasPermission(permission);
+}
+
 const commandPaletteSources = [
+  {
+    id: 'pages',
+    title: 'Pages',
+    icon: 'fa-solid fa-compass',
+    // Pages the signed-in user may open (admin pages follow module visibility)
+    search(query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q || typeof titles === 'undefined') return [];
+      const portal = currentPortal === 'employee' ? 'employee' : 'admin';
+      const prefix = portal === 'employee' ? 'e-' : 'a-';
+      const hidden = ['a-finance-sales', 'a-finance-spend', 'a-finance-banking', 'a-finance-transfers', 'a-finance-cheques', 'a-finance-statements', 'a-finance-payroll', 'a-employee-detail'];
+      return Object.keys(titles)
+        .filter((id) => id.startsWith(prefix) && !hidden.includes(id))
+        .filter((id) => {
+          if (portal === 'employee') return true;
+          const mod = window.AdminNav && typeof window.AdminNav.moduleOf === 'function' ? window.AdminNav.moduleOf(id) : 'hr';
+          return !window.AdminNav || window.AdminNav.canSeeModule(mod);
+        })
+        .filter((id) => titles[id][0].toLowerCase().includes(q))
+        .map((id) => ({
+          id,
+          type: 'action',
+          name: titles[id][0],
+          role: 'Page',
+          dept: portal === 'employee' ? 'My workspace' : (window.AdminNav ? window.AdminNav.moduleOf(id) : 'hr'),
+          status: 'Open',
+          icon: 'fa-solid fa-arrow-up-right-from-square',
+          onSelect: () => { if (window.Router) Router.navigate(id, portal); else showSection(id, portal); },
+        }));
+    }
+  },
   {
     id: 'finance_actions',
     title: 'Finance Actions',
     icon: 'fa-solid fa-bolt',
     search(query) {
       const q = (query || '').toLowerCase().trim();
+      // Finance actions are for finance users in the admin portal only
+      if (currentPortal === 'employee' || !paletteCan('finance.account.write')) return [];
       const actions = [
         {
           id: 'action_record_tx',
@@ -55,6 +94,8 @@ const commandPaletteSources = [
     title: 'Employees',
     icon: 'fa-solid fa-users',
     search(query) {
+      // Employee search belongs to the admin portal and needs HR read access
+      if (currentPortal === 'employee' || !paletteCan('hr.employee.read')) return [];
       if (!Array.isArray(employees)) return [];
       const q = (query || '').toLowerCase().trim();
       const list = employees.filter(e => {
@@ -105,13 +146,13 @@ function renderCommandPaletteResults(results, query) {
       container.innerHTML = `
         <div class="empty-state" style="padding:28px 16px;">
           <i class="fa-solid fa-magnifying-glass" style="font-size:24px;color:var(--text3);margin-bottom:8px;"></i>
-          <p style="font-size:13px;color:var(--text2);margin:0;">No employees match "${query}".</p>
+          <p style="font-size:13px;color:var(--text2);margin:0;">No results match "${escapeHtml(query)}".</p>
         </div>`;
     } else {
       container.innerHTML = `
         <div class="empty-state" style="padding:28px 16px;">
           <i class="fa-solid fa-users" style="font-size:24px;color:var(--text3);margin-bottom:8px;"></i>
-          <p style="font-size:13px;color:var(--text2);margin:0;">No employees available to search.</p>
+          <p style="font-size:13px;color:var(--text2);margin:0;">${currentPortal === 'employee' ? 'Type to find a page.' : 'No employees available to search.'}</p>
         </div>`;
     }
     return;
@@ -129,8 +170,8 @@ function renderCommandPaletteResults(results, query) {
     <div class="palette-item ${idx === 0 ? 'active' : ''}" data-index="${idx}" onclick="selectPaletteItem(${idx})">
       ${avatarHtml}
       <div class="palette-item-content">
-        <div class="palette-item-title">${highlightMatch(item.name, query)}</div>
-        <div class="palette-item-sub">${item.role} • ${item.dept}</div>
+        <div class="palette-item-title">${highlightMatch(escapeHtml(item.name), escapeHtml(query))}</div>
+        <div class="palette-item-sub">${escapeHtml(item.role)} • ${escapeHtml(item.dept)}</div>
       </div>
       <div class="palette-item-meta">
         ${statusHtml}
@@ -183,7 +224,7 @@ function executeCommandPaletteSearch(query) {
 function openCommandPalette() {
   const modal = document.getElementById('commandPaletteModal');
   if (!modal) return;
-  modal.classList.add('active');
+  openModal('commandPaletteModal');
   const input = document.getElementById('commandPaletteInput');
   if (input) {
     input.value = '';
@@ -195,7 +236,7 @@ function openCommandPalette() {
 function closeCommandPalette() {
   const modal = document.getElementById('commandPaletteModal');
   if (!modal) return;
-  modal.classList.remove('active');
+  closeModal('commandPaletteModal');
 }
 
 // Global shortcuts: Cmd+K / Ctrl+K, Shift+N, & arrow navigation

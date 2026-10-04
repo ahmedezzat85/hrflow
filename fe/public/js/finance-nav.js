@@ -124,54 +124,49 @@ function updateFinanceNavVisibility() {
 
 
 function runFinanceLoader(pageId) {
-  if (!pageId) return;
+  if (!pageId) return undefined;
+  let loading;
 
   if (pageId === "a-finance-dashboard") {
-    loadFinanceDashboard();
+    loading = loadFinanceDashboard();
   } else if (pageId === "a-finance-sales" || pageId === "a-finance-invoices") {
-    loadFinanceInvoices();
+    loading = loadFinanceInvoices();
   } else if (pageId === "a-finance-spend" || pageId === "a-finance-bills") {
-    loadFinanceBills();
+    loading = loadFinanceBills();
   } else if (pageId === "a-finance-payroll" || pageId === "a-finance-payroll-runs") {
-    loadFinancePayroll("list");
+    loading = loadFinancePayroll("list");
   } else if (pageId === "a-finance-payroll-settings") {
-    loadFinancePayroll("settings");
+    loading = loadFinancePayroll("settings");
   } else if (pageId === "a-finance-banking" || pageId === "a-finance-accounts") {
     if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "statements") {
-      loadFinanceStatements();
+      loading = loadFinanceStatements();
     } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "cheques") {
-      loadFinanceCheques();
+      loading = loadFinanceCheques();
     } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "transfers") {
-      loadFinanceTransfers();
+      loading = loadFinanceTransfers();
     } else {
-      loadFinanceAccounts();
+      loading = loadFinanceAccounts();
     }
   } else if (pageId === "a-finance-subscriptions") {
-    loadFinanceSubscriptions();
+    loading = loadFinanceSubscriptions();
   } else if (pageId === "a-finance-statutory") {
-    loadFinanceStatutory();
+    loading = loadFinanceStatutory();
   } else if (pageId === "a-finance-reports") {
-    loadFinanceReports();
+    loading = loadFinanceReports();
   } else if (pageId === "a-finance-settings") {
-    switchFinanceSettingsSubTab(_currentSettingsSubTab);
+    loading = switchFinanceSettingsSubTab(_currentSettingsSubTab);
   } else if (pageId === "e-payslips") {
-    loadMyPayslips();
+    loading = loadMyPayslips();
   }
 
   if (pageId && pageId.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {
     FinanceTable.initAllTablesDensity();
   }
+
+  return loading;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.addEventListener("click", (e) => {
-    const navItem = e.target.closest("[data-page]");
-    if (!navItem) return;
-
-    const targetPage = navItem.getAttribute("data-page");
-    runFinanceLoader(targetPage);
-  });
-
   updateFinanceNavVisibility();
   window.addEventListener("hrflow:session-changed", updateFinanceNavVisibility);
 });

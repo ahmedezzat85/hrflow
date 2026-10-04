@@ -1835,46 +1835,6 @@
 }
 
 /* Modal */
-#a-finance-payroll .payroll-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1050;
-  backdrop-filter: blur(2px);
-}
-#a-finance-payroll .payroll-modal-overlay.show {
-  display: flex;
-}
-#a-finance-payroll .payroll-modal-box {
-  background: var(--surface, var(--surface));
-  border-radius: 14px;
-  padding: 22px;
-  width: 440px;
-  max-width: 90vw;
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
-  border: 1px solid var(--border-color, var(--info-soft));
-}
-#a-finance-payroll .payroll-modal-box textarea {
-  width: 100%;
-  border: 1px solid var(--border-color, var(--info-soft));
-  border-radius: 8px;
-  padding: 8px 10px;
-  min-height: 80px;
-  margin-top: 10px;
-  font-size: 0.86rem;
-  font-family: inherit;
-  resize: vertical;
-}
-#a-finance-payroll .payroll-modal-box .actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-
 #a-finance-payroll .exception-row-flag {
   background: var(--danger-soft) !important;
 }
@@ -1983,4 +1943,44 @@
 
 #a-finance-payroll [hidden] {
   display: none;
+}
+
+#a-finance-payroll .p2-self-approve {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text2);
+}
+
+#a-finance-payroll .p2-self-approve[hidden] {
+  display: none;
+}
+
+/* Compact stepper: "Step N of 6" with a menu on phones */
+#a-finance-payroll .payroll-step-compact {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+#a-finance-payroll .payroll-step-compact select {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  #a-finance-payroll .payroll-step-compact {
+    display: flex;
+  }
+
+  #a-finance-payroll .payroll-step-pill {
+    display: none;
+  }
+
+  #a-finance-payroll .payroll-table-wrap {
+    overflow-x: visible;
+  }
 }

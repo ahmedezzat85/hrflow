@@ -708,6 +708,12 @@
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/approve${query}`);
     },
 
+    // Downloads the run's CSV (one row per employee) through the authenticated fetch helper.
+    async exportPayrollRun(runId) {
+      if (_isMock()) return null; // mock mode builds the CSV from the on-screen rows (see PayrollApp.exportRunCsv)
+      return _downloadDocumentViaFetch(`/api/finance/payroll/runs/${runId}/export`, `payroll_run_${runId}.csv`);
+    },
+
     async finalizePayrollRun(runId) {
       if (_isMock()) {
         const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));

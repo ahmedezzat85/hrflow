@@ -252,7 +252,7 @@ const PayrollTableController = {
           html += `
             <tr class="${rowClass}" id="payrollRow_${r.id}" style="${rowStyle}">
               <td style="padding:10px 14px;">
-                <div style="font-weight:600; color:var(--text-primary);">${r.name}</div>
+                <div style="font-weight:600; color:var(--text-primary);"><a class="payroll-emp-link" href="#/hr/employee-detail/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}">${escapeHtml(r.name)}</a></div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">
                   <span>${r.id}</span> · <span>${r.department}</span>
                 </div>

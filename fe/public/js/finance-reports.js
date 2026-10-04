@@ -101,6 +101,7 @@ function renderReportLibraryCatalog() {
 // Shared Report Shell Navigation & Setup
 // ----------------------------------------------------------------------
 function backToReportLibrary() {
+  if (window.Router) Router.setParams([], ["a-finance-reports"]);
   const dirView = document.getElementById("reportLibraryDirectoryView");
   const shell = document.getElementById("reportShellContainer");
   if (dirView) dirView.style.display = "block";
@@ -109,6 +110,7 @@ function backToReportLibrary() {
 
 async function openReportFromLibrary(reportKey) {
   _activeReportKey = reportKey;
+  if (window.Router) Router.setParams([reportKey], ["a-finance-reports"]);
   const dirView = document.getElementById("reportLibraryDirectoryView");
   const shell = document.getElementById("reportShellContainer");
   if (dirView) dirView.style.display = "none";

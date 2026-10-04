@@ -11,6 +11,7 @@ const APP_SCRIPT_ORDER = [
   'state.js',
   'ui.js',
   'admin-nav.js',
+  'router.js',
   'session.js',
   'employees.js',
   'search.js',

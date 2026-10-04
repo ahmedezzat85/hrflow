@@ -158,19 +158,12 @@
     }
   }
 
+  // One navigation entry: showSection (page, payroll sub-page, hash) plus the domain loader, once.
   function go(pageId) {
-    if (typeof window.showSection === 'function') {
+    if (window.Router) {
+      Router.navigate(pageId, 'admin');
+    } else if (typeof window.showSection === 'function') {
       window.showSection(pageId, 'admin');
-    }
-    if (typeof window.runFinanceLoader === 'function') {
-      window.runFinanceLoader(pageId);
-    }
-    if (typeof PayrollApp !== 'undefined' && PayrollApp.showPage) {
-      if (pageId === 'a-finance-payroll' || pageId === 'a-finance-payroll-runs') {
-        PayrollApp.showPage('list');
-      } else if (pageId === 'a-finance-payroll-settings') {
-        PayrollApp.showPage('settings');
-      }
     }
   }
 

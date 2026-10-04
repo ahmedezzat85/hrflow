@@ -45,6 +45,7 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const d = el.dataset;
+  if (el.tagName === 'A') e.preventDefault();
   const num = (v) => (v !== '' && !isNaN(v) ? Number(v) : v);
   switch (d.action) {
     case 'preview-employee-doc': return previewEmployeeDocument(num(d.id), d.name, d.type);
@@ -52,6 +53,11 @@ document.addEventListener('click', (e) => {
     case 'preview-salary-doc': return previewInvoicePdf(num(d.id), d.number);
     case 'regenerate-salary-doc':
       return openRegenerateInvoiceModal(num(d.employeeId), d.name, num(d.year), num(d.month), d.number);
+    case 'open-employee-profile': return viewProfile(num(d.employeeId));
+    case 'open-comp-plan': return openCompPlanModal(num(d.employeeId));
+    case 'open-employee-bank': return openEmployeeBankSection(num(d.employeeId));
+    case 'view-own-claim-receipt': return viewOwnClaimReceipt(Number(d.index));
+    case 'view-claim-receipt': return viewClaimReceipt(num(d.id));
     default: return undefined;
   }
 });
@@ -172,13 +178,16 @@ function closeAllSidebars(){
   });
 }
 
-document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{
-  el.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection(el.dataset.page, 'admin');
-  });
+// One delegated handler for every sidebar item: one click is one navigation and one loader run.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('.nav-item[data-page]');
+  if (!el) return;
+  const portal = el.closest('#employee-app') ? 'employee' : (el.closest('#admin-app') ? 'admin' : null);
+  if (!portal) return;
+  e.preventDefault();
+  if (window.Router) Router.navigate(el.dataset.page, portal);
+  else showSection(el.dataset.page, portal);
 });
-document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'employee')); });
 document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
 const titles = {
   'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
@@ -216,7 +225,7 @@ const titles = {
   'e-insurance':['Medical Insurance','Your plan, category limits and claims history.'],
   'e-dochub':['Document Hub','Company documents and policies.'],
 };
-function showSection(pageId, portal){
+function showSection(pageId, portal, params){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
 
   // Finance Information Architecture domain mapping (Story 1.1)
@@ -270,6 +279,7 @@ function showSection(pageId, portal){
     document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1];
   }
   closeAllSidebars();
+  if (window.Router) Router.record(pageId, portal, params);
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
   if(portal === 'admin') {
     if(typeof PayrollApp !== 'undefined' && PayrollApp.showPage) {
