@@ -361,12 +361,12 @@
       const savedCurrent = (this.serverRuns || []).some(r => r.period_label === this.month);
       let rowsHtml = savedCurrent ? '' : `
         <tr class="clickable" onclick="PayrollApp.openRun('current')">
-          <td><strong>${this.month}</strong></td>
-          <td>${this.start} &rarr; ${this.end}</td>
-          <td><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'DRAFT'}</span></td>
-          <td class="payroll-num">${this.money(t.net)}</td>
-          <td>${this.rows.length}</td>
-          <td>${this.audit[0] ? this.audit[0].when : '—'}</td>
+          <td data-label="Period"><strong>${this.month}</strong></td>
+          <td data-label="Date range">${this.start} &rarr; ${this.end}</td>
+          <td data-label="Status"><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'DRAFT'}</span></td>
+          <td data-label="Total Disbursement" class="payroll-num">${this.money(t.net)}</td>
+          <td data-label="Employees">${this.rows.length}</td>
+          <td data-label="Last updated">${this.audit[0] ? this.audit[0].when : '—'}</td>
         </tr>
       `;
 
@@ -393,12 +393,12 @@
 
         rowsHtml += `
           <tr class="clickable" onclick="PayrollApp.openRun('${r.id || r.period_label}')">
-            <td><strong>${escapeHtml(r.period_label)}</strong></td>
-            <td>${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
-            <td><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
-            <td class="payroll-num">${this.money(netVal)}</td>
-            <td>${hc}</td>
-            <td>${displayUpd}</td>
+            <td data-label="Period"><strong>${escapeHtml(r.period_label)}</strong></td>
+            <td data-label="Date range">${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
+            <td data-label="Status"><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
+            <td data-label="Total Disbursement" class="payroll-num">${this.money(netVal)}</td>
+            <td data-label="Employees">${hc}</td>
+            <td data-label="Last updated">${displayUpd}</td>
           </tr>
         `;
       });
@@ -563,7 +563,15 @@
       if (!container) return;
       const doneThrough = this.completedThroughIndex();
 
-      container.innerHTML = FLOW.map((stepKey, idx) => {
+      const stepNames = FLOW.map((k, i) => (STEP_META[k] ? STEP_META[k].label : `${i + 1}. Step`));
+      const compact = `
+        <div class="payroll-step-compact">
+          <strong>Step ${this.stepIndex + 1} of ${FLOW.length}</strong>
+          <select id="payrollStepSelect" aria-label="Go to step" onchange="PayrollApp.setStep(Number(this.value))">
+            ${stepNames.map((n, i) => `<option value="${i}" ${i === this.stepIndex ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}
+          </select>
+        </div>`;
+      container.innerHTML = compact + FLOW.map((stepKey, idx) => {
         const meta = STEP_META[stepKey] || { label: `${idx + 1}. Step` };
         const isActive = idx === this.stepIndex;
         const isDone = idx < this.stepIndex || idx <= doneThrough;
@@ -752,8 +760,24 @@
       this.drawTable();
       const p2ApproveBtn = document.getElementById('btnP2Approve');
       if (p2ApproveBtn) {
-        const canApprove = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.approve') : true;
-        p2ApproveBtn.style.display = canApprove ? '' : 'none';
+        const status = (this.currentRun && this.currentRun.status) || 'draft';
+        const awaitingApproval = status === 'submitted';
+        const allowed = awaitingApproval ? this.canPermission('finance.payroll.approve') : this.canPermission('finance.payroll.prepare');
+        p2ApproveBtn.innerHTML = awaitingApproval
+          ? 'Approve <i class="fa-solid fa-check"></i>'
+          : 'Submit for approval <i class="fa-solid fa-paper-plane"></i>';
+        p2ApproveBtn.style.display = allowed ? '' : 'none';
+        const selfRow = document.getElementById('p2SelfApproveRow');
+        if (selfRow) {
+          selfRow.hidden = !(awaitingApproval && this.canSelfApprove());
+          if (selfRow.hidden) { const box = document.getElementById('p2SelfApprove'); if (box) box.checked = false; }
+        }
+        const hint = document.getElementById('p2ApprovalHint');
+        if (hint) {
+          hint.textContent = awaitingApproval
+            ? (allowed ? 'Step 2 of 2: approve this run. Approval by someone other than the submitter is expected.' : 'Submitted. Waiting for an approver.')
+            : (allowed ? 'Step 1 of 2: submit this run for approval.' : 'You can review this run but not submit it.');
+        }
       }
     },
 
@@ -833,19 +857,19 @@
 
         rowsHtml += `
           <tr>
-            <td class="col-id payroll-id-th">${r.id}</td>
+            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
-                <strong>${r.name}</strong>
+                <strong>${escapeHtml(r.name)}</strong>
               </div>
             </td>
-            <td class="num payroll-num">${this.money(r.baseExt)}</td>
-            <td class="num payroll-num">${this.money(r.baseInt)}</td>
-            <td class="num payroll-num">
+            <td class="num payroll-num" data-label="Base Ext">${this.money(r.baseExt)}</td>
+            <td class="num payroll-num" data-label="Base Int">${this.money(r.baseInt)}</td>
+            <td class="num payroll-num" data-label="Bonus / Commission">
               ${bonusBadges || '<span class="muted" style="color:var(--text3); font-weight:600;">—</span>'}
             </td>
-            <td class="num payroll-num strong">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
+            <td class="num payroll-num strong" data-label="Total comp (gross)">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
             <td class="col-actions" style="text-align:center;">
               <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
             </td>
@@ -1054,7 +1078,23 @@
       }
     },
 
-    async submitAndApproveRun() {
+    canPermission(key) {
+      return typeof SessionInfo !== 'undefined' && typeof SessionInfo.hasPermission === 'function' ? SessionInfo.hasPermission(key) : true;
+    },
+
+    // Self-approval is offered only to a user who may both prepare and approve.
+    canSelfApprove() {
+      return this.canPermission('finance.payroll.prepare') && this.canPermission('finance.payroll.approve');
+    },
+
+    // The single button on screen 2 moves through two visible steps: submit, then approve.
+    submitAndApproveRun() {
+      const status = this.currentRun && this.currentRun.status;
+      return status === 'submitted' ? this.approveRun() : this.submitRun();
+    },
+
+    // Step 1 of 2: create the run when needed and submit it for approval. Nothing is approved here.
+    async submitRun() {
       try {
         if (!this.currentRun) {
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
@@ -1080,19 +1120,65 @@
           }
         }
 
-        if (this.currentRun && (this.currentRun.status === 'submitted' || this.currentRun.status === 'draft')) {
-          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.approvePayrollRun === 'function') {
-            await FinanceApi.approvePayrollRun(this.currentRun.id, true);
-            this.currentRun.status = 'approved';
-          }
-        }
+        this.addAudit('Payroll run submitted for approval.');
+        this.showBanner('Payroll run submitted for approval.', 'blue');
+        this.drawScreen2();
+        this.drawStatus();
+      } catch (err) {
+        console.error('Error submitting run:', err);
+        this.showBanner(err.message || 'Submission failed.', 'red');
+      }
+    },
 
-        this.addAudit('Payroll run submitted and approved.');
+    // Step 2 of 2: approve. Self-approval is sent only when the user explicitly ticks the box.
+    async approveRun() {
+      try {
+        const box = document.getElementById('p2SelfApprove');
+        const allowSelf = !!(box && box.checked && this.canSelfApprove());
+        if (this.currentRun && this.currentRun.status === 'submitted'
+            && typeof FinanceApi !== 'undefined' && typeof FinanceApi.approvePayrollRun === 'function') {
+          await FinanceApi.approvePayrollRun(this.currentRun.id, allowSelf);
+          this.currentRun.status = 'approved';
+        }
+        this.addAudit(allowSelf ? 'Payroll run approved (self-approval confirmed).' : 'Payroll run approved.');
         this.showBanner('Payroll run approved. Advancing to statutory processing.', 'blue');
         this.setStep(2);
       } catch (err) {
         console.error('Error approving run:', err);
         this.showBanner(err.message || 'Approval failed.', 'red');
+      }
+    },
+
+    // Downloads the run CSV (one row per employee). Real mode uses the authenticated export endpoint.
+    async exportRunCsv() {
+      try {
+        const isMock = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!isMock) {
+          if (!this.currentRun || !this.currentRun.id) {
+            this.showBanner('Save and submit the run before exporting it.', 'red');
+            return;
+          }
+          await FinanceApi.exportPayrollRun(this.currentRun.id);
+          return;
+        }
+        const pay = this.paymentValues();
+        const q = (v) => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+        const lines = [['Employee ID', 'Name', 'External (USD)', 'Internal (USD)', 'Total Disbursement'].map(q).join(',')];
+        this.rows.forEach(r => {
+          const v = pay.get(Number(r.id)) || { ext: 0, int: 0, net: 0 };
+          lines.push([r.id, r.name, v.ext.toFixed(2), v.int.toFixed(2), v.net.toFixed(2)].map(q).join(','));
+        });
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payroll_run_${(this.currentRun && this.currentRun.id) || this.month}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } catch (err) {
+        this.showBanner(err.message || 'Export failed.', 'red');
       }
     },
 
@@ -1340,17 +1426,17 @@
 
         rowsHtml += `
           <tr class="${isMissingBank ? 'warnrow' : ''}">
-            <td class="col-id payroll-id-th">${r.id}</td>
+            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
                 <strong>${escapeHtml(r.name)}</strong>
               </div>
             </td>
-            <td>${bankBadgeHtml}</td>
-            <td class="num payroll-num">${this.money(extVal)}</td>
-            <td class="num payroll-num">${this.money(intVal)}</td>
-            <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netVal)}</td>
+            <td data-label="Bank / Routing">${bankBadgeHtml}</td>
+            <td class="num payroll-num" data-label="External (USD)">${this.money(extVal)}</td>
+            <td class="num payroll-num" data-label="Internal (USD)">${this.money(intVal)}</td>
+            <td class="num payroll-num strong accent" data-label="Total Disbursement" style="font-weight:800; color:var(--accent);">${this.money(netVal)}</td>
           </tr>
         `;
       });
@@ -1475,40 +1561,44 @@
           btnDisburse.disabled = false;
           btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm and record as paid';
         }
+        this.applyConfirmState();
       }
     },
 
+    missingBankCount() {
+      const excs = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      return new Set(excs.filter(e => e.code === 'MISSING_BANK_DETAILS').map(e => Number(e.employee_id))).size;
+    },
+
     async confirmDisbursement() {
+      const run = this.currentRun;
+      if (!run || !['finalized', 'processing', 'partially_paid'].includes(run.status)) {
+        this.showBanner('Payroll must be approved and finalized before payment can be recorded.', 'red');
+        return;
+      }
+      const totals = this.paymentTotals();
+      const recipients = this.rows.length;
+      const missing = this.missingBankCount();
+      const confirmed = await FinanceCommand.confirmAction({
+        title: 'Record payroll as paid',
+        consequence: `Record ${this.money(totals.net)} as paid to ${recipients} employee${recipients === 1 ? '' : 's'} for ${this.month}. `
+          + `${missing} ${missing === 1 ? 'employee has' : 'employees have'} missing bank details. `
+          + 'This posts the payroll journal and cannot be undone from here.',
+        actionLabel: 'Confirm and record as paid',
+        actionClass: 'btn btn-fill',
+        severity: 'warning',
+      });
+      if (!confirmed.confirmed) return;
+
+      const unlock = FinanceCommand.lockSubmitButton('btnP5ConfirmDisburse');
+      if (unlock === null) return;
       try {
-        if (!this.currentRun) {
-          await this.submitAndApproveRun();
-        }
-
-        if (this.currentRun && (this.currentRun.status === 'draft' || this.currentRun.status === 'submitted')) {
-          if (typeof FinanceApi !== 'undefined') {
-            if (this.currentRun.status === 'draft' && typeof FinanceApi.submitPayrollRun === 'function') {
-              await FinanceApi.submitPayrollRun(this.currentRun.id);
-            }
-            if (typeof FinanceApi.approvePayrollRun === 'function') {
-              await FinanceApi.approvePayrollRun(this.currentRun.id, true);
-              this.currentRun.status = 'approved';
-            }
-          }
-        }
-
-        if (this.currentRun && this.currentRun.status === 'approved') {
-          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
-            await FinanceApi.finalizePayrollRun(this.currentRun.id);
-            this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
-          }
-        }
-
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.disbursePayrollRun === 'function') {
-          await FinanceApi.disbursePayrollRun(this.currentRun.id);
-          await FinanceApi.postPayrollJournal(this.currentRun.id);
-          this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
-        } else {
-          if (this.currentRun) this.currentRun.status = 'paid';
+          await FinanceApi.disbursePayrollRun(run.id);
+          await FinanceApi.postPayrollJournal(run.id);
+          this.currentRun = await FinanceApi.getPayrollRun(run.id);
+        } else if (this.currentRun) {
+          this.currentRun.status = 'paid';
         }
 
         this.journalPosted = true;
@@ -1518,7 +1608,25 @@
         this.drawStatus();
       } catch (err) {
         console.error('Error confirming disbursement:', err);
-        this.showBanner(err.message || 'Disbursement failed.', 'red');
+        this.showBanner(err.message || 'Recording payment failed.', 'red');
+      } finally {
+        unlock();
+        this.applyConfirmState();
+      }
+    },
+
+    // Disable the confirm button, with an explanation, until the run is finalized.
+    applyConfirmState() {
+      const btn = document.getElementById('btnP5ConfirmDisburse');
+      const hint = document.getElementById('p5ConfirmHint');
+      if (!btn) return;
+      const status = this.currentRun && this.currentRun.status;
+      const paid = status === 'paid';
+      const ready = ['finalized', 'processing', 'partially_paid'].includes(status);
+      if (!paid) btn.disabled = !ready;
+      if (hint) {
+        hint.hidden = ready || paid;
+        hint.textContent = ready || paid ? '' : 'Payment can be recorded once the run is approved and finalized.';
       }
     },
 
@@ -2214,21 +2322,14 @@
     },
 
     openRevertModal() {
-      const modal = document.getElementById('payrollRevertModal');
       const reason = document.getElementById('payrollRevertReason');
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('show');
-      }
       if (reason) reason.value = '';
+      openModal('payrollRevertModal');
+      if (reason) setTimeout(() => reason.focus(), 50);
     },
 
     closeRevertModal() {
-      const modal = document.getElementById('payrollRevertModal');
-      if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
-      }
+      closeModal('payrollRevertModal');
     },
 
     confirmRevert() {

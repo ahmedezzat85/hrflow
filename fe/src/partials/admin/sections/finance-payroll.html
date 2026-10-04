@@ -16,7 +16,7 @@
                 </div>
               </div>
               <div class="payroll-table-wrap">
-                <table class="runs-table" id="payrollRunsTable">
+                <table class="runs-table responsive-card-table" id="payrollRunsTable">
                   <thead>
                     <tr>
                       <th>Period</th>
@@ -171,7 +171,7 @@
 
                 <!-- Payroll Worksheet Table (Restricted Columns) -->
                 <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet" id="payrollWorksheetTable">
+                  <table class="payroll-worksheet responsive-card-table" id="payrollWorksheetTable">
                     <thead>
                       <tr>
                         <th class="col-id payroll-id-th">ID</th>
@@ -198,11 +198,15 @@
                 </div>
 
                 <div class="footer payroll-footer-actions">
-                  <div class="left-info" id="p2StepHint" style="display:none;">Step 2 of 6 — Review base compensation and dynamic additions. Submit &amp; Approve to advance to statutory processing.</div>
+                  <div class="left-info" id="p2StepHint" style="display:none;">Step 2 of 6 — Review base compensation and dynamic additions. Submit for approval, then approve to advance to statutory processing.</div>
+                  <div class="left-info" id="p2ApprovalHint"></div>
                   <button class="btn btn-ghost" id="btnP2Back" onclick="PayrollApp.setStep(0)"><i class="fa-solid fa-arrow-left"></i> Back</button>
                   <button class="btn btn-ghost" id="btnP2SaveDraft" onclick="PayrollApp.saveDraftRun()"><i class="fa-solid fa-floppy-disk"></i> Save Draft</button>
+                  <label class="p2-self-approve" id="p2SelfApproveRow" hidden>
+                    <input type="checkbox" id="p2SelfApprove"> I am approving my own submission
+                  </label>
                   <button class="btn btn-fill" id="btnP2Approve" onclick="PayrollApp.submitAndApproveRun()">
-                    Submit &amp; Approve <i class="fa-solid fa-check"></i>
+                    Submit for approval <i class="fa-solid fa-paper-plane"></i>
                   </button>
                 </div>
               </div>
@@ -285,7 +289,7 @@
                 </div>
 
                 <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet" id="payrollPaymentPreviewTable">
+                  <table class="payroll-worksheet responsive-card-table" id="payrollPaymentPreviewTable">
                     <thead>
                       <tr>
                         <th class="col-id payroll-id-th">ID</th>
@@ -312,6 +316,7 @@
                 <div class="footer payroll-footer-actions">
                   <div class="left-info" style="display:none;">Step 4 of 6 — Review disbursement allocations. Click Next to perform payment funding confirmation.</div>
                   <button class="btn btn-ghost" id="btnP4Back" onclick="PayrollApp.setStep(2)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                  <button class="btn btn-outline" id="btnP4ExportCsv" onclick="PayrollApp.exportRunCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
                   <button class="btn btn-fill" id="btnP4Next" onclick="PayrollApp.setStep(4)">
                     Next: Confirm Payment <i class="fa-solid fa-arrow-right"></i>
                   </button>
@@ -395,9 +400,11 @@
                 </div>
 
                 <div style="padding:0 20px 14px">
+                  <button type="button" class="btn btn-outline" id="btnP5ExportCsv" onclick="PayrollApp.exportRunCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
                   <button type="button" class="btn btn-fill" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
                     <i class="fa-solid fa-paper-plane"></i> Confirm and record as paid
                   </button>
+                  <p class="payroll-subtitle" id="p5ConfirmHint" hidden></p>
                 </div>
 
                 <!-- Per-line Disbursal Results Table (Shown when Disbursed) -->
@@ -806,12 +813,22 @@
           </div>
 
           <!-- Revert to Draft Confirmation Modal (Reason input only) -->
-          <div class="payroll-modal-overlay" id="payrollRevertModal">
-            <div class="payroll-modal-box">
-              <h3 style="margin:0 0 6px 0; font-size:1.15rem; font-weight:800;">Revert this run to Draft?</h3>
-              <p class="payroll-subtitle" style="margin:0 0 10px 0;">This unlocks employee lines for editing again. A reason is required and will be logged in the audit trail.</p>
-              <textarea id="payrollRevertReason" placeholder="Reason for reverting (required)..."></textarea>
-              <div class="actions">
+          <div class="modal-overlay" id="payrollRevertModal" role="dialog" aria-modal="true" aria-labelledby="payrollRevertTitle">
+            <div class="modal modal-v2">
+              <div class="modal-head">
+                <div class="modal-head-text">
+                  <h3 id="payrollRevertTitle">Revert this run to Draft?</h3>
+                  <p>This unlocks employee lines for editing again. A reason is required and will be logged in the audit trail.</p>
+                </div>
+                <button class="modal-close" onclick="PayrollApp.closeRevertModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <div class="form-field">
+                  <label for="payrollRevertReason">Reason for reverting <span class="req">*</span></label>
+                  <textarea id="payrollRevertReason" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-foot">
                 <button class="btn btn-ghost" onclick="PayrollApp.closeRevertModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="PayrollApp.confirmRevert()">Revert to draft</button>
               </div>

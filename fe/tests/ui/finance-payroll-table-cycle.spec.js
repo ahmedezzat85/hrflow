@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { submitAndApprove, confirmPayment } from './helpers/payroll.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 import fs from 'fs';
 import path from 'path';
@@ -137,7 +138,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollScreen2')).toBeVisible();
 
     // Click Submit & Approve Run
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
 
     // Advances to Screen 3 (Processing)
     const s3 = page.locator('#payrollScreen3');
@@ -205,7 +206,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // Screen 1 -> Screen 2
     await page.click('#btnP1Proceed');
     // Screen 2 -> Screen 3
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     // Screen 3 -> Screen 4
     await page.click('#btnP3Next');
     // Screen 4 -> Screen 5
@@ -216,7 +217,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('5. Confirm Disbursal');
 
     // Confirm & Disburse
-    await page.click('#btnP5ConfirmDisburse');
+    await confirmPayment(page);
     await expect(page.locator('#payrollActionBanner')).toContainText('Payroll recorded as paid');
 
     // Results card & GL journal visible
@@ -279,7 +280,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // Advance through Screen 2 and Screen 3 to Screen 4
     await page.click('#btnP1Proceed');
     await expect(page.locator('#payrollScreen2')).toBeVisible();
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await expect(page.locator('#payrollScreen3')).toBeVisible();
     await page.click('#btnP3Next');
     const s4 = page.locator('#payrollScreen4');
@@ -318,7 +319,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     });
 
     // Attempt to submit and approve (which calls setStep(2) triggering finalize)
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
 
     // Verify:
     // a. Visible red banner with error message
@@ -671,7 +672,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // Submit & Approve to advance to Screen 3
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     const s3 = page.locator('#payrollScreen3');
     await expect(s3).toBeVisible();
     await page.waitForTimeout(250);
@@ -694,7 +695,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await page.click('#btnP3Next');
     const s4 = page.locator('#payrollScreen4');
     await expect(s4).toBeVisible();
@@ -752,7 +753,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await page.click('#btnP3Next');
     await page.click('#btnP4Next');
 
@@ -803,7 +804,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // 4. Confirm & Disburse Action (Single Combined Action)
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.click('#btnP5ConfirmDisburse');
+    await confirmPayment(page);
     await expect(page.locator('#payrollActionBanner')).toContainText('Payroll recorded as paid');
 
     // Results card, table rows & GL journal visible
@@ -845,10 +846,10 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await page.click('#btnP3Next');
     await page.click('#btnP4Next');
-    await page.click('#btnP5ConfirmDisburse');
+    await confirmPayment(page);
     await page.click('#btnP5ProceedStatutory');
 
     const s6 = page.locator('#payrollScreen6');

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { submitAndApprove, confirmPayment } from './helpers/payroll.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
@@ -122,7 +123,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
     // Advance Screen 1 -> Screen 2 -> Screen 3 (Processing)
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
 
     // Verify Screen 3 table headers contain statutory Social Insurance snapshots
     const tableHeader = page.locator('#payrollProcessingTable thead');
