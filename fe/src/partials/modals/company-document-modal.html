@@ -14,11 +14,11 @@
           <div class="form-section-label"><i class="fa-solid fa-file-circle-plus"></i> Document Information <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Document Name <span class="req">*</span></label>
+              <label for="dochubDocName">Document Name <span class="req">*</span></label>
               <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
             </div>
             <div class="form-field full">
-              <label>Category <span class="req">*</span></label>
+              <label for="dochubDocCategory">Category <span class="req">*</span></label>
               <select id="dochubDocCategory">
                 <option>General</option>
                 <option>Policy</option>
@@ -28,8 +28,8 @@
               </select>
             </div>
             <div class="form-field full">
-              <label>File <span class="req">*</span></label>
-              <div id="dochubDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('dochubFileInput').click()">
+              <label for="dochubFileInput">File <span class="req">*</span></label>
+              <div id="dochubDocDropZone" class="doc-drop-zone compact" role="button" tabindex="0" aria-label="Choose a file to upload" onclick="document.getElementById('dochubFileInput').click()">
                 <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
                 <div id="dochubDocDropZoneEmpty" class="doc-drop-empty">
                   <i class="fa-solid fa-cloud-arrow-up"></i>

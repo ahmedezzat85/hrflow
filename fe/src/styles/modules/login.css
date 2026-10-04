@@ -174,7 +174,7 @@
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
-#login-screen .btn-primary {
+#login-screen .btn-login {
   width: 100%;
   padding: 14px;
   border: none;
@@ -187,7 +187,7 @@
   transition: transform .15s, box-shadow .15s;
 }
 
-#login-screen .btn-primary:hover {
+#login-screen .btn-login:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 26px rgba(32, 86, 232, .45);
 }

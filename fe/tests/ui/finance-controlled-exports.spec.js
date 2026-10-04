@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmDialog } from './helpers/confirm.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 7.3: Controlled Exports and Scheduled Delivery', () => {
@@ -86,11 +87,9 @@ test.describe('Story 7.3: Controlled Exports and Scheduled Delivery', () => {
 
     // Switch back to schedules and test cancel button with dialog confirmation
     await page.click('#btnTabReportSchedules');
-    page.once('dialog', async (dialog) => {
-      await dialog.accept();
-    });
     const initialCount = await schedRows.count();
     await schedRows.first().locator('.delete-schedule-btn').click();
+    await confirmDialog(page);
     await expect(page.locator('.toast')).toContainText(/cancelled/i);
 
     // Close modal

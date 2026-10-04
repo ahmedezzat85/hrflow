@@ -3,7 +3,7 @@
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
         <div class="modal-head-text">
-          <h3 id="bankAccountModalTitle">Bank Account Details</h3>
+          <h3 id="bankAccountModalTitle">Employee bank account details</h3>
           <p>Employee payout banking details and wire routing.</p>
         </div>
         <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
@@ -13,11 +13,11 @@
           <div class="form-section-label"><i class="fa-solid fa-credit-card"></i> Banking Information <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Bank Name <span class="req">*</span></label>
+              <label for="fBankName">Bank Name <span class="req">*</span></label>
               <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
             </div>
             <div class="form-field full">
-              <label>IBAN <span class="req">*</span></label>
+              <label for="fBankIban">IBAN <span class="req">*</span></label>
               <div style="display:flex;gap:8px;align-items:center;">
                 <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002"
                   style="flex:1;font-family:monospace;">
@@ -30,7 +30,7 @@
                 default. Click the eye icon to reveal.</span>
             </div>
             <div class="form-field full">
-              <label>SWIFT / BIC Code <span class="opt">Optional</span></label>
+              <label for="fBankSwift">SWIFT / BIC Code <span class="opt">Optional</span></label>
               <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
             </div>
           </div>

@@ -600,8 +600,8 @@
       const projBal = direction === "in" ? round(curBal + effectiveAmt, 2) : round(curBal - effectiveAmt, 2);
       const effectWord = direction === "in" ? "increase" : "decrease";
 
-      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "E£" : txCurr);
-      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "E£" : acctCurr);
+      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "EGP " : txCurr);
+      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "EGP " : acctCurr);
 
       let plain = `This will ${effectWord} the Book Balance of ${acc.account_name} by ${sym}${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${txCurr}.`;
       if (txCurr !== acctCurr) {

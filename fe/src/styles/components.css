@@ -1,3 +1,13 @@
+/*
+ * Button variants (U2) — one primary name across the app:
+ *   btn btn-fill            primary action
+ *   btn                     default / secondary
+ *   btn btn-outline         outline
+ *   btn btn-ghost           low-emphasis (payroll step bars)
+ *   btn btn-danger          destructive (also btn-danger-outline)
+ *   btn btn-sm              small (combine with any variant)
+ * Status pills are documented next to the badge rules below.
+ */
 /* UI Components: Cards, Tables, Buttons, Forms, Loaders */
 .card {
   background: var(--surface);
@@ -25,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   font-family: var(--font-head);
   color: var(--text);
@@ -33,11 +43,11 @@
 
 .section-title i {
   color: var(--accent);
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 
 .section-subtitle {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text2);
   font-weight: 400;
 }
@@ -52,14 +62,14 @@
 }
 
 .card-head h3 {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   font-family: var(--font-head);
   color: var(--text);
 }
 
 .card-head .link {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--accent);
   cursor: pointer;
@@ -82,11 +92,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--fs-xl);
 }
 
 .stat-val {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 800;
   margin-top: 14px;
   font-family: var(--font-head);
@@ -94,7 +104,7 @@
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text2);
   margin-top: 4px;
@@ -103,7 +113,7 @@
 }
 
 .stat-trend {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   margin-top: 10px;
   display: inline-flex;
@@ -115,26 +125,28 @@
 
 .trend-up {
   color: var(--success);
-  background: #e6f9f1;
+  background: var(--success-soft);
 }
 
 .trend-down {
   color: var(--danger);
-  background: #fdeaea;
+  background: var(--danger-soft);
 }
 
+/* One table style for HR, Finance, Payroll and System tables:
+   header typography, row height, hover and empty-row look live here. */
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 
 thead th {
   text-align: left;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: var(--text3);
+  color: var(--text2);
   font-weight: 700;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
@@ -142,7 +154,7 @@ thead th {
 }
 
 tbody td {
-  padding: 13px 12px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   vertical-align: middle;
@@ -188,42 +200,112 @@ thead th.col-actions {
 .tname .avatar {
   width: 30px;
   height: 30px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
-.badge-pill {
-  padding: 4px 11px;
-  border-radius: 20px;
-  font-size: 11.5px;
-  font-weight: 700;
+/*
+ * Status badge vocabulary (U2). One look for every status pill in HR, Finance and Payroll.
+ * Canonical class: .badge-pill with .pill-success | .pill-warning | .pill-danger | .pill-info | .pill-neutral.
+ * The other names are aliases with identical styling:
+ *   .badge-* (approved, pending, rejected, success, warning, danger, info, grey, neutral, primary, indigo, secondary),
+ *   .status-badge.status-*, .p-badge.b-* and .stage-badge / .settings-pill modifiers (payroll).
+ */
+.badge-pill,
+.p-badge,
+.stage-badge,
+.settings-pill,
+.status-badge,
+.badge-success,
+.badge-approved,
+.badge-warning,
+.badge-pending,
+.badge-danger,
+.badge-rejected,
+.badge-info,
+.badge-primary,
+.badge-indigo,
+.badge-neutral,
+.badge-grey,
+.badge-secondary {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--surface2);
+  color: var(--text2);
 }
 
-.pill-success {
-  background: #e6f9f1;
+.pill-success,
+.badge-success,
+.badge-approved,
+.p-badge.b-green,
+.stage-badge.settled,
+.stage-badge.remitted,
+.settings-pill.pill-emerald,
+.status-badge.status-success {
+  background: var(--success-soft);
   color: var(--success);
 }
 
-.pill-warning {
-  background: #fff3e0;
+.pill-warning,
+.badge-warning,
+.badge-pending,
+.p-badge.b-orange,
+.p-badge.b-amber,
+.settings-pill.pill-amber,
+.status-badge.status-warning {
+  background: var(--warning-soft);
   color: var(--warning);
 }
 
-.pill-danger {
-  background: #fdeaea;
+.pill-danger,
+.badge-danger,
+.badge-rejected,
+.p-badge.b-red,
+.status-badge.status-danger {
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
-.pill-info {
-  background: var(--accent-soft);
-  color: var(--accent2);
+.pill-info,
+.badge-info,
+.p-badge.b-blue,
+.stage-badge.recorded,
+.stage-badge.accrued,
+.settings-pill.pill-blue,
+.status-badge.status-info {
+  background: var(--info-soft);
+  color: var(--info);
 }
 
-.pill-neutral {
+.badge-primary,
+.badge-indigo,
+.status-badge.status-primary {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-pill.pill-purple {
+  background: var(--purple-soft);
+  color: var(--purple);
+}
+
+.pill-neutral,
+.badge-neutral,
+.badge-grey,
+.badge-secondary,
+.p-badge.b-gray,
+.stage-badge.unrecorded,
+.status-badge.status-neutral {
   background: var(--surface2);
   color: var(--text2);
+  border-color: var(--border2);
 }
 
 /* Status LED Badge & Dimmed Rows */
@@ -233,7 +315,7 @@ thead th.col-actions {
   gap: 6px;
   padding: 3px 9px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -241,13 +323,13 @@ thead th.col-actions {
 
 .status-led-active {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .status-led-inactive {
   background: rgba(239, 68, 68, 0.10);
-  color: #dc2626;
+  color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.22);
 }
 
@@ -260,12 +342,12 @@ thead th.col-actions {
 }
 
 .status-led-active .led-dot {
-  background-color: #10b981;
+  background-color: var(--success);
   box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
 }
 
 .status-led-inactive .led-dot {
-  background-color: #ef4444;
+  background-color: var(--danger);
   box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
 }
 
@@ -285,7 +367,7 @@ tr.row-dimmed:hover {
 .btn {
   padding: 9px 16px;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   border: 1px solid var(--border);
   background: var(--surface2);
@@ -312,19 +394,19 @@ button:disabled,
 
 .btn-fill {
   background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   box-shadow: 0 6px 16px rgba(32, 86, 232, .3);
 }
 
 .btn-fill:hover {
-  color: #fff;
+  color: var(--on-accent);
   transform: translateY(-1px);
 }
 
 .btn-sm {
   padding: 6px 11px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .btn-danger-outline {
@@ -335,7 +417,7 @@ button:disabled,
 
 .btn-danger-outline:hover {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-success-outline {
@@ -346,7 +428,7 @@ button:disabled,
 
 .btn-success-outline:hover {
   background: var(--success);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .icon-action {
@@ -358,7 +440,7 @@ button:disabled,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text2);
 }
 
@@ -388,7 +470,7 @@ button:disabled,
   top: 50%;
   transform: translateY(-50%);
   color: var(--text3);
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .search-box input {
@@ -397,7 +479,7 @@ button:disabled,
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text);
   outline: none;
 }
@@ -419,7 +501,7 @@ button:disabled,
 .filter-tab {
   padding: 8px 15px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text2);
   border: none;
@@ -441,7 +523,7 @@ select.form-control {
   -moz-appearance: none;
   height: 38px;
   padding: 0 34px 0 13px !important;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-family: inherit;
   font-weight: 500;
   color: var(--text);
@@ -493,7 +575,7 @@ select.form-control option {
 /* General form control inputs */
 .form-control {
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text);
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -551,16 +633,16 @@ select.form-control option {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--fs-md);
   flex-shrink: 0;
 }
 
 .timeline .txt strong {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
 }
 
 .timeline .txt p {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text2);
   margin-top: 2px;
 }
@@ -568,7 +650,7 @@ select.form-control option {
 
 .form-field label {
   display: block;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text2);
   margin-bottom: 7px;
@@ -583,7 +665,7 @@ select.form-control option {
   border: 1.5px solid var(--border);
   background: var(--surface2);
   color: var(--text);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   outline: none;
   font-family: inherit;
 }
@@ -608,12 +690,12 @@ select.form-control option {
 .profile-head .avatar {
   width: 56px;
   height: 56px;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   box-shadow: 0 4px 14px rgba(32, 86, 232, .25);
 }
 
 .profile-head h4 {
-  font-size: 18px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   font-family: var(--font-head);
   color: var(--text);
@@ -621,7 +703,7 @@ select.form-control option {
 
 .profile-head p {
   color: var(--text2);
-  font-size: 13px;
+  font-size: var(--fs-md);
   margin-top: 2px;
 }
 
@@ -645,7 +727,7 @@ select.form-control option {
 
 .info-item span {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text2);
   text-transform: uppercase;
   font-weight: 700;
@@ -654,7 +736,7 @@ select.form-control option {
 }
 
 .info-item b {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text);
   word-break: break-word;
 }
@@ -675,7 +757,7 @@ select.form-control option {
 .raise-preview .row {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: var(--fs-md);
   margin-bottom: 6px;
 }
 
@@ -703,7 +785,7 @@ select.form-control option {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   min-width: 260px;
   animation: slidein .3s ease;
@@ -711,7 +793,36 @@ select.form-control option {
 
 .toast i {
   color: var(--success);
-  font-size: 16px;
+  font-size: var(--fs-lg);
+}
+
+.toast-error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.toast-error i {
+  color: var(--danger);
+}
+
+.toast-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.payroll-banner-close {
+  float: right;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
 }
 
 @keyframes slidein {
@@ -834,7 +945,7 @@ select.form-control option {
   }
 
   .sidebar.collapsed .nav-item i {
-    font-size: 14.5px;
+    font-size: var(--fs-base);
     width: 18px;
   }
 
@@ -848,12 +959,12 @@ select.form-control option {
     min-width: auto;
     height: auto;
     padding: 1px 7px;
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     margin-left: auto;
   }
 
   .sidebar.collapsed .nav-section-label {
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     height: auto;
     margin: 20px 10px 8px;
     padding: 0;
@@ -906,14 +1017,14 @@ select.form-control option {
 }
 
 .empty-state i {
-  font-size: 34px;
+  font-size: var(--fs-2xl);
   margin-bottom: 10px;
   color: var(--text3);
 }
 
 .empty-state.loading-state i {
   color: var(--accent);
-  font-size: 28px;
+  font-size: var(--fs-2xl);
 }
 
 .app-loader {
@@ -940,16 +1051,16 @@ select.form-control option {
 
 .app-loader-inner h3 {
   margin-top: 18px;
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 600;
-  color: #e5e7eb;
+  color: var(--text2);
   font-family: var(--font-head);
 }
 
 .app-loader-inner p {
   margin-top: 8px;
-  font-size: 13px;
-  color: #9ca3af;
+  font-size: var(--fs-md);
+  color: var(--text2);
 }
 
 .app-loader {
@@ -976,7 +1087,7 @@ select.form-control option {
 }
 
 .app-loader-inner h3 {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   margin-top: 14px;
   margin-bottom: 6px;
@@ -985,7 +1096,7 @@ select.form-control option {
 }
 
 .app-loader-inner p {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text2);
   line-height: 1.5;
 }
@@ -1019,7 +1130,7 @@ select.form-control option {
   display: inline-block;
   min-width: 90px;
   height: 1.15em;
-  background: linear-gradient(90deg, var(--surface2, #f1f5f9) 25%, var(--border, #e2e8f0) 50%, var(--surface2, #f1f5f9) 75%);
+  background: linear-gradient(90deg, var(--surface2, var(--info-soft)) 25%, var(--border, var(--info-soft)) 50%, var(--surface2, var(--info-soft)) 75%);
   background-size: 200% 100%;
   animation: financeSkeletonLoading 1.5s infinite;
   border-radius: 4px;
@@ -1036,7 +1147,7 @@ select.form-control option {
 .finance-inline-error {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--danger, #ef4444);
+  border-left: 4px solid var(--danger, var(--danger));
   border-radius: var(--radius, 10px);
   padding: 14px 18px;
   margin-bottom: 16px;
@@ -1049,11 +1160,11 @@ select.form-control option {
   gap: 5px;
   padding: 3px 8px;
   border-radius: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
-  background: var(--surface2, #f8fafc);
-  color: var(--text2, #64748b);
-  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface2, var(--info-soft));
+  color: var(--text2, var(--text2));
+  border: 1px solid var(--border, var(--info-soft));
 }
 
 /* Financial table and money semantics (Story 0.2) */
@@ -1072,84 +1183,15 @@ td.cell-money,
 }
 
 .money-negative {
-  color: var(--danger, #ef4444);
+  color: var(--danger, var(--danger));
 }
 
 .money-positive {
-  color: var(--success, #10b981);
+  color: var(--success, var(--success));
 }
 
 .money-zero {
-  color: var(--text3, #94a3b8);
-}
-
-/* Status badges (U1): .badge-* and .status-badge .status-* map to semantic tokens */
-.badge-success,
-.badge-approved,
-.badge-warning,
-.badge-pending,
-.badge-danger,
-.badge-rejected,
-.badge-info,
-.badge-primary,
-.badge-indigo,
-.badge-neutral,
-.badge-grey,
-.badge-secondary,
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
-  background: var(--border);
-  color: var(--text2);
-}
-
-.badge-success,
-.badge-approved,
-.status-badge.status-success {
-  background: var(--success-soft);
-  color: var(--success);
-}
-
-.badge-warning,
-.badge-pending,
-.status-badge.status-warning {
-  background: var(--warning-soft);
-  color: var(--warning);
-}
-
-.badge-danger,
-.badge-rejected,
-.status-badge.status-danger {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-
-.badge-info,
-.status-badge.status-info {
-  background: var(--info-soft);
-  color: var(--info);
-}
-
-.badge-primary,
-.badge-indigo,
-.status-badge.status-primary {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.badge-neutral,
-.badge-grey,
-.badge-secondary,
-.status-badge.status-neutral {
-  background: var(--border);
-  color: var(--text2);
+  color: var(--text3, var(--accent));
 }
 
 .btn-outline {
@@ -1181,18 +1223,18 @@ td.cell-money,
 /* Accessible Forms and Dialogs (Story 0.3) */
 .form-error-summary {
   background: rgba(239, 68, 68, 0.08);
-  border: 1px solid var(--danger, #ef4444);
-  border-left: 4px solid var(--danger, #ef4444);
+  border: 1px solid var(--danger, var(--danger));
+  border-left: 4px solid var(--danger, var(--danger));
   border-radius: var(--radius-sm, 8px);
   padding: 12px 16px;
   margin-bottom: 18px;
-  color: var(--text, #1e293b);
+  color: var(--text, var(--accent));
   outline: none;
 }
 
 [data-theme="dark"] .form-error-summary {
   background: rgba(239, 68, 68, 0.15);
-  color: #f8fafc;
+  color: var(--info-soft);
 }
 
 .form-error-summary:focus {
@@ -1204,15 +1246,15 @@ td.cell-money,
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  font-size: 13.5px;
-  color: var(--danger, #ef4444);
+  font-size: var(--fs-base);
+  color: var(--danger, var(--danger));
   margin-bottom: 6px;
 }
 
 .form-error-summary-list {
   margin: 0;
   padding-left: 20px;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .form-error-summary-list li {
@@ -1220,7 +1262,7 @@ td.cell-money,
 }
 
 .form-error-summary-list a {
-  color: var(--danger, #ef4444);
+  color: var(--danger, var(--danger));
   text-decoration: underline;
   font-weight: 500;
   cursor: pointer;
@@ -1231,8 +1273,8 @@ td.cell-money,
 }
 
 .field-error-msg {
-  color: var(--danger, #ef4444);
-  font-size: 12px;
+  color: var(--danger, var(--danger));
+  font-size: var(--fs-sm);
   font-weight: 500;
   margin-top: 5px;
   display: flex;
@@ -1244,7 +1286,7 @@ input.is-invalid,
 select.is-invalid,
 textarea.is-invalid,
 .form-control.is-invalid {
-  border-color: var(--danger, #ef4444) !important;
+  border-color: var(--danger, var(--danger)) !important;
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
 }
 
@@ -1256,7 +1298,7 @@ textarea.is-invalid,
 .filter-tab:focus-visible,
 .btn:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--accent, #3b82f6);
+  outline: 2px solid var(--accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -1320,7 +1362,7 @@ table.density-spacious td {
 .segmented-btn.active,
 .segmented-btn[aria-pressed="true"] {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -1384,7 +1426,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 .filter-chip-remove {
   background: none;
   border: none;
-  color: var(--text3, #94a3b8);
+  color: var(--text3, var(--accent));
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
@@ -1396,7 +1438,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 }
 
 .filter-chip-remove:hover {
-  color: var(--danger, #ef4444);
+  color: var(--danger, var(--danger));
 }
 
 .btn-clear-filters {
@@ -1470,7 +1512,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 .pagination-btn.active,
 .pagination-btn[aria-current="page"] {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
   font-weight: 600;
 }
@@ -1573,7 +1615,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 
 .drawer-attr-label {
   font-size: 0.74rem;
-  color: var(--text3, #94a3b8);
+  color: var(--text3, var(--accent));
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.4px;
@@ -1640,7 +1682,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 
 .timeline-time {
   font-size: 0.76rem;
-  color: var(--text3, #94a3b8);
+  color: var(--text3, var(--accent));
 }
 
 .timeline-text {
@@ -1690,15 +1732,15 @@ th[data-sort][aria-sort="descending"] .sort-icon {
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--border, #e2e8f0);
-  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--border, var(--info-soft));
+  background: var(--surface, var(--surface));
   transition: background 0.15s ease, opacity 0.2s ease;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .finance-attention-row:hover {
-  background: var(--surface2, #f8fafc);
+  background: var(--surface2, var(--info-soft));
 }
 
 .finance-attention-row.reviewed {
@@ -1723,9 +1765,9 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 }
 
 .finance-attention-title {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
-  color: var(--text, #1e293b);
+  color: var(--text, var(--accent));
   margin-bottom: 3px;
   display: flex;
   align-items: center;
@@ -1734,8 +1776,8 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 }
 
 .finance-attention-desc {
-  font-size: 12.5px;
-  color: var(--text2, #475569);
+  font-size: var(--fs-md);
+  color: var(--text2, var(--accent));
   margin-bottom: 6px;
   line-height: 1.4;
 }
@@ -1745,7 +1787,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
 }
 
 .due-chip {
@@ -1759,29 +1801,29 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 
 .due-chip.overdue {
   background: var(--danger-soft, rgba(239, 68, 68, 0.1));
-  color: var(--danger, #dc2626);
+  color: var(--danger, var(--danger));
 }
 
 .due-chip.due_today {
   background: var(--warning-soft, rgba(245, 158, 11, 0.1));
-  color: var(--warning, #d97706);
+  color: var(--warning, var(--warning));
 }
 
 .due-chip.due_soon {
   background: var(--info-soft, rgba(59, 130, 246, 0.1));
-  color: var(--info, #2563eb);
+  color: var(--info, var(--accent));
 }
 
 .due-chip.immediate {
   background: var(--danger-soft, rgba(239, 68, 68, 0.15));
-  color: var(--danger, #b91c1c);
+  color: var(--danger, var(--danger));
   font-weight: 600;
 }
 
 .due-chip.pending_review,
 .due-chip.needs_reconciliation {
   background: var(--accent-soft, rgba(147, 51, 234, 0.1));
-  color: var(--accent, #7c3aed);
+  color: var(--accent, var(--purple));
 }
 
 .amount-chip {
@@ -1789,8 +1831,8 @@ th[data-sort][aria-sort="descending"] .sort-icon {
   align-items: center;
   gap: 4px;
   font-weight: 600;
-  color: var(--text, #0f172a);
-  background: var(--surface2, #f1f5f9);
+  color: var(--text, var(--accent));
+  background: var(--surface2, var(--info-soft));
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -1803,3 +1845,10 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 }
 
 
+
+/* The Voyance logo is a single navy mark: render it white on dark surfaces */
+[data-theme="dark"] .logo-full,
+[data-theme="dark"] .logo-mark,
+[data-theme="dark"] #login-screen img[src*="logo"] {
+  filter: brightness(0) invert(1);
+}

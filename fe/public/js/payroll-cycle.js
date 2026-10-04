@@ -91,7 +91,7 @@ const PayrollCycleManager = {
         title: 'Submit Payroll for Review',
         consequence: `Are you sure you want to submit the payroll cycle for ${this.currentMonth} for review? Reviewers will verify calculations and line items.`,
         actionLabel: 'Submit for Review',
-        actionClass: 'btn btn-primary',
+        actionClass: 'btn btn-fill',
         severity: 'info'
       });
       confirmed = res && res.confirmed;
@@ -164,7 +164,7 @@ const PayrollCycleManager = {
         title: 'Mark Payroll as Paid',
         consequence: `Confirm that all salary disbursements for ${this.currentMonth} have been executed through bank and cash accounts?`,
         actionLabel: 'Mark as Paid',
-        actionClass: 'btn btn-primary',
+        actionClass: 'btn btn-fill',
         severity: 'info'
       });
       confirmed = res && res.confirmed;

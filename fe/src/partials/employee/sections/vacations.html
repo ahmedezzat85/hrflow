@@ -38,10 +38,10 @@
                 <p style="font-size:12px;color:var(--text2);margin-top:2px;">Submit a leave or remote work request for HR and manager approval.</p>
               </div>
             </div>
-            <div class="time-off-body">
+            <div class="time-off-body" id="empVacationForm">
               <div class="form-grid">
                 <div class="form-field">
-                  <label>Leave Type</label>
+                  <label for="vacType">Leave Type</label>
                   <select id="vacType">
                     <option>Annual Leave</option>
                     <option>Sick Leave</option>
@@ -50,22 +50,22 @@
                   </select>
                 </div>
                 <div class="form-field">
-                  <label>Duration</label>
+                  <label for="vacDuration">Duration</label>
                   <select id="vacDuration" onchange="onVacationDatesChange()">
                     <option value="Full Day(s)">Full Day(s)</option>
                     <option value="Half Day">Half Day (0.5 day)</option>
                   </select>
                 </div>
                 <div class="form-field">
-                  <label>Start Date</label>
+                  <label for="vacStart">Start Date</label>
                   <input type="date" id="vacStart" onchange="onVacationDatesChange()">
                 </div>
                 <div class="form-field">
-                  <label>End Date</label>
+                  <label for="vacEnd">End Date</label>
                   <input type="date" id="vacEnd" onchange="onVacationDatesChange()">
                 </div>
                 <div class="form-field full">
-                  <label>Reason / Additional Details (optional)</label>
+                  <label for="vacReason">Reason / Additional Details (optional)</label>
                   <textarea rows="2" id="vacReason" placeholder="Add context for your manager..."></textarea>
                 </div>
               </div>

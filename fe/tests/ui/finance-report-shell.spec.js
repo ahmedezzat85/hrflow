@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmDialog } from './helpers/confirm.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Story 7.1: Standard Report Library and Shell', () => {
@@ -106,9 +107,8 @@ test.describe('Story 7.1: Standard Report Library and Shell', () => {
     const delBtn = page.locator('#reportShellDeleteViewBtn');
     await expect(delBtn).toBeVisible();
 
-    // Mock confirm dialog
-    page.once('dialog', (dialog) => dialog.accept());
     await delBtn.click();
+    await confirmDialog(page);
     await expect(delBtn).not.toBeVisible();
   });
 

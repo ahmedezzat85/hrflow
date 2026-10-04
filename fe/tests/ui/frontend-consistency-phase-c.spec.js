@@ -52,14 +52,14 @@ test.describe('Frontend Consistency — Phase C Verification (Stop CSS Leaking)'
     }
   });
 
-  test('AC 3: login.css .btn-primary is strictly scoped under #login-screen', async ({ page }) => {
+  test('AC 3: login.css .btn-login is strictly scoped under #login-screen', async ({ page }) => {
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
-    // Check that a test element with .btn-primary outside #login-screen does not inherit width: 100% or padding: 14px
+    // Check that a test element with .btn-login outside #login-screen does not inherit width: 100% or padding: 14px
     const leakedButtonMetrics = await page.evaluate(() => {
       const testBtn = document.createElement('button');
-      testBtn.className = 'btn-primary';
+      testBtn.className = 'btn-login';
       testBtn.textContent = 'Test Button';
       document.body.appendChild(testBtn);
       const comp = window.getComputedStyle(testBtn);
@@ -72,15 +72,15 @@ test.describe('Frontend Consistency — Phase C Verification (Stop CSS Leaking)'
       return metrics;
     });
 
-    // Login's .btn-primary had 14px padding and 12px border radius
+    // Login's .btn-login had 14px padding and 12px border radius
     expect(leakedButtonMetrics.paddingTop).not.toBe('14px');
 
-    // On login screen itself, .btn-primary matches login styling
+    // On login screen itself, .btn-login matches login styling
     const loginBtnMetrics = await page.evaluate(() => {
       const loginScreen = document.getElementById('login-screen');
       if (!loginScreen) return null;
       const testBtn = document.createElement('button');
-      testBtn.className = 'btn-primary';
+      testBtn.className = 'btn-login';
       testBtn.textContent = 'Login Action';
       loginScreen.appendChild(testBtn);
       const comp = window.getComputedStyle(testBtn);

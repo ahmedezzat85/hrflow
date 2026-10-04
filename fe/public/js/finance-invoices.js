@@ -644,14 +644,19 @@ function closeInvoicePaymentModal() {
   closeModal("invoicePaymentModal");
 }
 
-async function saveInvoicePayment() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveInvoicePayment() {
+  return withSubmitLock("invoicePaymentSubmitBtn", _saveInvoicePaymentImpl);
+}
+
+async function _saveInvoicePaymentImpl() {
   const invoiceId = document.getElementById("paymentInvoiceId").value;
   const amount = parseFloat(document.getElementById("paymentAmount").value);
   const paymentDate = document.getElementById("paymentDate").value;
   const bankAccountId = document.getElementById("paymentBankAccountId").value;
 
   const isValid = FinanceForm.validateRequiredFields("invoicePaymentModal", [
-    { id: "paymentBankAccountId", label: "Bank Account" },
+    { id: "paymentBankAccountId", label: "Company bank account" },
     { id: "paymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
     { id: "paymentDate", label: "Payment Date" },
   ]);
@@ -872,8 +877,8 @@ function renderFinanceCustomers(items) {
             <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})" aria-label="Edit Customer">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
-              <i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i>
+            <button class="btn btn-sm btn-icon ${c.is_active ?"btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
+              <i class="fa-solid ${c.is_active ?"fa-ban" : "fa-check"}"></i>
             </button>
           </div>
         </td>
@@ -1068,7 +1073,7 @@ async function toggleCustomerActive(id, currentlyActive) {
       ? "Deactivating will hide this customer from new invoice selectors. Existing invoices are preserved."
       : "Reactivating will make this customer selectable again on invoices.",
     actionLabel: currentlyActive ? "Deactivate Customer" : "Reactivate Customer",
-    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentlyActive ? "warning" : "info",
   });

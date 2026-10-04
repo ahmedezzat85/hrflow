@@ -2,15 +2,6 @@
 // 9. Bank Statement Imports & Reconciliation (Phase 7)
 // Safe HTML escaping: uses the shared escapeHtml() defined in ui.js
 
-// Fallback currency formatter
-function formatCurrency(amount, currency = "USD") {
-  if (typeof FinanceFormat !== "undefined" && typeof FinanceFormat.formatMoney === "function") {
-    return FinanceFormat.formatMoney(amount, currency);
-  }
-  const n = Number(amount) || 0;
-  return n.toLocaleString("en-US", { style: "currency", currency: currency || "USD" });
-}
-
 function onStatementAccountSelected() {
   const accSel = document.getElementById("stmtUploadAccountId");
   if (!accSel) return;
@@ -55,7 +46,7 @@ async function loadFinanceStatements() {
           accounts = FinanceState.accounts;
         }
         const currentVal = accFilter.value;
-        accFilter.innerHTML = '<option value="">All Bank Accounts</option>';
+        accFilter.innerHTML = '<option value="">All company bank accounts</option>';
         accounts.forEach((a) => {
           if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
             const opt = document.createElement("option");
@@ -166,7 +157,7 @@ function renderFinanceStatementsTable(statements) {
 
     tr.innerHTML = `
       <td data-label="Period" style="font-weight:600;"><i class="fa-regular fa-calendar" style="margin-right:6px;color:var(--text-muted);"></i>${escapeHtml(stmt.period_month)}</td>
-      <td data-label="Account" style="font-weight:500;">${escapeHtml(stmt.account_name || 'Bank Account #' + stmt.account_id)}</td>
+      <td data-label="Account" style="font-weight:500;">${escapeHtml(stmt.account_name || 'Company bank account #' + stmt.account_id)}</td>
       <td data-label="Format" style="text-align:center;">${fmtBadge}</td>
       <td data-label="Total Lines" style="text-align:center;">${stmt.total_lines_count || 0}</td>
       <td data-label="Matched Lines" style="text-align:center;font-weight:600;color:${progressPct === 100 ? 'var(--color-success)' : 'inherit'};">${progressText}</td>
@@ -389,8 +380,8 @@ async function executeStatementPreview() {
   const fileInput = document.getElementById("stmtUploadFile");
 
   if (!accountId) {
-    if (typeof showToast === "function") showToast("Please select a target bank account", "error");
-    else if (typeof toast === "function") toast("Please select a target bank account", "fa-solid fa-triangle-exclamation");
+    if (typeof showToast === "function") showToast("Please select a target company bank account", "error");
+    else if (typeof toast === "function") toast("Please select a target company bank account", "fa-solid fa-triangle-exclamation");
     return;
   }
   if (!periodMonth) {
@@ -534,7 +525,7 @@ async function executeStatementPreview() {
     // 3. Populate Step 4 (Confirm)
     const accSelect = document.getElementById("stmtUploadAccountId");
     const confirmAcc = document.getElementById("stmtConfirmAccountName");
-    if (confirmAcc) confirmAcc.innerText = accSelect ? accSelect.selectedOptions[0]?.text || "Bank Account" : "Bank Account";
+    if (confirmAcc) confirmAcc.innerText = accSelect ? accSelect.selectedOptions[0]?.text || "Company bank account" : "Company bank account";
     const confirmPeriod = document.getElementById("stmtConfirmPeriod");
     if (confirmPeriod) confirmPeriod.innerText = periodMonth;
     const confirmLines = document.getElementById("stmtConfirmLinesCount");
@@ -2012,7 +2003,12 @@ async function toggleRuleActive(ruleId, newStatus) {
 }
 
 async function deleteRuleById(ruleId) {
-  if (!confirm(`Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`)) return;
+  const delOk = await FinanceCommand.confirmAction({
+    title: "Delete reconciliation rule",
+    consequence: `Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`,
+    actionLabel: "Delete rule",
+  });
+  if (!delOk.confirmed) return;
   try {
     await FinanceApi.deleteReconciliationRule(ruleId);
     showToast("Rule deleted successfully", "info");
@@ -2024,7 +2020,13 @@ async function deleteRuleById(ruleId) {
 }
 
 async function revertRuleById(ruleId) {
-  if (!confirm(`Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`)) return;
+  const revOk = await FinanceCommand.confirmAction({
+    title: "Revert rule resolutions",
+    consequence: `Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`,
+    actionLabel: "Revert resolutions",
+    severity: "warning",
+  });
+  if (!revOk.confirmed) return;
   try {
     const res = await FinanceApi.revertRule(ruleId);
     showToast(res.message || "Rule resolutions reverted", "success");

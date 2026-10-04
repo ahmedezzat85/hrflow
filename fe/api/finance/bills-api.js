@@ -534,7 +534,7 @@
         if (dMatch) issueDate = dMatch[1];
         const ddMatch = textContent.match(/(?:Due\s*Date):\s*(\d{4}-\d{2}-\d{2})/i);
         if (ddMatch) dueDate = ddMatch[1];
-        const tMatch = textContent.match(/(?:Total):\s*(?:[$€£])?\s*([\d,]+(?:\.\d{2})?)/i);
+        const tMatch = textContent.match(/(?:Total):\s*(?:[$€\u00a3])?\s*([\d,]+(?:\.\d{2})?)/i);
         if (tMatch) total = parseFloat(tMatch[1].replace(/,/g, ""));
       }
 

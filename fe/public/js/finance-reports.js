@@ -87,7 +87,7 @@ function renderReportLibraryCatalog() {
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--border-color, #E2E8F0); margin-top:10px;">
           <span class="badge badge-neutral" style="font-size:0.75rem;">${basisList || 'Cash & Accrual'}</span>
-          <button class="btn btn-sm btn-primary" onclick="openReportFromLibrary('${r.key}')">
+          <button class="btn btn-sm btn-fill" onclick="openReportFromLibrary('${r.key}')">
             <i class="fa-solid fa-arrow-right"></i> Open Report
           </button>
         </div>
@@ -547,7 +547,12 @@ function closeSaveReportViewModal() {
   if (m) m.style.display = "none";
 }
 
-async function submitSaveReportView() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function submitSaveReportView() {
+  return withSubmitLock("saveReportViewSubmitBtn", _submitSaveReportViewImpl);
+}
+
+async function _submitSaveReportViewImpl() {
   const nameInput = document.getElementById("saveReportViewName");
   const defCheck = document.getElementById("saveReportViewIsDefault");
   const viewName = nameInput?.value?.trim();
@@ -589,7 +594,12 @@ async function submitSaveReportView() {
 
 async function deleteActiveReportView() {
   if (!_activeSavedViewId) return;
-  if (!confirm("Are you sure you want to delete this saved view?")) return;
+  const viewOk = await FinanceCommand.confirmAction({
+    title: "Delete saved view",
+    consequence: "Delete this saved view? This cannot be undone.",
+    actionLabel: "Delete view",
+  });
+  if (!viewOk.confirmed) return;
 
   try {
     await FinanceApi.deleteSavedReportView(_activeSavedViewId);
@@ -802,7 +812,12 @@ function closeScheduleReportModal() {
   if (modal) modal.style.display = "none";
 }
 
-async function submitScheduleReport() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function submitScheduleReport() {
+  return withSubmitLock("submitScheduleReportBtn", _submitScheduleReportImpl);
+}
+
+async function _submitScheduleReportImpl() {
   const reportKey = _activeReportKey || _currentReportsTab || "profit-and-loss";
   const meta = (_reportLibrary || []).find((r) => r.key === reportKey);
   const title = meta ? meta.title : reportKey.replace(/-/g, " ").toUpperCase();
@@ -929,7 +944,12 @@ async function loadReportSchedules() {
 }
 
 async function deleteReportSchedule(scheduleId) {
-  if (!confirm("Are you sure you want to cancel this automated delivery schedule?")) return;
+  const schedOk = await FinanceCommand.confirmAction({
+    title: "Cancel delivery schedule",
+    consequence: "Cancel this automated delivery schedule?",
+    actionLabel: "Cancel schedule",
+  });
+  if (!schedOk.confirmed) return;
   try {
     await FinanceApi.deleteReportSchedule(scheduleId);
     showToast("Delivery schedule cancelled", "success");
@@ -2067,7 +2087,6 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
       breakdown_employees: true,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totSpendEl = document.getElementById("reportCompTotalSpend");
     const extEl = document.getElementById("reportCompExternal");
     const intEl = document.getElementById("reportCompInternal");
@@ -2147,7 +2166,6 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const titleEl = document.getElementById("reportEmployeeSpendTitle");
     if (titleEl) {
       titleEl.innerHTML = `<i class="fa-solid fa-user"></i> ${data.employee_name} <span class="badge badge-info" style="font-size:0.75rem; font-weight:normal; margin-left:8px;">${data.department || 'General'}</span> — Total Spend: <strong>${formatCurrency(data.grand_total)}</strong>`;
@@ -2242,7 +2260,6 @@ async function loadStatutoryRemittedReport() {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totEl = document.getElementById("reportStatTotalRemitted");
     const taxEl = document.getElementById("reportStatTaxRemitted");
     const insEl = document.getElementById("reportStatInsRemitted");
@@ -2317,7 +2334,6 @@ async function loadPayableStatusReport() {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const flows = data.flows || [];
     const flowMap = {};
     flows.forEach(f => { flowMap[f.flow_type] = f; });

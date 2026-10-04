@@ -9,14 +9,14 @@
 .emp-summary-card .esc-avatar{
   width:50px;height:50px;border-radius:50%;flex-shrink:0;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#fff;display:flex;align-items:center;justify-content:center;
-  font-weight:700;font-size:17px;font-family:var(--font-head);
+  color:var(--on-accent);display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:var(--fs-lg);font-family:var(--font-head);
   box-shadow:0 4px 12px rgba(32,86,232,.28);
 }
 .emp-summary-card .esc-identity{flex:1;min-width:200px}
-.emp-summary-card .esc-identity h4{font-size:17px;font-weight:700;font-family:var(--font-head);line-height:1.3;color:var(--text)}
+.emp-summary-card .esc-identity h4{font-size:var(--fs-lg);font-weight:700;font-family:var(--font-head);line-height:1.3;color:var(--text)}
 .emp-summary-card .esc-identity .esc-meta{
-  font-size:13px;color:var(--text2);margin-top:3px;
+  font-size:var(--fs-md);color:var(--text2);margin-top:3px;
   display:flex;gap:6px;align-items:center;flex-wrap:wrap;
 }
 .emp-summary-card .esc-identity .esc-meta .esc-dot{width:3px;height:3px;border-radius:50%;background:var(--text3);flex-shrink:0}
@@ -38,24 +38,24 @@
   .emp-summary-card .esc-comp-zone{border-right:none;border-bottom:1px solid var(--border)}
 }
 .emp-summary-card .esc-zone-label{
-  font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  font-size:var(--fs-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   color:var(--text3);margin-bottom:14px;
 }
 .emp-summary-card .esc-comp-total{display:flex;align-items:baseline;gap:8px;margin-bottom:18px}
 .emp-summary-card .esc-comp-total .esc-amount{
-  font-family:var(--font-head);font-size:32px;font-weight:800;color:var(--accent);
+  font-family:var(--font-head);font-size:var(--fs-2xl);font-weight:800;color:var(--accent);
   font-variant-numeric:tabular-nums;
 }
-.emp-summary-card .esc-comp-total .esc-unit{font-size:13px;color:var(--text2);font-weight:600}
+.emp-summary-card .esc-comp-total .esc-unit{font-size:var(--fs-md);color:var(--text2);font-weight:600}
 
 .emp-summary-card .esc-comp-breakdown{display:flex;gap:24px;flex-wrap:wrap}
 .emp-summary-card .esc-comp-piece{flex:1;min-width:120px}
 .emp-summary-card .esc-comp-piece .esc-k{
-  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.05em;
   color:var(--text3);display:flex;align-items:center;gap:5px;margin-bottom:4px;
 }
-.emp-summary-card .esc-comp-piece .esc-k i{font-size:10px}
-.emp-summary-card .esc-comp-piece .esc-v{font-size:15px;font-weight:700;font-family:var(--font-head);font-variant-numeric:tabular-nums;color:var(--text)}
+.emp-summary-card .esc-comp-piece .esc-k i{font-size:var(--fs-xs)}
+.emp-summary-card .esc-comp-piece .esc-v{font-size:var(--fs-lg);font-weight:700;font-family:var(--font-head);font-variant-numeric:tabular-nums;color:var(--text)}
 
 /* Right zone: administrative fields */
 .emp-summary-card .esc-meta-zone{padding:22px 26px}
@@ -65,28 +65,28 @@
 }
 .emp-summary-card .esc-row:last-child{border-bottom:none}
 .emp-summary-card .esc-row .esc-k{
-  font-size:12.5px;color:var(--text2);display:flex;align-items:center;gap:7px;flex-shrink:0;
+  font-size:var(--fs-md);color:var(--text2);display:flex;align-items:center;gap:7px;flex-shrink:0;
 }
-.emp-summary-card .esc-row .esc-k i{font-size:11px;color:var(--text3);width:13px;text-align:center}
+.emp-summary-card .esc-row .esc-k i{font-size:var(--fs-xs);color:var(--text3);width:13px;text-align:center}
 .emp-summary-card .esc-row .esc-v{
-  font-size:13px;font-weight:600;color:var(--text);text-align:right;
+  font-size:var(--fs-md);font-weight:600;color:var(--text);text-align:right;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
 }
 .emp-summary-card .esc-row.wrap{align-items:flex-start}
 .emp-summary-card .esc-row.wrap .esc-v{white-space:normal;line-height:1.45;text-align:right}
 
 .emp-summary-card .esc-pill{
-  padding:5px 12px;border-radius:var(--radius-full);font-size:11.5px;font-weight:700;
+  padding:5px 12px;border-radius:var(--radius-full);font-size:var(--fs-sm);font-weight:700;
   display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
 }
 .emp-summary-card .esc-pill-active{background:var(--success-soft);color:var(--success)}
 .emp-summary-card .esc-pill-neutral{background:var(--surface2);color:var(--text2)}
-.emp-summary-card .esc-pill i{font-size:7px}
+.emp-summary-card .esc-pill i{font-size:var(--fs-xs)}
 
 .emp-summary-card .esc-edit-btn{
   width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--border);
   background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:.15s;font-size:13px;flex-shrink:0;
+  cursor:pointer;transition:.15s;font-size:var(--fs-md);flex-shrink:0;
 }
 .emp-summary-card .esc-edit-btn:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -110,7 +110,7 @@
   align-items:center;
   gap:8px;
   margin:4px 0 -2px 4px;
-  font-size:11px;
+  font-size:var(--fs-xs);
   font-weight:700;
   letter-spacing:.07em;
   text-transform:uppercase;
@@ -135,7 +135,7 @@
 }
 .card-head h3 i{
   color:var(--accent);
-  font-size:13px;
+  font-size:var(--fs-md);
 }
 
 .card-body{
@@ -143,7 +143,7 @@
 }
 
 .action-btn{
-  font-size:12px;
+  font-size:var(--fs-sm);
   font-weight:600;
   color:var(--accent);
   background:none;
@@ -171,7 +171,7 @@
   justify-content:space-between;
   padding:9px 0;
   border-bottom:1px solid var(--border);
-  font-size:12.5px;
+  font-size:var(--fs-md);
 }
 .employee-bank-card .iban-row:last-child{
   border-bottom:none;
@@ -187,7 +187,7 @@
   color:var(--text);
 }
 .employee-bank-card .helper{
-  font-size:11.5px;
+  font-size:var(--fs-sm);
   color:var(--text2);
   line-height:1.5;
   padding-top:10px;
@@ -212,11 +212,11 @@
   gap:6px;
 }
 .insurance-chip .chip-top b{
-  font-size:12px;
+  font-size:var(--fs-sm);
   color:var(--text);
 }
 .insurance-chip .chip-amount{
-  font-size:11.5px;
+  font-size:var(--fs-sm);
   color:var(--text2);
   margin-bottom:6px;
 }
@@ -242,7 +242,7 @@
   background:var(--surface);
   color:var(--text);
   font-family:inherit;
-  font-size:13px;
+  font-size:var(--fs-md);
   font-weight:600;
   text-align:left;
   cursor:pointer;
@@ -263,14 +263,14 @@
 .employee-quick-action-primary{
   border:none;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#fff;
+  color:var(--on-accent);
   box-shadow:0 6px 16px rgba(32,86,232,.25);
 }
 .employee-quick-action-primary i{
-  color:#fff;
+  color:var(--on-accent);
 }
 .employee-quick-action-primary:hover{
-  color:#fff;
+  color:var(--on-accent);
   background:linear-gradient(135deg,var(--accent),var(--accent2));
   transform:translateY(-1px);
 }

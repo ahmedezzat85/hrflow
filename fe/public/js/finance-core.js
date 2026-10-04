@@ -44,8 +44,9 @@ const FinanceFormat = {
     const isNegative = num < 0;
     const absNum = Math.abs(num);
     const decimals = options.decimals !== undefined ? options.decimals : 2;
+    const minDecimals = options.minDecimals !== undefined ? options.minDecimals : decimals;
     const formattedAbs = absNum.toLocaleString("en-US", {
-      minimumFractionDigits: decimals,
+      minimumFractionDigits: minDecimals,
       maximumFractionDigits: decimals,
     });
 
@@ -61,13 +62,10 @@ const FinanceFormat = {
       symbol = "$";
       suffix = options.showCurrencySuffix ? " USD" : "";
     } else if (curr === "EGP") {
-      prefix = "£ ";
+      prefix = "EGP ";
     } else if (curr === "EUR") {
       symbol = "€";
       suffix = " EUR";
-    } else if (curr === "GBP") {
-      symbol = "£";
-      suffix = " GBP";
     } else {
       prefix = `${curr} `;
     }
@@ -319,7 +317,7 @@ const FinanceForm = {
         input.insertAdjacentElement("afterend", errEl);
       }
     }
-    errEl.innerHTML = `<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span>${message}</span>`;
+    errEl.innerHTML = `<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span>${escapeHtml(message)}</span>`;
     errEl.style.display = "flex";
 
     // Update aria-describedby without losing existing descriptions
@@ -412,9 +410,9 @@ const FinanceForm = {
     let listHtml = '<ul class="form-error-summary-list">';
     errors.forEach((err) => {
       if (err.fieldId) {
-        listHtml += `<li><a href="#${err.fieldId}" onclick="event.preventDefault(); const target = document.getElementById('${err.fieldId}'); if(target){ target.focus(); if(target.scrollIntoView) target.scrollIntoView({behavior:'smooth', block:'center'}); }">${err.message}</a></li>`;
+        listHtml += `<li><a href="#${escapeHtml(err.fieldId)}" data-focus-field="${escapeHtml(err.fieldId)}">${escapeHtml(err.message)}</a></li>`;
       } else {
-        listHtml += `<li>${err.message}</li>`;
+        listHtml += `<li>${escapeHtml(err.message)}</li>`;
       }
     });
     listHtml += "</ul>";
@@ -426,6 +424,17 @@ const FinanceForm = {
       </div>
       ${listHtml}
     `;
+
+    summary.addEventListener("click", (e) => {
+      const link = e.target.closest("[data-focus-field]");
+      if (!link) return;
+      e.preventDefault();
+      const target = document.getElementById(link.dataset.focusField);
+      if (target) {
+        target.focus();
+        if (target.scrollIntoView) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
 
     const targetBody = container.querySelector(".modal-body") || container;
     targetBody.insertAdjacentElement("afterbegin", summary);
@@ -533,12 +542,9 @@ const FinanceCommand = {
     return new Promise((resolve) => {
       const modal = document.getElementById("financeConfirmModal");
       if (!modal) {
-        const ok = confirm(options.consequence || "Confirm this action?");
-        let r = "";
-        if (ok && options.requireReason) {
-          r = prompt("Reason for this action:") || "";
-        }
-        return resolve({ confirmed: ok, reason: r });
+        // The confirmation dialog is part of the shell; without it nothing destructive may run.
+        console.error("financeConfirmModal is missing; action not confirmed.");
+        return resolve({ confirmed: false, reason: "" });
       }
 
       this._invokingElement = document.activeElement;
@@ -684,6 +690,21 @@ const FinanceCommand = {
 };
 window.FinanceCommand = FinanceCommand;
 window.FinanceConfirm = FinanceCommand;
+
+/**
+ * Shared submit guard: runs fn while the button is disabled and shows progress.
+ * A second click while the request is in flight is ignored (returns undefined).
+ */
+async function withSubmitLock(buttonOrId, fn) {
+  const unlock = FinanceCommand.lockSubmitButton(buttonOrId);
+  if (unlock === null) return undefined;
+  try {
+    return await fn();
+  } finally {
+    unlock();
+  }
+}
+window.withSubmitLock = withSubmitLock;
 
 // ============================================================================
 // FinanceTable — Shared list/table shell, pagination, sorting, density (Story 1.2)

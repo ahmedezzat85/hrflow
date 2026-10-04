@@ -85,7 +85,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
     await page.click('#financeTxSaveBtn');
 
     // Should display validation toast
-    await expect(page.locator('.toast')).toContainText('Please select a bank account');
+    await expect(page.locator('.toast')).toContainText('Please select a company bank account');
     await expect(modal).toBeVisible();
 
     // Now select a valid account

@@ -59,7 +59,7 @@
                 Request authorized override for legitimate recurring / secondary charge
               </label>
               <div id="billDuplicateOverrideReasonGroup" style="display:none; margin-top:6px;">
-                <input type="text" id="billDuplicateOverrideReason" class="form-control" placeholder="Required override reason for financial audit..." style="font-size:0.85rem;">
+                <input type="text" id="billDuplicateOverrideReason" aria-label="Duplicate override reason" class="form-control" placeholder="Required override reason for financial audit..." style="font-size:0.85rem;">
               </div>
             </div>
           </div>
@@ -159,7 +159,7 @@
             </select>
           </div>
           <div class="form-field full" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:600;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:600;" for="billIsPaidNow">
               <input type="checkbox" id="billIsReviewed" checked>
               <span id="billIsReviewedLabel">Mark verified and reviewed (required before scheduling or payment)</span>
             </label>
@@ -175,7 +175,7 @@
               <div style="font-size:0.78rem; color:var(--text2); margin-bottom:8px;">Record bill creation and full settlement as one atomic action:</div>
               <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-field">
-                  <label for="billPaidNowBankAccountId">Paid From Bank Account <span class="req">*</span></label>
+                  <label for="billPaidNowBankAccountId">Paid from company bank account <span class="req">*</span></label>
                   <select id="billPaidNowBankAccountId">
                     <option value="">— Select account —</option>
                   </select>
@@ -287,7 +287,7 @@
           <input type="date" id="billPaymentDate" required>
         </div>
         <div class="form-field full">
-          <label for="billPaymentBankAccountId">Bank Account <span class="req">*</span></label>
+          <label for="billPaymentBankAccountId">Company bank account <span class="req">*</span></label>
           <select id="billPaymentBankAccountId" required>
             <option value="">— Select account —</option>
           </select>

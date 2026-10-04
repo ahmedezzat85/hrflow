@@ -26,7 +26,7 @@
     initiation: { label: '1. Initiation', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
     approve: { label: '2. Approve', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
     processing: { label: '3. Processing', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
-    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview disbursement breakdown by payment rail before funding release.' },
+    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview the payment breakdown by salary type before recording payment.' },
     confirmation: { label: '5. Confirm Disbursal', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
     statutory: { label: '6. Statutory Payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
   };
@@ -339,7 +339,7 @@
       if (!tbody) return;
 
       if (this.runsLoadError) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${this.runsLoadError}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
         if (countEl) countEl.textContent = '0 runs';
         return;
       }
@@ -356,7 +356,10 @@
       };
       const t = this.rollup();
 
-      let rowsHtml = `
+      // A saved run for the current month is shown with its saved status and total;
+      // the local draft row appears only when no run has been saved yet.
+      const savedCurrent = (this.serverRuns || []).some(r => r.period_label === this.month);
+      let rowsHtml = savedCurrent ? '' : `
         <tr class="clickable" onclick="PayrollApp.openRun('current')">
           <td><strong>${this.month}</strong></td>
           <td>${this.start} &rarr; ${this.end}</td>
@@ -367,7 +370,7 @@
         </tr>
       `;
 
-      const pastRuns = (this.serverRuns || []).filter(r => r.period_label !== this.month);
+      const pastRuns = this.serverRuns || [];
       pastRuns.forEach(r => {
         const sKey = (r.status || 'draft').toLowerCase();
         const sBadge = statusMap[sKey] || ['DRAFT', 'b-gray'];
@@ -390,7 +393,7 @@
 
         rowsHtml += `
           <tr class="clickable" onclick="PayrollApp.openRun('${r.id || r.period_label}')">
-            <td><strong>${r.period_label}</strong></td>
+            <td><strong>${escapeHtml(r.period_label)}</strong></td>
             <td>${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
             <td><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
             <td class="payroll-num">${this.money(netVal)}</td>
@@ -401,7 +404,7 @@
       });
 
       tbody.innerHTML = rowsHtml;
-      if (countEl) countEl.textContent = `${1 + pastRuns.length} runs total`;
+      if (countEl) countEl.textContent = `${(savedCurrent ? 0 : 1) + pastRuns.length} runs total`;
     },
 
     async openRun(id) {
@@ -532,14 +535,38 @@
     },
 
     /* ---------------- Stepper & Screen Navigation ---------------- */
+    // A finalized or paid run is read-only on every step.
+    isRunLocked() {
+      const st = this.currentRun && this.currentRun.status;
+      return ['finalized', 'processing', 'partially_paid', 'paid'].includes(st);
+    },
+
+    // Highest step index already completed according to the saved run status.
+    completedThroughIndex() {
+      const st = this.currentRun && this.currentRun.status;
+      const map = { approved: 1, finalized: 2, processing: 3, partially_paid: 4, paid: 4 };
+      return map[st] !== undefined ? map[st] : -1;
+    },
+
+    applyLockState() {
+      const root = document.getElementById('a-finance-payroll');
+      const locked = this.isRunLocked();
+      if (root) root.classList.toggle('payroll-locked', locked);
+      ['btnP2SaveDraft', 'btnP2Approve'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = locked;
+      });
+    },
+
     drawStepper() {
       const container = document.getElementById('payrollStepper');
       if (!container) return;
+      const doneThrough = this.completedThroughIndex();
 
       container.innerHTML = FLOW.map((stepKey, idx) => {
         const meta = STEP_META[stepKey] || { label: `${idx + 1}. Step` };
         const isActive = idx === this.stepIndex;
-        const isDone = idx < this.stepIndex;
+        const isDone = idx < this.stepIndex || idx <= doneThrough;
         const cls = isActive ? 'active' : (isDone ? 'done' : '');
         return `
           <button type="button" class="payroll-step-pill step ${cls}" onclick="PayrollApp.setStep(${idx})">
@@ -593,6 +620,7 @@
       this.drawStepper();
       this.drawPeriodLabel();
       this.drawStatus();
+      this.applyLockState();
 
       const stepKey = FLOW[idx];
       const hint = STEP_META[stepKey] ? STEP_META[stepKey].hint : '';
@@ -603,7 +631,7 @@
       const lockNote = document.getElementById('payrollLockNote');
       const lockText = document.getElementById('payrollLockText');
       if (lockNote && lockText) {
-        if (idx >= 2) {
+        if (idx >= 2 || this.isRunLocked()) {
           lockNote.classList.remove('payroll-hidden');
           lockText.textContent = 'This payroll cycle has been finalized. Base compensation and dynamic additions are locked against edits.';
         } else {
@@ -734,11 +762,10 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const baseExt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_ext_amount || 0), 0) : t.baseExt;
-      const baseInt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_int_amount || 0), 0) : t.baseInt;
-      const totalAdditions = (p && p.total_additions !== undefined) ? p.total_additions : t.bonus;
-      const totalNet = (p && p.total_net !== undefined) ? p.total_net : t.net;
-      const totalBase = baseExt + baseInt;
+      // Totals are summed from the same row values the table shows, never from a separate preview figure.
+      const totalBase = t.baseExt + t.baseInt;
+      const totalAdditions = t.bonus;
+      const totalGross = totalBase + totalAdditions;
 
       grid.innerHTML = `
         <div class="stat payroll-card stat-card">
@@ -757,9 +784,9 @@
           <div class="hint sub">Dynamic additions</div>
         </div>
         <div class="stat payroll-card stat-card">
-          <div class="lbl label">Total Compensation</div>
-          <div class="val value accent val-accent" style="color:var(--accent);">${this.money(totalNet)}</div>
-          <div class="hint sub">Gross / net disbursal</div>
+          <div class="lbl label">Total Compensation (gross)</div>
+          <div class="val value accent val-accent" style="color:var(--accent);">${this.money(totalGross)}</div>
+          <div class="hint sub">Before deductions</div>
         </div>
       `;
     },
@@ -916,7 +943,7 @@
 
       const amt = parseFloat(amtInput.value);
       if (!amt || amt <= 0) {
-        alert('Please enter a valid bonus amount greater than zero.');
+        FinanceForm.setFieldError(amtInput, 'Enter a bonus amount greater than zero.');
         return;
       }
       const bTypeVal = typeSel ? typeSel.value : 'BONUS';
@@ -1213,16 +1240,55 @@
     },
 
     /* ==================== SCREEN 4: PAYMENT PREVIEW ==================== */
+    // Per-employee external/internal payment amounts, shared by screens 4 and 5 and the journal
+    // so every total on those screens is the sum of the rows displayed.
+    paymentValues() {
+      const runLines = (this.currentRun && this.currentRun.lines) || [];
+      const previewRecipients = (this.currentPreview && this.currentPreview.recipients) || [];
+      const recipMap = new Map();
+      previewRecipients.forEach(rp => recipMap.set(Number(rp.employee_id), rp));
+      const lineMap = new Map();
+      runLines.forEach(l => {
+        const eid = Number(l.employee_id);
+        if (!lineMap.has(eid)) lineMap.set(eid, { ext: 0, int: 0 });
+        const entry = lineMap.get(eid);
+        if (l.compensation_type === 'external_usd') {
+          entry.ext += Number(l.net_pay || l.amount || 0);
+        } else {
+          entry.int += Number(l.final_internal_payment_usd !== undefined && l.final_internal_payment_usd !== null ? l.final_internal_payment_usd : (l.net_pay || l.amount || 0));
+        }
+      });
+      const byId = new Map();
+      this.rows.forEach(r => {
+        const c = this.computeRow(r);
+        let ext = c.external;
+        let int = c.internal;
+        if (lineMap.has(Number(r.id))) {
+          const lEntry = lineMap.get(Number(r.id));
+          ext = lEntry.ext;
+          int = Math.round(lEntry.int);
+        } else if (recipMap.has(Number(r.id))) {
+          const rpRow = recipMap.get(Number(r.id));
+          if (rpRow.final_ext_amount !== undefined) ext = Number(rpRow.final_ext_amount);
+          if (rpRow.final_int_amount !== undefined) int = Math.round(Number(rpRow.final_int_amount));
+        }
+        byId.set(Number(r.id), { ext, int, net: ext + int });
+      });
+      return byId;
+    },
+
+    paymentTotals() {
+      let ext = 0, int = 0;
+      this.paymentValues().forEach(v => { ext += v.ext; int += v.int; });
+      return { ext, int, net: ext + int };
+    },
+
     drawScreen4() {
       const tbody = document.getElementById('payrollPaymentPreviewTableBody');
       if (!tbody) return;
 
-      const t = this.rollup();
-      const p = this.currentPreview;
-
-      const extBank = (p && p.final_ext_total !== undefined) ? p.final_ext_total : t.external;
-      const intCash = (p && p.final_int_total !== undefined) ? p.final_int_total : t.internal;
-      const netTotal = (p && p.total_net !== undefined) ? p.total_net : t.net;
+      const pay = this.paymentValues();
+      const { ext: extBank, int: intCash, net: netTotal } = this.paymentTotals();
 
       const bExt = document.getElementById('p4ExtBankTotal');
       const bInt = document.getElementById('p4IntCashTotal');
@@ -1243,39 +1309,10 @@
           .map(e => Number(e.employee_id))
       );
 
-      const runLines = (this.currentRun && this.currentRun.lines) || [];
-      const previewRecipients = (this.currentPreview && this.currentPreview.recipients) || [];
-      const recipMap = new Map();
-      previewRecipients.forEach(rp => recipMap.set(Number(rp.employee_id), rp));
-
-      const lineMap = new Map();
-      runLines.forEach(l => {
-        const eid = Number(l.employee_id);
-        if (!lineMap.has(eid)) lineMap.set(eid, { ext: 0, int: 0 });
-        const entry = lineMap.get(eid);
-        if (l.compensation_type === 'external_usd') {
-          entry.ext += Number(l.net_pay || l.amount || 0);
-        } else {
-          entry.int += Number(l.final_internal_payment_usd !== undefined && l.final_internal_payment_usd !== null ? l.final_internal_payment_usd : (l.net_pay || l.amount || 0));
-        }
-      });
-
       let missingBankCount = 0;
       let rowsHtml = '';
       this.rows.forEach(r => {
-        const c = this.computeRow(r);
-        let extVal = c.external;
-        let intVal = c.internal;
-        if (lineMap.has(Number(r.id))) {
-          const lEntry = lineMap.get(Number(r.id));
-          extVal = lEntry.ext;
-          intVal = Math.round(lEntry.int);
-        } else if (recipMap.has(Number(r.id))) {
-          const rp = recipMap.get(Number(r.id));
-          if (rp.final_ext_amount !== undefined) extVal = Number(rp.final_ext_amount);
-          if (rp.final_int_amount !== undefined) intVal = Math.round(Number(rp.final_int_amount));
-        }
-        const netVal = extVal + intVal;
+        const { ext: extVal, int: intVal, net: netVal } = pay.get(Number(r.id));
 
         const hasExternal = extVal > 0 || r.baseExt > 0;
         const isMissingBank = hasExternal && (
@@ -1290,9 +1327,9 @@
 
         let bankBadgeHtml = '';
         if (isMissingBank) {
-          bankBadgeHtml = `<span class="pill-danger badge-pill p-badge b-amber" style="font-size:0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank Details (D-006)</span>`;
+          bankBadgeHtml = `<span class="pill-danger badge-pill p-badge b-amber" style="font-size:0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing bank details</span>`;
         } else if (hasExternal) {
-          const bankDisplay = (r.bank_name ? `${r.bank_name} ${r.bank_account_masked || ''}` : 'Verified Wire ****8821');
+          const bankDisplay = (r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'Bank details on file');
           bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
         } else {
           bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
@@ -1306,7 +1343,7 @@
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
-                <strong>${r.name}</strong>
+                <strong>${escapeHtml(r.name)}</strong>
               </div>
             </td>
             <td>${bankBadgeHtml}</td>
@@ -1347,8 +1384,7 @@
       const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Operating Bank Wire Account';
       const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Treasury Cash Vault';
 
-      const extTotal = (p && p.final_ext_total !== undefined) ? p.final_ext_total : t.external;
-      const intTotal = (p && p.final_int_total !== undefined) ? p.final_int_total : t.internal;
+      const { ext: extTotal, int: intTotal } = this.paymentTotals();
 
       // Count recipients per rail
       let extRecipients = 0;
@@ -1374,13 +1410,13 @@
 
       if (p5ExtTot) p5ExtTot.textContent = this.money(extTotal);
       if (p5ExtAcc) p5ExtAcc.textContent = extBankName;
-      if (p5ExtRec) p5ExtRec.textContent = 'External Rail';
+      if (p5ExtRec) p5ExtRec.textContent = 'External salaries';
       if (p5ExtRecCount) p5ExtRecCount.textContent = `${extRecipients} employee${extRecipients === 1 ? '' : 's'}`;
       if (p5ExtDate) p5ExtDate.textContent = this.payDate;
 
       if (p5IntTot) p5IntTot.textContent = this.money(intTotal);
       if (p5IntAcc) p5IntAcc.textContent = intBankName;
-      if (p5IntRec) p5IntRec.textContent = 'Internal Rail';
+      if (p5IntRec) p5IntRec.textContent = 'Internal salaries';
       if (p5IntRecCount) p5IntRecCount.textContent = `${intRecipients} employee${intRecipients === 1 ? '' : 's'}`;
       if (p5IntDate) p5IntDate.textContent = this.payDate;
 
@@ -1396,16 +1432,19 @@
           : ((this.currentPreview && this.currentPreview.exceptions) || []);
         if (runExceptions.length > 0) {
           if (excWrap) excWrap.style.display = 'flex';
-          excStrip.innerHTML = runExceptions.map(exc => {
-            const isWarn = exc.severity === 'warning' || exc.code === 'MISSING_BANK_DETAILS';
-            const icon = isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
-            const label = isWarn ? 'Warning (non-blocking D-006)' : 'Blocking Exception';
-            return `
+          const missingBankExc = runExceptions.filter(exc => exc.code === 'MISSING_BANK_DETAILS');
+          const otherExc = runExceptions.filter(exc => exc.code !== 'MISSING_BANK_DETAILS');
+          const alertHtml = (isWarn, label, text) => `
               <div class="alertbox"${isWarn ? '' : ' style="background:var(--danger-soft); color:var(--danger);"'}>
-                <i class="fa-solid ${icon}"></i>
-                <span><strong>${label}:</strong> ${exc.code === 'MISSING_BANK_DETAILS' ? 'Missing Bank Details — ' : ''}${exc.details || exc.message || exc.code}</span>
-              </div>
-            `;
+                <i class="fa-solid ${isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark'}"></i>
+                <span><strong>${label}:</strong> ${escapeHtml(text)}</span>
+              </div>`;
+          const missingHtml = missingBankExc.length
+            ? alertHtml(true, 'Warning', `bank details missing for ${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}. Payment can still be recorded.`)
+            : '';
+          excStrip.innerHTML = missingHtml + otherExc.map(exc => {
+            const isWarn = exc.severity === 'warning';
+            return alertHtml(isWarn, isWarn ? 'Warning' : 'Blocking exception', exc.details || exc.message || 'Exception reported for this run.');
           }).join('');
         } else {
           if (excWrap) excWrap.style.display = 'none';
@@ -1424,7 +1463,7 @@
         if (jCard) jCard.classList.remove('payroll-hidden');
         if (btnDisburse) {
           btnDisburse.disabled = true;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-check"></i> Disbursed &amp; Paid';
+          btnDisburse.innerHTML = '<i class="fa-solid fa-check"></i> Recorded as paid';
         }
         this.drawDisburseResults();
         this.drawJournalRows();
@@ -1433,7 +1472,7 @@
         if (jCard) jCard.classList.add('payroll-hidden');
         if (btnDisburse) {
           btnDisburse.disabled = false;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm &amp; Disburse Payroll';
+          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm and record as paid';
         }
       }
     },
@@ -1472,8 +1511,8 @@
         }
 
         this.journalPosted = true;
-        this.addAudit('Payroll run disbursed and general ledger entry posted.');
-        this.showBanner('Payroll disbursement confirmed. Funds released and journal posted.', 'green');
+        this.addAudit('Payroll run recorded as paid and general ledger entry posted.');
+        this.showBanner('Payroll recorded as paid and journal posted.', 'green');
         this.drawScreen5();
         this.drawStatus();
       } catch (err) {
@@ -1495,7 +1534,7 @@
           const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
           const badgeText = isWarn ? 'Flagged — no bank' : (l.payment_status ? l.payment_status.charAt(0).toUpperCase() + l.payment_status.slice(1) : 'Paid');
           const paidAt = l.paid_at ? l.paid_at.slice(0, 16).replace('T', ' ') : this.nowStamp();
-          const notes = l.failure_reason || (isWarn ? 'Manual/cash settlement pending; non-blocking (D-006).' : 'Settled via configured funding accounts.');
+          const notes = l.failure_reason || (isWarn ? 'Manual or cash settlement pending; bank details missing.' : 'Settled via configured funding accounts.');
 
           return `
             <tr class="${isWarn ? 'warnrow' : ''}">
@@ -1514,7 +1553,7 @@
           const isWarn = r.missingBank || !r.hasBank;
           const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
           const badgeText = isWarn ? 'Flagged — no bank' : 'Paid';
-          const notes = isWarn ? 'Manual/cash settlement pending; non-blocking (D-006).' : 'Settled via configured funding accounts.';
+          const notes = isWarn ? 'Manual or cash settlement pending; bank details missing.' : 'Settled via configured funding accounts.';
 
           return `
             <tr class="${isWarn ? 'warnrow' : ''}">
@@ -1534,9 +1573,7 @@
       if (!rowsEl) return;
       const t = this.rollup();
       const p = this.currentPreview;
-      const netTotal = (p && p.total_net) || t.net;
-      const extTotal = (p && p.final_ext_total) || t.external;
-      const intTotal = (p && p.final_int_total) || t.internal;
+      const { ext: extTotal, int: intTotal, net: netTotal } = this.paymentTotals();
 
       const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'External funding account';
       const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Internal funding account';
@@ -1764,7 +1801,7 @@
       const amt = input ? parseFloat(input.value) : 0;
 
       if (!amt || amt <= 0) {
-        alert('Please enter a valid actual amount greater than zero.');
+        FinanceForm.setFieldError(input, 'Enter an actual amount greater than zero.');
         return;
       }
 
@@ -2153,12 +2190,25 @@
     showBanner(msg, color = 'blue') {
       const banner = document.getElementById('payrollActionBanner');
       if (!banner) return;
+      clearTimeout(this._bannerTimer);
       banner.style.display = 'block';
       banner.textContent = msg;
       banner.className = `payroll-action-banner p-banner-${color}`;
-      setTimeout(() => {
-        if (banner) banner.style.display = 'none';
-      }, 5000);
+      banner.setAttribute('role', color === 'red' ? 'alert' : 'status');
+      if (color === 'red') {
+        // Errors stay until dismissed
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'payroll-banner-close';
+        close.setAttribute('aria-label', 'Dismiss message');
+        close.textContent = '×';
+        close.addEventListener('click', () => { banner.style.display = 'none'; });
+        banner.appendChild(close);
+      } else {
+        this._bannerTimer = setTimeout(() => {
+          if (banner) banner.style.display = 'none';
+        }, 5000);
+      }
     },
 
     openRevertModal() {
@@ -2183,7 +2233,7 @@
       const reasonEl = document.getElementById('payrollRevertReason');
       const reason = reasonEl ? reasonEl.value.trim() : '';
       if (!reason) {
-        alert('Please enter a reason for reverting to draft.');
+        FinanceForm.setFieldError(reasonEl, 'A reason is required to revert to draft.');
         return;
       }
       if (this.currentRun) {

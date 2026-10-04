@@ -13,16 +13,16 @@
           <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Category <span class="req">*</span></label>
+              <label for="bcCategory">Category <span class="req">*</span></label>
               <select id="bcCategory"></select>
             </div>
             <div class="form-field">
-              <label>Provider</label>
+              <label for="bcProvider">Provider</label>
               <input id="bcProvider" placeholder="e.g. Allianz Egypt">
             </div>
             <div class="form-field">
-              <label>Amount <span class="opt">EGP</span> <span class="req">*</span></label>
-              <input type="number" id="bcAmount" placeholder="e.g. 1500">
+              <label for="bcAmount">Amount <span class="opt">EGP</span> <span class="req">*</span></label>
+              <input min="0" inputmode="decimal" type="number" id="bcAmount" placeholder="e.g. 1500">
             </div>
           </div>
         </div>
@@ -31,7 +31,7 @@
           <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing & Attachment <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Status</label>
+              <label for="bcStatus">Status</label>
               <select id="bcStatus">
                 <option value="Approved">Approved</option>
                 <option value="Pending">Pending</option>
@@ -39,12 +39,12 @@
               </select>
             </div>
             <div class="form-field">
-              <label>Record Date <span class="opt">Optional</span></label>
+              <label for="bcRecordDate">Record Date <span class="opt">Optional</span></label>
               <input type="date" id="bcRecordDate">
             </div>
             <div class="form-field full">
-              <label>Supporting Document <span class="opt">Optional</span></label>
-              <div id="bcDocDropZone" class="doc-drop-zone compact" onclick="document.getElementById('bcDocument').click()">
+              <label for="bcDocument">Supporting Document <span class="opt">Optional</span></label>
+              <div id="bcDocDropZone" class="doc-drop-zone compact" role="button" tabindex="0" aria-label="Choose a file to upload" onclick="document.getElementById('bcDocument').click()">
                 <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
                 <div id="bcDocDropZoneEmpty" class="doc-drop-empty">
                   <i class="fa-solid fa-cloud-arrow-up"></i>

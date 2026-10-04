@@ -14,12 +14,12 @@
           <div class="form-section-label"><i class="fa-solid fa-file"></i> Document Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Document Name <span class="req">*</span></label>
+              <label for="docName">Document Name <span class="req">*</span></label>
               <input id="docName" placeholder="e.g. National ID, Contract, Medical Report">
             </div>
             <div class="form-field full">
-              <label>File <span class="req">*</span></label>
-              <div id="docDropZone" class="doc-drop-zone" onclick="document.getElementById('docFileInput').click()">
+              <label for="docFileInput">File <span class="req">*</span></label>
+              <div id="docDropZone" class="doc-drop-zone" role="button" tabindex="0" aria-label="Choose a file to upload" onclick="document.getElementById('docFileInput').click()">
                 <input type="file" id="docFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
                 <div id="docDropZoneEmpty" class="doc-drop-empty">
                   <i class="fa-solid fa-cloud-arrow-up"></i>

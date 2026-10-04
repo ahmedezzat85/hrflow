@@ -39,6 +39,39 @@ function setText(el, value) {
   if (el) el.textContent = value === null || value === undefined ? '' : String(value);
 }
 
+// Delegated handler for row actions that carry their data in data-* attributes
+// (no inline onclick with data embedded in a JS string).
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const d = el.dataset;
+  const num = (v) => (v !== '' && !isNaN(v) ? Number(v) : v);
+  switch (d.action) {
+    case 'preview-employee-doc': return previewEmployeeDocument(num(d.id), d.name, d.type);
+    case 'preview-company-doc': return previewCompanyDocument(num(d.id), d.name, d.type);
+    case 'preview-salary-doc': return previewInvoicePdf(num(d.id), d.number);
+    case 'regenerate-salary-doc':
+      return openRegenerateInvoiceModal(num(d.employeeId), d.name, num(d.year), num(d.month), d.number);
+    default: return undefined;
+  }
+});
+
+// Dropzones behave like buttons for the keyboard: Enter or Space opens the file picker.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const zone = e.target.closest && e.target.closest('.doc-drop-zone[role="button"]');
+  if (!zone || e.target !== zone) return;
+  e.preventDefault();
+  zone.click();
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
+});
+document.addEventListener('change', (e) => {
+  if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
+});
+
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 
@@ -46,7 +79,7 @@ function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(e
  * Standardized Empty & Loading state helpers across all domain modules
  */
 function getEmptyStateHtml(message = 'No data available.', icon = 'fa-solid fa-inbox') {
-  return `<div class="empty-state"><i class="${icon}"></i><p>${message}</p></div>`;
+  return `<div class="empty-state"><i class="${escapeHtml(icon)}"></i><p>${escapeHtml(message)}</p></div>`;
 }
 
 function getEmptyTableRowHtml(colCount = 1, message = 'No data available.', icon = 'fa-solid fa-inbox') {
@@ -153,7 +186,7 @@ const titles = {
   'a-employee-detail':['Employee Profile',"View and manage employee profile and records."],
   'a-requests':['Pending Requests',"Review and action employee requests."],
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
-  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary invoices."],
+  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary payment docs."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
   'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
   'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
@@ -163,7 +196,7 @@ const titles = {
   'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
   'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
   'a-finance-payroll-runs':['Payroll Runs','Review and execute company payroll cycles.'],
-  'a-finance-payroll-settings':['Payroll Settings','Configure payroll bank accounts and cycle defaults.'],
+  'a-finance-payroll-settings':['Payroll Settings','Configure payroll company bank accounts and cycle defaults.'],
   'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
@@ -279,21 +312,38 @@ applyTheme(savedTheme);
     setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
   });
 });
+// Toasts: text is set with textContent (never parsed as HTML). Errors use role="alert",
+// stay until dismissed and carry a close button; other toasts use role="status" and fade after 3.2s.
 function toast(msg, icon='fa-solid fa-circle-check'){
   const wrap = document.getElementById('toastWrap');
+  if (!wrap) return;
+  const isError = /triangle-exclamation|circle-exclamation|circle-xmark/.test(String(icon));
   const el = document.createElement('div');
-  el.className='toast';
-  el.innerHTML = `<i class="${icon}"></i> ${msg}`;
+  el.className = isError ? 'toast toast-error' : 'toast';
+  el.setAttribute('role', isError ? 'alert' : 'status');
+  const iconEl = document.createElement('i');
+  iconEl.className = String(icon);
+  iconEl.setAttribute('aria-hidden', 'true');
+  const textEl = document.createElement('span');
+  textEl.textContent = msg === null || msg === undefined ? '' : String(msg);
+  el.append(iconEl, textEl);
+  if (isError) {
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'toast-close';
+    close.setAttribute('aria-label', 'Dismiss message');
+    close.textContent = '×';
+    close.addEventListener('click', () => el.remove());
+    el.appendChild(close);
+  }
   wrap.appendChild(el);
-  setTimeout(()=>el.remove(), 3200);
+  if (!isError) setTimeout(()=>el.remove(), 3200);
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
-function fmtMoney(n){
-  const val = Number(n);
-  if(isNaN(val)) return 'EGP 0';
-  return 'EGP ' + val.toLocaleString('en-EG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-function fmtUSD(n){ return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+// HR-page money helpers: thin wrappers over the one formatter in finance-core.js
+// (up to 2 decimals, trailing zeros trimmed on whole numbers).
+function fmtMoney(n){ return FinanceFormat.formatMoney(n, 'EGP', { decimals: 2, minDecimals: 0 }); }
+function fmtUSD(n){ return FinanceFormat.formatMoney(n, 'USD', { decimals: 2, minDecimals: 0 }); }
 function fmtDateShort(d){
   if(!d || d === '—') return '—';
   const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
@@ -399,6 +449,8 @@ const ModalController = {
   },
 
   close(modalId) {
+    // Drop stale inline errors and summaries so the next open starts clean
+    { const el = document.getElementById(modalId); if (el && window.FinanceForm) FinanceForm.clearErrors(el); }
     let entry = null;
     if (modalId) {
       const idx = this._stack.findIndex(e => e.id === modalId || e.overlay === modalId);
