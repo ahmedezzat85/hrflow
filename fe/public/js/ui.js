@@ -24,6 +24,21 @@ function showTableSkeleton(tbodyId, colCount, rowCount=5){
   }
   body.innerHTML = rows;
 }
+/**
+ * Shared HTML-escaping helpers. Every module that interpolates data into
+ * innerHTML delegates to escapeHtml(); use setText() when no markup is needed.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+function setText(el, value) {
+  if (el) el.textContent = value === null || value === undefined ? '' : String(value);
+}
+
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 

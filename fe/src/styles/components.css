@@ -794,7 +794,7 @@ select.form-control option {
   }
 
   .topbar {
-    padding: 16px 18px 6px;
+    padding: 12px 18px;
   }
 
   .page {
@@ -1081,6 +1081,93 @@ td.cell-money,
 
 .money-zero {
   color: var(--text3, #94a3b8);
+}
+
+/* Status badges (U1): .badge-* and .status-badge .status-* map to semantic tokens */
+.badge-success,
+.badge-approved,
+.badge-warning,
+.badge-pending,
+.badge-danger,
+.badge-rejected,
+.badge-info,
+.badge-primary,
+.badge-indigo,
+.badge-neutral,
+.badge-grey,
+.badge-secondary,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--border);
+  color: var(--text2);
+}
+
+.badge-success,
+.badge-approved,
+.status-badge.status-success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.badge-warning,
+.badge-pending,
+.status-badge.status-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.badge-danger,
+.badge-rejected,
+.status-badge.status-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.badge-info,
+.status-badge.status-info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.badge-primary,
+.badge-indigo,
+.status-badge.status-primary {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge-neutral,
+.badge-grey,
+.badge-secondary,
+.status-badge.status-neutral {
+  background: var(--border);
+  color: var(--text2);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text);
+}
+
+.btn-outline:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none;
+  }
 }
 
 .status-badge-wrap {

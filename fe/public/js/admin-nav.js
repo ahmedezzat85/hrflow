@@ -144,6 +144,9 @@
 
   function syncFromPage(pageId) {
     const targetModule = moduleOf(pageId);
+    // "Add Transaction" follows the page being viewed, not the nav panel being browsed
+    const quickAddBtn = document.getElementById('adminQuickAddTxBtn');
+    if (quickAddBtn) quickAddBtn.hidden = targetModule !== 'finance';
     if (targetModule && targetModule !== activeModuleId) {
       setModule(targetModule);
     }
