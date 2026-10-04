@@ -18,7 +18,7 @@ test.describe('U6 URLs and navigation', () => {
     await page.reload();
     await ready(page, page.url());
     expect(await activeSection(page)).toBe('a-finance-invoices');
-    await expect(page.locator('#adminPageTitle')).toHaveText('Sales Invoices');
+    await expect(page.locator('#adminPageTitle')).toHaveText('Sales & Receivables');
   });
 
   test('reload returns to an employee profile, a report and payroll run step 4', async ({ page }) => {
