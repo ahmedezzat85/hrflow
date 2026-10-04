@@ -53,7 +53,7 @@
         <button type="button" class="btn btn-sm btn-outline" id="btnOpenReconciliationRules" onclick="openReconciliationRulesModal()" style="font-size:12px;">
           <i class="fa-solid fa-sliders"></i> Rules Engine
         </button>
-        <button type="button" class="btn btn-sm btn-primary" id="btnExecuteStatementRules" onclick="openApplyRulesDialog()" style="font-size:12px;">
+        <button type="button" class="btn btn-sm btn-fill" id="btnExecuteStatementRules" onclick="openApplyRulesDialog()" style="font-size:12px;">
           <i class="fa-solid fa-wand-magic-sparkles"></i> Apply Rules
         </button>
         <div style="font-size:12px;color:var(--text-muted);" id="reconcileFilterCount">
@@ -235,7 +235,7 @@
       <div class="modal-head-text">
         <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;width:100%;">
           <h3 style="margin:0;">Reconciliation Rules Engine</h3>
-          <button type="button" class="btn btn-sm btn-primary" onclick="openCreateRuleModal()"><i class="fa-solid fa-plus"></i> New Rule</button>
+          <button type="button" class="btn btn-sm btn-fill" onclick="openCreateRuleModal()"><i class="fa-solid fa-plus"></i> New Rule</button>
         </div>
         <p style="margin:4px 0 0 0;">Define prioritized rules to automatically suggest categories or auto-resolve routine statement entries.</p>
       </div>
@@ -402,7 +402,7 @@
 
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" onclick="closeRuleEditModal()">Cancel</button>
-        <button type="submit" id="btnSaveReconciliationRule" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Rule</button>
+        <button type="submit" id="btnSaveReconciliationRule" class="btn btn-fill"><i class="fa-solid fa-save"></i> Save Rule</button>
       </div>
     </form>
   </div>
@@ -431,7 +431,7 @@
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-outline" onclick="closeApplyRulesDialog()">Cancel</button>
-      <button type="button" id="btnConfirmExecuteRules" class="btn btn-primary" onclick="confirmExecuteStatementRules()"><i class="fa-solid fa-bolt"></i> Execute Rules Now</button>
+      <button type="button" id="btnConfirmExecuteRules" class="btn btn-fill" onclick="confirmExecuteStatementRules()"><i class="fa-solid fa-bolt"></i> Execute Rules Now</button>
     </div>
   </div>
 </div>
@@ -559,7 +559,7 @@
     </div>
     <div class="modal-foot" style="display:flex; justify-content:space-between; align-items:center;">
       <button type="button" class="btn btn-outline" onclick="closeReconciliationCompletionReportModal()">Close</button>
-      <button type="button" class="btn btn-primary" onclick="printCompletionReport()"><i class="fa-solid fa-print"></i> Print / Export Report</button>
+      <button type="button" class="btn btn-fill" onclick="printCompletionReport()"><i class="fa-solid fa-print"></i> Print / Export Report</button>
     </div>
   </div>
 </div>

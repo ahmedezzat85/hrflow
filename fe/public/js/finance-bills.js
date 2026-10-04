@@ -1598,7 +1598,7 @@ function renderFinanceVendors(items) {
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm btn-icon" title="View 360 & Payments" onclick="openVendor360Drawer(${v.id})"><i class="fa-solid fa-eye"></i></button>
           <button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i></button>
+          <button class="btn btn-sm btn-icon ${v.is_active ?"btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ?"fa-ban" : "fa-check"}"></i></button>
         </div>
       </td>
     </tr>
@@ -1683,7 +1683,7 @@ async function renderVendorPaymentInstructionsInModal(vendorId) {
         </div>
         <div>
           ${pi.verification_status !== 'verified' ? `
-            <button type="button" class="btn btn-sm btn-primary" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
+            <button type="button" class="btn btn-sm btn-fill" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
           ` : `
             <button type="button" class="btn btn-sm btn-outline" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id}, 'unverified')"><i class="fa-solid fa-rotate-left"></i> Re-verify</button>
           `}
@@ -1903,7 +1903,7 @@ async function toggleVendorActive(id, currentlyActive) {
       ? "Deactivating will hide this vendor from new bill entry. Existing bills and history are preserved."
       : "Reactivating will restore this vendor to active billing lists.",
     actionLabel: currentlyActive ? "Deactivate Vendor" : "Reactivate Vendor",
-    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentlyActive ? "warning" : "info",
   });

@@ -1,21 +1,21 @@
         <section class="page-section" id="a-finance-reports">
           <!-- VIEW 1: Report Library Directory View -->
           <div id="reportLibraryDirectoryView">
-            <div class="toolbar" style="margin-bottom:20px;">
+            <div class="toolbar fr-u1">
               <div class="section-title-group">
                 <h2 class="section-title"><i class="fa-solid fa-book-bookmark"></i> Standard Report Library</h2>
                 <p class="section-subtitle">Financial intelligence, operational reporting, and compliance audits across all business domains.</p>
               </div>
-              <div style="display:flex; gap:12px; align-items:center;">
-                <div class="search-box" style="position:relative; min-width:280px;">
-                  <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                  <input type="text" id="reportLibrarySearch" class="form-input" placeholder="Search reports by title or domain..." style="padding-left:36px; width:100%;" oninput="filterReportLibraryCatalog()" />
+              <div class="fr-u2">
+                <div class="search-box fr-u3">
+                  <i class="fa-solid fa-magnifying-glass fr-u4"></i>
+                  <input type="text" id="reportLibrarySearch" class="form-input fr-u5" placeholder="Search reports by title or domain..." oninput="filterReportLibraryCatalog()" />
                 </div>
               </div>
             </div>
 
             <!-- Domain Category Pills -->
-            <div class="filter-tabs" id="reportLibraryCategoryPills" style="margin-bottom:20px; overflow-x:auto;">
+            <div class="filter-tabs fr-u6" id="reportLibraryCategoryPills">
               <button class="filter-tab active" data-domain="all" onclick="filterReportLibraryByDomain('all', this)"><i class="fa-solid fa-layer-group"></i> All Domains</button>
               <button class="filter-tab" data-domain="Performance" onclick="filterReportLibraryByDomain('Performance', this)"><i class="fa-solid fa-chart-line"></i> Performance</button>
               <button class="filter-tab" data-domain="Cash & Banking" onclick="filterReportLibraryByDomain('Cash & Banking', this)"><i class="fa-solid fa-building-columns"></i> Cash & Banking</button>
@@ -26,42 +26,42 @@
             </div>
 
             <!-- Library Cards Grid -->
-            <div id="reportLibraryGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px;">
+            <div class="fr-u7" id="reportLibraryGrid">
               <!-- Dynamically populated by finance-reports.js -->
             </div>
           </div>
 
           <!-- VIEW 2: Shared Report Shell Container -->
-          <div id="reportShellContainer" style="display:none;">
+          <div class="fr-u8" id="reportShellContainer">
             <!-- Mobile Desktop Advisory Banner for Multi-Column Matrices -->
-            <div class="mobile-desktop-advisory" id="reportMatrixMobileAdvisory" style="display:none;">
-              <div class="card" style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); padding:12px 14px; margin-bottom:14px; border-radius:8px; display:flex; align-items:center; gap:10px;">
-                <i class="fa-solid fa-display" style="font-size:1.3rem; color:var(--primary, #2563EB); flex-shrink:0;"></i>
-                <div style="font-size:0.82rem; color:var(--text-main, #0F172A); line-height:1.4;">
+            <div class="mobile-desktop-advisory fr-u8" id="reportMatrixMobileAdvisory">
+              <div class="card fr-u9">
+                <i class="fa-solid fa-display fr-u10"></i>
+                <div class="fr-u11">
                   <strong>Wide Layout Note:</strong> Detailed accounting matrices and multi-column ledger statements are optimized for desktop viewing. Swipe horizontally or use desktop for full drill-down analysis.
                 </div>
               </div>
             </div>
 
             <!-- Shell Top Bar -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border-color, #E2E8F0);">
-              <div style="display:flex; align-items:flex-start; gap:14px;">
-                <button class="btn btn-outline" id="reportShellBackBtn" onclick="backToReportLibrary()" style="padding:8px 14px; display:inline-flex; align-items:center; gap:8px;">
+            <div class="fr-u12">
+              <div class="fr-u13">
+                <button class="btn btn-outline fr-u14" id="reportShellBackBtn" onclick="backToReportLibrary()">
                   <i class="fa-solid fa-arrow-left"></i> Report Library
                 </button>
                 <div>
-                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <h2 class="section-title" id="reportShellTitle" style="margin:0;"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</h2>
+                  <div class="fr-u15">
+                    <h2 class="section-title fr-u16" id="reportShellTitle"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</h2>
                     <span class="badge badge-info" id="reportShellCategoryBadge">Spend & Payables</span>
                     <span class="badge badge-neutral" id="reportShellBasisBadge">Cash & Accrual</span>
                   </div>
-                  <p class="section-subtitle" id="reportShellQuestion" style="margin-top:4px; font-style:italic; color:var(--text-muted);">
+                  <p class="section-subtitle fr-u17" id="reportShellQuestion">
                     Answers: Where did company money go this period and which categories dominate?
                   </p>
                 </div>
               </div>
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span id="reportShellFreshness" style="font-size:0.8rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:6px;">
+              <div class="fr-u18">
+                <span class="fr-u19" id="reportShellFreshness">
                   <i class="fa-solid fa-clock"></i> Fresh as of: Just now
                 </span>
                 <button class="btn btn-sm btn-outline" id="reportShellRefreshBtn" onclick="refreshActiveReport()" title="Refresh Report Data">
@@ -71,22 +71,22 @@
             </div>
 
             <!-- Universal Filter Bar -->
-            <div class="card" style="padding:12px 16px; margin-bottom:18px; background:var(--bg-secondary, #F8FAFC);">
-              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:10px; font-size:0.85rem;">
+            <div class="card fr-u20">
+              <div class="fr-u21">
+                <div class="fr-u22">
                   <!-- Entity -->
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <label for="reportShellEntity" style="font-weight:600; color:var(--text-muted);">Entity:</label>
-                    <select id="reportShellEntity" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                  <div class="fr-u23">
+                    <label class="fr-u24" for="reportShellEntity">Entity:</label>
+                    <select id="reportShellEntity" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
                       <option value="all">All Entities</option>
                       <option value="voyance_main" selected>Voyance Health (HQ)</option>
                     </select>
                   </div>
 
                   <!-- Period Preset -->
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <label for="reportShellPeriodPreset" style="font-weight:600; color:var(--text-muted);">Period:</label>
-                    <select id="reportShellPeriodPreset" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellPeriodPresetChanged(this.value)">
+                  <div class="fr-u23">
+                    <label class="fr-u24" for="reportShellPeriodPreset">Period:</label>
+                    <select id="reportShellPeriodPreset" class="form-input filter-select fr-u25" onchange="onReportShellPeriodPresetChanged(this.value)">
                       <option value="this_month">This Month</option>
                       <option value="last_month">Last Month</option>
                       <option value="this_quarter">This Quarter</option>
@@ -97,25 +97,25 @@
                   </div>
 
                   <!-- Date Range -->
-                  <div style="display:flex; align-items:center; gap:4px;">
-                    <input type="date" id="reportShellDateFrom" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()" />
-                    <span style="color:var(--text-muted);">to</span>
-                    <input type="date" id="reportShellDateTo" class="form-input" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()" />
+                  <div class="fr-u26">
+                    <input type="date" id="reportShellDateFrom" class="form-input fr-u25" onchange="onReportShellFilterChanged()" />
+                    <span class="fr-u27">to</span>
+                    <input type="date" id="reportShellDateTo" class="form-input fr-u25" onchange="onReportShellFilterChanged()" />
                   </div>
 
                   <!-- Accounting Basis -->
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <label for="reportShellBasis" style="font-weight:600; color:var(--text-muted);">Basis:</label>
-                    <select id="reportShellBasis" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                  <div class="fr-u23">
+                    <label class="fr-u24" for="reportShellBasis">Basis:</label>
+                    <select id="reportShellBasis" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
                       <option value="cash" selected>Cash Basis</option>
                       <option value="accrual">Accrual Basis</option>
                     </select>
                   </div>
 
                   <!-- Currency -->
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <label for="reportShellCurrency" style="font-weight:600; color:var(--text-muted);">Currency:</label>
-                    <select id="reportShellCurrency" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                  <div class="fr-u23">
+                    <label class="fr-u24" for="reportShellCurrency">Currency:</label>
+                    <select id="reportShellCurrency" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
                       <option value="">All Currencies</option>
                       <option value="USD">USD</option>
                       <option value="EGP">EGP</option>
@@ -123,9 +123,9 @@
                   </div>
 
                   <!-- Comparison -->
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <label for="reportShellComparison" style="font-weight:600; color:var(--text-muted);">Comparison:</label>
-                    <select id="reportShellComparison" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem;" onchange="onReportShellFilterChanged()">
+                  <div class="fr-u23">
+                    <label class="fr-u24" for="reportShellComparison">Comparison:</label>
+                    <select id="reportShellComparison" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
                       <option value="none" selected>None</option>
                       <option value="prior_period">vs. Prior Period</option>
                       <option value="prior_year">vs. Prior Year</option>
@@ -133,52 +133,52 @@
                   </div>
 
                   <!-- Include Internal Payments -->
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-weight:600; color:var(--text-muted); font-size:0.85rem;" title="Include internal employee disbursements (salaries, medical, reimbursements)">
-                      <input type="checkbox" id="reportShellIncludeInternal" checked onchange="onReportShellFilterChanged()" style="cursor:pointer;" />
+                  <div class="fr-u23">
+                    <label class="fr-u28" title="Include internal employee disbursements (salaries, medical, reimbursements)">
+                      <input class="fr-u29" type="checkbox" id="reportShellIncludeInternal" checked onchange="onReportShellFilterChanged()" />
                       <span>Internal Payments</span>
                     </label>
                   </div>
                 </div>
 
                 <!-- Saved Views & Export Actions -->
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <div style="display:flex; align-items:center; gap:4px;">
-                    <label for="reportShellSavedViews" style="font-size:0.85rem; font-weight:600; color:var(--text-muted);"><i class="fa-solid fa-bookmark"></i> View:</label>
-                    <select id="reportShellSavedViews" class="form-input filter-select" style="padding:5px 8px; font-size:0.85rem; max-width:160px;" onchange="applySelectedSavedView(this.value)">
+                <div class="fr-u30">
+                  <div class="fr-u26">
+                    <label class="fr-u31" for="reportShellSavedViews"><i class="fa-solid fa-bookmark"></i> View:</label>
+                    <select id="reportShellSavedViews" class="form-input filter-select fr-u32" onchange="applySelectedSavedView(this.value)">
                       <option value="">Standard View</option>
                     </select>
                     <button class="btn btn-sm btn-outline" id="reportShellSaveViewBtn" title="Save current filter view" onclick="openSaveReportViewModal()">
                       <i class="fa-solid fa-floppy-disk"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline" id="reportShellDeleteViewBtn" title="Delete this view" onclick="deleteActiveReportView()" style="display:none; color:#EF4444;">
+                    <button class="btn btn-sm btn-outline fr-u33" id="reportShellDeleteViewBtn" title="Delete this view" onclick="deleteActiveReportView()">
                       <i class="fa-solid fa-trash-can"></i>
                     </button>
                   </div>
 
-                  <div style="border-left:1px solid var(--border-color, #CBD5E1); height:24px; margin:0 4px;"></div>
+                  <div class="fr-u34"></div>
 
                   <!-- Export Dropdown -->
-                  <div style="position:relative; display:inline-block;">
-                    <button class="btn btn-sm btn-primary" id="reportShellExportBtn" onclick="toggleReportExportMenu(event)">
-                      <i class="fa-solid fa-download"></i> Export <i class="fa-solid fa-caret-down" style="font-size:0.75rem;"></i>
+                  <div class="fr-u35">
+                    <button class="btn btn-sm btn-fill" id="reportShellExportBtn" onclick="toggleReportExportMenu(event)">
+                      <i class="fa-solid fa-download"></i> Export <i class="fa-solid fa-caret-down fr-u36"></i>
                     </button>
-                    <div id="reportShellExportMenu" class="card" style="display:none; position:absolute; right:0; top:110%; z-index:50; min-width:180px; padding:6px 0; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
-                      <a href="javascript:void(0)" onclick="exportActiveReport('excel')" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
-                        <i class="fa-solid fa-file-excel" style="color:#10B981;"></i> Excel (.xlsx)
+                    <div id="reportShellExportMenu" class="card fr-u37">
+                      <a class="fr-u38" href="javascript:void(0)" onclick="exportActiveReport('excel')" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-file-excel fr-u39"></i> Excel (.xlsx)
                       </a>
-                      <a href="javascript:void(0)" onclick="exportActiveReport('csv')" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
-                        <i class="fa-solid fa-file-csv" style="color:#3B82F6;"></i> CSV
+                      <a class="fr-u38" href="javascript:void(0)" onclick="exportActiveReport('csv')" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-file-csv fr-u40"></i> CSV
                       </a>
-                      <a href="javascript:void(0)" onclick="exportActiveReport('pdf')" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
-                        <i class="fa-solid fa-file-pdf" style="color:#EF4444;"></i> PDF Summary
+                      <a class="fr-u38" href="javascript:void(0)" onclick="exportActiveReport('pdf')" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-file-pdf fr-u41"></i> PDF Summary
                       </a>
-                      <div style="border-top:1px solid var(--border-color, #E2E8F0); margin:4px 0;"></div>
-                      <a href="javascript:void(0)" id="menuItemScheduleReport" onclick="openScheduleReportModal()" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
-                        <i class="fa-solid fa-clock-rotate-left" style="color:#8B5CF6;"></i> Schedule delivery (not yet available)
+                      <div class="fr-u42"></div>
+                      <a class="fr-u38" href="javascript:void(0)" id="menuItemScheduleReport" onclick="openScheduleReportModal()" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-clock-rotate-left fr-u43"></i> Schedule delivery (not yet available)
                       </a>
-                      <a href="javascript:void(0)" id="menuItemScheduledDeliveries" onclick="openScheduledDeliveriesModal()" style="display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:0.85rem; color:var(--text-main); text-decoration:none;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
-                        <i class="fa-solid fa-list-check" style="color:#64748B;"></i> View Schedules & Audits
+                      <a class="fr-u38" href="javascript:void(0)" id="menuItemScheduledDeliveries" onclick="openScheduledDeliveriesModal()" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-list-check fr-u44"></i> View Schedules & Audits
                       </a>
                     </div>
                   </div>
@@ -187,8 +187,8 @@
             </div>
 
             <!-- Optional Sub Navigation Tabs for Fast Switching -->
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-              <div class="filter-tabs" id="financeReportsSubNav" role="tablist" aria-label="Financial reports sub navigation" style="overflow-x:auto;">
+            <div class="fr-u45">
+              <div class="filter-tabs fr-u46" id="financeReportsSubNav" role="tablist" aria-label="Financial reports sub navigation">
                 <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
@@ -209,42 +209,42 @@
             <!-- PANE 1: Category Spend Rollup (SPENT Block) -->
             <div id="reportPaneCategorySummary">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <div class="fr-u47">
+                <div class="card fr-u48">
+                  <div class="fr-u49">
                     <i class="fa-solid fa-money-bill-transfer"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outflows (Spent)</div>
-                    <div id="reportCatSumTotalSpent" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                    <div class="fr-u50">Total Outflows (Spent)</div>
+                    <div class="fr-u51" id="reportCatSumTotalSpent">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(59,130,246,0.12); color:#3B82F6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u48">
+                  <div class="fr-u52">
                     <i class="fa-solid fa-tags"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Active Cost Categories</div>
-                    <div id="reportCatSumCategoryCount" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">0</div>
+                    <div class="fr-u50">Active Cost Categories</div>
+                    <div class="fr-u51" id="reportCatSumCategoryCount">0</div>
                   </div>
                 </div>
               </div>
 
               <div class="card">
-                <div class="section-loading-bar" id="reportCatSumLoadingBar" style="display:none;"><span></span></div>
+                <div class="section-loading-bar fr-u8" id="reportCatSumLoadingBar"><span></span></div>
                 <table class="responsive-card-table" id="reportCategorySummaryTable">
                   <thead>
                     <tr>
                       <th>Category</th>
                       <th>Classification</th>
-                      <th style="text-align:center;">Transactions</th>
-                      <th class="cell-money" style="text-align:right;">Total Spent</th>
-                      <th style="width:280px;">% of Total Spend</th>
+                      <th class="fr-u53">Transactions</th>
+                      <th class="cell-money fr-u54">Total Spent</th>
+                      <th class="fr-u55">% of Total Spend</th>
                     </tr>
                   </thead>
                   <tbody id="reportCategorySummaryTableBody"></tbody>
                 </table>
-                <div class="empty-state" id="reportCatSumEmpty" style="display:none;">
+                <div class="empty-state fr-u8" id="reportCatSumEmpty">
                   <i class="fa-solid fa-chart-pie"></i>
                   <p>No expense transactions recorded in this date range.</p>
                 </div>
@@ -252,12 +252,12 @@
             </div>
 
             <!-- PANE 2: Annual Category × Period Matrix -->
-            <div id="reportPaneMatrix" style="display:none;">
-              <div class="toolbar" style="margin-bottom:14px;">
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                  <div style="display:flex; gap:6px; align-items:center;">
-                    <label for="reportMatrixYear" style="font-size:0.85rem; color:var(--text-muted);">Year:</label>
-                    <select id="reportMatrixYear" class="form-input filter-select" style="padding:6px 12px; font-size:0.85rem;" onchange="loadReportMatrix()">
+            <div class="fr-u8" id="reportPaneMatrix">
+              <div class="toolbar fr-u56">
+                <div class="fr-u57">
+                  <div class="fr-u58">
+                    <label class="fr-u59" for="reportMatrixYear">Year:</label>
+                    <select id="reportMatrixYear" class="form-input filter-select fr-u60" onchange="loadReportMatrix()">
                       <option value="2026" selected>2026</option>
                       <option value="2025">2025</option>
                       <option value="2024">2024</option>
@@ -271,15 +271,15 @@
               </div>
 
               <div class="card">
-                <div class="section-loading-bar" id="reportMatrixLoadingBar" style="display:none;"><span></span></div>
-                <div style="overflow-x:auto;">
-                  <table class="responsive-card-table" id="reportMatrixTable" style="min-width:1100px;">
+                <div class="section-loading-bar fr-u8" id="reportMatrixLoadingBar"><span></span></div>
+                <div class="fr-u46">
+                  <table class="responsive-card-table fr-u61" id="reportMatrixTable">
                     <thead id="reportMatrixTableHead"></thead>
                     <tbody id="reportMatrixTableBody"></tbody>
-                    <tfoot id="reportMatrixTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                    <tfoot class="fr-u62" id="reportMatrixTableFoot"></tfoot>
                   </table>
                 </div>
-                <div class="empty-state" id="reportMatrixEmpty" style="display:none;">
+                <div class="empty-state fr-u8" id="reportMatrixEmpty">
                   <i class="fa-solid fa-table-cells"></i>
                   <p>No matrix data available for this year.</p>
                 </div>
@@ -287,23 +287,23 @@
             </div>
 
             <!-- PANE 3: Point-in-Time Account Balances -->
-            <div id="reportPaneBalances" style="display:none;">
-              <div class="toolbar" style="margin-bottom:14px;">
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                  <div style="display:flex; gap:6px; align-items:center;">
-                    <label for="reportBalancesAsOfDate" style="font-size:0.85rem; color:var(--text-muted);">Balances As Of:</label>
-                    <input type="date" id="reportBalancesAsOfDate" class="form-input" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportBalances()">
+            <div class="fr-u8" id="reportPaneBalances">
+              <div class="toolbar fr-u56">
+                <div class="fr-u57">
+                  <div class="fr-u58">
+                    <label class="fr-u59" for="reportBalancesAsOfDate">Balances As Of:</label>
+                    <input type="date" id="reportBalancesAsOfDate" class="form-input fr-u63" onchange="loadReportBalances()">
                   </div>
                 </div>
               </div>
 
               <!-- Currency Rollup Summary Cards -->
-              <div id="reportBalancesCurrencyCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:16px;">
+              <div class="fr-u64" id="reportBalancesCurrencyCards">
                 <!-- Dynamically rendered -->
               </div>
 
               <div class="card">
-                <div class="section-loading-bar" id="reportBalancesLoadingBar" style="display:none;"><span></span></div>
+                <div class="section-loading-bar fr-u8" id="reportBalancesLoadingBar"><span></span></div>
                 <table class="responsive-card-table" id="reportBalancesTable">
                   <thead>
                     <tr>
@@ -313,8 +313,8 @@
                       <th>Account #</th>
                       <th>Country</th>
                       <th>Currency</th>
-                      <th class="cell-money" style="text-align:right;">Opening Balance</th>
-                      <th class="cell-money" style="text-align:right;">Balance As Of Date</th>
+                      <th class="cell-money fr-u54">Opening Balance</th>
+                      <th class="cell-money fr-u54">Balance As Of Date</th>
                     </tr>
                   </thead>
                   <tbody id="reportBalancesTableBody"></tbody>
@@ -323,28 +323,28 @@
             </div>
 
             <!-- PANE 4: Transaction Ledger Report -->
-            <div id="reportPaneTransactions" style="display:none;">
-              <div class="toolbar" style="margin-bottom:14px;">
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                  <div style="display:flex; gap:6px; align-items:center;">
-                    <select id="reportTxAccount" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+            <div class="fr-u8" id="reportPaneTransactions">
+              <div class="toolbar fr-u56">
+                <div class="fr-u57">
+                  <div class="fr-u58">
+                    <select id="reportTxAccount" class="form-input filter-select fr-u63" onchange="loadReportTransactions()">
                       <option value="">All Accounts</option>
                     </select>
-                    <select id="reportTxCategory" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                    <select id="reportTxCategory" class="form-input filter-select fr-u63" onchange="loadReportTransactions()">
                       <option value="">All Categories</option>
                     </select>
-                    <select id="reportTxDirection" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportTransactions()">
+                    <select id="reportTxDirection" class="form-input filter-select fr-u63" onchange="loadReportTransactions()">
                       <option value="">All Directions</option>
                       <option value="in">Inflow (IN)</option>
                       <option value="out">Outflow (OUT)</option>
                     </select>
-                    <input type="text" id="reportTxSearch" class="form-input" placeholder="Search payee, desc..." style="padding:6px 10px; font-size:0.85rem; width:160px;" oninput="debounceReportTxSearch()">
+                    <input type="text" id="reportTxSearch" class="form-input fr-u65" placeholder="Search payee, desc..." oninput="debounceReportTxSearch()">
                   </div>
                 </div>
               </div>
 
               <div class="card">
-                <div class="section-loading-bar" id="reportTxLoadingBar" style="display:none;"><span></span></div>
+                <div class="section-loading-bar fr-u8" id="reportTxLoadingBar"><span></span></div>
                 <table class="responsive-card-table" id="reportTxTable">
                   <thead>
                     <tr>
@@ -353,14 +353,14 @@
                       <th>Category</th>
                       <th>Payee / Source</th>
                       <th>Description</th>
-                      <th style="text-align:center;">Direction</th>
-                      <th class="cell-money" style="text-align:right;">Amount</th>
+                      <th class="fr-u53">Direction</th>
+                      <th class="cell-money fr-u54">Amount</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody id="reportTxTableBody"></tbody>
                 </table>
-                <div class="empty-state" id="reportTxEmpty" style="display:none;">
+                <div class="empty-state fr-u8" id="reportTxEmpty">
                   <i class="fa-solid fa-list-check"></i>
                   <p>No transactions match the selected criteria.</p>
                 </div>
@@ -368,18 +368,18 @@
             </div>
 
             <!-- PANE 5: Cheque Register Report -->
-            <div id="reportPaneCheques" style="display:none;">
-              <div class="toolbar" style="margin-bottom:14px;">
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                  <div style="display:flex; gap:6px; align-items:center;">
-                    <label for="reportChequesFiscalYear" style="font-size:0.85rem; color:var(--text-muted);">Fiscal Year:</label>
-                    <select id="reportChequesFiscalYear" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCheques()">
+            <div class="fr-u8" id="reportPaneCheques">
+              <div class="toolbar fr-u56">
+                <div class="fr-u57">
+                  <div class="fr-u58">
+                    <label class="fr-u59" for="reportChequesFiscalYear">Fiscal Year:</label>
+                    <select id="reportChequesFiscalYear" class="form-input filter-select fr-u63" onchange="loadReportCheques()">
                       <option value="2026" selected>FY 2026</option>
                       <option value="2025">FY 2025</option>
                       <option value="2024">FY 2024</option>
                     </select>
                   </div>
-                  <select id="reportChequesStatus" class="form-input filter-select" style="padding:6px 10px; font-size:0.85rem;" onchange="loadReportCheques()">
+                  <select id="reportChequesStatus" class="form-input filter-select fr-u63" onchange="loadReportCheques()">
                     <option value="">All Statuses</option>
                     <option value="issued">Issued</option>
                     <option value="cleared">Cleared</option>
@@ -390,31 +390,31 @@
               </div>
 
               <!-- Status Breakdown Summary Cards -->
-              <div id="reportChequesStatusCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:14px; border-left:4px solid #6366F1; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'all', 'All Registered Cheques')">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Cheques</div>
-                  <div id="reportChequesTotalCount" style="font-size:1.3rem; font-weight:700; color:var(--text-main);">0</div>
-                  <div id="reportChequesTotalAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
+              <div class="fr-u66" id="reportChequesStatusCards">
+                <div class="card fr-u67" onclick="openReportDrilldown('cheque_status', 'all', 'All Registered Cheques')">
+                  <div class="fr-u68">Total Cheques</div>
+                  <div class="fr-u69" id="reportChequesTotalCount">0</div>
+                  <div class="fr-u70" id="reportChequesTotalAmount">$0.00 USD</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #F59E0B; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'issued', 'Issued (Pending) Cheques')">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Issued (Pending)</div>
-                  <div id="reportChequesIssuedCount" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">0</div>
-                  <div id="reportChequesIssuedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
+                <div class="card fr-u71" onclick="openReportDrilldown('cheque_status', 'issued', 'Issued (Pending) Cheques')">
+                  <div class="fr-u68">Issued (Pending)</div>
+                  <div class="fr-u72" id="reportChequesIssuedCount">0</div>
+                  <div class="fr-u70" id="reportChequesIssuedAmount">$0.00 USD</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #10B981; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'cleared', 'Cleared Cheques')">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cleared</div>
-                  <div id="reportChequesClearedCount" style="font-size:1.3rem; font-weight:700; color:#10B981;">0</div>
-                  <div id="reportChequesClearedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
+                <div class="card fr-u73" onclick="openReportDrilldown('cheque_status', 'cleared', 'Cleared Cheques')">
+                  <div class="fr-u68">Cleared</div>
+                  <div class="fr-u74" id="reportChequesClearedCount">0</div>
+                  <div class="fr-u70" id="reportChequesClearedAmount">$0.00 USD</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #EF4444; cursor:pointer;" onclick="openReportDrilldown('cheque_status', 'bounced', 'Bounced / Voided Cheques')">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Bounced / Voided</div>
-                  <div id="reportChequesBouncedVoidedCount" style="font-size:1.3rem; font-weight:700; color:#EF4444;">0</div>
-                  <div id="reportChequesBouncedVoidedAmount" style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">$0.00 USD</div>
+                <div class="card fr-u75" onclick="openReportDrilldown('cheque_status', 'bounced', 'Bounced / Voided Cheques')">
+                  <div class="fr-u68">Bounced / Voided</div>
+                  <div class="fr-u76" id="reportChequesBouncedVoidedCount">0</div>
+                  <div class="fr-u70" id="reportChequesBouncedVoidedAmount">$0.00 USD</div>
                 </div>
               </div>
 
               <div class="card">
-                <div class="section-loading-bar" id="reportChequesLoadingBar" style="display:none;"><span></span></div>
+                <div class="section-loading-bar fr-u8" id="reportChequesLoadingBar"><span></span></div>
                 <table class="responsive-card-table" id="reportChequesTable">
                   <thead>
                     <tr>
@@ -424,14 +424,14 @@
                       <th>Company bank account</th>
                       <th>Payee</th>
                       <th>Purpose</th>
-                      <th class="cell-money" style="text-align:right;">Amount</th>
+                      <th class="cell-money fr-u54">Amount</th>
                       <th>Status</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
                   <tbody id="reportChequesTableBody"></tbody>
                 </table>
-                <div class="empty-state" id="reportChequesEmpty" style="display:none;">
+                <div class="empty-state fr-u8" id="reportChequesEmpty">
                   <i class="fa-solid fa-money-check"></i>
                   <p>No cheques recorded for this fiscal year.</p>
                 </div>
@@ -439,62 +439,62 @@
             </div>
 
             <!-- PANE: Profit & Loss Statement -->
-            <div id="reportPaneProfitAndLoss" style="display:none;">
+            <div class="fr-u8" id="reportPaneProfitAndLoss">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <div class="fr-u47">
+                <div class="card fr-u77">
+                  <div class="fr-u78">
                     <i class="fa-solid fa-arrow-trend-up"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Revenue</div>
-                    <div id="reportPnlTotalRevenue" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                    <div class="fr-u50">Total Revenue</div>
+                    <div class="fr-u79" id="reportPnlTotalRevenue">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #EF4444;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(239,68,68,0.12); color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u80">
+                  <div class="fr-u49">
                     <i class="fa-solid fa-arrow-trend-down"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Expenses</div>
-                    <div id="reportPnlTotalExpenses" style="font-size:1.4rem; font-weight:700; color:#EF4444;">$0.00</div>
+                    <div class="fr-u50">Total Expenses</div>
+                    <div class="fr-u81" id="reportPnlTotalExpenses">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u82">
+                  <div class="fr-u83">
                     <i class="fa-solid fa-scale-balanced"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Income</div>
-                    <div id="reportPnlNetIncome" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                    <div class="fr-u50">Net Income</div>
+                    <div class="fr-u51" id="reportPnlNetIncome">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #8B5CF6;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(139,92,246,0.12); color:#8B5CF6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u84">
+                  <div class="fr-u85">
                     <i class="fa-solid fa-percent"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Profit Margin</div>
-                    <div id="reportPnlNetMargin" style="font-size:1.4rem; font-weight:700; color:#8B5CF6;">0.0%</div>
+                    <div class="fr-u50">Net Profit Margin</div>
+                    <div class="fr-u86" id="reportPnlNetMargin">0.0%</div>
                   </div>
                 </div>
               </div>
 
               <!-- Revenue Section Card -->
-              <div class="card" style="margin-bottom:16px;">
-                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0);">
-                  <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#10B981; display:flex; align-items:center; gap:8px;">
+              <div class="card fr-u87">
+                <div class="card-header fr-u88">
+                  <h3 class="fr-u89">
                     <i class="fa-solid fa-circle-arrow-up"></i> Operating Revenue & Inflows
                   </h3>
-                  <span id="reportPnlRevenueSubtotalBadge" class="badge badge-success" style="font-size:0.85rem; font-weight:700;">$0.00</span>
+                  <span id="reportPnlRevenueSubtotalBadge" class="badge badge-success fr-u90">$0.00</span>
                 </div>
                 <table class="responsive-card-table" id="reportPnlRevenueTable">
                   <thead>
                     <tr>
                       <th>Revenue Stream / Category</th>
-                      <th style="width:160px; text-align:right;">Amount</th>
-                      <th style="width:220px;">% of Revenue</th>
-                      <th style="width:100px; text-align:center;">Action</th>
+                      <th class="fr-u91">Amount</th>
+                      <th class="fr-u92">% of Revenue</th>
+                      <th class="fr-u93">Action</th>
                     </tr>
                   </thead>
                   <tbody id="reportPnlRevenueTableBody"></tbody>
@@ -502,20 +502,20 @@
               </div>
 
               <!-- Expense Section Card -->
-              <div class="card" style="margin-bottom:16px;">
-                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0);">
-                  <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#EF4444; display:flex; align-items:center; gap:8px;">
+              <div class="card fr-u87">
+                <div class="card-header fr-u88">
+                  <h3 class="fr-u94">
                     <i class="fa-solid fa-circle-arrow-down"></i> Operating Expenses & Cost Allocations
                   </h3>
-                  <span id="reportPnlExpenseSubtotalBadge" class="badge badge-danger" style="font-size:0.85rem; font-weight:700;">$0.00</span>
+                  <span id="reportPnlExpenseSubtotalBadge" class="badge badge-danger fr-u90">$0.00</span>
                 </div>
                 <table class="responsive-card-table" id="reportPnlExpenseTable">
                   <thead>
                     <tr>
                       <th>Expense Category</th>
-                      <th style="width:160px; text-align:right;">Amount</th>
-                      <th style="width:220px;">% of Expenses</th>
-                      <th style="width:100px; text-align:center;">Action</th>
+                      <th class="fr-u91">Amount</th>
+                      <th class="fr-u92">% of Expenses</th>
+                      <th class="fr-u93">Action</th>
                     </tr>
                   </thead>
                   <tbody id="reportPnlExpenseTableBody"></tbody>
@@ -524,61 +524,61 @@
             </div>
 
             <!-- PANE: Balance Sheet -->
-            <div id="reportPaneBalanceSheet" style="display:none;">
+            <div class="fr-u8" id="reportPaneBalanceSheet">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <div class="fr-u47">
+                <div class="card fr-u82">
+                  <div class="fr-u83">
                     <i class="fa-solid fa-vault"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Assets</div>
-                    <div id="reportBsTotalAssets" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                    <div class="fr-u50">Total Assets</div>
+                    <div class="fr-u95" id="reportBsTotalAssets">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #F59E0B;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(245,158,11,0.12); color:#F59E0B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u96">
+                  <div class="fr-u97">
                     <i class="fa-solid fa-receipt"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Liabilities</div>
-                    <div id="reportBsTotalLiabilities" style="font-size:1.4rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                    <div class="fr-u50">Total Liabilities</div>
+                    <div class="fr-u98" id="reportBsTotalLiabilities">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u77">
+                  <div class="fr-u78">
                     <i class="fa-solid fa-coins"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Owners' Equity</div>
-                    <div id="reportBsTotalEquity" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                    <div class="fr-u50">Owners' Equity</div>
+                    <div class="fr-u79" id="reportBsTotalEquity">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u48">
+                  <div class="fr-u78">
                     <i class="fa-solid fa-check-double"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Accounting Equation</div>
-                    <div id="reportBsBalancedBadge" style="font-size:1.1rem; font-weight:700; color:#10B981;">BALANCED ✓</div>
+                    <div class="fr-u50">Accounting Equation</div>
+                    <div class="fr-u99" id="reportBsBalancedBadge">BALANCED ✓</div>
                   </div>
                 </div>
               </div>
 
               <!-- Assets & (Liabilities + Equity) Split Grid -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:18px;">
+              <div class="fr-u100">
                 <!-- Assets Card -->
                 <div class="card">
-                  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
-                    <h3 style="margin:0; font-size:1rem; font-weight:700; color:#2563EB;">1. Assets</h3>
-                    <span id="reportBsAssetsSubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                  <div class="card-header fr-u101">
+                    <h3 class="fr-u102">1. Assets</h3>
+                    <span class="fr-u103" id="reportBsAssetsSubtotal">$0.00</span>
                   </div>
                   <table class="responsive-card-table" id="reportBsAssetsTable">
                     <thead>
                       <tr>
                         <th>Asset Account</th>
                         <th>Classification / Note</th>
-                        <th style="text-align:right;">Balance</th>
+                        <th class="fr-u54">Balance</th>
                       </tr>
                     </thead>
                     <tbody id="reportBsAssetsTableBody"></tbody>
@@ -586,19 +586,19 @@
                 </div>
 
                 <!-- Liabilities & Equity Card -->
-                <div style="display:flex; flex-direction:column; gap:18px;">
+                <div class="fr-u104">
                   <!-- Liabilities -->
                   <div class="card">
-                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
-                      <h3 style="margin:0; font-size:1rem; font-weight:700; color:#F59E0B;">2. Liabilities</h3>
-                      <span id="reportBsLiabilitiesSubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                    <div class="card-header fr-u101">
+                      <h3 class="fr-u105">2. Liabilities</h3>
+                      <span class="fr-u103" id="reportBsLiabilitiesSubtotal">$0.00</span>
                     </div>
                     <table class="responsive-card-table" id="reportBsLiabilitiesTable">
                       <thead>
                         <tr>
                           <th>Liability Account</th>
                           <th>Classification / Note</th>
-                          <th style="text-align:right;">Balance</th>
+                          <th class="fr-u54">Balance</th>
                         </tr>
                       </thead>
                       <tbody id="reportBsLiabilitiesTableBody"></tbody>
@@ -607,16 +607,16 @@
 
                   <!-- Equity -->
                   <div class="card">
-                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
-                      <h3 style="margin:0; font-size:1rem; font-weight:700; color:#10B981;">3. Equity</h3>
-                      <span id="reportBsEquitySubtotal" style="font-weight:700; font-size:0.95rem;">$0.00</span>
+                    <div class="card-header fr-u101">
+                      <h3 class="fr-u106">3. Equity</h3>
+                      <span class="fr-u103" id="reportBsEquitySubtotal">$0.00</span>
                     </div>
                     <table class="responsive-card-table" id="reportBsEquityTable">
                       <thead>
                         <tr>
                           <th>Equity Item</th>
                           <th>Classification / Note</th>
-                          <th style="text-align:right;">Balance</th>
+                          <th class="fr-u54">Balance</th>
                         </tr>
                       </thead>
                       <tbody id="reportBsEquityTableBody"></tbody>
@@ -627,43 +627,43 @@
             </div>
 
             <!-- PANE: Trial Balance -->
-            <div id="reportPaneTrialBalance" style="display:none;">
+            <div class="fr-u8" id="reportPaneTrialBalance">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <div class="fr-u47">
+                <div class="card fr-u82">
+                  <div class="fr-u83">
                     <i class="fa-solid fa-plus-minus"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Debits</div>
-                    <div id="reportTbTotalDebits" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                    <div class="fr-u50">Total Debits</div>
+                    <div class="fr-u95" id="reportTbTotalDebits">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #8B5CF6;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(139,92,246,0.12); color:#8B5CF6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u84">
+                  <div class="fr-u85">
                     <i class="fa-solid fa-scale-unbalanced"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Credits</div>
-                    <div id="reportTbTotalCredits" style="font-size:1.4rem; font-weight:700; color:#8B5CF6;">$0.00</div>
+                    <div class="fr-u50">Total Credits</div>
+                    <div class="fr-u86" id="reportTbTotalCredits">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u48">
+                  <div class="fr-u78">
                     <i class="fa-solid fa-circle-check"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Balance Check</div>
-                    <div id="reportTbBalancedBadge" style="font-size:1.1rem; font-weight:700; color:#10B981;">DEBITS = CREDITS ✓</div>
+                    <div class="fr-u50">Balance Check</div>
+                    <div class="fr-u99" id="reportTbBalancedBadge">DEBITS = CREDITS ✓</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(100,116,139,0.12); color:#64748B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u48">
+                  <div class="fr-u107">
                     <i class="fa-solid fa-calculator"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Variance</div>
-                    <div id="reportTbVariance" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                    <div class="fr-u50">Variance</div>
+                    <div class="fr-u51" id="reportTbVariance">$0.00</div>
                   </div>
                 </div>
               </div>
@@ -673,57 +673,57 @@
                 <table class="responsive-card-table" id="reportTbTable">
                   <thead>
                     <tr>
-                      <th style="width:120px;">Account Code</th>
+                      <th class="fr-u108">Account Code</th>
                       <th>Account Name</th>
                       <th>Type</th>
-                      <th style="width:160px; text-align:right;">Debit</th>
-                      <th style="width:160px; text-align:right;">Credit</th>
+                      <th class="fr-u91">Debit</th>
+                      <th class="fr-u91">Credit</th>
                     </tr>
                   </thead>
                   <tbody id="reportTbTableBody"></tbody>
-                  <tfoot id="reportTbTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportTbTableFoot"></tfoot>
                 </table>
               </div>
             </div>
 
             <!-- PANE: Statement of Cash Flows -->
-            <div id="reportPaneCashFlow" style="display:none;">
+            <div class="fr-u8" id="reportPaneCashFlow">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #64748B;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(100,116,139,0.12); color:#64748B; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <div class="fr-u47">
+                <div class="card fr-u109">
+                  <div class="fr-u107">
                     <i class="fa-solid fa-hourglass-start"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Beginning Cash</div>
-                    <div id="reportCfBeginningCash" style="font-size:1.4rem; font-weight:700; color:var(--text-main);">$0.00</div>
+                    <div class="fr-u50">Beginning Cash</div>
+                    <div class="fr-u51" id="reportCfBeginningCash">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #10B981;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10B981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u77">
+                  <div class="fr-u78">
                     <i class="fa-solid fa-briefcase"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Operating Net Cash</div>
-                    <div id="reportCfOperatingCash" style="font-size:1.4rem; font-weight:700; color:#10B981;">$0.00</div>
+                    <div class="fr-u50">Operating Net Cash</div>
+                    <div class="fr-u79" id="reportCfOperatingCash">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #2563EB;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u82">
+                  <div class="fr-u83">
                     <i class="fa-solid fa-arrow-right-arrow-left"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Net Change in Cash</div>
-                    <div id="reportCfNetChange" style="font-size:1.4rem; font-weight:700; color:#2563EB;">$0.00</div>
+                    <div class="fr-u50">Net Change in Cash</div>
+                    <div class="fr-u95" id="reportCfNetChange">$0.00</div>
                   </div>
                 </div>
-                <div class="card" style="padding:16px; display:flex; align-items:center; gap:14px; border-left:4px solid #059669;">
-                  <div style="width:42px; height:42px; border-radius:10px; background:rgba(5,150,105,0.12); color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card fr-u77">
+                  <div class="fr-u110">
                     <i class="fa-solid fa-flag-checkered"></i>
                   </div>
                   <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Ending Cash Balance</div>
-                    <div id="reportCfEndingCash" style="font-size:1.4rem; font-weight:700; color:#059669;">$0.00</div>
+                    <div class="fr-u50">Ending Cash Balance</div>
+                    <div class="fr-u79" id="reportCfEndingCash">$0.00</div>
                   </div>
                 </div>
               </div>
@@ -734,7 +734,7 @@
                   <thead>
                     <tr>
                       <th>Activity / Line Item</th>
-                      <th style="width:180px; text-align:right;">Cash Impact</th>
+                      <th class="fr-u111">Cash Impact</th>
                     </tr>
                   </thead>
                   <tbody id="reportCfTableBody"></tbody>
@@ -743,32 +743,32 @@
             </div>
 
             <!-- PANE: AR Aging Report -->
-            <div id="reportPaneArAging" style="display:none;">
+            <div class="fr-u8" id="reportPaneArAging">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:14px; border-left:4px solid #2563EB;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Outstanding</div>
-                  <div id="reportArTotalOutstanding" style="font-size:1.3rem; font-weight:700; color:#2563EB;">$0.00</div>
+              <div class="fr-u66">
+                <div class="card fr-u112">
+                  <div class="fr-u68">Total Outstanding</div>
+                  <div class="fr-u113" id="reportArTotalOutstanding">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #10B981;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Current (Not Due)</div>
-                  <div id="reportArCurrent" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                <div class="card fr-u114">
+                  <div class="fr-u68">Current (Not Due)</div>
+                  <div class="fr-u74" id="reportArCurrent">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">1 - 30 Days</div>
-                  <div id="reportArDays130" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                <div class="card fr-u115">
+                  <div class="fr-u68">1 - 30 Days</div>
+                  <div class="fr-u72" id="reportArDays130">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #EA580C;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">31 - 60 Days</div>
-                  <div id="reportArDays3160" style="font-size:1.3rem; font-weight:700; color:#EA580C;">$0.00</div>
+                <div class="card fr-u115">
+                  <div class="fr-u68">31 - 60 Days</div>
+                  <div class="fr-u72" id="reportArDays3160">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #DC2626;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">61 - 90 Days</div>
-                  <div id="reportArDays6190" style="font-size:1.3rem; font-weight:700; color:#DC2626;">$0.00</div>
+                <div class="card fr-u116">
+                  <div class="fr-u68">61 - 90 Days</div>
+                  <div class="fr-u76" id="reportArDays6190">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #7F1D1D;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">90+ Days (Severe)</div>
-                  <div id="reportArDaysOver90" style="font-size:1.3rem; font-weight:700; color:#7F1D1D;">$0.00</div>
+                <div class="card fr-u116">
+                  <div class="fr-u68">90+ Days (Severe)</div>
+                  <div class="fr-u76" id="reportArDaysOver90">$0.00</div>
                 </div>
               </div>
 
@@ -778,49 +778,49 @@
                   <thead>
                     <tr>
                       <th>Customer</th>
-                      <th style="text-align:center; width:90px;">Invoices</th>
-                      <th style="text-align:right;">Current</th>
-                      <th style="text-align:right;">1 - 30</th>
-                      <th style="text-align:right;">31 - 60</th>
-                      <th style="text-align:right;">61 - 90</th>
-                      <th style="text-align:right;">90+ Days</th>
-                      <th style="text-align:right; width:130px;">Total Due</th>
-                      <th style="text-align:center; width:90px;">Action</th>
+                      <th class="fr-u117">Invoices</th>
+                      <th class="fr-u54">Current</th>
+                      <th class="fr-u54">1 - 30</th>
+                      <th class="fr-u54">31 - 60</th>
+                      <th class="fr-u54">61 - 90</th>
+                      <th class="fr-u54">90+ Days</th>
+                      <th class="fr-u118">Total Due</th>
+                      <th class="fr-u117">Action</th>
                     </tr>
                   </thead>
                   <tbody id="reportArAgingTableBody"></tbody>
-                  <tfoot id="reportArAgingTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportArAgingTableFoot"></tfoot>
                 </table>
               </div>
             </div>
 
             <!-- PANE: AP Aging Report -->
-            <div id="reportPaneApAging" style="display:none;">
+            <div class="fr-u8" id="reportPaneApAging">
               <!-- KPI Banner -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:14px; border-left:4px solid #EF4444;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Payable</div>
-                  <div id="reportApTotalOutstanding" style="font-size:1.3rem; font-weight:700; color:#EF4444;">$0.00</div>
+              <div class="fr-u66">
+                <div class="card fr-u116">
+                  <div class="fr-u68">Total Payable</div>
+                  <div class="fr-u76" id="reportApTotalOutstanding">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #10B981;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Current (Not Due)</div>
-                  <div id="reportApCurrent" style="font-size:1.3rem; font-weight:700; color:#10B981;">$0.00</div>
+                <div class="card fr-u114">
+                  <div class="fr-u68">Current (Not Due)</div>
+                  <div class="fr-u74" id="reportApCurrent">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #F59E0B;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">1 - 30 Days</div>
-                  <div id="reportApDays130" style="font-size:1.3rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                <div class="card fr-u115">
+                  <div class="fr-u68">1 - 30 Days</div>
+                  <div class="fr-u72" id="reportApDays130">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #EA580C;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">31 - 60 Days</div>
-                  <div id="reportApDays3160" style="font-size:1.3rem; font-weight:700; color:#EA580C;">$0.00</div>
+                <div class="card fr-u115">
+                  <div class="fr-u68">31 - 60 Days</div>
+                  <div class="fr-u72" id="reportApDays3160">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #DC2626;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">61 - 90 Days</div>
-                  <div id="reportApDays6190" style="font-size:1.3rem; font-weight:700; color:#DC2626;">$0.00</div>
+                <div class="card fr-u116">
+                  <div class="fr-u68">61 - 90 Days</div>
+                  <div class="fr-u76" id="reportApDays6190">$0.00</div>
                 </div>
-                <div class="card" style="padding:14px; border-left:4px solid #7F1D1D;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">90+ Days (Severe)</div>
-                  <div id="reportApDaysOver90" style="font-size:1.3rem; font-weight:700; color:#7F1D1D;">$0.00</div>
+                <div class="card fr-u116">
+                  <div class="fr-u68">90+ Days (Severe)</div>
+                  <div class="fr-u76" id="reportApDaysOver90">$0.00</div>
                 </div>
               </div>
 
@@ -830,60 +830,60 @@
                   <thead>
                     <tr>
                       <th>Vendor</th>
-                      <th style="text-align:center; width:90px;">Bills</th>
-                      <th style="text-align:right;">Current</th>
-                      <th style="text-align:right;">1 - 30</th>
-                      <th style="text-align:right;">31 - 60</th>
-                      <th style="text-align:right;">61 - 90</th>
-                      <th style="text-align:right;">90+ Days</th>
-                      <th style="text-align:right; width:130px;">Total Due</th>
-                      <th style="text-align:center; width:90px;">Action</th>
+                      <th class="fr-u117">Bills</th>
+                      <th class="fr-u54">Current</th>
+                      <th class="fr-u54">1 - 30</th>
+                      <th class="fr-u54">31 - 60</th>
+                      <th class="fr-u54">61 - 90</th>
+                      <th class="fr-u54">90+ Days</th>
+                      <th class="fr-u118">Total Due</th>
+                      <th class="fr-u117">Action</th>
                     </tr>
                   </thead>
                   <tbody id="reportApAgingTableBody"></tbody>
-                  <tfoot id="reportApAgingTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportApAgingTableFoot"></tfoot>
                 </table>
               </div>
             </div>
 
             <!-- PANE: Compensation Spend & Variance Report (FUX-419) -->
-            <div id="reportPaneCompensationSummary" style="display:none;">
+            <div class="fr-u8" id="reportPaneCompensationSummary">
               <!-- KPI Summary Cards -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; border-left:4px solid var(--primary, #2563EB);">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Compensation Spend</div>
-                  <div id="reportCompTotalSpend" style="font-size:1.35rem; font-weight:700; color:var(--text-main);">$0.00</div>
+              <div class="fr-u119">
+                <div class="card fr-u120">
+                  <div class="fr-u68">Total Compensation Spend</div>
+                  <div class="fr-u121" id="reportCompTotalSpend">$0.00</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">External Wire Transfers</div>
-                  <div id="reportCompExternal" style="font-size:1.35rem; font-weight:700; color:#3B82F6;">$0.00</div>
+                <div class="card fr-u122">
+                  <div class="fr-u68">External Wire Transfers</div>
+                  <div class="fr-u123" id="reportCompExternal">$0.00</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid #10B981;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Internal Cash Payroll</div>
-                  <div id="reportCompInternal" style="font-size:1.35rem; font-weight:700; color:#10B981;">$0.00</div>
+                <div class="card fr-u124">
+                  <div class="fr-u68">Internal Cash Payroll</div>
+                  <div class="fr-u125" id="reportCompInternal">$0.00</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid #F59E0B;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Commissions & Bonuses</div>
-                  <div id="reportCompCommBonus" style="font-size:1.35rem; font-weight:700; color:#F59E0B;">$0.00</div>
+                <div class="card fr-u126">
+                  <div class="fr-u68">Commissions & Bonuses</div>
+                  <div class="fr-u127" id="reportCompCommBonus">$0.00</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid #8B5CF6;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Headcount Covered</div>
-                  <div id="reportCompHeadcount" style="font-size:1.35rem; font-weight:700; color:#8B5CF6;">0</div>
+                <div class="card fr-u128">
+                  <div class="fr-u68">Headcount Covered</div>
+                  <div class="fr-u129" id="reportCompHeadcount">0</div>
                 </div>
               </div>
 
               <!-- View Controls Bar -->
-              <div class="card" style="padding:10px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <label for="reportCompViewMode" style="font-weight:600; font-size:0.85rem; color:var(--text-muted);">View Mode:</label>
-                  <select id="reportCompViewMode" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem;" onchange="onCompensationViewModeChanged(this.value)">
+              <div class="card fr-u130">
+                <div class="fr-u18">
+                  <label class="fr-u131" for="reportCompViewMode">View Mode:</label>
+                  <select id="reportCompViewMode" class="form-input filter-select fr-u132" onchange="onCompensationViewModeChanged(this.value)">
                     <option value="company">Company Spend Summary (All Employees)</option>
                     <option value="employee">Per-Employee Detailed Drilldown</option>
                   </select>
                 </div>
-                <div id="reportCompEmployeeSelectGroup" style="display:none; align-items:center; gap:8px;">
-                  <label for="reportCompEmployeeSelect" style="font-weight:600; font-size:0.85rem; color:var(--text-muted);">Select Employee:</label>
-                  <select id="reportCompEmployeeSelect" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem; min-width:200px;" onchange="onCompensationEmployeeChanged(this.value)">
+                <div class="fr-u133" id="reportCompEmployeeSelectGroup">
+                  <label class="fr-u131" for="reportCompEmployeeSelect">Select Employee:</label>
+                  <select id="reportCompEmployeeSelect" class="form-input filter-select fr-u134" onchange="onCompensationEmployeeChanged(this.value)">
                     <option value="">Choose Employee...</option>
                   </select>
                 </div>
@@ -896,27 +896,27 @@
                     <tr>
                       <th>Employee</th>
                       <th>Department</th>
-                      <th style="text-align:right;">External USD</th>
-                      <th style="text-align:right;">Internal Cash</th>
-                      <th style="text-align:right;">Commissions</th>
-                      <th style="text-align:right;">Bonuses</th>
-                      <th style="text-align:right; font-weight:700;">Total Spend</th>
-                      <th style="text-align:center; width:90px;">Action</th>
+                      <th class="fr-u54">External USD</th>
+                      <th class="fr-u54">Internal Cash</th>
+                      <th class="fr-u54">Commissions</th>
+                      <th class="fr-u54">Bonuses</th>
+                      <th class="fr-u135">Total Spend</th>
+                      <th class="fr-u117">Action</th>
                     </tr>
                   </thead>
                   <tbody id="reportCompanySpendTableBody"></tbody>
-                  <tfoot id="reportCompanySpendTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportCompanySpendTableFoot"></tfoot>
                 </table>
-                <div class="empty-state" id="reportCompanySpendEmpty" style="display:none; padding:30px; text-align:center;">
-                  <i class="fa-solid fa-users-slash" style="font-size:2rem; color:var(--text-muted); margin-bottom:10px;"></i>
-                  <p style="color:var(--text-muted);">No compensation data found for the selected period.</p>
+                <div class="empty-state fr-u136" id="reportCompanySpendEmpty">
+                  <i class="fa-solid fa-users-slash fr-u137"></i>
+                  <p class="fr-u27">No compensation data found for the selected period.</p>
                 </div>
               </div>
 
               <!-- Employee Detailed Drilldown Table -->
-              <div class="card" id="reportEmployeeSpendCard" style="display:none;">
-                <div style="padding:12px 16px; border-bottom:1px solid var(--border-color, #E2E8F0); display:flex; justify-content:space-between; align-items:center;">
-                  <h4 id="reportEmployeeSpendTitle" style="margin:0; font-size:1rem; font-weight:700;">Employee Compensation History</h4>
+              <div class="card fr-u8" id="reportEmployeeSpendCard">
+                <div class="fr-u138">
+                  <h4 class="fr-u139" id="reportEmployeeSpendTitle">Employee Compensation History</h4>
                   <button class="btn btn-sm btn-outline" onclick="onCompensationViewModeChanged('company')"><i class="fa-solid fa-arrow-left"></i> Back to Company Summary</button>
                 </div>
                 <table class="responsive-card-table" id="reportEmployeeSpendTable">
@@ -924,39 +924,39 @@
                     <tr>
                       <th>Period</th>
                       <th>Compensation Component</th>
-                      <th style="text-align:right;">Gross Amount</th>
-                      <th style="text-align:right;">Taxes & Deductions</th>
-                      <th style="text-align:right;">Net Payable</th>
-                      <th style="text-align:center; width:110px;">Status</th>
+                      <th class="fr-u54">Gross Amount</th>
+                      <th class="fr-u54">Taxes & Deductions</th>
+                      <th class="fr-u54">Net Payable</th>
+                      <th class="fr-u140">Status</th>
                       <th>Payment Date</th>
                     </tr>
                   </thead>
                   <tbody id="reportEmployeeSpendTableBody"></tbody>
-                  <tfoot id="reportEmployeeSpendTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportEmployeeSpendTableFoot"></tfoot>
                 </table>
               </div>
             </div>
 
             <!-- PANE: Statutory Obligations Remitted Report (FUX-419) -->
-            <div id="reportPaneStatutoryRemitted" style="display:none;">
+            <div class="fr-u8" id="reportPaneStatutoryRemitted">
               <!-- KPI Summary Cards -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px;">
-                <div class="card" style="padding:16px; border-left:4px solid #10B981;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Remitted to Authorities</div>
-                  <div id="reportStatTotalRemitted" style="font-size:1.35rem; font-weight:700; color:#10B981;">$0.00</div>
-                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Money actually paid</div>
+              <div class="fr-u47">
+                <div class="card fr-u124">
+                  <div class="fr-u68">Total Remitted to Authorities</div>
+                  <div class="fr-u125" id="reportStatTotalRemitted">$0.00</div>
+                  <div class="fr-u141">Money actually paid</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Income & Withholding Tax Paid</div>
-                  <div id="reportStatTaxRemitted" style="font-size:1.35rem; font-weight:700; color:#3B82F6;">$0.00</div>
+                <div class="card fr-u122">
+                  <div class="fr-u68">Income & Withholding Tax Paid</div>
+                  <div class="fr-u123" id="reportStatTaxRemitted">$0.00</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid #8B5CF6;">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Social Insurance Remitted</div>
-                  <div id="reportStatInsRemitted" style="font-size:1.35rem; font-weight:700; color:#8B5CF6;">$0.00</div>
+                <div class="card fr-u128">
+                  <div class="fr-u68">Social Insurance Remitted</div>
+                  <div class="fr-u129" id="reportStatInsRemitted">$0.00</div>
                 </div>
-                <div class="card" style="padding:16px; border-left:4px solid var(--primary, #2563EB);">
-                  <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Remittance Records</div>
-                  <div id="reportStatRemittedCount" style="font-size:1.35rem; font-weight:700; color:var(--primary, #2563EB);">0</div>
+                <div class="card fr-u120">
+                  <div class="fr-u68">Remittance Records</div>
+                  <div class="fr-u142" id="reportStatRemittedCount">0</div>
                 </div>
               </div>
 
@@ -968,173 +968,173 @@
                       <th>Period</th>
                       <th>Obligation Type</th>
                       <th>Description / Notes</th>
-                      <th style="text-align:right;">Amount Remitted</th>
-                      <th style="text-align:right;">Original Accrual</th>
-                      <th style="text-align:center; width:110px;">Status</th>
+                      <th class="fr-u54">Amount Remitted</th>
+                      <th class="fr-u54">Original Accrual</th>
+                      <th class="fr-u140">Status</th>
                       <th>Due Date</th>
                     </tr>
                   </thead>
                   <tbody id="reportStatutoryRemittedTableBody"></tbody>
-                  <tfoot id="reportStatutoryRemittedTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportStatutoryRemittedTableFoot"></tfoot>
                 </table>
-                <div class="empty-state" id="reportStatutoryRemittedEmpty" style="display:none; padding:30px; text-align:center;">
-                  <i class="fa-solid fa-receipt" style="font-size:2rem; color:var(--text-muted); margin-bottom:10px;"></i>
-                  <p style="color:var(--text-muted);">No settled or remitted statutory obligations in this period.</p>
+                <div class="empty-state fr-u136" id="reportStatutoryRemittedEmpty">
+                  <i class="fa-solid fa-receipt fr-u137"></i>
+                  <p class="fr-u27">No settled or remitted statutory obligations in this period.</p>
                 </div>
               </div>
             </div>
 
             <!-- PANE: Payroll & Statutory Settlement Status (FUX-419) -->
-            <div id="reportPanePayableStatus" style="display:none;">
+            <div class="fr-u8" id="reportPanePayableStatus">
               <!-- Filter / Employee Scope Bar -->
-              <div class="card" style="padding:10px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <label for="reportPayableEmployeeSelect" style="font-weight:600; font-size:0.85rem; color:var(--text-muted);">Scope:</label>
-                  <select id="reportPayableEmployeeSelect" class="form-input filter-select" style="padding:5px 10px; font-size:0.85rem; min-width:240px;" onchange="onPayableStatusScopeChanged(this.value)">
+              <div class="card fr-u143">
+                <div class="fr-u18">
+                  <label class="fr-u131" for="reportPayableEmployeeSelect">Scope:</label>
+                  <select id="reportPayableEmployeeSelect" class="form-input filter-select fr-u144" onchange="onPayableStatusScopeChanged(this.value)">
                     <option value="">Entire Company (All Employees & Authorities)</option>
                   </select>
                 </div>
-                <div style="font-size:0.82rem; color:var(--text-muted);">
+                <div class="fr-u145">
                   <i class="fa-solid fa-circle-info"></i> Tracks pending vs settled amounts for all 4 payroll money flows.
                 </div>
               </div>
 
               <!-- 4 Money Flow Cards -->
-              <div id="reportPayableFlowCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px; margin-bottom:18px;">
+              <div class="fr-u146" id="reportPayableFlowCards">
                 <!-- External Wire Transfers -->
-                <div class="card" style="padding:16px; border-top:4px solid #3B82F6;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:700; font-size:0.95rem; color:var(--text-main);">1. External Wire</span>
+                <div class="card fr-u147">
+                  <div class="fr-u148">
+                    <span class="fr-u149">1. External Wire</span>
                     <span class="badge" id="badgeFlowExternal">Pending</span>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Settled:</span>
-                    <strong style="color:#10B981;" id="amtFlowExternalSettled">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Settled:</span>
+                    <strong class="fr-u39" id="amtFlowExternalSettled">$0.00</strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Pending:</span>
-                    <strong style="color:#EF4444;" id="amtFlowExternalPending">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Pending:</span>
+                    <strong class="fr-u41" id="amtFlowExternalPending">$0.00</strong>
                   </div>
-                  <div style="border-top:1px solid var(--border-color, #E2E8F0); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; font-size:0.85rem;">
-                    <span style="color:var(--text-muted); font-weight:600;">Total:</span>
+                  <div class="fr-u151">
+                    <span class="fr-u152">Total:</span>
                     <strong id="amtFlowExternalTotal">$0.00</strong>
                   </div>
                 </div>
 
                 <!-- Internal Cash Payroll -->
-                <div class="card" style="padding:16px; border-top:4px solid #10B981;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:700; font-size:0.95rem; color:var(--text-main);">2. Internal Cash</span>
+                <div class="card fr-u153">
+                  <div class="fr-u148">
+                    <span class="fr-u149">2. Internal Cash</span>
                     <span class="badge" id="badgeFlowInternal">Pending</span>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Settled:</span>
-                    <strong style="color:#10B981;" id="amtFlowInternalSettled">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Settled:</span>
+                    <strong class="fr-u39" id="amtFlowInternalSettled">$0.00</strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Pending:</span>
-                    <strong style="color:#EF4444;" id="amtFlowInternalPending">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Pending:</span>
+                    <strong class="fr-u41" id="amtFlowInternalPending">$0.00</strong>
                   </div>
-                  <div style="border-top:1px solid var(--border-color, #E2E8F0); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; font-size:0.85rem;">
-                    <span style="color:var(--text-muted); font-weight:600;">Total:</span>
+                  <div class="fr-u151">
+                    <span class="fr-u152">Total:</span>
                     <strong id="amtFlowInternalTotal">$0.00</strong>
                   </div>
                 </div>
 
                 <!-- Income Tax Obligations -->
-                <div class="card" style="padding:16px; border-top:4px solid #F59E0B;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:700; font-size:0.95rem; color:var(--text-main);">3. Tax Remittances</span>
+                <div class="card fr-u154">
+                  <div class="fr-u148">
+                    <span class="fr-u149">3. Tax Remittances</span>
                     <span class="badge" id="badgeFlowTax">Pending</span>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Settled:</span>
-                    <strong style="color:#10B981;" id="amtFlowTaxSettled">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Settled:</span>
+                    <strong class="fr-u39" id="amtFlowTaxSettled">$0.00</strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Pending:</span>
-                    <strong style="color:#EF4444;" id="amtFlowTaxPending">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Pending:</span>
+                    <strong class="fr-u41" id="amtFlowTaxPending">$0.00</strong>
                   </div>
-                  <div style="border-top:1px solid var(--border-color, #E2E8F0); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; font-size:0.85rem;">
-                    <span style="color:var(--text-muted); font-weight:600;">Total:</span>
+                  <div class="fr-u151">
+                    <span class="fr-u152">Total:</span>
                     <strong id="amtFlowTaxTotal">$0.00</strong>
                   </div>
                 </div>
 
                 <!-- Social Insurance Obligations -->
-                <div class="card" style="padding:16px; border-top:4px solid #8B5CF6;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:700; font-size:0.95rem; color:var(--text-main);">4. Social Insurance</span>
+                <div class="card fr-u155">
+                  <div class="fr-u148">
+                    <span class="fr-u149">4. Social Insurance</span>
                     <span class="badge" id="badgeFlowInsurance">Pending</span>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Settled:</span>
-                    <strong style="color:#10B981;" id="amtFlowInsuranceSettled">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Settled:</span>
+                    <strong class="fr-u39" id="amtFlowInsuranceSettled">$0.00</strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                    <span style="color:var(--text-muted);">Pending:</span>
-                    <strong style="color:#EF4444;" id="amtFlowInsurancePending">$0.00</strong>
+                  <div class="fr-u150">
+                    <span class="fr-u27">Pending:</span>
+                    <strong class="fr-u41" id="amtFlowInsurancePending">$0.00</strong>
                   </div>
-                  <div style="border-top:1px solid var(--border-color, #E2E8F0); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; font-size:0.85rem;">
-                    <span style="color:var(--text-muted); font-weight:600;">Total:</span>
+                  <div class="fr-u151">
+                    <span class="fr-u152">Total:</span>
                     <strong id="amtFlowInsuranceTotal">$0.00</strong>
                   </div>
                 </div>
               </div>
 
               <!-- Summary Table -->
-              <div class="card" style="margin-bottom:18px;">
-                <div style="padding:12px 16px; border-bottom:1px solid var(--border-color, #E2E8F0); font-weight:700;">Money Flows Summary</div>
+              <div class="card fr-u156">
+                <div class="fr-u157">Money Flows Summary</div>
                 <table class="responsive-card-table" id="reportPayableStatusTable">
                   <thead>
                     <tr>
                       <th>Money Flow Type</th>
-                      <th style="text-align:right;">Settled Amount</th>
-                      <th style="text-align:right;">Pending Amount</th>
-                      <th style="text-align:right;">Total Outflow</th>
-                      <th style="text-align:center; width:130px;">Status</th>
+                      <th class="fr-u54">Settled Amount</th>
+                      <th class="fr-u54">Pending Amount</th>
+                      <th class="fr-u54">Total Outflow</th>
+                      <th class="fr-u158">Status</th>
                     </tr>
                   </thead>
                   <tbody id="reportPayableStatusTableBody"></tbody>
-                  <tfoot id="reportPayableStatusTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportPayableStatusTableFoot"></tfoot>
                 </table>
               </div>
 
               <!-- Per-Employee Breakdown Table (when viewing entire company) -->
               <div class="card" id="reportPayableEmployeeBreakdownCard">
-                <div style="padding:12px 16px; border-bottom:1px solid var(--border-color, #E2E8F0); font-weight:700;">Employee Payable & Remittance Breakdown</div>
+                <div class="fr-u157">Employee Payable & Remittance Breakdown</div>
                 <table class="responsive-card-table" id="reportPayableEmployeeBreakdownTable">
                   <thead>
                     <tr>
                       <th>Employee</th>
                       <th>Department</th>
-                      <th style="text-align:right;">External Settled</th>
-                      <th style="text-align:right;">External Pending</th>
-                      <th style="text-align:right;">Internal Settled</th>
-                      <th style="text-align:right;">Internal Pending</th>
-                      <th style="text-align:right;">Tax Settled / Pend</th>
-                      <th style="text-align:right;">SI Settled / Pend</th>
-                      <th style="text-align:right; font-weight:700;">Total Outflow</th>
+                      <th class="fr-u54">External Settled</th>
+                      <th class="fr-u54">External Pending</th>
+                      <th class="fr-u54">Internal Settled</th>
+                      <th class="fr-u54">Internal Pending</th>
+                      <th class="fr-u54">Tax Settled / Pend</th>
+                      <th class="fr-u54">SI Settled / Pend</th>
+                      <th class="fr-u135">Total Outflow</th>
                     </tr>
                   </thead>
                   <tbody id="reportPayableEmployeeBreakdownTableBody"></tbody>
-                  <tfoot id="reportPayableEmployeeBreakdownTableFoot" style="font-weight:700; background:var(--bg-secondary, #F8FAFC);"></tfoot>
+                  <tfoot class="fr-u62" id="reportPayableEmployeeBreakdownTableFoot"></tfoot>
                 </table>
               </div>
             </div>
 
             <!-- PANE: Generic Report Shell Placeholder (for catalog reports wired in 7.2) -->
-            <div id="reportPanePlaceholder" style="display:none;">
-              <div class="card" style="padding:36px; text-align:center;">
-                <div style="width:64px; height:64px; margin:0 auto 16px; border-radius:50%; background:rgba(37,99,235,0.1); color:var(--primary, #2563EB); display:flex; align-items:center; justify-content:center; font-size:1.8rem;">
+            <div class="fr-u8" id="reportPanePlaceholder">
+              <div class="card fr-u159">
+                <div class="fr-u160">
                   <i class="fa-solid fa-chart-line" id="reportPlaceholderIcon"></i>
                 </div>
-                <h3 id="reportPlaceholderTitle" style="font-size:1.25rem; font-weight:700; margin-bottom:8px;">Financial Report</h3>
-                <p id="reportPlaceholderDesc" style="color:var(--text-muted); max-width:540px; margin:0 auto 20px; font-size:0.9rem;">
+                <h3 class="fr-u161" id="reportPlaceholderTitle">Financial Report</h3>
+                <p class="fr-u162" id="reportPlaceholderDesc">
                   This report's ledger calculation engine is configured and ready to generate.
                 </p>
-                <div style="display:flex; justify-content:center; gap:12px;">
-                  <button class="btn btn-primary" onclick="loadReportTransactions()"><i class="fa-solid fa-list-check"></i> View Underlying Ledger</button>
+                <div class="fr-u163">
+                  <button class="btn btn-fill" onclick="loadReportTransactions()"><i class="fa-solid fa-list-check"></i> View Underlying Ledger</button>
                   <button class="btn btn-outline" onclick="backToReportLibrary()"><i class="fa-solid fa-arrow-left"></i> Back to Library</button>
                 </div>
               </div>

@@ -872,8 +872,8 @@ function renderFinanceCustomers(items) {
             <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})" aria-label="Edit Customer">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
-              <i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i>
+            <button class="btn btn-sm btn-icon ${c.is_active ?"btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
+              <i class="fa-solid ${c.is_active ?"fa-ban" : "fa-check"}"></i>
             </button>
           </div>
         </td>
@@ -1068,7 +1068,7 @@ async function toggleCustomerActive(id, currentlyActive) {
       ? "Deactivating will hide this customer from new invoice selectors. Existing invoices are preserved."
       : "Reactivating will make this customer selectable again on invoices.",
     actionLabel: currentlyActive ? "Deactivate Customer" : "Reactivate Customer",
-    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentlyActive ? "warning" : "info",
   });

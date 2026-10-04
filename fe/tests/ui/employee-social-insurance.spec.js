@@ -106,7 +106,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
     // Change employee rate to 12.5% and save
     await empRateInput.fill('12.50');
-    await page.click('#payrollViewSettings .save-bar button.btn-primary');
+    await page.click('#payrollViewSettings .save-bar button.btn-fill');
 
     // Should return to list view with success banner
     await expect(page.locator('#payrollViewList')).toBeVisible();

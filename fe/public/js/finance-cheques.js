@@ -86,7 +86,7 @@ function renderFinanceCheques(items) {
       if (c.status === "draft") {
         actionsHtml = `
           <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm btn-primary" onclick="promoteDraftChequeAction(${c.id})" title="Issue Cheque"><i class="fa-solid fa-stamp"></i> Issue</button>
+            <button class="btn btn-sm btn-fill" onclick="promoteDraftChequeAction(${c.id})" title="Issue Cheque"><i class="fa-solid fa-stamp"></i> Issue</button>
             <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Draft"><i class="fa-solid fa-ban"></i></button>
           </div>
         `;

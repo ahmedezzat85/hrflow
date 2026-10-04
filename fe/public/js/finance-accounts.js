@@ -116,10 +116,10 @@ function renderFinanceAccounts(items) {
         : (acc.unreconciled_count ? `Unreconciled (${acc.unreconciled_count})` : "Unreconciled");
 
       return `
-    <tr class="${acc.is_active ? "" : "account-inactive"}">
+    <tr class="${acc.is_active ?"" : "account-inactive"}">
       <td data-label="Account">
         <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
-          <i class="fa-solid ${isCash ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
+          <i class="fa-solid ${isCash ?"fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
           <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;word-break:break-word;">
             ${acc.account_name}
           </a>
@@ -127,7 +127,7 @@ function renderFinanceAccounts(items) {
         ${acc.bank_name && !isCash ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}${acc.country ? ' · ' + acc.country : ''}</div>` : (acc.country ? `<div style="font-size:12px;color:var(--text3);">${acc.country}</div>` : '')}
       </td>
       <td data-label="Type & ID">
-        <span class="badge ${isCash ? "badge-info" : "badge-neutral"}">
+        <span class="badge ${isCash ?"badge-info" : "badge-neutral"}">
           ${typeLabel}
         </span>
         <code style="margin-left:4px;font-size:11.5px;">${FinanceFormat.formatMaskedAccountNumber(acc.account_number, isCash)}</code>
@@ -147,7 +147,7 @@ function renderFinanceAccounts(items) {
         <div style="margin-top:2px;"><i class="fa-solid fa-scale-balanced" style="font-size:10px;"></i> ${recText}</div>
       </td>
       <td data-label="Status" style="text-align:center;">
-        <span class="status-led-badge ${acc.is_active ? "status-led-active" : "status-led-inactive"}" title="${acc.is_active ? "Active" : "Inactive"}">
+        <span class="status-led-badge ${acc.is_active ?"status-led-active" : "status-led-inactive"}" title="${acc.is_active ? "Active" : "Inactive"}">
           <span class="led-dot"></span>
           ${acc.is_active ? "Active" : "Inactive"}
         </span>
@@ -160,8 +160,8 @@ function renderFinanceAccounts(items) {
           <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account" aria-label="Edit Account" style="padding:6px 10px;">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" aria-label="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" style="padding:6px 10px;">
-            <i class="fa-solid ${acc.is_active ? "fa-power-off" : "fa-check"}"></i>
+          <button class="btn btn-sm ${acc.is_active ?"btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" aria-label="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" style="padding:6px 10px;">
+            <i class="fa-solid ${acc.is_active ?"fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
@@ -324,7 +324,7 @@ async function toggleCompanyBankAccountActive(id, currentActive) {
       ? "Deactivating this account will prevent new payments, cheques, or transfers from using it. Existing transaction history remains intact."
       : "Reactivating will restore this account to active payment and ledger selections.",
     actionLabel: currentActive ? "Deactivate Account" : "Reactivate Account",
-    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentActive ? "warning" : "info",
   });
@@ -426,7 +426,7 @@ function renderWorkspaceHeader(acc) {
     statusBadge.className = `status-led-badge ${acc.is_active ? "status-led-active" : "status-led-inactive"}`;
   }
   if (instEl) {
-    instEl.innerHTML = `<i class="fa-solid ${acc.account_type === "cash" ? "fa-wallet" : "fa-building-columns"}"></i> ${acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "Bank")}`;
+    instEl.innerHTML = `<i class="fa-solid ${acc.account_type ==="cash" ? "fa-wallet" : "fa-building-columns"}"></i> ${acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "Bank")}`;
   }
   if (countryEl) {
     countryEl.innerHTML = `<i class="fa-solid fa-globe"></i> ${acc.country || "Global"}`;
@@ -912,14 +912,14 @@ function renderFinanceCategories(items) {
           : '<span style="color:var(--text3);font-size:12px;">Standard</span>'
         }
       </td>
-      <td><span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td><span class="badge ${c.is_active ?"badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm" onclick="openEditFinanceCategoryModal(${c.id})" title="Edit Category">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${c.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleFinanceCategoryActive(${c.id}, ${c.is_active})" title="${c.is_active ? "Deactivate Category" : "Reactivate Category"}">
-            <i class="fa-solid ${c.is_active ? "fa-power-off" : "fa-check"}"></i>
+          <button class="btn btn-sm ${c.is_active ?"btn-danger" : "btn-fill"}" onclick="toggleFinanceCategoryActive(${c.id}, ${c.is_active})" title="${c.is_active ? "Deactivate Category" : "Reactivate Category"}">
+            <i class="fa-solid ${c.is_active ?"fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
@@ -999,7 +999,7 @@ async function toggleFinanceCategoryActive(id, currentActive) {
       ? "Deactivating this category will hide it from new transaction forms. Deactivated categories remain on historical records."
       : "Reactivating will make this category available again for new transactions.",
     actionLabel: currentActive ? "Deactivate Category" : "Reactivate Category",
-    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentActive ? "warning" : "info",
   });
@@ -1104,14 +1104,14 @@ function renderFinancePaymentTypes(items) {
           : '<span style="color:var(--text3);font-size:12px;">No</span>'
         }
       </td>
-      <td><span class="badge ${pt.is_active ? "badge-approved" : "badge-rejected"}">${pt.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td><span class="badge ${pt.is_active ?"badge-approved" : "badge-rejected"}">${pt.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm" onclick="openEditFinancePaymentTypeModal(${pt.id})" title="Edit Payment Type">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${pt.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})" title="${pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type"}">
-            <i class="fa-solid ${pt.is_active ? "fa-power-off" : "fa-check"}"></i>
+          <button class="btn btn-sm ${pt.is_active ?"btn-danger" : "btn-fill"}" onclick="toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})" title="${pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type"}">
+            <i class="fa-solid ${pt.is_active ?"fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
@@ -1193,7 +1193,7 @@ async function toggleFinancePaymentTypeActive(id, currentActive) {
       ? "Deactivating this payment type will hide it from new transaction forms. Historical records are preserved."
       : "Reactivating will restore this payment type to active form dropdowns.",
     actionLabel: currentActive ? "Deactivate Payment Type" : "Reactivate Payment Type",
-    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentActive ? "warning" : "info",
   });
