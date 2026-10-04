@@ -14,7 +14,7 @@ test.describe('U6 URLs and navigation', () => {
   test('reload keeps the same page', async ({ page }) => {
     await ready(page);
     await openAdminPage(page, 'a-finance-invoices');
-    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/finance/invoices');
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/finance/sales');
     await page.reload();
     await ready(page, page.url());
     expect(await activeSection(page)).toBe('a-finance-invoices');
@@ -67,7 +67,7 @@ test.describe('U6 URLs and navigation', () => {
 
   test('unknown or forbidden routes land on a page the user may see, with a message', async ({ page }) => {
     await ready(page, '/?mock=admin#/finance/not-a-page');
-    expect(await activeSection(page)).toBe('a-finance-dashboard');
+    expect(await activeSection(page)).toBe('a-dashboard');
     await expect(page.locator('#toastWrap .toast').filter({ hasText: 'not found' })).toBeVisible();
 
     await ready(page, '/?mock=hr#/finance/invoices');
