@@ -122,9 +122,9 @@ async function viewProfile(id, section) {
   const numId = Number(id);
   currentDetailEmployeeId = !isNaN(numId) ? numId : id;
   showSection('a-employee-detail', 'admin', section ? [id, section] : [id]);
+  loadPayrollPaymentsCard(id);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
-  loadPayrollPaymentsCard(id);
   if (section === 'bank') {
     setTimeout(() => { const card = document.getElementById('bankAccountCard'); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
   }
