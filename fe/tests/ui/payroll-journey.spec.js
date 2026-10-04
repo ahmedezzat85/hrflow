@@ -173,6 +173,7 @@ test.describe('U8 payroll journey', () => {
   test('blocking readiness issues are listed on screen 2, disable Submit and link to the fix', async ({ page }) => {
     await openRun(page);
     await page.evaluate(() => {
+      employees = [{ id: 1, name: 'Sarah Connor', role: 'Lead', job_role: 'Lead', internalSalaryUsd: 100, externalSalaryUsd: 200 }];
       PayrollApp.currentRun = null;
       PayrollApp.currentPreview = { exceptions: [
         { id: 'exc-plan-1', employee_id: 1, employee_name: 'Sarah Connor', severity: 'blocking', code: 'MISSING_COMP_PLAN', title: 'No Active Compensation Plan', description: 'Configure their plan under Salary.', is_resolved: false },
