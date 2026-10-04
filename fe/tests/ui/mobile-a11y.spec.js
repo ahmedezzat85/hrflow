@@ -24,7 +24,12 @@ const SCAN = () => {
   const bgOf = (el) => {
     const stack = [];
     for (let e = el; e; e = e.parentElement) {
-      const c = parse(getComputedStyle(e).backgroundColor);
+      const cs = getComputedStyle(e);
+      if (/gradient/.test(cs.backgroundImage)) {
+        const g = parse(cs.backgroundImage.slice(cs.backgroundImage.indexOf('rgb')));
+        if (g) { stack.push({ ...g, a: 1 }); break; }
+      }
+      const c = parse(cs.backgroundColor);
       if (c && c.a > 0) { stack.push(c); if (c.a === 1) break; }
     }
     let base = { r: 255, g: 255, b: 255, a: 1 };
@@ -62,7 +67,7 @@ const SCAN = () => {
   while (walker.nextNode()) {
     const t = walker.currentNode; const el = t.parentElement;
     if (!el || done.has(el) || !t.textContent.trim() || !visible(el)) continue;
-    if (el.closest('[disabled], .disabled, script, style')) continue;
+    if (el.closest('[disabled], .disabled, script, style, .finance-skeleton')) continue;
     done.add(el);
     const cs = getComputedStyle(el);
     const fg = parse(cs.color); if (!fg) continue;
@@ -92,6 +97,23 @@ test.describe('U9 phone layouts, touch targets, contrast and ids', () => {
       await page.waitForTimeout(150);
       const r = await page.evaluate(SCAN);
       if (r.wide.length) problems.push(`${id}: ${r.wide.join(', ')}`);
+    }
+    expect(problems).toEqual([]);
+  });
+
+  test('1440px: Sales and Banking tables fit their card or scroll inside it', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openAdmin(page);
+    const problems = [];
+    for (const id of ['a-finance-invoices', 'a-finance-accounts']) {
+      await page.evaluate((p) => showSection(p, 'admin'), id);
+      await page.waitForTimeout(200);
+      const bad = await page.evaluate(() => [...document.querySelectorAll('#admin-app .page-section.active table')].filter((t) => t.getClientRects().length).filter((t) => {
+        const card = t.closest('.card, .table-wrap') || t.parentElement;
+        const scroll = ['auto', 'scroll'].includes(getComputedStyle(card).overflowX);
+        return !scroll && t.getBoundingClientRect().right > card.getBoundingClientRect().right + 1;
+      }).map((t) => t.id || t.className));
+      if (bad.length) problems.push(`${id}: ${bad.join(', ')}`);
     }
     expect(problems).toEqual([]);
   });

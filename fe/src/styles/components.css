@@ -882,7 +882,7 @@ select.form-control option {
   -webkit-overflow-scrolling: touch;
 }
 
-@media(max-width:900px) {
+@media (max-width: 1024px) {
   .sidebar {
     position: fixed;
     left: -280px;
@@ -1879,4 +1879,10 @@ tbody tr[hidden] {
 .payroll-emp-link:hover {
   color: var(--accent-text);
   text-decoration: underline;
+}
+
+/* Cards that hold wide tables scroll inside themselves instead of clipping the Actions column */
+.card:has(> table),
+.card:has(> .table-wrap) {
+  overflow-x: auto;
 }

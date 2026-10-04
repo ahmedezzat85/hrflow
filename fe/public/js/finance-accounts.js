@@ -870,7 +870,7 @@ async function loadFinanceCategories() {
 
 function filterFinanceCategories(filterType, btn) {
   _currentCategoryStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPaneCategories .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSettingsPaneCategories .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinanceCategories();
@@ -1071,7 +1071,7 @@ async function loadFinancePaymentTypes() {
 
 function filterFinancePaymentTypes(filterType, btn) {
   _currentPaymentTypeStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSettingsPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinancePaymentTypes();

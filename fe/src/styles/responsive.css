@@ -523,3 +523,38 @@
   }
 }
 
+
+/* Touch targets: at least 44px on phones (U9) */
+@media (max-width: 768px) {
+  .btn,
+  .btn-sm,
+  .icon-btn,
+  .icon-action,
+  .action-btn,
+  .filter-tab,
+  .filter-chip-remove,
+  .pagination-btn,
+  .hamburger,
+  .modal-close,
+  .btn-filter-pill,
+  .btn-sort-pill,
+  .btn-period-trigger,
+  .employee-quick-action,
+  .btn-icon-xs,
+  .nav-item,
+  .rail-btn,
+  .toast-close {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]) {
+    min-height: 44px;
+  }
+
+  .search-box input {
+    min-height: 44px;
+  }
+}

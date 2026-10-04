@@ -68,3 +68,11 @@ h4 {
   background-color: var(--surface);
   color: var(--text);
 }
+
+/* Visible keyboard focus on form fields */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}

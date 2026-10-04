@@ -69,7 +69,7 @@ function updateFinanceStatutoryMetrics() {
     varTotal += Number(obl.variance_amount || 0);
   }
 
-  const fmt = (v) => FinanceFormat.formatMoney(v, "USD");
+  const fmt = (v) => FinanceFormat.formatMoney(v, "EGP");
 
   const elEst = document.getElementById("statutorySummaryEstimated");
   const elAcc = document.getElementById("statutorySummaryAccrued");
@@ -114,7 +114,7 @@ function renderFinanceStatutoryTable() {
   }
   if (empty) empty.style.display = "none";
 
-  const fmt = (v) => FinanceFormat.formatMoney(v, "USD");
+  const fmt = (v) => FinanceFormat.formatMoney(v, "EGP");
 
   for (const obl of list) {
     const tr = document.createElement("tr");
@@ -410,6 +410,8 @@ function openRecordStatutoryModal() {
     dueEl.value = `${nextYear}-${String(nextMonth).padStart(2, "0")}-15`;
   }
   if (notesEl) notesEl.value = "";
+  const currencyEl = document.getElementById("statRecordCurrency");
+  if (currencyEl) currencyEl.value = "EGP";
 
   if (typeof openModal === "function") openModal("statutoryRecordModal");
 }
@@ -428,7 +430,7 @@ async function submitRecordStatutoryModal() {
   const period = periodEl.value.trim();
   const amount_accrued = parseFloat(amtEl.value);
   const due_date = dueEl ? dueEl.value : null;
-  const currency = currEl ? currEl.value.trim() : "USD";
+  const currency = currEl ? currEl.value.trim() : "EGP";
   const notes = notesEl ? notesEl.value.trim() : "";
 
   if (!period || !/^\d{4}-\d{2}$/.test(period)) {

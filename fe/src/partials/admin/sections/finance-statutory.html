@@ -1,10 +1,7 @@
         <section class="page-section" id="a-finance-statutory">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
             <div class="filter-tabs" id="financeSpendSubNavStatutory" role="tablist" aria-label="Spend sub navigation">
-              <button class="filter-tab" id="subtabSpendStatBills" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav){AdminNav.go('a-finance-bills');if(typeof switchBillSubTab==='function')switchBillSubTab('bills');}"><i class="fa-solid fa-receipt"></i> Vendor Bills</button>
-              <button class="filter-tab" id="subtabSpendStatVendors" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav){AdminNav.go('a-finance-bills');if(typeof switchBillSubTab==='function')switchBillSubTab('vendors');}"><i class="fa-solid fa-truck-field"></i> Vendors</button>
-              <button class="filter-tab" id="subtabSpendStatSubscriptions" role="tab" aria-selected="false" tabindex="-1" onclick="if(window.AdminNav)AdminNav.go('a-finance-subscriptions')"><i class="fa-solid fa-repeat"></i> Subscriptions</button>
-              <button class="filter-tab active" id="subtabSpendStatStatutory" role="tab" aria-selected="true" tabindex="0"><i class="fa-solid fa-landmark"></i> Statutory</button>
+              <!-- rendered by SpendTabs (finance-nav.js) -->
             </div>
           </div>
           <div class="toolbar">
@@ -209,8 +206,8 @@
                     </select>
                   </div>
                   <div class="form-group">
-                    <label for="statRecordPeriod">Tax Period (YYYY-MM) *</label>
-                    <input type="text" id="statRecordPeriod" placeholder="2026-09" pattern="^\d{4}-\d{2}$" required>
+                    <label for="statRecordPeriod">Tax Period *</label>
+                    <input type="month" id="statRecordPeriod" placeholder="2026-09" required>
                   </div>
                   <div class="form-group">
                     <label for="statRecordAmount">Accrued Amount *</label>
@@ -222,7 +219,11 @@
                   </div>
                   <div class="form-group">
                     <label for="statRecordCurrency">Currency</label>
-                    <input type="text" id="statRecordCurrency" value="USD" maxlength="10">
+                    <select id="statRecordCurrency">
+                      <option value="EGP" selected>EGP</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
                   </div>
                   <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="statRecordNotes">Notes / Filing Details</label>

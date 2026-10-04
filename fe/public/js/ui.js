@@ -158,10 +158,24 @@ function getInitials(name){
   return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '--';
 }
 
+// On phones the closed navigation drawer is off-screen: make it inert so it is not focusable.
+function syncSidebarInert(){
+  const mobile = window.matchMedia('(max-width: 768px)').matches;
+  ['adminSidebar', 'empSidebar'].forEach(sid => {
+    const el = document.getElementById(sid);
+    if (!el) return;
+    if (mobile && !el.classList.contains('open')) el.setAttribute('inert', '');
+    else el.removeAttribute('inert');
+  });
+}
+window.addEventListener('resize', syncSidebarInert);
+document.addEventListener('DOMContentLoaded', syncSidebarInert);
+
 function toggleSidebar(id){
   const sb = document.getElementById(id);
   if(!sb) return;
   sb.classList.toggle('open');
+  syncSidebarInert();
   const isOpened = sb.classList.contains('open');
   const backdrop = document.getElementById(id === 'adminSidebar' ? 'adminSidebarBackdrop' : 'empSidebarBackdrop');
   if(backdrop) backdrop.classList.toggle('active', isOpened);
@@ -176,6 +190,7 @@ function closeAllSidebars(){
     const el = document.getElementById(bid);
     if (el) el.classList.remove('active');
   });
+  syncSidebarInert();
 }
 
 // One delegated handler for every sidebar item: one click is one navigation and one loader run.

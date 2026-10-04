@@ -179,3 +179,44 @@ window.switchFinanceSettingsSubTab = switchFinanceSettingsSubTab;
 window.loadFinanceDisplaySettings = loadFinanceDisplaySettings;
 
 
+
+
+// ============================================================================
+// SpendTabs: the one Spend tab bar (Vendor Bills / Vendors / Subscriptions / Statutory)
+// shown on the three Spend pages. Ids per page are kept for existing links and tests.
+// ============================================================================
+const SpendTabs = {
+  TABS: [
+    { key: 'bills', icon: 'fa-receipt', label: 'Vendor Bills', page: 'a-finance-bills', sub: 'bills' },
+    { key: 'vendors', icon: 'fa-truck-field', label: 'Vendors', page: 'a-finance-bills', sub: 'vendors' },
+    { key: 'subscriptions', icon: 'fa-repeat', label: 'Subscriptions', page: 'a-finance-subscriptions' },
+    { key: 'statutory', icon: 'fa-landmark', label: 'Statutory', page: 'a-finance-statutory' },
+  ],
+  BARS: [
+    { container: 'financeBillSubNav', page: 'a-finance-bills', active: 'bills', ids: { bills: 'tabFinanceBills', vendors: 'tabFinanceVendors', subscriptions: 'tabFinanceSubscriptions', statutory: 'tabFinanceStatutory' } },
+    { container: 'financeSpendSubNavSubscriptions', page: 'a-finance-subscriptions', active: 'subscriptions', ids: { bills: 'subtabSpendSubBills', vendors: 'subtabSpendSubVendors', subscriptions: 'subtabSpendSubSubscriptions', statutory: 'subtabSpendSubStatutory' } },
+    { container: 'financeSpendSubNavStatutory', page: 'a-finance-statutory', active: 'statutory', ids: { bills: 'subtabSpendStatBills', vendors: 'subtabSpendStatVendors', subscriptions: 'subtabSpendStatSubscriptions', statutory: 'subtabSpendStatStatutory' } },
+  ],
+  render() {
+    this.BARS.forEach((bar) => {
+      const el = document.getElementById(bar.container);
+      if (!el) return;
+      el.innerHTML = this.TABS.map((t) => {
+        const active = t.key === bar.active;
+        let action = '';
+        if (t.key === 'bills' || t.key === 'vendors') {
+          action = bar.page === 'a-finance-bills'
+            ? `switchBillSubTab('${t.sub}')`
+            : `if(window.AdminNav){AdminNav.go('a-finance-bills');if(typeof switchBillSubTab==='function')switchBillSubTab('${t.sub}');}`;
+        } else if (!active) {
+          action = `if(window.AdminNav)AdminNav.go('${t.page}')`;
+        }
+        return `<button class="filter-tab${active ? ' active' : ''}" id="${bar.ids[t.key]}" role="tab" aria-selected="${active}" tabindex="${active ? 0 : -1}"${action ? ` onclick="${action}"` : ''}><i class="fa-solid ${t.icon}"></i> ${t.label}</button>`;
+      }).join('');
+      if (typeof initAccessibleTablist === 'function') initAccessibleTablist(el);
+    });
+  },
+};
+window.SpendTabs = SpendTabs;
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => SpendTabs.render());
+else SpendTabs.render();

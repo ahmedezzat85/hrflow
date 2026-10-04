@@ -1075,7 +1075,31 @@ const FinanceTable = {
     render();
   },
 
-  // Filter chips
+// Card layout on phones for tables rendered elsewhere: adds .responsive-card-table and fills each
+  // td's data-label from its column header, now and whenever the rows are re-rendered.
+  autoCards(ids) {
+    const label = (table) => {
+      table.classList.add("responsive-card-table");
+      const heads = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+      table.querySelectorAll("tbody tr").forEach((tr) => {
+        if (tr.querySelector(".empty-state") || tr.classList.contains("empty-row")) return;
+        [...tr.children].forEach((td, i) => {
+          if (td.tagName !== "TD" || td.hasAttribute("data-label") || td.colSpan > 1) return;
+          if (heads[i]) td.setAttribute("data-label", heads[i]);
+        });
+      });
+    };
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const tables = () => (el.tagName === "TABLE" ? [el] : el.tagName === "TBODY" ? [el.closest("table")] : [...el.querySelectorAll("table")]);
+      const run = () => tables().filter(Boolean).forEach(label);
+      run();
+      new MutationObserver(run).observe(el, { childList: true, subtree: true });
+    });
+  },
+
+    // Filter chips
   renderFilterChips(containerId, filters = {}, onRemove, onClearAll) {
     const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
     if (!container) return;
@@ -1516,6 +1540,9 @@ window.sumColumn = sumColumn;
   const run = () => {
     ids.forEach((id) => FinanceTable.attach({ bodyId: id }));
     ['empSearch', 'salarySearch', 'vacBalanceSearch', 'dochubSearch'].forEach((id) => FinanceTable.bindSearchChip(id));
+    FinanceTable.autoCards(['salaryTableBody', 'companyRaiseHistoryBody', 'salaryHistoryBody', 'categoriesTableBody',
+      'dochubTableBody', 'empDochubTableBody', 'invoiceHistoryContainer', 'tableCashAccounts', 'tableForecastObligations',
+      'employeesTableBody', 'vacationBalanceBody', 'insuranceTableBody', 'requestsTableBody']);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();

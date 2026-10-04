@@ -1890,7 +1890,7 @@
 }
 
 
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   #a-finance-payroll .payroll-stats,
 #a-finance-payroll .stats {
     grid-template-columns: repeat(2, 1fr);
@@ -1905,7 +1905,7 @@
   }
 }
 
-@media (max-width: 940px) {
+@media (max-width: 1024px) {
   #a-finance-payroll .grid,
 #a-finance-payroll .stats,
 #a-finance-payroll .payroll-stats {
