@@ -830,7 +830,7 @@
           <strong>${issues.length} blocking issue${issues.length === 1 ? '' : 's'} must be fixed before this run can be submitted</strong>
           <button type="button" class="btn btn-sm btn-outline" data-action="payroll-recheck"><i class="fa-solid fa-rotate"></i> Re-check</button>
         </div>
-        ${stale ? `<p class="payroll-readiness-note"><i class="fa-solid fa-circle-info"></i> Your data now passes the live check, but saved run #${escapeHtml(this.currentRun.id)} still carries the issues found when it was created. A saved run is not recalculated when data is fixed, so it cannot be submitted until it is refreshed on the server.</p>` : ''}
+        ${stale ? `<p class="payroll-readiness-note"><i class="fa-solid fa-circle-info"></i> Your data now passes the live check, but saved run #${escapeHtml(this.currentRun.id)} still carries the issues found when it was created. Press Re-check to refresh it from your current data.</p>` : ''}
         <ul class="payroll-readiness-list">
           ${issues.map(e => `<li>
             <span><strong>${escapeHtml(e.employee_name || (e.employee_id ? 'Employee #' + e.employee_id : 'Payroll settings'))}</strong>
@@ -856,10 +856,20 @@
 
     // Reload the preview after the data was corrected elsewhere.
     async recheckReadiness() {
+      const run = this.currentRun;
+      if (run && run.id && run.status === 'draft' && typeof FinanceApi !== 'undefined' && typeof FinanceApi.refreshPayrollRun === 'function') {
+        try {
+          await FinanceApi.refreshPayrollRun(run.id);
+          this.currentRun = await FinanceApi.getPayrollRun(run.id);
+        } catch (e) {
+          this.showBanner(`Could not re-check run #${run.id}: ${e.message || e}`, 'red');
+          return;
+        }
+      }
       await this.fetchPreview();
       this.drawScreen2();
       if (this.savedRunIsStale()) {
-        this.showBanner(`The data now passes the live check, but saved run #${this.currentRun.id} still holds the old issues and must be refreshed on the server.`, 'red');
+        this.showBanner(`The data now passes the live check, but saved run #${this.currentRun.id} still holds the old issues.`, 'red');
       } else {
         this.showBanner(this.blockingIssues().length ? 'Some blocking issues remain.' : 'No blocking issues. You can submit this run.', this.blockingIssues().length ? 'red' : 'green');
       }

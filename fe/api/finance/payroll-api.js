@@ -674,6 +674,27 @@
       return apiRequest("POST", "/api/finance/payroll/runs", payload);
     },
 
+    async refreshPayrollRun(runId) {
+      if (_isMock()) {
+        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+        if (!run) throw new Error(`Payroll run #${runId} not found`);
+        if (run.status !== "draft") {
+          throw new Error(`Payroll run #${runId} is in status '${run.status}', only 'draft' runs can be refreshed.`);
+        }
+        const prev = await root.FinanceApi.previewPayrollRun({
+          period_label: run.period_label,
+          period_start: run.period_start,
+          period_end: run.period_end,
+          payment_date: run.payment_date,
+          bank_account_id: run.bank_account_id,
+        });
+        run.exceptions = prev.exceptions;
+        run.has_blocking_exceptions = prev.has_blocking_exceptions;
+        return run;
+      }
+      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/refresh`);
+    },
+
     async submitPayrollRun(runId) {
       if (_isMock()) {
         const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));

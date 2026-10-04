@@ -196,4 +196,26 @@ test.describe('U8 payroll journey', () => {
     await expect(panel).toBeHidden();
     await expect(page.locator('#btnP2Approve')).toBeEnabled();
   });
+
+  test('Re-check refreshes a saved draft run on the server so its old blockers clear', async ({ page }) => {
+    await openRun(page);
+    await page.evaluate(() => {
+      window.__refreshed = [];
+      FinanceApi.refreshPayrollRun = async (id) => { window.__refreshed.push(id); };
+      FinanceApi.getPayrollRun = async (id) => ({ id, status: 'draft', exceptions: [] });
+      PayrollApp.fetchPreview = async function () { this.currentPreview = { exceptions: [] }; };
+      PayrollApp.currentRun = { id: 9, status: 'draft', exceptions: [
+        { id: 'exc-plan-1', employee_id: 1, employee_name: 'Sarah Connor', severity: 'blocking', code: 'MISSING_COMP_PLAN', title: 'No Active Compensation Plan', is_resolved: false },
+      ] };
+      PayrollApp.currentPreview = { exceptions: [] };
+      PayrollApp.setStep(1);
+    });
+    const panel = page.locator('#p2ReadinessPanel');
+    await expect(panel).toContainText('1 blocking issue');
+    await page.click('#p2ReadinessPanel [data-action="payroll-recheck"]');
+    
+    await expect.poll(() => page.evaluate(() => window.__refreshed)).toEqual([9]);
+    await expect(panel).toBeHidden();
+    await expect(page.locator('#btnP2Approve')).toBeEnabled();
+  });
 });

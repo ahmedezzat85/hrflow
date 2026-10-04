@@ -37,6 +37,20 @@ from finance.services.payroll_calculation_helper import validate_and_calculate_i
 # In-memory store for active previews and draft adjustments during runner execution
 _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
 
+# Snapshot fields copied from an evaluated line onto a PayrollLineDB when a draft run is refreshed.
+_REFRESH_LINE_FIELDS = (
+    "employee_id", "employee_name", "department", "compensation_type", "is_insurable",
+    "base_salary", "deductions_total", "net_pay", "employer_cost_extra",
+    "insured_base_snapshot", "employee_rate_snapshot", "employer_rate_snapshot",
+    "salary_basis_snapshot", "configured_internal_salary_usd_snapshot",
+    "insured_base_egp_snapshot", "fx_rate_snapshot", "base_gross_egp", "variable_gross_egp",
+    "employee_social_insurance_egp", "employer_social_insurance_egp", "total_social_insurance_egp",
+    "employee_tax_egp", "employee_social_insurance_usd_equivalent", "employee_tax_usd_equivalent",
+    "final_internal_net_egp", "final_internal_payment_usd", "taxable_gross_egp",
+    "tax_employee_si_egp", "annual_taxed_salary_egp", "annual_tax_egp",
+    "tax_settings_version_id", "snapshot_notes",
+)
+
 
 class PayrollService:
     def __init__(self, db: Session):
@@ -1437,6 +1451,75 @@ class PayrollService:
         self.db.commit()
 
         return {"success": True, "message": f"Payroll line #{line_id} removed successfully"}
+
+    def refresh_run(self, run_id: int, user_email: Optional[str] = None) -> Dict[str, Any]:
+        """Re-evaluates a draft run against current data, replacing its plan-derived lines and readiness issues.
+
+        Ad-hoc lines and adjustments (bonus/commission lines, and any line without a plan snapshot) are kept.
+        """
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+
+        if run.status != "draft":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Payroll run #{run_id} is in status '{run.status}', only 'draft' runs can be refreshed.",
+            )
+
+        resolved_fx = self._resolve_fx_rate(run.fx_rate_source, run.fx_rate_value, run.period_start, run.period_end)
+        snapshot_data = self._evaluate_employee_payroll_snapshots(
+            period_label=run.period_label,
+            period_start=run.period_start,
+            period_end=run.period_end,
+            resolved_fx=resolved_fx,
+            missing_plan_mode="exception",
+        )
+
+        plan_types = {"external_usd", "internal_usd_cash"}
+        old_lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
+        replaced = 0
+        for old in old_lines:
+            if old.compensation_type in plan_types and old.fx_rate_snapshot is not None:
+                self.db.delete(old)
+                replaced += 1
+        self.db.flush()
+
+        for ld in snapshot_data["lines"]:
+            line_db = PayrollLineDB(
+                payroll_run_id=run.id,
+                payment_status="pending",
+                created_at=datetime.utcnow(),
+                **{k: ld[k] for k in _REFRESH_LINE_FIELDS if k in ld},
+            )
+            line_db.bank_name = ld["bank_name"]
+            line_db.bank_account_masked = ld["bank_account_masked"]
+            line_db.is_taxable_local = True
+            line_db.allowances_total = 0.0
+            line_db.tax_amount = 0.0
+            self.db.add(line_db)
+        self.db.flush()
+
+        run.exceptions_json = json.dumps(snapshot_data["exceptions"])
+        run.fx_rate_value = resolved_fx
+        run.tax_settings_version_id = snapshot_data.get("tax_settings_version_id")
+        run.preview_version = (run.preview_version or 1) + 1
+        self._recalculate_run_aggregates(run)
+        self.db.commit()
+        self.db.refresh(run)
+        self._log_audit(
+            action="payroll.run.refreshed",
+            target_type="payroll_run",
+            target_id=str(run.id),
+            actor_email=user_email,
+            details={
+                "period_label": run.period_label,
+                "lines_replaced": replaced,
+                "total_net": run.total_net,
+                "blocking_issues": len([e for e in snapshot_data["exceptions"] if e.get("severity") == "blocking"]),
+            },
+        )
+        return self._format_run_detail(run)
 
     def submit_run(self, run_id: int, user_email: Optional[str] = None) -> Dict[str, Any]:
         """Submits a draft payroll run for maker-checker approval."""

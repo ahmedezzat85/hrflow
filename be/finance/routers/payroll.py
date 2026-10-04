@@ -218,6 +218,17 @@ def delete_payroll_line(
     return service.delete_line(run_id=run_id, line_id=line_id)
 
 
+@router.post("/runs/{run_id}/refresh", response_model=PayrollRunResponse)
+def refresh_payroll_run(
+    run_id: int = Path(..., description="Draft Payroll Run ID to re-check against current data"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
+):
+    """Recomputes a draft run's plan lines and readiness issues from current data, keeping ad-hoc lines."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.refresh_run(run_id=run_id, user_email=user_email)
+
+
 @router.post("/runs/{run_id}/submit", response_model=PayrollRunResponse)
 def submit_payroll_run(
     run_id: int = Path(..., description="Payroll Run ID to submit for approval"),

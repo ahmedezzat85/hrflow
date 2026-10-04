@@ -696,3 +696,78 @@ def test_payroll_approval_and_finalization_succeeds_with_missing_bank_warning(ap
     run_data = fin_res.json()
     assert any(e["code"] == "MISSING_BANK_DETAILS" and e["severity"] == "warning" for e in run_data["exceptions"])
 
+
+
+def _create_blocked_draft(app_client, admin_cookies, bank_id, period="2026-09"):
+    res = app_client.post(
+        "/api/finance/payroll/runs",
+        json={
+            "period_label": period,
+            "period_start": f"{period}-01",
+            "period_end": f"{period}-28",
+            "bank_account_id": bank_id,
+        },
+        cookies=admin_cookies,
+    )
+    assert res.status_code == 201
+    return res.json()["id"]
+
+
+def test_refresh_draft_run_clears_fixed_blocker_and_keeps_ad_hoc_lines(app_client, admin_cookies, db_session, seed_payroll_env):
+    """A stale draft run picks up a newly configured compensation plan and keeps manual lines."""
+    run_id = _create_blocked_draft(app_client, admin_cookies, seed_payroll_env["bank_id"])
+    before = app_client.get(f"/api/finance/payroll/runs/{run_id}", cookies=admin_cookies).json()
+    assert any(e["severity"] == "blocking" for e in before["exceptions"])
+
+    bonus = app_client.post(
+        f"/api/finance/payroll/runs/{run_id}/lines",
+        json={"employee_id": seed_payroll_env["emp1_id"], "compensation_type": "bonus", "amount": 150.0},
+        cookies=admin_cookies,
+    )
+    assert bonus.status_code == 201
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/submit", cookies=admin_cookies).status_code == 400
+
+    db_session.add(EmployeeCompensationPlanDB(
+        employee_id=seed_payroll_env["emp3_id"],
+        component_type="internal_usd_cash",
+        amount=2000.0,
+        currency="USD",
+        effective_start_date="2026-01-01",
+    ))
+    db_session.commit()
+
+    res = app_client.post(f"/api/finance/payroll/runs/{run_id}/refresh", cookies=admin_cookies)
+    assert res.status_code == 200
+    data = res.json()
+    assert not [e for e in data["exceptions"] if e["severity"] == "blocking"]
+    assert any(l["employee_id"] == seed_payroll_env["emp3_id"] for l in data["lines"])
+    assert any(l["compensation_type"] == "bonus" and l["net_pay"] == 150.0 for l in data["lines"])
+    assert len([l for l in data["lines"] if l["employee_id"] == seed_payroll_env["emp1_id"] and l["compensation_type"] == "internal_usd_cash"]) == 1
+
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/submit", cookies=admin_cookies).status_code == 200
+
+
+def test_refresh_run_rejects_non_draft(app_client, admin_cookies, seed_payroll_env):
+    run_id = _create_blocked_draft(app_client, admin_cookies, seed_payroll_env["bank_id"])
+    # Force a non-draft status without going through the blocked approval path.
+    factory = get_session_factory()
+    s = factory()
+    try:
+        s.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).update({"status": "approved"})
+        s.commit()
+    finally:
+        s.close()
+    res = app_client.post(f"/api/finance/payroll/runs/{run_id}/refresh", cookies=admin_cookies)
+    assert res.status_code == 400
+    assert "draft" in res.json()["detail"].lower()
+
+
+def test_refresh_run_requires_prepare_permission(app_client, employee_cookies, admin_cookies, seed_payroll_env):
+    run_id = _create_blocked_draft(app_client, admin_cookies, seed_payroll_env["bank_id"])
+    res = app_client.post(f"/api/finance/payroll/runs/{run_id}/refresh", cookies=employee_cookies)
+    assert res.status_code in (401, 403)
+
+
+def test_refresh_run_unknown_id_returns_404(app_client, admin_cookies, seed_payroll_env):
+    res = app_client.post("/api/finance/payroll/runs/999999/refresh", cookies=admin_cookies)
+    assert res.status_code == 404
