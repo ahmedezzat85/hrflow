@@ -93,7 +93,7 @@ function getEmptyTableRowHtml(colCount = 1, message = 'No data available.', icon
 }
 
 function getLoadingStateHtml(message = 'Loading data...') {
-  return `<div class="empty-state loading-state"><i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent);"></i><p style="color:var(--text2);margin-top:10px;">${message}</p></div>`;
+  return `<div class="empty-state loading-state"><i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-text);"></i><p style="color:var(--text2);margin-top:10px;">${message}</p></div>`;
 }
 
 function getLoadingTableRowHtml(colCount = 1, message = 'Loading data...') {

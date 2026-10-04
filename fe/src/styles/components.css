@@ -42,7 +42,7 @@
 }
 
 .section-title i {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-lg);
 }
 
@@ -71,7 +71,7 @@
 .card-head .link {
   font-size: var(--fs-md);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
 }
 
@@ -288,7 +288,7 @@ thead th.col-actions {
 .badge-indigo,
 .status-badge.status-primary {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .settings-pill.pill-purple {
@@ -380,7 +380,7 @@ tr.row-dimmed:hover {
 
 .btn:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 button:disabled,
@@ -445,7 +445,7 @@ button:disabled,
 }
 
 .icon-action:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -510,7 +510,7 @@ button:disabled,
 
 .filter-tab.active {
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-text);
   box-shadow: var(--shadow);
 }
 
@@ -762,7 +762,7 @@ select.form-control option {
 }
 
 .raise-preview .row b {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .toast-wrap {
@@ -1023,7 +1023,7 @@ select.form-control option {
 }
 
 .empty-state.loading-state i {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-2xl);
 }
 
@@ -1203,7 +1203,7 @@ td.cell-money,
 .btn-outline:hover {
   background: var(--surface2);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 @media (max-width: 640px) {
@@ -1394,7 +1394,7 @@ th[data-sort] .sort-icon {
 th[data-sort][aria-sort="ascending"] .sort-icon,
 th[data-sort][aria-sort="descending"] .sort-icon {
   opacity: 1;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Filter Chips Bar */
@@ -1444,7 +1444,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 .btn-clear-filters {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -1877,6 +1877,6 @@ tbody tr[hidden] {
 }
 
 .payroll-emp-link:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
 }

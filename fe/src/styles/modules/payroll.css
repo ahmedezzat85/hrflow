@@ -25,12 +25,12 @@
 
 #a-finance-payroll .payroll-nav-link:hover {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .payroll-nav-link.active {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: rgba(79, 122, 248, 0.25);
 }
 
@@ -60,7 +60,7 @@
 }
 
 #a-finance-payroll .section-title i {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-lg);
 }
 
@@ -145,7 +145,7 @@
 }
 
 #a-finance-payroll .fxbox .editbtn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent2);
 }
 
@@ -178,7 +178,7 @@
 #a-finance-payroll .payroll-step-pill.active {
   background: var(--accent-soft);
   border-color: var(--accent2);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .step.done,
@@ -291,7 +291,7 @@
 }
 
 #a-finance-payroll .innerhead i {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .form {
@@ -366,7 +366,7 @@
 #a-finance-payroll .stat .val.accent,
 #a-finance-payroll .payroll-stat .value.accent,
 #a-finance-payroll .stat .val.val-accent {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .stat .hint,
@@ -403,7 +403,7 @@
   height: 21px;
   border: 1px solid var(--border2);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 800;
   border-radius: 6px;
   font-size: var(--fs-lg);
@@ -639,7 +639,7 @@
   height: 26px;
   border-radius: 50%;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-xs);
   font-weight: 800;
   display: inline-flex;
@@ -651,7 +651,7 @@
 #a-finance-payroll table.payroll-worksheet .chip {
   display: inline-block;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   border-radius: 999px;
   padding: 2px 7px;
   font-size: var(--fs-xs);
@@ -664,7 +664,7 @@
   height: 21px;
   border: 1px solid var(--border2);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 800;
   border-radius: 6px;
   font-size: var(--fs-lg);
@@ -690,7 +690,7 @@
 
 #a-finance-payroll table.payroll-worksheet td.num.accent,
 #a-finance-payroll table.payroll-worksheet .num.accent {
-  color: var(--accent) !important;
+  color: var(--accent-text) !important;
 }
 
 #a-finance-payroll table.payroll-worksheet tfoot td {
@@ -706,7 +706,7 @@
 }
 
 #a-finance-payroll .accent {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .stats.five-col,
@@ -795,7 +795,7 @@
 
 #a-finance-payroll .internal .disburse-title i {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .external .disburse-title i {
@@ -814,7 +814,7 @@
 
 #a-finance-payroll .internal .disburse-rail-badge {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .external .disburse-rail-badge {
@@ -1137,7 +1137,7 @@
 }
 
 #a-finance-payroll .stage-hint i {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .pay-stage.locked .stage-hint i {
@@ -1545,7 +1545,7 @@
 
 #a-finance-payroll .settings-icon-chip.chip-blue {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #a-finance-payroll .settings-icon-chip.chip-amber {
@@ -1607,7 +1607,7 @@
 
 #a-finance-payroll .funding-form label i,
 #a-finance-payroll .month-form label i {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-sm);
   opacity: 0.85;
 }
@@ -1751,7 +1751,7 @@
 
 #a-finance-payroll .settings-card-callout.callout-blue {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid rgba(32, 86, 232, 0.12);
 }
 
@@ -1812,7 +1812,7 @@
 
 #a-finance-payroll [data-theme="dark"] .settings-card-callout.callout-blue {
   background: rgba(62, 114, 248, 0.14);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: rgba(62, 114, 248, 0.22);
 }
 
@@ -1869,7 +1869,7 @@
 
 #a-finance-payroll .p-banner-blue {
   background: var(--info-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid var(--info-soft);
 }
 

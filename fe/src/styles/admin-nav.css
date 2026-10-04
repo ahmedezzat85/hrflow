@@ -92,7 +92,7 @@
 #adminSidebar.dual-rail .rail-btn.active,
 #adminSidebar.dual-rail .rail-btn.on {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #adminSidebar.dual-rail .rail-btn.active::before,
@@ -219,7 +219,7 @@
 }
 
 #adminSidebar.dual-rail .collapse-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -298,7 +298,7 @@
 
 #adminSidebar.dual-rail .nav-item.active {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 

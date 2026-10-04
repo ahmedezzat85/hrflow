@@ -173,7 +173,7 @@ body.modal-open {
 
 .doc-file-icon.image {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .doc-file-meta {
@@ -235,7 +235,7 @@ body.modal-open {
 
 .doc-type-icon.image {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .doc-name-cell {
@@ -257,7 +257,7 @@ body.modal-open {
 }
 .modal-v2 .modal-head-icon{
   width:40px;height:40px;border-radius:var(--radius-sm);flex-shrink:0;
-  background:var(--accent-soft);color:var(--accent);
+  background:var(--accent-soft);color:var(--accent-text);
   display:flex;align-items:center;justify-content:center;font-size:var(--fs-lg);
 }
 .modal-v2 .modal-head-text{flex:1;min-width:0}
@@ -272,7 +272,7 @@ body.modal-open {
   display:flex;align-items:center;gap:9px;margin-bottom:14px;
   font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);
 }
-.modal-v2 .form-section-label i{font-size:var(--fs-xs);color:var(--accent)}
+.modal-v2 .form-section-label i{font-size:var(--fs-xs);color:var(--accent-text)}
 .modal-v2 .form-section-label .line{flex:1;height:1px;background:var(--border)}
 .modal-v2 .form-section.optional-section{
   background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius-md);padding:16px 18px;

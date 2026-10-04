@@ -120,7 +120,7 @@ function renderFinanceAccounts(items) {
       <td data-label="Account">
         <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
           <i class="fa-solid ${isCash ?"fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
-          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;word-break:break-word;">
+          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent-text);text-decoration:none;word-break:break-word;">
             ${acc.account_name}
           </a>
         </div>
@@ -136,7 +136,7 @@ function renderFinanceAccounts(items) {
       <td data-label="Book Balance" class="cell-money" style="text-align:right;font-weight:700;">
         ${FinanceFormat.renderMoneyHtml(bookBal, acc.currency)}
       </td>
-      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent);">
+      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent-text);">
         ${FinanceFormat.renderMoneyHtml(availBal, acc.currency)}
       </td>
       <td data-label="Reconciled" class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">

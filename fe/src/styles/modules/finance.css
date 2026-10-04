@@ -150,7 +150,7 @@
 }
 #a-finance-dashboard .fd-u28 {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-dashboard .fd-u29 {
   display: flex;
@@ -626,7 +626,7 @@
 #a-finance-accounts .fa-u25 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   margin: 4px 0;
 }
 #a-finance-accounts .fa-u26 {
@@ -828,7 +828,7 @@
 }
 #a-finance-accounts .fa-u66 {
   font-size: 1.1rem;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-accounts .fa-u67 {
   display: none;
@@ -847,7 +847,7 @@
 }
 #a-finance-accounts .fa-u69 {
   font-size: 1.2rem;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-accounts .fa-u70 {
   font-size: var(--fs-sm);
@@ -1174,7 +1174,7 @@
   color: var(--success);
 }
 #a-finance-reports .fr-u40 {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-reports .fr-u41 {
   color: var(--danger);
@@ -1239,7 +1239,7 @@
   height: 42px;
   border-radius: 10px;
   background: rgba(59,130,246,0.12);
-  color: var(--accent);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1402,7 +1402,7 @@
   height: 42px;
   border-radius: 10px;
   background: rgba(37,99,235,0.12);
-  color: var(--accent);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1477,7 +1477,7 @@
 #a-finance-reports .fr-u95 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-reports .fr-u96 {
   padding: 16px;
@@ -1524,7 +1524,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-reports .fr-u103 {
   font-weight: 700;
@@ -1590,7 +1590,7 @@
 #a-finance-reports .fr-u113 {
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-reports .fr-u114 {
   padding: 14px;
@@ -1634,7 +1634,7 @@
 #a-finance-reports .fr-u123 {
   font-size: 1.35rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 #a-finance-reports .fr-u124 {
   padding: 16px;

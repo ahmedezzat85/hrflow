@@ -43,7 +43,7 @@
 }
 .emp-summary-card .esc-comp-total{display:flex;align-items:baseline;gap:8px;margin-bottom:18px}
 .emp-summary-card .esc-comp-total .esc-amount{
-  font-family:var(--font-head);font-size:var(--fs-2xl);font-weight:800;color:var(--accent);
+  font-family:var(--font-head);font-size:var(--fs-2xl);font-weight:800;color:var(--accent-text);
   font-variant-numeric:tabular-nums;
 }
 .emp-summary-card .esc-comp-total .esc-unit{font-size:var(--fs-md);color:var(--text2);font-weight:600}
@@ -88,7 +88,7 @@
   background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;
   cursor:pointer;transition:.15s;font-size:var(--fs-md);flex-shrink:0;
 }
-.emp-summary-card .esc-edit-btn:hover{border-color:var(--accent);color:var(--accent)}
+.emp-summary-card .esc-edit-btn:hover{border-color:var(--accent);color:var(--accent-text)}
 
 /* ===== Employee detail page workspace redesign ===== */
 .employee-detail-workspace{
@@ -134,7 +134,7 @@
   gap:9px;
 }
 .card-head h3 i{
-  color:var(--accent);
+  color:var(--accent-text);
   font-size:var(--fs-md);
 }
 
@@ -145,7 +145,7 @@
 .action-btn{
   font-size:var(--fs-sm);
   font-weight:600;
-  color:var(--accent);
+  color:var(--accent-text);
   background:none;
   border:none;
   cursor:pointer;
@@ -253,7 +253,7 @@
 }
 .employee-quick-action i{
   width:16px;
-  color:var(--accent);
+  color:var(--accent-text);
   text-align:center;
 }
 .employee-quick-action:hover{

@@ -2,19 +2,20 @@
 :root {
   /* Brand & Accents */
   --accent: #2056e8;
-  --accent2: #4f7af8;
+  --accent2: #3a68ec;
   --accent-soft: #e8eeff;
+  --accent-text: #2056e8; /* accent used as text colour (differs from --accent in dark) */
 
   /* Semantic State Colors */
-  --success: #0ea966;
+  --success: #06703f;
   --success-soft: rgba(14, 169, 102, .12);
-  --warning: #e07d10;
+  --warning: #9c5000;
   --warning-soft: rgba(224, 125, 16, .12);
-  --danger: #d63b3b;
+  --danger: #b92424;
   --danger-soft: rgba(214, 59, 59, .12);
-  --info: #4f7af8;
+  --info: #3253d0;
   --info-soft: rgba(79, 122, 248, .12);
-  --purple: #8b5cf6;
+  --purple: #6d3fd0;
   --purple-soft: rgba(139, 92, 246, .12);
   --on-accent: #ffffff;
 
@@ -27,8 +28,8 @@
 
   /* Typography Colors */
   --text: #141e30;
-  --text2: #7a8ea8;
-  --text3: #c2cedc;
+  --text2: #556983;
+  --text3: #5f708a;
 
   /* Spacing Scale (4px base) */
   --space-1: 4px;
@@ -96,8 +97,9 @@
 
 [data-theme="dark"] {
   /* Brand & Accents (Dark) */
-  --accent: #3e72f8;
-  --accent2: #5d86f9;
+  --accent: #3566ef;
+  --accent2: #3a6bf0;
+  --accent-text: #8fb0ff;
   --accent-soft: rgba(32, 86, 232, .18);
 
   /* Semantic State Colors (Dark) */
@@ -105,11 +107,11 @@
   --success-soft: rgba(31, 194, 122, .18);
   --warning: #f09228;
   --warning-soft: rgba(240, 146, 40, .18);
-  --danger: #e25353;
+  --danger: #f58585;
   --danger-soft: rgba(226, 83, 83, .18);
-  --info: #5d86f9;
+  --info: #86a6ff;
   --info-soft: rgba(93, 134, 249, .18);
-  --purple: #a78bfa;
+  --purple: #b9a2ff;
   --purple-soft: rgba(167, 139, 250, .18);
 
   /* Surfaces, Backgrounds & Borders (Dark) */
@@ -122,7 +124,7 @@
   /* Typography Colors (Dark) */
   --text: #f1f2f6;
   --text2: #9aa0b4;
-  --text3: #6b7280;
+  --text3: #8a90a6;
 
   /* Shadows (Dark) */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, .3);
