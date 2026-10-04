@@ -102,4 +102,28 @@ test.describe('U7 HR tables and cross-links', () => {
     await expect(page.locator('#documentPreviewModal')).toBeVisible();
     await expect(page.locator('#docPreviewContainer img')).toHaveCount(1);
   });
+
+  test('profile header draws one full-width separator and right-aligns the badges', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof viewProfile === 'function');
+    await page.evaluate(() => {
+      employees = [{ id: 1, name: 'James Parker', role: 'Junior Engineer', dept: 'Engineering', join: '2026-01-01', status: 'Active', email: 'j@x.com', internalSalaryUsd: 100, externalSalaryUsd: 200 }];
+      viewProfile(1);
+    });
+    const wrap = page.locator('#detailProfileHead');
+    await expect(wrap.locator('.esc-head')).toBeVisible();
+    const m = await page.evaluate(() => {
+      const w = document.getElementById('detailProfileHead');
+      const h = w.querySelector('.esc-head');
+      const card = w.closest('.emp-summary-card');
+      return {
+        wrapBorder: getComputedStyle(w).borderBottomWidth,
+        headWidth: Math.round(h.getBoundingClientRect().width),
+        cardWidth: Math.round(card.getBoundingClientRect().width),
+      };
+    });
+    expect(m.wrapBorder).toBe('0px');
+    expect(m.headWidth).toBeGreaterThan(m.cardWidth - 4);
+  });
 });
