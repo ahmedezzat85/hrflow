@@ -218,4 +218,15 @@ test.describe('U8 payroll journey', () => {
     await expect(panel).toBeHidden();
     await expect(page.locator('#btnP2Approve')).toBeEnabled();
   });
+
+  test('dark theme: screen 5 detail rows and journal button use theme surfaces, not white', async ({ page }) => {
+    await openRun(page);
+    await page.evaluate(() => { document.documentElement.setAttribute('data-theme', 'dark'); PayrollApp.setStep(4); });
+    await expect(page.locator('#payrollScreen5')).toBeVisible();
+    const lum = (c) => { const [r, g, b] = c.match(/\d+(\.\d+)?/g).map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; };
+    const bg = await page.locator('#payrollScreen5 .disburse-row').first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(lum(bg)).toBeLessThan(0.3);
+    const btnBg = await page.locator('#btnToggleJournal').evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(btnBg === 'rgba(0, 0, 0, 0)' || lum(btnBg) < 0.3).toBe(true);
+  });
 });
