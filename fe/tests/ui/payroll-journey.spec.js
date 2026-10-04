@@ -169,4 +169,30 @@ test.describe('U8 payroll journey', () => {
     await page.click('#btnStartNewRun');
     await expect.poll(() => page.evaluate(() => window.__opened)).toBe(77);
   });
+
+  test('blocking readiness issues are listed on screen 2, disable Submit and link to the fix', async ({ page }) => {
+    await openRun(page);
+    await page.evaluate(() => {
+      PayrollApp.currentRun = null;
+      PayrollApp.currentPreview = { exceptions: [
+        { id: 'exc-plan-1', employee_id: 1, employee_name: 'Sarah Connor', severity: 'blocking', code: 'MISSING_COMP_PLAN', title: 'No Active Compensation Plan', description: 'Configure their plan under Salary.', is_resolved: false },
+        { id: 'exc-w', employee_id: 2, employee_name: 'John Doe', severity: 'warning', code: 'MISSING_BANK_DETAILS' },
+      ] };
+      PayrollApp.setStep(1);
+    });
+    const panel = page.locator('#p2ReadinessPanel');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('1 blocking issue');
+    await expect(panel).toContainText('Sarah Connor');
+    await expect(page.locator('#btnP2Approve')).toBeDisabled();
+    await expect(page.locator('#p2ApprovalHint')).toContainText('Fix the 1 blocking issue');
+    await page.click('#p2ReadinessPanel [data-action="payroll-fix-issue"]');
+    await expect(page.locator('#compensationPlanModal')).toBeVisible();
+    await page.evaluate(() => closeModal('compensationPlanModal'));
+    // after the data is corrected, Re-check clears the list and enables Submit
+    await page.evaluate(() => { PayrollApp.fetchPreview = async function () { this.currentPreview = { exceptions: [] }; }; });
+    await page.click('#p2ReadinessPanel [data-action="payroll-recheck"]');
+    await expect(panel).toBeHidden();
+    await expect(page.locator('#btnP2Approve')).toBeEnabled();
+  });
 });

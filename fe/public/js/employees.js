@@ -125,8 +125,9 @@ async function viewProfile(id, section) {
   loadPayrollPaymentsCard(id);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
-  if (section === 'bank') {
-    setTimeout(() => { const card = document.getElementById('bankAccountCard'); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
+  if (section === 'bank' || section === 'social') {
+    const targetId = section === 'bank' ? 'bankAccountCard' : 'socialInsuranceCard';
+    setTimeout(() => { const card = document.getElementById(targetId); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
   }
 
   const internalUsd = Number(e.internalSalaryUsd || 0);

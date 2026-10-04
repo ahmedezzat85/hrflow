@@ -796,7 +796,61 @@
     },
 
     /* ==================== SCREEN 2: APPROVE & ADJUSTMENTS ==================== */
+    // Blocking readiness issues from the preview/run (missing compensation plan, insured base, tax settings...)
+    blockingIssues() {
+      const src = (this.currentRun && this.currentRun.status && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      return src.filter(e => e.severity === 'blocking' && !e.is_resolved);
+    },
+
+    drawReadiness() {
+      const panel = document.getElementById('p2ReadinessPanel');
+      if (!panel) return;
+      const issues = this.blockingIssues();
+      if (!issues.length) { panel.hidden = true; panel.innerHTML = ''; return; }
+      const fixLabel = (code) => ({
+        MISSING_COMP_PLAN: 'Set compensation plan',
+        MISSING_INSURED_BASE: 'Open social insurance',
+        INSURED_BASE_EXCEEDS_SALARY: 'Open social insurance',
+        MISSING_TAX_SETTINGS: 'Open payroll settings',
+      }[code] || 'Open employee');
+      panel.innerHTML = `
+        <div class="payroll-readiness-head">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <strong>${issues.length} blocking issue${issues.length === 1 ? '' : 's'} must be fixed before this run can be submitted</strong>
+          <button type="button" class="btn btn-sm btn-outline" data-action="payroll-recheck"><i class="fa-solid fa-rotate"></i> Re-check</button>
+        </div>
+        <ul class="payroll-readiness-list">
+          ${issues.map(e => `<li>
+            <span><strong>${escapeHtml(e.employee_name || (e.employee_id ? 'Employee #' + e.employee_id : 'Payroll settings'))}</strong>
+              — ${escapeHtml(e.title || e.code)}. ${escapeHtml(e.description || e.details || e.message || '')}</span>
+            <button type="button" class="btn btn-sm btn-fill" data-action="payroll-fix-issue" data-code="${escapeHtml(e.code || '')}" data-employee-id="${escapeHtml(e.employee_id || '')}">${fixLabel(e.code)}</button>
+          </li>`).join('')}
+        </ul>`;
+      panel.hidden = false;
+    },
+
+    // Opens the screen where an issue can be fixed.
+    fixIssue(code, employeeId) {
+      if (code === 'MISSING_COMP_PLAN' && employeeId && typeof openCompPlanModal === 'function') {
+        openCompPlanModal(employeeId);
+      } else if ((code === 'MISSING_INSURED_BASE' || code === 'INSURED_BASE_EXCEEDS_SALARY') && employeeId && typeof viewProfile === 'function') {
+        viewProfile(employeeId, 'social');
+      } else if (code === 'MISSING_TAX_SETTINGS') {
+        this.showPage('settings');
+      } else if (employeeId && typeof viewProfile === 'function') {
+        viewProfile(employeeId);
+      }
+    },
+
+    // Reload the preview after the data was corrected elsewhere.
+    async recheckReadiness() {
+      await this.fetchPreview();
+      this.drawScreen2();
+      this.showBanner(this.blockingIssues().length ? 'Some blocking issues remain.' : 'No blocking issues. You can submit this run.', this.blockingIssues().length ? 'red' : 'green');
+    },
+
     drawScreen2() {
+      this.drawReadiness();
       this.drawStats();
       this.drawTable();
       const p2ApproveBtn = document.getElementById('btnP2Approve');
@@ -808,6 +862,8 @@
           ? 'Approve <i class="fa-solid fa-check"></i>'
           : 'Submit for approval <i class="fa-solid fa-paper-plane"></i>';
         p2ApproveBtn.style.display = allowed ? '' : 'none';
+        const blockers = awaitingApproval ? 0 : this.blockingIssues().length;
+        p2ApproveBtn.disabled = blockers > 0;
         const selfRow = document.getElementById('p2SelfApproveRow');
         if (selfRow) {
           selfRow.hidden = !(awaitingApproval && this.canSelfApprove());
@@ -817,7 +873,8 @@
         if (hint) {
           hint.textContent = awaitingApproval
             ? (allowed ? 'Step 2 of 2: approve this run. Approval by someone other than the submitter is expected.' : 'Submitted. Waiting for an approver.')
-            : (allowed ? 'Step 1 of 2: submit this run for approval.' : 'You can review this run but not submit it.');
+            : (blockers > 0 ? `Fix the ${blockers} blocking issue${blockers === 1 ? '' : 's'} above to submit. You can still save a draft.`
+              : (allowed ? 'Step 1 of 2: submit this run for approval.' : 'You can review this run but not submit it.'));
         }
       }
     },
