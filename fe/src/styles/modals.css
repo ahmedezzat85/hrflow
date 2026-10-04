@@ -360,3 +360,8 @@ body.modal-open {
   width: 100%;
   box-sizing: border-box;
 }
+
+/* The shared confirmation dialog must sit above any modal or drawer that opens it */
+#financeConfirmModal {
+  z-index: 9999;
+}
