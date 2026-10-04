@@ -12,7 +12,7 @@
         <div class="form-section">
           <div class="form-section-label"><i class="fa-solid fa-user"></i> Employee Selection <span class="line"></span></div>
           <div class="form-field full">
-            <label>Employee <span class="req">*</span></label>
+            <label for="rEmpSelect">Employee <span class="req">*</span></label>
             <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
           </div>
         </div>
@@ -21,20 +21,20 @@
           <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation Adjustment <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Current Internal <span class="opt">USD</span></label>
+              <label for="rvCurrentInternal">Current Internal <span class="opt">USD</span></label>
               <input type="text" id="rvCurrentInternal" value="—" disabled>
             </div>
             <div class="form-field">
-              <label>Current External <span class="opt">USD</span></label>
+              <label for="rvCurrentExternal">Current External <span class="opt">USD</span></label>
               <input type="text" id="rvCurrentExternal" value="—" disabled>
             </div>
             <div class="form-field">
-              <label>New Internal <span class="opt">USD</span> <span class="req">*</span></label>
-              <input type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
+              <label for="rNewInternal">New Internal <span class="opt">USD</span> <span class="req">*</span></label>
+              <input min="0" inputmode="decimal" type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
             </div>
             <div class="form-field">
-              <label>New External <span class="opt">USD</span> <span class="req">*</span></label>
-              <input type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
+              <label for="rNewExternal">New External <span class="opt">USD</span> <span class="req">*</span></label>
+              <input min="0" inputmode="decimal" type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
             </div>
           </div>
         </div>
@@ -43,11 +43,11 @@
           <div class="form-section-label"><i class="fa-solid fa-calendar-check"></i> Raise Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Effective Date <span class="req">*</span></label>
+              <label for="rDate">Effective Date <span class="req">*</span></label>
               <input type="date" id="rDate">
             </div>
             <div class="form-field">
-              <label>Reason</label>
+              <label for="rReason">Reason</label>
               <select id="rReason">
                 <option>Annual performance raise</option>
                 <option>Promotion</option>

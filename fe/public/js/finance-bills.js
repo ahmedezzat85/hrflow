@@ -1281,7 +1281,12 @@ function closeBillPaymentModal() {
   closeModal("billPaymentModal");
 }
 
-async function saveBillPayment() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveBillPayment() {
+  return withSubmitLock("billPaymentSubmitBtn", _saveBillPaymentImpl);
+}
+
+async function _saveBillPaymentImpl() {
   const billId = document.getElementById("billPaymentBillId").value;
   const amount = parseFloat(document.getElementById("billPaymentAmount").value);
   const paymentDate = document.getElementById("billPaymentDate").value;
@@ -1396,7 +1401,12 @@ function onBillApprovalDecisionChange() {
   }
 }
 
-async function saveBillApproval() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveBillApproval() {
+  return withSubmitLock("billApprovalSubmitBtn", _saveBillApprovalImpl);
+}
+
+async function _saveBillApprovalImpl() {
   const billId = document.getElementById("billApprovalBillId").value;
   const decision = document.getElementById("billApprovalDecision").value;
   const limitVal = document.getElementById("billApproverLimit").value;
@@ -1449,7 +1459,12 @@ function closeBillScheduleModal() {
   closeModal("billScheduleModal");
 }
 
-async function saveBillSchedule() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveBillSchedule() {
+  return withSubmitLock("billScheduleSubmitBtn", _saveBillScheduleImpl);
+}
+
+async function _saveBillScheduleImpl() {
   const billId = document.getElementById("billScheduleBillId").value;
   const schedDate = document.getElementById("billScheduledPaymentDate").value;
   const notes = document.getElementById("billScheduleNotes").value.trim();
@@ -1473,12 +1488,17 @@ async function saveBillSchedule() {
 }
 
 async function confirmReverseBillPayment(billId, paymentId, amount) {
-  const reason = prompt(`Enter reason for reversing payment #${paymentId} ($${Number(amount || 0).toFixed(2)}):`);
-  if (!reason || !reason.trim()) {
+  const revResult = await FinanceCommand.confirmAction({
+    title: "Reverse payment",
+    consequence: `Reverse payment #${paymentId} (${FinanceFormat.formatMoney(amount || 0, "USD")})? The bank balance will be restored.`,
+    actionLabel: "Reverse payment",
+    requireReason: true,
+  });
+  if (!revResult.confirmed || !revResult.reason.trim()) {
     return;
   }
   try {
-    await FinanceApi.reverseBillPayment(billId, paymentId, { reason: reason.trim() });
+    await FinanceApi.reverseBillPayment(billId, paymentId, { reason: revResult.reason.trim() });
     showToast("Payment reversed and bank balance restored", "success");
     if (typeof FinanceDrawer !== "undefined" && FinanceDrawer.isOpen()) {
       FinanceDrawer.load("bill", billId);
@@ -1706,7 +1726,12 @@ async function verifyVendorPaymentInstructionItem(vendorId, piId, decision = "ve
 }
 window.verifyVendorPaymentInstructionItem = verifyVendorPaymentInstructionItem;
 
-async function saveVendorPaymentInstruction() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveVendorPaymentInstruction() {
+  return withSubmitLock("vendorAddPIBtn", _saveVendorPaymentInstructionImpl);
+}
+
+async function _saveVendorPaymentInstructionImpl() {
   const vendorId = document.getElementById("fVendorId").value;
   if (!vendorId) {
     showToast("Please save the vendor profile first before adding payment instructions", "warning");

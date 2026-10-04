@@ -796,6 +796,35 @@ select.form-control option {
   font-size: var(--fs-lg);
 }
 
+.toast-error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.toast-error i {
+  color: var(--danger);
+}
+
+.toast-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.payroll-banner-close {
+  float: right;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
 @keyframes slidein {
   from {
     transform: translateX(60px);

@@ -148,27 +148,27 @@
           </h4>
           <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px;">
             <div class="form-field">
-              <label style="font-size: 11px;">Date Column <span class="req">*</span></label>
+              <label style="font-size: 11px;" for="wizardMapDateCol">Date Column <span class="req">*</span></label>
               <select id="wizardMapDateCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
             </div>
             <div class="form-field">
-              <label style="font-size: 11px;">Description / Narrative <span class="req">*</span></label>
+              <label style="font-size: 11px;" for="wizardMapDescCol">Description / Narrative <span class="req">*</span></label>
               <select id="wizardMapDescCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
             </div>
             <div class="form-field">
-              <label style="font-size: 11px;">Reference / Check #</label>
+              <label style="font-size: 11px;" for="wizardMapRefCol">Reference / Check #</label>
               <select id="wizardMapRefCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
             </div>
             <div class="form-field">
-              <label style="font-size: 11px;">Debit / Outflow Column</label>
+              <label style="font-size: 11px;" for="wizardMapDebitCol">Debit / Outflow Column</label>
               <select id="wizardMapDebitCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
             </div>
             <div class="form-field">
-              <label style="font-size: 11px;">Credit / Inflow Column</label>
+              <label style="font-size: 11px;" for="wizardMapCreditCol">Credit / Inflow Column</label>
               <select id="wizardMapCreditCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
             </div>
             <div class="form-field">
-              <label style="font-size: 11px;">Combined Net Amount Column</label>
+              <label style="font-size: 11px;" for="wizardMapAmountCol">Combined Net Amount Column</label>
               <select id="wizardMapAmountCol" class="form-control" onchange="recalculatePreviewWithMapping()"></select>
             </div>
           </div>
@@ -177,7 +177,7 @@
             <label style="font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">
               <input type="checkbox" id="stmtSaveTemplateCheck" onchange="toggleSaveTemplateInput()"> Save as reusable template for this bank
             </label>
-            <input type="text" id="stmtSaveTemplateName" placeholder="Template name (e.g. HSBC USD Standard)" class="form-control" style="display: none; height: 32px; font-size: 12px; max-width: 280px;">
+            <input type="text" id="stmtSaveTemplateName" aria-label="Template name" placeholder="Template name (e.g. HSBC USD Standard)" class="form-control" style="display: none; height: 32px; font-size: 12px; max-width: 280px;">
           </div>
         </div>
 

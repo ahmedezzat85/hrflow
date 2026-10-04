@@ -644,7 +644,12 @@ function closeInvoicePaymentModal() {
   closeModal("invoicePaymentModal");
 }
 
-async function saveInvoicePayment() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveInvoicePayment() {
+  return withSubmitLock("invoicePaymentSubmitBtn", _saveInvoicePaymentImpl);
+}
+
+async function _saveInvoicePaymentImpl() {
   const invoiceId = document.getElementById("paymentInvoiceId").value;
   const amount = parseFloat(document.getElementById("paymentAmount").value);
   const paymentDate = document.getElementById("paymentDate").value;

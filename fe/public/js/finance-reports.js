@@ -547,7 +547,12 @@ function closeSaveReportViewModal() {
   if (m) m.style.display = "none";
 }
 
-async function submitSaveReportView() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function submitSaveReportView() {
+  return withSubmitLock("saveReportViewSubmitBtn", _submitSaveReportViewImpl);
+}
+
+async function _submitSaveReportViewImpl() {
   const nameInput = document.getElementById("saveReportViewName");
   const defCheck = document.getElementById("saveReportViewIsDefault");
   const viewName = nameInput?.value?.trim();
@@ -589,7 +594,12 @@ async function submitSaveReportView() {
 
 async function deleteActiveReportView() {
   if (!_activeSavedViewId) return;
-  if (!confirm("Are you sure you want to delete this saved view?")) return;
+  const viewOk = await FinanceCommand.confirmAction({
+    title: "Delete saved view",
+    consequence: "Delete this saved view? This cannot be undone.",
+    actionLabel: "Delete view",
+  });
+  if (!viewOk.confirmed) return;
 
   try {
     await FinanceApi.deleteSavedReportView(_activeSavedViewId);
@@ -802,7 +812,12 @@ function closeScheduleReportModal() {
   if (modal) modal.style.display = "none";
 }
 
-async function submitScheduleReport() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function submitScheduleReport() {
+  return withSubmitLock("submitScheduleReportBtn", _submitScheduleReportImpl);
+}
+
+async function _submitScheduleReportImpl() {
   const reportKey = _activeReportKey || _currentReportsTab || "profit-and-loss";
   const meta = (_reportLibrary || []).find((r) => r.key === reportKey);
   const title = meta ? meta.title : reportKey.replace(/-/g, " ").toUpperCase();
@@ -929,7 +944,12 @@ async function loadReportSchedules() {
 }
 
 async function deleteReportSchedule(scheduleId) {
-  if (!confirm("Are you sure you want to cancel this automated delivery schedule?")) return;
+  const schedOk = await FinanceCommand.confirmAction({
+    title: "Cancel delivery schedule",
+    consequence: "Cancel this automated delivery schedule?",
+    actionLabel: "Cancel schedule",
+  });
+  if (!schedOk.confirmed) return;
   try {
     await FinanceApi.deleteReportSchedule(scheduleId);
     showToast("Delivery schedule cancelled", "success");

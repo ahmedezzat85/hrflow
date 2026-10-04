@@ -943,7 +943,7 @@
 
       const amt = parseFloat(amtInput.value);
       if (!amt || amt <= 0) {
-        alert('Please enter a valid bonus amount greater than zero.');
+        FinanceForm.setFieldError(amtInput, 'Enter a bonus amount greater than zero.');
         return;
       }
       const bTypeVal = typeSel ? typeSel.value : 'BONUS';
@@ -1801,7 +1801,7 @@
       const amt = input ? parseFloat(input.value) : 0;
 
       if (!amt || amt <= 0) {
-        alert('Please enter a valid actual amount greater than zero.');
+        FinanceForm.setFieldError(input, 'Enter an actual amount greater than zero.');
         return;
       }
 
@@ -2190,12 +2190,25 @@
     showBanner(msg, color = 'blue') {
       const banner = document.getElementById('payrollActionBanner');
       if (!banner) return;
+      clearTimeout(this._bannerTimer);
       banner.style.display = 'block';
       banner.textContent = msg;
       banner.className = `payroll-action-banner p-banner-${color}`;
-      setTimeout(() => {
-        if (banner) banner.style.display = 'none';
-      }, 5000);
+      banner.setAttribute('role', color === 'red' ? 'alert' : 'status');
+      if (color === 'red') {
+        // Errors stay until dismissed
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'payroll-banner-close';
+        close.setAttribute('aria-label', 'Dismiss message');
+        close.textContent = '×';
+        close.addEventListener('click', () => { banner.style.display = 'none'; });
+        banner.appendChild(close);
+      } else {
+        this._bannerTimer = setTimeout(() => {
+          if (banner) banner.style.display = 'none';
+        }, 5000);
+      }
     },
 
     openRevertModal() {
@@ -2220,7 +2233,7 @@
       const reasonEl = document.getElementById('payrollRevertReason');
       const reason = reasonEl ? reasonEl.value.trim() : '';
       if (!reason) {
-        alert('Please enter a reason for reverting to draft.');
+        FinanceForm.setFieldError(reasonEl, 'A reason is required to revert to draft.');
         return;
       }
       if (this.currentRun) {

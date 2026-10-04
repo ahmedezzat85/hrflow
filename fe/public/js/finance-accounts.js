@@ -2974,7 +2974,20 @@ async function matchInTransitTransfer(transferId) {
   const transfer = (FinanceState.transfers || []).find((t) => t.id === transferId);
   if (!transfer) return;
 
-  const targetAccountId = prompt(`Match in-transit transfer #${transferId} (${transfer.from_amount} ${transfer.from_currency}). Enter destination Bank Account ID:`);
+  const candidates = (FinanceState.accounts || []).filter((a) => a.is_active !== false && (!transfer.to_currency || a.currency === transfer.to_currency));
+  const matchResult = await FinanceCommand.confirmAction({
+    title: "Match in-transit transfer",
+    consequence: `Match in-transit transfer #${transferId} (${transfer.from_amount} ${transfer.from_currency}) to a destination company bank account.`,
+    actionLabel: "Match transfer",
+    severity: "warning",
+    actionClass: "btn btn-fill",
+    summary: `<label for="matchTransferTargetAccount" style="display:block;margin-bottom:6px;">Destination company bank account</label>` +
+      `<select id="matchTransferTargetAccount" class="form-control">` +
+      candidates.map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.account_name)} (${escapeHtml(a.currency)})</option>`).join("") +
+      `</select>`,
+  });
+  if (!matchResult.confirmed) return;
+  const targetAccountId = (document.getElementById("matchTransferTargetAccount") || {}).value;
   if (!targetAccountId) return;
 
   try {

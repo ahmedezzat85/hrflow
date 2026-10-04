@@ -57,7 +57,7 @@ function renderVacationBalances() {
         <td class="tname">
           <div class="avatar">${initials(e.name)}</div>
           <div>
-            <div class="vac-emp-link" onclick="viewProfile(${e.id})">${e.name}</div>
+            <div class="vac-emp-link" onclick="viewProfile(${e.id})">${escapeHtml(e.name)}</div>
             <div style="font-size:11.5px;color:var(--text2);margin-top:1px;">${e.role || 'Employee'}</div>
           </div>
         </td>
@@ -124,10 +124,7 @@ async function submitVacation() {
   const durationType = durEl ? durEl.value : 'Full Day(s)';
   const reason = reasonEl ? reasonEl.value.trim() : '';
 
-  if (!start) {
-    toast('Please select a start date.', 'fa-solid fa-triangle-exclamation');
-    return;
-  }
+  if (!FinanceForm.validateRequiredFields('empVacationForm', [{ id: 'vacStart', message: 'Select a start date.' }])) return;
 
   const computedDays = calculateVacationDays(start, end, durationType);
   if (computedDays <= 0) {

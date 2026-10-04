@@ -15,14 +15,14 @@
               <p style="color:var(--text2);font-size:13px;">Plan and provider details are not available here yet. Your claims and category limits are shown below.</p>
             </div>
             <div class="card">
-              <div class="card-head">
+              <div class="card-head" id="empClaimFormHead">
                 <h3>Submit a Claim</h3>
               </div>
-              <div class="form-field" style="margin-bottom:12px;"><label>Category</label><select
+              <div class="form-field" style="margin-bottom:12px;"><label for="claimCategory">Category</label><select
                   id="claimCategory"></select></div>
-              <div class="form-field" style="margin-bottom:12px;"><label>Amount (EGP)</label><input type="number"
-                  id="claimAmount" placeholder="e.g. 1500"></div>
-              <div class="form-field" style="margin-bottom:12px;"><label>Supporting Document (optional)</label><input
+              <div class="form-field" style="margin-bottom:12px;"><label for="claimAmount">Amount (EGP)</label><input type="number"
+                  id="claimAmount" inputmode="decimal" min="0" placeholder="e.g. 1500"></div>
+              <div class="form-field" style="margin-bottom:12px;"><label for="claimDocument">Supporting Document (optional)</label><input
                   type="file" id="claimDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
               <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i
                   class="fa-solid fa-file-medical"></i> Submit Claim</button>

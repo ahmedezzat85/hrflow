@@ -39,6 +39,39 @@ function setText(el, value) {
   if (el) el.textContent = value === null || value === undefined ? '' : String(value);
 }
 
+// Delegated handler for row actions that carry their data in data-* attributes
+// (no inline onclick with data embedded in a JS string).
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const d = el.dataset;
+  const num = (v) => (v !== '' && !isNaN(v) ? Number(v) : v);
+  switch (d.action) {
+    case 'preview-employee-doc': return previewEmployeeDocument(num(d.id), d.name, d.type);
+    case 'preview-company-doc': return previewCompanyDocument(num(d.id), d.name, d.type);
+    case 'preview-salary-doc': return previewInvoicePdf(num(d.id), d.number);
+    case 'regenerate-salary-doc':
+      return openRegenerateInvoiceModal(num(d.employeeId), d.name, num(d.year), num(d.month), d.number);
+    default: return undefined;
+  }
+});
+
+// Dropzones behave like buttons for the keyboard: Enter or Space opens the file picker.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const zone = e.target.closest && e.target.closest('.doc-drop-zone[role="button"]');
+  if (!zone || e.target !== zone) return;
+  e.preventDefault();
+  zone.click();
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
+});
+document.addEventListener('change', (e) => {
+  if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
+});
+
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 
@@ -46,7 +79,7 @@ function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(e
  * Standardized Empty & Loading state helpers across all domain modules
  */
 function getEmptyStateHtml(message = 'No data available.', icon = 'fa-solid fa-inbox') {
-  return `<div class="empty-state"><i class="${icon}"></i><p>${message}</p></div>`;
+  return `<div class="empty-state"><i class="${escapeHtml(icon)}"></i><p>${escapeHtml(message)}</p></div>`;
 }
 
 function getEmptyTableRowHtml(colCount = 1, message = 'No data available.', icon = 'fa-solid fa-inbox') {
@@ -279,13 +312,32 @@ applyTheme(savedTheme);
     setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
   });
 });
+// Toasts: text is set with textContent (never parsed as HTML). Errors use role="alert",
+// stay until dismissed and carry a close button; other toasts use role="status" and fade after 3.2s.
 function toast(msg, icon='fa-solid fa-circle-check'){
   const wrap = document.getElementById('toastWrap');
+  if (!wrap) return;
+  const isError = /triangle-exclamation|circle-exclamation|circle-xmark/.test(String(icon));
   const el = document.createElement('div');
-  el.className='toast';
-  el.innerHTML = `<i class="${icon}"></i> ${msg}`;
+  el.className = isError ? 'toast toast-error' : 'toast';
+  el.setAttribute('role', isError ? 'alert' : 'status');
+  const iconEl = document.createElement('i');
+  iconEl.className = String(icon);
+  iconEl.setAttribute('aria-hidden', 'true');
+  const textEl = document.createElement('span');
+  textEl.textContent = msg === null || msg === undefined ? '' : String(msg);
+  el.append(iconEl, textEl);
+  if (isError) {
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'toast-close';
+    close.setAttribute('aria-label', 'Dismiss message');
+    close.textContent = '×';
+    close.addEventListener('click', () => el.remove());
+    el.appendChild(close);
+  }
   wrap.appendChild(el);
-  setTimeout(()=>el.remove(), 3200);
+  if (!isError) setTimeout(()=>el.remove(), 3200);
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
 // HR-page money helpers: thin wrappers over the one formatter in finance-core.js
@@ -397,6 +449,8 @@ const ModalController = {
   },
 
   close(modalId) {
+    // Drop stale inline errors and summaries so the next open starts clean
+    { const el = document.getElementById(modalId); if (el && window.FinanceForm) FinanceForm.clearErrors(el); }
     let entry = null;
     if (modalId) {
       const idx = this._stack.findIndex(e => e.id === modalId || e.overlay === modalId);

@@ -2003,7 +2003,12 @@ async function toggleRuleActive(ruleId, newStatus) {
 }
 
 async function deleteRuleById(ruleId) {
-  if (!confirm(`Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`)) return;
+  const delOk = await FinanceCommand.confirmAction({
+    title: "Delete reconciliation rule",
+    consequence: `Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`,
+    actionLabel: "Delete rule",
+  });
+  if (!delOk.confirmed) return;
   try {
     await FinanceApi.deleteReconciliationRule(ruleId);
     showToast("Rule deleted successfully", "info");
@@ -2015,7 +2020,13 @@ async function deleteRuleById(ruleId) {
 }
 
 async function revertRuleById(ruleId) {
-  if (!confirm(`Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`)) return;
+  const revOk = await FinanceCommand.confirmAction({
+    title: "Revert rule resolutions",
+    consequence: `Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`,
+    actionLabel: "Revert resolutions",
+    severity: "warning",
+  });
+  if (!revOk.confirmed) return;
   try {
     const res = await FinanceApi.revertRule(ruleId);
     showToast(res.message || "Rule resolutions reverted", "success");

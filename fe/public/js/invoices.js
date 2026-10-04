@@ -219,10 +219,10 @@ function renderInvoicePreviewResults(results, year, month){
     if (r.status === 'eligible') {
       actionBtn = `<button class="btn btn-sm btn-fill" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
     } else if (r.status === 'already_exists') {
-      actionBtn = `<button class="btn btn-sm btn-outline-warning" style="color:var(--warning, #eab308);border-color:rgba(234,179,8,0.4);" onclick="openRegenerateInvoiceModal(${r.employee_id}, '${_escapeAttr(r.employee_name)}', ${year}, ${month}, '${_escapeAttr(r.invoice_number || '')}')"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>`;
+      actionBtn = `<button class="btn btn-sm btn-outline-warning" style="color:var(--warning, #eab308);border-color:rgba(234,179,8,0.4);" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(r.employee_id)}" data-name="${escapeHtml(r.employee_name)}" data-year="${escapeHtml(year)}" data-month="${escapeHtml(month)}" data-number="${escapeHtml(r.invoice_number || '')}"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>`;
     }
     return `<tr>
-      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
+      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${escapeHtml(r.employee_name)}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
       <td>${actionBtn}</td>
     </tr>`;
@@ -288,7 +288,7 @@ function renderInvoiceBatchResults(result, year, month){
   document.getElementById('invoiceResultsTitle').textContent =
     `Generation Results — ${_invoicePeriodLabel(year, month)}`;
   body.innerHTML = result.results.map(r => `<tr>
-    <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
+    <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${escapeHtml(r.employee_name)}</td>
     <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
     <td>${r.reason || r.invoice_number || '—'}</td>
     <td>
@@ -327,7 +327,7 @@ async function executeRegenerateInvoice(evt){
       skip_existing: false,
     });
     closeModal('regenerateInvoiceModal');
-    toast(`Doc ${escapeHtml(result.invoice_number || '')} regenerated successfully for ${escapeHtml(employeeName)}.`);
+    toast(`Doc ${result.invoice_number || ''} regenerated successfully for ${employeeName}.`);
     await loadInvoiceHistory();
     if (_invoiceEligiblePreview.length) {
       await previewInvoiceEligibility();
@@ -354,9 +354,9 @@ async function generateSingleInvoice(employeeId, evt){
       skip_existing: true,
     });
     if(result.status === 'generated'){
-      toast(`Doc ${escapeHtml(result.invoice_number)} generated for ${escapeHtml(emp ? emp.name : '')}.`);
+      toast(`Doc ${result.invoice_number} generated for ${emp ? emp.name : ''}.`);
     } else {
-      toast(`Doc ${escapeHtml(result.invoice_number)} already exists for this period.`, 'fa-solid fa-circle-info');
+      toast(`Doc ${result.invoice_number} already exists for this period.`, 'fa-solid fa-circle-info');
     }
     await loadInvoiceHistory();
     if(_invoiceEligiblePreview.length){
@@ -547,8 +547,8 @@ function renderGroupedInvoiceHistory(){
       : 'fa-solid fa-sort';
 
     const rowsHtml = sortedInvoices.map(inv => `<tr>
-      <td class="tname"><div class="avatar">${initials(inv.employee_name)}</div>${inv.employee_name}</td>
-      <td><strong>${inv.invoice_number}</strong></td>
+      <td class="tname"><div class="avatar">${initials(inv.employee_name)}</div>${escapeHtml(inv.employee_name)}</td>
+      <td><strong>${escapeHtml(inv.invoice_number)}</strong></td>
       <td>${fmtUSD(Number(inv.amount_usd))}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(inv.status)}">${inv.status}</span></td>
       <td>
@@ -556,10 +556,10 @@ function renderGroupedInvoiceHistory(){
       </td>
       <td>
         <div style="display:flex;gap:6px;align-items:center;">
-          <button class="btn btn-sm btn-fill" style="font-size:11.5px;padding:4px 8px;" title="Preview PDF salary payment doc" onclick="previewInvoicePdf(${inv.id}, '${_escapeAttr(inv.invoice_number)}')">
+          <button class="btn btn-sm btn-fill" style="font-size:11.5px;padding:4px 8px;" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(inv.id)}" data-number="${escapeHtml(inv.invoice_number)}">
             <i class="fa-solid fa-file-pdf"></i> Preview PDF
           </button>
-          <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this doc" onclick="openRegenerateInvoiceModal(${inv.employee_id}, '${_escapeAttr(inv.employee_name)}', ${inv.payment_year}, ${inv.payment_month}, '${_escapeAttr(inv.invoice_number)}')">
+          <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this doc" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(inv.employee_id)}" data-name="${escapeHtml(inv.employee_name)}" data-year="${escapeHtml(inv.payment_year)}" data-month="${escapeHtml(inv.payment_month)}" data-number="${escapeHtml(inv.invoice_number)}">
             <i class="fa-solid fa-arrows-rotate"></i> Regenerate
           </button>
         </div>

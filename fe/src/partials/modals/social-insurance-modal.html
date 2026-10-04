@@ -13,7 +13,7 @@
         <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Insurance Configuration <span class="line"></span></div>
         <div class="form-grid">
           <div class="form-field full">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;" for="fSocialInsBase">
               <input type="checkbox" id="fSocialInsFlag" style="width:auto;cursor:pointer;">
               <span style="font-weight:600;">Covered by Social Insurance</span>
             </label>
@@ -29,7 +29,7 @@
             </span>
           </div>
           <div class="form-field full">
-            <label>Effective Date <span class="req">*</span></label>
+            <label for="fSocialInsEffectiveDate">Effective Date <span class="req">*</span></label>
             <input type="date" id="fSocialInsEffectiveDate">
             <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
               Must be on or before today (future pre-staging is not permitted).

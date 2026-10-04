@@ -8,8 +8,8 @@ function renderEmployeesTable(filter = '') {
   const f = filter.toLowerCase();
   body.innerHTML = employees.filter(e => e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
     <td data-label="ID" class="col-id">${e.id}</td>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
-    <td data-label="Role">${e.role}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${escapeHtml(e.name)}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Role">${escapeHtml(e.role)}</td>
     <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
     <td data-label="Next Raise">${e.nextRaise}</td>
@@ -54,7 +54,11 @@ function openEmployeeModal(id = null) {
 async function saveEmployee(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('empModalSaveBtn') || document.querySelector('#employeeModal .btn-fill');
   const name = document.getElementById('fEmpName').value.trim();
-  if (!name) { toast('Please enter employee name.', 'fa-solid fa-triangle-exclamation'); return; }
+  const empEmailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!FinanceForm.validateRequiredFields('employeeModal', [
+    { id: 'fEmpName', message: 'Enter the employee\'s full name.' },
+    { id: 'fEmpEmail', message: 'Enter a valid email address.', check: (v) => empEmailRe.test(v) },
+  ])) return;
   const vacTotal = Number(fEmpVac.value) || 21;
   const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value) || 0;
   const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value) || 0;
@@ -62,7 +66,7 @@ async function saveEmployee(evt) {
   const address_line_1 = document.getElementById('fEmpAddressLine1').value.trim();
   const address_line_2 = document.getElementById('fEmpAddressLine2').value.trim();
   if (invoice_id && !/^\d{1,2}$/.test(invoice_id)) {
-    toast('Payment doc ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
+    FinanceForm.showErrorSummary('employeeModal', [{ fieldId: 'fEmpInvoiceId', message: 'Payment doc ID must be a number between 01 and 99.' }]);
     return;
   }
   setButtonLoading(btn, true, 'Saving…');
@@ -130,10 +134,10 @@ async function viewProfile(id) {
     <div class="esc-head">
       <div class="esc-avatar">${initials(e.name)}</div>
       <div class="esc-identity">
-        <h4>${e.name}</h4>
+        <h4>${escapeHtml(e.name)}</h4>
         <div class="esc-meta">
-          <span>${e.role}</span><span class="esc-dot"></span>
-          <span>${e.dept}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}
+          <span>${escapeHtml(e.role)}</span><span class="esc-dot"></span>
+          <span>${escapeHtml(e.dept)}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}
         </div>
       </div>
       <div class="esc-badges">
@@ -215,7 +219,7 @@ async function viewProfile(id) {
         }
       }
 
-      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type">${v.type}</td><td data-label="Dates">${v.start_date} to ${v.end_date}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
+      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type">${escapeHtml(v.type)}</td><td data-label="Dates">${v.start_date} to ${v.end_date}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
       const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id) || (e.name && (c.employee_name || c.Employee_Name || '').toLowerCase() === e.name.toLowerCase()));
       document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => {
         const cat = c.category || c.Category || c.claim_category || c.type || '—';
@@ -237,7 +241,7 @@ function renderNotesList(notes) {
   const catColors = { General: 'accent', Performance: 'success', Incident: 'danger', Achievement: 'success', Attendance: 'info', Warning: 'warning' };
   list.innerHTML = notes.map(n => {
     const color = catColors[n.category] || 'accent';
-    return `<li><div class="ic" style="background:var(--${color}-soft, var(--accent-soft));color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+    return `<li><div class="ic" style="background:var(--${color}-soft, var(--accent-soft));color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${escapeHtml(n.category)} • ${n.date}</strong><p>${escapeHtml(n.note)}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${escapeHtml(n.created_by)}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
   }).join('') || `<li>${getEmptyStateHtml('No notes recorded yet.', 'fa-solid fa-note-sticky')}</li>`;
 }
 
@@ -262,6 +266,12 @@ async function saveEmployeeNote(evt) {
 }
 
 async function deleteEmployeeNote(noteId) {
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Delete note',
+    consequence: 'Delete this note? This cannot be undone.',
+    actionLabel: 'Delete note',
+  });
+  if (!ok.confirmed) return;
   try {
     await Api.deleteEmployeeNote(noteId);
     toast('Note deleted.', 'fa-solid fa-trash');
@@ -288,7 +298,7 @@ async function submitBehalfVacation(evt) {
   const days = Number(document.getElementById('bvDays').value) || 1;
   const status = document.getElementById('bvStatus').value;
   const record_date = document.getElementById('bvRecordDate').value || null;
-  if (!start_date) { toast('Please select a start date.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('behalfVacationModal', [{ id: 'bvStart', message: 'Select a start date.' }])) return;
   setButtonLoading(btn, true, 'Submitting…');
   try {
     await Api.requestVacation({ employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, days, status, record_date });
@@ -330,8 +340,10 @@ async function submitBehalfClaim(evt) {
   const status = document.getElementById('bcStatus').value;
   const record_date = document.getElementById('bcRecordDate').value || null;
   const fileInput = document.getElementById('bcDocument');
-  if (!category || category === 'undefined') { toast('Please select a valid insurance category.', 'fa-solid fa-triangle-exclamation'); return; }
-  if (!amount) { toast('Please enter a claim amount.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('behalfClaimModal', [
+    { id: 'bcCategory', message: 'Select an insurance category.', check: (v) => !!v && v !== 'undefined' },
+    { id: 'bcAmount', message: 'Enter a claim amount greater than 0.', check: (v) => Number(v) > 0 },
+  ])) return;
   let documentUrl;
   const file = fileInput && fileInput.files[0];
   if (file) {
@@ -369,10 +381,10 @@ function renderEmployeeDocuments(docs) {
   const body = document.getElementById('detailDocumentsBody');
   if (!body) return;
   body.innerHTML = docs.length ? docs.map(d => `<tr>
-    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${d.name}</span></div></td>
+    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${escapeHtml(d.name)}</span></div></td>
     <td data-label="Uploaded">${d.uploaded_at}</td>
     <td data-label="Actions" class="col-actions">
-      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, ${JSON.stringify(String(d.name).replace(/`/g, ''))}, ${JSON.stringify(d.file_type)})"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" data-action="preview-employee-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name)}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td></tr>`).join('') : renderEmptyTableRow(3, 'No documents uploaded yet.', 'fa-solid fa-folder-open');
@@ -574,6 +586,12 @@ document.addEventListener('DOMContentLoaded', initBcDocDropZoneListeners);
 if (document.readyState !== 'loading') initBcDocDropZoneListeners();
 
 async function deleteEmployeeDocument(docId) {
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Delete document',
+    consequence: 'Delete this employee document? This cannot be undone.',
+    actionLabel: 'Delete document',
+  });
+  if (!ok.confirmed) return;
   try {
     await Api.deleteEmployeeDocument(docId);
     toast('Document deleted.', 'fa-solid fa-trash');
@@ -679,10 +697,12 @@ async function saveBankAccount(evt) {
   const bank_name = document.getElementById('fBankName').value.trim();
   const iban = document.getElementById('fBankIban').value.trim();
   const swift_code = document.getElementById('fBankSwift').value.trim() || null;
-  if (!bank_name) { toast('Bank Name is required.', 'fa-solid fa-triangle-exclamation'); return; }
-  if (!iban) { toast('IBAN is required.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('bankAccountModal', [
+    { id: 'fBankName', message: 'Bank name is required.' },
+    { id: 'fBankIban', message: 'IBAN is required.' },
+  ])) return;
   if (iban.startsWith('****')) {
-    toast('Please reveal the IBAN before editing, or enter a new IBAN.', 'fa-solid fa-triangle-exclamation');
+    FinanceForm.showErrorSummary('bankAccountModal', [{ fieldId: 'fBankIban', message: 'Reveal the IBAN before editing, or enter a new IBAN.' }]);
     return;
   }
   setButtonLoading(btn, true, 'Saving…');

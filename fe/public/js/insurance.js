@@ -11,7 +11,7 @@ function insuranceProgressColor(status){
 function renderCategoryChip(cat){
   return `<div class="insurance-chip">
     <div class="chip-top">
-      <b>${cat.category}</b>${insuranceStatusBadge(cat.status)}
+      <b>${escapeHtml(cat.category)}</b>${insuranceStatusBadge(cat.status)}
     </div>
     <div class="chip-amount">${fmtMoney(cat.consumed)} of ${fmtMoney(cat.limit)}</div>
     <div class="progress-bar"><span style="width:${Math.min(cat.pct_used,100)}%;background:${insuranceProgressColor(cat.status)};"></span></div>
@@ -48,7 +48,7 @@ function renderAdminInsuranceHighlights(){
 function renderCategoriesTable(){
   const body = document.getElementById('categoriesTableBody');
   if(!body) return;
-  body.innerHTML = insuranceCategories.map(c=>`<tr><td>${c.name}</td><td>${fmtMoney(c.annual_limit)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="openCategoryModal(${c.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="deleteCategory(${c.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || renderEmptyTableRow(3, 'No categories configured yet.', 'fa-solid fa-list');
+  body.innerHTML = insuranceCategories.map(c=>`<tr><td>${escapeHtml(c.name)}</td><td>${fmtMoney(c.annual_limit)}</td><td style="display:flex;gap:6px;"><button class="icon-action" onclick="openCategoryModal(${c.id})"><i class="fa-solid fa-pen"></i></button><button class="icon-action" onclick="deleteCategory(${c.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || renderEmptyTableRow(3, 'No categories configured yet.', 'fa-solid fa-list');
 }
 function openCategoryModal(id=null){
   currentEditCategoryId = id;
@@ -61,7 +61,10 @@ async function saveCategory(evt){
   const btn = (evt && evt.currentTarget) || document.getElementById('categoryModalSaveBtn') || document.querySelector('#categoryModal .btn-fill');
   const name = document.getElementById('fCatName').value.trim();
   const limit = Number(document.getElementById('fCatLimit').value);
-  if(!name || !limit){ toast('Please fill in category name and annual limit.','fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('categoryModal', [
+    { id: 'fCatName', message: 'Enter a category name.' },
+    { id: 'fCatLimit', message: 'Enter an annual limit greater than 0.', check: (v) => Number(v) > 0 },
+  ])) return;
   setButtonLoading(btn, true, 'Saving…');
   try{
     if(currentEditCategoryId){ await Api.updateInsuranceCategory(currentEditCategoryId, {name, annual_limit: limit}); toast('Category updated.'); }
@@ -72,6 +75,12 @@ async function saveCategory(evt){
   finally { setButtonLoading(btn, false); }
 }
 async function deleteCategory(id){
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Delete insurance category',
+    consequence: 'Delete this insurance category? Existing claims keep their category name.',
+    actionLabel: 'Delete category',
+  });
+  if (!ok.confirmed) return;
   try{ await Api.deleteInsuranceCategory(id); toast('Category removed.', 'fa-solid fa-trash'); await loadAdminData(); }
   catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
@@ -79,16 +88,16 @@ function populateClaimCategoryOptions(){
   const sel = document.getElementById('claimCategory');
   if(!sel) return;
   const current = sel.value;
-  sel.innerHTML = insuranceCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  sel.innerHTML = insuranceCategories.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
   if(current) sel.value = current;
 }
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
   if(!body) return;
   body.innerHTML = insuranceClaims.map(c=>`<tr>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(c.employee_name)}</div>${c.employee_name}</td>
-    <td data-label="Category">${c.category}</td>
-    <td data-label="Provider">${c.provider}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(c.employee_name)}</div>${escapeHtml(c.employee_name)}</td>
+    <td data-label="Category">${escapeHtml(c.category)}</td>
+    <td data-label="Provider">${escapeHtml(c.provider)}</td>
     <td data-label="Amount">${fmtMoney(c.amount)}</td>
     <td data-label="Date">${c.date}</td>
     <td data-label="Status">${statusPill(c.status)}</td>
@@ -102,6 +111,17 @@ function renderInsuranceTable(){
   document.getElementById('statClaimsTotal').innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${fmtMoney(insuranceClaims.filter(c=>c.status==='Approved').reduce((s,c)=>s+Number(c.amount),0))} total`;
 }
 async function actionClaim(claimId, status){
+  const approving = status === 'Approved';
+  const ok = await FinanceCommand.confirmAction({
+    title: approving ? 'Approve claim' : 'Reject claim',
+    consequence: approving
+      ? 'Approve this claim for reimbursement?'
+      : 'Reject this claim? The employee will see it as rejected.',
+    actionLabel: approving ? 'Approve claim' : 'Reject claim',
+    actionClass: approving ? 'btn btn-fill' : 'btn btn-danger',
+    severity: approving ? 'warning' : undefined,
+  });
+  if (!ok.confirmed) return;
   try{ await Api.actionInsuranceClaim(claimId, status); toast(`Claim ${status.toLowerCase()}.`); await loadAdminData(); }
   catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
@@ -125,8 +145,10 @@ async function submitClaim(evt){
   const category = document.getElementById('claimCategory').value;
   const amount = Number(document.getElementById('claimAmount').value);
   const fileInput = document.getElementById('claimDocument');
-  if(!category){ toast('Please select an insurance category.','fa-solid fa-triangle-exclamation'); return; }
-  if(!amount){ toast('Please enter a claim amount.','fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('empClaimForm', [
+    { id: 'claimCategory', message: 'Select an insurance category.' },
+    { id: 'claimAmount', message: 'Enter a claim amount greater than 0.', check: (v) => Number(v) > 0 },
+  ])) return;
   let documentUrl = '';
   const file = fileInput && fileInput.files[0];
   if(file){

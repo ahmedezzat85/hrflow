@@ -123,11 +123,11 @@
         <div class="form-section">
           <div class="form-grid">
             <div class="form-field">
-              <label>Date</label>
+              <label for="reconcileLineDate">Date</label>
               <input type="text" id="reconcileLineDate" readonly style="background:var(--bg-card-subtle);">
             </div>
             <div class="form-field">
-              <label>Amount &amp; Direction</label>
+              <label for="reconcileLineAmount">Amount &amp; Direction</label>
               <input type="text" id="reconcileLineAmount" readonly style="background:var(--bg-card-subtle);">
             </div>
             <div class="form-field full">
@@ -328,7 +328,7 @@
             </select>
           </div>
           <div class="form-field" id="ruleApprovalContainer" style="display:none;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:22px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:22px;" for="ruleFormDescPattern">
               <input type="checkbox" id="ruleFormIsApproved">
               <span style="font-size:12px;font-weight:600;color:var(--color-primary);">Authorize Auto-Apply</span>
             </label>

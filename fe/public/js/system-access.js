@@ -489,7 +489,12 @@
     if (!role) return;
     if (role.is_locked || role.system_key === 'employee') return;
 
-    if (!confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+    const roleOk = await FinanceCommand.confirmAction({
+      title: 'Delete role',
+      consequence: `Delete role "${role.name}"? Users must be moved to another role first.`,
+      actionLabel: 'Delete role',
+    });
+    if (!roleOk.confirmed) return;
 
     try {
       if (isMockMode()) {
@@ -739,7 +744,12 @@
     const user = _systemUsers.find(u => u.id === userId);
     if (!user || user.is_self) return;
 
-    if (!confirm(`Are you sure you want to archive user account "${user.email}"?`)) return;
+    const userOk = await FinanceCommand.confirmAction({
+      title: 'Archive user account',
+      consequence: `Archive user account "${user.email}"? They will no longer be able to sign in.`,
+      actionLabel: 'Archive user',
+    });
+    if (!userOk.confirmed) return;
 
     try {
       if (isMockMode()) {
@@ -775,14 +785,10 @@
     const name = document.getElementById('fExtUserName').value.trim();
     const roleId = parseInt(document.getElementById('fExtUserRole').value, 10);
 
-    if (!email) {
-      toast('Please enter an email address', 'fa-solid fa-triangle-exclamation');
-      return;
-    }
-    if (isNaN(roleId)) {
-      toast('Please select a role for the external user', 'fa-solid fa-triangle-exclamation');
-      return;
-    }
+    if (!FinanceForm.validateRequiredFields('externalUserModal', [
+      { id: 'fExtUserEmail', message: 'Enter a valid email address.', check: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
+      { id: 'fExtUserRole', message: 'Select a role for the external user.', check: (v) => !isNaN(parseInt(v, 10)) },
+    ])) return;
 
     setButtonLoading(btn, true, 'Saving...');
     try {
