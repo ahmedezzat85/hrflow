@@ -207,7 +207,9 @@ window.addEventListener('keydown', (e) => {
   if (e.shiftKey && (e.key === 'N' || e.key === 'n') && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const tag = (document.activeElement?.tagName || '').toLowerCase();
     const isEditable = document.activeElement?.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
-    if (!isEditable) {
+    const quickAddBtn = document.getElementById('adminQuickAddTxBtn');
+    const financeOnly = !quickAddBtn || quickAddBtn.hidden;
+    if (!isEditable && !financeOnly) {
       e.preventDefault();
       if (typeof window.openGlobalFinanceTransactionModal === 'function') {
         window.openGlobalFinanceTransactionModal();

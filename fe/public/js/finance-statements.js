@@ -1,16 +1,6 @@
 // ==========================================
 // 9. Bank Statement Imports & Reconciliation (Phase 7)
-// ==========================================
-// Safe HTML escaping helper
-function escapeHtml(str) {
-  if (str === null || str === undefined) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+// Safe HTML escaping: uses the shared escapeHtml() defined in ui.js
 
 // Fallback currency formatter
 function formatCurrency(amount, currency = "USD") {

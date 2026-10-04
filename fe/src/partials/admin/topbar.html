@@ -1,13 +1,13 @@
       <div class="topbar">
-        <div style="display:flex;align-items:center;gap:12px;">
+        <div class="topbar-lead">
           <button class="hamburger" onclick="toggleSidebar('adminSidebar')" aria-label="Toggle navigation menu"><i class="fa-solid fa-bars"></i></button>
           <div>
-            <h2 id="adminPageTitle">General Dashboard</h2>
+            <h1 id="adminPageTitle">General Dashboard</h1>
             <div class="sub" id="adminPageSub">Welcome back, here's what's happening today.</div>
           </div>
         </div>
         <div class="top-actions">
-          <button class="btn btn-sm btn-fill" id="adminQuickAddTxBtn" onclick="openGlobalFinanceTransactionModal()" title="Record Transaction (Shift+N)" aria-label="Record Transaction (Shift+N)" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:12px; padding:6px 12px; margin-right:4px;">
+          <button class="btn btn-sm btn-fill topbar-add-tx" id="adminQuickAddTxBtn" hidden onclick="openGlobalFinanceTransactionModal()" title="Record Transaction (Shift+N)" aria-label="Record Transaction (Shift+N)">
             <i class="fa-solid fa-plus"></i> <span class="hide-mobile">Add Transaction</span>
           </button>
           <button class="icon-btn" id="adminExportBtn" onclick="openExportModal()" title="Export Data" aria-label="Export Data"><i class="fa-solid fa-file-export"></i></button>

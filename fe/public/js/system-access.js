@@ -165,7 +165,7 @@
   ];
 
   function escHtml(val) {
-    return String(val ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    return window.escapeHtml(val);
   }
 
   // The user's single assigned role as { id, name, system_key } or null.
