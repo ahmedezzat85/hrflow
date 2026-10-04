@@ -337,6 +337,8 @@
       const tbody = document.getElementById('payrollRunsTableBody');
       const countEl = document.getElementById('payrollRunsCount');
       if (!tbody) return;
+      const newRunBtn = document.getElementById('btnStartNewRun');
+      if (newRunBtn) newRunBtn.hidden = !this.canPermission('finance.payroll.prepare');
 
       if (this.runsLoadError) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
@@ -405,6 +407,36 @@
 
       tbody.innerHTML = rowsHtml;
       if (countEl) countEl.textContent = `${(savedCurrent ? 0 : 1) + pastRuns.length} runs total`;
+    },
+
+    // Period defaults for a calendar month "YYYY-MM": first to last day, paid on the last day.
+    setPeriod(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      const last = new Date(y, m, 0).getDate();
+      this.month = ym;
+      this.start = `${ym}-01`;
+      this.end = `${ym}-${String(last).padStart(2, '0')}`;
+      this.payDate = this.end;
+    },
+
+    // Starts a fresh run for the current calendar month (the month can be changed on screen 1).
+    // If a run for that month already exists it is opened instead: only one active run per period.
+    async startNewRun() {
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const existing = (this.serverRuns || []).find(r => r.period_label === ym);
+      if (existing && existing.id) {
+        this.showBanner(`A payroll run for ${ym} already exists. Opening it; pick another month on step 1 for a different period.`, 'blue');
+        await this.openHistoryRun(existing.id);
+        return;
+      }
+      this.currentRun = null;
+      this.currentPreview = null;
+      this.setPeriod(ym);
+      this.showPage('run');
+      await this.setStep(0);
+      await this.fetchPreview();
+      this.drawScreen1();
     },
 
     async openRun(id) {
@@ -698,7 +730,16 @@
 
     onScreen1PeriodChange() {
       const m = document.getElementById('p1Month');
-      if (m && m.value) this.month = m.value;
+      if (m && m.value && m.value !== this.month) {
+        // month changed on screen 1: move start, end and pay date with it
+        this.setPeriod(m.value);
+        ['p1PayDate', 'p1Start', 'p1End'].forEach((id, i) => {
+          const el = document.getElementById(id);
+          if (el) el.value = [this.payDate, this.start, this.end][i];
+        });
+        this.drawPeriodLabel();
+        return;
+      }
       const pd = document.getElementById('p1PayDate');
       if (pd && pd.value) this.payDate = pd.value;
       const s = document.getElementById('p1Start');
