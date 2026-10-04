@@ -390,7 +390,7 @@
 }
 
 /* Mobile drawer mode (<900px matching components.css) */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   #adminSidebar.dual-rail {
     position: fixed;
     top: 0;

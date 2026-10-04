@@ -553,7 +553,7 @@ html, body {
   grid-template-columns: 1fr 2fr;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1024px) {
   .g4 {
     grid-template-columns: repeat(2, 1fr);
   }
