@@ -318,7 +318,7 @@ async function toggleCompanyBankAccountActive(id, currentActive) {
   const action = currentActive ? "deactivate" : "reactivate";
 
   const result = await FinanceCommand.confirmAction({
-    title: `${currentActive ? "Deactivate" : "Reactivate"} Bank Account`,
+    title: `${currentActive ? "Deactivate" : "Reactivate"} company bank account`,
     summary: acc ? `<strong>${acc.account_name}</strong> · ${acc.currency} · Balance: ${FinanceFormat.renderMoneyHtml(acc.current_balance || 0, acc.currency)}` : `Account #${id}`,
     consequence: currentActive
       ? "Deactivating this account will prevent new payments, cheques, or transfers from using it. Existing transaction history remains intact."
@@ -2115,7 +2115,7 @@ async function openAddFinanceTransactionModal(defaultType = "money_out", isGloba
 
   if (isGlobal) {
     if (titleEl) titleEl.textContent = "Quick-Add Transaction";
-    if (subtitleEl) subtitleEl.textContent = "Global quick-add transaction entry across any active bank account.";
+    if (subtitleEl) subtitleEl.textContent = "Global quick-add transaction entry across any active company bank account.";
     if (acctSelectGroup) acctSelectGroup.style.display = "block";
 
     if (!FinanceState.accounts || !FinanceState.accounts.length) {
@@ -2297,7 +2297,7 @@ async function saveFinanceTransaction(andAddAnother = false) {
   const accountId = document.getElementById("fFinanceTxAccountId").value || _currentLedgerAccountId;
 
   if (!accountId) {
-    toast("Please select a bank account", "fa-solid fa-circle-exclamation");
+    toast("Please select a company bank account", "fa-solid fa-circle-exclamation");
     document.getElementById("fFinanceTxAccountSelect")?.focus();
     return;
   }

@@ -2,7 +2,7 @@
           <!-- Sub Navigation for Bank Accounts & Lookups -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; max-width:100%;">
             <div class="filter-tabs" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation" style="max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;">
-              <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</button>
+              <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Company bank &amp; cash accounts</button>
               <button class="filter-tab" id="subtabFinanceLedger" role="tab" aria-selected="false" tabindex="-1" data-account-tab="ledger" onclick="switchFinanceAccountsSubTab('ledger', this)"><i class="fa-solid fa-book-journal-whills"></i> Continuous Ledger</button>
               <button class="filter-tab" id="subtabFinanceStatements" role="tab" aria-selected="false" tabindex="-1" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
               <button class="filter-tab" id="subtabFinanceCheques" role="tab" aria-selected="false" tabindex="-1" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
@@ -14,11 +14,11 @@
           <div id="financeSubPaneAccounts" style="max-width:100%; min-width:0;">
             <div class="toolbar">
               <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Bank &amp; Cash Accounts</h2>
+                <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Company bank &amp; cash accounts</h2>
                 <p class="section-subtitle">Accounts used for receiving customer payments, disbursements, and cash custody.</p>
               </div>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:100%;">
-                <div class="filter-tabs" role="tablist" aria-label="Bank account status filter">
+                <div class="filter-tabs" role="tablist" aria-label="Company bank account status filter">
                   <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
                   <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
                   <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
@@ -263,7 +263,7 @@
                   <div class="form-field">
                     <label for="wsSettingAccountType">Account Type</label>
                     <select id="wsSettingAccountType" class="form-control">
-                      <option value="bank">Bank Account</option>
+                      <option value="bank">Company bank account</option>
                       <option value="cash">Cash Account / Safe</option>
                     </select>
                   </div>
@@ -652,7 +652,7 @@
                     <input id="financeStatementSearch" placeholder="Search statements / accounts..." oninput="filterFinanceStatements()">
                   </div>
                   <select id="financeStatementAccountFilter" class="form-control" style="width:auto;min-width:180px;height:38px;padding:4px 10px;font-size:13px;" onchange="loadFinanceStatements()">
-                    <option value="">All Bank Accounts</option>
+                    <option value="">All company bank accounts</option>
                   </select>
                   <select id="financeStatementMonthFilterSelect" class="form-control" style="width:auto;height:38px;padding:4px 10px;font-size:13px;" onchange="onStatementFilterSelectChange()">
                     <option value="">All Months</option>
@@ -689,7 +689,7 @@
                     <thead>
                       <tr>
                         <th style="width:100px;">Period</th>
-                        <th>Bank Account</th>
+                        <th>Company bank account</th>
                         <th style="width:80px;text-align:center;">Format</th>
                         <th style="width:110px;text-align:center;">Total Lines</th>
                         <th style="width:120px;text-align:center;">Resolved</th>

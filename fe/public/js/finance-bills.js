@@ -1128,7 +1128,7 @@ async function saveBillModal() {
     const paymentRef = document.getElementById("billPaidNowReference").value.trim() || null;
 
     if (!bankAccountId) {
-      showToast("Please select a bank account for the payment.", "warning");
+      showToast("Please select a company bank account for the payment.", "warning");
       document.getElementById("billPaidNowBankAccountId").focus();
       return;
     }
@@ -1289,7 +1289,7 @@ async function saveBillPayment() {
   const bill = (FinanceState.bills || []).find((b) => String(b.id) === String(billId));
 
   const isValid = FinanceForm.validateRequiredFields("billPaymentModal", [
-    { id: "billPaymentBankAccountId", label: "Bank Account" },
+    { id: "billPaymentBankAccountId", label: "Company bank account" },
     { id: "billPaymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
     { id: "billPaymentDate", label: "Payment Date" },
   ]);

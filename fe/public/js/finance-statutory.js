@@ -362,7 +362,7 @@ async function submitStatutorySettlement() {
     return;
   }
   if (!bank_account_id) {
-    if (typeof showToast === "function") showToast("Please select a bank account", "error");
+    if (typeof showToast === "function") showToast("Please select a company bank account", "error");
     return;
   }
 

@@ -651,7 +651,7 @@ async function saveInvoicePayment() {
   const bankAccountId = document.getElementById("paymentBankAccountId").value;
 
   const isValid = FinanceForm.validateRequiredFields("invoicePaymentModal", [
-    { id: "paymentBankAccountId", label: "Bank Account" },
+    { id: "paymentBankAccountId", label: "Company bank account" },
     { id: "paymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
     { id: "paymentDate", label: "Payment Date" },
   ]);

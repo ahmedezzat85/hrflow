@@ -17,7 +17,7 @@ function renderEmployeesTable(filter = '') {
     <td data-label="Actions" class="col-actions">
       <button class="icon-action" onclick="viewProfile('${e.id}')" title="View Profile"><i class="fa-solid fa-eye"></i></button>
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
-      <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
+      <button class="icon-action" title="Generate salary payment doc" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
       ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
     </td></tr>`).join('') || renderEmptyTableRow(7, 'No employees found.', 'fa-solid fa-user-slash');
 }
@@ -62,7 +62,7 @@ async function saveEmployee(evt) {
   const address_line_1 = document.getElementById('fEmpAddressLine1').value.trim();
   const address_line_2 = document.getElementById('fEmpAddressLine2').value.trim();
   if (invoice_id && !/^\d{1,2}$/.test(invoice_id)) {
-    toast('Invoice ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
+    toast('Payment doc ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
     return;
   }
   setButtonLoading(btn, true, 'Saving…');
@@ -171,7 +171,7 @@ async function viewProfile(id) {
           <div class="esc-zone-label">Employee Details</div>
           ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
           ${escRow('fa-umbrella-beach', 'Vacation', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21} days</span>`)}
-          ${escRow('fa-hashtag', 'Invoice ID', e.invoice_id || '—')}
+          ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id || '—')}
           ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}
         </div>
       </div>`;
@@ -637,7 +637,7 @@ async function openBankAccountModal() {
     revealBtn.style.display = canRevealBank ? '' : 'none';
     revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
   }
-  titleEl.textContent = _bankAccountHasDetails ? 'Edit Bank Account' : 'Add Bank Account';
+  titleEl.textContent = _bankAccountHasDetails ? 'Edit employee bank account' : 'Add employee bank account';
   if (_bankAccountHasDetails) {
     try {
       const data = await Api.getBankAccount(currentDetailEmployeeId);
@@ -688,7 +688,7 @@ async function saveBankAccount(evt) {
   setButtonLoading(btn, true, 'Saving…');
   try {
     await Api.upsertBankAccount(currentDetailEmployeeId, { bank_name, iban, swift_code });
-    toast('Bank account saved.');
+    toast('Employee bank account saved.');
     closeModal('bankAccountModal');
     await loadBankAccountStatus(currentDetailEmployeeId);
   } catch (err) {
