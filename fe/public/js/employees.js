@@ -6,7 +6,7 @@ function renderEmployeesTable(filter = '') {
     addBtn.style.display = canWrite ? '' : 'none';
   }
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e => e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
+  body.innerHTML = employees.filter(e => (e.name || '').toLowerCase().includes(f) || (e.role || '').toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f) || (e.email || '').toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
     <td data-label="ID" class="col-id">${e.id}</td>
     <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${escapeHtml(e.name)}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${escapeHtml(e.email)}</div></div></td>
     <td data-label="Role">${escapeHtml(e.role)}</td>
@@ -118,12 +118,16 @@ function escRow(icon, label, valueHtml, opts = {}) {
   </div>`;
 }
 
-async function viewProfile(id) {
+async function viewProfile(id, section) {
   const numId = Number(id);
   currentDetailEmployeeId = !isNaN(numId) ? numId : id;
-  showSection('a-employee-detail', 'admin', [id]);
+  showSection('a-employee-detail', 'admin', section ? [id, section] : [id]);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
+  loadPayrollPaymentsCard(id);
+  if (section === 'bank') {
+    setTimeout(() => { const card = document.getElementById('bankAccountCard'); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
+  }
 
   const internalUsd = Number(e.internalSalaryUsd || 0);
   const externalUsd = Number(e.externalSalaryUsd || 0);
@@ -603,6 +607,49 @@ async function deleteEmployeeDocument(docId) {
 }
 let _bankAccountHasDetails = false;
 let _bankIbanRevealed = false;
+// "Payroll and payments" card on the employee profile: compensation plan, salary payment docs,
+// and the latest payroll lines (only for viewers with payroll read access).
+async function openEmployeeBankSection(id) {
+  await viewProfile(id, 'bank');
+}
+
+async function loadPayrollPaymentsCard(empId) {
+  const body = document.getElementById('payrollPaymentsBody');
+  if (!body) return;
+  const isCurrent = () => String(currentDetailEmployeeId) === String(empId);
+  const sections = [];
+  try {
+    const emp = employees.find(e => String(e.id) === String(empId));
+    const monthly = (emp ? (Number(emp.internalSalaryUsd || 0) + Number(emp.externalSalaryUsd || 0)) : 0);
+    sections.push(`<div class="iban-row"><span class="k">Compensation plan</span><span class="v">${fmtUSD(monthly)} / month</span></div>
+      <button type="button" class="btn btn-sm btn-outline" data-action="open-comp-plan" data-employee-id="${escapeHtml(empId)}"><i class="fa-solid fa-sliders"></i> View compensation plan</button>`);
+  } catch (e) { /* plan summary is best-effort */ }
+
+  try {
+    const docs = (await Api.listInvoices()) || [];
+    const mine = docs.filter(d => String(d.employee_id) === String(empId)).slice(0, 3);
+    sections.push(`<div class="iban-row"><span class="k">Salary payment docs</span><span class="v">${mine.length ? '' : 'None yet'}</span></div>` + mine.map(d =>
+      `<div class="iban-row"><span class="k">Doc ${escapeHtml(d.invoice_number || d.id)}</span><span class="v">${escapeHtml(d.payment_year)}-${escapeHtml(String(d.payment_month).padStart(2, '0'))}
+        <button type="button" class="icon-action" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(d.id)}" data-number="${escapeHtml(d.invoice_number || '')}"><i class="fa-solid fa-eye"></i></button></span></div>`).join(''));
+  } catch (e) { sections.push('<div class="iban-row"><span class="k">Salary payment docs</span><span class="v">Unavailable</span></div>'); }
+
+  const canPayroll = typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('finance.payroll.read');
+  if (canPayroll && typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollRuns === 'function') {
+    try {
+      const runs = (await FinanceApi.getPayrollRuns()) || [];
+      const latest = [...runs].sort((a, b) => String(b.period_label).localeCompare(String(a.period_label)))[0];
+      if (latest) {
+        const full = latest.lines ? latest : await FinanceApi.getPayrollRun(latest.id);
+        const lines = ((full && full.lines) || []).filter(l => String(l.employee_id) === String(empId));
+        const net = lines.reduce((s, l) => s + Number(l.net_pay || l.amount || 0), 0);
+        sections.push(`<div class="iban-row"><span class="k">Latest payroll (${escapeHtml(latest.period_label)})</span><span class="v">${lines.length ? fmtUSD(net) : 'No lines'}</span></div>`);
+      }
+    } catch (e) { /* payroll lines are optional */ }
+  }
+  if (!isCurrent()) return;
+  body.innerHTML = sections.join('');
+}
+
 async function loadBankAccountStatus(empId) {
   const pill = document.getElementById('bankAccountPill');
   const btn = document.getElementById('bankAccountActionBtn');

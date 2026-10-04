@@ -91,6 +91,35 @@ function populateClaimCategoryOptions(){
   sel.innerHTML = insuranceCategories.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
   if(current) sel.value = current;
 }
+// Admin claim receipts: shown in the existing document preview modal. The receipt is stored as a
+// data URL in the claim record, so it is displayed as-is (no storage change here).
+function viewClaimReceipt(claimId){
+  showReceiptPreview(insuranceClaims.find(c => String(c.id) === String(claimId)));
+}
+function showReceiptPreview(claim){
+  if (!claim || !claim.document_url) { toast('This claim has no receipt.', 'fa-solid fa-circle-info'); return; }
+  const url = String(claim.document_url);
+  const container = document.getElementById('docPreviewContainer');
+  const downloadBtn = document.getElementById('docPreviewDownloadBtn');
+  document.getElementById('docPreviewTitle').textContent = `Receipt — ${claim.employee_name || 'claim'} (${claim.category || ''})`;
+  const isImage = /^data:image\//i.test(url);
+  container.textContent = '';
+  const node = document.createElement(isImage ? 'img' : 'iframe');
+  node.src = url;
+  node.setAttribute('title', 'Claim receipt');
+  node.className = isImage ? 'doc-preview-image' : 'doc-preview-frame';
+  container.appendChild(node);
+  if (downloadBtn) {
+    downloadBtn.onclick = (e) => {
+      e.preventDefault();
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `claim-${claim.id}-receipt`;
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+  }
+  document.getElementById('documentPreviewModal').classList.add('active');
+}
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
   if(!body) return;
@@ -101,7 +130,7 @@ function renderInsuranceTable(){
     <td data-label="Amount">${fmtMoney(c.amount)}</td>
     <td data-label="Date">${c.date}</td>
     <td data-label="Status">${statusPill(c.status)}</td>
-    <td data-label="Actions" class="col-actions">${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td>
+    <td data-label="Actions" class="col-actions">${c.document_url ? `<button class="icon-action" title="View receipt" data-action="view-claim-receipt" data-id="${escapeHtml(c.id)}"><i class="fa-solid fa-paperclip"></i></button>` : ''}${c.status==='Pending' ? `<button class="btn btn-sm btn-success-outline" onclick="actionClaim(${c.id},'Approved')"><i class="fa-solid fa-check"></i> Approve</button><button class="btn btn-sm btn-danger-outline" onclick="actionClaim(${c.id},'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : `<span style="color:var(--text3);font-size:12px;">—</span>`}</td>
   </tr>`).join('') || renderEmptyTableRow(7, 'No insurance claims recorded yet.', 'fa-solid fa-briefcase-medical');
   document.getElementById('statClaimsYtd').textContent = insuranceClaims.length;
   document.getElementById('statClaimsApproved').textContent = insuranceClaims.filter(c=>c.status==='Approved').length;
@@ -165,4 +194,9 @@ async function submitClaim(evt){
     await loadEmployeeData();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   finally { setButtonLoading(btn, false); }
+}
+
+// Employee portal: open the receipt attached to one of the signed-in user's own claims.
+function viewOwnClaimReceipt(index){
+  showReceiptPreview(empInsuranceHistory[index]);
 }

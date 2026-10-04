@@ -861,7 +861,7 @@
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
-                <strong>${escapeHtml(r.name)}</strong>
+                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
               </div>
             </td>
             <td class="num payroll-num" data-label="Base Ext">${this.money(r.baseExt)}</td>
@@ -1414,7 +1414,7 @@
 
         let bankBadgeHtml = '';
         if (isMissingBank) {
-          bankBadgeHtml = `<span class="pill-danger badge-pill p-badge b-amber" style="font-size:0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing bank details</span>`;
+          bankBadgeHtml = `<a class="pill-danger badge-pill p-badge b-amber payroll-missing-bank-link" style="font-size:0.75rem;" href="${Router.hrefFor('a-employee-detail', 'admin')}/${encodeURIComponent(r.id)}/bank" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" title="Open this employee's bank section"><i class="fa-solid fa-triangle-exclamation"></i> Missing bank details</a>`;
         } else if (hasExternal) {
           const bankDisplay = (r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'Bank details on file');
           bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
@@ -1430,7 +1430,7 @@
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
-                <strong>${escapeHtml(r.name)}</strong>
+                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
               </div>
             </td>
             <td data-label="Bank / Routing">${bankBadgeHtml}</td>

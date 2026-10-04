@@ -968,6 +968,113 @@ const FinanceTable = {
     });
   },
 
+  // DOM-level sort + paging for tables whose rows are rendered elsewhere (HR tables).
+  // attach() watches the tbody; whenever rows are re-rendered it re-applies the saved sort and page,
+  // so each page's own render function stays as it is. Sort uses th[data-sort] (auto-added by index).
+  _attached: {},
+
+  _cellKey(text) {
+    const t = String(text || "").trim();
+    const num = Number(t.replace(/[^0-9.\-]/g, ""));
+    if (t !== "" && /^[\s$€A-Z]*-?[\d,]+(\.\d+)?\s*(%|days?|\/ ?mo)?$/i.test(t) && isFinite(num)) return { n: num };
+    const d = Date.parse(t);
+    if (!isNaN(d) && /\d{4}/.test(t)) return { n: d };
+    return { s: t.toLowerCase() };
+  },
+
+  attach(options) {
+    const { bodyId, pageSize = 10 } = options;
+    const body = document.getElementById(bodyId);
+    if (!body || this._attached[bodyId]) return this._attached[bodyId] || null;
+    const table = body.closest("table");
+    if (!table) return null;
+    const self = this;
+    const stateKey = "hr_" + bodyId;
+    const saved = this.getState(stateKey);
+    const state = { page: 1, pageSize: saved.pageSize || pageSize, sortBy: null, sortDir: "asc" };
+
+    const heads = [...table.querySelectorAll("thead th")];
+    heads.forEach((th, i) => {
+      const hidden = th.style.display === "none";
+      if (!th.dataset.sort && !hidden && !th.classList.contains("col-actions") && th.textContent.trim() && !th.querySelector("input")) {
+        th.dataset.sort = String(i);
+      }
+    });
+
+    let pager = document.getElementById(bodyId + "Pagination");
+    if (!pager) {
+      pager = document.createElement("div");
+      pager.id = bodyId + "Pagination";
+      table.insertAdjacentElement("afterend", pager);
+    }
+
+    let applying = false;
+    const api = {
+      refresh() {
+        applying = true;
+        const all = [...body.children].filter((tr) => tr.tagName === "TR");
+        const rows = all.filter((tr) => !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
+        if (state.sortBy !== null && rows.length > 1) {
+          const col = Number(state.sortBy);
+          const dir = state.sortDir === "desc" ? -1 : 1;
+          const keyed = rows.map((tr, idx) => {
+            const cell = tr.children[col];
+            return { tr, idx, k: self._cellKey(cell ? (cell.dataset.sortValue || cell.textContent) : "") };
+          });
+          keyed.sort((a, b) => {
+            let r;
+            if (a.k.n !== undefined && b.k.n !== undefined) r = a.k.n - b.k.n;
+            else r = String(a.k.s !== undefined ? a.k.s : a.k.n).localeCompare(String(b.k.s !== undefined ? b.k.s : b.k.n));
+            return r === 0 ? a.idx - b.idx : r * dir;
+          });
+          keyed.forEach((o) => body.appendChild(o.tr));
+        }
+        const meta = self.paginate(rows, state.page, state.pageSize);
+        state.page = meta.page;
+        const visible = new Set(meta.items);
+        rows.forEach((tr) => { tr.hidden = !visible.has(tr); });
+        self.bindSortHeaders(table, (col, dir) => { state.sortBy = col; state.sortDir = dir; state.page = 1; api.refresh(); }, state);
+        if (rows.length <= state.pageSize && state.page === 1) {
+          pager.innerHTML = "";
+          pager.style.display = "none";
+        } else {
+          self.renderPagination(pager, meta, (pg) => { state.page = pg; api.refresh(); },
+            (size) => { state.pageSize = size; state.page = 1; self.saveState(stateKey, { pageSize: size }); api.refresh(); });
+        }
+        observer.takeRecords();
+        applying = false;
+      },
+      state,
+    };
+    const observer = new MutationObserver(() => { if (!applying) api.refresh(); });
+    observer.observe(body, { childList: true });
+    this._attached[bodyId] = api;
+    api.refresh();
+    return api;
+  },
+
+  // Shows the active search text as a removable chip under the toolbar.
+  bindSearchChip(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || input.dataset.chipBound) return;
+    input.dataset.chipBound = "1";
+    const host = input.closest(".toolbar") || input.closest(".card-head") || input.parentElement;
+    const chips = document.createElement("div");
+    chips.id = inputId + "Chips";
+    host.insertAdjacentElement("afterend", chips);
+    const render = () => {
+      this.renderFilterChips(chips, { search: input.value.trim() }, () => {
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }, () => {
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    input.addEventListener("input", render);
+    render();
+  },
+
   // Filter chips
   renderFilterChips(containerId, filters = {}, onRemove, onClearAll) {
     const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
@@ -990,7 +1097,7 @@ const FinanceTable = {
         const formattedKey = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
         return `
         <span class="filter-chip" role="status">
-          <span>${formattedKey}: <strong>${val}</strong></span>
+          <span>${formattedKey}: <strong>${escapeHtml(val)}</strong></span>
           <button type="button" class="filter-chip-remove" data-filter-key="${key}" aria-label="Remove ${formattedKey} filter">&times;</button>
         </span>
       `;
@@ -1400,3 +1507,16 @@ function sumColumn(items, key) {
 
 window.formatCurrency = formatCurrency;
 window.sumColumn = sumColumn;
+
+
+// HR tables: sortable headers and paging (U7)
+(function attachHrTables() {
+  const ids = ['employeesTableBody', 'salaryTableBody', 'companyRaiseHistoryBody', 'vacationBalanceBody',
+    'insuranceTableBody', 'requestsTableBody', 'dochubTableBody'];
+  const run = () => {
+    ids.forEach((id) => FinanceTable.attach({ bodyId: id }));
+    ['empSearch', 'salarySearch', 'vacBalanceSearch', 'dochubSearch'].forEach((id) => FinanceTable.bindSearchChip(id));
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();

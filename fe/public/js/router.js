@@ -117,7 +117,7 @@ const Router = (() => {
   async function openEntity(pageId, params) {
     if (!params.length) return;
     if (pageId === 'a-employee-detail' && typeof viewProfile === 'function') {
-      await viewProfile(params[0]);
+      await viewProfile(params[0], params[1]);
     } else if ((pageId === 'a-finance-accounts' || pageId === 'a-finance-banking') && typeof openAccountWorkspace === 'function' && /^\d+$/.test(params[0])) {
       await openAccountWorkspace(parseInt(params[0], 10));
     } else if (pageId === 'a-finance-reports' && typeof openReportFromLibrary === 'function') {

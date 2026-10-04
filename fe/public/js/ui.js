@@ -45,6 +45,7 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const d = el.dataset;
+  if (el.tagName === 'A') e.preventDefault();
   const num = (v) => (v !== '' && !isNaN(v) ? Number(v) : v);
   switch (d.action) {
     case 'preview-employee-doc': return previewEmployeeDocument(num(d.id), d.name, d.type);
@@ -52,6 +53,11 @@ document.addEventListener('click', (e) => {
     case 'preview-salary-doc': return previewInvoicePdf(num(d.id), d.number);
     case 'regenerate-salary-doc':
       return openRegenerateInvoiceModal(num(d.employeeId), d.name, num(d.year), num(d.month), d.number);
+    case 'open-employee-profile': return viewProfile(num(d.employeeId));
+    case 'open-comp-plan': return openCompPlanModal(num(d.employeeId));
+    case 'open-employee-bank': return openEmployeeBankSection(num(d.employeeId));
+    case 'view-own-claim-receipt': return viewOwnClaimReceipt(Number(d.index));
+    case 'view-claim-receipt': return viewClaimReceipt(num(d.id));
     default: return undefined;
   }
 });
