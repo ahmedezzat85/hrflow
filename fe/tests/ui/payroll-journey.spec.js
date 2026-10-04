@@ -134,4 +134,39 @@ test.describe('U8 payroll journey', () => {
     await page.evaluate(() => PayrollApp.setStep(3));
     expect(await noScroll()).toBe(true);
   });
+
+  test('"New payroll run" starts a fresh run for the current month on step 1 (month can be changed)', async ({ page }) => {
+    await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.PayrollApp && typeof showSection === 'function' && window.AdminNav);
+    await openAdminPage(page, 'a-finance-payroll-runs');
+    await expect(page.locator('#btnStartNewRun')).toBeVisible();
+    await page.evaluate(() => { PayrollApp.serverRuns = []; });
+    await page.click('#btnStartNewRun');
+    await expect(page.locator('#payrollScreen1')).toBeVisible();
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    await expect(page.locator('#p1Month')).toHaveValue(ym);
+    expect(await page.evaluate(() => PayrollApp.currentRun)).toBeNull();
+    // changing the month moves start, end and pay date with it
+    await page.fill('#p1Month', '2026-11');
+    await page.dispatchEvent('#p1Month', 'change');
+    await expect(page.locator('#p1Start')).toHaveValue('2026-11-01');
+    await expect(page.locator('#p1End')).toHaveValue('2026-11-30');
+    await expect(page.locator('#p1PayDate')).toHaveValue('2026-11-30');
+  });
+
+  test('"New payroll run" opens the existing run when the current month already has one', async ({ page }) => {
+    await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.PayrollApp && typeof showSection === 'function' && window.AdminNav);
+    await openAdminPage(page, 'a-finance-payroll-runs');
+    await page.evaluate(() => {
+      const d = new Date();
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      window.__opened = null;
+      PayrollApp.serverRuns = [{ id: 77, period_label: ym, status: 'finalized' }];
+      PayrollApp.openHistoryRun = async (id) => { window.__opened = id; };
+    });
+    await page.click('#btnStartNewRun');
+    await expect.poll(() => page.evaluate(() => window.__opened)).toBe(77);
+  });
 });

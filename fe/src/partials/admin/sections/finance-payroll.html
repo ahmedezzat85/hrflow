@@ -10,6 +10,9 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   <span style="color:var(--text2); font-size:12px;" id="payrollRunsCount">Loading cycles...</span>
+                  <button class="btn btn-outline" id="btnStartNewRun" onclick="PayrollApp.startNewRun()">
+                    <i class="fa-solid fa-plus"></i> New payroll run
+                  </button>
                   <button class="btn btn-fill" id="btnOpenCurrentCycle" onclick="PayrollApp.openRun('current')">
                     <i class="fa-solid fa-play"></i> Open current cycle
                   </button>

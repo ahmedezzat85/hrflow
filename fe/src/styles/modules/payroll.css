@@ -1984,3 +1984,7 @@
     overflow-x: visible;
   }
 }
+
+#a-finance-payroll #btnStartNewRun[hidden] {
+  display: none;
+}
