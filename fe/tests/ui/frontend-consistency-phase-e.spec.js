@@ -13,9 +13,10 @@ test.describe('Frontend Consistency — Phase E Verification (Debt Reduction & L
       const testEl = document.createElement('div');
       testEl.className = 'payroll-hidden';
       testEl.textContent = 'Hidden Element';
-      document.body.appendChild(testEl);
+      const root = document.getElementById('a-finance-payroll');
+      root.appendChild(testEl);
       const display = window.getComputedStyle(testEl).display;
-      document.body.removeChild(testEl);
+      root.removeChild(testEl);
       return display;
     });
 

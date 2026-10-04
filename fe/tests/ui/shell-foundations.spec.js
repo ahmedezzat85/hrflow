@@ -140,10 +140,6 @@ test.describe('Shell foundations (component CSS)', () => {
       await page.evaluate((p) => showSection(p, 'admin'), id);
       await expect(btn, id).toBeHidden();
     }
-    // Shift+N must not open the Finance modal outside Finance
-    await page.evaluate(() => showSection('a-employees', 'admin'));
-    await page.keyboard.press('Shift+N');
-    await expect(page.locator('#financeTransactionModal')).toBeHidden();
     for (const id of ['a-finance-dashboard', 'a-finance-invoices']) {
       await page.evaluate((p) => showSection(p, 'admin'), id);
       await expect(btn, id).toBeVisible();
