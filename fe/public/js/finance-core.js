@@ -1542,7 +1542,7 @@ window.sumColumn = sumColumn;
     ['empSearch', 'salarySearch', 'vacBalanceSearch', 'dochubSearch'].forEach((id) => FinanceTable.bindSearchChip(id));
     FinanceTable.autoCards(['salaryTableBody', 'companyRaiseHistoryBody', 'salaryHistoryBody', 'categoriesTableBody',
       'dochubTableBody', 'empDochubTableBody', 'invoiceHistoryContainer', 'tableCashAccounts', 'tableForecastObligations',
-      'employeesTableBody', 'vacationBalanceBody', 'insuranceTableBody', 'requestsTableBody']);
+      'employeesTableBody', 'vacationBalanceBody', 'insuranceTableBody', 'requestsTableBody', 'invoiceResultsBody']);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();

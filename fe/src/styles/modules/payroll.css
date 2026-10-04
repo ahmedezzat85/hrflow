@@ -1161,7 +1161,7 @@
   border-radius: 5px;
   border: 1px solid var(--border-color, var(--info-soft));
   background: var(--surface, var(--surface));
-  color: var(--primary, var(--accent));
+  color: var(--accent-text);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1182,7 +1182,7 @@
 #a-finance-payroll .bonus-chip {
   font-size: 0.72rem;
   background: var(--primary-soft, var(--info-soft));
-  color: var(--primary, var(--accent));
+  color: var(--accent-text);
   border-radius: 999px;
   padding: 2px 8px;
   font-weight: 700;
@@ -1252,7 +1252,7 @@
 }
 #a-finance-payroll .src-toggle button.active {
   background: var(--primary-soft, var(--info-soft));
-  color: var(--primary, var(--accent));
+  color: var(--accent-text);
 }
 #a-finance-payroll .expand-btn-group {
   display: inline-flex !important;

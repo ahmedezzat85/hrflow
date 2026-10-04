@@ -135,7 +135,7 @@ test.describe('U9 phone layouts, touch targets, contrast and ids', () => {
     const problems = [];
     for (const id of ADMIN_PAGES) {
       await page.evaluate((p) => showSection(p, 'admin'), id);
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(400);
       const r = await page.evaluate(SCAN);
       if (r.controls && r.smallCount / r.controls >= 0.05) problems.push(`${id}: ${r.smallCount}/${r.controls} e.g. ${r.smallSample.join(' ')}`);
     }

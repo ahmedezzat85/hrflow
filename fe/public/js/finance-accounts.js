@@ -2592,7 +2592,7 @@ function renderFinanceTransfers(items) {
           <td data-label="Inflow" class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
           <td data-label="FX Rate" style="text-align:right;">${fxDisplay}</td>
           <td data-label="Reference / Memo">
-            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--primary);">${t.exchange_reference}</strong><br>` : ""}
+            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--accent-text);">${t.exchange_reference}</strong><br>` : ""}
             <span style="font-size:12px; color:var(--text2);">${t.note || "—"}</span>
           </td>
           <td data-label="Legs Status" class="col-actions" style="text-align:center;">${legsStatus}</td>

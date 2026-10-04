@@ -854,7 +854,7 @@ function renderFinanceCustomers(items) {
     `;
     const receivablesSummary = `
       <button type="button" class="btn btn-xs btn-ghost" onclick="openCustomer360Drawer(${c.id})" title="View complete 360 overview & invoices">
-        <i class="fa-solid fa-chart-pie" style="color:var(--primary, #3b82f6);"></i> View 360
+        <i class="fa-solid fa-chart-pie" style="color:var(--accent-text);"></i> View 360
       </button>
     `;
 

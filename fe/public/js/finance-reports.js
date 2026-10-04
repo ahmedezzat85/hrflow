@@ -74,7 +74,7 @@ function renderReportLibraryCatalog() {
       <div class="card report-catalog-card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between; border-top:3px solid var(--primary, #2563EB); transition:transform 0.15s ease, box-shadow 0.15s ease;">
         <div>
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-            <div style="width:40px; height:40px; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--primary, #2563EB); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+            <div style="width:40px; height:40px; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--accent-text); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
               <i class="${r.icon || 'fa-solid fa-chart-pie'}"></i>
             </div>
             <span class="badge badge-info" style="font-size:0.75rem;">${r.category}</span>
@@ -82,7 +82,7 @@ function renderReportLibraryCatalog() {
           <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-main); margin-bottom:6px;">${r.title}</h3>
           <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">${r.description}</p>
           <div style="background:var(--bg-secondary, #F8FAFC); border-left:3px solid var(--primary, #2563EB); padding:8px 12px; border-radius:4px; font-size:0.82rem; color:var(--text-main); margin-bottom:14px; font-style:italic;">
-            <i class="fa-solid fa-circle-question" style="color:var(--primary, #2563EB); margin-right:4px;"></i> Answers: "${r.business_question}"
+            <i class="fa-solid fa-circle-question" style="color:var(--accent-text); margin-right:4px;"></i> Answers: "${r.business_question}"
           </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--border-color, #E2E8F0); margin-top:10px;">
@@ -1050,7 +1050,7 @@ async function loadReportCategorySummary() {
       tr.onclick = () => openReportDrilldown("category", cat.category_id || cat.category_name, cat.category_name);
 
       tr.innerHTML = `
-        <td><strong style="color:var(--primary, #2563EB);">${cat.category_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
+        <td><strong style="color:var(--accent-text);">${cat.category_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
         <td><span class="badge ${cat.kind === 'cost' ? 'badge-danger' : 'badge-neutral'}">${(cat.kind || 'cost').toUpperCase()}</span></td>
         <td style="text-align:center;">${cat.transaction_count || 0}</td>
         <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.renderMoneyHtml(amt, reportCurr)}</td>
@@ -1234,7 +1234,7 @@ async function loadReportBalances() {
 
       tr.innerHTML = `
         <td>
-          <div style="font-weight:600; color:var(--primary, #2563EB);">${acc.account_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
+          <div style="font-weight:600; color:var(--accent-text);">${acc.account_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
         </td>
         <td>
           <span class="badge ${isBank ? 'badge-neutral' : 'badge-info'}">
@@ -2150,7 +2150,7 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
           <td style="text-align:right;">${formatCurrency(data.total_internal)}</td>
           <td style="text-align:right;">${formatCurrency(data.total_commission)}</td>
           <td style="text-align:right;">${formatCurrency(data.total_bonus)}</td>
-          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
           <td></td>
         </tr>
       `;
@@ -2207,7 +2207,7 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
           <td></td>
           <td style="text-align:right;">${formatCurrency(data.grand_total)}</td>
           <td style="text-align:right;"></td>
-          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
           <td colspan="2"></td>
         </tr>
       `;
@@ -2384,7 +2384,7 @@ async function loadPayableStatusReport() {
             <td>Total Net Outflow Status</td>
             <td style="text-align:right; color:#10B981; font-weight:700;">${formatCurrency(data.total_settled)}</td>
             <td style="text-align:right; color:#EF4444; font-weight:700;">${formatCurrency(data.total_pending)}</td>
-            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+            <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
             <td style="text-align:center;">${data.total_pending === 0 ? '<span class="badge badge-success">FULLY SETTLED</span>' : '<span class="badge badge-warning">ACTION REQUIRED</span>'}</td>
           </tr>
         `;
@@ -2432,7 +2432,7 @@ async function loadPayableStatusReport() {
         breakdownFoot.innerHTML = `
           <tr>
             <td colspan="8">Grand Total (Settled: ${formatCurrency(data.total_settled)} | Pending: ${formatCurrency(data.total_pending)})</td>
-            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+            <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
           </tr>
         `;
       }

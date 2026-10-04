@@ -543,7 +543,8 @@
   .btn-icon-xs,
   .nav-item,
   .rail-btn,
-  .toast-close {
+  .toast-close,
+  .kpi-drilldown-link {
     min-height: 44px;
     min-width: 44px;
   }
@@ -556,5 +557,10 @@
 
   .search-box input {
     min-height: 44px;
+  }
+
+  .kpi-drilldown-link {
+    display: inline-flex;
+    align-items: center;
   }
 }

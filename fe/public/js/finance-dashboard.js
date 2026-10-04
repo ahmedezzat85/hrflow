@@ -841,7 +841,7 @@ function renderObligationsTable(obligations) {
           </td>
           <td style="padding: 10px 14px; text-align: center;">${flowBadge}</td>
           <td style="padding: 10px 14px;">
-            <a href="javascript:void(0)" onclick="openAttentionItem('${_escapeHtml(ob.target_route || 'a-finance-invoices')}', ${ob.entity_id || 0})" style="font-weight: 600; text-decoration: none; color: var(--primary, #3b82f6);">
+            <a href="javascript:void(0)" onclick="openAttentionItem('${_escapeHtml(ob.target_route || 'a-finance-invoices')}', ${ob.entity_id || 0})" style="font-weight: 600; text-decoration: none; color: var(--accent-text);">
               ${_escapeHtml(ob.reference || "Obligation")}
             </a>
           </td>
