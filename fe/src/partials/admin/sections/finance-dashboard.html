@@ -55,7 +55,7 @@
                   <label for="financeContextCurrency" style="font-size: 12px; font-weight: 600; color: var(--text2, #475569); text-transform: uppercase; letter-spacing: 0.03em;">Currency</label>
                   <select id="financeContextCurrency" class="form-input form-input-sm" style="width: auto; min-width: 105px; font-size: 13px;" onchange="onFinanceContextChanged()">
                     <option value="USD" selected>USD ($)</option>
-                    <option value="EGP">EGP (E£)</option>
+                    <option value="EGP">EGP</option>
                     <option value="all">All (Multi)</option>
                   </select>
                 </div>
@@ -452,21 +452,6 @@
                   <li>Book, available, and reconciled balances are tracked independently and never conflated.</li>
                 </ul>
               </div>
-            </div>
-          </div>
-
-          <div class="card" style="margin-top: 1.5rem;">
-            <div class="card-head">
-              <div>
-                <h3><i class="fa-solid fa-clock-rotate-left"></i> Financial Activity Summary</h3>
-              </div>
-              <div>
-                <span class="badge badge-grey"><i class="fa-solid fa-lock"></i> Visualizations in development</span>
-              </div>
-            </div>
-            <div class="empty-state" id="financeDashboardSummaryEmpty" style="padding: 2.5rem 1rem;">
-              <i class="fa-solid fa-chart-pie"></i>
-              <p>Financial ledger connected. Live chart visualizers are currently unavailable and will be enabled in an upcoming release.</p>
             </div>
           </div>
         </section>

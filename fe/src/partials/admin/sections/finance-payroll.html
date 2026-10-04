@@ -179,7 +179,7 @@
                         <th class="num payroll-num-th">Base Ext</th>
                         <th class="num payroll-num-th">Base Int</th>
                         <th class="num payroll-num-th">Bonus / Commission</th>
-                        <th class="num payroll-num-th">Total Comp</th>
+                        <th class="num payroll-num-th">Total comp (gross)</th>
                         <th class="col-actions" style="width:50px; text-align:center;"></th>
                       </tr>
                     </thead>
@@ -278,9 +278,9 @@
                     <div class="hint sub" id="p4RecipientsSub">All recipients ready</div>
                   </div>
                   <div class="stat payroll-card payroll-stat" id="p4MissingBankCard">
-                    <div class="lbl label">Missing Bank Details</div>
+                    <div class="lbl label">Missing bank details</div>
                     <div class="val value" id="p4MissingBankCount" style="color:var(--warning, #e07d10);">0</div>
-                    <div class="hint sub" id="p4MissingBankSub">Non-blocking warning (D-006)</div>
+                    <div class="hint sub" id="p4MissingBankSub">Payment can still be recorded</div>
                   </div>
                 </div>
 
@@ -396,7 +396,7 @@
 
                 <div style="padding:0 20px 14px">
                   <button type="button" class="btn btn-fill btn-primary" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
-                    <i class="fa-solid fa-paper-plane"></i> Confirm &amp; Disburse Payroll
+                    <i class="fa-solid fa-paper-plane"></i> Confirm and record as paid
                   </button>
                 </div>
 
@@ -645,7 +645,7 @@
                         <!-- Populated dynamically with active bank accounts -->
                       </select>
                       <div class="field-hint">
-                        <i class="fa-solid fa-circle-info"></i> Clears domestic EGP net pay directly to local employee accounts
+                        <i class="fa-solid fa-circle-info"></i> Funding account for domestic EGP net pay
                       </div>
                     </div>
                     <div class="settings-card-callout callout-blue">
@@ -694,7 +694,7 @@
                         <span class="input-affix suffix">EGP</span>
                       </div>
                       <div class="field-hint">
-                        <i class="fa-solid fa-circle-info"></i> Overrides automatic market rate lookup for this payroll calculation
+                        <i class="fa-solid fa-circle-info"></i> Manual exchange rate used for this payroll calculation
                       </div>
                     </div>
                   </div>

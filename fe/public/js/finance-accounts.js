@@ -692,7 +692,7 @@ function renderWorkspaceLedger(items) {
   if (empty) empty.style.display = "none";
 
   const acc = _activeWorkspaceAccount;
-  const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+  const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
 
   tbody.innerHTML = items
     .map((tx) => {
@@ -703,7 +703,7 @@ function renderWorkspaceLedger(items) {
       let fxDisplay = "—";
       if (tx.fx_rate) {
         const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
-        const eqSym = eqCurr === "EGP" ? "E£" : "$";
+        const eqSym = eqCurr === "EGP" ? "EGP " : "$";
         const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
         fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
       }
@@ -1252,7 +1252,7 @@ async function viewAccountLedger(accountId) {
   metaEl.textContent = `${typeLabel} · ${institution} · ${acc.currency} · ${maskedNum}`;
     }
     if (balEl) {
-      const symbol = acc.currency === "EGP" ? "E£" : "$";
+      const symbol = acc.currency === "EGP" ? "EGP " : "$";
       balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
     }
   }
@@ -1365,7 +1365,7 @@ async function loadAccountTransactions() {
       const breakdownEl = document.getElementById("financeLedgerPettyBreakdown");
 
       const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
-      const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+      const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
 
       if (totalOutEl) totalOutEl.textContent = `${symbol}${Number(summary.total_out || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
       if (countEl) countEl.textContent = summary.transactions ? summary.transactions.length : 0;
@@ -1382,7 +1382,7 @@ async function loadAccountTransactions() {
     if (acc) {
       const balEl = document.getElementById("financeLedgerCurrentBalance");
       if (balEl) {
-        const symbol = acc.currency === "EGP" ? "E£" : "$";
+        const symbol = acc.currency === "EGP" ? "EGP " : "$";
         balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
       }
     }
@@ -1434,7 +1434,7 @@ function renderAccountTransactions(items) {
   if (empty) empty.style.display = "none";
 
   const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
-  const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+  const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
 
   tbody.innerHTML = items
     .map((tx) => {
@@ -1445,7 +1445,7 @@ function renderAccountTransactions(items) {
       let fxDisplay = "—";
       if (tx.fx_rate) {
         const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
-        const eqSym = eqCurr === "EGP" ? "E£" : "$";
+        const eqSym = eqCurr === "EGP" ? "EGP " : "$";
         const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
         fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
       }
@@ -2563,8 +2563,8 @@ function renderFinanceTransfers(items) {
         typeBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:600;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Internal Move</span>`;
       }
 
-      const fromSymbol = t.from_currency === "EGP" ? "E£" : "$";
-      const toSymbol = t.to_currency === "EGP" ? "E£" : "$";
+      const fromSymbol = t.from_currency === "EGP" ? "EGP " : "$";
+      const toSymbol = t.to_currency === "EGP" ? "EGP " : "$";
 
       let legsStatus = "";
       if (t.outflow_transaction_id && t.inflow_transaction_id) {
@@ -2612,7 +2612,7 @@ async function openRecordFinanceTransferModal(presetFromAccountId = null) {
 
   const accountOptions = '<option value="">-- Select Account --</option>' +
     activeAccounts
-      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${a.account_name} (${a.currency} • ${a.currency === "EGP" ? "E£" : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
+      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${a.account_name} (${a.currency} • ${a.currency === "EGP" ? "EGP " : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
       .join("");
 
   if (fromSel) fromSel.innerHTML = accountOptions;

@@ -2067,7 +2067,6 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
       breakdown_employees: true,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totSpendEl = document.getElementById("reportCompTotalSpend");
     const extEl = document.getElementById("reportCompExternal");
     const intEl = document.getElementById("reportCompInternal");
@@ -2147,7 +2146,6 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const titleEl = document.getElementById("reportEmployeeSpendTitle");
     if (titleEl) {
       titleEl.innerHTML = `<i class="fa-solid fa-user"></i> ${data.employee_name} <span class="badge badge-info" style="font-size:0.75rem; font-weight:normal; margin-left:8px;">${data.department || 'General'}</span> — Total Spend: <strong>${formatCurrency(data.grand_total)}</strong>`;
@@ -2242,7 +2240,6 @@ async function loadStatutoryRemittedReport() {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totEl = document.getElementById("reportStatTotalRemitted");
     const taxEl = document.getElementById("reportStatTaxRemitted");
     const insEl = document.getElementById("reportStatInsRemitted");
@@ -2317,7 +2314,6 @@ async function loadPayableStatusReport() {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const flows = data.flows || [];
     const flowMap = {};
     flows.forEach(f => { flowMap[f.flow_type] = f; });

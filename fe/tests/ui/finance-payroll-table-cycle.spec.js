@@ -217,7 +217,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // Confirm & Disburse
     await page.click('#btnP5ConfirmDisburse');
-    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll disbursement confirmed');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll recorded as paid');
 
     // Results card & GL journal visible
     await expect(page.locator('#p5DisburseResultsCard')).toBeVisible();
@@ -529,7 +529,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollScreen4')).toBeVisible();
     await expect(page.locator('#p4MissingBankCount')).toHaveText('1');
     const tableBody = page.locator('#payrollPaymentPreviewTableBody');
-    await expect(tableBody).toContainText('Missing Bank Details (D-006)');
+    await expect(tableBody).toContainText('Missing bank details');
 
     // 2. Screen 5: Informational Rail Cards, reconciliation to grand total, and real exceptions
     await page.evaluate(() => {
@@ -543,13 +543,13 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const totalsMatch = await page.evaluate(() => {
       const ext = parseFloat((document.getElementById('p5ExtTotal')?.textContent || '0').replace(/[^0-9.]/g, ''));
       const int = parseFloat((document.getElementById('p5IntTotal')?.textContent || '0').replace(/[^0-9.]/g, ''));
-      const net = (window.PayrollApp.currentPreview?.total_net) || (window.PayrollApp.rollup().net);
+      const net = window.PayrollApp.paymentTotals().net;
       return Math.abs((ext + int) - net) < 0.05;
     });
     expect(totalsMatch).toBe(true);
 
     // Verify persisted warning banner rendered on Screen 5
-    await expect(page.locator('#payrollExceptionList')).toContainText('Missing Bank Details');
+    await expect(page.locator('#payrollExceptionList')).toContainText('bank details missing for 1 employee');
 
     // 3. Screen 6: Inline Debit Account & Payment Date Settlement
     let settledPayload = null;
@@ -780,8 +780,14 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // 1. Desktop 1440px - Screen 5 Pre-Disbursal
     await page.setViewportSize({ width: 1440, height: 900 });
-    await expect(page.locator('#p5ExtTotal')).toContainText('$9,900.00');
-    await expect(page.locator('#p5IntTotal')).toContainText('$36,790.00');
+    // Totals are the sum of the displayed rows, not the injected preview totals (U3)
+    const rowTotals = await page.evaluate(() => {
+      const t = window.PayrollApp.paymentTotals();
+      const fmt = (v) => window.PayrollApp.money(v);
+      return { ext: fmt(t.ext), int: fmt(t.int) };
+    });
+    await expect(page.locator('#p5ExtTotal')).toContainText(rowTotals.ext);
+    await expect(page.locator('#p5IntTotal')).toContainText(rowTotals.int);
     await expect(page.locator('#payrollExceptionList .alertbox')).toBeVisible();
     await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-pre.png`, fullPage: false, animations: 'disabled' });
 
@@ -798,7 +804,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // 4. Confirm & Disburse Action (Single Combined Action)
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.click('#btnP5ConfirmDisburse');
-    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll disbursement confirmed');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll recorded as paid');
 
     // Results card, table rows & GL journal visible
     await expect(page.locator('#p5DisburseResultsCard')).toBeVisible();

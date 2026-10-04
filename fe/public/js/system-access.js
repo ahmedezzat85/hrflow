@@ -523,10 +523,33 @@
     return (document.getElementById('systemUsersSearch')?.value || '').trim();
   }
 
+  // Role filter options come from the roles list, not a hard-coded set.
+  async function populateUsersRoleFilter() {
+    const select = document.getElementById('systemUsersRoleFilter');
+    if (!select) return;
+    try {
+      if (_systemRoles.length === 0) {
+        if (isMockMode()) {
+          _systemRoles = JSON.parse(JSON.stringify(INITIAL_MOCK_ROLES));
+        } else {
+          const data = await Api.getRoles();
+          _systemRoles = Array.isArray(data) ? data : (data.roles || []);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load roles for the users filter:', err);
+    }
+    const current = select.value || 'all';
+    select.innerHTML = '<option value="all">All Roles</option>' + _systemRoles
+      .map(role => `<option value="${escHtml(role.name)}">${escHtml(role.name)}</option>`).join('');
+    select.value = [...select.options].some(o => o.value === current) ? current : 'all';
+  }
+
   async function loadUsers() {
     const loadingBar = document.getElementById('usersTableLoadingBar');
     if (loadingBar) loadingBar.style.display = 'block';
     try {
+      await populateUsersRoleFilter();
       if (isMockMode()) {
         if (_systemUsers.length === 0) {
           _systemUsers = JSON.parse(JSON.stringify(INITIAL_MOCK_USERS));

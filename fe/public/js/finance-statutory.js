@@ -69,7 +69,7 @@ function updateFinanceStatutoryMetrics() {
     varTotal += Number(obl.variance_amount || 0);
   }
 
-  const fmt = (v) => `$${Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (v) => FinanceFormat.formatMoney(v, "USD");
 
   const elEst = document.getElementById("statutorySummaryEstimated");
   const elAcc = document.getElementById("statutorySummaryAccrued");
@@ -114,7 +114,7 @@ function renderFinanceStatutoryTable() {
   }
   if (empty) empty.style.display = "none";
 
-  const fmt = (v) => `$${Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (v) => FinanceFormat.formatMoney(v, "USD");
 
   for (const obl of list) {
     const tr = document.createElement("tr");

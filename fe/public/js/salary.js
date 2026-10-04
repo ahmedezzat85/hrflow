@@ -16,7 +16,7 @@ function computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal){
 function renderSalaryPage(filter=''){
   const f = filter.toLowerCase();
   const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
-  document.getElementById('statPayroll').textContent = fmtMoney(totalPayroll);
+  document.getElementById('statPayroll').textContent = fmtUSD(totalPayroll);
   const allRaises = employees.flatMap(e=>(e.salaryHistory || []).map(h=>({...h, emp:e.name, empId:e.id})));
   const thisYearRaises = allRaises.filter(h=>h.date && h.date.startsWith('2026'));
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
@@ -302,4 +302,4 @@ async function saveCompPlanComponent(evt) {
   } finally {
     setButtonLoading(btn, false);
   }
-}
+}

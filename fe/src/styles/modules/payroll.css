@@ -2124,3 +2124,13 @@
     padding: 12px 14px 2px;
   }
 }
+
+/* Finalized or paid run: editing controls are hidden on every step */
+#a-finance-payroll.payroll-locked table.payroll-worksheet .plus,
+#a-finance-payroll.payroll-locked table.payroll-worksheet .p-bonus-pill button {
+  display: none;
+}
+
+#a-finance-payroll [hidden] {
+  display: none;
+}

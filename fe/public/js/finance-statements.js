@@ -2,15 +2,6 @@
 // 9. Bank Statement Imports & Reconciliation (Phase 7)
 // Safe HTML escaping: uses the shared escapeHtml() defined in ui.js
 
-// Fallback currency formatter
-function formatCurrency(amount, currency = "USD") {
-  if (typeof FinanceFormat !== "undefined" && typeof FinanceFormat.formatMoney === "function") {
-    return FinanceFormat.formatMoney(amount, currency);
-  }
-  const n = Number(amount) || 0;
-  return n.toLocaleString("en-US", { style: "currency", currency: currency || "USD" });
-}
-
 function onStatementAccountSelected() {
   const accSel = document.getElementById("stmtUploadAccountId");
   if (!accSel) return;

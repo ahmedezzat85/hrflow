@@ -167,6 +167,13 @@ function renderEmployeePortal() {
   const elPkgTotal = document.getElementById('empPkgTotal');
   if (elPkgTotal) elPkgTotal.textContent = fmtUSD(totalMonthlyUsd * 12);
 
+  // Next salary raise: real date or an honest empty state
+  const elRaise = document.getElementById('empNextRaiseDate');
+  const elRaiseNote = document.getElementById('empNextRaiseNote');
+  const hasRaise = emp.nextRaise && emp.nextRaise !== '—' && !isNaN(new Date(emp.nextRaise).getTime());
+  if (elRaise) elRaise.textContent = hasRaise ? fmtDateShort(emp.nextRaise) : '—';
+  if (elRaiseNote) elRaiseNote.textContent = hasRaise ? 'Scheduled review date.' : 'No raise date scheduled yet.';
+
   // Dynamic Vacation Days Left
   const vacLeft = Math.max(0, (emp.vacTotal || 21) - (emp.vacUsed || 0));
   const elVacDays = document.getElementById('empDashVacDays');

@@ -288,12 +288,10 @@ function toast(msg, icon='fa-solid fa-circle-check'){
   setTimeout(()=>el.remove(), 3200);
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
-function fmtMoney(n){
-  const val = Number(n);
-  if(isNaN(val)) return 'EGP 0';
-  return 'EGP ' + val.toLocaleString('en-EG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-function fmtUSD(n){ return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+// HR-page money helpers: thin wrappers over the one formatter in finance-core.js
+// (up to 2 decimals, trailing zeros trimmed on whole numbers).
+function fmtMoney(n){ return FinanceFormat.formatMoney(n, 'EGP', { decimals: 2, minDecimals: 0 }); }
+function fmtUSD(n){ return FinanceFormat.formatMoney(n, 'USD', { decimals: 2, minDecimals: 0 }); }
 function fmtDateShort(d){
   if(!d || d === '—') return '—';
   const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');

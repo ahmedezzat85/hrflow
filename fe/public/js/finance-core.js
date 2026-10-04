@@ -44,8 +44,9 @@ const FinanceFormat = {
     const isNegative = num < 0;
     const absNum = Math.abs(num);
     const decimals = options.decimals !== undefined ? options.decimals : 2;
+    const minDecimals = options.minDecimals !== undefined ? options.minDecimals : decimals;
     const formattedAbs = absNum.toLocaleString("en-US", {
-      minimumFractionDigits: decimals,
+      minimumFractionDigits: minDecimals,
       maximumFractionDigits: decimals,
     });
 
@@ -61,13 +62,10 @@ const FinanceFormat = {
       symbol = "$";
       suffix = options.showCurrencySuffix ? " USD" : "";
     } else if (curr === "EGP") {
-      prefix = "£ ";
+      prefix = "EGP ";
     } else if (curr === "EUR") {
       symbol = "€";
       suffix = " EUR";
-    } else if (curr === "GBP") {
-      symbol = "£";
-      suffix = " GBP";
     } else {
       prefix = `${curr} `;
     }

@@ -1128,7 +1128,7 @@ async getFeatureFlags() {
         if (dMatch) issueDate = dMatch[1];
         const ddMatch = textContent.match(/(?:Due\s*Date):\s*(\d{4}-\d{2}-\d{2})/i);
         if (ddMatch) dueDate = ddMatch[1];
-        const tMatch = textContent.match(/(?:Total):\s*(?:[$€£])?\s*([\d,]+(?:\.\d{2})?)/i);
+        const tMatch = textContent.match(/(?:Total):\s*(?:[$€\u00a3])?\s*([\d,]+(?:\.\d{2})?)/i);
         if (tMatch) total = parseFloat(tMatch[1].replace(/,/g, ""));
       }
 
@@ -1973,8 +1973,8 @@ async getFeatureFlags() {
       const projBal = direction === "in" ? round(curBal + effectiveAmt, 2) : round(curBal - effectiveAmt, 2);
       const effectWord = direction === "in" ? "increase" : "decrease";
 
-      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "E£" : txCurr);
-      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "E£" : acctCurr);
+      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "EGP " : txCurr);
+      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "EGP " : acctCurr);
 
       let plain = `This will ${effectWord} the Book Balance of ${acc.account_name} by ${sym}${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${txCurr}.`;
       if (txCurr !== acctCurr) {
