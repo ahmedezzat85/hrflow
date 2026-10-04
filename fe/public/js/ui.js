@@ -54,6 +54,8 @@ document.addEventListener('click', (e) => {
     case 'regenerate-salary-doc':
       return openRegenerateInvoiceModal(num(d.employeeId), d.name, num(d.year), num(d.month), d.number);
     case 'open-employee-profile': return viewProfile(num(d.employeeId));
+    case 'payroll-fix-issue': return PayrollApp.fixIssue(d.code, d.employeeId ? num(d.employeeId) : null);
+    case 'payroll-recheck': return PayrollApp.recheckReadiness();
     case 'open-comp-plan': return openCompPlanModal(num(d.employeeId));
     case 'open-employee-bank': return openEmployeeBankSection(num(d.employeeId));
     case 'view-own-claim-receipt': return viewOwnClaimReceipt(Number(d.index));

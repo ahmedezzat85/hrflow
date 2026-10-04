@@ -1988,3 +1988,45 @@
 #a-finance-payroll #btnStartNewRun[hidden] {
   display: none;
 }
+
+#a-finance-payroll .payroll-readiness {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--text);
+}
+
+#a-finance-payroll .payroll-readiness[hidden] {
+  display: none;
+}
+
+#a-finance-payroll .payroll-readiness-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--danger);
+}
+
+#a-finance-payroll .payroll-readiness-head .btn {
+  margin-left: auto;
+}
+
+#a-finance-payroll .payroll-readiness-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+#a-finance-payroll .payroll-readiness-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: var(--fs-md);
+}
