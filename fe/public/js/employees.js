@@ -624,6 +624,7 @@ async function loadPayrollPaymentsCard(empId) {
     sections.push(`<div class="iban-row"><span class="k">Compensation plan</span><span class="v">${fmtUSD(monthly)} / month</span></div>
       <button type="button" class="btn btn-sm btn-outline" data-action="open-comp-plan" data-employee-id="${escapeHtml(empId)}"><i class="fa-solid fa-sliders"></i> View compensation plan</button>`);
   } catch (e) { /* plan summary is best-effort */ }
+  if (isCurrent()) body.innerHTML = sections.join('');
 
   try {
     const docs = (await Api.listInvoices()) || [];
