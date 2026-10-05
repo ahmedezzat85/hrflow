@@ -222,3 +222,19 @@ test('AC-12: employee sidebar has no user card, logout button or brand footer; c
   await expect(page.locator('#empSidebar')).toHaveClass(/collapsed/);
   expect(errors).toEqual([]);
 });
+
+test('AC-13: nav labels, salary icons and active indicator inside the pill', async ({ page }) => {
+  await open(page, PORTALS[0], VIEWPORTS[0]);
+  const labels = await page.locator('#adminHrNavGroup .nav-section-label').allTextContents();
+  expect(labels).toEqual(['People', 'Benefits & records']);
+  await expect(page.locator('#adminHrNavGroup [data-page="a-salary"] i')).toHaveClass(/fa-arrow-trend-up/);
+  await expect(page.locator('#adminHrNavGroup [data-page="a-invoices"] i')).toHaveClass(/fa-file-lines/);
+  await expect(page.locator('#adminFinanceNavGroup [data-page="a-finance-sales"] i')).toHaveClass(/fa-file-invoice-dollar/);
+
+  const bar = await page.locator('#hrRailBtn').evaluate(el => {
+    const s = getComputedStyle(el, '::before');
+    return { left: s.left, content: s.content };
+  });
+  expect(bar.left).toBe('0px');
+  expect(bar.content).not.toBe('none');
+});
