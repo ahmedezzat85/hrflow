@@ -54,8 +54,13 @@ test.describe('U6 URLs and navigation', () => {
     expect(await activeSection(page)).toBe('a-finance-settings');
     await page.goBack();
     await expect.poll(() => activeSection(page)).toBe('a-finance-bills');
+    // Opening Finance from the rail lands on the Finance overview first (D-015), which is its own history entry
+    await page.goBack();
+    await expect.poll(() => activeSection(page)).toBe('a-finance-dashboard');
     await page.goBack();
     await expect.poll(() => activeSection(page)).toBe('a-employees');
+    await page.goForward();
+    await expect.poll(() => activeSection(page)).toBe('a-finance-dashboard');
     await page.goForward();
     await expect.poll(() => activeSection(page)).toBe('a-finance-bills');
 

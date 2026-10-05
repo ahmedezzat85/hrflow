@@ -287,6 +287,14 @@ This document records durable product and architectural decisions approved by th
 - **Rationale:** One identity location that works on desktop and phone, less sidebar clutter, and a compact, elegant header.
 - **Evidence / Reference:** implementation plan `docs/ui-design/topbar-account-menu-implementation-plan.md`; branch `fix/review-ui-fixes`.
 
+### D-015 — Admin Rail Clicks Navigate to a Landing Page
+
+- **Status:** Accepted by owner 2026-10-05; pending merge of `fix/review-ui-fixes`.
+- **Decision:** Clicking an admin module rail button opens a page instead of only swapping the side panel. The landing page is the last sidebar page visited in that module during the current session, otherwise the module default: HR `a-dashboard`, Finance `a-finance-dashboard`, Payroll `a-finance-payroll-runs`, System `a-system-roles`. Clicking the current module's button leaves the page unchanged. With the mobile drawer open, the rail still only swaps the panel, because navigating closes the drawer.
+- **Details:** Remembered pages are kept in memory only (never persisted) and cleared on sign-out, session expiry and session change. Pages not listed in the sidebar are remembered as their parent sidebar page (for example employee detail as Employees). Module visibility rules (`AdminNav.canSeeModule`) are unchanged.
+- **Amends:** the "rail click only switches the panel" behaviour in `docs/ui-design/dual-rail-navigation-plan-v2.md`; D-010 is otherwise unchanged.
+- **Rationale:** A rail click that leaves the previous page on screen under a different module's menu was a navigation glitch.
+
 ---
 
 ## Related but Not Decisions

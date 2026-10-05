@@ -299,6 +299,7 @@ async function logout(){
   await Api.logout();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
   insuranceCategories = []; insuranceConsumption = [];
+  if (window.AdminNav) AdminNav.resetMemory();
   document.getElementById('admin-app').classList.remove('active');
   document.getElementById('employee-app').classList.remove('active');
   hideAppLoader();
@@ -319,6 +320,7 @@ window.addEventListener('hrflow:session-expired', (e) => {
   e.preventDefault();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
   insuranceCategories = []; insuranceConsumption = [];
+  if (window.AdminNav) AdminNav.resetMemory();
   document.getElementById('admin-app').classList.remove('active');
   document.getElementById('employee-app').classList.remove('active');
   hideAppLoader();

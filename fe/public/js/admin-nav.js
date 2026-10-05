@@ -71,6 +71,51 @@
 
   let activeModuleId = 'hr';
 
+  // Where a rail click lands when the module has no remembered page yet.
+  const DEFAULT_PAGES = {
+    hr: 'a-dashboard',
+    finance: 'a-finance-dashboard',
+    payroll: 'a-finance-payroll-runs',
+    system: 'a-system-roles',
+  };
+
+  // Pages reached from a sidebar item but not listed in it: remember the sidebar page instead.
+  const PARENT_PAGE = {
+    'a-employee-detail': 'a-employees',
+    'a-finance-invoices': 'a-finance-sales',
+    'a-finance-bills': 'a-finance-spend',
+    'a-finance-subscriptions': 'a-finance-spend',
+    'a-finance-statutory': 'a-finance-spend',
+    'a-finance-accounts': 'a-finance-banking',
+    'a-finance-transfers': 'a-finance-banking',
+    'a-finance-cheques': 'a-finance-banking',
+    'a-finance-statements': 'a-finance-banking',
+    'a-finance-payroll': 'a-finance-payroll-runs',
+  };
+
+  // Last sidebar page visited per module. In memory only (never persisted) so it cannot
+  // outlive the session or leak between users; cleared on sign-out.
+  const lastPageByModule = {};
+
+  function isNavPage(moduleId, pageId) {
+    const group = document.getElementById(MODULES[moduleId].groupId);
+    return !!(group && group.querySelector('a.nav-item[data-page="' + pageId + '"]'));
+  }
+
+  function rememberPage(moduleId, pageId) {
+    const navPage = PARENT_PAGE[pageId] || pageId;
+    if (isNavPage(moduleId, navPage)) lastPageByModule[moduleId] = navPage;
+  }
+
+  function landingPage(moduleId) {
+    const last = lastPageByModule[moduleId];
+    return last && isNavPage(moduleId, last) ? last : DEFAULT_PAGES[moduleId];
+  }
+
+  function resetMemory() {
+    Object.keys(lastPageByModule).forEach((k) => { delete lastPageByModule[k]; });
+  }
+
   function moduleOf(pageId) {
     if (!pageId) return activeModuleId;
     for (const modId of Object.keys(MODULES)) {
@@ -150,6 +195,9 @@
     if (targetModule && targetModule !== activeModuleId) {
       setModule(targetModule);
     }
+    if (targetModule && MODULES[targetModule].pages.includes(pageId)) {
+      rememberPage(targetModule, pageId);
+    }
   }
 
   function togglePanel() {
@@ -196,13 +244,7 @@
       const firstVisible = modules.find((modId) => canSeeModule(modId));
       if (firstVisible) {
         setModule(firstVisible);
-        const defaultPages = {
-          hr: 'a-dashboard',
-          finance: 'a-finance-dashboard',
-          payroll: 'a-finance-payroll-runs',
-          system: 'a-system-roles',
-        };
-        go(defaultPages[firstVisible]);
+        go(DEFAULT_PAGES[firstVisible]);
       }
     }
   }
@@ -213,9 +255,16 @@
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const modId = btn.dataset.module;
-        if (modId) {
-          setModule(modId);
+        if (!modId || !MODULES[modId]) return;
+        const drawerOpen = document.getElementById('adminSidebar').classList.contains('open');
+        // Same module: leave the current page alone. Phone drawer open: only swap the panel,
+        // because navigating would close the drawer before a page could be picked.
+        if (modId === activeModuleId || drawerOpen || !canSeeModule(modId)) {
+          if (modId !== activeModuleId) setModule(modId);
+          return;
         }
+        setModule(modId);
+        go(landingPage(modId));
       });
     });
 
@@ -243,6 +292,7 @@
     });
 
     window.addEventListener('hrflow:session-changed', () => {
+      resetMemory();
       syncModuleVisibility();
     });
   }
@@ -263,6 +313,7 @@
     go,
     syncBadges,
     syncModuleVisibility,
+    resetMemory,
     getActiveModule: () => activeModuleId,
   };
 })();

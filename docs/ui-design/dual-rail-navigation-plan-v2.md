@@ -6,7 +6,7 @@
 **Nature of work:** Admin-portal navigation shell (frontend only). High-risk per `AGENTS.md` because it touches finance and payroll navigation.  
 **Authorization state:** Plan only. No repository change is authorized until the owner approves a specific slice.
 
-> **Update 2026-10-05:** the rail bottom no longer holds an avatar or logout button; identity, theme and Sign out moved to the top-bar account menu. See `topbar-account-menu-implementation-plan.md` and decision D-014.
+> **Update 2026-10-05:** the rail bottom no longer holds an avatar or logout button; identity, theme and Sign out moved to the top-bar account menu. See `topbar-account-menu-implementation-plan.md` and decision D-014. Rail clicks now also open a landing page (last page visited in the module, else its default); see D-015.
 
 ---
 
