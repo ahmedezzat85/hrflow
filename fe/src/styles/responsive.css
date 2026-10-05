@@ -7,29 +7,29 @@
   }
 
   .topbar {
-    padding: 10px 14px;
-    flex-wrap: wrap;
-    row-gap: 6px;
+    padding: 8px 16px;
+    flex-wrap: nowrap;
   }
 
   .topbar-lead {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .topbar h1 {
-    font-size: 18px;
-  }
-
-  .topbar .sub {
-    display: none;
+    font-size: 17px;
   }
 
   .top-actions {
+    flex-shrink: 0;
     margin-left: auto;
+    gap: 8px;
   }
 
-  .top-actions {
-    gap: 8px;
+  .topbar .icon-btn,
+  .topbar .hamburger {
+    width: 44px;
+    height: 44px;
   }
 
   .icon-btn,

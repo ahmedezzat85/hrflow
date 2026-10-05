@@ -293,7 +293,6 @@ function showSection(pageId, portal, params){
   const t = titles[pageId] || titles[targetSectionId];
   if(t){
     document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
-    document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1];
   }
   closeAllSidebars();
   if (window.Router) Router.record(pageId, portal, params);
