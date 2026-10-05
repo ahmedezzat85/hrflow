@@ -46,6 +46,7 @@ async function loadAdminData() {
       if (railAvatarEl) railAvatarEl.textContent = getInitials(adminUser.name);
       document.getElementById('adminUserName').textContent = adminUser.name;
       document.getElementById('adminUserRole').textContent = adminUser.role || 'HR Administrator';
+      fillAccountIdentity('admin', { name: adminUser.name, role: adminUser.role || 'HR Administrator' });
     }
     renderAdminPortal();
     await loadCompanyDocuments();
@@ -68,6 +69,7 @@ async function loadEmployeeData() {
     document.getElementById('empUserAvatar').textContent = getInitials(currentLoggedInEmployee.name);
     document.getElementById('empUserName').textContent = currentLoggedInEmployee.name;
     document.getElementById('empUserRole').textContent = currentLoggedInEmployee.role;
+    fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
     populateClaimCategoryOptions();
     renderEmployeePortal();
     await loadCompanyDocuments();

@@ -17,8 +17,9 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
     // Notification bell removed until it is wired up (U3)
     await expect(page.locator('#adminNotificationBtn')).toHaveCount(0);
 
-    const themeToggle = page.locator('#adminThemeToggle');
-    await expect(themeToggle).toHaveAttribute('aria-label', 'Toggle light/dark theme');
+    // Theme control moved into the account menu (top-right avatar)
+    await expect(page.locator('#adminThemeToggle')).toHaveCount(0);
+    await expect(page.locator('#adminAccountBtn')).toHaveAttribute('aria-label', 'Account menu');
   });
 
   test('AC 2: Employee topbar buttons have valid aria-labels and clean notification bell', async ({ page }) => {

@@ -295,6 +295,7 @@ function showSection(pageId, portal, params){
     document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
   }
   closeAllSidebars();
+  if (typeof closeTopbarPopovers === 'function') closeTopbarPopovers();
   if (window.Router) Router.record(pageId, portal, params);
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
   if(portal === 'admin') {
@@ -327,17 +328,73 @@ function showSection(pageId, portal, params){
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('hrflow-theme', theme);
-  document.querySelectorAll('.theme-fab i, #adminThemeToggle i, #empThemeToggle i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
+  document.querySelectorAll('.theme-fab i, #empThemeToggle i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
+  document.querySelectorAll('[data-theme-choice]').forEach(b=>{ b.setAttribute('aria-pressed', String(b.dataset.themeChoice===theme)); });
 }
 const savedTheme = localStorage.getItem('hrflow-theme') || 'light';
 applyTheme(savedTheme);
-['loginThemeToggle','adminThemeToggle','empThemeToggle'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',()=>{
+['loginThemeToggle','empThemeToggle'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('click',()=>{
     const cur = document.documentElement.getAttribute('data-theme');
     applyTheme(cur==='dark'?'light':'dark');
     setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
   });
 });
+document.addEventListener('click',e=>{
+  const choice = e.target.closest && e.target.closest('[data-theme-choice]');
+  if(!choice) return;
+  applyTheme(choice.dataset.themeChoice);
+  setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
+});
+
+// Account identity: fills every copy of the signed-in user's initials, name and role in a top bar.
+function fillAccountIdentity(portal, {name, role}){
+  const initials = getInitials(name);
+  document.querySelectorAll('[data-account-initials="'+portal+'"]').forEach(el=>{ el.textContent = initials; });
+  document.querySelectorAll('#'+portal+'UserName').forEach(el=>{ el.textContent = name || ''; });
+  document.querySelectorAll('#'+portal+'UserRole').forEach(el=>{ el.textContent = role || ''; });
+}
+
+// Top-bar disclosure popovers (account menu, notifications): one open at a time.
+// Escape closes and returns focus to the trigger; a click outside closes.
+const topbarPopovers = [];
+function closeTopbarPopovers(except, restoreFocusTo){
+  topbarPopovers.forEach(p=>{
+    if(p===except || p.panel.hidden) return;
+    p.panel.hidden = true;
+    p.btn.setAttribute('aria-expanded','false');
+  });
+  if(restoreFocusTo) restoreFocusTo.focus();
+}
+function initTopbarPopover(btnId, panelId){
+  const btn = document.getElementById(btnId);
+  const panel = document.getElementById(panelId);
+  if(!btn || !panel) return;
+  const entry = {btn, panel};
+  topbarPopovers.push(entry);
+  btn.addEventListener('click',()=>{
+    const willOpen = panel.hidden;
+    closeTopbarPopovers(entry);
+    panel.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
+  });
+}
+document.addEventListener('click',e=>{
+  const outside = topbarPopovers.filter(p=>!p.btn.contains(e.target) && !p.panel.contains(e.target));
+  outside.forEach(p=>{
+    if(p.panel.hidden) return;
+    p.panel.hidden = true;
+    p.btn.setAttribute('aria-expanded','false');
+  });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  const open = topbarPopovers.find(p=>!p.panel.hidden);
+  if(open) closeTopbarPopovers(null, open.btn);
+});
+initTopbarPopover('adminAccountBtn','adminAccountPanel');
 // Toasts: text is set with textContent (never parsed as HTML). Errors use role="alert",
 // stay until dismissed and carry a close button; other toasts use role="status" and fade after 3.2s.
 function toast(msg, icon='fa-solid fa-circle-check'){

@@ -136,6 +136,7 @@ function initMockAdminData(){
   if (nameEl) nameEl.textContent = adminUser.name;
   const roleEl = document.getElementById('adminUserRole');
   if (roleEl) roleEl.textContent = adminUser.role;
+  fillAccountIdentity('admin', { name: adminUser.name, role: adminUser.role });
 
   renderAdminPortal();
   initCharts();
@@ -183,6 +184,7 @@ function initMockEmployeeData(){
   if (nameEl) nameEl.textContent = currentLoggedInEmployee.name;
   const roleEl = document.getElementById('empUserRole');
   if (roleEl) roleEl.textContent = currentLoggedInEmployee.role;
+  fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
 
   renderEmployeePortal();
   initCharts();

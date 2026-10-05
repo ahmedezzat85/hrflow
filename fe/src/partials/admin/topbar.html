@@ -9,6 +9,30 @@
           </button>
           <button class="icon-btn" id="adminExportBtn" onclick="openExportModal()" title="Export Data" aria-label="Export Data"><i class="fa-solid fa-file-export"></i></button>
           <button class="icon-btn" id="adminSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)" aria-label="Search across workspace (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
-          <button class="icon-btn" id="adminThemeToggle" title="Toggle light/dark theme" aria-label="Toggle light/dark theme"><i class="fa-solid fa-moon"></i></button>
+          <div class="account-menu">
+            <button type="button" class="account-trigger" id="adminAccountBtn" aria-label="Account menu" aria-haspopup="true" aria-expanded="false" aria-controls="adminAccountPanel">
+              <span class="account-avatar"><span class="account-avatar__initials" data-account-initials="admin">--</span></span>
+            </button>
+            <div class="account-panel" id="adminAccountPanel" hidden>
+              <div class="account-panel__head">
+                <span class="account-avatar account-avatar--lg"><span class="account-avatar__initials" id="adminUserAvatar" data-account-initials="admin">--</span></span>
+                <div class="account-panel__who">
+                  <div class="account-panel__name" id="adminUserName">--</div>
+                  <div class="account-panel__role" id="adminUserRole">--</div>
+                </div>
+              </div>
+              <div class="account-panel__divider"></div>
+              <div class="account-panel__row">
+                <span class="account-panel__label" id="adminAppearanceLabel">Appearance</span>
+                <div class="theme-seg" role="group" aria-labelledby="adminAppearanceLabel">
+                  <button type="button" data-theme-choice="light" aria-pressed="true"><i class="fa-solid fa-sun"></i> Light</button>
+                  <button type="button" data-theme-choice="dark" aria-pressed="false"><i class="fa-solid fa-moon"></i> Dark</button>
+                </div>
+              </div>
+            <button type="button" class="account-item account-item--export" id="adminAccountExportBtn" onclick="closeTopbarPopovers();openExportModal()"><i class="fa-solid fa-file-export"></i> Export data</button>
+              <div class="account-panel__divider"></div>
+              <button type="button" class="account-item account-item--danger" id="adminSignOutBtn" onclick="closeTopbarPopovers();logout()"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+            </div>
+          </div>
         </div>
       </div>
