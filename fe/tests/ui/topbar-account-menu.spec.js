@@ -145,3 +145,47 @@ test.describe('admin account menu: phone-only Export item', () => {
     await expect(page.locator('#adminAccountExportBtn')).toBeHidden();
   });
 });
+
+const BELL_PORTALS = [
+  { mock: 'admin', p: 'admin', title: '#adminPageTitle' },
+  { mock: 'employee', p: 'emp', title: '#empPageTitle' },
+];
+
+for (const portal of BELL_PORTALS) {
+  for (const vp of VIEWPORTS) {
+    test(`AC-7: ${portal.p} bell opens an empty-state popover @ ${vp.name}`, async ({ page }) => {
+      const errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      await open(page, portal, vp);
+      const bell = page.locator(`#${portal.p}NotifBtn`);
+      const panel = page.locator(`#${portal.p}NotifPanel`);
+      await expect(bell).toBeVisible();
+      await expect(bell).not.toHaveAttribute('hidden', /.*/);
+      await expect(bell.locator('.dot')).toHaveCount(0);
+      await expect(bell).toHaveAttribute('aria-expanded', 'false');
+
+      await bell.click();
+      await expect(panel).toBeVisible();
+      await expect(bell).toHaveAttribute('aria-expanded', 'true');
+      await expect(panel).toContainText('Notifications');
+      await expect(panel).toContainText('No notifications yet');
+      const box = await panel.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(vp.width);
+
+      // Only one top-bar popover open at a time
+      if (await page.locator(`#${portal.p}AccountBtn`).count()) { // TODO(S5): employee account menu not added yet
+        await page.locator(`#${portal.p}AccountBtn`).click();
+        await expect(page.locator(`#${portal.p}AccountPanel`)).toBeVisible();
+        await expect(panel).toBeHidden();
+        await expect(bell).toHaveAttribute('aria-expanded', 'false');
+        await bell.click();
+      }
+      await expect(panel).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
+      await expect(bell).toBeFocused();
+      expect(errors).toEqual([]);
+    });
+  }
+}

@@ -14,7 +14,7 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
     const searchBtn = page.locator('#adminSearchBtn');
     await expect(searchBtn).toHaveAttribute('aria-label', 'Search across workspace (Ctrl+K)');
 
-    // Notification bell removed until it is wired up (U3)
+    // Legacy bell id stays absent; the bell is #adminNotifBtn (placeholder popover)
     await expect(page.locator('#adminNotificationBtn')).toHaveCount(0);
 
     // Theme control moved into the account menu (top-right avatar)

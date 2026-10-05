@@ -395,6 +395,8 @@ document.addEventListener('keydown',e=>{
   if(open) closeTopbarPopovers(null, open.btn);
 });
 initTopbarPopover('adminAccountBtn','adminAccountPanel');
+initTopbarPopover('adminNotifBtn','adminNotifPanel');
+initTopbarPopover('empNotifBtn','empNotifPanel');
 // Toasts: text is set with textContent (never parsed as HTML). Errors use role="alert",
 // stay until dismissed and carry a close button; other toasts use role="status" and fade after 3.2s.
 function toast(msg, icon='fa-solid fa-circle-check'){

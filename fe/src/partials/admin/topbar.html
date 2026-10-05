@@ -9,6 +9,13 @@
           </button>
           <button class="icon-btn" id="adminExportBtn" onclick="openExportModal()" title="Export Data" aria-label="Export Data"><i class="fa-solid fa-file-export"></i></button>
           <button class="icon-btn" id="adminSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)" aria-label="Search across workspace (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
+          <div class="account-menu notif-menu">
+            <button type="button" class="icon-btn" id="adminNotifBtn" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="adminNotifPanel"><i class="fa-solid fa-bell"></i></button>
+            <div class="account-panel notif-panel" id="adminNotifPanel" role="region" aria-label="Notifications" hidden>
+              <div class="notif-panel__title">Notifications</div>
+              <div class="notif-panel__empty">No notifications yet</div>
+            </div>
+          </div>
           <div class="account-menu">
             <button type="button" class="account-trigger" id="adminAccountBtn" aria-label="Account menu" aria-haspopup="true" aria-expanded="false" aria-controls="adminAccountPanel">
               <span class="account-avatar"><span class="account-avatar__initials" data-account-initials="admin">--</span></span>
