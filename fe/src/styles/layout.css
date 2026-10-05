@@ -275,8 +275,8 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 56px;
-  padding: 8px 24px;
+  min-height: 48px;
+  padding: 6px 24px;
   box-sizing: border-box;
 }
 
@@ -290,7 +290,7 @@ html, body {
 .topbar h1 {
   margin: 0;
   font-family: var(--font-head);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.012em;
   line-height: 1.25;
@@ -346,8 +346,8 @@ html, body {
 /* Compact top-bar buttons (scoped so other .icon-btn uses are unchanged) */
 .topbar .icon-btn,
 .topbar .hamburger {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
@@ -475,12 +475,12 @@ html, body {
 }
 
 .account-avatar {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: color-mix(in srgb, var(--accent-text) 70%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--surface));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -491,7 +491,7 @@ html, body {
 }
 
 .account-avatar__initials {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: .02em;
   line-height: 1;
@@ -515,8 +515,8 @@ html, body {
 }
 
 .account-trigger {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border-radius: 50%;
   border: 1px solid transparent;

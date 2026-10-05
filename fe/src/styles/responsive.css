@@ -7,7 +7,7 @@
   }
 
   .topbar {
-    padding: 8px 16px;
+    padding: 4px 16px;
     flex-wrap: nowrap;
   }
 
@@ -17,7 +17,7 @@
   }
 
   .topbar h1 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .top-actions {

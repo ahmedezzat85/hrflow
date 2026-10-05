@@ -27,8 +27,8 @@ for (const portal of PORTALS) {
         const topbar = page.locator(`${portal.app} .topbar`);
         const h = (await topbar.boundingBox()).height;
         if (vp.width >= 769) {
-          expect(h).toBeGreaterThanOrEqual(54);
-          expect(h).toBeLessThanOrEqual(58);
+          expect(h).toBeGreaterThanOrEqual(46);
+          expect(h).toBeLessThanOrEqual(50);
         }
         await expect(topbar.locator('.sub')).toHaveCount(0);
         await expect(topbar.locator('h1')).toHaveCount(1);
@@ -37,7 +37,7 @@ for (const portal of PORTALS) {
           return { fw: s.fontWeight, fs: s.fontSize, to: s.textOverflow, ws: s.whiteSpace };
         });
         expect(style.fw).toBe('600');
-        expect(style.fs).toBe(vp.width >= 769 ? '19px' : '17px');
+        expect(style.fs).toBe(vp.width >= 769 ? '17px' : '16px');
         expect(style.to).toBe('ellipsis');
         expect(style.ws).toBe('nowrap');
       });
