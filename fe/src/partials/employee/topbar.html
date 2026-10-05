@@ -12,6 +12,29 @@
               <div class="notif-panel__empty">No notifications yet</div>
             </div>
           </div>
-          <button class="icon-btn" id="empThemeToggle" title="Toggle light/dark theme" aria-label="Toggle light/dark theme"><i class="fa-solid fa-moon"></i></button>
+          <div class="account-menu">
+            <button type="button" class="account-trigger" id="empAccountBtn" aria-label="Account menu" aria-haspopup="true" aria-expanded="false" aria-controls="empAccountPanel">
+              <span class="account-avatar"><span class="account-avatar__initials" data-account-initials="emp">--</span></span>
+            </button>
+            <div class="account-panel" id="empAccountPanel" hidden>
+              <div class="account-panel__head">
+                <span class="account-avatar account-avatar--lg"><span class="account-avatar__initials" id="empUserAvatar" data-account-initials="emp">--</span></span>
+                <div class="account-panel__who">
+                  <div class="account-panel__name" id="empUserName">--</div>
+                  <div class="account-panel__role" id="empUserRole">--</div>
+                </div>
+              </div>
+              <div class="account-panel__divider"></div>
+              <div class="account-panel__row">
+                <span class="account-panel__label" id="empAppearanceLabel">Appearance</span>
+                <div class="theme-seg" role="group" aria-labelledby="empAppearanceLabel">
+                  <button type="button" data-theme-choice="light" aria-pressed="true"><i class="fa-solid fa-sun"></i> Light</button>
+                  <button type="button" data-theme-choice="dark" aria-pressed="false"><i class="fa-solid fa-moon"></i> Dark</button>
+                </div>
+              </div>
+              <div class="account-panel__divider"></div>
+              <button type="button" class="account-item account-item--danger" id="empSignOutBtn" onclick="closeTopbarPopovers();logout()"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+            </div>
+          </div>
         </div>
       </div>

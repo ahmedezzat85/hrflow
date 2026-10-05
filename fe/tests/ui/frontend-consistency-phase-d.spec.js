@@ -34,8 +34,9 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
 
     await expect(page.locator('#empNotificationBtn')).toHaveCount(0);
 
-    const themeToggle = page.locator('#empThemeToggle');
-    await expect(themeToggle).toHaveAttribute('aria-label', 'Toggle light/dark theme');
+    // Theme control moved into the account menu (top-right avatar)
+    await expect(page.locator('#empThemeToggle')).toHaveCount(0);
+    await expect(page.locator('#empAccountBtn')).toHaveAttribute('aria-label', 'Account menu');
   });
 
   test('AC 3: Attention-item route for Transfers opens Banking page on Transfers tab', async ({ page }) => {

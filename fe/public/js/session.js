@@ -170,12 +170,6 @@ function initMockEmployeeData(){
     { id: 'CLM-201', category: 'Dental', service: 'Dental Routine Checkup', amount: 180, status: 'Pending', date: getPastDate(0, 7) }
   ];
 
-  const avatarEl = document.getElementById('empUserAvatar');
-  if (avatarEl) avatarEl.textContent = getInitials(currentLoggedInEmployee.name);
-  const nameEl = document.getElementById('empUserName');
-  if (nameEl) nameEl.textContent = currentLoggedInEmployee.name;
-  const roleEl = document.getElementById('empUserRole');
-  if (roleEl) roleEl.textContent = currentLoggedInEmployee.role;
   fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
 
   renderEmployeePortal();

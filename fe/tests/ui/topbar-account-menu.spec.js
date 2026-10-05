@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 // Top bar, account menu and theme control (docs/ui-design/topbar-account-menu-implementation-plan.md)
 const PORTALS = [
   { key: 'admin', mock: 'admin', app: '#admin-app', title: '#adminPageTitle', p: 'admin' },
+  { key: 'employee', mock: 'employee', app: '#employee-app', title: '#empPageTitle', p: 'emp' },
 ];
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
@@ -174,13 +175,11 @@ for (const portal of BELL_PORTALS) {
       expect(box.x + box.width).toBeLessThanOrEqual(vp.width);
 
       // Only one top-bar popover open at a time
-      if (await page.locator(`#${portal.p}AccountBtn`).count()) { // TODO(S5): employee account menu not added yet
-        await page.locator(`#${portal.p}AccountBtn`).click();
-        await expect(page.locator(`#${portal.p}AccountPanel`)).toBeVisible();
-        await expect(panel).toBeHidden();
-        await expect(bell).toHaveAttribute('aria-expanded', 'false');
-        await bell.click();
-      }
+      await page.locator(`#${portal.p}AccountBtn`).click();
+      await expect(page.locator(`#${portal.p}AccountPanel`)).toBeVisible();
+      await expect(panel).toBeHidden();
+      await expect(bell).toHaveAttribute('aria-expanded', 'false');
+      await bell.click();
       await expect(panel).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(panel).toBeHidden();
@@ -201,5 +200,25 @@ test('AC-8/11: admin shell has one avatar (top bar), no rail logout or panel foo
   await expect(page.locator('#admin-app .account-trigger')).toHaveCount(1);
   const nav = await page.locator('#adminSidebar .sidebar-nav').evaluate(el => el.scrollHeight <= el.clientHeight);
   expect(nav).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('AC-12: employee sidebar has no user card, logout button or brand footer; collapse persists independently', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page, PORTALS[1], VIEWPORTS[0]);
+  const sidebar = page.locator('#empSidebar');
+  await expect(sidebar.locator('.user-mini, .logout-btn, .sidebar-brand-footer, .sidebar-footer, img')).toHaveCount(0);
+  await expect(sidebar.locator('.sidebar-top-row .brand')).toBeVisible();
+  await expect(sidebar.locator('.sidebar-collapse-btn')).toBeVisible();
+  await expect(page.locator('#employee-app .account-trigger')).toHaveCount(1);
+
+  await sidebar.locator('.sidebar-collapse-btn').click();
+  await expect(sidebar).toHaveClass(/collapsed/);
+  expect(await page.evaluate(() => localStorage.getItem('hrflow-sidebar-collapsed'))).toBe('1');
+  expect(await page.evaluate(() => localStorage.getItem('hrflow.admin.navPanelCollapsed'))).toBeNull();
+  await page.reload();
+  await expect(page.locator('#empPageTitle')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#empSidebar')).toHaveClass(/collapsed/);
   expect(errors).toEqual([]);
 });

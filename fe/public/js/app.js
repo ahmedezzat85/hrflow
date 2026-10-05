@@ -60,9 +60,6 @@ async function loadEmployeeData() {
     empInsuranceHistory = rawClaims.map(c => ({ category: c.category, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status, document_url: c.document_url }));
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
-    document.getElementById('empUserAvatar').textContent = getInitials(currentLoggedInEmployee.name);
-    document.getElementById('empUserName').textContent = currentLoggedInEmployee.name;
-    document.getElementById('empUserRole').textContent = currentLoggedInEmployee.role;
     fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
     populateClaimCategoryOptions();
     renderEmployeePortal();

@@ -328,19 +328,15 @@ function showSection(pageId, portal, params){
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('hrflow-theme', theme);
-  document.querySelectorAll('.theme-fab i, #empThemeToggle i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
+  document.querySelectorAll('.theme-fab i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
   document.querySelectorAll('[data-theme-choice]').forEach(b=>{ b.setAttribute('aria-pressed', String(b.dataset.themeChoice===theme)); });
 }
 const savedTheme = localStorage.getItem('hrflow-theme') || 'light';
 applyTheme(savedTheme);
-['loginThemeToggle','empThemeToggle'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.addEventListener('click',()=>{
-    const cur = document.documentElement.getAttribute('data-theme');
-    applyTheme(cur==='dark'?'light':'dark');
-    setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
-  });
+document.getElementById('loginThemeToggle').addEventListener('click',()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur==='dark'?'light':'dark');
+  setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
 });
 document.addEventListener('click',e=>{
   const choice = e.target.closest && e.target.closest('[data-theme-choice]');
@@ -395,6 +391,7 @@ document.addEventListener('keydown',e=>{
   if(open) closeTopbarPopovers(null, open.btn);
 });
 initTopbarPopover('adminAccountBtn','adminAccountPanel');
+initTopbarPopover('empAccountBtn','empAccountPanel');
 initTopbarPopover('adminNotifBtn','adminNotifPanel');
 initTopbarPopover('empNotifBtn','empNotifPanel');
 // Toasts: text is set with textContent (never parsed as HTML). Errors use role="alert",

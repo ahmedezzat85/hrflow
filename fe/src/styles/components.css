@@ -971,42 +971,6 @@ select.form-control option {
     background: none;
   }
 
-  .sidebar.collapsed .user-mini {
-    justify-content: flex-start;
-    padding: 8px 10px;
-    width: auto;
-    height: auto;
-    margin: 0;
-  }
-
-  .sidebar.collapsed .user-mini-text {
-    display: block;
-    width: auto;
-  }
-
-  .sidebar.collapsed .logout-btn {
-    padding: 9px;
-    width: 100%;
-    height: auto;
-    margin: 0;
-  }
-
-  .sidebar.collapsed .logout-btn span {
-    display: inline;
-    width: auto;
-  }
-
-  .sidebar.collapsed .sidebar-brand-footer {
-    padding: 14px 10px 4px;
-  }
-
-  .sidebar.collapsed .sidebar-brand-footer .logo-full {
-    display: block;
-  }
-
-  .sidebar.collapsed .sidebar-brand-footer .logo-mark {
-    display: none;
-  }
 }
 
 
@@ -1847,8 +1811,6 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 
 
 /* The Voyance logo is a single navy mark: render it white on dark surfaces */
-[data-theme="dark"] .logo-full,
-[data-theme="dark"] .logo-mark,
 [data-theme="dark"] #login-screen img[src*="logo"] {
   filter: brightness(0) invert(1);
 }
