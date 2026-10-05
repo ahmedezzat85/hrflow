@@ -72,7 +72,7 @@ test.describe('U2 one component language', () => {
     expect(hasPrimary).toBe(0);
   });
 
-  test('dark theme: native selects and the logo are legible', async ({ page }) => {
+  test('dark theme: native selects are legible', async ({ page }) => {
     await openAdmin(page);
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     await openAdminPage(page, 'a-finance-dashboard');
@@ -81,12 +81,10 @@ test.describe('U2 one component language', () => {
       return {
         scheme: getComputedStyle(document.documentElement).colorScheme,
         selects: sel.map((s) => getComputedStyle(s).backgroundColor),
-        logoFilter: getComputedStyle(document.querySelector('#adminSidebar .logo-full')).filter,
       };
     });
     expect(info.scheme).toBe('dark');
     for (const bg of info.selects) expect(bg).not.toBe('rgb(255, 255, 255)');
-    expect(info.logoFilter).not.toBe('none');
   });
 
   test('the three worst finance partials carry no inline styles or hex colours', async ({ page }) => {

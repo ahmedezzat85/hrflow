@@ -189,3 +189,17 @@ for (const portal of BELL_PORTALS) {
     });
   }
 }
+
+test('AC-8/11: admin shell has one avatar (top bar), no rail logout or panel footer, nav fits without scroll', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page, PORTALS[0], VIEWPORTS[0]);
+  const sidebar = page.locator('#adminSidebar');
+  await expect(sidebar.locator('.avatar, .account-avatar, #adminRailUserAvatar, .user-mini')).toHaveCount(0);
+  await expect(sidebar.locator('.rail-btn.logout, [onclick*="logout"]')).toHaveCount(0);
+  await expect(sidebar.locator('.sidebar-footer, .sidebar-brand-footer, img')).toHaveCount(0);
+  await expect(page.locator('#admin-app .account-trigger')).toHaveCount(1);
+  const nav = await page.locator('#adminSidebar .sidebar-nav').evaluate(el => el.scrollHeight <= el.clientHeight);
+  expect(nav).toBe(true);
+  expect(errors).toEqual([]);
+});

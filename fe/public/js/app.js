@@ -40,12 +40,6 @@ async function loadAdminData() {
     const myAdminId = SessionInfo.getEmployeeId();
     const adminUser = employees.find(e => String(e.id) === String(myAdminId)) || employees.find(e => e.role && e.role.toLowerCase().includes('admin')) || employees[0];
     if (adminUser) {
-      const avatarEl = document.getElementById('adminUserAvatar');
-      if (avatarEl) avatarEl.textContent = getInitials(adminUser.name);
-      const railAvatarEl = document.getElementById('adminRailUserAvatar');
-      if (railAvatarEl) railAvatarEl.textContent = getInitials(adminUser.name);
-      document.getElementById('adminUserName').textContent = adminUser.name;
-      document.getElementById('adminUserRole').textContent = adminUser.role || 'HR Administrator';
       fillAccountIdentity('admin', { name: adminUser.name, role: adminUser.role || 'HR Administrator' });
     }
     renderAdminPortal();
