@@ -1,6 +1,6 @@
 # HRFlow pre-launch review
 
-**Date:** 2026-10-04 · **Reviewer:** Claude (three passes, read-only) · **Output of:** full review before PROD/DEV deployment
+**Date:** 2026-10-04 · **Reviewer:** Claude (three passes, read-only) · **Output of:** full review before PROD/DEV deployment · **Addendum:** section 10 merges the live audit of 2026-10-06 (findings `AUD-01` onward)
 
 ---
 
@@ -337,6 +337,8 @@ Revisit React only if the team grows or the five stateful screens keep growing a
 
 ## 6. Phased plan
 
+**See also section 10.4** for slices added or extended on 2026-10-06.
+
 Each slice is small, independently reviewable, and ends with a test. IDs refer to section 3.
 
 **Phase 0 — Security blockers (before any PROD data)**
@@ -453,3 +455,104 @@ Nothing was changed in those documents. Suggested entries for the owner:
 - **RBAC itself held up:** guard coverage, scope enforcement, role rules and session handling had no structural finding. The defects are in what guarded endpoints accept and return.
 - **Suggested next thread:** Phase 0 slice 0.1 (SEC-01), then 0.3 and 0.5. Each needs the owner's go-ahead and a branch-intake block first.
 - **Owner decisions that gate work:** the list in section 7, plus Q-003 and Q-004 for Phases 1 and 2.
+
+---
+
+## 10. Addendum: live audit of 2026-10-06 (merged findings)
+
+**Added:** 2026-10-06 · **Reviewer:** Claude (live read-only UI audit, then code location only) · **Purpose:** keep this file the single tracker for non-UI fixes.
+
+### 10.1 What this adds and what it does not
+
+- Sections 1 to 9 were written from source without running the app. This addendum comes from **using the running app** as Super-Admin at `localhost:8080` on 2026-10-06, about 1646px wide, dark and light themes. Nothing was saved, submitted, exported or deleted.
+- Only findings **not already covered** by sections 3 and 6 are listed. Where the audit confirmed an existing finding live, it is noted in 10.3, not repeated.
+- UI presentation work approved by the owner from mockups is **not** here. It is in `docs/fix-plans/01-ui-refinements-plan.md` (slices R1 to R7).
+- `docs/UI-UX-FIX-PLAN.md` (U1 to U9) is implemented on `fix/review-ui-fixes` per the owner and was not re-reviewed.
+
+**Intake**
+
+| Item | Value |
+| :--- | :--- |
+| Branch | `fix/review-ui-fixes` |
+| HEAD | `745ee1f` |
+| Merge-base with `main` | `a967a1a37d` |
+| Backend delta since `main` | three files, about 170 added lines (payroll refresh endpoint and its test). Phases 0, 1 and 2 of section 6 are therefore taken as not started. Spot checks: `payroll_service.py:260` still returns `50.0`; the payroll journal still writes `source="manual"`; the pay route still passes `simulate_partial_failure_ids`. |
+| Not verified | Whether the running app was a fresh build of HEAD; restricted roles; widths below 1646px; any export file; anything needing a save. Nothing was executed (no pytest, Playwright or build). |
+
+**Side effect of this audit:** the first `git status` left an empty `.git/index.lock`. It was deleted with the owner's permission and confirmed gone.
+
+**Conf** values below: **L** = seen in the live app; **L+C** = seen live and the relevant code located; **U** = inferred, needs confirmation.
+
+### 10.2 New findings
+
+| ID | Sev | Eff | Where seen / code | Related | Issue and impact | Fix | Verify | Conf |
+| :-- | :-- | :-- | :--- | :--- | :--- | :--- | :--- | :-- |
+| AUD-01 | High | S–M | Payroll run 2026-10 (paid), FX chip in the header; `fe/public/js/finance-payroll.js:2100-2170`; `be/finance/services/payroll_service.py:235-260,1470,2021` | FIN-08 | A finalized, paid run shows two different USD→EGP rates. On some loads the chip reads the fallback rate with "System Fallback (50.0)", on others the transfer-history rate with "Resolved from Transfer History". Seen on steps 4 and 5 versus 1, 2, 3 and 6, and later on step 6 itself, so it varies by load, not by step. The USD equivalents on step 6 change with it. The frontend requests a fresh preview and overwrites the displayed rate and source; the frontend also treats any rate equal to 50.0 as "fallback". FIN-08 covers where the rate comes from; this is about a locked run not showing its stored rate. | For a persisted run, display only the rate and source stored on the run; never re-resolve. Remove the `rateNum === 50.0` heuristic. | Reload each step of a paid run five times; the rate and source never change. Backend test: run detail returns the stored rate. | L+C |
+| AUD-02 | High | S–M | Payroll run 2026-10: step 1 "Internal cash treasury account" shows the USD cash account; step 5 and Payroll Settings show the EGP bank account; the Trial Balance movement matches the USD cash account. `finance-payroll.js:2102-2103` (`selectedExternalAccountId \|\| 1`, `selectedInternalAccountId \|\| 2`) | FIN-06; section 7 open question on `bank_name` | The internal-salary funding account is shown three ways for one run, and the frontend silently falls back to account ids 1 and 2 when none is selected. Risk: a run is posted against an account nobody chose. | Remove the id fallbacks; block preview until both accounts are chosen; every step shows the accounts stored on the run. | Create a run with no account selected: blocked with a message. Paid run: steps 1 and 5 and the ledger agree. | L+C |
+| AUD-03 | High | S–M | Finance, Banking, "Statements & Reconciliation" tab | FIN-12, FIN-20, FIN-25 | The tab raised a red "Not Found" toast and showed an empty table with no empty state, while Finance Overview reported one unreconciled statement for a USD account. Reconciliation was unreachable in that session. The failing request was not captured. | Reproduce and fix the failing call; add empty and error states. | Open the tab on the same data: the flagged statement is listed. | L |
+| AUD-04 | Medium | S | Finance, Banking, accounts list | FIN-06, FIN-25 | The "Reconciled" column shows the same figure as the book balance for every account while the status beside it says "Unreconciled" and the Overview says "Pending stmt". A reconciled balance is implied where none exists. | Show a reconciled balance only from a closed statement period; otherwise a dash. | An account with no closed period shows a dash. | L |
+| AUD-05 | Medium | S | Finance, Banking, account ledger | FIN-06 | The ledger for a USD bank account listed one payroll outflow with a running balance of 0.00 under a non-zero header balance. The running balance does not start from an opening balance and does not end at the account balance. Likely another symptom of FIN-06, listed so the fix is tested here too. | Opening-balance row or carried-forward figure; last running balance equals the header. | Balance test in slice 2.4 also asserts the ledger view. | L |
+| AUD-06 | Medium | M | Reports, Trial Balance | FIN-13, FIN-15 | "Debits = Credits" is reached with a single balancing line, "Retained Earnings / Owners' Equity", equal to total assets. No revenue or expense accounts appear although the month shows operating expenses. With "All Currencies" selected only USD accounts are listed. The check mark gives assurance the report cannot support. | Decide what the trial balance is meant to prove (section 10.5). Until then relabel it as a balance listing and drop the check mark, or include income and expense lines and EGP accounts. | Report test with a known mixed-currency data set. | L |
+| AUD-07 | Medium | S | Payroll run, step 6; Finance, Statutory | D-001, D-002, D-008 | "Portal-confirmed amount" is pre-filled with the internal estimate, so "Variance vs estimate" reads 0.00 before anyone has checked the portal. D-008 prefills the obligation from the run snapshot by design; the concern is that the field named "portal-confirmed" starts filled. Separately, Finance, Statutory showed 0.00 under "Unconfirmed (estimated): payroll draft figures awaiting portal confirmation" while this paid run carried unrecorded social insurance and tax estimates. | Owner decision (10.5). Proposed: leave the portal field empty until typed, and show unrecorded run estimates under "Unconfirmed". | Step 6 on a run with nothing recorded: variance shows a dash; the Statutory page lists the run's estimates. | L |
+| AUD-08 | Low | S | Payroll run, step 3 "Statutory Processing" | D-001, D-009, FIN-23; section 7 open question on labelling estimates | The table shows per-employee social insurance and tax with no "estimate" wording, the column headed "Internal Net Payment" holds total net (external plus internal), and for some employees tax is non-zero while net equals gross. D-009's NET-basis solver explains the last point, but the screen does not show which employees are NET basis, so the row looks wrong. | Label the figures as internal estimates; rename the column; show the basis (NET or GROSS) per row. | Each row either reconciles on screen or shows NET basis. | L |
+| AUD-09 | Medium | S | Employee profile, quick actions "Vacation / WFH Request" and "Medical Insurance Claim" | SEC-10 | On-behalf leave and claim forms default Status to "Approved", so a record enters as approved without passing the Pending Requests queue unless the officer changes it. | Owner decision (10.5). | Submit without touching Status; check the resulting state. | L |
+| AUD-10 | Medium | M | System, User Accounts; System navigation | D-011, D-012, SEC-13 | Many external users are Active with "No role". What such a user can open after sign-in is not stated anywhere in the UI. Separately, System has no audit-log view, although several fixes in this file rely on audit rows being read. | State and test the no-role landing behaviour; add a read-only audit log page. | Sign in as a no-role user. | L (access effect U) |
+| AUD-11 | Low | S | System, Roles & Permissions | D-011 | Rows tagged "System" (HR-Admin, Financial-Admin, Payroll-Maker) show an active delete control; Super-Admin and Employee show it disabled. Not exercised. | Confirm the intended rule for seeded roles and match the control to it. | Click delete on a seeded role in a test database. | L (effect U) |
+| AUD-12 | Medium | S | Top bar, "Export Data" dialog, every page | SEC-05 | The dialog opens with the dataset "Employees (Full profiles, salaries, banking, contact)" preselected and exports on one click, to CSV or Google Sheets. SEC-05 fixes what the export contains; this is about the default and the lack of a confirmation. | No preselected dataset; confirmation naming the sensitive fields for datasets that include salary or bank data. Do with slice 0.6. | Open the dialog: nothing selected. | L |
+| AUD-13 | Low | S | Finance, Spend, Vendor Bills | FIN-17 | A bill shows "Paid" and "Unreviewed" together. FIN-17 covers the missing gate; this is live evidence plus a request that such bills appear in the Exceptions queue. | With slice 2.7. | Existing bill appears under Exceptions. | L |
+| AUD-14 | Low | S | Finance Settings, Transaction Categories | none | Two pairs of rows share a number (10 and 10, 17 and 17) and two categories overlap in meaning ("Robot" and "Robot/R&D Equipment"). Data hygiene; could split reporting. | Unique ordering; merge or rename with the owner. | Category list has unique numbers. | L |
+| AUD-15 | Low | S | Reports, "Compensation Spend & Variance Report" | none | The report has no variance column or comparison. | Rename, or add the variance it promises. | Open the report. | L |
+| AUD-16 | Low | S | Add Employee modal | none | "Payment doc ID" is limited to 01–99 and departments are a fixed list of six. Limits growth; no defect today. | Widen when needed. | n/a | L |
+
+### 10.3 Existing findings confirmed in the running app
+
+| Existing ID | What was seen live |
+| :--- | :--- |
+| FIN-06 | The same USD accounts show one balance in Banking and on Finance Overview and a lower one in the Trial Balance, lower by exactly the payroll amounts. The payroll-posted ledger row shows edit and delete buttons. |
+| FIN-08 | The hard-coded fallback rate is displayed on a paid run (see AUD-01). |
+| FIN-13, FIN-15 | Finance Overview "Total cash balance" under "Scope: All Accounts" equals the sum of the USD accounts only. (Display fix is slice R5 of the UI plan; the calculation stays here.) |
+| FIN-16, UX-23 | Wording that implies sending, feeds, OCR and bank execution is still visible in places (list in the UI plan, R7). |
+| D-006 | Working as decided: every employee with missing bank details is flagged on steps 4 and 5 and "Payment can still be recorded". |
+| D-001, D-002 | Step 6 and the Statutory page do keep estimate, portal-confirmed, remitted and variance apart (subject to AUD-07). |
+
+### 10.4 Additions to the phased plan (section 6)
+
+| Slice | Scope | Test | Notes |
+| :-- | :--- | :--- | :--- |
+| 2.8 (extended) | Add AUD-01: a persisted run shows only its stored FX rate and source | Paid-run reload test | The display half can ship before Q-004 is decided; the source of the rate still waits on Q-004 |
+| 2.4 (extended) | Add AUD-02, AUD-04, AUD-05: no account-id fallbacks; reconciled column; ledger running balance | Balance test also covers the ledger view and steps 1 and 5 | Same root area as FIN-06 |
+| 2.5 (extended) | Add AUD-03: Statements tab failure | Tab loads on the audited data | Reproduce first; cause unknown |
+| 2.6 (extended) | Add AUD-06: trial balance meaning and content | Report test | Needs the decision in 10.5 |
+| 2.9 (new) | AUD-07, AUD-08: step 6 portal field and Statutory "Unconfirmed"; step 3 estimate labels and basis | UI test against the real backend | Needs the decisions in 10.5; frontend-led, no lifecycle change (D-008 stands) |
+| 2.7 (extended) | Add AUD-13 | Exceptions queue lists paid-unreviewed bills | |
+| 0.6 (extended) | Add AUD-12 | Dialog opens with nothing selected | |
+| 3.7 (new) | AUD-09, AUD-10, AUD-11: on-behalf default status; no-role access and audit log view; seeded-role delete rule | Backend and UI tests | Needs the decisions in 10.5 |
+| 3.8 (new) | AUD-14, AUD-15, AUD-16 | n/a | Low priority |
+| 3.9 (new) | Run the unverified checklist: sign in as HR-Admin, Financial-Admin, Payroll-Maker, Employee and a no-role user; 390px and 768px; payroll CSV row shape (D-007); empty-form and bad-date validation on each modal | Checklist recorded in this file | Needs test accounts |
+
+**Suggested order with section 6:** Phase 0 first as already recommended; then 2.4, 2.8 and 2.5 with their extensions, because the balance, FX and Statements problems are what make Finance figures untrustworthy day to day; then the rest of Phase 2; then 2.9 and 3.7 once decided.
+
+### 10.5 New owner decisions and open questions (additions to section 7)
+
+**Decision log**
+
+- **Portal-confirmed field (AUD-07):** should it start empty, with variance blank until a portal figure is typed? Does not alter D-008's linkage.
+- **On-behalf requests (AUD-09):** default status Approved (as now) or Pending.
+- **Trial balance (AUD-06):** is it meant to be a true double-entry trial balance, or a balance listing? This decides whether the "Debits = Credits" check stays.
+- **Seeded roles (AUD-11):** may HR-Admin, Financial-Admin and Payroll-Maker be deleted?
+- **Visual direction (2026-10-06):** recorded for reference: no redesign; existing palette kept with internal blue, external green, warnings orange; one button set and one control set; Google sign-in button unchanged; session-expired toast removed. Detail in `docs/fix-plans/01-ui-refinements-plan.md`.
+
+**Open questions (new)**
+
+- What may an Active user with no role see after sign-in (AUD-10)?
+- Should the payroll run store and show the basis (NET or GROSS) per employee line on screen (AUD-08)?
+- Should Finance, Statutory surface a run's unrecorded estimates automatically, or only after "Record Obligation" (AUD-07)? Touches Q-001.
+- Which FX wording is used until Q-004 is decided: "manual" and "from transfer history", with no "auto" (AUD-01)?
+
+### 10.6 Handoff summary for this addendum
+
+- **Outcome:** live read-only audit merged into this file as section 10. Files added in the same change: `docs/fix-plans/` (UI plan, handoff prompt, eight mockups, one evidence image). No code changed.
+- **Tests run:** none.
+- **Confirmed by use of the app:** AUD-01 to AUD-09, AUD-12 to AUD-16, and the items in 10.3.
+- **Not confirmed:** the cause of AUD-03; the access effect in AUD-10; whether delete works in AUD-11; whether the app was a fresh build of HEAD.
+- **Next thread for this file:** unchanged from section 9 (Phase 0, slice 0.1), with the extensions in 10.4.
