@@ -217,7 +217,7 @@ function renderInvoicePreviewResults(results, year, month){
   body.innerHTML = filtered.map(r => {
     let actionBtn = '—';
     if (r.status === 'eligible') {
-      actionBtn = `<button class="btn btn-sm btn-fill" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
+      actionBtn = `<button class="btn btn-sm btn-outline" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
     } else if (r.status === 'already_exists') {
       actionBtn = `<button class="btn btn-sm btn-outline-warning" style="color:var(--warning, #eab308);border-color:rgba(234,179,8,0.4);" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(r.employee_id)}" data-name="${escapeHtml(r.employee_name)}" data-year="${escapeHtml(year)}" data-month="${escapeHtml(month)}" data-number="${escapeHtml(r.invoice_number || '')}"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>`;
     }
@@ -556,7 +556,7 @@ function renderGroupedInvoiceHistory(){
       </td>
       <td>
         <div style="display:flex;gap:6px;align-items:center;">
-          <button class="btn btn-sm btn-fill" style="font-size:11.5px;padding:4px 8px;" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(inv.id)}" data-number="${escapeHtml(inv.invoice_number)}">
+          <button class="btn btn-sm btn-outline" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(inv.id)}" data-number="${escapeHtml(inv.invoice_number)}">
             <i class="fa-solid fa-file-pdf"></i> Preview PDF
           </button>
           <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this doc" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(inv.employee_id)}" data-name="${escapeHtml(inv.employee_name)}" data-year="${escapeHtml(inv.payment_year)}" data-month="${escapeHtml(inv.payment_month)}" data-number="${escapeHtml(inv.invoice_number)}">

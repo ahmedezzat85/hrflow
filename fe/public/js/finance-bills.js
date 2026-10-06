@@ -481,7 +481,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${(derivedStatus === "needs_approval" || (bill.requires_approval && bill.approval_status !== "approved")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
         ${((derivedStatus === "ready_to_pay" || derivedStatus === "unpaid") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved")) ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "partially_paid" || derivedStatus === "scheduled") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved") ? `<button class="btn btn-sm btn-fill btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "partially_paid" || derivedStatus === "scheduled") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved") ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "inbox" || derivedStatus === "needs_coding" || derivedStatus === "needs_approval") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
@@ -1703,7 +1703,7 @@ async function renderVendorPaymentInstructionsInModal(vendorId) {
         </div>
         <div>
           ${pi.verification_status !== 'verified' ? `
-            <button type="button" class="btn btn-sm btn-fill" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
           ` : `
             <button type="button" class="btn btn-sm btn-outline" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id}, 'unverified')"><i class="fa-solid fa-rotate-left"></i> Re-verify</button>
           `}

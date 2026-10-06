@@ -321,7 +321,7 @@ body.modal-open {
   animation:btnSpin .7s linear infinite;flex-shrink:0;display:inline-block;
 }
 @keyframes btnSpin{to{transform:rotate(360deg)}}
-.btn:disabled,.btn-fill:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.btn:disabled,.btn-fill:disabled{cursor:not-allowed;transform:none}
 
 /* ===== Compact drop-zone variant (used in Behalf Claim modal) ===== */
 .doc-drop-zone.compact{

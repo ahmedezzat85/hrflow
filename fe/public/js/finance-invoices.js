@@ -229,7 +229,7 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve & Send Invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
         ${(derivedStatus === "overdue" || derivedStatus === "sent") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
-        ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-outline" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>

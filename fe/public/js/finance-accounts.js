@@ -154,7 +154,7 @@ function renderFinanceAccounts(items) {
       </td>
       <td data-label="Actions" class="col-actions">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;justify-content:flex-end;">
-          <button class="btn btn-sm btn-fill btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace" aria-label="Open Account Workspace" style="padding:6px 10px;">
+          <button class="btn btn-sm btn-outline btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace" aria-label="Open Account Workspace" style="padding:6px 10px;">
             <i class="fa-solid fa-folder-open"></i>
           </button>
           <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account" aria-label="Edit Account" style="padding:6px 10px;">

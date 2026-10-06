@@ -430,7 +430,7 @@ function renderFinanceAttentionQueue(data) {
             </div>
           </div>
           <div class="finance-attention-actions">
-            <button type="button" class="btn btn-sm btn-attention-resolve btn-fill" onclick="openAttentionItem('${_escapeHtml(it.target_route)}', ${it.target_id || 'null'}, '${targetFilterStr}')">
+            <button type="button" class="btn btn-sm btn-attention-resolve btn-outline" onclick="openAttentionItem('${_escapeHtml(it.target_route)}', ${it.target_id || 'null'}, '${targetFilterStr}')">
               <i class="fa-solid fa-arrow-up-right-from-square"></i> Resolve
             </button>
             <button type="button" class="btn btn-sm btn-outline btn-attention-review" onclick="markAttentionItemReviewed('${_escapeHtml(it.deduplication_key)}')" title="Mark as reviewed">
@@ -599,19 +599,19 @@ function setForecastHorizon(days) {
 
   [b30, b60, b90].forEach((btn) => {
     if (!btn) return;
-    btn.classList.remove("btn-fill", "btn-outline", "active");
+    btn.classList.remove("btn-selected", "btn-outline", "active");
   });
 
   if (days === 30 && b30) {
-    b30.classList.add("btn-fill", "active");
+    b30.classList.add("btn-selected", "active");
     if (b60) b60.classList.add("btn-outline");
     if (b90) b90.classList.add("btn-outline");
   } else if (days === 60 && b60) {
-    b60.classList.add("btn-fill", "active");
+    b60.classList.add("btn-selected", "active");
     if (b30) b30.classList.add("btn-outline");
     if (b90) b90.classList.add("btn-outline");
   } else if (b90) {
-    b90.classList.add("btn-fill", "active");
+    b90.classList.add("btn-selected", "active");
     if (b30) b30.classList.add("btn-outline");
     if (b60) b60.classList.add("btn-outline");
   }
@@ -755,19 +755,19 @@ function filterObligationsTable(filterType) {
 
   [bAll, bIn, bOut].forEach((b) => {
     if (!b) return;
-    b.classList.remove("btn-fill", "btn-outline", "active");
+    b.classList.remove("btn-selected", "btn-outline", "active");
   });
 
   if (filterType === "inflow" && bIn) {
-    bIn.classList.add("btn-fill", "active");
+    bIn.classList.add("btn-selected", "active");
     if (bAll) bAll.classList.add("btn-outline");
     if (bOut) bOut.classList.add("btn-outline");
   } else if (filterType === "outflow" && bOut) {
-    bOut.classList.add("btn-fill", "active");
+    bOut.classList.add("btn-selected", "active");
     if (bAll) bAll.classList.add("btn-outline");
     if (bIn) bIn.classList.add("btn-outline");
   } else if (bAll) {
-    bAll.classList.add("btn-fill", "active");
+    bAll.classList.add("btn-selected", "active");
     if (bIn) bIn.classList.add("btn-outline");
     if (bOut) bOut.classList.add("btn-outline");
   }

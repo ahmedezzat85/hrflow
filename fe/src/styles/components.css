@@ -1,12 +1,14 @@
 /*
- * Button variants (U2) — one primary name across the app:
- *   btn btn-fill            primary action
- *   btn                     default / secondary
- *   btn btn-outline         outline
- *   btn btn-ghost           low-emphasis (payroll step bars)
- *   btn btn-danger          destructive (also btn-danger-outline)
- *   btn btn-sm              small (combine with any variant)
- * Status pills are documented next to the badge rules below.
+ * Button set (R3). One shape (10px radius, 1px border), no resting shadow.
+ *   btn btn-fill            Primary: the main action of a screen or dialog. One per screen.
+ *                           Solid accent, white text, no glow.
+ *   btn btn-outline         Secondary: Refresh, Export, Cancel, Preview, row actions.
+ *   btn btn-quiet           Quiet: low-stakes toolbar actions such as Reset. Text only, accent colour.
+ *   btn btn-danger-outline  Destructive: Delete, Archive. Red outline; always confirms.
+ *   btn btn-sm              Small, 32px high, for table rows. Combine with any variant.
+ *   btn-selected            Selected state of a segmented toggle (never a primary).
+ *   :disabled               Any variant: neutral surface and grey text, never a faded accent.
+ * btn btn-ghost is the payroll step-bar variant. Status pills are documented next to the badge rules below.
  */
 /* UI Components: Cards, Tables, Buttons, Forms, Loaders */
 .card {
@@ -366,7 +368,7 @@ tr.row-dimmed:hover {
 
 .btn {
   padding: 9px 16px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: var(--fs-md);
   font-weight: 600;
   border: 1px solid var(--border);
@@ -393,19 +395,52 @@ button:disabled,
 }
 
 .btn-fill {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  background: var(--accent);
   color: var(--on-accent);
-  border: none;
-  box-shadow: 0 6px 16px rgba(32, 86, 232, .3);
+  border: 1px solid var(--accent);
+  box-shadow: none;
 }
 
 .btn-fill:hover {
+  background: var(--accent2);
+  border-color: var(--accent2);
   color: var(--on-accent);
-  transform: translateY(-1px);
+}
+
+/* Disabled: neutral surface and grey text for every variant, never a faded accent. */
+.btn:disabled,
+.btn-fill:disabled,
+.btn-outline:disabled,
+.btn-danger-outline:disabled {
+  opacity: 1;
+  background: var(--surface2);
+  background-image: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  box-shadow: none;
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent-text);
+}
+
+.btn-quiet:hover {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-text);
+}
+
+.btn-selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-text);
 }
 
 .btn-sm {
-  padding: 6px 11px;
+  padding: 0 12px;
+  height: 32px;
   font-size: var(--fs-sm);
 }
 
@@ -511,7 +546,6 @@ button:disabled,
 .filter-tab.active {
   background: var(--surface);
   color: var(--accent-text);
-  box-shadow: var(--shadow);
 }
 
 /* Filter Selects & Toolbar Dropdowns */

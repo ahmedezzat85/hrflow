@@ -169,3 +169,68 @@ test.describe('Shell foundations (component CSS)', () => {
     expect(out.text).toBe('<i>');
   });
 });
+
+test.describe('R3 one button set', () => {
+  const ALL_PAGES = [...ADMIN_PAGES, 'a-requests', 'a-invoices', 'a-insurance', 'a-dochub',
+    'a-finance-sales', 'a-finance-spend', 'a-finance-banking', 'a-finance-reports'];
+
+  async function visitAll(page, check) {
+    await openAdmin(page);
+    const out = {};
+    for (const id of ALL_PAGES) {
+      await page.evaluate((p) => showSection(p, 'admin'), id);
+      await page.waitForTimeout(250);
+      out[id] = await page.evaluate(check);
+    }
+    return out;
+  }
+
+  test('R3-1: no button has a box-shadow at rest', async ({ page }) => {
+    const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app button')]
+      .filter((b) => b.offsetParent !== null && getComputedStyle(b).boxShadow !== 'none')
+      .map((b) => `${b.id || b.className}`.slice(0, 60)));
+    for (const [id, shadowed] of Object.entries(res)) expect(shadowed, id).toEqual([]);
+  });
+
+  test('R3-2: buttons of one size share one border radius', async ({ page }) => {
+    const res = await visitAll(page, () => {
+      const radii = { default: new Set(), small: new Set() };
+      document.querySelectorAll('#admin-app button.btn, #admin-app a.btn').forEach((b) => {
+        if (b.offsetParent === null) return;
+        radii[b.classList.contains('btn-sm') ? 'small' : 'default'].add(getComputedStyle(b).borderTopLeftRadius);
+      });
+      return { default: [...radii.default], small: [...radii.small] };
+    });
+    const seen = { default: new Set(), small: new Set() };
+    for (const r of Object.values(res)) { r.default.forEach((v) => seen.default.add(v)); r.small.forEach((v) => seen.small.add(v)); }
+    expect([...seen.default]).toEqual(['10px']);
+    expect([...seen.small]).toEqual(['10px']);
+  });
+
+  test('R3-3: the four named screens each show exactly one primary button', async ({ page }) => {
+    const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app .btn-fill')]
+      .filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim().slice(0, 30)));
+    for (const id of ['a-salary', 'a-invoices', 'a-finance-dashboard', 'a-finance-payroll-runs']) {
+      expect(res[id], id).toHaveLength(1);
+    }
+  });
+
+  test('R3-4: a disabled primary uses the neutral surface, not the accent', async ({ page }) => {
+    await openAdmin(page);
+    const out = await page.evaluate(() => {
+      const host = document.querySelector('#a-employees');
+      const mk = (cls, disabled) => {
+        const b = document.createElement('button'); b.className = cls; b.disabled = disabled; host.appendChild(b);
+        const cs = getComputedStyle(b); const r = { bg: cs.backgroundColor, img: cs.backgroundImage, op: cs.opacity, shadow: cs.boxShadow };
+        b.remove(); return r;
+      };
+      const probe = document.createElement('div'); probe.style.background = 'var(--surface2)'; host.appendChild(probe);
+      const surface = getComputedStyle(probe).backgroundColor; probe.remove();
+      return { surface, primary: mk('btn btn-fill', false), disabled: mk('btn btn-fill', true) };
+    });
+    expect(out.disabled.bg).toBe(out.surface);
+    expect(out.disabled.bg).not.toBe(out.primary.bg);
+    expect(out.disabled.img).toBe('none');
+    expect(out.disabled.op).toBe('1');
+  });
+});

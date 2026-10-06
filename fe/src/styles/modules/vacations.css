@@ -47,7 +47,6 @@
   background: var(--accent);
   color: #ffffff;
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(32, 86, 232, 0.25);
 }
 
 .filter-tab .tab-count {

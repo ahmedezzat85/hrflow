@@ -57,7 +57,7 @@ function renderSalaryPage(filter=''){
       <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
-          ${canWriteSalary ? `<button class="btn btn-sm btn-fill btn-raise-action" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>` : ''}
+          ${canWriteSalary ? `<button class="btn btn-sm btn-outline btn-raise-action" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>` : ''}
           ${canWriteSalary ? `<button class="btn btn-sm btn-comp-plan" onclick="openCompPlanModal('${e.id}')"><i class="fa-solid fa-file-contract"></i> Plan</button>` : ''}
         </div>
       </td>

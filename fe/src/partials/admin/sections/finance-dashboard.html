@@ -16,7 +16,7 @@
                 </span>
               </p>
             </div>
-            <button class="btn" id="btnRefreshFinanceDashboard" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+            <button class="btn btn-outline" id="btnRefreshFinanceDashboard" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
           </div>
 
           <!-- Story 2.1 Finance Context Bar -->
@@ -61,7 +61,7 @@
                 </div>
               </div>
 
-              <button class="btn btn-sm btn-outline" id="btnResetFinanceContext" onclick="resetFinanceContext()" title="Reset to standard defaults">
+              <button class="btn btn-sm btn-quiet" id="btnResetFinanceContext" onclick="resetFinanceContext()" title="Reset to standard defaults">
                 <i class="fa-solid fa-arrow-rotate-left"></i> Reset Defaults
               </button>
             </div>
@@ -239,7 +239,7 @@
               <!-- Horizon and Option Controls -->
               <div class="fd-u52">
                 <div class="btn-group fd-u53" id="forecastHorizonSelector">
-                  <button type="button" class="btn btn-sm fd-u54 btn-fill" id="btnForecastHorizon30" onclick="setForecastHorizon(30)">30 Days</button>
+                  <button type="button" class="btn btn-sm fd-u54 btn-selected" id="btnForecastHorizon30" onclick="setForecastHorizon(30)">30 Days</button>
                   <button type="button" class="btn btn-sm btn-outline fd-u55" id="btnForecastHorizon60" onclick="setForecastHorizon(60)">60 Days</button>
                   <button type="button" class="btn btn-sm btn-outline fd-u54" id="btnForecastHorizon90" onclick="setForecastHorizon(90)">90 Days</button>
                 </div>
@@ -411,7 +411,7 @@
                   </div>
 
                   <div class="fd-u9">
-                    <button type="button" class="btn btn-xs active btn-fill" id="btnObligationsFilterAll" onclick="filterObligationsTable('all')">All (<span id="countObligationsAll">0</span>)</button>
+                    <button type="button" class="btn btn-xs active btn-selected" id="btnObligationsFilterAll" onclick="filterObligationsTable('all')">All (<span id="countObligationsAll">0</span>)</button>
                     <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterInflows" onclick="filterObligationsTable('inflow')">Inflows (<span id="countObligationsInflows">0</span>)</button>
                     <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterOutflows" onclick="filterObligationsTable('outflow')">Outflows (<span id="countObligationsOutflows">0</span>)</button>
                   </div>

@@ -87,7 +87,7 @@ function renderReportLibraryCatalog() {
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--border-color, #E2E8F0); margin-top:10px;">
           <span class="badge badge-neutral" style="font-size:0.75rem;">${basisList || 'Cash & Accrual'}</span>
-          <button class="btn btn-sm btn-fill" onclick="openReportFromLibrary('${r.key}')">
+          <button class="btn btn-sm btn-outline" onclick="openReportFromLibrary('${r.key}')">
             <i class="fa-solid fa-arrow-right"></i> Open Report
           </button>
         </div>
