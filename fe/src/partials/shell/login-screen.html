@@ -2,30 +2,38 @@
     <div class="login-card">
       <div class="login-visual">
         <div class="brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
-        <div>
-          <h2>People operations,<br>beautifully simplified.</h2>
-          <p>Manage vacations, work-from-home, medical insurance claims and salary history — all in one elegant
-            workspace.</p>
-          <div class="visual-stats">
-            <div><span><i class="fa-solid fa-shield-halved"></i></span><small>Secure Google Sign-In</small></div>
-            <div><span><i class="fa-solid fa-clock"></i></span><small>Real-time Approvals</small></div>
-            <div><span><i class="fa-solid fa-lock"></i></span><small>Role-based Access</small></div>
-          </div>
+        <div class="login-intro">
+          <h1>People, finance and payroll operations in one place.</h1>
+          <ul class="login-scopes">
+            <li class="login-scope login-scope-hr">
+              <span class="login-scope-name">HR</span>
+              <span class="login-scope-text">Employees, leave, claims, documents and salary payment documents</span>
+            </li>
+            <li class="login-scope login-scope-finance">
+              <span class="login-scope-name">Finance</span>
+              <span class="login-scope-text">Company accounts, ledger, bills, sales invoices and reports</span>
+            </li>
+            <li class="login-scope login-scope-payroll">
+              <span class="login-scope-name">Payroll</span>
+              <span class="login-scope-text">Monthly runs, net payments and statutory obligations</span>
+            </li>
+          </ul>
         </div>
+        <div class="login-visual-foot">Internal platform of Voyance Health</div>
       </div>
       <div class="login-form-wrap">
-        <h1>Welcome back</h1>
-        <p>Sign in to access your HR workspace.</p>
-        <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i>
-          <span>Sign-in failed.</span>
-        </div>
-        <p class="login-notice" id="loginNotice" role="status" hidden>You were signed out after a period of inactivity. Sign in to continue.</p>
-        <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:28px;"></div>
-        <p style="text-align:center; color:var(--text3); font-size:12px; margin-top:16px;">
-          Not registered yet? Ask your HR admin to add you as an employee first.
-        </p>
-        <div class="login-footer-brand">
-          <img src="voyance-health-logo.png" alt="Voyance Health">
+        <div class="login-form-inner">
+          <div class="login-form-head">
+            <img class="login-logo" src="voyance-health-logo.png" alt="Voyance Health">
+            <h2>Sign in</h2>
+            <p>Use your Voyance Health Google account.</p>
+          </div>
+          <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i>
+            <span>Sign-in failed.</span>
+          </div>
+          <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:28px;"></div>
+          <p class="login-notice" id="loginNotice" role="status" hidden>You were signed out after a period of inactivity. Sign in to continue.</p>
+          <p class="login-help">No access yet? Ask your HR admin to add you as an employee first.</p>
         </div>
       </div>
     </div>

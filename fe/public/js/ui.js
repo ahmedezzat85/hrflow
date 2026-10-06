@@ -402,6 +402,9 @@ initTopbarPopover('empNotifBtn','empNotifPanel');
 function toast(msg, icon='fa-solid fa-circle-check'){
   const wrap = document.getElementById('toastWrap');
   if (!wrap) return;
+  // An expired session is reported once, by the notice on the login screen; loaders that catch the
+  // thrown "Session expired" error must not add a toast of their own.
+  if (/^Session expired\. Please sign in again\.?$/.test(String(msg))) return;
   const isError = /triangle-exclamation|circle-exclamation|circle-xmark/.test(String(icon));
   const el = document.createElement('div');
   el.className = isError ? 'toast toast-error' : 'toast';

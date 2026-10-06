@@ -61,7 +61,8 @@ test.describe('R1 Messages', () => {
     await expect(notice).toBeVisible();
     await expect(notice).toHaveText('You were signed out after a period of inactivity. Sign in to continue.');
     await expect(notice).toHaveAttribute('role', 'status');
-    await expect(page.locator('#toastWrap .toast')).toHaveCount(0);
+    // No expiry toast. (Unrelated bootstrap toasts from the generic stub may still arrive late.)
+    await expect(page.locator('#toastWrap .toast').filter({ hasText: /session expired|sign in again/i })).toHaveCount(0);
   });
 
   test.describe('employee profile status cards', () => {
