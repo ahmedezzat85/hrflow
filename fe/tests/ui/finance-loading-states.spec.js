@@ -89,7 +89,7 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
 
     const scopeBadge = page.locator('#financeDashboardScopeBadge');
     await expect(scopeBadge).toBeVisible();
-    await expect(scopeBadge).toContainText('All Accounts');
+    await expect(scopeBadge).toContainText('All entities');
 
     const lastUpdated = page.locator('#financeDashboardLastUpdated');
     await expect(lastUpdated).toBeVisible();

@@ -39,21 +39,37 @@
 }
 #a-finance-dashboard .fd-u8 {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 14px;
   flex-wrap: wrap;
 }
 #a-finance-dashboard .fd-u9 {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
 }
 #a-finance-dashboard .fd-u10 {
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text2, var(--accent));
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+}
+
+/* KPI cards: sentence-case labels; the label column shrinks and wraps so it never runs under the icon tile. */
+#a-finance-dashboard .stat-top {
+  align-items: flex-start;
+  gap: 12px;
+}
+#a-finance-dashboard .stat-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--fs-md);
+  line-height: 1.35;
+}
+#a-finance-dashboard .stat-icon {
+  flex: 0 0 auto;
 }
 #a-finance-dashboard .fd-u11 {
   width: auto;

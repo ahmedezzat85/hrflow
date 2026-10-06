@@ -171,14 +171,21 @@ function renderFinanceDashboard(summary, ctx = {}) {
   if (netEl) netEl.textContent = fmt(summary.net_mtd);
 
   // Labels & Subtexts
+  // Sentence-case labels. The cash card names the accounts its figure covers, so a USD total is never
+  // labelled as all accounts.
+  const periodWords = { MTD: "month to date", QTD: "quarter to date", YTD: "year to date" }[summary.period || "MTD"] || String(summary.period).toLowerCase();
+  const labelBal = document.getElementById("labelKpiBalance");
+  if (labelBal) {
+    labelBal.textContent = currency === "ALL" ? "Cash balance, all currencies" : `Cash balance, ${currency} accounts`;
+  }
   const labelRev = document.getElementById("labelKpiRevenue");
-  if (labelRev) labelRev.textContent = `Revenue (${summary.period || "MTD"})`;
+  if (labelRev) labelRev.textContent = `Revenue, ${periodWords}`;
 
   const labelCost = document.getElementById("labelKpiCost");
-  if (labelCost) labelCost.textContent = `Operating Expenses (${summary.period || "MTD"})`;
+  if (labelCost) labelCost.textContent = `Operating expenses, ${periodWords}`;
 
   const labelNet = document.getElementById("labelKpiNet");
-  if (labelNet) labelNet.textContent = `Net Operating Result (${summary.period || "MTD"})`;
+  if (labelNet) labelNet.textContent = `Net operating result, ${periodWords}`;
 
   const revSub = document.getElementById("statFinanceRevenueSubtext");
   if (revSub) {
@@ -225,7 +232,7 @@ function renderFinanceDashboard(summary, ctx = {}) {
 
   const scopeBadge = document.getElementById("financeDashboardScopeBadge");
   if (scopeBadge) {
-    const ent = summary.entity && summary.entity !== "all" ? summary.entity : "All Accounts";
+    const ent = summary.entity && summary.entity !== "all" ? summary.entity : "All entities";
     scopeBadge.innerHTML = `<i class="fa-solid fa-building-columns"></i> Scope: ${ent}`;
   }
 
