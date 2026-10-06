@@ -88,7 +88,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.fill('#p1FxRateInput', '48.5000');
     await page.click('#btnP1ApplyFx');
     await expect(page.locator('#payrollFxRateBadge')).toHaveText('48.5000');
-    await expect(page.locator('#payrollFxRateSourceBadge')).toHaveText('Manual Override');
+    await expect(page.locator('#payrollFxRateSourceBadge')).toHaveText('manual override');
 
     // Reset FX rate
     await page.click('#btnP1ResetFx');
@@ -450,7 +450,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     expect(unitResults.approved.stepIndex).toBe(2);
     expect(unitResults.finalized.stepIndex).toBe(3);
     expect(unitResults.paidNoObl.stepIndex).toBe(4);
-    expect(unitResults.paidNoObl.badge).toBe('Not Recorded');
+    expect(unitResults.paidNoObl.badge).toBe('Statutory not recorded');
     expect(unitResults.paidAccrued.stepIndex).toBe(5);
     expect(unitResults.paidAccrued.badge).toBe('Recorded — Unpaid');
     expect(unitResults.paidMixed.stepIndex).toBe(5);
@@ -487,7 +487,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
       await window.PayrollApp.openHistoryRun(202);
     });
     await expect(page.locator('#payrollScreen5')).toBeVisible();
-    await expect(page.locator('#p5StatutoryBadge')).toHaveText('Not Recorded');
+    await expect(page.locator('#p5StatutoryBadge')).toHaveText('Statutory not recorded');
 
     // 4. Fresh open of paid run with accrued obligations navigates to Screen 6 with "Recorded — Unpaid" badge
     await page.evaluate(async () => {
@@ -611,7 +611,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     });
 
     const tbody = page.locator('#payrollRunsTableBody');
-    await expect(tbody.locator('tr:has-text("2026-05")')).toContainText('Not Recorded');
+    await expect(tbody.locator('tr:has-text("2026-05")')).toContainText('Statutory not recorded');
     await expect(tbody.locator('tr:has-text("2026-04")')).toContainText('Recorded — Unpaid');
     await expect(tbody.locator('tr:has-text("2026-03")')).toContainText('Reconciled');
   });

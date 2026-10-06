@@ -49,9 +49,8 @@
                   <div class="fxbox payroll-fx-strip" id="payrollFxStrip">
                     <i class="fa-solid fa-coins"></i>
                     <span>
-                      <strong id="payrollFxRateBadge" class="p-badge b-blue" style="font-family:monospace; font-weight:700;">50.0000</strong>
-                      EGP/USD ·
-                      <span id="payrollFxRateSourceBadge" class="badge-pill pill-neutral p-badge b-gray" style="font-size:10px; padding:2px 8px;">System Fallback (50.0)</span>
+                      FX rate: 1 USD = <strong id="payrollFxRateBadge" style="font-variant-numeric:tabular-nums;">50.0000</strong> EGP,
+                      <span id="payrollFxRateSourceBadge" class="payroll-fx-source">system fallback rate</span>
                     </span>
                     <button type="button" class="editbtn btn-ghost" id="btnToggleFxOverride" onclick="PayrollApp.toggleFxOverride()" title="Change FX rate">
                       <i class="fa-solid fa-pencil"></i>
@@ -62,7 +61,7 @@
                       <button type="button" class="btn sm btn-ghost" id="btnResetFxRate" onclick="PayrollApp.resetFxOverride()" style="padding:3px 8px; font-size:11px;">Reset</button>
                     </div>
                   </div>
-                  <span class="badge-pill pill-neutral p-badge b-gray" id="payrollStatusBadge">DRAFT</span>
+                  <span class="badge-pill pill-neutral p-badge b-gray" id="payrollStatusBadge">Draft</span>
                   <button class="btn sm btn-ghost" id="payrollRevertBtn" onclick="PayrollApp.openRevertModal()" style="display:none;">
                     <i class="fa-solid fa-rotate-left"></i> Revert to draft
                   </button>
@@ -71,7 +70,7 @@
 
               <!-- Lock Notice Banner -->
               <div class="lock payroll-lock-note payroll-hidden" id="payrollLockNote">
-                <i class="fa-solid fa-lock"></i> <span id="payrollLockText">Finalized — compensation lines are locked. Use Revert to Draft to edit.</span>
+                <i class="fa-solid fa-lock"></i> <span id="payrollLockText">This run is finalized. Compensation and additions are read-only.</span>
               </div>
 
               <!-- 6-Step Stepper -->
@@ -334,8 +333,8 @@
                 <div class="title-row">
                   <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Payment Confirmation</div>
                   <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="p-badge b-green" id="p5RunStatusBadge" style="display:none;">PAID</span>
-                    <span class="p-badge b-gray" id="p5StatutoryBadge" style="display:none;">Not Recorded</span>
+                    <span class="p-badge b-green" id="p5RunStatusBadge" style="display:none;">Salaries paid</span>
+                    <span class="p-badge b-gray" id="p5StatutoryBadge" style="display:none;">Statutory not recorded</span>
                   </div>
                 </div>
 
@@ -356,8 +355,8 @@
                           <span class="v" id="p5IntPayDate">-</span>
                         </div>
                         <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-building-columns"></i> Employee bank account</span>
-                          <span class="v" id="p5IntAccount">Treasury Cash Vault</span>
+                          <span class="k"><i class="fa-solid fa-building-columns"></i> Company funding account</span>
+                          <span class="v" id="p5IntAccount">—</span>
                         </div>
                         <div class="disburse-row">
                           <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
@@ -383,8 +382,8 @@
                           <span class="v" id="p5ExtPayDate">-</span>
                         </div>
                         <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-building-columns"></i> Employee bank account</span>
-                          <span class="v" id="p5ExtAccount">Operating Bank Wire Account</span>
+                          <span class="k"><i class="fa-solid fa-building-columns"></i> Company funding account</span>
+                          <span class="v" id="p5ExtAccount">—</span>
                         </div>
                         <div class="disburse-row">
                           <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
@@ -419,14 +418,24 @@
                     <table class="payroll-worksheet" id="payrollDisburseResultsTable">
                       <thead>
                         <tr>
-                          <th>Employee</th>
-                          <th class="num">Total Disbursement</th>
-                          <th>Status</th>
-                          <th>Paid At</th>
-                          <th>Notes</th>
+                          <th scope="col">Employee</th>
+                          <th scope="col">Employee bank details</th>
+                          <th scope="col" class="num payroll-col-ext">External</th>
+                          <th scope="col" class="num payroll-col-int">Internal</th>
+                          <th scope="col" class="num">Total paid</th>
+                          <th scope="col">Status</th>
                         </tr>
                       </thead>
                       <tbody id="payrollDisburseResultsTableBody"></tbody>
+                      <tfoot>
+                        <tr class="payroll-totals-row">
+                          <td colspan="2">Totals</td>
+                          <td class="num payroll-num payroll-col-ext" id="p5TotExt">-</td>
+                          <td class="num payroll-num payroll-col-int" id="p5TotInt">-</td>
+                          <td class="num payroll-num" id="p5TotNet">-</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
 

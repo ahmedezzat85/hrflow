@@ -2036,3 +2036,29 @@
   font-size: var(--fs-md);
   color: var(--text);
 }
+
+/* Step 5 payments table: External and Internal keep the colours of the two rail cards. */
+#a-finance-payroll #payrollDisburseResultsTable thead .payroll-col-ext,
+#a-finance-payroll #payrollDisburseResultsTable tfoot .payroll-col-ext {
+  color: var(--success);
+}
+
+#a-finance-payroll #payrollDisburseResultsTable thead .payroll-col-int,
+#a-finance-payroll #payrollDisburseResultsTable tfoot .payroll-col-int {
+  color: var(--accent-text);
+}
+
+#a-finance-payroll .payroll-totals-row td {
+  background: var(--surface2);
+  border-top: 1px solid var(--border2);
+  font-weight: 700;
+}
+
+#a-finance-payroll .payroll-bank-missing {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+#a-finance-payroll .payroll-fx-source {
+  color: var(--text2);
+}

@@ -65,7 +65,7 @@ test.describe('U3 truthful screens', () => {
       PayrollApp.drawRunsList();
     });
     const row = page.locator('#payrollRunsTableBody tr').first();
-    await expect(row).toContainText('FINALIZED');
+    await expect(row).toContainText('Finalized');
     await expect(row).toContainText('$4,321.50');
     await expect(page.locator('#payrollRunsTableBody tr')).toHaveCount(1);
   });

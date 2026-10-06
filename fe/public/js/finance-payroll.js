@@ -348,13 +348,13 @@
 
       const currentStatus = this.currentStatusKey();
       const statusMap = {
-        draft: ['DRAFT', 'b-gray'],
-        submitted: ['SUBMITTED', 'b-blue'],
-        approved: ['APPROVED', 'b-blue'],
-        finalized: ['FINALIZED', 'b-blue'],
-        processing: ['PROCESSING', 'b-orange'],
-        partially_paid: ['PARTIALLY PAID', 'b-orange'],
-        paid: ['PAID', 'b-green']
+        draft: ['Draft', 'b-gray'],
+        submitted: ['Submitted', 'b-blue'],
+        approved: ['Approved', 'b-blue'],
+        finalized: ['Finalized', 'b-blue'],
+        processing: ['Processing', 'b-orange'],
+        partially_paid: ['Partially paid', 'b-orange'],
+        paid: ['Salaries paid', 'b-green']
       };
       const t = this.rollup();
 
@@ -365,7 +365,7 @@
         <tr class="clickable" onclick="PayrollApp.openRun('current')">
           <td data-label="Period"><strong>${this.month}</strong></td>
           <td data-label="Date range">${this.start} &rarr; ${this.end}</td>
-          <td data-label="Status"><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'DRAFT'}</span></td>
+          <td data-label="Status"><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft'}</span></td>
           <td data-label="Total Disbursement" class="payroll-num">${this.money(t.net)}</td>
           <td data-label="Employees">${this.rows.length}</td>
           <td data-label="Last updated">${this.audit[0] ? this.audit[0].when : '—'}</td>
@@ -375,7 +375,7 @@
       const pastRuns = this.serverRuns || [];
       pastRuns.forEach(r => {
         const sKey = (r.status || 'draft').toLowerCase();
-        const sBadge = statusMap[sKey] || ['DRAFT', 'b-gray'];
+        const sBadge = statusMap[sKey] || ['Draft', 'b-gray'];
         const netVal = r.total_net !== undefined ? r.total_net : (r.net || 0);
         const hc = r.headcount !== undefined ? r.headcount : (r.employees || (r.lines ? r.lines.length : 0));
         const upd = r.paid_at || r.updated_at || r.created_at || '—';
@@ -472,7 +472,7 @@
       if (status === 'paid' || status === 'partially_paid') {
         const obls = Array.isArray(linkedObligations) ? linkedObligations : [];
         if (obls.length === 0) {
-          return { stepIndex: 4, screen: 5, badge: 'Not Recorded', badgeClass: 'b-gray' };
+          return { stepIndex: 4, screen: 5, badge: 'Statutory not recorded', badgeClass: 'b-gray' };
         }
 
         const allRemitted = obls.every(o => (o.status || '').toLowerCase() === 'remitted');
@@ -674,7 +674,7 @@
       if (lockNote && lockText) {
         if (idx >= 2 || this.isRunLocked()) {
           lockNote.classList.remove('payroll-hidden');
-          lockText.textContent = 'This payroll cycle has been finalized. Base compensation and dynamic additions are locked against edits.';
+          lockText.textContent = 'This run is finalized. Compensation and additions are read-only.';
         } else {
           lockNote.classList.add('payroll-hidden');
         }
@@ -1592,8 +1592,8 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Operating Bank Wire Account';
-      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Treasury Cash Vault';
+      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || '—';
+      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || '—';
 
       const { ext: extTotal, int: intTotal } = this.paymentTotals();
 
@@ -1673,8 +1673,7 @@
         if (resCard) resCard.classList.remove('payroll-hidden');
         if (jCard) jCard.classList.remove('payroll-hidden');
         if (btnDisburse) {
-          btnDisburse.disabled = true;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-check"></i> Recorded as paid';
+          this.showRecordedAsPaid(btnDisburse);
         }
         this.drawDisburseResults();
         this.drawJournalRows();
@@ -1739,6 +1738,13 @@
       }
     },
 
+    // A paid run shows a disabled button that states the date, not an active-looking primary.
+    showRecordedAsPaid(btn) {
+      const paidOn = (this.currentRun && (this.currentRun.paid_at || this.currentRun.payment_date)) || this.payDate;
+      btn.disabled = true;
+      btn.textContent = `Recorded as paid on ${fmtDateShort(paidOn)}`;
+    },
+
     // Disable the confirm button, with an explanation, until the run is finalized.
     applyConfirmState() {
       const btn = document.getElementById('btnP5ConfirmDisburse');
@@ -1747,58 +1753,66 @@
       const status = this.currentRun && this.currentRun.status;
       const paid = status === 'paid';
       const ready = ['finalized', 'processing', 'partially_paid'].includes(status);
-      if (!paid) btn.disabled = !ready;
+      if (paid || status === 'partially_paid') this.showRecordedAsPaid(btn);
+      else btn.disabled = !ready;
       if (hint) {
         hint.hidden = ready || paid;
         hint.textContent = ready || paid ? '' : 'Payment can be recorded once the run is approved and finalized.';
       }
     },
 
+    // One row per employee: External, Internal and Total paid side by side. The values come from
+    // paymentValues(), the same source as the two rail cards and step 4, so the totals row equals the
+    // card amounts and External + Internal = Total paid on every row.
     drawDisburseResults() {
       const tbody = document.getElementById('payrollDisburseResultsTableBody');
       if (!tbody) return;
 
+      const pay = this.paymentValues();
       const lines = (this.currentRun && this.currentRun.lines) || [];
-      if (lines.length > 0) {
-        tbody.innerHTML = lines.map(l => {
-          const empName = l.employee_name || `Employee #${l.employee_id}`;
-          const inits = this.getInitials(empName);
-          const isWarn = l.payment_status === 'flagged' || l.missing_bank || (l.failure_reason && l.failure_reason.includes('bank'));
-          const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
-          const badgeText = isWarn ? 'Flagged — no bank' : (l.payment_status ? l.payment_status.charAt(0).toUpperCase() + l.payment_status.slice(1) : 'Paid');
-          const paidAt = l.paid_at ? l.paid_at.slice(0, 16).replace('T', ' ') : this.nowStamp();
-          const notes = l.failure_reason || (isWarn ? 'Manual or cash settlement pending; bank details missing.' : 'Settled via configured funding accounts.');
+      const exceptions = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      const missingIds = new Set(exceptions.filter(e => e.code === 'MISSING_BANK_DETAILS').map(e => Number(e.employee_id)));
+      let totExt = 0, totInt = 0, totNet = 0;
 
-          return `
-            <tr class="${isWarn ? 'warnrow' : ''}">
-              <td class="tname"><span class="avatar">${inits}</span>${empName}</td>
-              <td class="num payroll-num" style="font-weight:700;">${this.money(l.net_pay || l.amount)}</td>
-              <td><span class="${badgeClass} badge-pill">${badgeText}</span></td>
-              <td>${paidAt}</td>
-              <td class="muted">${notes}</td>
-            </tr>
-          `;
-        }).join('');
-      } else {
-        tbody.innerHTML = (this.rows || []).map(r => {
-          const c = this.computeRow(r);
-          const inits = this.getInitials(r.name);
-          const isWarn = r.missingBank || !r.hasBank;
-          const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
-          const badgeText = isWarn ? 'Flagged — no bank' : 'Paid';
-          const notes = isWarn ? 'Manual or cash settlement pending; bank details missing.' : 'Settled via configured funding accounts.';
+      tbody.innerHTML = (this.rows || []).map(r => {
+        const v = pay.get(Number(r.id)) || { ext: 0, int: 0, net: 0 };
+        totExt += v.ext; totInt += v.int; totNet += v.net;
 
-          return `
-            <tr class="${isWarn ? 'warnrow' : ''}">
-              <td class="tname"><span class="avatar">${inits}</span>${r.name}</td>
-              <td class="num payroll-num" style="font-weight:700;">${this.money(c.net)}</td>
-              <td><span class="${badgeClass} badge-pill">${badgeText}</span></td>
-              <td>${this.nowStamp()}</td>
-              <td class="muted">${notes}</td>
-            </tr>
-          `;
-        }).join('');
-      }
+        const hasExternal = v.ext > 0 || r.baseExt > 0;
+        const missingBank = hasExternal && (missingIds.has(Number(r.id)) || r.has_missing_bank
+          || (!r.bank_name && !r.bank_account_masked && !r.bank_account_id));
+        let bankHtml;
+        if (missingBank) {
+          bankHtml = '<span class="payroll-bank-missing">Missing</span>';
+        } else if (hasExternal) {
+          bankHtml = r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'On file';
+        } else {
+          bankHtml = '<span class="muted">Not needed (internal only)</span>';
+        }
+
+        const empLines = lines.filter(l => Number(l.employee_id) === Number(r.id));
+        const flagged = empLines.find(l => l.payment_status === 'flagged' || l.missing_bank || l.failure_reason);
+        const isWarn = !!flagged || (empLines.length === 0 && missingBank);
+        const reason = (flagged && flagged.failure_reason) || (isWarn ? 'Bank details are missing; settle manually or by cash.' : '');
+        const statusText = isWarn ? 'Flagged' : 'Paid';
+        const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
+
+        return `
+          <tr class="${isWarn ? 'warnrow' : ''}">
+            <td class="tname"><span class="avatar">${this.getInitials(r.name)}</span>${escapeHtml(r.name)}</td>
+            <td>${bankHtml}</td>
+            <td class="num payroll-num payroll-col-ext">${this.money(v.ext)}</td>
+            <td class="num payroll-num payroll-col-int">${this.money(v.int)}</td>
+            <td class="num payroll-num" style="font-weight:700;">${this.money(v.net)}</td>
+            <td><span class="${badgeClass} badge-pill"${reason ? ` title="${escapeHtml(reason)}"` : ''}>${statusText}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      const setTot = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = this.money(val); };
+      setTot('p5TotExt', totExt);
+      setTot('p5TotInt', totInt);
+      setTot('p5TotNet', totNet);
     },
 
     drawJournalRows() {
@@ -2009,7 +2023,7 @@
       }
 
       if (this.currentRun && (this.currentRun.status === 'paid' || this.currentRun.status === 'partially_paid')) {
-        this.renderStatutoryBadge('Not Recorded', 'b-gray');
+        this.renderStatutoryBadge('Statutory not recorded', 'b-gray');
       }
       const siBadge = document.getElementById('p6SiStatusBadge');
       const taxBadge = document.getElementById('p6TaxStatusBadge');
@@ -2158,14 +2172,11 @@
       if (rateEl) rateEl.textContent = rateNum.toFixed(4);
       if (srcEl) {
         if (isManual) {
-          srcEl.textContent = 'Manual Override';
-          srcEl.className = 'p-badge b-blue';
+          srcEl.textContent = 'manual override';
         } else if (isFallback) {
-          srcEl.textContent = 'System Fallback (50.0)';
-          srcEl.className = 'p-badge b-gray';
+          srcEl.textContent = 'system fallback rate';
         } else {
-          srcEl.textContent = 'Resolved from Transfer History';
-          srcEl.className = 'p-badge b-green';
+          srcEl.textContent = 'from transfer history';
         }
       }
       if (inputEl && document.activeElement !== inputEl) inputEl.value = isManual ? this.fxRateValue : '';
@@ -2228,15 +2239,15 @@
       if (!badge) return;
       const key = this.currentStatusKey();
       const statusMap = {
-        draft: ['DRAFT', 'b-gray'],
-        submitted: ['SUBMITTED', 'b-blue'],
-        approved: ['APPROVED', 'b-blue'],
-        finalized: ['FINALIZED', 'b-blue'],
-        processing: ['PROCESSING', 'b-orange'],
-        partially_paid: ['PARTIALLY PAID', 'b-orange'],
-        paid: ['PAID', 'b-green']
+        draft: ['Draft', 'b-gray'],
+        submitted: ['Submitted', 'b-blue'],
+        approved: ['Approved', 'b-blue'],
+        finalized: ['Finalized', 'b-blue'],
+        processing: ['Processing', 'b-orange'],
+        partially_paid: ['Partially paid', 'b-orange'],
+        paid: ['Salaries paid', 'b-green']
       };
-      const info = statusMap[key] || ['DRAFT', 'b-gray'];
+      const info = statusMap[key] || ['Draft', 'b-gray'];
       badge.textContent = info[0];
       badge.className = `p-badge ${info[1]}`;
     },
