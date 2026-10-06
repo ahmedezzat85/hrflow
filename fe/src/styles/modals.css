@@ -290,9 +290,11 @@ body.modal-open {
 .modal-v2 .form-field select,
 .modal-v2 .form-field textarea{
   width:100%;padding:10px 13px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--border);background:var(--surface);
+  border:1.5px solid var(--border);background-color:var(--surface);
   color:var(--text);font-size:var(--fs-base);outline:none;font-family:inherit;transition:.15s;
 }
+.modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.modal-v2 .form-field select{height:40px}
 .modal-v2 .form-field input:focus,
 .modal-v2 .form-field select:focus,
 .modal-v2 .form-field textarea:focus{

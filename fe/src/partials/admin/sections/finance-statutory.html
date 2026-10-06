@@ -193,7 +193,7 @@
               </div>
               <div class="modal-body">
                 <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div class="form-group" style="grid-column: 1 / -1;">
+                  <div class="form-field" style="grid-column: 1 / -1;">
                     <label for="statRecordType">Obligation Type *</label>
                     <select id="statRecordType" required>
                       <option value="sales_tax">Sales Tax / VAT</option>
@@ -205,19 +205,19 @@
                       <option value="other_statutory">Other Statutory</option>
                     </select>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statRecordPeriod">Tax Period *</label>
                     <input type="month" id="statRecordPeriod" placeholder="2026-09" required>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statRecordAmount">Accrued Amount *</label>
                     <input type="number" id="statRecordAmount" step="0.01" min="0.01" placeholder="0.00" required>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statRecordDueDate">Due Date</label>
                     <input type="date" id="statRecordDueDate">
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statRecordCurrency">Currency</label>
                     <select id="statRecordCurrency">
                       <option value="EGP" selected>EGP</option>
@@ -225,7 +225,7 @@
                       <option value="EUR">EUR</option>
                     </select>
                   </div>
-                  <div class="form-group" style="grid-column: 1 / -1;">
+                  <div class="form-field" style="grid-column: 1 / -1;">
                     <label for="statRecordNotes">Notes / Filing Details</label>
                     <textarea id="statRecordNotes" rows="2" placeholder="e.g. Q3 Sales tax declaration, Form 10"></textarea>
                   </div>

@@ -517,7 +517,8 @@ button:disabled,
 /* Filter Selects & Toolbar Dropdowns */
 .filter-select,
 .toolbar select,
-select.form-control {
+select.form-control,
+select.form-input {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -544,7 +545,8 @@ select.form-control {
 
 [data-theme="dark"] .filter-select,
 [data-theme="dark"] .toolbar select,
-[data-theme="dark"] select.form-control {
+[data-theme="dark"] select.form-control,
+[data-theme="dark"] select.form-input {
   background-color: var(--surface);
   border-color: var(--border);
   color: var(--text);
@@ -553,27 +555,31 @@ select.form-control {
 
 .filter-select:hover,
 .toolbar select:hover,
-select.form-control:hover {
+select.form-control:hover,
+select.form-input:hover {
   border-color: var(--accent);
 }
 
 .filter-select:focus,
 .toolbar select:focus,
-select.form-control:focus {
+select.form-control:focus,
+select.form-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .filter-select option,
 .toolbar select option,
-select.form-control option {
+select.form-control option,
+select.form-input option {
   background-color: var(--surface);
   color: var(--text);
   padding: 8px 12px;
 }
 
 /* General form control inputs */
-.form-control {
+.form-control,
+.form-input {
   font-family: inherit;
   font-size: var(--fs-base);
   color: var(--text);
@@ -586,15 +592,22 @@ select.form-control option {
   box-sizing: border-box;
 }
 
-[data-theme="dark"] .form-control {
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-input {
   background-color: var(--surface);
   border-color: var(--border);
   color: var(--text);
 }
 
-.form-control:focus {
+.form-control:focus,
+.form-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input.form-input:not([type="checkbox"]):not([type="radio"]) {
+  height: 38px;
+  padding: 0 13px;
 }
 
 .progress-bar {
@@ -663,7 +676,7 @@ select.form-control option {
   padding: 11px 13px;
   border-radius: 10px;
   border: 1.5px solid var(--border);
-  background: var(--surface2);
+  background-color: var(--surface2);
   color: var(--text);
   font-size: var(--fs-base);
   outline: none;
@@ -1449,7 +1462,7 @@ th[data-sort][aria-sort="descending"] .sort-icon {
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
-  background: var(--surface);
+  background-color: var(--surface);
   color: var(--text);
   font-size: 0.85rem;
   cursor: pointer;
