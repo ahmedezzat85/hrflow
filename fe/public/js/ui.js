@@ -294,6 +294,9 @@ function showSection(pageId, portal, params){
   if(t){
     document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
   }
+  // An error toast belongs to the page that raised it: drop it when the user moves to another page.
+  if (showSection.lastPage !== undefined && showSection.lastPage !== pageId) clearErrorToasts();
+  showSection.lastPage = pageId;
   closeAllSidebars();
   if (typeof closeTopbarPopovers === 'function') closeTopbarPopovers();
   if (window.Router) Router.record(pageId, portal, params);
@@ -420,6 +423,9 @@ function toast(msg, icon='fa-solid fa-circle-check'){
   }
   wrap.appendChild(el);
   if (!isError) setTimeout(()=>el.remove(), 3200);
+}
+function clearErrorToasts(){
+  document.querySelectorAll('#toastWrap .toast-error').forEach(el=>el.remove());
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
 // HR-page money helpers: thin wrappers over the one formatter in finance-core.js

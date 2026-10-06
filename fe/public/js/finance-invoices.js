@@ -827,7 +827,7 @@ async function loadFinanceCustomers() {
     renderFinanceCustomers(FinanceState.customers);
   } catch (err) {
     console.error("Failed to load finance customers:", err);
-    showToast(err.message || "Failed to load customers", "error");
+    showToast(describeLoadFailure("customers", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }

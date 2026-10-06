@@ -20,6 +20,16 @@ if (typeof window.showToast !== "function") {
   };
 }
 
+// Error text for a failed loader: always names what failed ("Bank statements could not be loaded").
+// Server text is appended only when it says more than a bare HTTP status ("Not Found").
+const BARE_STATUS_TEXT = /^(not found|bad request|forbidden|unauthorized|internal server error|bad gateway|service unavailable|gateway timeout|request failed \(\d+\)|[a-z ]*failed with status \d+)\.?$/i;
+function describeLoadFailure(subject, err) {
+  const base = `${subject.charAt(0).toUpperCase()}${subject.slice(1)} could not be loaded`;
+  const detail = String((err && err.message) || "").trim();
+  return detail && !BARE_STATUS_TEXT.test(detail) ? `${base}: ${detail}` : `${base}.`;
+}
+window.describeLoadFailure = describeLoadFailure;
+
 const FinanceState = {
   summary: null,
   invoices: [],

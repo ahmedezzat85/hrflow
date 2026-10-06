@@ -232,6 +232,21 @@
   gap: 8px;
 }
 
+/* Quiet inline notice (signed out after inactivity): neutral, not an error. */
+#login-screen .login-notice {
+  background: var(--surface2);
+  color: var(--text2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+#login-screen .login-notice[hidden] {
+  display: none;
+}
+
 .theme-fab {
   position: fixed;
   top: 20px;

@@ -681,7 +681,7 @@ async function openReportDrilldown(drilldownType, targetId, title) {
     });
   } catch (err) {
     console.error("Failed to load drilldown data:", err);
-    showToast(err.message || "Failed to load drilldown details", "error");
+    showToast(describeLoadFailure("drilldown details", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1067,7 +1067,7 @@ async function loadReportCategorySummary() {
     });
   } catch (err) {
     console.error("Failed to load category summary:", err);
-    showToast(err.message || "Failed to load category spend rollup", "error");
+    showToast(describeLoadFailure("category spend rollup", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1172,7 +1172,7 @@ async function loadReportMatrix() {
     }
   } catch (err) {
     console.error("Failed to load matrix report:", err);
-    showToast(err.message || "Failed to load annual spend matrix", "error");
+    showToast(describeLoadFailure("annual spend matrix", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1254,7 +1254,7 @@ async function loadReportBalances() {
     });
   } catch (err) {
     console.error("Failed to load balances report:", err);
-    showToast(err.message || "Failed to load point-in-time balances", "error");
+    showToast(describeLoadFailure("point-in-time balances", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1341,7 +1341,7 @@ async function loadReportTransactions() {
     });
   } catch (err) {
     console.error("Failed to load transactions report:", err);
-    showToast(err.message || "Failed to load transaction ledger", "error");
+    showToast(describeLoadFailure("transaction ledger", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1447,7 +1447,7 @@ async function loadReportCheques() {
     });
   } catch (err) {
     console.error("Failed to load cheques report:", err);
-    showToast(err.message || "Failed to load cheques report", "error");
+    showToast(describeLoadFailure("cheques report", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1577,7 +1577,7 @@ async function loadReportProfitAndLoss() {
     }
   } catch (err) {
     console.error("Failed to load Profit & Loss report:", err);
-    showToast(err.message || "Failed to load Profit & Loss report", "error");
+    showToast(describeLoadFailure("Profit & Loss report", err), "error");
   }
 }
 
@@ -1672,7 +1672,7 @@ async function loadReportBalanceSheet() {
     }
   } catch (err) {
     console.error("Failed to load Balance Sheet:", err);
-    showToast(err.message || "Failed to load Balance Sheet", "error");
+    showToast(describeLoadFailure("Balance Sheet", err), "error");
   }
 }
 
@@ -1736,7 +1736,7 @@ async function loadReportTrialBalance() {
     }
   } catch (err) {
     console.error("Failed to load Trial Balance:", err);
-    showToast(err.message || "Failed to load Trial Balance", "error");
+    showToast(describeLoadFailure("Trial Balance", err), "error");
   }
 }
 
@@ -1851,7 +1851,7 @@ async function loadReportCashFlow() {
     }
   } catch (err) {
     console.error("Failed to load Cash Flow report:", err);
-    showToast(err.message || "Failed to load Cash Flow report", "error");
+    showToast(describeLoadFailure("Cash Flow report", err), "error");
   }
 }
 
@@ -1928,7 +1928,7 @@ async function loadReportArAging() {
     }
   } catch (err) {
     console.error("Failed to load AR Aging report:", err);
-    showToast(err.message || "Failed to load AR Aging report", "error");
+    showToast(describeLoadFailure("AR Aging report", err), "error");
   }
 }
 
@@ -2005,7 +2005,7 @@ async function loadReportApAging() {
     }
   } catch (err) {
     console.error("Failed to load AP Aging report:", err);
-    showToast(err.message || "Failed to load AP Aging report", "error");
+    showToast(describeLoadFailure("AP Aging report", err), "error");
   }
 }
 

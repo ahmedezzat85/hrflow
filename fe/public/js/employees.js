@@ -652,7 +652,17 @@ async function loadPayrollPaymentsCard(empId) {
   body.innerHTML = sections.join('');
 }
 
+// Status-line action ("Set up" / "Try again") shown beside a card's status pill; pass no label to hide it.
+function setCardStatusAction(btnId, label, onClick) {
+  const b = document.getElementById(btnId);
+  if (!b) return;
+  b.hidden = !label;
+  b.textContent = label || '';
+  b.onclick = label ? onClick : null;
+}
+
 async function loadBankAccountStatus(empId) {
+  setCardStatusAction('bankAccountStatusActionBtn', null);
   const pill = document.getElementById('bankAccountPill');
   const btn = document.getElementById('bankAccountActionBtn');
   const nameEl = document.getElementById('bankDetailName');
@@ -678,8 +688,9 @@ async function loadBankAccountStatus(empId) {
       if (ibanEl) ibanEl.textContent = data.iban || '—';
       if (swiftEl) swiftEl.textContent = data.swift_code || '—';
     } else {
-      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Missing';
+      pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
       pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      setCardStatusAction('bankAccountStatusActionBtn', 'Set up', () => openBankAccountModal());
       if (btn) {
         btn.innerHTML = '<i class="fa-solid fa-plus"></i>';
         btn.title = 'Add Bank Details';
@@ -691,6 +702,7 @@ async function loadBankAccountStatus(empId) {
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
     pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+    setCardStatusAction('bankAccountStatusActionBtn', 'Try again', () => loadBankAccountStatus(empId));
   }
 }
 async function openBankAccountModal() {
@@ -773,6 +785,7 @@ async function saveBankAccount(evt) {
 let _socialInsuranceConfig = null;
 
 async function loadSocialInsuranceStatus(empId) {
+  setCardStatusAction('socialInsuranceStatusActionBtn', null);
   const pill = document.getElementById('socialInsurancePill');
   const btn = document.getElementById('socialInsuranceActionBtn');
   const covEl = document.getElementById('socialInsCoverage');
@@ -788,6 +801,14 @@ async function loadSocialInsuranceStatus(empId) {
   try {
     const data = await Api.getSocialInsurance(empId);
     _socialInsuranceConfig = data;
+    if (!data) {
+      // The request succeeded and there is no record yet: not an error.
+      pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
+      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      if (covEl) covEl.textContent = 'Not set up';
+      setCardStatusAction('socialInsuranceStatusActionBtn', 'Set up', () => openSocialInsuranceModal());
+      return;
+    }
     const isCovered = !!data.insured_flag;
     const baseAmt = data.insured_base !== null && data.insured_base !== undefined ? Number(data.insured_base) : null;
     const effDate = data.effective_start_date ? String(data.effective_start_date).slice(0, 10) : '—';
@@ -828,6 +849,7 @@ async function loadSocialInsuranceStatus(empId) {
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
     pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+    setCardStatusAction('socialInsuranceStatusActionBtn', 'Try again', () => loadSocialInsuranceStatus(empId));
   }
 }
 

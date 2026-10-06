@@ -318,7 +318,7 @@ async function loadFinanceBills(incomingParams) {
     applyAndRenderBills();
   } catch (err) {
     console.error("Failed to load vendor bills:", err);
-    showToast(err.message || "Failed to load bills", "error");
+    showToast(describeLoadFailure("bills", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -1584,7 +1584,7 @@ async function loadFinanceVendors() {
     renderFinanceVendors(FinanceState.vendors);
   } catch (err) {
     console.error("Failed to load finance vendors:", err);
-    showToast(err.message || "Failed to load vendors", "error");
+    showToast(describeLoadFailure("vendors", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }

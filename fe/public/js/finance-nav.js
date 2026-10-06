@@ -44,6 +44,8 @@ function loadFinanceDisplaySettings() {
 }
 
 async function updateFinanceBadges() {
+  // No session yet (first paint, before /api/auth/me answers): nothing to fetch.
+  if (typeof SessionInfo !== "undefined" && !SessionInfo.isKnown()) return;
   try {
     const summary = typeof FinanceApi.getFinanceSummary === "function"
       ? await FinanceApi.getFinanceSummary()

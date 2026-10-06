@@ -65,7 +65,7 @@ async function loadFinanceStatements() {
     renderFinanceStatementsTable(_allFinanceStatements);
   } catch (err) {
     console.error("Failed to load statements", err);
-    showToast(err.message || "Failed to load bank statements", "error");
+    showToast(describeLoadFailure("bank statements", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -744,7 +744,7 @@ async function openReconciliationModal(importId) {
     renderReconciliationLinesTable(lines);
   } catch (err) {
     console.error("Failed to load reconciliation details", err);
-    showToast(err.message || "Failed to load statement reconciliation details", "error");
+    showToast(describeLoadFailure("statement reconciliation details", err), "error");
     closeReconciliationModal();
   } finally {
     if (loading) loading.style.display = "none";
@@ -1713,7 +1713,7 @@ async function loadAndRenderRulesTable() {
     renderRulesTable(_cachedRules);
   } catch (err) {
     console.error("Failed to load rules:", err);
-    showToast(err.message || "Failed to load rules", "error");
+    showToast(describeLoadFailure("bank statement rules", err), "error");
   }
 }
 

@@ -295,7 +295,14 @@ async function bootstrapAppFromSession(){
 
 window.addEventListener('DOMContentLoaded', () => { applySavedSidebarCollapse(); bootstrapAppFromSession(); });
 
+// Quiet inline notice on the login card; shown only after an in-page session expiry.
+function setLoginNotice(visible){
+  const el = document.getElementById('loginNotice');
+  if (el) el.hidden = !visible;
+}
+
 async function logout(){
+  setLoginNotice(false);
   await Api.logout();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
   insuranceCategories = []; insuranceConsumption = [];
@@ -327,6 +334,6 @@ window.addEventListener('hrflow:session-expired', (e) => {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loginThemeToggle').style.display = 'flex';
   document.getElementById('loginErr').style.display = 'none';
-  toast('Your session expired. Please sign in again.', 'fa-solid fa-triangle-exclamation');
+  setLoginNotice(true);
   initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
 });

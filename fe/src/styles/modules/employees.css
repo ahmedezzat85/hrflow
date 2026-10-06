@@ -158,6 +158,8 @@
   opacity:.8;
 }
 
+.employee-bank-card .status-line .btn{ margin-left:auto; }
+.employee-bank-card .status-line .btn[hidden]{ display:none; }
 .employee-bank-card .status-line{
   display:flex;
   align-items:center;
