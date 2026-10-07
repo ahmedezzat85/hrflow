@@ -1907,3 +1907,12 @@ tbody tr[hidden] {
     border-left: 1px solid var(--border);
   }
 }
+
+/* A table placed directly in a card scrolls inside the card's padding, so pin the column flush to the card edge (card padding is 22px). */
+@media (min-width: 769px) {
+  .card > table.sticky-actions th:last-child,
+  .card > table.sticky-actions td:last-child {
+    right: -22px;
+    padding-right: 22px;
+  }
+}
