@@ -17,15 +17,11 @@
               <div class="stat-val" id="statUpcomingQ">0</div>
             </div>
           </div>
-          <div class="toolbar">
-            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch"
-                placeholder="Search employees..."></div>
-            <button class="btn btn-fill" id="btnOpenRaiseModal" onclick="openRaiseModal()"><i class="fa-solid fa-arrow-trend-up"></i> Apply New
-              Raise</button>
-          </div>
           <div class="card" style="margin-bottom:20px;">
             <div class="card-head">
               <h3>Employee Compensation</h3>
+              <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch"
+                  placeholder="Search employees..." aria-label="Search employees"></div>
             </div>
             <table>
               <thead>
@@ -37,7 +33,6 @@
                   <th>Total Monthly</th>
                   <th>Next Raise Date</th>
                   <th>Last Raise Applied</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="salaryTableBody"></tbody>

@@ -1,137 +1,82 @@
 import { test, expect } from '@playwright/test';
 import { openAdminPage } from './helpers/admin-nav.js';
 
+// FUX-416 / FUX-421: the compensation plan is edited from the employee profile (H1/H2);
+// the Salary and Raises page is a read-only overview.
+async function openPlanFromProfile(page) {
+  await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
+  await page.waitForFunction(() => window.Router && typeof viewProfile === 'function' && employees.length);
+  await page.evaluate(() => viewProfile('EMP001'));
+  await expect(page.locator('#a-employee-detail')).toHaveClass(/active/);
+  await page.locator('#compEditPlanBtn').click();
+  const modal = page.locator('#compensationPlanModal');
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
 test.describe('FUX-416: Employee Compensation Plan', () => {
-  test.beforeEach(async ({ page }) => {
-    page.on('console', msg => console.log('CONSOLE:', msg.text()));
-    page.on('pageerror', err => console.log('PAGEERROR:', err));
+  test('Salary overview shows External/Internal columns and no plan or edit controls', async ({ page }) => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     await openAdminPage(page, 'a-salary');
-    await expect(page.locator('#a-salary')).toBeVisible();
-  });
-
-
-  test('Renders separate External USD and Internal USD Cash columns with Plan action', async ({ page }) => {
-    // Check table headers
-    const tableHeader = page.locator('#a-salary table').first().locator('thead');
-    await expect(tableHeader).toContainText('External USD');
-    await expect(tableHeader).toContainText('Internal USD Cash');
-    await expect(tableHeader).toContainText('Total Monthly');
-
-    // Check table body rows exist
-    const tbody = page.locator('#salaryTableBody');
-    await expect(tbody).toBeVisible();
-
-    // Verify first row contains external/internal values and plan edit buttons
-    const firstRow = tbody.locator('tr').first();
+    const header = page.locator('#a-salary table').first().locator('thead');
+    await expect(header).toContainText('External USD');
+    await expect(header).toContainText('Internal USD Cash');
+    await expect(header).toContainText('Total Monthly');
+    const firstRow = page.locator('#salaryTableBody tr').first();
     await expect(firstRow.locator('.comp-val-external')).toBeVisible();
     await expect(firstRow.locator('.comp-val-internal')).toBeVisible();
-    await expect(firstRow.locator('.btn-comp-plan')).toBeVisible();
+    await expect(page.locator('#salaryTableBody .btn-comp-plan, #salaryTableBody .btn-comp-ext, #salaryTableBody .btn-comp-int')).toHaveCount(0);
   });
 
-  test('Opens Compensation Plan modal and displays active plan summary & history', async ({ page }) => {
-    const tbody = page.locator('#salaryTableBody');
-    const firstRow = tbody.locator('tr').first();
-
-    // Click "Plan" button in actions column
-    await firstRow.locator('.btn-comp-plan').click();
-
-    const modal = page.locator('#compensationPlanModal');
-    await expect(modal).toBeVisible();
-
-    // Check modal header and active summary
+  test('Opens Compensation Plan modal from the profile with active summary & history', async ({ page }) => {
+    const modal = await openPlanFromProfile(page);
     await expect(modal.locator('#compPlanModalTitle')).toContainText('Employee Compensation Plan');
     await expect(modal.locator('#compPlanEmpName')).not.toBeEmpty();
     await expect(modal.locator('#compPlanActiveExternal')).toBeVisible();
     await expect(modal.locator('#compPlanActiveInternal')).toBeVisible();
-
-    // Check history table rendered
-    const histBody = modal.locator('#compPlanHistoryBody');
-    await expect(histBody).toBeVisible();
-
-    // Close modal
+    await expect(modal.locator('#compPlanHistoryBody')).toBeVisible();
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();
   });
 
-  test('Clicking edit icon on External USD pre-selects external_usd in modal and updates component', async ({ page }) => {
-    const tbody = page.locator('#salaryTableBody');
-    const firstRow = tbody.locator('tr').first();
-
-    // Click edit button for external USD
-    await firstRow.locator('.btn-comp-ext').click();
-
-    const modal = page.locator('#compensationPlanModal');
-    await expect(modal).toBeVisible();
-
-    // Verify component type is selected as external_usd
-    const typeSelect = modal.locator('#compPlanComponentType');
-    await expect(typeSelect).toHaveValue('external_usd');
-
-    // Set new amount and submit
+  test('Saving an External USD change updates the modal and the profile card', async ({ page }) => {
+    const modal = await openPlanFromProfile(page);
+    await modal.locator('#compPlanComponentType').selectOption('external_usd');
     await modal.locator('#compPlanAmount').fill('11500');
     await modal.locator('#compPlanStartDate').fill('2026-10-01');
     await modal.locator('#compPlanNotes').fill('Q4 Market adjustment');
-
     await modal.locator('#compPlanSaveBtn').click();
 
-    // Check toast notification and updated modal active summary
     await expect(modal.locator('#compPlanActiveExternal')).toContainText('11,500');
-
-    // History body should contain new active entry
     const histBody = modal.locator('#compPlanHistoryBody');
     await expect(histBody).toContainText('11,500');
     await expect(histBody).toContainText('Q4 Market adjustment');
 
-    // Close modal
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();
-
-    // Confirm salary table reflects updated external USD amount
-    await expect(firstRow.locator('.comp-val-external')).toContainText('11,500');
+    await expect(page.locator('#compExternalVal')).toContainText('11,500');
   });
 
-  test('FUX-421: Selecting internal_usd_cash displays Salary Basis selector and saves GROSS basis', async ({ page }) => {
-    const tbody = page.locator('#salaryTableBody');
-    const firstRow = tbody.locator('tr').first();
-
-    // Click edit button for internal USD
-    await firstRow.locator('.btn-comp-int').click();
-
-    const modal = page.locator('#compensationPlanModal');
-    await expect(modal).toBeVisible();
-
-    // Salary basis container should be visible for internal_usd_cash
+  test('FUX-421: internal_usd_cash shows Salary Basis selector and saves GROSS basis', async ({ page }) => {
+    const modal = await openPlanFromProfile(page);
+    await modal.locator('#compPlanComponentType').selectOption('internal_usd_cash');
     const basisContainer = modal.locator('#compPlanSalaryBasisContainer');
     await expect(basisContainer).toBeVisible();
-    const basisSelect = modal.locator('#compPlanSalaryBasis');
-    await expect(basisSelect).toBeVisible();
+    await modal.locator('#compPlanSalaryBasis').selectOption('GROSS');
 
-    // Select GROSS basis
-    await basisSelect.selectOption('GROSS');
-
-    // Fill amount and submit
     await modal.locator('#compPlanAmount').fill('6500');
     await modal.locator('#compPlanStartDate').fill('2026-10-01');
     await modal.locator('#compPlanNotes').fill('Internal Gross basis test');
     await modal.locator('#compPlanSaveBtn').click();
 
-    // Active summary should show (GROSS)
     await expect(modal.locator('#compPlanActiveInternal')).toContainText('GROSS');
+    await expect(modal.locator('#compPlanHistoryBody')).toContainText('GROSS');
 
-    // History table should show GROSS badge
-    const histBody = modal.locator('#compPlanHistoryBody');
-    await expect(histBody).toContainText('GROSS');
-
-    // Switching to external_usd hides basis container
     await modal.locator('#compPlanComponentType').selectOption('external_usd');
     await expect(basisContainer).not.toBeVisible();
-
-    // Close modal
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();
   });
 });
-
-
