@@ -33,7 +33,7 @@ test.describe('login page', () => {
     // Order in the form column: heading block, error slot, Google button, notice slot, help line.
     const order = await page.evaluate(() => [...document.querySelector('.login-form-inner').children]
       .map((c) => c.id || c.className));
-    expect(order).toEqual(['login-form-head', 'loginErr', 'googleSignInButton login-google', 'loginNotice', 'login-help']);
+    expect(order).toEqual(['login-form-head', 'loginErr', 'googleSignInButton', 'loginNotice', 'login-help']);
   });
 
   test('the Voyance logo is white on the brand blue and the heart is the sidebar icon', async ({ page }) => {
