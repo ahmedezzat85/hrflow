@@ -94,6 +94,6 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
     await page.evaluate(() => window.showSection('a-employee-detail', 'admin'));
     await page.waitForTimeout(200);
     await expect(page.locator('#adminPageTitle')).toHaveText('Employee Profile');
-    await expect(page.locator('#adminPageSub')).toHaveText('View and manage employee profile and records.');
+    await expect(page.locator('#adminPageSub')).toHaveCount(0);
   });
 });

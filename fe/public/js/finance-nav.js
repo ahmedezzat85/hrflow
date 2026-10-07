@@ -44,6 +44,8 @@ function loadFinanceDisplaySettings() {
 }
 
 async function updateFinanceBadges() {
+  // No session yet (first paint, before /api/auth/me answers): nothing to fetch.
+  if (typeof SessionInfo !== "undefined" && !SessionInfo.isKnown()) return;
   try {
     const summary = typeof FinanceApi.getFinanceSummary === "function"
       ? await FinanceApi.getFinanceSummary()
@@ -124,54 +126,49 @@ function updateFinanceNavVisibility() {
 
 
 function runFinanceLoader(pageId) {
-  if (!pageId) return;
+  if (!pageId) return undefined;
+  let loading;
 
   if (pageId === "a-finance-dashboard") {
-    loadFinanceDashboard();
+    loading = loadFinanceDashboard();
   } else if (pageId === "a-finance-sales" || pageId === "a-finance-invoices") {
-    loadFinanceInvoices();
+    loading = loadFinanceInvoices();
   } else if (pageId === "a-finance-spend" || pageId === "a-finance-bills") {
-    loadFinanceBills();
+    loading = loadFinanceBills();
   } else if (pageId === "a-finance-payroll" || pageId === "a-finance-payroll-runs") {
-    loadFinancePayroll("list");
+    loading = loadFinancePayroll("list");
   } else if (pageId === "a-finance-payroll-settings") {
-    loadFinancePayroll("settings");
+    loading = loadFinancePayroll("settings");
   } else if (pageId === "a-finance-banking" || pageId === "a-finance-accounts") {
     if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "statements") {
-      loadFinanceStatements();
+      loading = loadFinanceStatements();
     } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "cheques") {
-      loadFinanceCheques();
+      loading = loadFinanceCheques();
     } else if (typeof _currentFinanceSubTab !== "undefined" && _currentFinanceSubTab === "transfers") {
-      loadFinanceTransfers();
+      loading = loadFinanceTransfers();
     } else {
-      loadFinanceAccounts();
+      loading = loadFinanceAccounts();
     }
   } else if (pageId === "a-finance-subscriptions") {
-    loadFinanceSubscriptions();
+    loading = loadFinanceSubscriptions();
   } else if (pageId === "a-finance-statutory") {
-    loadFinanceStatutory();
+    loading = loadFinanceStatutory();
   } else if (pageId === "a-finance-reports") {
-    loadFinanceReports();
+    loading = loadFinanceReports();
   } else if (pageId === "a-finance-settings") {
-    switchFinanceSettingsSubTab(_currentSettingsSubTab);
+    loading = switchFinanceSettingsSubTab(_currentSettingsSubTab);
   } else if (pageId === "e-payslips") {
-    loadMyPayslips();
+    loading = loadMyPayslips();
   }
 
   if (pageId && pageId.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {
     FinanceTable.initAllTablesDensity();
   }
+
+  return loading;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.addEventListener("click", (e) => {
-    const navItem = e.target.closest("[data-page]");
-    if (!navItem) return;
-
-    const targetPage = navItem.getAttribute("data-page");
-    runFinanceLoader(targetPage);
-  });
-
   updateFinanceNavVisibility();
   window.addEventListener("hrflow:session-changed", updateFinanceNavVisibility);
 });
@@ -184,3 +181,44 @@ window.switchFinanceSettingsSubTab = switchFinanceSettingsSubTab;
 window.loadFinanceDisplaySettings = loadFinanceDisplaySettings;
 
 
+
+
+// ============================================================================
+// SpendTabs: the one Spend tab bar (Vendor Bills / Vendors / Subscriptions / Statutory)
+// shown on the three Spend pages. Ids per page are kept for existing links and tests.
+// ============================================================================
+const SpendTabs = {
+  TABS: [
+    { key: 'bills', icon: 'fa-receipt', label: 'Vendor Bills', page: 'a-finance-bills', sub: 'bills' },
+    { key: 'vendors', icon: 'fa-truck-field', label: 'Vendors', page: 'a-finance-bills', sub: 'vendors' },
+    { key: 'subscriptions', icon: 'fa-repeat', label: 'Subscriptions', page: 'a-finance-subscriptions' },
+    { key: 'statutory', icon: 'fa-landmark', label: 'Statutory', page: 'a-finance-statutory' },
+  ],
+  BARS: [
+    { container: 'financeBillSubNav', page: 'a-finance-bills', active: 'bills', ids: { bills: 'tabFinanceBills', vendors: 'tabFinanceVendors', subscriptions: 'tabFinanceSubscriptions', statutory: 'tabFinanceStatutory' } },
+    { container: 'financeSpendSubNavSubscriptions', page: 'a-finance-subscriptions', active: 'subscriptions', ids: { bills: 'subtabSpendSubBills', vendors: 'subtabSpendSubVendors', subscriptions: 'subtabSpendSubSubscriptions', statutory: 'subtabSpendSubStatutory' } },
+    { container: 'financeSpendSubNavStatutory', page: 'a-finance-statutory', active: 'statutory', ids: { bills: 'subtabSpendStatBills', vendors: 'subtabSpendStatVendors', subscriptions: 'subtabSpendStatSubscriptions', statutory: 'subtabSpendStatStatutory' } },
+  ],
+  render() {
+    this.BARS.forEach((bar) => {
+      const el = document.getElementById(bar.container);
+      if (!el) return;
+      el.innerHTML = this.TABS.map((t) => {
+        const active = t.key === bar.active;
+        let action = '';
+        if (t.key === 'bills' || t.key === 'vendors') {
+          action = bar.page === 'a-finance-bills'
+            ? `switchBillSubTab('${t.sub}')`
+            : `if(window.AdminNav){AdminNav.go('a-finance-bills');if(typeof switchBillSubTab==='function')switchBillSubTab('${t.sub}');}`;
+        } else if (!active) {
+          action = `if(window.AdminNav)AdminNav.go('${t.page}')`;
+        }
+        return `<button class="filter-tab${active ? ' active' : ''}" id="${bar.ids[t.key]}" role="tab" aria-selected="${active}" tabindex="${active ? 0 : -1}"${action ? ` onclick="${action}"` : ''}><i class="fa-solid ${t.icon}"></i> ${t.label}</button>`;
+      }).join('');
+      if (typeof initAccessibleTablist === 'function') initAccessibleTablist(el);
+    });
+  },
+};
+window.SpendTabs = SpendTabs;
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => SpendTabs.render());
+else SpendTabs.render();

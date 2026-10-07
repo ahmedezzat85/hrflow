@@ -268,6 +268,33 @@ This document records durable product and architectural decisions approved by th
 - **Implementation Implications:** amends `be/auth.py` (`verify_google_credential`), production configuration, and doc 02 §5 rule 2, which currently states that production mandates domain validation.
 - **Evidence / Reference:** `be/auth.py`, `be/config.py`.
 
+### D-014 — Top-Bar Account Menu, Title-Only Header and Visible Bell
+
+- **Status:** Accepted by owner 2026-10-05; pending merge of `fix/review-ui-fixes`.
+- **Decision (OD-1…OD-10):**
+  - **Account menu top-right (OD-1).** Identity, the Light/Dark control and Sign out live in a top-bar account menu in both the Admin and Employee portals. The admin rail avatar and logout, the admin panel user card, and the employee sidebar user card and logout button are removed.
+  - **Theme control in the menu (OD-2).** A two-option Light/Dark segmented control replaces the top-bar theme icon buttons. The login screen keeps its own toggle.
+  - **Visible bell (OD-3).** The notification bell is shown in both top bars and opens a "No notifications yet" popover; no unread dot or API until notifications exist.
+  - **Title only (OD-4).** The page subtitle is removed; the top bar shows the title only.
+  - **Compact top bar (OD-5).** About 56 px on desktop.
+  - **Avatar component (OD-6).** Non-bold initials on a soft tinted background, built so a user picture can be added later.
+  - **Brand footer removed (OD-7).** The "HRFlow by Voyance Health" logo footer is removed from both sidebars.
+  - **Employee portal included (OD-8).**
+  - **Navigation polish (OD-9).** HR panel groups are "People" and "Benefits & records"; Salary & Raises and Salary Payment Docs have distinct icons; the active indicator sits inside the active pill.
+  - **No Profile item yet (OD-10).** A "Profile" menu item ships only when a target page exists.
+- **Supersedes:** `docs/UI-UX-FIX-PLAN.md` items "Notification bell: remove from both topbars" and "show title and subtitle on every page" (the "title on every page" part still holds).
+- **Amends:** D-010 N-1/N-2 ("Employee portal sidebar remains completely untouched"): the Employee portal shell now receives the same top bar, account menu and bell and loses its sidebar footer. All other D-010 rules remain: the module rail stays visible, only the panel collapses, the collapse keys stay independent, and `AdminNav.canSeeModule` gating is unchanged.
+- **Rationale:** One identity location that works on desktop and phone, less sidebar clutter, and a compact, elegant header.
+- **Evidence / Reference:** implementation plan `docs/ui-design/topbar-account-menu-implementation-plan.md`; branch `fix/review-ui-fixes`.
+
+### D-015 — Admin Rail Clicks Navigate to a Landing Page
+
+- **Status:** Accepted by owner 2026-10-05; pending merge of `fix/review-ui-fixes`.
+- **Decision:** Clicking an admin module rail button opens a page instead of only swapping the side panel. The landing page is the last sidebar page visited in that module during the current session, otherwise the module default: HR `a-dashboard`, Finance `a-finance-dashboard`, Payroll `a-finance-payroll-runs`, System `a-system-roles`. Clicking the current module's button leaves the page unchanged. With the mobile drawer open, the rail still only swaps the panel, because navigating closes the drawer.
+- **Details:** Remembered pages are kept in memory only (never persisted) and cleared on sign-out, session expiry and session change. Pages not listed in the sidebar are remembered as their parent sidebar page (for example employee detail as Employees). Module visibility rules (`AdminNav.canSeeModule`) are unchanged.
+- **Amends:** the "rail click only switches the panel" behaviour in `docs/ui-design/dual-rail-navigation-plan-v2.md`; D-010 is otherwise unchanged.
+- **Rationale:** A rail click that leaves the previous page on screen under a different module's menu was a navigation glitch.
+
 ---
 
 ## Related but Not Decisions

@@ -40,7 +40,7 @@ test.describe('Story 2.1 — Finance Context Bar and Trustworthy KPIs', () => {
     // Change Period to QTD and Basis to Accrual
     await page.selectOption('#financeContextPeriod', 'QTD');
     await expect(page.locator('#financeDashboardPeriodBadge')).toContainText('Period: QTD');
-    await expect(page.locator('#labelKpiRevenue')).toContainText('Revenue (QTD)');
+    await expect(page.locator('#labelKpiRevenue')).toContainText('Revenue, quarter to date');
 
     await page.selectOption('#financeContextBasis', 'accrual');
     await expect(page.locator('#financeDashboardBasisBadge')).toContainText('Basis: Accrual');

@@ -16,11 +16,11 @@
           <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Role Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Role Name <span class="req">*</span></label>
+              <label for="fRoleName">Role Name <span class="req">*</span></label>
               <input id="fRoleName" placeholder="e.g. Compliance-Auditor">
             </div>
             <div class="form-field full">
-              <label>Description</label>
+              <label for="fRoleDescription">Description</label>
               <input id="fRoleDescription" placeholder="Brief summary of duties and responsibilities...">
             </div>
           </div>
@@ -29,7 +29,7 @@
         <div class="form-section">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div class="form-section-label" style="margin-bottom:0;"><i class="fa-solid fa-key"></i> Permissions <span class="line"></span></div>
-            <input type="text" id="rolePermSearch" placeholder="Filter permissions..." style="padding: 4px 8px; font-size: 12px; width: 180px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 4px;">
+            <input type="text" id="rolePermSearch" aria-label="Search permissions" placeholder="Filter permissions..." style="padding: 4px 8px; font-size: 12px; width: 180px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 4px;">
           </div>
           <div id="rolePermissionsContainer" style="display:flex; flex-direction:column; gap:16px;">
             <!-- Rendered dynamically by category with implication auto-ticking -->

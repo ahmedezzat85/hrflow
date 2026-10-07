@@ -120,7 +120,7 @@ if(typeof window !== 'undefined'){
 function renderInvoiceResultsPlaceholder(){
   const body = document.getElementById('invoiceResultsBody');
   if(!body) return;
-  body.innerHTML = renderEmptyTableRow(3, 'Click "Preview Eligible Employees" to see who will be invoiced for the selected month.', 'fa-solid fa-file-invoice-dollar');
+  body.innerHTML = renderEmptyTableRow(3, 'Click "Preview Eligible Employees" to see who will get a salary payment doc for the selected month.', 'fa-solid fa-file-invoice-dollar');
 }
 
 function _getInvoicePeriodInputs(){
@@ -161,7 +161,7 @@ async function previewInvoiceEligibility(evt){
         { employee_id: 2, employee_name: 'John Doe', status: 'eligible', reason: null },
         { employee_id: 3, employee_name: 'Alex Rivera', status: 'skipped', reason: 'External salary is 0 USD' },
         { employee_id: 4, employee_name: 'Elena Rostova', status: 'already_exists', invoice_number: 'INV-202609-01' },
-        { employee_id: 5, employee_name: 'Marcus Vance', status: 'skipped', reason: 'Missing invoice ID on file' }
+        { employee_id: 5, employee_name: 'Marcus Vance', status: 'skipped', reason: 'Missing payment doc ID on file' }
       ];
       renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
       return;
@@ -217,12 +217,12 @@ function renderInvoicePreviewResults(results, year, month){
   body.innerHTML = filtered.map(r => {
     let actionBtn = '—';
     if (r.status === 'eligible') {
-      actionBtn = `<button class="btn btn-sm btn-fill" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
+      actionBtn = `<button class="btn btn-sm btn-outline" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
     } else if (r.status === 'already_exists') {
-      actionBtn = `<button class="btn btn-sm btn-outline-warning" style="color:var(--warning, #eab308);border-color:rgba(234,179,8,0.4);" onclick="openRegenerateInvoiceModal(${r.employee_id}, '${_escapeAttr(r.employee_name)}', ${year}, ${month}, '${_escapeAttr(r.invoice_number || '')}')"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>`;
+      actionBtn = `<button class="btn btn-sm btn-outline-warning" style="color:var(--warning, #eab308);border-color:rgba(234,179,8,0.4);" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(r.employee_id)}" data-name="${escapeHtml(r.employee_name)}" data-year="${escapeHtml(year)}" data-month="${escapeHtml(month)}" data-number="${escapeHtml(r.invoice_number || '')}"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>`;
     }
     return `<tr>
-      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
+      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${escapeHtml(r.employee_name)}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
       <td>${actionBtn}</td>
     </tr>`;
@@ -288,7 +288,7 @@ function renderInvoiceBatchResults(result, year, month){
   document.getElementById('invoiceResultsTitle').textContent =
     `Generation Results — ${_invoicePeriodLabel(year, month)}`;
   body.innerHTML = result.results.map(r => `<tr>
-    <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${r.employee_name}</td>
+    <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${escapeHtml(r.employee_name)}</td>
     <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
     <td>${r.reason || r.invoice_number || '—'}</td>
     <td>
@@ -327,7 +327,7 @@ async function executeRegenerateInvoice(evt){
       skip_existing: false,
     });
     closeModal('regenerateInvoiceModal');
-    toast(`Invoice ${result.invoice_number || ''} regenerated successfully for ${employeeName}.`);
+    toast(`Doc ${result.invoice_number || ''} regenerated successfully for ${employeeName}.`);
     await loadInvoiceHistory();
     if (_invoiceEligiblePreview.length) {
       await previewInvoiceEligibility();
@@ -354,9 +354,9 @@ async function generateSingleInvoice(employeeId, evt){
       skip_existing: true,
     });
     if(result.status === 'generated'){
-      toast(`Invoice ${result.invoice_number} generated for ${emp ? emp.name : ''}.`);
+      toast(`Doc ${result.invoice_number} generated for ${emp ? emp.name : ''}.`);
     } else {
-      toast(`Invoice ${result.invoice_number} already exists for this period.`, 'fa-solid fa-circle-info');
+      toast(`Doc ${result.invoice_number} already exists for this period.`, 'fa-solid fa-circle-info');
     }
     await loadInvoiceHistory();
     if(_invoiceEligiblePreview.length){
@@ -375,7 +375,7 @@ function previewInvoicePdf(invoiceId, invoiceNumber){
   const titleEl = document.getElementById('docPreviewTitle');
   const downloadBtn = document.getElementById('docPreviewDownloadBtn');
 
-  if (titleEl) titleEl.textContent = `Invoice ${invoiceNumber || ''} (PDF Preview)`;
+  if (titleEl) titleEl.textContent = `Doc ${invoiceNumber || ''} (PDF Preview)`;
   if (downloadBtn) {
     downloadBtn.onclick = (e) => {
       e.preventDefault();
@@ -472,7 +472,7 @@ function renderGroupedInvoiceHistory(){
 
   if(!_rawInvoiceHistory.length){
     if(badgeEl) badgeEl.style.display = 'none';
-    renderEmptyState(container, 'No invoices generated yet.', 'fa-solid fa-clock-rotate-left');
+    renderEmptyState(container, 'No salary payment docs generated yet.', 'fa-solid fa-clock-rotate-left');
     return;
   }
 
@@ -480,7 +480,7 @@ function renderGroupedInvoiceHistory(){
   const totalCount = _rawInvoiceHistory.length;
   const totalAmount = _rawInvoiceHistory.reduce((sum, inv) => sum + Number(inv.amount_usd || 0), 0);
   if(badgeEl){
-    badgeEl.textContent = `${totalCount} Invoices • ${fmtUSD(totalAmount)}`;
+    badgeEl.textContent = `${totalCount} ${totalCount === 1 ? 'doc' : 'docs'} • ${fmtUSD(totalAmount)}`;
     badgeEl.style.display = 'inline-block';
   }
 
@@ -547,8 +547,8 @@ function renderGroupedInvoiceHistory(){
       : 'fa-solid fa-sort';
 
     const rowsHtml = sortedInvoices.map(inv => `<tr>
-      <td class="tname"><div class="avatar">${initials(inv.employee_name)}</div>${inv.employee_name}</td>
-      <td><strong>${inv.invoice_number}</strong></td>
+      <td class="tname"><div class="avatar">${initials(inv.employee_name)}</div>${escapeHtml(inv.employee_name)}</td>
+      <td><strong>${escapeHtml(inv.invoice_number)}</strong></td>
       <td>${fmtUSD(Number(inv.amount_usd))}</td>
       <td><span class="badge-pill ${_invoiceStatusPill(inv.status)}">${inv.status}</span></td>
       <td>
@@ -556,10 +556,10 @@ function renderGroupedInvoiceHistory(){
       </td>
       <td>
         <div style="display:flex;gap:6px;align-items:center;">
-          <button class="btn btn-sm btn-fill" style="font-size:11.5px;padding:4px 8px;" title="Preview PDF invoice" onclick="previewInvoicePdf(${inv.id}, '${_escapeAttr(inv.invoice_number)}')">
+          <button class="btn btn-sm btn-outline" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(inv.id)}" data-number="${escapeHtml(inv.invoice_number)}">
             <i class="fa-solid fa-file-pdf"></i> Preview PDF
           </button>
-          <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this invoice" onclick="openRegenerateInvoiceModal(${inv.employee_id}, '${_escapeAttr(inv.employee_name)}', ${inv.payment_year}, ${inv.payment_month}, '${_escapeAttr(inv.invoice_number)}')">
+          <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this doc" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(inv.employee_id)}" data-name="${escapeHtml(inv.employee_name)}" data-year="${escapeHtml(inv.payment_year)}" data-month="${escapeHtml(inv.payment_month)}" data-number="${escapeHtml(inv.invoice_number)}">
             <i class="fa-solid fa-arrows-rotate"></i> Regenerate
           </button>
         </div>
@@ -571,7 +571,7 @@ function renderGroupedInvoiceHistory(){
         <div class="invoice-month-title">
           <i class="fa-solid fa-chevron-down toggle-caret"></i>
           <span>${periodName}</span>
-          <span class="badge-pill pill-info" style="font-size:11.5px;">${group.invoices.length} ${group.invoices.length === 1 ? 'Invoice' : 'Invoices'}</span>
+          <span class="badge-pill pill-info" style="font-size:11.5px;">${group.invoices.length} ${group.invoices.length === 1 ? 'doc' : 'docs'}</span>
         </div>
         <div class="invoice-month-summary">
           <span class="invoice-month-total">${fmtUSD(monthTotal)}</span>
@@ -585,7 +585,7 @@ function renderGroupedInvoiceHistory(){
                 Employee <i class="${nameSortIcon}"></i>
               </th>
               <th class="th-sortable ${_invoiceSortField === 'number' ? 'active' : ''}" onclick="toggleInvoiceSort('number')">
-                Invoice # <i class="${numSortIcon}"></i>
+                Doc # <i class="${numSortIcon}"></i>
               </th>
               <th>Amount</th>
               <th>Status</th>
@@ -609,7 +609,7 @@ async function loadInvoiceHistory(){
     renderGroupedInvoiceHistory();
   } catch(err){
     if(container){
-      renderEmptyState(container, `Could not load invoice history: ${err.message}`, 'fa-solid fa-triangle-exclamation');
+      renderEmptyState(container, `Could not load salary payment doc history: ${escapeHtml(err.message)}`, 'fa-solid fa-triangle-exclamation');
     }
   }
 }

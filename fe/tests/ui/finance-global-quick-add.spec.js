@@ -68,6 +68,8 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
   });
 
   test('Requires bank account selection before posting in global mode', async ({ page }) => {
+    // Add Transaction lives in the Finance topbar only (U1)
+    await openAdminPage(page, 'a-finance-invoices');
     await page.click('#adminQuickAddTxBtn');
     const modal = page.locator('#financeTransactionModal');
     await expect(modal).toBeVisible();
@@ -83,7 +85,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
     await page.click('#financeTxSaveBtn');
 
     // Should display validation toast
-    await expect(page.locator('.toast')).toContainText('Please select a bank account');
+    await expect(page.locator('.toast')).toContainText('Please select a company bank account');
     await expect(modal).toBeVisible();
 
     // Now select a valid account
@@ -102,6 +104,8 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
   });
 
   test('Save & add another retains account and context while clearing entry fields for sequential recording', async ({ page }) => {
+    // Add Transaction lives in the Finance topbar only (U1)
+    await openAdminPage(page, 'a-finance-invoices');
     await page.click('#adminQuickAddTxBtn');
     const modal = page.locator('#financeTransactionModal');
     await expect(modal).toBeVisible();

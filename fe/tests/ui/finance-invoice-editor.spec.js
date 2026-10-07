@@ -169,7 +169,7 @@ test.describe('Story 3.2 — Guided Invoice Editor and Lifecycle', () => {
 
     // 2. Direct Send action transitions Draft to Sent
     const draftRow = page.locator('#financeInvoicesTableBody tr:has-text("INV-GUIDED-001")');
-    const sendBtn = draftRow.locator('button[title="Approve & Send Invoice"]');
+    const sendBtn = draftRow.locator('button[title="Approve and issue invoice"]');
     await expect(sendBtn).toBeVisible();
     await sendBtn.click();
     await page.waitForTimeout(300);

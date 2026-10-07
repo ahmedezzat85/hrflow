@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Buttons, form controls and messages</title>
+</head>
+<body>
+<!-- Reference mockup approved by the owner on 2026-10-06. Sample figures only. Not production code: inline styles here are illustrative; implement with tokens and shared classes. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:#8FB0FF}a:hover{color:#B9CEFF}
+select{appearance:none;-webkit-appearance:none}
+</style>
+<div style="min-height: 100vh; box-sizing: border-box; background: #0F1117; color: #F1F2F6; font-family: Inter, sans-serif; font-size: 14px; padding: 32px; display: flex; flex-direction: column; gap: 24px">
+  <h1 style="margin: 0; font-family: Sora, sans-serif; font-weight: 700; font-size: 24px">One set of controls, used everywhere</h1>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px">
+    <section style="padding: 24px; border-radius: 14px; background: #171A24; border: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; gap: 18px">
+      <h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">Buttons</h2>
+      <div style="display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: #3566EF; color: #FFFFFF; font: 600 14px Inter, sans-serif; cursor: pointer">Add employee</button>
+          <span style="color: #B4B9CA; font-size: 13px">Primary. One per screen, the main action. No glow.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F1F2F6; font: 600 14px Inter, sans-serif; cursor: pointer">Export CSV</button>
+          <span style="color: #B4B9CA; font-size: 13px">Secondary. Refresh, Export, Cancel, Preview.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <button type="button" style="height: 40px; padding: 0 12px; border-radius: 10px; border: 0; background: transparent; color: #A9C2FF; font: 600 14px Inter, sans-serif; cursor: pointer">Reset</button>
+          <span style="color: #B4B9CA; font-size: 13px">Quiet. Low-stakes actions inside a toolbar.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(240,106,106,0.5); background: transparent; color: #FF9C9C; font: 600 14px Inter, sans-serif; cursor: pointer">Delete</button>
+          <span style="color: #B4B9CA; font-size: 13px">Destructive. Always asks for confirmation.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <button type="button" disabled style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: #1D2130; color: #9AA0B4; font: 600 14px Inter, sans-serif">Confirm payment</button>
+          <span style="color: #B4B9CA; font-size: 13px">Disabled. Grey, never a faded blue.</span>
+        </div>
+      </div>
+      <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; font-weight: 600; color: #B4B9CA">In table rows: same shapes, 32px high, secondary by default</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F1F2F6; font: 600 13px Inter, sans-serif; cursor: pointer">Raise</button>
+          <button type="button" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F1F2F6; font: 600 13px Inter, sans-serif; cursor: pointer">Plan</button>
+          <button type="button" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F1F2F6; font: 600 13px Inter, sans-serif; cursor: pointer">Preview PDF</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding: 24px; border-radius: 14px; background: #171A24; border: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; gap: 18px">
+      <h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">Record statutory obligation</h2>
+      <div style="color: #B4B9CA; font-size: 13px">The same form as today, using the standard fields.</div>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #C3C7D6">Obligation type
+        <span style="position: relative; display: block">
+          <select style="width: 100%; height: 40px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); background: #1D2130; color: #F1F2F6; font: 500 14px Inter, sans-serif"><option>Sales tax / VAT</option></select>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA0B4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </label>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #C3C7D6">Tax period
+          <input type="text" value="October 2026" style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); background: #1D2130; color: #F1F2F6; font: 500 14px Inter, sans-serif">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #C3C7D6">Due date
+          <input type="text" value="15 Nov 2026" style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); background: #1D2130; color: #F1F2F6; font: 500 14px Inter, sans-serif">
+        </label>
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #C3C7D6">Accrued amount
+        <span style="display: flex">
+          <span style="height: 40px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; border-radius: 10px 0 0 10px; border: 1px solid rgba(255,255,255,0.14); border-right: 0; background: #151822; color: #B4B9CA; font-weight: 600">EGP</span>
+          <input type="text" placeholder="0.00" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 0 10px 10px 0; border: 1px solid #F06A6A; background: #1D2130; color: #F1F2F6; font: 500 14px Inter, sans-serif; text-align: right">
+        </span>
+        <span style="font-weight: 500; color: #FF9C9C">Enter the amount confirmed on the government portal.</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: #F1F2F6">
+        <input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #3566EF">
+        Amount confirmed on the portal
+      </label>
+      <div style="display: flex; justify-content: flex-end; gap: 8px">
+        <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F1F2F6; font: 600 14px Inter, sans-serif; cursor: pointer">Cancel</button>
+        <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: #3566EF; color: #FFFFFF; font: 600 14px Inter, sans-serif; cursor: pointer">Save obligation</button>
+      </div>
+    </section>
+
+    <section style="padding: 24px; border-radius: 14px; background: #171A24; border: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; gap: 18px">
+      <h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">Messages</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 13px; font-weight: 600; color: #B4B9CA">Error: says what failed and offers a way forward</div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 12px; background: rgba(240,106,106,0.12); border: 1px solid rgba(240,106,106,0.35)">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <div style="font-weight: 600; color: #FFB3B3">Bank statements could not be loaded</div>
+            <div style="font-size: 13px; color: #E3C2C2">Your other banking data is unaffected.</div>
+          </div>
+          <button type="button" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #F1F2F6; font: 600 13px Inter, sans-serif; cursor: pointer">Try again</button>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 13px; font-weight: 600; color: #B4B9CA">Success: brief, disappears after a few seconds</div>
+        <div style="padding: 14px 16px; border-radius: 12px; background: rgba(52,201,138,0.12); border: 1px solid rgba(52,201,138,0.35); font-weight: 600; color: #8BE8BF">Raise applied for James Parker</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 13px; font-weight: 600; color: #B4B9CA">Not configured is not an error</div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 12px; background: #1D2130">
+          <div style="color: #C3C7D6">Social insurance is not set up for this employee.</div>
+          <button type="button" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F1F2F6; font: 600 13px Inter, sans-serif; cursor: pointer">Set up</button>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 13px; font-weight: 600; color: #B4B9CA">Status badges: one casing, same shape in every module</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; font-weight: 600">
+          <span style="padding: 4px 10px; border-radius: 999px; background: rgba(52,201,138,0.16); color: #6FE0AE">Active</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: rgba(52,201,138,0.16); color: #6FE0AE">Paid</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: rgba(91,140,255,0.18); color: #A9C2FF">Finalized</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: rgba(242,160,61,0.16); color: #FFC078">Unreviewed</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: rgba(240,106,106,0.16); color: #FF9C9C">Overdue</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #1D2130; color: #C3C7D6">Draft</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</body>
+</html>

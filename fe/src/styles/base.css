@@ -48,3 +48,31 @@ h4 {
   font-family: var(--font-head);
 }
 
+
+/* Native controls follow the theme (selects, date pickers, scrollbars) */
+:root {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] select {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border2);
+}
+
+[data-theme="dark"] select option {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+/* Visible keyboard focus on form fields */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}

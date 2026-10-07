@@ -208,13 +208,14 @@ test.describe('Admin Dual-Rail Navigation Shell (Slice 1)', () => {
     expect(lightBg).not.toBe('');
 
     // Toggle dark theme
-    await page.locator('#adminThemeToggle').click();
+    await page.locator('#adminAccountBtn').click();
+    await page.locator('#adminAccountPanel [data-theme-choice="dark"]').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     const darkBg = await adminSidebar.locator('.rail').evaluate(el => window.getComputedStyle(el).backgroundColor);
     expect(darkBg).not.toBe(lightBg);
 
     // Switch back to light
-    await page.locator('#adminThemeToggle').click();
+    await page.locator('#adminAccountPanel [data-theme-choice="light"]').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 

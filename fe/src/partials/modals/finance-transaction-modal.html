@@ -15,7 +15,7 @@
 
         <!-- Global Account Selector (shown when opened globally) -->
         <div class="form-field full" id="fFinanceTxAccountSelectGroup" style="display: none; margin-bottom: 14px;">
-          <label for="fFinanceTxAccountSelect">Bank Account <span class="req">*</span></label>
+          <label for="fFinanceTxAccountSelect">Company bank account <span class="req">*</span></label>
           <select id="fFinanceTxAccountSelect" onchange="onGlobalTxAccountSelected()">
             <option value="">— Select Target Bank / Cash Account —</option>
           </select>
@@ -27,7 +27,7 @@
         <!-- Active Account Context Banner -->
         <div id="fFinanceTxAccountContext" style="margin-bottom: 14px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <div>
-            <i class="fa-solid fa-building-columns" style="color: var(--primary); margin-right: 6px;"></i>
+            <i class="fa-solid fa-building-columns" style="color: var(--accent-text); margin-right: 6px;"></i>
             <strong id="fFinanceTxAccountName">Active Account</strong>
             <span id="fFinanceTxAccountMeta" style="color: var(--text3); margin-left: 6px;">(USD)</span>
           </div>
@@ -38,7 +38,7 @@
 
         <!-- Transaction Type Segmented Selector -->
         <div class="form-field full" style="margin-bottom: 14px;">
-          <label style="margin-bottom: 6px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3);">Transaction Type</label>
+          <label style="margin-bottom: 6px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3);" for="fFinanceTxDate">Transaction Type</label>
           <div class="filter-tabs" id="fFinanceTxTypeSelector" role="tablist" style="display: flex; gap: 6px; width: 100%;">
             <button type="button" class="filter-tab active" id="fFinanceTxTypeMoneyOut" data-tx-type="money_out" onclick="setTransactionEntryType('money_out', this)" style="flex: 1; text-align: center; justify-content: center;">
               <i class="fa-solid fa-arrow-up-right-from-square"></i> Money Out
@@ -233,7 +233,7 @@
         <!-- Live Financial Impact Preview Box -->
         <div class="card" id="fFinanceTxPreviewCard" style="margin-top: 14px; padding: 12px 16px; background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary);">
+            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-text);">
               <i class="fa-solid fa-wand-magic-sparkles"></i> Financial Impact Preview
             </span>
             <span id="fFinanceTxProjectedBadge" class="badge badge-info" style="font-size: 11px;">Projected Balance: —</span>

@@ -98,7 +98,7 @@ function renderCompanyDocumentsAdmin(filter=''){
     <td>${d.category||'General'}</td>
     <td>${d.uploaded_at||''}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" onclick="previewCompanyDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteCompanyDocumentPrompt(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
@@ -114,7 +114,7 @@ function renderCompanyDocumentsEmployee(filter=''){
     <td>${d.category||'General'}</td>
     <td>${d.uploaded_at||''}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" onclick="previewCompanyDocument(${d.id}, '${String(d.name||'').replace(/'/g,"\\'")}', '${d.file_type||''}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
     </td>
   </tr>`).join('') || renderEmptyTableRow(4, 'No company documents available yet.', 'fa-solid fa-folder-open');
@@ -161,6 +161,12 @@ async function submitCompanyDocument(evt){
   }
 }
 async function deleteCompanyDocumentPrompt(docId){
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Delete document',
+    consequence: 'Delete this company document? This cannot be undone.',
+    actionLabel: 'Delete document',
+  });
+  if (!ok.confirmed) return;
   try{
     await Api.deleteCompanyDocument(docId);
     toast('Document deleted.', 'fa-solid fa-trash');

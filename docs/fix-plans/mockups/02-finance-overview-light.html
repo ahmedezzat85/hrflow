@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finance Overview (light)</title>
+</head>
+<body>
+<!-- Reference mockup approved by the owner on 2026-10-06. Sample figures only. Not production code: inline styles here are illustrative; implement with tokens and shared classes. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:#1F4FD8}a:hover{color:#173FB0}
+select{appearance:none;-webkit-appearance:none}
+</style>
+<div style="min-height: 100vh; background: #F4F6FB; color: #14161D; font-family: Inter, sans-serif; font-size: 14px; display: flex; flex-wrap: wrap">
+  <nav aria-label="Sections" style="flex: 1 1 220px; max-width: 260px; min-width: 0; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid rgba(16,24,40,0.10); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 18px; padding: 0 10px">Finance</div>
+    <div style="font-size: 12px; color: #5C6479; padding: 0 10px 14px">Ledger, bills, banking and reports</div>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; background: rgba(53,102,239,0.18); color: #1F4FD8; font-weight: 600; text-decoration: none">Overview</a>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; color: #3B4257; text-decoration: none">Sales</a>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; color: #3B4257; text-decoration: none">Spend</a>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; color: #3B4257; text-decoration: none">Banking</a>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; color: #3B4257; text-decoration: none">Reports &amp; Export</a>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; color: #3B4257; text-decoration: none">Finance Settings</a>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-family: Sora, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.01em">Finance Overview</h1>
+        <div style="color: #5C6479; font-size: 13px">Cash, revenue and operating expenses. Last updated 12:51</div>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: transparent; color: #14161D; font: 600 14px Inter, sans-serif; cursor: pointer">Refresh</button>
+        <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: #3566EF; color: #FFFFFF; font: 600 14px Inter, sans-serif; cursor: pointer">+ Add transaction</button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; padding: 16px 18px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10)">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #5C6479">Entity
+        <span style="position: relative; display: block">
+          <select style="height: 40px; min-width: 190px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif"><option>All entities</option></select>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6479" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #5C6479">Period
+        <span style="position: relative; display: block">
+          <select style="height: 40px; min-width: 190px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif"><option>Month to date</option></select>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6479" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #5C6479">Basis
+        <span style="position: relative; display: block">
+          <select style="height: 40px; min-width: 150px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif"><option>Cash</option></select>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6479" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #5C6479">Currency
+        <span style="position: relative; display: block">
+          <select style="height: 40px; min-width: 150px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif"><option>USD</option></select>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6479" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </label>
+      <button type="button" style="height: 40px; padding: 0 14px; margin-left: auto; border-radius: 10px; border: 0; background: transparent; color: #1F4FD8; font: 600 14px Inter, sans-serif; cursor: pointer">Reset</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); border-top: 3px solid #0F8A5A; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; font-weight: 600; color: #4A5168">Cash balance, USD accounts</div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 30px; font-variant-numeric: tabular-nums">$98,000.00</div>
+        <div style="font-size: 13px; color: #5C6479">3 accounts. EGP accounts shown separately: <span style="color: #14161D; font-variant-numeric: tabular-nums">EGP 59,000.00</span></div>
+        <a href="#" style="font-size: 13px; font-weight: 600; text-decoration: none">View accounts</a>
+      </div>
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); border-top: 3px solid #2F62EA; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; font-weight: 600; color: #4A5168">Revenue, month to date</div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 30px; font-variant-numeric: tabular-nums">$0.00</div>
+        <div style="font-size: 13px; color: #5C6479">Cash inflows received</div>
+        <a href="#" style="font-size: 13px; font-weight: 600; text-decoration: none">View transactions</a>
+      </div>
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); border-top: 3px solid #D64545; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; font-weight: 600; color: #4A5168">Operating expenses, month to date</div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 30px; font-variant-numeric: tabular-nums">$2,700.00</div>
+        <div style="font-size: 13px; color: #5C6479">Cash outflows paid</div>
+        <a href="#" style="font-size: 13px; font-weight: 600; text-decoration: none">View transactions</a>
+      </div>
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); border-top: 3px solid #7C4DDB; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; font-weight: 600; color: #4A5168">Net operating result, month to date</div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 30px; font-variant-numeric: tabular-nums; color: #B42323">-$2,700.00</div>
+        <div style="font-size: 13px; color: #5C6479">Revenue minus expenses</div>
+        <a href="#" style="font-size: 13px; font-weight: 600; text-decoration: none">View reports</a>
+      </div>
+    </div>
+
+    <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">Needs attention</h2>
+          <span style="padding: 3px 10px; border-radius: 999px; background: rgba(242,160,61,0.18); color: #9A5300; font-size: 12px; font-weight: 600">1 warning</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <span style="position: relative; display: block">
+            <select aria-label="Severity" style="height: 40px; min-width: 150px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif"><option>All severities</option></select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6479" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <span style="position: relative; display: block">
+            <select aria-label="Category" style="height: 40px; min-width: 170px; padding: 0 36px 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif"><option>All categories</option></select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6479" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <input type="search" aria-label="Search exceptions" placeholder="Search exceptions" style="height: 40px; box-sizing: border-box; width: 200px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; color: #14161D; font: 500 14px Inter, sans-serif">
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 16px; border-radius: 12px; background: #F1F4FA; border-left: 3px solid #B4670A">
+        <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+          <div style="font-weight: 600; font-size: 15px">Unreconciled statement: USD bank account, January 2026</div>
+          <div style="color: #4A5168; font-size: 13px">1 statement line has no matching ledger entry. Uploaded 13 Sep 2026.</div>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: transparent; color: #14161D; font: 600 14px Inter, sans-serif; cursor: pointer">Mark reviewed</button>
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: #3566EF; color: #FFFFFF; font: 600 14px Inter, sans-serif; cursor: pointer">Resolve</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -63,7 +63,7 @@
 .invoice-month-total {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--font-head);
 }
 
@@ -82,7 +82,7 @@
   font-size: 12px;
   font-weight: 600;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -97,9 +97,8 @@
 
 .btn-sort-pill.active {
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .th-sortable {
@@ -109,7 +108,7 @@
 }
 
 .th-sortable:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .th-sortable i {
@@ -121,7 +120,7 @@
 
 .th-sortable.active i {
   opacity: 1;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 
@@ -153,16 +152,14 @@
   font-weight: 600;
   font-size: 13.5px;
   padding: 8px 15px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-period-trigger:hover {
   background: var(--surface2);
   border-color: var(--border2);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .invoice-toolbar-actions {
@@ -189,7 +186,7 @@
 .btn-secondary:hover {
   background: var(--surface2);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .invoice-toolbar-caption {
@@ -213,7 +210,7 @@
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--text2);
@@ -231,8 +228,8 @@
 
 .btn-filter-pill.active {
   background: var(--surface);
-  color: var(--accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: var(--accent-text);
+  border: 1px solid var(--border);
 }
 
 /* Popover Modal for Period Selection */

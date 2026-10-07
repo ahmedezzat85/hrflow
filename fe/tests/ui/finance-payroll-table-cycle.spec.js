@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { submitAndApprove, confirmPayment } from './helpers/payroll.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 import fs from 'fs';
 import path from 'path';
@@ -87,7 +88,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.fill('#p1FxRateInput', '48.5000');
     await page.click('#btnP1ApplyFx');
     await expect(page.locator('#payrollFxRateBadge')).toHaveText('48.5000');
-    await expect(page.locator('#payrollFxRateSourceBadge')).toHaveText('Manual Override');
+    await expect(page.locator('#payrollFxRateSourceBadge')).toHaveText('manual override');
 
     // Reset FX rate
     await page.click('#btnP1ResetFx');
@@ -137,7 +138,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollScreen2')).toBeVisible();
 
     // Click Submit & Approve Run
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
 
     // Advances to Screen 3 (Processing)
     const s3 = page.locator('#payrollScreen3');
@@ -205,7 +206,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // Screen 1 -> Screen 2
     await page.click('#btnP1Proceed');
     // Screen 2 -> Screen 3
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     // Screen 3 -> Screen 4
     await page.click('#btnP3Next');
     // Screen 4 -> Screen 5
@@ -216,8 +217,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('5. Confirm Disbursal');
 
     // Confirm & Disburse
-    await page.click('#btnP5ConfirmDisburse');
-    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll disbursement confirmed');
+    await confirmPayment(page);
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll recorded as paid');
 
     // Results card & GL journal visible
     await expect(page.locator('#p5DisburseResultsCard')).toBeVisible();
@@ -279,7 +280,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // Advance through Screen 2 and Screen 3 to Screen 4
     await page.click('#btnP1Proceed');
     await expect(page.locator('#payrollScreen2')).toBeVisible();
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await expect(page.locator('#payrollScreen3')).toBeVisible();
     await page.click('#btnP3Next');
     const s4 = page.locator('#payrollScreen4');
@@ -318,7 +319,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     });
 
     // Attempt to submit and approve (which calls setStep(2) triggering finalize)
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
 
     // Verify:
     // a. Visible red banner with error message
@@ -449,7 +450,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     expect(unitResults.approved.stepIndex).toBe(2);
     expect(unitResults.finalized.stepIndex).toBe(3);
     expect(unitResults.paidNoObl.stepIndex).toBe(4);
-    expect(unitResults.paidNoObl.badge).toBe('Not Recorded');
+    expect(unitResults.paidNoObl.badge).toBe('Statutory not recorded');
     expect(unitResults.paidAccrued.stepIndex).toBe(5);
     expect(unitResults.paidAccrued.badge).toBe('Recorded — Unpaid');
     expect(unitResults.paidMixed.stepIndex).toBe(5);
@@ -486,7 +487,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
       await window.PayrollApp.openHistoryRun(202);
     });
     await expect(page.locator('#payrollScreen5')).toBeVisible();
-    await expect(page.locator('#p5StatutoryBadge')).toHaveText('Not Recorded');
+    await expect(page.locator('#p5StatutoryBadge')).toHaveText('Statutory not recorded');
 
     // 4. Fresh open of paid run with accrued obligations navigates to Screen 6 with "Recorded — Unpaid" badge
     await page.evaluate(async () => {
@@ -529,7 +530,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollScreen4')).toBeVisible();
     await expect(page.locator('#p4MissingBankCount')).toHaveText('1');
     const tableBody = page.locator('#payrollPaymentPreviewTableBody');
-    await expect(tableBody).toContainText('Missing Bank Details (D-006)');
+    await expect(tableBody).toContainText('Missing bank details');
 
     // 2. Screen 5: Informational Rail Cards, reconciliation to grand total, and real exceptions
     await page.evaluate(() => {
@@ -543,13 +544,13 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const totalsMatch = await page.evaluate(() => {
       const ext = parseFloat((document.getElementById('p5ExtTotal')?.textContent || '0').replace(/[^0-9.]/g, ''));
       const int = parseFloat((document.getElementById('p5IntTotal')?.textContent || '0').replace(/[^0-9.]/g, ''));
-      const net = (window.PayrollApp.currentPreview?.total_net) || (window.PayrollApp.rollup().net);
+      const net = window.PayrollApp.paymentTotals().net;
       return Math.abs((ext + int) - net) < 0.05;
     });
     expect(totalsMatch).toBe(true);
 
     // Verify persisted warning banner rendered on Screen 5
-    await expect(page.locator('#payrollExceptionList')).toContainText('Missing Bank Details');
+    await expect(page.locator('#payrollExceptionList')).toContainText('bank details missing for 1 employee');
 
     // 3. Screen 6: Inline Debit Account & Payment Date Settlement
     let settledPayload = null;
@@ -610,7 +611,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     });
 
     const tbody = page.locator('#payrollRunsTableBody');
-    await expect(tbody.locator('tr:has-text("2026-05")')).toContainText('Not Recorded');
+    await expect(tbody.locator('tr:has-text("2026-05")')).toContainText('Statutory not recorded');
     await expect(tbody.locator('tr:has-text("2026-04")')).toContainText('Recorded — Unpaid');
     await expect(tbody.locator('tr:has-text("2026-03")')).toContainText('Reconciled');
   });
@@ -671,7 +672,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // Submit & Approve to advance to Screen 3
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     const s3 = page.locator('#payrollScreen3');
     await expect(s3).toBeVisible();
     await page.waitForTimeout(250);
@@ -694,7 +695,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await page.click('#btnP3Next');
     const s4 = page.locator('#payrollScreen4');
     await expect(s4).toBeVisible();
@@ -752,7 +753,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await page.click('#btnP3Next');
     await page.click('#btnP4Next');
 
@@ -780,8 +781,14 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // 1. Desktop 1440px - Screen 5 Pre-Disbursal
     await page.setViewportSize({ width: 1440, height: 900 });
-    await expect(page.locator('#p5ExtTotal')).toContainText('$9,900.00');
-    await expect(page.locator('#p5IntTotal')).toContainText('$36,790.00');
+    // Totals are the sum of the displayed rows, not the injected preview totals (U3)
+    const rowTotals = await page.evaluate(() => {
+      const t = window.PayrollApp.paymentTotals();
+      const fmt = (v) => window.PayrollApp.money(v);
+      return { ext: fmt(t.ext), int: fmt(t.int) };
+    });
+    await expect(page.locator('#p5ExtTotal')).toContainText(rowTotals.ext);
+    await expect(page.locator('#p5IntTotal')).toContainText(rowTotals.int);
     await expect(page.locator('#payrollExceptionList .alertbox')).toBeVisible();
     await page.screenshot({ path: `${artifactDir}/payroll-screen-5-disbursal-pre.png`, fullPage: false, animations: 'disabled' });
 
@@ -797,8 +804,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     // 4. Confirm & Disburse Action (Single Combined Action)
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.click('#btnP5ConfirmDisburse');
-    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll disbursement confirmed');
+    await confirmPayment(page);
+    await expect(page.locator('#payrollActionBanner')).toContainText('Payroll recorded as paid');
 
     // Results card, table rows & GL journal visible
     await expect(page.locator('#p5DisburseResultsCard')).toBeVisible();
@@ -839,10 +846,10 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
     await page.click('#btnP1Proceed');
-    await page.click('#btnP2Approve');
+    await submitAndApprove(page);
     await page.click('#btnP3Next');
     await page.click('#btnP4Next');
-    await page.click('#btnP5ConfirmDisburse');
+    await confirmPayment(page);
     await page.click('#btnP5ProceedStatutory');
 
     const s6 = page.locator('#payrollScreen6');

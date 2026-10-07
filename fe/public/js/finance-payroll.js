@@ -26,7 +26,7 @@
     initiation: { label: '1. Initiation', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
     approve: { label: '2. Approve', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
     processing: { label: '3. Processing', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
-    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview disbursement breakdown by payment rail before funding release.' },
+    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview the payment breakdown by salary type before recording payment.' },
     confirmation: { label: '5. Confirm Disbursal', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
     statutory: { label: '6. Statutory Payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
   };
@@ -337,40 +337,45 @@
       const tbody = document.getElementById('payrollRunsTableBody');
       const countEl = document.getElementById('payrollRunsCount');
       if (!tbody) return;
+      const newRunBtn = document.getElementById('btnStartNewRun');
+      if (newRunBtn) newRunBtn.hidden = !this.canPermission('finance.payroll.prepare');
 
       if (this.runsLoadError) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${this.runsLoadError}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
         if (countEl) countEl.textContent = '0 runs';
         return;
       }
 
       const currentStatus = this.currentStatusKey();
       const statusMap = {
-        draft: ['DRAFT', 'b-gray'],
-        submitted: ['SUBMITTED', 'b-blue'],
-        approved: ['APPROVED', 'b-blue'],
-        finalized: ['FINALIZED', 'b-blue'],
-        processing: ['PROCESSING', 'b-orange'],
-        partially_paid: ['PARTIALLY PAID', 'b-orange'],
-        paid: ['PAID', 'b-green']
+        draft: ['Draft', 'b-gray'],
+        submitted: ['Submitted', 'b-blue'],
+        approved: ['Approved', 'b-blue'],
+        finalized: ['Finalized', 'b-blue'],
+        processing: ['Processing', 'b-orange'],
+        partially_paid: ['Partially paid', 'b-orange'],
+        paid: ['Salaries paid', 'b-green']
       };
       const t = this.rollup();
 
-      let rowsHtml = `
+      // A saved run for the current month is shown with its saved status and total;
+      // the local draft row appears only when no run has been saved yet.
+      const savedCurrent = (this.serverRuns || []).some(r => r.period_label === this.month);
+      let rowsHtml = savedCurrent ? '' : `
         <tr class="clickable" onclick="PayrollApp.openRun('current')">
-          <td><strong>${this.month}</strong></td>
-          <td>${this.start} &rarr; ${this.end}</td>
-          <td><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'DRAFT'}</span></td>
-          <td class="payroll-num">${this.money(t.net)}</td>
-          <td>${this.rows.length}</td>
-          <td>${this.audit[0] ? this.audit[0].when : '—'}</td>
+          <td data-label="Period"><strong>${this.month}</strong></td>
+          <td data-label="Date range">${this.start} &rarr; ${this.end}</td>
+          <td data-label="Status"><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft'}</span></td>
+          <td data-label="Total Disbursement" class="payroll-num">${this.money(t.net)}</td>
+          <td data-label="Employees">${this.rows.length}</td>
+          <td data-label="Last updated">${this.audit[0] ? this.audit[0].when : '—'}</td>
         </tr>
       `;
 
-      const pastRuns = (this.serverRuns || []).filter(r => r.period_label !== this.month);
+      const pastRuns = this.serverRuns || [];
       pastRuns.forEach(r => {
         const sKey = (r.status || 'draft').toLowerCase();
-        const sBadge = statusMap[sKey] || ['DRAFT', 'b-gray'];
+        const sBadge = statusMap[sKey] || ['Draft', 'b-gray'];
         const netVal = r.total_net !== undefined ? r.total_net : (r.net || 0);
         const hc = r.headcount !== undefined ? r.headcount : (r.employees || (r.lines ? r.lines.length : 0));
         const upd = r.paid_at || r.updated_at || r.created_at || '—';
@@ -390,18 +395,48 @@
 
         rowsHtml += `
           <tr class="clickable" onclick="PayrollApp.openRun('${r.id || r.period_label}')">
-            <td><strong>${r.period_label}</strong></td>
-            <td>${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
-            <td><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
-            <td class="payroll-num">${this.money(netVal)}</td>
-            <td>${hc}</td>
-            <td>${displayUpd}</td>
+            <td data-label="Period"><strong>${escapeHtml(r.period_label)}</strong></td>
+            <td data-label="Date range">${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
+            <td data-label="Status"><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
+            <td data-label="Total Disbursement" class="payroll-num">${this.money(netVal)}</td>
+            <td data-label="Employees">${hc}</td>
+            <td data-label="Last updated">${displayUpd}</td>
           </tr>
         `;
       });
 
       tbody.innerHTML = rowsHtml;
-      if (countEl) countEl.textContent = `${1 + pastRuns.length} runs total`;
+      if (countEl) countEl.textContent = `${(savedCurrent ? 0 : 1) + pastRuns.length} runs total`;
+    },
+
+    // Period defaults for a calendar month "YYYY-MM": first to last day, paid on the last day.
+    setPeriod(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      const last = new Date(y, m, 0).getDate();
+      this.month = ym;
+      this.start = `${ym}-01`;
+      this.end = `${ym}-${String(last).padStart(2, '0')}`;
+      this.payDate = this.end;
+    },
+
+    // Starts a fresh run for the current calendar month (the month can be changed on screen 1).
+    // If a run for that month already exists it is opened instead: only one active run per period.
+    async startNewRun() {
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const existing = (this.serverRuns || []).find(r => r.period_label === ym);
+      if (existing && existing.id) {
+        this.showBanner(`A payroll run for ${ym} already exists. Opening it; pick another month on step 1 for a different period.`, 'blue');
+        await this.openHistoryRun(existing.id);
+        return;
+      }
+      this.currentRun = null;
+      this.currentPreview = null;
+      this.setPeriod(ym);
+      this.showPage('run');
+      await this.setStep(0);
+      await this.fetchPreview();
+      this.drawScreen1();
     },
 
     async openRun(id) {
@@ -437,7 +472,7 @@
       if (status === 'paid' || status === 'partially_paid') {
         const obls = Array.isArray(linkedObligations) ? linkedObligations : [];
         if (obls.length === 0) {
-          return { stepIndex: 4, screen: 5, badge: 'Not Recorded', badgeClass: 'b-gray' };
+          return { stepIndex: 4, screen: 5, badge: 'Statutory not recorded', badgeClass: 'b-gray' };
         }
 
         const allRemitted = obls.every(o => (o.status || '').toLowerCase() === 'remitted');
@@ -532,14 +567,55 @@
     },
 
     /* ---------------- Stepper & Screen Navigation ---------------- */
+    // A finalized or paid run is read-only on every step.
+    isRunLocked() {
+      const st = this.currentRun && this.currentRun.status;
+      return ['finalized', 'processing', 'partially_paid', 'paid'].includes(st);
+    },
+
+    // Highest step index already completed according to the saved run status.
+    completedThroughIndex() {
+      const st = this.currentRun && this.currentRun.status;
+      const map = { approved: 1, finalized: 2, processing: 3, partially_paid: 4, paid: 4 };
+      return map[st] !== undefined ? map[st] : -1;
+    },
+
+    applyLockState() {
+      const root = document.getElementById('a-finance-payroll');
+      const locked = this.isRunLocked();
+      if (root) root.classList.toggle('payroll-locked', locked);
+      ['btnP2SaveDraft', 'btnP2Approve'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = locked;
+      });
+      // Step 1 of a finalized run is read-only: disable the period, account and FX fields and hide their actions.
+      ['p1Month', 'p1PayDate', 'p1Start', 'p1End', 'p1ExtAccount', 'p1IntAccount', 'p1FxRateInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = locked;
+      });
+      ['btnP1ApplyFx', 'btnP1ResetFx', 'btnToggleFxOverride'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = locked;
+      });
+    },
+
     drawStepper() {
       const container = document.getElementById('payrollStepper');
       if (!container) return;
+      const doneThrough = this.completedThroughIndex();
 
-      container.innerHTML = FLOW.map((stepKey, idx) => {
+      const stepNames = FLOW.map((k, i) => (STEP_META[k] ? STEP_META[k].label : `${i + 1}. Step`));
+      const compact = `
+        <div class="payroll-step-compact">
+          <strong>Step ${this.stepIndex + 1} of ${FLOW.length}</strong>
+          <select id="payrollStepSelect" aria-label="Go to step" onchange="PayrollApp.setStep(Number(this.value))">
+            ${stepNames.map((n, i) => `<option value="${i}" ${i === this.stepIndex ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}
+          </select>
+        </div>`;
+      container.innerHTML = compact + FLOW.map((stepKey, idx) => {
         const meta = STEP_META[stepKey] || { label: `${idx + 1}. Step` };
         const isActive = idx === this.stepIndex;
-        const isDone = idx < this.stepIndex;
+        const isDone = idx < this.stepIndex || idx <= doneThrough;
         const cls = isActive ? 'active' : (isDone ? 'done' : '');
         return `
           <button type="button" class="payroll-step-pill step ${cls}" onclick="PayrollApp.setStep(${idx})">
@@ -553,6 +629,7 @@
     async setStep(idx) {
       if (idx < 0) idx = 0;
       if (idx > 5) idx = 5;
+      if (window.Router) Router.setParams([(this.currentRun && this.currentRun.id) || 'current', idx + 1], ['a-finance-payroll-runs', 'a-finance-payroll']);
 
       // Lifecycle Gate: Finalize when entering Screen 3 (Processing)
       if (idx === 2 && this.currentRun && this.currentRun.status === 'approved') {
@@ -593,6 +670,7 @@
       this.drawStepper();
       this.drawPeriodLabel();
       this.drawStatus();
+      this.applyLockState();
 
       const stepKey = FLOW[idx];
       const hint = STEP_META[stepKey] ? STEP_META[stepKey].hint : '';
@@ -603,9 +681,9 @@
       const lockNote = document.getElementById('payrollLockNote');
       const lockText = document.getElementById('payrollLockText');
       if (lockNote && lockText) {
-        if (idx >= 2) {
+        if (idx >= 2 || this.isRunLocked()) {
           lockNote.classList.remove('payroll-hidden');
-          lockText.textContent = 'This payroll cycle has been finalized. Base compensation and dynamic additions are locked against edits.';
+          lockText.textContent = 'This run is finalized. Compensation and additions are read-only.';
         } else {
           lockNote.classList.add('payroll-hidden');
         }
@@ -661,7 +739,16 @@
 
     onScreen1PeriodChange() {
       const m = document.getElementById('p1Month');
-      if (m && m.value) this.month = m.value;
+      if (m && m.value && m.value !== this.month) {
+        // month changed on screen 1: move start, end and pay date with it
+        this.setPeriod(m.value);
+        ['p1PayDate', 'p1Start', 'p1End'].forEach((id, i) => {
+          const el = document.getElementById(id);
+          if (el) el.value = [this.payDate, this.start, this.end][i];
+        });
+        this.drawPeriodLabel();
+        return;
+      }
       const pd = document.getElementById('p1PayDate');
       if (pd && pd.value) this.payDate = pd.value;
       const s = document.getElementById('p1Start');
@@ -718,13 +805,115 @@
     },
 
     /* ==================== SCREEN 2: APPROVE & ADJUSTMENTS ==================== */
+    // Blocking readiness issues from the preview/run (missing compensation plan, insured base, tax settings...)
+    blockingIssues() {
+      const src = (this.currentRun && this.currentRun.status && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      return src.filter(e => e.severity === 'blocking' && !e.is_resolved);
+    },
+
+    // A saved draft keeps the issue list it was created with. True when today's data passes the live
+    // check but the saved run still carries old blocking issues.
+    savedRunIsStale() {
+      const run = this.currentRun;
+      if (!run || !run.id || run.status !== 'draft') return false;
+      const live = (this.currentPreview && this.currentPreview.exceptions) || [];
+      const liveBlocking = live.filter(e => e.severity === 'blocking' && !e.is_resolved).length;
+      return liveBlocking === 0 && this.blockingIssues().length > 0;
+    },
+
+    drawReadiness() {
+      const panel = document.getElementById('p2ReadinessPanel');
+      if (!panel) return;
+      const issues = this.blockingIssues();
+      const stale = this.savedRunIsStale();
+      if (!issues.length) { panel.hidden = true; panel.innerHTML = ''; return; }
+      const fixLabel = (code) => ({
+        MISSING_COMP_PLAN: 'Set compensation plan',
+        MISSING_INSURED_BASE: 'Open social insurance',
+        INSURED_BASE_EXCEEDS_SALARY: 'Open social insurance',
+        MISSING_TAX_SETTINGS: 'Open payroll settings',
+      }[code] || 'Open employee');
+      panel.innerHTML = `
+        <div class="payroll-readiness-head">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <strong>${issues.length} blocking issue${issues.length === 1 ? '' : 's'} must be fixed before this run can be submitted</strong>
+          <button type="button" class="btn btn-sm btn-outline" data-action="payroll-recheck"><i class="fa-solid fa-rotate"></i> Re-check</button>
+        </div>
+        ${stale ? `<p class="payroll-readiness-note"><i class="fa-solid fa-circle-info"></i> Your data now passes the live check, but saved run #${escapeHtml(this.currentRun.id)} still carries the issues found when it was created. Press Re-check to refresh it from your current data.</p>` : ''}
+        <ul class="payroll-readiness-list">
+          ${issues.map(e => `<li>
+            <span><strong>${escapeHtml(e.employee_name || (e.employee_id ? 'Employee #' + e.employee_id : 'Payroll settings'))}</strong>
+              — ${escapeHtml(e.title || e.code)}. ${escapeHtml(e.description || e.details || e.message || '')}</span>
+            <button type="button" class="btn btn-sm btn-fill" data-action="payroll-fix-issue" data-code="${escapeHtml(e.code || '')}" data-employee-id="${escapeHtml(e.employee_id || '')}">${fixLabel(e.code)}</button>
+          </li>`).join('')}
+        </ul>`;
+      panel.hidden = false;
+    },
+
+    // Opens the screen where an issue can be fixed.
+    fixIssue(code, employeeId) {
+      if (code === 'MISSING_COMP_PLAN' && employeeId && typeof openCompPlanModal === 'function') {
+        openCompPlanModal(employeeId);
+      } else if ((code === 'MISSING_INSURED_BASE' || code === 'INSURED_BASE_EXCEEDS_SALARY') && employeeId && typeof viewProfile === 'function') {
+        viewProfile(employeeId, 'social');
+      } else if (code === 'MISSING_TAX_SETTINGS') {
+        this.showPage('settings');
+      } else if (employeeId && typeof viewProfile === 'function') {
+        viewProfile(employeeId);
+      }
+    },
+
+    // Reload the preview after the data was corrected elsewhere.
+    async recheckReadiness() {
+      const run = this.currentRun;
+      if (run && run.id && run.status === 'draft' && typeof FinanceApi !== 'undefined' && typeof FinanceApi.refreshPayrollRun === 'function') {
+        try {
+          await FinanceApi.refreshPayrollRun(run.id);
+          this.currentRun = await FinanceApi.getPayrollRun(run.id);
+        } catch (e) {
+          this.showBanner(`Could not re-check run #${run.id}: ${e.message || e}`, 'red');
+          return;
+        }
+      }
+      await this.fetchPreview();
+      this.drawScreen2();
+      if (this.savedRunIsStale()) {
+        this.showBanner(`The data now passes the live check, but saved run #${this.currentRun.id} still holds the old issues.`, 'red');
+      } else {
+        this.showBanner(this.blockingIssues().length ? 'Some blocking issues remain.' : 'No blocking issues. You can submit this run.', this.blockingIssues().length ? 'red' : 'green');
+      }
+    },
+
     drawScreen2() {
+      this.drawReadiness();
       this.drawStats();
       this.drawTable();
       const p2ApproveBtn = document.getElementById('btnP2Approve');
       if (p2ApproveBtn) {
-        const canApprove = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('finance.payroll.approve') : true;
-        p2ApproveBtn.style.display = canApprove ? '' : 'none';
+        const status = (this.currentRun && this.currentRun.status) || 'draft';
+        const awaitingApproval = status === 'submitted';
+        const pastApproval = ['approved', 'finalized', 'processing', 'partially_paid', 'paid'].includes(status);
+        const allowed = awaitingApproval ? this.canPermission('finance.payroll.approve') : this.canPermission('finance.payroll.prepare');
+        p2ApproveBtn.innerHTML = awaitingApproval
+          ? 'Approve <i class="fa-solid fa-check"></i>'
+          : 'Submit for approval <i class="fa-solid fa-paper-plane"></i>';
+        p2ApproveBtn.style.display = allowed && !pastApproval ? '' : 'none';
+        const blockers = awaitingApproval ? 0 : this.blockingIssues().length;
+        p2ApproveBtn.disabled = blockers > 0;
+        const selfRow = document.getElementById('p2SelfApproveRow');
+        if (selfRow) {
+          selfRow.hidden = !(awaitingApproval && this.canSelfApprove());
+          if (selfRow.hidden) { const box = document.getElementById('p2SelfApprove'); if (box) box.checked = false; }
+        }
+        const hint = document.getElementById('p2ApprovalHint');
+        if (hint) {
+          hint.textContent = pastApproval
+            ? 'This run has been approved. Nothing more to approve here.'
+            : awaitingApproval
+            ? (allowed ? 'Step 2 of 2: approve this run. Approval by someone other than the submitter is expected.' : 'Submitted. Waiting for an approver.')
+            : (blockers > 0 ? `Fix the ${blockers} blocking issue${blockers === 1 ? '' : 's'} above to submit. You can still save a draft.`
+              : (allowed ? 'Step 1 of 2: submit this run for approval.' : 'You can review this run but not submit it.'));
+        }
       }
     },
 
@@ -734,11 +923,10 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const baseExt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_ext_amount || 0), 0) : t.baseExt;
-      const baseInt = (p && p.recipients) ? p.recipients.reduce((sum, r) => sum + (r.base_int_amount || 0), 0) : t.baseInt;
-      const totalAdditions = (p && p.total_additions !== undefined) ? p.total_additions : t.bonus;
-      const totalNet = (p && p.total_net !== undefined) ? p.total_net : t.net;
-      const totalBase = baseExt + baseInt;
+      // Totals are summed from the same row values the table shows, never from a separate preview figure.
+      const totalBase = t.baseExt + t.baseInt;
+      const totalAdditions = t.bonus;
+      const totalGross = totalBase + totalAdditions;
 
       grid.innerHTML = `
         <div class="stat payroll-card stat-card">
@@ -757,9 +945,9 @@
           <div class="hint sub">Dynamic additions</div>
         </div>
         <div class="stat payroll-card stat-card">
-          <div class="lbl label">Total Compensation</div>
-          <div class="val value accent val-accent" style="color:var(--accent);">${this.money(totalNet)}</div>
-          <div class="hint sub">Gross / net disbursal</div>
+          <div class="lbl label">Total Compensation (gross)</div>
+          <div class="val value accent val-accent" style="color:var(--accent-text);">${this.money(totalGross)}</div>
+          <div class="hint sub">Before deductions</div>
         </div>
       `;
     },
@@ -805,19 +993,19 @@
 
         rowsHtml += `
           <tr>
-            <td class="col-id payroll-id-th">${r.id}</td>
+            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
-                <strong>${r.name}</strong>
+                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
               </div>
             </td>
-            <td class="num payroll-num">${this.money(r.baseExt)}</td>
-            <td class="num payroll-num">${this.money(r.baseInt)}</td>
-            <td class="num payroll-num">
+            <td class="num payroll-num" data-label="Base Ext">${this.money(r.baseExt)}</td>
+            <td class="num payroll-num" data-label="Base Int">${this.money(r.baseInt)}</td>
+            <td class="num payroll-num" data-label="Bonus / Commission">
               ${bonusBadges || '<span class="muted" style="color:var(--text3); font-weight:600;">—</span>'}
             </td>
-            <td class="num payroll-num strong">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
+            <td class="num payroll-num strong" data-label="Total comp (gross)">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
             <td class="col-actions" style="text-align:center;">
               <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
             </td>
@@ -916,7 +1104,7 @@
 
       const amt = parseFloat(amtInput.value);
       if (!amt || amt <= 0) {
-        alert('Please enter a valid bonus amount greater than zero.');
+        FinanceForm.setFieldError(amtInput, 'Enter a bonus amount greater than zero.');
         return;
       }
       const bTypeVal = typeSel ? typeSel.value : 'BONUS';
@@ -1026,7 +1214,23 @@
       }
     },
 
-    async submitAndApproveRun() {
+    canPermission(key) {
+      return typeof SessionInfo !== 'undefined' && typeof SessionInfo.hasPermission === 'function' ? SessionInfo.hasPermission(key) : true;
+    },
+
+    // Self-approval is offered only to a user who may both prepare and approve.
+    canSelfApprove() {
+      return this.canPermission('finance.payroll.prepare') && this.canPermission('finance.payroll.approve');
+    },
+
+    // The single button on screen 2 moves through two visible steps: submit, then approve.
+    submitAndApproveRun() {
+      const status = this.currentRun && this.currentRun.status;
+      return status === 'submitted' ? this.approveRun() : this.submitRun();
+    },
+
+    // Step 1 of 2: create the run when needed and submit it for approval. Nothing is approved here.
+    async submitRun() {
       try {
         if (!this.currentRun) {
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
@@ -1052,19 +1256,65 @@
           }
         }
 
-        if (this.currentRun && (this.currentRun.status === 'submitted' || this.currentRun.status === 'draft')) {
-          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.approvePayrollRun === 'function') {
-            await FinanceApi.approvePayrollRun(this.currentRun.id, true);
-            this.currentRun.status = 'approved';
-          }
-        }
+        this.addAudit('Payroll run submitted for approval.');
+        this.showBanner('Payroll run submitted for approval.', 'blue');
+        this.drawScreen2();
+        this.drawStatus();
+      } catch (err) {
+        console.error('Error submitting run:', err);
+        this.showBanner(err.message || 'Submission failed.', 'red');
+      }
+    },
 
-        this.addAudit('Payroll run submitted and approved.');
+    // Step 2 of 2: approve. Self-approval is sent only when the user explicitly ticks the box.
+    async approveRun() {
+      try {
+        const box = document.getElementById('p2SelfApprove');
+        const allowSelf = !!(box && box.checked && this.canSelfApprove());
+        if (this.currentRun && this.currentRun.status === 'submitted'
+            && typeof FinanceApi !== 'undefined' && typeof FinanceApi.approvePayrollRun === 'function') {
+          await FinanceApi.approvePayrollRun(this.currentRun.id, allowSelf);
+          this.currentRun.status = 'approved';
+        }
+        this.addAudit(allowSelf ? 'Payroll run approved (self-approval confirmed).' : 'Payroll run approved.');
         this.showBanner('Payroll run approved. Advancing to statutory processing.', 'blue');
         this.setStep(2);
       } catch (err) {
         console.error('Error approving run:', err);
         this.showBanner(err.message || 'Approval failed.', 'red');
+      }
+    },
+
+    // Downloads the run CSV (one row per employee). Real mode uses the authenticated export endpoint.
+    async exportRunCsv() {
+      try {
+        const isMock = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        if (!isMock) {
+          if (!this.currentRun || !this.currentRun.id) {
+            this.showBanner('Save and submit the run before exporting it.', 'red');
+            return;
+          }
+          await FinanceApi.exportPayrollRun(this.currentRun.id);
+          return;
+        }
+        const pay = this.paymentValues();
+        const q = (v) => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+        const lines = [['Employee ID', 'Name', 'External (USD)', 'Internal (USD)', 'Total Disbursement'].map(q).join(',')];
+        this.rows.forEach(r => {
+          const v = pay.get(Number(r.id)) || { ext: 0, int: 0, net: 0 };
+          lines.push([r.id, r.name, v.ext.toFixed(2), v.int.toFixed(2), v.net.toFixed(2)].map(q).join(','));
+        });
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payroll_run_${(this.currentRun && this.currentRun.id) || this.month}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } catch (err) {
+        this.showBanner(err.message || 'Export failed.', 'red');
       }
     },
 
@@ -1150,7 +1400,7 @@
               <td class="num payroll-num">${emprSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
+              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1189,7 +1439,7 @@
               <td class="num payroll-num">${emprSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
               <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netUsd)}</td>
+              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1213,16 +1463,55 @@
     },
 
     /* ==================== SCREEN 4: PAYMENT PREVIEW ==================== */
+    // Per-employee external/internal payment amounts, shared by screens 4 and 5 and the journal
+    // so every total on those screens is the sum of the rows displayed.
+    paymentValues() {
+      const runLines = (this.currentRun && this.currentRun.lines) || [];
+      const previewRecipients = (this.currentPreview && this.currentPreview.recipients) || [];
+      const recipMap = new Map();
+      previewRecipients.forEach(rp => recipMap.set(Number(rp.employee_id), rp));
+      const lineMap = new Map();
+      runLines.forEach(l => {
+        const eid = Number(l.employee_id);
+        if (!lineMap.has(eid)) lineMap.set(eid, { ext: 0, int: 0 });
+        const entry = lineMap.get(eid);
+        if (l.compensation_type === 'external_usd') {
+          entry.ext += Number(l.net_pay || l.amount || 0);
+        } else {
+          entry.int += Number(l.final_internal_payment_usd !== undefined && l.final_internal_payment_usd !== null ? l.final_internal_payment_usd : (l.net_pay || l.amount || 0));
+        }
+      });
+      const byId = new Map();
+      this.rows.forEach(r => {
+        const c = this.computeRow(r);
+        let ext = c.external;
+        let int = c.internal;
+        if (lineMap.has(Number(r.id))) {
+          const lEntry = lineMap.get(Number(r.id));
+          ext = lEntry.ext;
+          int = Math.round(lEntry.int);
+        } else if (recipMap.has(Number(r.id))) {
+          const rpRow = recipMap.get(Number(r.id));
+          if (rpRow.final_ext_amount !== undefined) ext = Number(rpRow.final_ext_amount);
+          if (rpRow.final_int_amount !== undefined) int = Math.round(Number(rpRow.final_int_amount));
+        }
+        byId.set(Number(r.id), { ext, int, net: ext + int });
+      });
+      return byId;
+    },
+
+    paymentTotals() {
+      let ext = 0, int = 0;
+      this.paymentValues().forEach(v => { ext += v.ext; int += v.int; });
+      return { ext, int, net: ext + int };
+    },
+
     drawScreen4() {
       const tbody = document.getElementById('payrollPaymentPreviewTableBody');
       if (!tbody) return;
 
-      const t = this.rollup();
-      const p = this.currentPreview;
-
-      const extBank = (p && p.final_ext_total !== undefined) ? p.final_ext_total : t.external;
-      const intCash = (p && p.final_int_total !== undefined) ? p.final_int_total : t.internal;
-      const netTotal = (p && p.total_net !== undefined) ? p.total_net : t.net;
+      const pay = this.paymentValues();
+      const { ext: extBank, int: intCash, net: netTotal } = this.paymentTotals();
 
       const bExt = document.getElementById('p4ExtBankTotal');
       const bInt = document.getElementById('p4IntCashTotal');
@@ -1243,39 +1532,10 @@
           .map(e => Number(e.employee_id))
       );
 
-      const runLines = (this.currentRun && this.currentRun.lines) || [];
-      const previewRecipients = (this.currentPreview && this.currentPreview.recipients) || [];
-      const recipMap = new Map();
-      previewRecipients.forEach(rp => recipMap.set(Number(rp.employee_id), rp));
-
-      const lineMap = new Map();
-      runLines.forEach(l => {
-        const eid = Number(l.employee_id);
-        if (!lineMap.has(eid)) lineMap.set(eid, { ext: 0, int: 0 });
-        const entry = lineMap.get(eid);
-        if (l.compensation_type === 'external_usd') {
-          entry.ext += Number(l.net_pay || l.amount || 0);
-        } else {
-          entry.int += Number(l.final_internal_payment_usd !== undefined && l.final_internal_payment_usd !== null ? l.final_internal_payment_usd : (l.net_pay || l.amount || 0));
-        }
-      });
-
       let missingBankCount = 0;
       let rowsHtml = '';
       this.rows.forEach(r => {
-        const c = this.computeRow(r);
-        let extVal = c.external;
-        let intVal = c.internal;
-        if (lineMap.has(Number(r.id))) {
-          const lEntry = lineMap.get(Number(r.id));
-          extVal = lEntry.ext;
-          intVal = Math.round(lEntry.int);
-        } else if (recipMap.has(Number(r.id))) {
-          const rp = recipMap.get(Number(r.id));
-          if (rp.final_ext_amount !== undefined) extVal = Number(rp.final_ext_amount);
-          if (rp.final_int_amount !== undefined) intVal = Math.round(Number(rp.final_int_amount));
-        }
-        const netVal = extVal + intVal;
+        const { ext: extVal, int: intVal, net: netVal } = pay.get(Number(r.id));
 
         const hasExternal = extVal > 0 || r.baseExt > 0;
         const isMissingBank = hasExternal && (
@@ -1290,9 +1550,9 @@
 
         let bankBadgeHtml = '';
         if (isMissingBank) {
-          bankBadgeHtml = `<span class="pill-danger badge-pill p-badge b-amber" style="font-size:0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Missing Bank Details (D-006)</span>`;
+          bankBadgeHtml = `<a class="pill-danger badge-pill p-badge b-amber payroll-missing-bank-link" style="font-size:0.75rem;" href="${Router.hrefFor('a-employee-detail', 'admin')}/${encodeURIComponent(r.id)}/bank" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" title="Open this employee's bank section"><i class="fa-solid fa-triangle-exclamation"></i> Missing bank details</a>`;
         } else if (hasExternal) {
-          const bankDisplay = (r.bank_name ? `${r.bank_name} ${r.bank_account_masked || ''}` : 'Verified Wire ****8821');
+          const bankDisplay = (r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'Bank details on file');
           bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
         } else {
           bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
@@ -1302,17 +1562,17 @@
 
         rowsHtml += `
           <tr class="${isMissingBank ? 'warnrow' : ''}">
-            <td class="col-id payroll-id-th">${r.id}</td>
+            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
             <td class="payroll-name-th">
               <div class="tname">
                 <span class="avatar">${inits}</span>
-                <strong>${r.name}</strong>
+                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
               </div>
             </td>
-            <td>${bankBadgeHtml}</td>
-            <td class="num payroll-num">${this.money(extVal)}</td>
-            <td class="num payroll-num">${this.money(intVal)}</td>
-            <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent);">${this.money(netVal)}</td>
+            <td data-label="Bank / Routing">${bankBadgeHtml}</td>
+            <td class="num payroll-num" data-label="External (USD)">${this.money(extVal)}</td>
+            <td class="num payroll-num" data-label="Internal (USD)">${this.money(intVal)}</td>
+            <td class="num payroll-num strong accent" data-label="Total Disbursement" style="font-weight:800; color:var(--accent-text);">${this.money(netVal)}</td>
           </tr>
         `;
       });
@@ -1344,11 +1604,10 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Operating Bank Wire Account';
-      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Treasury Cash Vault';
+      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || '—';
+      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || '—';
 
-      const extTotal = (p && p.final_ext_total !== undefined) ? p.final_ext_total : t.external;
-      const intTotal = (p && p.final_int_total !== undefined) ? p.final_int_total : t.internal;
+      const { ext: extTotal, int: intTotal } = this.paymentTotals();
 
       // Count recipients per rail
       let extRecipients = 0;
@@ -1374,13 +1633,13 @@
 
       if (p5ExtTot) p5ExtTot.textContent = this.money(extTotal);
       if (p5ExtAcc) p5ExtAcc.textContent = extBankName;
-      if (p5ExtRec) p5ExtRec.textContent = 'External Rail';
+      if (p5ExtRec) p5ExtRec.textContent = 'External salaries';
       if (p5ExtRecCount) p5ExtRecCount.textContent = `${extRecipients} employee${extRecipients === 1 ? '' : 's'}`;
       if (p5ExtDate) p5ExtDate.textContent = this.payDate;
 
       if (p5IntTot) p5IntTot.textContent = this.money(intTotal);
       if (p5IntAcc) p5IntAcc.textContent = intBankName;
-      if (p5IntRec) p5IntRec.textContent = 'Internal Rail';
+      if (p5IntRec) p5IntRec.textContent = 'Internal salaries';
       if (p5IntRecCount) p5IntRecCount.textContent = `${intRecipients} employee${intRecipients === 1 ? '' : 's'}`;
       if (p5IntDate) p5IntDate.textContent = this.payDate;
 
@@ -1396,16 +1655,19 @@
           : ((this.currentPreview && this.currentPreview.exceptions) || []);
         if (runExceptions.length > 0) {
           if (excWrap) excWrap.style.display = 'flex';
-          excStrip.innerHTML = runExceptions.map(exc => {
-            const isWarn = exc.severity === 'warning' || exc.code === 'MISSING_BANK_DETAILS';
-            const icon = isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
-            const label = isWarn ? 'Warning (non-blocking D-006)' : 'Blocking Exception';
-            return `
+          const missingBankExc = runExceptions.filter(exc => exc.code === 'MISSING_BANK_DETAILS');
+          const otherExc = runExceptions.filter(exc => exc.code !== 'MISSING_BANK_DETAILS');
+          const alertHtml = (isWarn, label, text) => `
               <div class="alertbox"${isWarn ? '' : ' style="background:var(--danger-soft); color:var(--danger);"'}>
-                <i class="fa-solid ${icon}"></i>
-                <span><strong>${label}:</strong> ${exc.code === 'MISSING_BANK_DETAILS' ? 'Missing Bank Details — ' : ''}${exc.details || exc.message || exc.code}</span>
-              </div>
-            `;
+                <i class="fa-solid ${isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark'}"></i>
+                <span><strong>${label}:</strong> ${escapeHtml(text)}</span>
+              </div>`;
+          const missingHtml = missingBankExc.length
+            ? alertHtml(true, 'Warning', `bank details missing for ${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}. Payment can still be recorded.`)
+            : '';
+          excStrip.innerHTML = missingHtml + otherExc.map(exc => {
+            const isWarn = exc.severity === 'warning';
+            return alertHtml(isWarn, isWarn ? 'Warning' : 'Blocking exception', exc.details || exc.message || 'Exception reported for this run.');
           }).join('');
         } else {
           if (excWrap) excWrap.style.display = 'none';
@@ -1423,8 +1685,7 @@
         if (resCard) resCard.classList.remove('payroll-hidden');
         if (jCard) jCard.classList.remove('payroll-hidden');
         if (btnDisburse) {
-          btnDisburse.disabled = true;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-check"></i> Disbursed &amp; Paid';
+          this.showRecordedAsPaid(btnDisburse);
         }
         this.drawDisburseResults();
         this.drawJournalRows();
@@ -1433,100 +1694,137 @@
         if (jCard) jCard.classList.add('payroll-hidden');
         if (btnDisburse) {
           btnDisburse.disabled = false;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm &amp; Disburse Payroll';
+          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm and record as paid';
         }
+        this.applyConfirmState();
       }
     },
 
+    missingBankCount() {
+      const excs = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      return new Set(excs.filter(e => e.code === 'MISSING_BANK_DETAILS').map(e => Number(e.employee_id))).size;
+    },
+
     async confirmDisbursement() {
+      const run = this.currentRun;
+      if (!run || !['finalized', 'processing', 'partially_paid'].includes(run.status)) {
+        this.showBanner('Payroll must be approved and finalized before payment can be recorded.', 'red');
+        return;
+      }
+      const totals = this.paymentTotals();
+      const recipients = this.rows.length;
+      const missing = this.missingBankCount();
+      const confirmed = await FinanceCommand.confirmAction({
+        title: 'Record payroll as paid',
+        consequence: `Record ${this.money(totals.net)} as paid to ${recipients} employee${recipients === 1 ? '' : 's'} for ${this.month}. `
+          + `${missing} ${missing === 1 ? 'employee has' : 'employees have'} missing bank details. `
+          + 'This posts the payroll journal and cannot be undone from here.',
+        actionLabel: 'Confirm and record as paid',
+        actionClass: 'btn btn-fill',
+        severity: 'warning',
+      });
+      if (!confirmed.confirmed) return;
+
+      const unlock = FinanceCommand.lockSubmitButton('btnP5ConfirmDisburse');
+      if (unlock === null) return;
       try {
-        if (!this.currentRun) {
-          await this.submitAndApproveRun();
-        }
-
-        if (this.currentRun && (this.currentRun.status === 'draft' || this.currentRun.status === 'submitted')) {
-          if (typeof FinanceApi !== 'undefined') {
-            if (this.currentRun.status === 'draft' && typeof FinanceApi.submitPayrollRun === 'function') {
-              await FinanceApi.submitPayrollRun(this.currentRun.id);
-            }
-            if (typeof FinanceApi.approvePayrollRun === 'function') {
-              await FinanceApi.approvePayrollRun(this.currentRun.id, true);
-              this.currentRun.status = 'approved';
-            }
-          }
-        }
-
-        if (this.currentRun && this.currentRun.status === 'approved') {
-          if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
-            await FinanceApi.finalizePayrollRun(this.currentRun.id);
-            this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
-          }
-        }
-
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.disbursePayrollRun === 'function') {
-          await FinanceApi.disbursePayrollRun(this.currentRun.id);
-          await FinanceApi.postPayrollJournal(this.currentRun.id);
-          this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
-        } else {
-          if (this.currentRun) this.currentRun.status = 'paid';
+          await FinanceApi.disbursePayrollRun(run.id);
+          await FinanceApi.postPayrollJournal(run.id);
+          this.currentRun = await FinanceApi.getPayrollRun(run.id);
+        } else if (this.currentRun) {
+          this.currentRun.status = 'paid';
         }
 
         this.journalPosted = true;
-        this.addAudit('Payroll run disbursed and general ledger entry posted.');
-        this.showBanner('Payroll disbursement confirmed. Funds released and journal posted.', 'green');
+        this.addAudit('Payroll run recorded as paid and general ledger entry posted.');
+        this.showBanner('Payroll recorded as paid and journal posted.', 'green');
         this.drawScreen5();
         this.drawStatus();
       } catch (err) {
         console.error('Error confirming disbursement:', err);
-        this.showBanner(err.message || 'Disbursement failed.', 'red');
+        this.showBanner(err.message || 'Recording payment failed.', 'red');
+      } finally {
+        unlock();
+        this.applyConfirmState();
       }
     },
 
+    // A paid run shows a disabled button that states the date, not an active-looking primary.
+    showRecordedAsPaid(btn) {
+      const paidOn = (this.currentRun && (this.currentRun.paid_at || this.currentRun.payment_date)) || this.payDate;
+      btn.disabled = true;
+      btn.textContent = `Recorded as paid on ${fmtDateShort(paidOn)}`;
+    },
+
+    // Disable the confirm button, with an explanation, until the run is finalized.
+    applyConfirmState() {
+      const btn = document.getElementById('btnP5ConfirmDisburse');
+      const hint = document.getElementById('p5ConfirmHint');
+      if (!btn) return;
+      const status = this.currentRun && this.currentRun.status;
+      const paid = status === 'paid';
+      const ready = ['finalized', 'processing', 'partially_paid'].includes(status);
+      if (paid || status === 'partially_paid') this.showRecordedAsPaid(btn);
+      else btn.disabled = !ready;
+      if (hint) {
+        hint.hidden = ready || paid;
+        hint.textContent = ready || paid ? '' : 'Payment can be recorded once the run is approved and finalized.';
+      }
+    },
+
+    // One row per employee: External, Internal and Total paid side by side. The values come from
+    // paymentValues(), the same source as the two rail cards and step 4, so the totals row equals the
+    // card amounts and External + Internal = Total paid on every row.
     drawDisburseResults() {
       const tbody = document.getElementById('payrollDisburseResultsTableBody');
       if (!tbody) return;
 
+      const pay = this.paymentValues();
       const lines = (this.currentRun && this.currentRun.lines) || [];
-      if (lines.length > 0) {
-        tbody.innerHTML = lines.map(l => {
-          const empName = l.employee_name || `Employee #${l.employee_id}`;
-          const inits = this.getInitials(empName);
-          const isWarn = l.payment_status === 'flagged' || l.missing_bank || (l.failure_reason && l.failure_reason.includes('bank'));
-          const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
-          const badgeText = isWarn ? 'Flagged — no bank' : (l.payment_status ? l.payment_status.charAt(0).toUpperCase() + l.payment_status.slice(1) : 'Paid');
-          const paidAt = l.paid_at ? l.paid_at.slice(0, 16).replace('T', ' ') : this.nowStamp();
-          const notes = l.failure_reason || (isWarn ? 'Manual/cash settlement pending; non-blocking (D-006).' : 'Settled via configured funding accounts.');
+      const exceptions = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
+      const missingIds = new Set(exceptions.filter(e => e.code === 'MISSING_BANK_DETAILS').map(e => Number(e.employee_id)));
+      let totExt = 0, totInt = 0, totNet = 0;
 
-          return `
-            <tr class="${isWarn ? 'warnrow' : ''}">
-              <td class="tname"><span class="avatar">${inits}</span>${empName}</td>
-              <td class="num payroll-num" style="font-weight:700;">${this.money(l.net_pay || l.amount)}</td>
-              <td><span class="${badgeClass} badge-pill">${badgeText}</span></td>
-              <td>${paidAt}</td>
-              <td class="muted">${notes}</td>
-            </tr>
-          `;
-        }).join('');
-      } else {
-        tbody.innerHTML = (this.rows || []).map(r => {
-          const c = this.computeRow(r);
-          const inits = this.getInitials(r.name);
-          const isWarn = r.missingBank || !r.hasBank;
-          const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
-          const badgeText = isWarn ? 'Flagged — no bank' : 'Paid';
-          const notes = isWarn ? 'Manual/cash settlement pending; non-blocking (D-006).' : 'Settled via configured funding accounts.';
+      tbody.innerHTML = (this.rows || []).map(r => {
+        const v = pay.get(Number(r.id)) || { ext: 0, int: 0, net: 0 };
+        totExt += v.ext; totInt += v.int; totNet += v.net;
 
-          return `
-            <tr class="${isWarn ? 'warnrow' : ''}">
-              <td class="tname"><span class="avatar">${inits}</span>${r.name}</td>
-              <td class="num payroll-num" style="font-weight:700;">${this.money(c.net)}</td>
-              <td><span class="${badgeClass} badge-pill">${badgeText}</span></td>
-              <td>${this.nowStamp()}</td>
-              <td class="muted">${notes}</td>
-            </tr>
-          `;
-        }).join('');
-      }
+        const hasExternal = v.ext > 0 || r.baseExt > 0;
+        const missingBank = hasExternal && (missingIds.has(Number(r.id)) || r.has_missing_bank
+          || (!r.bank_name && !r.bank_account_masked && !r.bank_account_id));
+        let bankHtml;
+        if (missingBank) {
+          bankHtml = '<span class="payroll-bank-missing">Missing</span>';
+        } else if (hasExternal) {
+          bankHtml = r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'On file';
+        } else {
+          bankHtml = '<span class="muted">Not needed (internal only)</span>';
+        }
+
+        const empLines = lines.filter(l => Number(l.employee_id) === Number(r.id));
+        const flagged = empLines.find(l => l.payment_status === 'flagged' || l.missing_bank || l.failure_reason);
+        const isWarn = !!flagged || (empLines.length === 0 && missingBank);
+        const reason = (flagged && flagged.failure_reason) || (isWarn ? 'Bank details are missing; settle manually or by cash.' : '');
+        const statusText = isWarn ? 'Flagged' : 'Paid';
+        const badgeClass = isWarn ? 'pill-warning' : 'pill-success';
+
+        return `
+          <tr class="${isWarn ? 'warnrow' : ''}">
+            <td class="tname"><span class="avatar">${this.getInitials(r.name)}</span>${escapeHtml(r.name)}</td>
+            <td>${bankHtml}</td>
+            <td class="num payroll-num payroll-col-ext">${this.money(v.ext)}</td>
+            <td class="num payroll-num payroll-col-int">${this.money(v.int)}</td>
+            <td class="num payroll-num" style="font-weight:700;">${this.money(v.net)}</td>
+            <td><span class="${badgeClass} badge-pill"${reason ? ` title="${escapeHtml(reason)}"` : ''}>${statusText}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      const setTot = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = this.money(val); };
+      setTot('p5TotExt', totExt);
+      setTot('p5TotInt', totInt);
+      setTot('p5TotNet', totNet);
     },
 
     drawJournalRows() {
@@ -1534,9 +1832,7 @@
       if (!rowsEl) return;
       const t = this.rollup();
       const p = this.currentPreview;
-      const netTotal = (p && p.total_net) || t.net;
-      const extTotal = (p && p.final_ext_total) || t.external;
-      const intTotal = (p && p.final_int_total) || t.internal;
+      const { ext: extTotal, int: intTotal, net: netTotal } = this.paymentTotals();
 
       const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'External funding account';
       const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'Internal funding account';
@@ -1739,7 +2035,7 @@
       }
 
       if (this.currentRun && (this.currentRun.status === 'paid' || this.currentRun.status === 'partially_paid')) {
-        this.renderStatutoryBadge('Not Recorded', 'b-gray');
+        this.renderStatutoryBadge('Statutory not recorded', 'b-gray');
       }
       const siBadge = document.getElementById('p6SiStatusBadge');
       const taxBadge = document.getElementById('p6TaxStatusBadge');
@@ -1764,7 +2060,7 @@
       const amt = input ? parseFloat(input.value) : 0;
 
       if (!amt || amt <= 0) {
-        alert('Please enter a valid actual amount greater than zero.');
+        FinanceForm.setFieldError(input, 'Enter an actual amount greater than zero.');
         return;
       }
 
@@ -1888,14 +2184,11 @@
       if (rateEl) rateEl.textContent = rateNum.toFixed(4);
       if (srcEl) {
         if (isManual) {
-          srcEl.textContent = 'Manual Override';
-          srcEl.className = 'p-badge b-blue';
+          srcEl.textContent = 'manual override';
         } else if (isFallback) {
-          srcEl.textContent = 'System Fallback (50.0)';
-          srcEl.className = 'p-badge b-gray';
+          srcEl.textContent = 'system fallback rate';
         } else {
-          srcEl.textContent = 'Resolved from Transfer History';
-          srcEl.className = 'p-badge b-green';
+          srcEl.textContent = 'from transfer history';
         }
       }
       if (inputEl && document.activeElement !== inputEl) inputEl.value = isManual ? this.fxRateValue : '';
@@ -1958,15 +2251,15 @@
       if (!badge) return;
       const key = this.currentStatusKey();
       const statusMap = {
-        draft: ['DRAFT', 'b-gray'],
-        submitted: ['SUBMITTED', 'b-blue'],
-        approved: ['APPROVED', 'b-blue'],
-        finalized: ['FINALIZED', 'b-blue'],
-        processing: ['PROCESSING', 'b-orange'],
-        partially_paid: ['PARTIALLY PAID', 'b-orange'],
-        paid: ['PAID', 'b-green']
+        draft: ['Draft', 'b-gray'],
+        submitted: ['Submitted', 'b-blue'],
+        approved: ['Approved', 'b-blue'],
+        finalized: ['Finalized', 'b-blue'],
+        processing: ['Processing', 'b-orange'],
+        partially_paid: ['Partially paid', 'b-orange'],
+        paid: ['Salaries paid', 'b-green']
       };
-      const info = statusMap[key] || ['DRAFT', 'b-gray'];
+      const info = statusMap[key] || ['Draft', 'b-gray'];
       badge.textContent = info[0];
       badge.className = `p-badge ${info[1]}`;
     },
@@ -2090,6 +2383,7 @@
 
       if (!pageList || !pageRun || !pageSettings) return;
 
+      if (window.Router && page !== 'run') Router.setParams([], ['a-finance-payroll-runs', 'a-finance-payroll']);
       pageList.classList.toggle('payroll-hidden', page !== 'list');
       pageRun.classList.toggle('payroll-hidden', page !== 'run');
       pageSettings.classList.toggle('payroll-hidden', page !== 'settings');
@@ -2153,37 +2447,43 @@
     showBanner(msg, color = 'blue') {
       const banner = document.getElementById('payrollActionBanner');
       if (!banner) return;
+      clearTimeout(this._bannerTimer);
       banner.style.display = 'block';
       banner.textContent = msg;
       banner.className = `payroll-action-banner p-banner-${color}`;
-      setTimeout(() => {
-        if (banner) banner.style.display = 'none';
-      }, 5000);
+      banner.setAttribute('role', color === 'red' ? 'alert' : 'status');
+      if (color === 'red') {
+        // Errors stay until dismissed
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'payroll-banner-close';
+        close.setAttribute('aria-label', 'Dismiss message');
+        close.textContent = '×';
+        close.addEventListener('click', () => { banner.style.display = 'none'; });
+        banner.appendChild(close);
+      } else {
+        this._bannerTimer = setTimeout(() => {
+          if (banner) banner.style.display = 'none';
+        }, 5000);
+      }
     },
 
     openRevertModal() {
-      const modal = document.getElementById('payrollRevertModal');
       const reason = document.getElementById('payrollRevertReason');
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('show');
-      }
       if (reason) reason.value = '';
+      openModal('payrollRevertModal');
+      if (reason) setTimeout(() => reason.focus(), 50);
     },
 
     closeRevertModal() {
-      const modal = document.getElementById('payrollRevertModal');
-      if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
-      }
+      closeModal('payrollRevertModal');
     },
 
     confirmRevert() {
       const reasonEl = document.getElementById('payrollRevertReason');
       const reason = reasonEl ? reasonEl.value.trim() : '';
       if (!reason) {
-        alert('Please enter a reason for reverting to draft.');
+        FinanceForm.setFieldError(reasonEl, 'A reason is required to revert to draft.');
         return;
       }
       if (this.currentRun) {

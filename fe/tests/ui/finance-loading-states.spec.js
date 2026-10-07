@@ -89,17 +89,15 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
 
     const scopeBadge = page.locator('#financeDashboardScopeBadge');
     await expect(scopeBadge).toBeVisible();
-    await expect(scopeBadge).toContainText('All Accounts');
+    await expect(scopeBadge).toContainText('All entities');
 
     const lastUpdated = page.locator('#financeDashboardLastUpdated');
     await expect(lastUpdated).toBeVisible();
     await expect(lastUpdated).toContainText(/Last updated: \d{1,2}:\d{2}/);
 
-    // Unimplemented chart card has clear unavailable indication, no roadmap copy
-    const activityCard = page.locator('#a-finance-dashboard .card:has(#financeDashboardSummaryEmpty)');
-    await expect(activityCard).toBeVisible();
-    await expect(activityCard).toContainText('Visualizations in development');
-    await expect(activityCard).not.toContainText('Phase 6');
+    // The unimplemented chart placeholder card is not shown at all (U3)
+    await expect(page.locator('#financeDashboardSummaryEmpty')).toHaveCount(0);
+    await expect(page.locator('#a-finance-dashboard')).not.toContainText('in development');
   });
 
   test('Acceptance Criteria 3 & 4: Failed request shows inline error, retry action recovers without reload', async ({ page }) => {

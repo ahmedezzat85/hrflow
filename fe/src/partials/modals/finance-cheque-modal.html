@@ -7,7 +7,7 @@
       <div class="modal-head-icon"><i class="fa-solid fa-money-check"></i></div>
       <div class="modal-head-text">
         <h3 id="chequeModalTitleText">Issue Cheque</h3>
-        <p>Draw a cheque against a bank account for a vendor payment, cash withdrawal, or other disbursement.</p>
+        <p>Draw a cheque against a company bank account for a vendor payment, cash withdrawal, or other disbursement.</p>
       </div>
       <button class="modal-close" onclick="closeIssueChequeModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
     </div>
@@ -31,9 +31,9 @@
       <div class="form-section">
         <div class="form-grid">
           <div class="form-field full">
-            <label for="chequeAccountId">Source Bank Account <span class="req">*</span></label>
+            <label for="chequeAccountId">Source company bank account <span class="req">*</span></label>
             <select id="chequeAccountId" onchange="onChequeAccountSelected()" required>
-              <option value="">— Select bank account —</option>
+              <option value="">— Select company bank account —</option>
             </select>
           </div>
 
@@ -239,7 +239,7 @@
       <div class="form-section">
         <div class="form-grid">
           <div class="form-field">
-            <label for="withdrawSourceAccountId">Source Bank Account <span class="req">*</span></label>
+            <label for="withdrawSourceAccountId">Source company bank account <span class="req">*</span></label>
             <select id="withdrawSourceAccountId" onchange="onWithdrawSourceAccountSelected()" required>
               <option value="">— Select bank —</option>
             </select>

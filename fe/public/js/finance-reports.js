@@ -74,7 +74,7 @@ function renderReportLibraryCatalog() {
       <div class="card report-catalog-card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between; border-top:3px solid var(--primary, #2563EB); transition:transform 0.15s ease, box-shadow 0.15s ease;">
         <div>
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-            <div style="width:40px; height:40px; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--primary, #2563EB); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+            <div style="width:40px; height:40px; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--accent-text); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
               <i class="${r.icon || 'fa-solid fa-chart-pie'}"></i>
             </div>
             <span class="badge badge-info" style="font-size:0.75rem;">${r.category}</span>
@@ -82,12 +82,12 @@ function renderReportLibraryCatalog() {
           <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-main); margin-bottom:6px;">${r.title}</h3>
           <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">${r.description}</p>
           <div style="background:var(--bg-secondary, #F8FAFC); border-left:3px solid var(--primary, #2563EB); padding:8px 12px; border-radius:4px; font-size:0.82rem; color:var(--text-main); margin-bottom:14px; font-style:italic;">
-            <i class="fa-solid fa-circle-question" style="color:var(--primary, #2563EB); margin-right:4px;"></i> Answers: "${r.business_question}"
+            <i class="fa-solid fa-circle-question" style="color:var(--accent-text); margin-right:4px;"></i> Answers: "${r.business_question}"
           </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--border-color, #E2E8F0); margin-top:10px;">
           <span class="badge badge-neutral" style="font-size:0.75rem;">${basisList || 'Cash & Accrual'}</span>
-          <button class="btn btn-sm btn-primary" onclick="openReportFromLibrary('${r.key}')">
+          <button class="btn btn-sm btn-outline" onclick="openReportFromLibrary('${r.key}')">
             <i class="fa-solid fa-arrow-right"></i> Open Report
           </button>
         </div>
@@ -101,6 +101,7 @@ function renderReportLibraryCatalog() {
 // Shared Report Shell Navigation & Setup
 // ----------------------------------------------------------------------
 function backToReportLibrary() {
+  if (window.Router) Router.setParams([], ["a-finance-reports"]);
   const dirView = document.getElementById("reportLibraryDirectoryView");
   const shell = document.getElementById("reportShellContainer");
   if (dirView) dirView.style.display = "block";
@@ -109,6 +110,7 @@ function backToReportLibrary() {
 
 async function openReportFromLibrary(reportKey) {
   _activeReportKey = reportKey;
+  if (window.Router) Router.setParams([reportKey], ["a-finance-reports"]);
   const dirView = document.getElementById("reportLibraryDirectoryView");
   const shell = document.getElementById("reportShellContainer");
   if (dirView) dirView.style.display = "none";
@@ -203,6 +205,8 @@ async function openReportFromLibrary(reportKey) {
 function switchFinanceReportsTab(tabName, btn) {
   _currentReportsTab = tabName;
   _activeReportKey = tabName;
+  // A tab click puts the report in the URL (a restore from the URL passes no button).
+  if (btn && window.Router) Router.setParams([tabName], ["a-finance-reports"]);
 
   // Update tabs
   const subnav = document.getElementById("financeReportsSubNav");
@@ -547,7 +551,12 @@ function closeSaveReportViewModal() {
   if (m) m.style.display = "none";
 }
 
-async function submitSaveReportView() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function submitSaveReportView() {
+  return withSubmitLock("saveReportViewSubmitBtn", _submitSaveReportViewImpl);
+}
+
+async function _submitSaveReportViewImpl() {
   const nameInput = document.getElementById("saveReportViewName");
   const defCheck = document.getElementById("saveReportViewIsDefault");
   const viewName = nameInput?.value?.trim();
@@ -589,7 +598,12 @@ async function submitSaveReportView() {
 
 async function deleteActiveReportView() {
   if (!_activeSavedViewId) return;
-  if (!confirm("Are you sure you want to delete this saved view?")) return;
+  const viewOk = await FinanceCommand.confirmAction({
+    title: "Delete saved view",
+    consequence: "Delete this saved view? This cannot be undone.",
+    actionLabel: "Delete view",
+  });
+  if (!viewOk.confirmed) return;
 
   try {
     await FinanceApi.deleteSavedReportView(_activeSavedViewId);
@@ -669,7 +683,7 @@ async function openReportDrilldown(drilldownType, targetId, title) {
     });
   } catch (err) {
     console.error("Failed to load drilldown data:", err);
-    showToast(err.message || "Failed to load drilldown details", "error");
+    showToast(describeLoadFailure("drilldown details", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -802,7 +816,12 @@ function closeScheduleReportModal() {
   if (modal) modal.style.display = "none";
 }
 
-async function submitScheduleReport() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function submitScheduleReport() {
+  return withSubmitLock("submitScheduleReportBtn", _submitScheduleReportImpl);
+}
+
+async function _submitScheduleReportImpl() {
   const reportKey = _activeReportKey || _currentReportsTab || "profit-and-loss";
   const meta = (_reportLibrary || []).find((r) => r.key === reportKey);
   const title = meta ? meta.title : reportKey.replace(/-/g, " ").toUpperCase();
@@ -929,7 +948,12 @@ async function loadReportSchedules() {
 }
 
 async function deleteReportSchedule(scheduleId) {
-  if (!confirm("Are you sure you want to cancel this automated delivery schedule?")) return;
+  const schedOk = await FinanceCommand.confirmAction({
+    title: "Cancel delivery schedule",
+    consequence: "Cancel this automated delivery schedule?",
+    actionLabel: "Cancel schedule",
+  });
+  if (!schedOk.confirmed) return;
   try {
     await FinanceApi.deleteReportSchedule(scheduleId);
     showToast("Delivery schedule cancelled", "success");
@@ -1028,7 +1052,7 @@ async function loadReportCategorySummary() {
       tr.onclick = () => openReportDrilldown("category", cat.category_id || cat.category_name, cat.category_name);
 
       tr.innerHTML = `
-        <td><strong style="color:var(--primary, #2563EB);">${cat.category_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
+        <td><strong style="color:var(--accent-text);">${cat.category_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
         <td><span class="badge ${cat.kind === 'cost' ? 'badge-danger' : 'badge-neutral'}">${(cat.kind || 'cost').toUpperCase()}</span></td>
         <td style="text-align:center;">${cat.transaction_count || 0}</td>
         <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.renderMoneyHtml(amt, reportCurr)}</td>
@@ -1045,7 +1069,7 @@ async function loadReportCategorySummary() {
     });
   } catch (err) {
     console.error("Failed to load category summary:", err);
-    showToast(err.message || "Failed to load category spend rollup", "error");
+    showToast(describeLoadFailure("category spend rollup", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1150,7 +1174,7 @@ async function loadReportMatrix() {
     }
   } catch (err) {
     console.error("Failed to load matrix report:", err);
-    showToast(err.message || "Failed to load annual spend matrix", "error");
+    showToast(describeLoadFailure("annual spend matrix", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1212,7 +1236,7 @@ async function loadReportBalances() {
 
       tr.innerHTML = `
         <td>
-          <div style="font-weight:600; color:var(--primary, #2563EB);">${acc.account_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
+          <div style="font-weight:600; color:var(--accent-text);">${acc.account_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
         </td>
         <td>
           <span class="badge ${isBank ? 'badge-neutral' : 'badge-info'}">
@@ -1232,7 +1256,7 @@ async function loadReportBalances() {
     });
   } catch (err) {
     console.error("Failed to load balances report:", err);
-    showToast(err.message || "Failed to load point-in-time balances", "error");
+    showToast(describeLoadFailure("point-in-time balances", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1319,7 +1343,7 @@ async function loadReportTransactions() {
     });
   } catch (err) {
     console.error("Failed to load transactions report:", err);
-    showToast(err.message || "Failed to load transaction ledger", "error");
+    showToast(describeLoadFailure("transaction ledger", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1425,7 +1449,7 @@ async function loadReportCheques() {
     });
   } catch (err) {
     console.error("Failed to load cheques report:", err);
-    showToast(err.message || "Failed to load cheques report", "error");
+    showToast(describeLoadFailure("cheques report", err), "error");
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -1455,13 +1479,7 @@ function triggerExcelDownload(url, filename) {
 }
 
 function _esc(str) {
-  if (str === null || str === undefined) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return window.escapeHtml(str);
 }
 
 // ----------------------------------------------------------------------
@@ -1561,7 +1579,7 @@ async function loadReportProfitAndLoss() {
     }
   } catch (err) {
     console.error("Failed to load Profit & Loss report:", err);
-    showToast(err.message || "Failed to load Profit & Loss report", "error");
+    showToast(describeLoadFailure("Profit & Loss report", err), "error");
   }
 }
 
@@ -1656,7 +1674,7 @@ async function loadReportBalanceSheet() {
     }
   } catch (err) {
     console.error("Failed to load Balance Sheet:", err);
-    showToast(err.message || "Failed to load Balance Sheet", "error");
+    showToast(describeLoadFailure("Balance Sheet", err), "error");
   }
 }
 
@@ -1720,7 +1738,7 @@ async function loadReportTrialBalance() {
     }
   } catch (err) {
     console.error("Failed to load Trial Balance:", err);
-    showToast(err.message || "Failed to load Trial Balance", "error");
+    showToast(describeLoadFailure("Trial Balance", err), "error");
   }
 }
 
@@ -1835,7 +1853,7 @@ async function loadReportCashFlow() {
     }
   } catch (err) {
     console.error("Failed to load Cash Flow report:", err);
-    showToast(err.message || "Failed to load Cash Flow report", "error");
+    showToast(describeLoadFailure("Cash Flow report", err), "error");
   }
 }
 
@@ -1912,7 +1930,7 @@ async function loadReportArAging() {
     }
   } catch (err) {
     console.error("Failed to load AR Aging report:", err);
-    showToast(err.message || "Failed to load AR Aging report", "error");
+    showToast(describeLoadFailure("AR Aging report", err), "error");
   }
 }
 
@@ -1989,7 +2007,7 @@ async function loadReportApAging() {
     }
   } catch (err) {
     console.error("Failed to load AP Aging report:", err);
-    showToast(err.message || "Failed to load AP Aging report", "error");
+    showToast(describeLoadFailure("AP Aging report", err), "error");
   }
 }
 
@@ -2073,7 +2091,6 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
       breakdown_employees: true,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totSpendEl = document.getElementById("reportCompTotalSpend");
     const extEl = document.getElementById("reportCompExternal");
     const intEl = document.getElementById("reportCompInternal");
@@ -2135,7 +2152,7 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
           <td style="text-align:right;">${formatCurrency(data.total_internal)}</td>
           <td style="text-align:right;">${formatCurrency(data.total_commission)}</td>
           <td style="text-align:right;">${formatCurrency(data.total_bonus)}</td>
-          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
           <td></td>
         </tr>
       `;
@@ -2153,7 +2170,6 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const titleEl = document.getElementById("reportEmployeeSpendTitle");
     if (titleEl) {
       titleEl.innerHTML = `<i class="fa-solid fa-user"></i> ${data.employee_name} <span class="badge badge-info" style="font-size:0.75rem; font-weight:normal; margin-left:8px;">${data.department || 'General'}</span> — Total Spend: <strong>${formatCurrency(data.grand_total)}</strong>`;
@@ -2193,7 +2209,7 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
           <td></td>
           <td style="text-align:right;">${formatCurrency(data.grand_total)}</td>
           <td style="text-align:right;"></td>
-          <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
           <td colspan="2"></td>
         </tr>
       `;
@@ -2248,7 +2264,6 @@ async function loadStatutoryRemittedReport() {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totEl = document.getElementById("reportStatTotalRemitted");
     const taxEl = document.getElementById("reportStatTaxRemitted");
     const insEl = document.getElementById("reportStatInsRemitted");
@@ -2323,7 +2338,6 @@ async function loadPayableStatusReport() {
       currency: currency || undefined,
     });
 
-    const formatCurrency = (amt) => "$" + Number(amt || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const flows = data.flows || [];
     const flowMap = {};
     flows.forEach(f => { flowMap[f.flow_type] = f; });
@@ -2372,7 +2386,7 @@ async function loadPayableStatusReport() {
             <td>Total Net Outflow Status</td>
             <td style="text-align:right; color:#10B981; font-weight:700;">${formatCurrency(data.total_settled)}</td>
             <td style="text-align:right; color:#EF4444; font-weight:700;">${formatCurrency(data.total_pending)}</td>
-            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+            <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
             <td style="text-align:center;">${data.total_pending === 0 ? '<span class="badge badge-success">FULLY SETTLED</span>' : '<span class="badge badge-warning">ACTION REQUIRED</span>'}</td>
           </tr>
         `;
@@ -2420,7 +2434,7 @@ async function loadPayableStatusReport() {
         breakdownFoot.innerHTML = `
           <tr>
             <td colspan="8">Grand Total (Settled: ${formatCurrency(data.total_settled)} | Pending: ${formatCurrency(data.total_pending)})</td>
-            <td style="text-align:right; font-weight:700; color:var(--primary, #2563EB);">${formatCurrency(data.grand_total)}</td>
+            <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
           </tr>
         `;
       }

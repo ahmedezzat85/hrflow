@@ -1,7 +1,7 @@
   <div class="modal-overlay" id="exportModal" onclick="if(event.target===this)closeExportModal()">
     <div class="modal modal-v2" style="max-width:560px;">
       <div class="modal-head">
-        <div class="modal-head-icon" style="background:rgba(59,130,246,0.12);color:var(--primary);"><i class="fa-solid fa-file-export"></i></div>
+        <div class="modal-head-icon" style="background:rgba(59,130,246,0.12);color:var(--accent-text);"><i class="fa-solid fa-file-export"></i></div>
         <div class="modal-head-text">
           <h3>Export Data</h3>
           <p>Export operational and financial records to local CSV or Google Sheets.</p>
@@ -14,14 +14,14 @@
           <div class="form-section-label"><i class="fa-solid fa-database"></i> Dataset &amp; Content <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Select Dataset <span class="req">*</span></label>
+              <label for="exportDatasetSelect">Select Dataset <span class="req">*</span></label>
               <select id="exportDatasetSelect" onchange="onExportDatasetChange()">
                 <optgroup label="HR &amp; People Operations">
                   <option value="employees">Employees (Full profiles, salaries, banking, contact)</option>
                   <option value="insurance">Medical Insurance (Claims, categories, providers &amp; amounts)</option>
                   <option value="salary">Salary History (Raises, revisions &amp; percentages)</option>
                   <option value="vacations">Vacation History (Leave tracking &amp; durations)</option>
-                  <option value="invoices">Contractor Invoices (Generated contractor billing records)</option>
+                  <option value="invoices">Salary payment docs (Generated external-salary payment records)</option>
                 </optgroup>
                 <optgroup label="Finance &amp; Accounting">
                   <option value="finance_ledger">General Ledger (Journal entries, accounts, debits &amp; credits)</option>
@@ -42,7 +42,7 @@
           <div class="form-section-label"><i class="fa-regular fa-calendar"></i> Period Filter <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label>Timeframe</label>
+              <label for="exportPeriodType">Timeframe</label>
               <select id="exportPeriodType" onchange="onExportPeriodTypeChange()">
                 <option value="all">All Records</option>
                 <option value="year" selected>Specific Calendar Year</option>
@@ -50,18 +50,18 @@
               </select>
             </div>
             <div class="form-field full" id="exportYearGroup">
-              <label>Year</label>
+              <label for="exportYearFilter">Year</label>
               <input type="number" id="exportYearFilter" min="2020" max="2030" value="2026">
             </div>
             <div class="form-field full" id="exportRangeGroup" style="display:none;">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
                   <label>Start Date</label>
-                  <input type="date" id="exportStartDateFilter">
+                  <input type="date" id="exportStartDateFilter" aria-label="Start date">
                 </div>
                 <div>
                   <label>End Date</label>
-                  <input type="date" id="exportEndDateFilter">
+                  <input type="date" id="exportEndDateFilter" aria-label="End date">
                 </div>
               </div>
             </div>
@@ -95,7 +95,7 @@
             <div class="form-section-label"><i class="fa-brands fa-google-drive"></i> Google Sheets Target <span class="line"></span></div>
             <div class="form-grid">
               <div class="form-field full">
-                <label>Worksheet Title <span class="opt">Optional</span></label>
+                <label for="exportWorksheetTitle">Worksheet Title <span class="opt">Optional</span></label>
                 <input type="text" id="exportWorksheetTitle" placeholder="Employees_Export_20260907">
                 <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">
                   Creates a new tab or refreshes an existing tab in the company Google Spreadsheet.

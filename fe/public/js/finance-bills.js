@@ -318,7 +318,7 @@ async function loadFinanceBills(incomingParams) {
     applyAndRenderBills();
   } catch (err) {
     console.error("Failed to load vendor bills:", err);
-    showToast(err.message || "Failed to load bills", "error");
+    showToast(describeLoadFailure("bills", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -481,7 +481,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${(derivedStatus === "needs_approval" || (bill.requires_approval && bill.approval_status !== "approved")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
         ${((derivedStatus === "ready_to_pay" || derivedStatus === "unpaid") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved")) ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "partially_paid" || derivedStatus === "scheduled") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved") ? `<button class="btn btn-sm btn-fill btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "partially_paid" || derivedStatus === "scheduled") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved") ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "inbox" || derivedStatus === "needs_coding" || derivedStatus === "needs_approval") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
@@ -1128,7 +1128,7 @@ async function saveBillModal() {
     const paymentRef = document.getElementById("billPaidNowReference").value.trim() || null;
 
     if (!bankAccountId) {
-      showToast("Please select a bank account for the payment.", "warning");
+      showToast("Please select a company bank account for the payment.", "warning");
       document.getElementById("billPaidNowBankAccountId").focus();
       return;
     }
@@ -1281,7 +1281,12 @@ function closeBillPaymentModal() {
   closeModal("billPaymentModal");
 }
 
-async function saveBillPayment() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveBillPayment() {
+  return withSubmitLock("billPaymentSubmitBtn", _saveBillPaymentImpl);
+}
+
+async function _saveBillPaymentImpl() {
   const billId = document.getElementById("billPaymentBillId").value;
   const amount = parseFloat(document.getElementById("billPaymentAmount").value);
   const paymentDate = document.getElementById("billPaymentDate").value;
@@ -1289,7 +1294,7 @@ async function saveBillPayment() {
   const bill = (FinanceState.bills || []).find((b) => String(b.id) === String(billId));
 
   const isValid = FinanceForm.validateRequiredFields("billPaymentModal", [
-    { id: "billPaymentBankAccountId", label: "Bank Account" },
+    { id: "billPaymentBankAccountId", label: "Company bank account" },
     { id: "billPaymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
     { id: "billPaymentDate", label: "Payment Date" },
   ]);
@@ -1396,7 +1401,12 @@ function onBillApprovalDecisionChange() {
   }
 }
 
-async function saveBillApproval() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveBillApproval() {
+  return withSubmitLock("billApprovalSubmitBtn", _saveBillApprovalImpl);
+}
+
+async function _saveBillApprovalImpl() {
   const billId = document.getElementById("billApprovalBillId").value;
   const decision = document.getElementById("billApprovalDecision").value;
   const limitVal = document.getElementById("billApproverLimit").value;
@@ -1449,7 +1459,12 @@ function closeBillScheduleModal() {
   closeModal("billScheduleModal");
 }
 
-async function saveBillSchedule() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveBillSchedule() {
+  return withSubmitLock("billScheduleSubmitBtn", _saveBillScheduleImpl);
+}
+
+async function _saveBillScheduleImpl() {
   const billId = document.getElementById("billScheduleBillId").value;
   const schedDate = document.getElementById("billScheduledPaymentDate").value;
   const notes = document.getElementById("billScheduleNotes").value.trim();
@@ -1473,12 +1488,17 @@ async function saveBillSchedule() {
 }
 
 async function confirmReverseBillPayment(billId, paymentId, amount) {
-  const reason = prompt(`Enter reason for reversing payment #${paymentId} ($${Number(amount || 0).toFixed(2)}):`);
-  if (!reason || !reason.trim()) {
+  const revResult = await FinanceCommand.confirmAction({
+    title: "Reverse payment",
+    consequence: `Reverse payment #${paymentId} (${FinanceFormat.formatMoney(amount || 0, "USD")})? The bank balance will be restored.`,
+    actionLabel: "Reverse payment",
+    requireReason: true,
+  });
+  if (!revResult.confirmed || !revResult.reason.trim()) {
     return;
   }
   try {
-    await FinanceApi.reverseBillPayment(billId, paymentId, { reason: reason.trim() });
+    await FinanceApi.reverseBillPayment(billId, paymentId, { reason: revResult.reason.trim() });
     showToast("Payment reversed and bank balance restored", "success");
     if (typeof FinanceDrawer !== "undefined" && FinanceDrawer.isOpen()) {
       FinanceDrawer.load("bill", billId);
@@ -1564,7 +1584,7 @@ async function loadFinanceVendors() {
     renderFinanceVendors(FinanceState.vendors);
   } catch (err) {
     console.error("Failed to load finance vendors:", err);
-    showToast(err.message || "Failed to load vendors", "error");
+    showToast(describeLoadFailure("vendors", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -1598,7 +1618,7 @@ function renderFinanceVendors(items) {
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm btn-icon" title="View 360 & Payments" onclick="openVendor360Drawer(${v.id})"><i class="fa-solid fa-eye"></i></button>
           <button class="btn btn-sm btn-icon" title="Edit Vendor" onclick="openEditVendorModal(${v.id})"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button class="btn btn-sm btn-icon ${v.is_active ? "btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ? "fa-ban" : "fa-check"}"></i></button>
+          <button class="btn btn-sm btn-icon ${v.is_active ?"btn-danger" : ""}" title="${v.is_active ? "Deactivate" : "Activate"}" onclick="toggleVendorActive(${v.id}, ${v.is_active})"><i class="fa-solid ${v.is_active ?"fa-ban" : "fa-check"}"></i></button>
         </div>
       </td>
     </tr>
@@ -1683,7 +1703,7 @@ async function renderVendorPaymentInstructionsInModal(vendorId) {
         </div>
         <div>
           ${pi.verification_status !== 'verified' ? `
-            <button type="button" class="btn btn-sm btn-primary" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id})"><i class="fa-solid fa-check"></i> Verify Instruction</button>
           ` : `
             <button type="button" class="btn btn-sm btn-outline" onclick="verifyVendorPaymentInstructionItem(${vendorId}, ${pi.id}, 'unverified')"><i class="fa-solid fa-rotate-left"></i> Re-verify</button>
           `}
@@ -1706,7 +1726,12 @@ async function verifyVendorPaymentInstructionItem(vendorId, piId, decision = "ve
 }
 window.verifyVendorPaymentInstructionItem = verifyVendorPaymentInstructionItem;
 
-async function saveVendorPaymentInstruction() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveVendorPaymentInstruction() {
+  return withSubmitLock("vendorAddPIBtn", _saveVendorPaymentInstructionImpl);
+}
+
+async function _saveVendorPaymentInstructionImpl() {
   const vendorId = document.getElementById("fVendorId").value;
   if (!vendorId) {
     showToast("Please save the vendor profile first before adding payment instructions", "warning");
@@ -1903,7 +1928,7 @@ async function toggleVendorActive(id, currentlyActive) {
       ? "Deactivating will hide this vendor from new bill entry. Existing bills and history are preserved."
       : "Reactivating will restore this vendor to active billing lists.",
     actionLabel: currentlyActive ? "Deactivate Vendor" : "Reactivate Vendor",
-    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentlyActive ? "warning" : "info",
   });

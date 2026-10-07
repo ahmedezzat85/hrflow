@@ -165,7 +165,7 @@
   ];
 
   function escHtml(val) {
-    return String(val ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    return window.escapeHtml(val);
   }
 
   // The user's single assigned role as { id, name, system_key } or null.
@@ -277,7 +277,7 @@
           <td data-label="Role Name" style="font-weight:600;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span>${escHtml(role.name)}</span>
-              ${isSystem ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent); font-size:11px; padding:2px 6px;">System</span>` : ''}
+              ${isSystem ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent-text); font-size:11px; padding:2px 6px;">System</span>` : ''}
             </div>
           </td>
           <td data-label="Description" style="color:var(--text2); font-size:13px;">${escHtml(role.description) || '—'}</td>
@@ -322,7 +322,7 @@
       return `
         <div class="perm-group-card" style="border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 12px; background: var(--surface);">
           <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--text); display:flex; justify-content:space-between; align-items:center;">
-            <span><i class="fa-solid fa-folder-open" style="color:var(--accent); margin-right:6px;"></i>${escHtml(grp)}</span>
+            <span><i class="fa-solid fa-folder-open" style="color:var(--accent-text); margin-right:6px;"></i>${escHtml(grp)}</span>
             <span style="font-size: 11px; color:var(--text3); font-weight:normal;">${items.length} key${items.length === 1 ? '' : 's'}</span>
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px;">
@@ -489,7 +489,12 @@
     if (!role) return;
     if (role.is_locked || role.system_key === 'employee') return;
 
-    if (!confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+    const roleOk = await FinanceCommand.confirmAction({
+      title: 'Delete role',
+      consequence: `Delete role "${role.name}"? Users must be moved to another role first.`,
+      actionLabel: 'Delete role',
+    });
+    if (!roleOk.confirmed) return;
 
     try {
       if (isMockMode()) {
@@ -523,10 +528,33 @@
     return (document.getElementById('systemUsersSearch')?.value || '').trim();
   }
 
+  // Role filter options come from the roles list, not a hard-coded set.
+  async function populateUsersRoleFilter() {
+    const select = document.getElementById('systemUsersRoleFilter');
+    if (!select) return;
+    try {
+      if (_systemRoles.length === 0) {
+        if (isMockMode()) {
+          _systemRoles = JSON.parse(JSON.stringify(INITIAL_MOCK_ROLES));
+        } else {
+          const data = await Api.getRoles();
+          _systemRoles = Array.isArray(data) ? data : (data.roles || []);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load roles for the users filter:', err);
+    }
+    const current = select.value || 'all';
+    select.innerHTML = '<option value="all">All Roles</option>' + _systemRoles
+      .map(role => `<option value="${escHtml(role.name)}">${escHtml(role.name)}</option>`).join('');
+    select.value = [...select.options].some(o => o.value === current) ? current : 'all';
+  }
+
   async function loadUsers() {
     const loadingBar = document.getElementById('usersTableLoadingBar');
     if (loadingBar) loadingBar.style.display = 'block';
     try {
+      await populateUsersRoleFilter();
       if (isMockMode()) {
         if (_systemUsers.length === 0) {
           _systemUsers = JSON.parse(JSON.stringify(INITIAL_MOCK_USERS));
@@ -587,7 +615,7 @@
 
       const assignedRole = getUserRole(u);
       const roleBadges = assignedRole
-        ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent); margin-right:4px;">${escHtml(assignedRole.name)}</span>`
+        ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent-text); margin-right:4px;">${escHtml(assignedRole.name)}</span>`
         : `<span style="color:var(--text3); font-size:12px;">${u.employee_id ? 'Employee access only' : 'No role'}</span>`;
 
       const selfTitle = 'You cannot change your own access';
@@ -716,7 +744,12 @@
     const user = _systemUsers.find(u => u.id === userId);
     if (!user || user.is_self) return;
 
-    if (!confirm(`Are you sure you want to archive user account "${user.email}"?`)) return;
+    const userOk = await FinanceCommand.confirmAction({
+      title: 'Archive user account',
+      consequence: `Archive user account "${user.email}"? They will no longer be able to sign in.`,
+      actionLabel: 'Archive user',
+    });
+    if (!userOk.confirmed) return;
 
     try {
       if (isMockMode()) {
@@ -752,14 +785,10 @@
     const name = document.getElementById('fExtUserName').value.trim();
     const roleId = parseInt(document.getElementById('fExtUserRole').value, 10);
 
-    if (!email) {
-      toast('Please enter an email address', 'fa-solid fa-triangle-exclamation');
-      return;
-    }
-    if (isNaN(roleId)) {
-      toast('Please select a role for the external user', 'fa-solid fa-triangle-exclamation');
-      return;
-    }
+    if (!FinanceForm.validateRequiredFields('externalUserModal', [
+      { id: 'fExtUserEmail', message: 'Enter a valid email address.', check: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
+      { id: 'fExtUserRole', message: 'Select a role for the external user.', check: (v) => !isNaN(parseInt(v, 10)) },
+    ])) return;
 
     setButtonLoading(btn, true, 'Saving...');
     try {

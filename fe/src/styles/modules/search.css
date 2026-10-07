@@ -25,7 +25,7 @@
 
 .palette-search-icon {
   font-size: 16px;
-  color: var(--accent);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,7 +132,7 @@
 
 .palette-item-title mark {
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -159,7 +159,7 @@
 
 .palette-item:hover .palette-item-arrow,
 .palette-item.active .palette-item-arrow {
-  color: var(--accent);
+  color: var(--accent-text);
   transform: translateX(2px);
 }
 

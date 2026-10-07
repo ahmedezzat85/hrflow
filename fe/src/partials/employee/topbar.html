@@ -1,14 +1,40 @@
       <div class="topbar">
-        <div style="display:flex;align-items:center;gap:12px;">
+        <div class="topbar-lead">
           <button class="hamburger" onclick="toggleSidebar('empSidebar')" aria-label="Toggle navigation menu"><i class="fa-solid fa-bars"></i></button>
-          <div>
-            <h2 id="empPageTitle">My Dashboard</h2>
-            <div class="sub" id="empPageSub">Welcome back, Ahmed. Here's your snapshot.</div>
-          </div>
+          <h1 id="empPageTitle">My Dashboard</h1>
         </div>
         <div class="top-actions">
           <button class="icon-btn" id="empSearchBtn" onclick="openCommandPalette()" title="Search (Ctrl+K)" aria-label="Search across workspace (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
-          <button class="icon-btn" id="empNotificationBtn" title="Notifications" aria-label="Notifications"><i class="fa-regular fa-bell"></i></button>
-          <button class="icon-btn" id="empThemeToggle" title="Toggle light/dark theme" aria-label="Toggle light/dark theme"><i class="fa-solid fa-moon"></i></button>
+          <div class="account-menu notif-menu">
+            <button type="button" class="icon-btn" id="empNotifBtn" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="empNotifPanel"><i class="fa-solid fa-bell"></i></button>
+            <div class="account-panel notif-panel" id="empNotifPanel" role="region" aria-label="Notifications" hidden>
+              <div class="notif-panel__title">Notifications</div>
+              <div class="notif-panel__empty">No notifications yet</div>
+            </div>
+          </div>
+          <div class="account-menu">
+            <button type="button" class="account-trigger" id="empAccountBtn" aria-label="Account menu" aria-haspopup="true" aria-expanded="false" aria-controls="empAccountPanel">
+              <span class="account-avatar"><span class="account-avatar__initials" data-account-initials="emp">--</span></span>
+            </button>
+            <div class="account-panel" id="empAccountPanel" hidden>
+              <div class="account-panel__head">
+                <span class="account-avatar account-avatar--lg"><span class="account-avatar__initials" id="empUserAvatar" data-account-initials="emp">--</span></span>
+                <div class="account-panel__who">
+                  <div class="account-panel__name" id="empUserName">--</div>
+                  <div class="account-panel__role" id="empUserRole">--</div>
+                </div>
+              </div>
+              <div class="account-panel__divider"></div>
+              <div class="account-panel__row">
+                <span class="account-panel__label" id="empAppearanceLabel">Appearance</span>
+                <div class="theme-seg" role="group" aria-labelledby="empAppearanceLabel">
+                  <button type="button" data-theme-choice="light" aria-pressed="true"><i class="fa-solid fa-sun"></i> Light</button>
+                  <button type="button" data-theme-choice="dark" aria-pressed="false"><i class="fa-solid fa-moon"></i> Dark</button>
+                </div>
+              </div>
+              <div class="account-panel__divider"></div>
+              <button type="button" class="account-item account-item--danger" id="empSignOutBtn" onclick="closeTopbarPopovers();logout()"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+            </div>
+          </div>
         </div>
       </div>

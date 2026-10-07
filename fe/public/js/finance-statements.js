@@ -1,25 +1,6 @@
 // ==========================================
 // 9. Bank Statement Imports & Reconciliation (Phase 7)
-// ==========================================
-// Safe HTML escaping helper
-function escapeHtml(str) {
-  if (str === null || str === undefined) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-// Fallback currency formatter
-function formatCurrency(amount, currency = "USD") {
-  if (typeof FinanceFormat !== "undefined" && typeof FinanceFormat.formatMoney === "function") {
-    return FinanceFormat.formatMoney(amount, currency);
-  }
-  const n = Number(amount) || 0;
-  return n.toLocaleString("en-US", { style: "currency", currency: currency || "USD" });
-}
+// Safe HTML escaping: uses the shared escapeHtml() defined in ui.js
 
 function onStatementAccountSelected() {
   const accSel = document.getElementById("stmtUploadAccountId");
@@ -65,7 +46,7 @@ async function loadFinanceStatements() {
           accounts = FinanceState.accounts;
         }
         const currentVal = accFilter.value;
-        accFilter.innerHTML = '<option value="">All Bank Accounts</option>';
+        accFilter.innerHTML = '<option value="">All company bank accounts</option>';
         accounts.forEach((a) => {
           if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
             const opt = document.createElement("option");
@@ -84,7 +65,7 @@ async function loadFinanceStatements() {
     renderFinanceStatementsTable(_allFinanceStatements);
   } catch (err) {
     console.error("Failed to load statements", err);
-    showToast(err.message || "Failed to load bank statements", "error");
+    showToast(describeLoadFailure("bank statements", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -176,7 +157,7 @@ function renderFinanceStatementsTable(statements) {
 
     tr.innerHTML = `
       <td data-label="Period" style="font-weight:600;"><i class="fa-regular fa-calendar" style="margin-right:6px;color:var(--text-muted);"></i>${escapeHtml(stmt.period_month)}</td>
-      <td data-label="Account" style="font-weight:500;">${escapeHtml(stmt.account_name || 'Bank Account #' + stmt.account_id)}</td>
+      <td data-label="Account" style="font-weight:500;">${escapeHtml(stmt.account_name || 'Company bank account #' + stmt.account_id)}</td>
       <td data-label="Format" style="text-align:center;">${fmtBadge}</td>
       <td data-label="Total Lines" style="text-align:center;">${stmt.total_lines_count || 0}</td>
       <td data-label="Matched Lines" style="text-align:center;font-weight:600;color:${progressPct === 100 ? 'var(--color-success)' : 'inherit'};">${progressText}</td>
@@ -399,8 +380,8 @@ async function executeStatementPreview() {
   const fileInput = document.getElementById("stmtUploadFile");
 
   if (!accountId) {
-    if (typeof showToast === "function") showToast("Please select a target bank account", "error");
-    else if (typeof toast === "function") toast("Please select a target bank account", "fa-solid fa-triangle-exclamation");
+    if (typeof showToast === "function") showToast("Please select a target company bank account", "error");
+    else if (typeof toast === "function") toast("Please select a target company bank account", "fa-solid fa-triangle-exclamation");
     return;
   }
   if (!periodMonth) {
@@ -544,7 +525,7 @@ async function executeStatementPreview() {
     // 3. Populate Step 4 (Confirm)
     const accSelect = document.getElementById("stmtUploadAccountId");
     const confirmAcc = document.getElementById("stmtConfirmAccountName");
-    if (confirmAcc) confirmAcc.innerText = accSelect ? accSelect.selectedOptions[0]?.text || "Bank Account" : "Bank Account";
+    if (confirmAcc) confirmAcc.innerText = accSelect ? accSelect.selectedOptions[0]?.text || "Company bank account" : "Company bank account";
     const confirmPeriod = document.getElementById("stmtConfirmPeriod");
     if (confirmPeriod) confirmPeriod.innerText = periodMonth;
     const confirmLines = document.getElementById("stmtConfirmLinesCount");
@@ -763,7 +744,7 @@ async function openReconciliationModal(importId) {
     renderReconciliationLinesTable(lines);
   } catch (err) {
     console.error("Failed to load reconciliation details", err);
-    showToast(err.message || "Failed to load statement reconciliation details", "error");
+    showToast(describeLoadFailure("statement reconciliation details", err), "error");
     closeReconciliationModal();
   } finally {
     if (loading) loading.style.display = "none";
@@ -973,7 +954,7 @@ function renderReconciliationLinesTable(lines) {
                 )
                 .join("")}
             </select>
-            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--primary, #2563eb);background:rgba(37,99,235,0.06);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
+            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--accent-text);background:rgba(37,99,235,0.06);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
               <i class="fa-solid fa-wand-magic-sparkles"></i> <span>${escapeHtml(suggestions[0].reason || 'Candidate match')}</span>
             </div>
           </div>
@@ -997,7 +978,7 @@ function renderReconciliationLinesTable(lines) {
         `;
       }
     } else if (line.status === "created") {
-      matchColContent = `<span style="color:var(--color-primary);font-size:12px;font-weight:600;"><i class="fa-solid fa-receipt"></i> Created Continuous Ledger Entry</span>`;
+      matchColContent = `<span style="color:var(--accent-text);font-size:12px;font-weight:600;"><i class="fa-solid fa-receipt"></i> Created Continuous Ledger Entry</span>`;
     } else if (line.status === "ignored") {
       matchColContent = `
         <div style="font-size:12px;color:var(--text-muted);">
@@ -1662,7 +1643,7 @@ function renderCompletionReport(r) {
             <td style="padding:6px 10px;"><strong>Auto-Created Continuous Ledger Entries</strong></td>
             <td style="padding:6px 10px; text-align:center;">${r.created_entries_count}</td>
             <td style="padding:6px 10px; text-align:right; font-family:monospace;">${formatCurrency(r.created_entries_amount)}</td>
-            <td style="padding:6px 10px; color:var(--color-primary);"><i class="fa-solid fa-plus"></i> Posted to Ledger</td>
+            <td style="padding:6px 10px; color:var(--accent-text);"><i class="fa-solid fa-plus"></i> Posted to Ledger</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border-color);">
             <td style="padding:6px 10px;"><strong>Excluded / Ignored Statement Lines</strong></td>
@@ -1732,7 +1713,7 @@ async function loadAndRenderRulesTable() {
     renderRulesTable(_cachedRules);
   } catch (err) {
     console.error("Failed to load rules:", err);
-    showToast(err.message || "Failed to load rules", "error");
+    showToast(describeLoadFailure("bank statement rules", err), "error");
   }
 }
 
@@ -1784,7 +1765,7 @@ function renderRulesTable(rules) {
 
     let actionDesc = "";
     if (r.action === "suggest_category") actionDesc = `Category: <strong>${escapeHtml(r.target_category || 'Uncategorized')}</strong>`;
-    else if (r.action === "auto_create") actionDesc = `<span style="color:var(--color-primary);font-weight:600;"><i class="fa-solid fa-plus"></i> Auto-create Entry</span>`;
+    else if (r.action === "auto_create") actionDesc = `<span style="color:var(--accent-text);font-weight:600;"><i class="fa-solid fa-plus"></i> Auto-create Entry</span>`;
     else if (r.action === "auto_ignore") actionDesc = `<span style="color:var(--color-danger);font-weight:600;"><i class="fa-solid fa-ban"></i> Auto-ignore (${escapeHtml(r.audit_reason || 'Documented')})</span>`;
 
     return `
@@ -2022,7 +2003,12 @@ async function toggleRuleActive(ruleId, newStatus) {
 }
 
 async function deleteRuleById(ruleId) {
-  if (!confirm(`Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`)) return;
+  const delOk = await FinanceCommand.confirmAction({
+    title: "Delete reconciliation rule",
+    consequence: `Delete reconciliation rule #${ruleId}? Historical reconciliations will remain intact.`,
+    actionLabel: "Delete rule",
+  });
+  if (!delOk.confirmed) return;
   try {
     await FinanceApi.deleteReconciliationRule(ruleId);
     showToast("Rule deleted successfully", "info");
@@ -2034,7 +2020,13 @@ async function deleteRuleById(ruleId) {
 }
 
 async function revertRuleById(ruleId) {
-  if (!confirm(`Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`)) return;
+  const revOk = await FinanceCommand.confirmAction({
+    title: "Revert rule resolutions",
+    consequence: `Revert all auto-applied line resolutions for rule #${ruleId}? Any auto-created ledger entries will be removed.`,
+    actionLabel: "Revert resolutions",
+    severity: "warning",
+  });
+  if (!revOk.confirmed) return;
   try {
     const res = await FinanceApi.revertRule(ruleId);
     showToast(res.message || "Rule resolutions reverted", "success");

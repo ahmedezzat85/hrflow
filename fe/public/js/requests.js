@@ -51,14 +51,14 @@ function renderRequestsTable(filter) {
 
   body.innerHTML = list.map(r => {
     const matchedEmp = (typeof employees !== 'undefined' && employees) ? employees.find(e => e.name === r.employee_name) : null;
-    const deptTag = matchedEmp && matchedEmp.dept ? `<span class="badge-pill pill-neutral" style="font-size:10.5px;padding:2px 6px;">${matchedEmp.dept}</span>` : '';
+    const deptTag = matchedEmp && matchedEmp.dept ? `<span class="badge-pill pill-neutral" style="font-size:10.5px;padding:2px 6px;">${escapeHtml(matchedEmp.dept)}</span>` : '';
 
     return `
       <tr>
         <td data-label="Employee" class="tname">
           <div class="avatar">${initials(r.employee_name)}</div>
           <div>
-            <div style="font-weight:600;color:var(--text);">${r.employee_name}</div>
+            <div style="font-weight:600;color:var(--text);">${escapeHtml(r.employee_name)}</div>
             ${deptTag ? `<div style="margin-top:2px;">${deptTag}</div>` : ''}
           </div>
         </td>
@@ -102,6 +102,15 @@ document.querySelectorAll('[data-reqfilter]').forEach(btn => {
 });
 
 async function actionRequest(id, status, btn) {
+  const approving = status === 'Approved';
+  const ok = await FinanceCommand.confirmAction({
+    title: approving ? 'Approve request' : 'Reject request',
+    consequence: approving ? 'Approve this request?' : 'Reject this request? The employee will see it as rejected.',
+    actionLabel: approving ? 'Approve request' : 'Reject request',
+    actionClass: approving ? 'btn btn-fill' : 'btn btn-danger',
+    severity: approving ? 'warning' : undefined,
+  });
+  if (!ok.confirmed) return;
   const container = btn ? btn.closest('.request-actions') : null;
   const siblingBtns = container ? container.querySelectorAll('button') : [];
 

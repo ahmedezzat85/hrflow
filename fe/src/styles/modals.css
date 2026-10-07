@@ -54,7 +54,7 @@
 }
 
 .modal-head h3 {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   font-family: var(--font-head);
 }
@@ -75,13 +75,13 @@ body.modal-open {
   border: none;
   background: var(--surface2);
   color: var(--text2);
-  font-size: 14px;
+  font-size: var(--fs-base);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .modal-close:hover {
-  background: var(--surface3, #e2e8f0);
+  background: var(--surface3, var(--info-soft));
   color: var(--text);
 }
 
@@ -131,20 +131,20 @@ body.modal-open {
 }
 
 .doc-drop-empty i {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   color: var(--text3);
   margin-bottom: 8px;
   display: block;
 }
 
 .doc-drop-empty p {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text2);
   margin: 0;
 }
 
 .doc-drop-empty span {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text3);
 }
 
@@ -162,7 +162,7 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   flex-shrink: 0;
 }
 
@@ -173,7 +173,7 @@ body.modal-open {
 
 .doc-file-icon.image {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .doc-file-meta {
@@ -182,7 +182,7 @@ body.modal-open {
 }
 
 .doc-file-name {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 700;
   margin: 0;
   white-space: nowrap;
@@ -191,7 +191,7 @@ body.modal-open {
 }
 
 .doc-file-size {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text3);
 }
 
@@ -212,7 +212,7 @@ body.modal-open {
 .doc-progress-label {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text3);
   margin-top: 6px;
 }
@@ -224,7 +224,7 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--fs-base);
   flex-shrink: 0;
 }
 
@@ -235,7 +235,7 @@ body.modal-open {
 
 .doc-type-icon.image {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .doc-name-cell {
@@ -246,7 +246,7 @@ body.modal-open {
 
 .doc-name-text {
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
 }
 
 
@@ -257,12 +257,12 @@ body.modal-open {
 }
 .modal-v2 .modal-head-icon{
   width:40px;height:40px;border-radius:var(--radius-sm);flex-shrink:0;
-  background:var(--accent-soft);color:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-size:16px;
+  background:var(--accent-soft);color:var(--accent-text);
+  display:flex;align-items:center;justify-content:center;font-size:var(--fs-lg);
 }
 .modal-v2 .modal-head-text{flex:1;min-width:0}
-.modal-v2 .modal-head-text h3{font-size:16px;font-weight:700;font-family:var(--font-head)}
-.modal-v2 .modal-head-text p{font-size:12px;color:var(--text2);margin-top:2px}
+.modal-v2 .modal-head-text h3{font-size:var(--fs-lg);font-weight:700;font-family:var(--font-head)}
+.modal-v2 .modal-head-text p{font-size:var(--fs-sm);color:var(--text2);margin-top:2px}
 
 .modal-v2 .modal-body{padding:22px 26px}
 
@@ -270,9 +270,9 @@ body.modal-open {
 .modal-v2 .form-section:last-child{margin-bottom:0}
 .modal-v2 .form-section-label{
   display:flex;align-items:center;gap:9px;margin-bottom:14px;
-  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);
+  font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);
 }
-.modal-v2 .form-section-label i{font-size:11px;color:var(--accent)}
+.modal-v2 .form-section-label i{font-size:var(--fs-xs);color:var(--accent-text)}
 .modal-v2 .form-section-label .line{flex:1;height:1px;background:var(--border)}
 .modal-v2 .form-section.optional-section{
   background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius-md);padding:16px 18px;
@@ -282,17 +282,19 @@ body.modal-open {
 .modal-v2 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
 .modal-v2 .form-grid .full{grid-column:1/-1}
 .modal-v2 .form-field label{
-  display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;
+  display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);font-weight:600;color:var(--text2);margin-bottom:6px;
 }
-.modal-v2 .form-field label .req{color:var(--danger);font-size:11px}
-.modal-v2 .form-field label .opt{color:var(--text3);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+.modal-v2 .form-field label .req{color:var(--danger);font-size:var(--fs-xs)}
+.modal-v2 .form-field label .opt{color:var(--text3);font-weight:500;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.04em}
 .modal-v2 .form-field input,
 .modal-v2 .form-field select,
 .modal-v2 .form-field textarea{
   width:100%;padding:10px 13px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--border);background:var(--surface);
-  color:var(--text);font-size:13.5px;outline:none;font-family:inherit;transition:.15s;
+  border:1.5px solid var(--border);background-color:var(--surface);
+  color:var(--text);font-size:var(--fs-base);outline:none;font-family:inherit;transition:.15s;
 }
+.modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.modal-v2 .form-field select{height:40px}
 .modal-v2 .form-field input:focus,
 .modal-v2 .form-field select:focus,
 .modal-v2 .form-field textarea:focus{
@@ -300,14 +302,14 @@ body.modal-open {
 }
 
 .modal-v2 .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.modal-v2 .toggle-row .t-label{font-size:13px;font-weight:600}
-.modal-v2 .toggle-row .t-sub{font-size:11.5px;color:var(--text2);margin-top:2px}
+.modal-v2 .toggle-row .t-label{font-size:var(--fs-md);font-weight:600}
+.modal-v2 .toggle-row .t-sub{font-size:var(--fs-sm);color:var(--text2);margin-top:2px}
 .modal-v2 .switch{position:relative;width:40px;height:22px;flex-shrink:0}
 .modal-v2 .switch input{opacity:0;width:0;height:0}
 .modal-v2 .slider{position:absolute;inset:0;background:var(--border);border-radius:var(--radius-full);cursor:pointer;transition:.2s}
 .modal-v2 .slider:before{
   content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;
-  background:#fff;border-radius:var(--radius-full);transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+  background:var(--surface);border-radius:var(--radius-full);transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
 }
 .modal-v2 .switch input:checked + .slider{background:var(--accent)}
 .modal-v2 .switch input:checked + .slider:before{transform:translateX(18px)}
@@ -315,36 +317,96 @@ body.modal-open {
 /* Button loading spinner (reusable outside modal-v2 too) */
 .btn-spinner{
   width:14px;height:14px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+  border:2px solid rgba(255,255,255,.4);border-top-color:var(--surface);
   animation:btnSpin .7s linear infinite;flex-shrink:0;display:inline-block;
 }
 @keyframes btnSpin{to{transform:rotate(360deg)}}
-.btn:disabled,.btn-fill:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.btn:disabled,.btn-fill:disabled{cursor:not-allowed;transform:none}
 
 /* ===== Compact drop-zone variant (used in Behalf Claim modal) ===== */
 .doc-drop-zone.compact{
   padding:14px 12px;
 }
 .doc-drop-zone.compact .doc-drop-empty i{
-  font-size:20px;
+  font-size:var(--fs-xl);
   margin-bottom:4px;
 }
 .doc-drop-zone.compact .doc-drop-empty p{
-  font-size:12.5px;
+  font-size:var(--fs-md);
   margin:0;
 }
 .doc-drop-zone.compact .doc-drop-empty span{
-  font-size:11px;
+  font-size:var(--fs-xs);
 }
 .doc-drop-zone.compact .doc-file-icon{
   width:32px;
   height:32px;
-  font-size:14px;
+  font-size:var(--fs-base);
 }
 .doc-drop-zone.compact .doc-file-name{
-  font-size:12.5px;
+  font-size:var(--fs-md);
 }
 .doc-drop-zone.compact .doc-file-size{
-  font-size:10.5px;
+  font-size:var(--fs-xs);
 }
 
+
+/* New Vendor Bill: line-item table fits the modal instead of forcing a horizontal scrollbar (LIVE-11) */
+#billModal table {
+  table-layout: fixed;
+}
+
+#billModal table input,
+#billModal table select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* The shared confirmation dialog must sit above any modal or drawer that opens it */
+#financeConfirmModal {
+  z-index: 9999;
+}
+
+/* New Sales Invoice: line-item inputs shrink to their column instead of widening the table past the dialog. */
+#invoiceModal table {
+  table-layout: fixed;
+}
+
+#invoiceModal table .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
+/* On a phone each line item becomes a small card: description on top, then quantity, price and total. */
+@media (max-width: 640px) {
+  #invoiceModal table {
+    table-layout: auto;
+  }
+
+  #invoiceModal table thead {
+    display: none;
+  }
+
+  #invoiceModal #invoiceLinesBody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #invoiceModal #invoiceLinesBody td {
+    display: block;
+    padding: 0;
+  }
+
+  #invoiceModal #invoiceLinesBody td:first-child,
+  #invoiceModal #invoiceLinesBody td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  #invoiceModal #invoiceLinesBody td:last-child {
+    text-align: right;
+  }
+}

@@ -300,7 +300,7 @@ async function openLogSubscriptionChargeModal(subId) {
     try {
       const accounts = await FinanceApi.getAccounts({ is_active: true });
       bankSel.innerHTML = '<option value="">— Don\'t record ledger outflow —</option>' +
-        (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'E£' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
+        (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
     } catch (_) {
       bankSel.innerHTML = '<option value="">— Don\'t record ledger outflow —</option>';
     }
@@ -381,7 +381,7 @@ async function openSubscriptionHistoryModal(subId) {
     if (empty) empty.style.display = "none";
 
     tbody.innerHTML = charges.map((c) => {
-      const currSymbol = c.currency === "EGP" ? "E£" : c.currency === "EUR" ? "€" : "$";
+      const currSymbol = c.currency === "EGP" ? "EGP " : c.currency === "EUR" ? "€" : "$";
       const amountStr = `${currSymbol}${Number(c.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
       let varianceBadge = "";

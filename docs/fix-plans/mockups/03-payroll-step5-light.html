@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Payroll run, payment confirmation (light)</title>
+</head>
+<body>
+<!-- Reference mockup approved by the owner on 2026-10-06. Sample figures only. Not production code: inline styles here are illustrative; implement with tokens and shared classes. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:#1F4FD8}a:hover{color:#173FB0}
+</style>
+<div style="min-height: 100vh; background: #F4F6FB; color: #14161D; font-family: Inter, sans-serif; font-size: 14px; display: flex; flex-wrap: wrap">
+  <nav aria-label="Sections" style="flex: 1 1 220px; max-width: 260px; min-width: 0; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid rgba(16,24,40,0.10); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 18px; padding: 0 10px">Payroll</div>
+    <div style="font-size: 12px; color: #5C6479; padding: 0 10px 14px">Monthly runs and net payments</div>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; background: rgba(53,102,239,0.18); color: #1F4FD8; font-weight: 600; text-decoration: none">Payroll runs</a>
+    <a href="#" style="padding: 10px 12px; border-radius: 10px; color: #3B4257; text-decoration: none">Payroll settings</a>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <h1 style="margin: 0; font-family: Sora, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.01em">Payroll run, October 2026</h1>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+        <span style="padding: 6px 12px; border-radius: 999px; background: #F1F4FA; border: 1px solid rgba(16,24,40,0.12); font-size: 13px; color: #3B4257">Run FX rate <strong style="color: #14161D; font-variant-numeric: tabular-nums">1 USD = 52.25 EGP</strong>, locked at finalization</span>
+        <span style="padding: 6px 12px; border-radius: 999px; background: rgba(52,201,138,0.16); color: #0E7A4F; font-size: 13px; font-weight: 600">Salaries paid</span>
+        <span style="padding: 6px 12px; border-radius: 999px; background: rgba(242,160,61,0.16); color: #9A5300; font-size: 13px; font-weight: 600">Statutory not recorded</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; font-weight: 600">
+      <a href="#" style="padding: 8px 14px; border-radius: 999px; background: rgba(52,201,138,0.14); color: #0E7A4F; text-decoration: none">1 Initiation</a>
+      <a href="#" style="padding: 8px 14px; border-radius: 999px; background: rgba(52,201,138,0.14); color: #0E7A4F; text-decoration: none">2 Approve</a>
+      <a href="#" style="padding: 8px 14px; border-radius: 999px; background: rgba(52,201,138,0.14); color: #0E7A4F; text-decoration: none">3 Estimates</a>
+      <a href="#" style="padding: 8px 14px; border-radius: 999px; background: rgba(52,201,138,0.14); color: #0E7A4F; text-decoration: none">4 Payment preview</a>
+      <a href="#" aria-current="step" style="padding: 8px 14px; border-radius: 999px; background: #3566EF; color: #FFFFFF; text-decoration: none">5 Confirm payment</a>
+      <a href="#" style="padding: 8px 14px; border-radius: 999px; background: #F1F4FA; color: #3B4257; text-decoration: none">6 Statutory</a>
+    </div>
+
+    <div style="padding: 12px 16px; border-radius: 12px; background: rgba(242,160,61,0.12); color: #9A5300; font-size: 13px; font-weight: 500">This run is finalized. Compensation and additions are read-only.</div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px">
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); border-top: 4px solid #2F62EA; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">Internal salaries</h2>
+          <span style="font-size: 12px; font-weight: 600; color: #1F4FD8">Cash, 3 employees</span>
+        </div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 32px; color: #1F4FD8; font-variant-numeric: tabular-nums">$1,200.00</div>
+        <div style="display: flex; flex-direction: column">
+          <div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(16,24,40,0.10)"><span style="color: #4A5168">Payment date</span><span style="font-weight: 600">31 Oct 2026</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(16,24,40,0.10)"><span style="color: #4A5168">Company funding account</span><span style="font-weight: 600">Cash, USD •••• 7968</span></div>
+        </div>
+      </div>
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); border-top: 4px solid #0F8A5A; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">External salaries</h2>
+          <span style="font-size: 12px; font-weight: 600; color: #0E7A4F">Bank transfer, 3 employees</span>
+        </div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 32px; color: #0E7A4F; font-variant-numeric: tabular-nums">$1,500.00</div>
+        <div style="display: flex; flex-direction: column">
+          <div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(16,24,40,0.10)"><span style="color: #4A5168">Payment date</span><span style="font-weight: 600">31 Oct 2026</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(16,24,40,0.10)"><span style="color: #4A5168">Company funding account</span><span style="font-weight: 600">Bank, USD •••• 6430</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="padding: 10px 14px; border-radius: 10px; background: rgba(242,160,61,0.12); color: #9A5300; font-size: 13px; font-weight: 500">Employee bank details are missing for 3 employees. Payment can still be recorded.</div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.20); background: transparent; color: #14161D; font: 600 14px Inter, sans-serif; cursor: pointer">Export CSV</button>
+        <button type="button" disabled style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(16,24,40,0.12); background: #F1F4FA; color: #5C6479; font: 600 14px Inter, sans-serif">Recorded as paid on 4 Oct 2026</button>
+      </div>
+    </div>
+
+    <div style="border-radius: 14px; background: #FFFFFF; border: 1px solid rgba(16,24,40,0.10); overflow-x: auto">
+      <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px">
+        <thead>
+          <tr style="color: #5C6479; font-size: 12px; text-align: left">
+            <th scope="col" style="padding: 14px 20px; font-weight: 600">Employee</th>
+            <th scope="col" style="padding: 14px 20px; font-weight: 600">Employee bank details</th>
+            <th scope="col" style="padding: 14px 20px; font-weight: 600; text-align: right; color: #0E7A4F">External</th>
+            <th scope="col" style="padding: 14px 20px; font-weight: 600; text-align: right; color: #1F4FD8">Internal</th>
+            <th scope="col" style="padding: 14px 20px; font-weight: 600; text-align: right">Total paid</th>
+            <th scope="col" style="padding: 14px 20px; font-weight: 600">Status</th>
+          </tr>
+        </thead>
+        <tbody style="font-variant-numeric: tabular-nums">
+          <tr style="border-top: 1px solid rgba(16,24,40,0.10)">
+            <td style="padding: 14px 20px; font-weight: 600">James Parker</td>
+            <td style="padding: 14px 20px; color: #9A5300">Missing</td>
+            <td style="padding: 14px 20px; text-align: right">$250.00</td>
+            <td style="padding: 14px 20px; text-align: right">$500.00</td>
+            <td style="padding: 14px 20px; text-align: right; font-weight: 600">$750.00</td>
+            <td style="padding: 14px 20px; color: #0E7A4F; font-weight: 600">Paid</td>
+          </tr>
+          <tr style="border-top: 1px solid rgba(16,24,40,0.10)">
+            <td style="padding: 14px 20px; font-weight: 600">John Smith</td>
+            <td style="padding: 14px 20px; color: #9A5300">Missing</td>
+            <td style="padding: 14px 20px; text-align: right">$1,000.00</td>
+            <td style="padding: 14px 20px; text-align: right">$350.00</td>
+            <td style="padding: 14px 20px; text-align: right; font-weight: 600">$1,350.00</td>
+            <td style="padding: 14px 20px; color: #0E7A4F; font-weight: 600">Paid</td>
+          </tr>
+          <tr style="border-top: 1px solid rgba(16,24,40,0.10)">
+            <td style="padding: 14px 20px; font-weight: 600">Laila Hassan</td>
+            <td style="padding: 14px 20px; color: #9A5300">Missing</td>
+            <td style="padding: 14px 20px; text-align: right">$250.00</td>
+            <td style="padding: 14px 20px; text-align: right">$350.00</td>
+            <td style="padding: 14px 20px; text-align: right; font-weight: 600">$600.00</td>
+            <td style="padding: 14px 20px; color: #0E7A4F; font-weight: 600">Paid</td>
+          </tr>
+          <tr style="border-top: 1px solid rgba(16,24,40,0.20); background: #F1F4FA; font-weight: 700">
+            <td style="padding: 14px 20px">Totals</td>
+            <td style="padding: 14px 20px"></td>
+            <td style="padding: 14px 20px; text-align: right; color: #0E7A4F">$1,500.00</td>
+            <td style="padding: 14px 20px; text-align: right; color: #1F4FD8">$1,200.00</td>
+            <td style="padding: 14px 20px; text-align: right">$2,700.00</td>
+            <td style="padding: 14px 20px"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <a href="#" style="font-weight: 600; text-decoration: none">Journal entry posted, view lines</a>
+      <a href="#" style="display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 10px; background: #3566EF; color: #FFFFFF; font-weight: 600; text-decoration: none">Next: Statutory</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

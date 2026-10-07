@@ -24,6 +24,62 @@ function showTableSkeleton(tbodyId, colCount, rowCount=5){
   }
   body.innerHTML = rows;
 }
+/**
+ * Shared HTML-escaping helpers. Every module that interpolates data into
+ * innerHTML delegates to escapeHtml(); use setText() when no markup is needed.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+function setText(el, value) {
+  if (el) el.textContent = value === null || value === undefined ? '' : String(value);
+}
+
+// Delegated handler for row actions that carry their data in data-* attributes
+// (no inline onclick with data embedded in a JS string).
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const d = el.dataset;
+  if (el.tagName === 'A') e.preventDefault();
+  const num = (v) => (v !== '' && !isNaN(v) ? Number(v) : v);
+  switch (d.action) {
+    case 'preview-employee-doc': return previewEmployeeDocument(num(d.id), d.name, d.type);
+    case 'preview-company-doc': return previewCompanyDocument(num(d.id), d.name, d.type);
+    case 'preview-salary-doc': return previewInvoicePdf(num(d.id), d.number);
+    case 'regenerate-salary-doc':
+      return openRegenerateInvoiceModal(num(d.employeeId), d.name, num(d.year), num(d.month), d.number);
+    case 'open-employee-profile': return viewProfile(num(d.employeeId));
+    case 'payroll-fix-issue': return PayrollApp.fixIssue(d.code, d.employeeId ? num(d.employeeId) : null);
+    case 'payroll-recheck': return PayrollApp.recheckReadiness();
+    case 'open-comp-plan': return openCompPlanModal(num(d.employeeId));
+    case 'open-employee-bank': return openEmployeeBankSection(num(d.employeeId));
+    case 'view-own-claim-receipt': return viewOwnClaimReceipt(Number(d.index));
+    case 'view-claim-receipt': return viewClaimReceipt(num(d.id));
+    default: return undefined;
+  }
+});
+
+// Dropzones behave like buttons for the keyboard: Enter or Space opens the file picker.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const zone = e.target.closest && e.target.closest('.doc-drop-zone[role="button"]');
+  if (!zone || e.target !== zone) return;
+  e.preventDefault();
+  zone.click();
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
+});
+document.addEventListener('change', (e) => {
+  if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
+});
+
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 
@@ -31,7 +87,7 @@ function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(e
  * Standardized Empty & Loading state helpers across all domain modules
  */
 function getEmptyStateHtml(message = 'No data available.', icon = 'fa-solid fa-inbox') {
-  return `<div class="empty-state"><i class="${icon}"></i><p>${message}</p></div>`;
+  return `<div class="empty-state"><i class="${escapeHtml(icon)}"></i><p>${escapeHtml(message)}</p></div>`;
 }
 
 function getEmptyTableRowHtml(colCount = 1, message = 'No data available.', icon = 'fa-solid fa-inbox') {
@@ -39,7 +95,7 @@ function getEmptyTableRowHtml(colCount = 1, message = 'No data available.', icon
 }
 
 function getLoadingStateHtml(message = 'Loading data...') {
-  return `<div class="empty-state loading-state"><i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent);"></i><p style="color:var(--text2);margin-top:10px;">${message}</p></div>`;
+  return `<div class="empty-state loading-state"><i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-text);"></i><p style="color:var(--text2);margin-top:10px;">${message}</p></div>`;
 }
 
 function getLoadingTableRowHtml(colCount = 1, message = 'Loading data...') {
@@ -104,10 +160,24 @@ function getInitials(name){
   return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '--';
 }
 
+// On phones the closed navigation drawer is off-screen: make it inert so it is not focusable.
+function syncSidebarInert(){
+  const mobile = window.matchMedia('(max-width: 768px)').matches;
+  ['adminSidebar', 'empSidebar'].forEach(sid => {
+    const el = document.getElementById(sid);
+    if (!el) return;
+    if (mobile && !el.classList.contains('open')) el.setAttribute('inert', '');
+    else el.removeAttribute('inert');
+  });
+}
+window.addEventListener('resize', syncSidebarInert);
+document.addEventListener('DOMContentLoaded', syncSidebarInert);
+
 function toggleSidebar(id){
   const sb = document.getElementById(id);
   if(!sb) return;
   sb.classList.toggle('open');
+  syncSidebarInert();
   const isOpened = sb.classList.contains('open');
   const backdrop = document.getElementById(id === 'adminSidebar' ? 'adminSidebarBackdrop' : 'empSidebarBackdrop');
   if(backdrop) backdrop.classList.toggle('active', isOpened);
@@ -122,15 +192,19 @@ function closeAllSidebars(){
     const el = document.getElementById(bid);
     if (el) el.classList.remove('active');
   });
+  syncSidebarInert();
 }
 
-document.querySelectorAll('#admin-app .nav-item[data-page]').forEach(el=>{
-  el.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection(el.dataset.page, 'admin');
-  });
+// One delegated handler for every sidebar item: one click is one navigation and one loader run.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('.nav-item[data-page]');
+  if (!el) return;
+  const portal = el.closest('#employee-app') ? 'employee' : (el.closest('#admin-app') ? 'admin' : null);
+  if (!portal) return;
+  e.preventDefault();
+  if (window.Router) Router.navigate(el.dataset.page, portal);
+  else showSection(el.dataset.page, portal);
 });
-document.querySelectorAll('#employee-app .nav-item[data-page]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.page,'employee')); });
 document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
 const titles = {
   'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
@@ -138,7 +212,7 @@ const titles = {
   'a-employee-detail':['Employee Profile',"View and manage employee profile and records."],
   'a-requests':['Pending Requests',"Review and action employee requests."],
   'a-salary':['Salary & Raises',"Apply raises and review compensation history."],
-  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary invoices."],
+  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary payment docs."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
   'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
   'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
@@ -148,7 +222,7 @@ const titles = {
   'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
   'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
   'a-finance-payroll-runs':['Payroll Runs','Review and execute company payroll cycles.'],
-  'a-finance-payroll-settings':['Payroll Settings','Configure payroll bank accounts and cycle defaults.'],
+  'a-finance-payroll-settings':['Payroll Settings','Configure payroll company bank accounts and cycle defaults.'],
   'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
@@ -168,7 +242,7 @@ const titles = {
   'e-insurance':['Medical Insurance','Your plan, category limits and claims history.'],
   'e-dochub':['Document Hub','Company documents and policies.'],
 };
-function showSection(pageId, portal){
+function showSection(pageId, portal, params){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
 
   // Finance Information Architecture domain mapping (Story 1.1)
@@ -219,9 +293,13 @@ function showSection(pageId, portal){
   const t = titles[pageId] || titles[targetSectionId];
   if(t){
     document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
-    document.getElementById(portal==='admin'?'adminPageSub':'empPageSub').textContent=t[1];
   }
+  // An error toast belongs to the page that raised it: drop it when the user moves to another page.
+  if (showSection.lastPage !== undefined && showSection.lastPage !== pageId) clearErrorToasts();
+  showSection.lastPage = pageId;
   closeAllSidebars();
+  if (typeof closeTopbarPopovers === 'function') closeTopbarPopovers();
+  if (window.Router) Router.record(pageId, portal, params);
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
   if(portal === 'admin') {
     if(typeof PayrollApp !== 'undefined' && PayrollApp.showPage) {
@@ -253,32 +331,110 @@ function showSection(pageId, portal){
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('hrflow-theme', theme);
-  document.querySelectorAll('.theme-fab i, #adminThemeToggle i, #empThemeToggle i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
+  document.querySelectorAll('.theme-fab i').forEach(i=>{ i.className = theme==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'; });
+  document.querySelectorAll('[data-theme-choice]').forEach(b=>{ b.setAttribute('aria-pressed', String(b.dataset.themeChoice===theme)); });
 }
 const savedTheme = localStorage.getItem('hrflow-theme') || 'light';
 applyTheme(savedTheme);
-['loginThemeToggle','adminThemeToggle','empThemeToggle'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',()=>{
-    const cur = document.documentElement.getAttribute('data-theme');
-    applyTheme(cur==='dark'?'light':'dark');
-    setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
+document.getElementById('loginThemeToggle').addEventListener('click',()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur==='dark'?'light':'dark');
+  setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
+});
+document.addEventListener('click',e=>{
+  const choice = e.target.closest && e.target.closest('[data-theme-choice]');
+  if(!choice) return;
+  applyTheme(choice.dataset.themeChoice);
+  setTimeout(()=>{ if(window._charts) refreshCharts(); },50);
+});
+
+// Account identity: fills every copy of the signed-in user's initials, name and role in a top bar.
+function fillAccountIdentity(portal, {name, role}){
+  const initials = getInitials(name);
+  document.querySelectorAll('[data-account-initials="'+portal+'"]').forEach(el=>{ el.textContent = initials; });
+  document.querySelectorAll('#'+portal+'UserName').forEach(el=>{ el.textContent = name || ''; });
+  document.querySelectorAll('#'+portal+'UserRole').forEach(el=>{ el.textContent = role || ''; });
+}
+
+// Top-bar disclosure popovers (account menu, notifications): one open at a time.
+// Escape closes and returns focus to the trigger; a click outside closes.
+const topbarPopovers = [];
+function closeTopbarPopovers(except, restoreFocusTo){
+  topbarPopovers.forEach(p=>{
+    if(p===except || p.panel.hidden) return;
+    p.panel.hidden = true;
+    p.btn.setAttribute('aria-expanded','false');
+  });
+  if(restoreFocusTo) restoreFocusTo.focus();
+}
+function initTopbarPopover(btnId, panelId){
+  const btn = document.getElementById(btnId);
+  const panel = document.getElementById(panelId);
+  if(!btn || !panel) return;
+  const entry = {btn, panel};
+  topbarPopovers.push(entry);
+  btn.addEventListener('click',()=>{
+    const willOpen = panel.hidden;
+    closeTopbarPopovers(entry);
+    panel.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
+  });
+}
+document.addEventListener('click',e=>{
+  const outside = topbarPopovers.filter(p=>!p.btn.contains(e.target) && !p.panel.contains(e.target));
+  outside.forEach(p=>{
+    if(p.panel.hidden) return;
+    p.panel.hidden = true;
+    p.btn.setAttribute('aria-expanded','false');
   });
 });
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  const open = topbarPopovers.find(p=>!p.panel.hidden);
+  if(open) closeTopbarPopovers(null, open.btn);
+});
+initTopbarPopover('adminAccountBtn','adminAccountPanel');
+initTopbarPopover('empAccountBtn','empAccountPanel');
+initTopbarPopover('adminNotifBtn','adminNotifPanel');
+initTopbarPopover('empNotifBtn','empNotifPanel');
+// Toasts: text is set with textContent (never parsed as HTML). Errors use role="alert",
+// stay until dismissed and carry a close button; other toasts use role="status" and fade after 3.2s.
 function toast(msg, icon='fa-solid fa-circle-check'){
   const wrap = document.getElementById('toastWrap');
+  if (!wrap) return;
+  // An expired session is reported once, by the notice on the login screen; loaders that catch the
+  // thrown "Session expired" error must not add a toast of their own.
+  if (/^Session expired\. Please sign in again\.?$/.test(String(msg))) return;
+  const isError = /triangle-exclamation|circle-exclamation|circle-xmark/.test(String(icon));
   const el = document.createElement('div');
-  el.className='toast';
-  el.innerHTML = `<i class="${icon}"></i> ${msg}`;
+  el.className = isError ? 'toast toast-error' : 'toast';
+  el.setAttribute('role', isError ? 'alert' : 'status');
+  const iconEl = document.createElement('i');
+  iconEl.className = String(icon);
+  iconEl.setAttribute('aria-hidden', 'true');
+  const textEl = document.createElement('span');
+  textEl.textContent = msg === null || msg === undefined ? '' : String(msg);
+  el.append(iconEl, textEl);
+  if (isError) {
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'toast-close';
+    close.setAttribute('aria-label', 'Dismiss message');
+    close.textContent = '×';
+    close.addEventListener('click', () => el.remove());
+    el.appendChild(close);
+  }
   wrap.appendChild(el);
-  setTimeout(()=>el.remove(), 3200);
+  if (!isError) setTimeout(()=>el.remove(), 3200);
+}
+function clearErrorToasts(){
+  document.querySelectorAll('#toastWrap .toast-error').forEach(el=>el.remove());
 }
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase(); }
-function fmtMoney(n){
-  const val = Number(n);
-  if(isNaN(val)) return 'EGP 0';
-  return 'EGP ' + val.toLocaleString('en-EG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-function fmtUSD(n){ return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+// HR-page money helpers: thin wrappers over the one formatter in finance-core.js
+// (up to 2 decimals, trailing zeros trimmed on whole numbers).
+function fmtMoney(n){ return FinanceFormat.formatMoney(n, 'EGP', { decimals: 2, minDecimals: 0 }); }
+function fmtUSD(n){ return FinanceFormat.formatMoney(n, 'USD', { decimals: 2, minDecimals: 0 }); }
 function fmtDateShort(d){
   if(!d || d === '—') return '—';
   const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
@@ -384,6 +540,8 @@ const ModalController = {
   },
 
   close(modalId) {
+    // Drop stale inline errors and summaries so the next open starts clean
+    { const el = document.getElementById(modalId); if (el && window.FinanceForm) FinanceForm.clearErrors(el); }
     let entry = null;
     if (modalId) {
       const idx = this._stack.findIndex(e => e.id === modalId || e.overlay === modalId);

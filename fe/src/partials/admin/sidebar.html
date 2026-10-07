@@ -20,11 +20,6 @@
           <i class="fa-solid fa-shield-halved"></i>
           <span>System</span>
         </button>
-        <div class="rail-sp"></div>
-        <div class="avatar" id="adminRailUserAvatar" title="Account">--</div>
-        <button class="rail-btn logout" onclick="logout()" title="Logout" aria-label="Logout">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
       </div>
 
       <!-- Contextual Page Panel -->
@@ -39,13 +34,13 @@
           </div>
           <nav class="sidebar-nav" aria-label="Admin Navigation">
             <div id="adminHrNavGroup" class="nav-group">
-              <div class="nav-section-label">Workspace</div>
+              <div class="nav-section-label">People</div>
               <a class="nav-item active" href="#" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
               <a class="nav-item" href="#" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
               <a class="nav-item" href="#" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
-              <a class="nav-item" href="#" data-page="a-salary" title="Salary &amp; Raises"><i class="fa-solid fa-sack-dollar"></i> <span class="nav-label">Salary &amp; Raises</span></a>
-              <a class="nav-item" href="#" data-page="a-invoices" title="Salary Payment Docs"><i class="fa-solid fa-file-signature"></i> <span class="nav-label">Salary Payment Docs</span></a>
-              <div class="nav-section-label">Modules</div>
+              <a class="nav-item" href="#" data-page="a-salary" title="Salary &amp; Raises"><i class="fa-solid fa-arrow-trend-up"></i> <span class="nav-label">Salary &amp; Raises</span></a>
+              <a class="nav-item" href="#" data-page="a-invoices" title="Salary Payment Docs"><i class="fa-solid fa-file-lines"></i> <span class="nav-label">Salary Payment Docs</span></a>
+              <div class="nav-section-label">Benefits &amp; records</div>
               <a class="nav-item" href="#" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
               <a class="nav-item" href="#" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
               <a class="nav-item" href="#" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
@@ -61,8 +56,8 @@
             </div>
             <div id="adminPayrollNavGroup" class="payroll-nav-group" hidden>
               <div class="nav-section-label">Payroll</div>
-              <a class="nav-item" href="#" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs" onclick="if(typeof PayrollApp!=='undefined'&amp;&amp;PayrollApp.showPage)PayrollApp.showPage('list')"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-label">Payroll Runs</span></a>
-              <a class="nav-item" href="#" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings" onclick="if(typeof PayrollApp!=='undefined'&amp;&amp;PayrollApp.showPage)PayrollApp.showPage('settings')"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Payroll Settings</span></a>
+              <a class="nav-item" href="#" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-label">Payroll Runs</span></a>
+              <a class="nav-item" href="#" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Payroll Settings</span></a>
             </div>
             <div id="adminSystemNavGroup" class="system-nav-group" hidden>
               <div class="nav-section-label">Access &amp; Security</div>
@@ -70,19 +65,6 @@
               <a class="nav-item" href="#" id="systemNavUsers" data-page="a-system-users" title="User Accounts"><i class="fa-solid fa-users-gear"></i> <span class="nav-label">User Accounts</span></a>
             </div>
           </nav>
-          <div class="sidebar-footer">
-            <div class="user-mini" title="Account">
-              <div class="avatar" id="adminUserAvatar">--</div>
-              <div class="user-mini-text">
-                <div class="name" id="adminUserName">--</div>
-                <div class="role" id="adminUserRole">--</div>
-              </div>
-            </div>
-            <div class="sidebar-brand-footer">
-              <img class="logo-full" src="voyance-health-logo.png" alt="Voyance Health">
-              <img class="logo-mark" src="voyance-logo-v.png" alt="Voyance">
-            </div>
-          </div>
         </div>
       </div>
     </aside>

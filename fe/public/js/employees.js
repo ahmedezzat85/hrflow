@@ -6,10 +6,10 @@ function renderEmployeesTable(filter = '') {
     addBtn.style.display = canWrite ? '' : 'none';
   }
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e => e.name.toLowerCase().includes(f) || e.role.toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
+  body.innerHTML = employees.filter(e => (e.name || '').toLowerCase().includes(f) || (e.role || '').toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f) || (e.email || '').toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
     <td data-label="ID" class="col-id">${e.id}</td>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${e.name}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${e.email}</div></div></td>
-    <td data-label="Role">${e.role}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${escapeHtml(e.name)}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Role">${escapeHtml(e.role)}</td>
     <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
     <td data-label="Next Raise">${e.nextRaise}</td>
@@ -17,7 +17,7 @@ function renderEmployeesTable(filter = '') {
     <td data-label="Actions" class="col-actions">
       <button class="icon-action" onclick="viewProfile('${e.id}')" title="View Profile"><i class="fa-solid fa-eye"></i></button>
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
-      <button class="icon-action" title="Generate Invoice" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
+      <button class="icon-action" title="Generate salary payment doc" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
       ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
     </td></tr>`).join('') || renderEmptyTableRow(7, 'No employees found.', 'fa-solid fa-user-slash');
 }
@@ -54,7 +54,11 @@ function openEmployeeModal(id = null) {
 async function saveEmployee(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('empModalSaveBtn') || document.querySelector('#employeeModal .btn-fill');
   const name = document.getElementById('fEmpName').value.trim();
-  if (!name) { toast('Please enter employee name.', 'fa-solid fa-triangle-exclamation'); return; }
+  const empEmailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!FinanceForm.validateRequiredFields('employeeModal', [
+    { id: 'fEmpName', message: 'Enter the employee\'s full name.' },
+    { id: 'fEmpEmail', message: 'Enter a valid email address.', check: (v) => empEmailRe.test(v) },
+  ])) return;
   const vacTotal = Number(fEmpVac.value) || 21;
   const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value) || 0;
   const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value) || 0;
@@ -62,7 +66,7 @@ async function saveEmployee(evt) {
   const address_line_1 = document.getElementById('fEmpAddressLine1').value.trim();
   const address_line_2 = document.getElementById('fEmpAddressLine2').value.trim();
   if (invoice_id && !/^\d{1,2}$/.test(invoice_id)) {
-    toast('Invoice ID must be a number between 01 and 99.', 'fa-solid fa-triangle-exclamation');
+    FinanceForm.showErrorSummary('employeeModal', [{ fieldId: 'fEmpInvoiceId', message: 'Payment doc ID must be a number between 01 and 99.' }]);
     return;
   }
   setButtonLoading(btn, true, 'Saving…');
@@ -114,12 +118,17 @@ function escRow(icon, label, valueHtml, opts = {}) {
   </div>`;
 }
 
-async function viewProfile(id) {
+async function viewProfile(id, section) {
   const numId = Number(id);
   currentDetailEmployeeId = !isNaN(numId) ? numId : id;
-  showSection('a-employee-detail', 'admin');
+  showSection('a-employee-detail', 'admin', section ? [id, section] : [id]);
+  loadPayrollPaymentsCard(id);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
+  if (section === 'bank' || section === 'social') {
+    const targetId = section === 'bank' ? 'bankAccountCard' : 'socialInsuranceCard';
+    setTimeout(() => { const card = document.getElementById(targetId); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
+  }
 
   const internalUsd = Number(e.internalSalaryUsd || 0);
   const externalUsd = Number(e.externalSalaryUsd || 0);
@@ -130,10 +139,10 @@ async function viewProfile(id) {
     <div class="esc-head">
       <div class="esc-avatar">${initials(e.name)}</div>
       <div class="esc-identity">
-        <h4>${e.name}</h4>
+        <h4>${escapeHtml(e.name)}</h4>
         <div class="esc-meta">
-          <span>${e.role}</span><span class="esc-dot"></span>
-          <span>${e.dept}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}
+          <span>${escapeHtml(e.role)}</span><span class="esc-dot"></span>
+          <span>${escapeHtml(e.dept)}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}
         </div>
       </div>
       <div class="esc-badges">
@@ -171,7 +180,7 @@ async function viewProfile(id) {
           <div class="esc-zone-label">Employee Details</div>
           ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
           ${escRow('fa-umbrella-beach', 'Vacation', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21} days</span>`)}
-          ${escRow('fa-hashtag', 'Invoice ID', e.invoice_id || '—')}
+          ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id || '—')}
           ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}
         </div>
       </div>`;
@@ -194,6 +203,8 @@ async function viewProfile(id) {
         Api.getEmployeeNotes(id),
         Api.getInsuranceConsumption(),
       ]);
+      // Sequence guard: a slower earlier profile load must not overwrite a later one
+      if (String(currentDetailEmployeeId) !== String(id)) return;
       const usedVacDays = vacHistory
         .filter(v => v.status === 'Approved' && (v.type === 'Annual Leave' || !v.type))
         .reduce((sum, v) => sum + (Number(v.days) || 0), 0);
@@ -215,7 +226,7 @@ async function viewProfile(id) {
         }
       }
 
-      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type">${v.type}</td><td data-label="Dates">${v.start_date} to ${v.end_date}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
+      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type">${escapeHtml(v.type)}</td><td data-label="Dates">${v.start_date} to ${v.end_date}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
       const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id) || (e.name && (c.employee_name || c.Employee_Name || '').toLowerCase() === e.name.toLowerCase()));
       document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => {
         const cat = c.category || c.Category || c.claim_category || c.type || '—';
@@ -237,7 +248,7 @@ function renderNotesList(notes) {
   const catColors = { General: 'accent', Performance: 'success', Incident: 'danger', Achievement: 'success', Attendance: 'info', Warning: 'warning' };
   list.innerHTML = notes.map(n => {
     const color = catColors[n.category] || 'accent';
-    return `<li><div class="ic" style="background:var(--${color}-soft, var(--accent-soft));color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${n.category} • ${n.date}</strong><p>${n.note}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${n.created_by}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+    return `<li><div class="ic" style="background:var(--${color}-soft, var(--accent-soft));color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${escapeHtml(n.category)} • ${n.date}</strong><p>${escapeHtml(n.note)}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${escapeHtml(n.created_by)}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
   }).join('') || `<li>${getEmptyStateHtml('No notes recorded yet.', 'fa-solid fa-note-sticky')}</li>`;
 }
 
@@ -262,6 +273,12 @@ async function saveEmployeeNote(evt) {
 }
 
 async function deleteEmployeeNote(noteId) {
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Delete note',
+    consequence: 'Delete this note? This cannot be undone.',
+    actionLabel: 'Delete note',
+  });
+  if (!ok.confirmed) return;
   try {
     await Api.deleteEmployeeNote(noteId);
     toast('Note deleted.', 'fa-solid fa-trash');
@@ -288,7 +305,7 @@ async function submitBehalfVacation(evt) {
   const days = Number(document.getElementById('bvDays').value) || 1;
   const status = document.getElementById('bvStatus').value;
   const record_date = document.getElementById('bvRecordDate').value || null;
-  if (!start_date) { toast('Please select a start date.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('behalfVacationModal', [{ id: 'bvStart', message: 'Select a start date.' }])) return;
   setButtonLoading(btn, true, 'Submitting…');
   try {
     await Api.requestVacation({ employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, days, status, record_date });
@@ -330,8 +347,10 @@ async function submitBehalfClaim(evt) {
   const status = document.getElementById('bcStatus').value;
   const record_date = document.getElementById('bcRecordDate').value || null;
   const fileInput = document.getElementById('bcDocument');
-  if (!category || category === 'undefined') { toast('Please select a valid insurance category.', 'fa-solid fa-triangle-exclamation'); return; }
-  if (!amount) { toast('Please enter a claim amount.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('behalfClaimModal', [
+    { id: 'bcCategory', message: 'Select an insurance category.', check: (v) => !!v && v !== 'undefined' },
+    { id: 'bcAmount', message: 'Enter a claim amount greater than 0.', check: (v) => Number(v) > 0 },
+  ])) return;
   let documentUrl;
   const file = fileInput && fileInput.files[0];
   if (file) {
@@ -356,6 +375,7 @@ async function submitBehalfClaim(evt) {
 async function loadEmployeeDocuments(empId) {
   try {
     const docs = await Api.getEmployeeDocuments(empId);
+    if (String(currentDetailEmployeeId) !== String(empId)) return;
     employeeDocuments = docs;
     renderEmployeeDocuments(docs);
   } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
@@ -369,10 +389,10 @@ function renderEmployeeDocuments(docs) {
   const body = document.getElementById('detailDocumentsBody');
   if (!body) return;
   body.innerHTML = docs.length ? docs.map(d => `<tr>
-    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${d.name}</span></div></td>
+    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${escapeHtml(d.name)}</span></div></td>
     <td data-label="Uploaded">${d.uploaded_at}</td>
     <td data-label="Actions" class="col-actions">
-      <button class="icon-action" title="Preview" onclick="previewEmployeeDocument(${d.id}, ${JSON.stringify(String(d.name).replace(/`/g, ''))}, ${JSON.stringify(d.file_type)})"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-action" title="Preview" data-action="preview-employee-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name)}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td></tr>`).join('') : renderEmptyTableRow(3, 'No documents uploaded yet.', 'fa-solid fa-folder-open');
@@ -574,6 +594,12 @@ document.addEventListener('DOMContentLoaded', initBcDocDropZoneListeners);
 if (document.readyState !== 'loading') initBcDocDropZoneListeners();
 
 async function deleteEmployeeDocument(docId) {
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Delete document',
+    consequence: 'Delete this employee document? This cannot be undone.',
+    actionLabel: 'Delete document',
+  });
+  if (!ok.confirmed) return;
   try {
     await Api.deleteEmployeeDocument(docId);
     toast('Document deleted.', 'fa-solid fa-trash');
@@ -582,7 +608,61 @@ async function deleteEmployeeDocument(docId) {
 }
 let _bankAccountHasDetails = false;
 let _bankIbanRevealed = false;
+// "Payroll and payments" card on the employee profile: compensation plan, salary payment docs,
+// and the latest payroll lines (only for viewers with payroll read access).
+async function openEmployeeBankSection(id) {
+  await viewProfile(id, 'bank');
+}
+
+async function loadPayrollPaymentsCard(empId) {
+  const body = document.getElementById('payrollPaymentsBody');
+  if (!body) return;
+  const isCurrent = () => String(currentDetailEmployeeId) === String(empId);
+  const sections = [];
+  try {
+    const emp = employees.find(e => String(e.id) === String(empId));
+    const monthly = (emp ? (Number(emp.internalSalaryUsd || 0) + Number(emp.externalSalaryUsd || 0)) : 0);
+    sections.push(`<div class="iban-row"><span class="k">Compensation plan</span><span class="v">${fmtUSD(monthly)} / month</span></div>
+      <button type="button" class="btn btn-sm btn-outline" data-action="open-comp-plan" data-employee-id="${escapeHtml(empId)}"><i class="fa-solid fa-sliders"></i> View compensation plan</button>`);
+  } catch (e) { /* plan summary is best-effort */ }
+  if (isCurrent()) body.innerHTML = sections.join('');
+
+  try {
+    const docs = (await Api.listInvoices()) || [];
+    const mine = docs.filter(d => String(d.employee_id) === String(empId)).slice(0, 3);
+    sections.push(`<div class="iban-row"><span class="k">Salary payment docs</span><span class="v">${mine.length ? '' : 'None yet'}</span></div>` + mine.map(d =>
+      `<div class="iban-row"><span class="k">Doc ${escapeHtml(d.invoice_number || d.id)}</span><span class="v">${escapeHtml(d.payment_year)}-${escapeHtml(String(d.payment_month).padStart(2, '0'))}
+        <button type="button" class="icon-action" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(d.id)}" data-number="${escapeHtml(d.invoice_number || '')}"><i class="fa-solid fa-eye"></i></button></span></div>`).join(''));
+  } catch (e) { sections.push('<div class="iban-row"><span class="k">Salary payment docs</span><span class="v">Unavailable</span></div>'); }
+
+  const canPayroll = typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('finance.payroll.read');
+  if (canPayroll && typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollRuns === 'function') {
+    try {
+      const runs = (await FinanceApi.getPayrollRuns()) || [];
+      const latest = [...runs].sort((a, b) => String(b.period_label).localeCompare(String(a.period_label)))[0];
+      if (latest) {
+        const full = latest.lines ? latest : await FinanceApi.getPayrollRun(latest.id);
+        const lines = ((full && full.lines) || []).filter(l => String(l.employee_id) === String(empId));
+        const net = lines.reduce((s, l) => s + Number(l.net_pay || l.amount || 0), 0);
+        sections.push(`<div class="iban-row"><span class="k">Latest payroll (${escapeHtml(latest.period_label)})</span><span class="v">${lines.length ? fmtUSD(net) : 'No lines'}</span></div>`);
+      }
+    } catch (e) { /* payroll lines are optional */ }
+  }
+  if (!isCurrent()) return;
+  body.innerHTML = sections.join('');
+}
+
+// Status-line action ("Set up" / "Try again") shown beside a card's status pill; pass no label to hide it.
+function setCardStatusAction(btnId, label, onClick) {
+  const b = document.getElementById(btnId);
+  if (!b) return;
+  b.hidden = !label;
+  b.textContent = label || '';
+  b.onclick = label ? onClick : null;
+}
+
 async function loadBankAccountStatus(empId) {
+  setCardStatusAction('bankAccountStatusActionBtn', null);
   const pill = document.getElementById('bankAccountPill');
   const btn = document.getElementById('bankAccountActionBtn');
   const nameEl = document.getElementById('bankDetailName');
@@ -608,8 +688,9 @@ async function loadBankAccountStatus(empId) {
       if (ibanEl) ibanEl.textContent = data.iban || '—';
       if (swiftEl) swiftEl.textContent = data.swift_code || '—';
     } else {
-      pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Missing';
+      pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
       pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      setCardStatusAction('bankAccountStatusActionBtn', 'Set up', () => openBankAccountModal());
       if (btn) {
         btn.innerHTML = '<i class="fa-solid fa-plus"></i>';
         btn.title = 'Add Bank Details';
@@ -621,9 +702,11 @@ async function loadBankAccountStatus(empId) {
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
     pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+    setCardStatusAction('bankAccountStatusActionBtn', 'Try again', () => loadBankAccountStatus(empId));
   }
 }
-async function openBankAccountModal() {
+async function openBankAccountModal(evt) {
+  const trigger = (evt && evt.currentTarget) || document.getElementById('bankAccountActionBtn');
   _bankIbanRevealed = false;
   const ibanInput = document.getElementById('fBankIban');
   const revealBtn = document.getElementById('bankRevealBtn');
@@ -637,7 +720,7 @@ async function openBankAccountModal() {
     revealBtn.style.display = canRevealBank ? '' : 'none';
     revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
   }
-  titleEl.textContent = _bankAccountHasDetails ? 'Edit Bank Account' : 'Add Bank Account';
+  titleEl.textContent = _bankAccountHasDetails ? 'Edit employee bank account' : 'Add employee bank account';
   if (_bankAccountHasDetails) {
     try {
       const data = await Api.getBankAccount(currentDetailEmployeeId);
@@ -647,7 +730,7 @@ async function openBankAccountModal() {
       document.getElementById('fBankSwift').value = data.swift_code || '';
     } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   }
-  document.getElementById('bankAccountModal').classList.add('active');
+  openModal('bankAccountModal', trigger);
 }
 async function toggleBankIbanReveal() {
   const ibanInput = document.getElementById('fBankIban');
@@ -679,16 +762,18 @@ async function saveBankAccount(evt) {
   const bank_name = document.getElementById('fBankName').value.trim();
   const iban = document.getElementById('fBankIban').value.trim();
   const swift_code = document.getElementById('fBankSwift').value.trim() || null;
-  if (!bank_name) { toast('Bank Name is required.', 'fa-solid fa-triangle-exclamation'); return; }
-  if (!iban) { toast('IBAN is required.', 'fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('bankAccountModal', [
+    { id: 'fBankName', message: 'Bank name is required.' },
+    { id: 'fBankIban', message: 'IBAN is required.' },
+  ])) return;
   if (iban.startsWith('****')) {
-    toast('Please reveal the IBAN before editing, or enter a new IBAN.', 'fa-solid fa-triangle-exclamation');
+    FinanceForm.showErrorSummary('bankAccountModal', [{ fieldId: 'fBankIban', message: 'Reveal the IBAN before editing, or enter a new IBAN.' }]);
     return;
   }
   setButtonLoading(btn, true, 'Saving…');
   try {
     await Api.upsertBankAccount(currentDetailEmployeeId, { bank_name, iban, swift_code });
-    toast('Bank account saved.');
+    toast('Employee bank account saved.');
     closeModal('bankAccountModal');
     await loadBankAccountStatus(currentDetailEmployeeId);
   } catch (err) {
@@ -701,6 +786,7 @@ async function saveBankAccount(evt) {
 let _socialInsuranceConfig = null;
 
 async function loadSocialInsuranceStatus(empId) {
+  setCardStatusAction('socialInsuranceStatusActionBtn', null);
   const pill = document.getElementById('socialInsurancePill');
   const btn = document.getElementById('socialInsuranceActionBtn');
   const covEl = document.getElementById('socialInsCoverage');
@@ -716,6 +802,14 @@ async function loadSocialInsuranceStatus(empId) {
   try {
     const data = await Api.getSocialInsurance(empId);
     _socialInsuranceConfig = data;
+    if (!data) {
+      // The request succeeded and there is no record yet: not an error.
+      pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
+      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      if (covEl) covEl.textContent = 'Not set up';
+      setCardStatusAction('socialInsuranceStatusActionBtn', 'Set up', () => openSocialInsuranceModal());
+      return;
+    }
     const isCovered = !!data.insured_flag;
     const baseAmt = data.insured_base !== null && data.insured_base !== undefined ? Number(data.insured_base) : null;
     const effDate = data.effective_start_date ? String(data.effective_start_date).slice(0, 10) : '—';
@@ -756,6 +850,7 @@ async function loadSocialInsuranceStatus(empId) {
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
     pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+    setCardStatusAction('socialInsuranceStatusActionBtn', 'Try again', () => loadSocialInsuranceStatus(empId));
   }
 }
 

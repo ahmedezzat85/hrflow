@@ -1128,7 +1128,7 @@ async getFeatureFlags() {
         if (dMatch) issueDate = dMatch[1];
         const ddMatch = textContent.match(/(?:Due\s*Date):\s*(\d{4}-\d{2}-\d{2})/i);
         if (ddMatch) dueDate = ddMatch[1];
-        const tMatch = textContent.match(/(?:Total):\s*(?:[$€£])?\s*([\d,]+(?:\.\d{2})?)/i);
+        const tMatch = textContent.match(/(?:Total):\s*(?:[$€\u00a3])?\s*([\d,]+(?:\.\d{2})?)/i);
         if (tMatch) total = parseFloat(tMatch[1].replace(/,/g, ""));
       }
 
@@ -1973,8 +1973,8 @@ async getFeatureFlags() {
       const projBal = direction === "in" ? round(curBal + effectiveAmt, 2) : round(curBal - effectiveAmt, 2);
       const effectWord = direction === "in" ? "increase" : "decrease";
 
-      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "E£" : txCurr);
-      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "E£" : acctCurr);
+      const sym = txCurr === "USD" ? "$" : (txCurr === "EGP" ? "EGP " : txCurr);
+      const acctSym = acctCurr === "USD" ? "$" : (acctCurr === "EGP" ? "EGP " : acctCurr);
 
       let plain = `This will ${effectWord} the Book Balance of ${acc.account_name} by ${sym}${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${txCurr}.`;
       if (txCurr !== acctCurr) {
@@ -6578,6 +6578,27 @@ async getEntityActivity(entityType, entityId) {
       return apiRequest("POST", "/api/finance/payroll/runs", payload);
     },
 
+    async refreshPayrollRun(runId) {
+      if (_isMock()) {
+        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+        if (!run) throw new Error(`Payroll run #${runId} not found`);
+        if (run.status !== "draft") {
+          throw new Error(`Payroll run #${runId} is in status '${run.status}', only 'draft' runs can be refreshed.`);
+        }
+        const prev = await root.FinanceApi.previewPayrollRun({
+          period_label: run.period_label,
+          period_start: run.period_start,
+          period_end: run.period_end,
+          payment_date: run.payment_date,
+          bank_account_id: run.bank_account_id,
+        });
+        run.exceptions = prev.exceptions;
+        run.has_blocking_exceptions = prev.has_blocking_exceptions;
+        return run;
+      }
+      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/refresh`);
+    },
+
     async submitPayrollRun(runId) {
       if (_isMock()) {
         const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
@@ -6610,6 +6631,12 @@ async getEntityActivity(entityType, entityId) {
       }
       const query = allowSelfApproval ? "?allow_self_approval=true" : "";
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/approve${query}`);
+    },
+
+    // Downloads the run's CSV (one row per employee) through the authenticated fetch helper.
+    async exportPayrollRun(runId) {
+      if (_isMock()) return null; // mock mode builds the CSV from the on-screen rows (see PayrollApp.exportRunCsv)
+      return _downloadDocumentViaFetch(`/api/finance/payroll/runs/${runId}/export`, `payroll_run_${runId}.csv`);
     },
 
     async finalizePayrollRun(runId) {

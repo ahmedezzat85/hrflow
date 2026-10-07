@@ -45,6 +45,8 @@ let _sessionExpiredHandled = false;
 function forceSessionExpiredLogout() {
   if (typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')) return;
   if (_sessionExpiredHandled) return;
+  // A 401 with no session known in this page load is a first visit, not an expiry.
+  if (!SessionInfo.isKnown()) return;
   _sessionExpiredHandled = true;
 
   SessionInfo.clear();

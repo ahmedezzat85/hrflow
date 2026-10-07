@@ -227,9 +227,9 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve & Send Invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
+        ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve and issue invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
         ${(derivedStatus === "overdue" || derivedStatus === "sent") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
-        ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-fill" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-outline" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
@@ -435,10 +435,10 @@ function addInvoiceLine(data) {
   const tbody = document.getElementById("invoiceLinesBody");
   const tr = document.createElement("tr");
   tr.innerHTML = `
-    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}" oninput="_updateInvoiceTotals()"></td>
-    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
-    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
-    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateInvoiceTotals()"></td>
+    <td><input type="text" class="form-control" style="font-size:0.85rem;" aria-label="Description" placeholder="Description" value="${escapeHtml((data && data.description) || "")}" oninput="_updateInvoiceTotals()"></td>
+    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" aria-label="Quantity" placeholder="Qty" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" aria-label="Unit price" placeholder="Unit price" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" aria-label="Line total" placeholder="Total" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateInvoiceTotals()"></td>
     <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateInvoiceTotals();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
   `;
   tbody.appendChild(tr);
@@ -644,14 +644,19 @@ function closeInvoicePaymentModal() {
   closeModal("invoicePaymentModal");
 }
 
-async function saveInvoicePayment() {
+// Double-click safe: the shared submit lock ignores a second click while the request runs
+function saveInvoicePayment() {
+  return withSubmitLock("invoicePaymentSubmitBtn", _saveInvoicePaymentImpl);
+}
+
+async function _saveInvoicePaymentImpl() {
   const invoiceId = document.getElementById("paymentInvoiceId").value;
   const amount = parseFloat(document.getElementById("paymentAmount").value);
   const paymentDate = document.getElementById("paymentDate").value;
   const bankAccountId = document.getElementById("paymentBankAccountId").value;
 
   const isValid = FinanceForm.validateRequiredFields("invoicePaymentModal", [
-    { id: "paymentBankAccountId", label: "Bank Account" },
+    { id: "paymentBankAccountId", label: "Company bank account" },
     { id: "paymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
     { id: "paymentDate", label: "Payment Date" },
   ]);
@@ -822,7 +827,7 @@ async function loadFinanceCustomers() {
     renderFinanceCustomers(FinanceState.customers);
   } catch (err) {
     console.error("Failed to load finance customers:", err);
-    showToast(err.message || "Failed to load customers", "error");
+    showToast(describeLoadFailure("customers", err), "error");
   } finally {
     if (bar) bar.style.display = "none";
   }
@@ -849,7 +854,7 @@ function renderFinanceCustomers(items) {
     `;
     const receivablesSummary = `
       <button type="button" class="btn btn-xs btn-ghost" onclick="openCustomer360Drawer(${c.id})" title="View complete 360 overview & invoices">
-        <i class="fa-solid fa-chart-pie" style="color:var(--primary, #3b82f6);"></i> View 360
+        <i class="fa-solid fa-chart-pie" style="color:var(--accent-text);"></i> View 360
       </button>
     `;
 
@@ -872,8 +877,8 @@ function renderFinanceCustomers(items) {
             <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})" aria-label="Edit Customer">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button class="btn btn-sm btn-icon ${c.is_active ? "btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
-              <i class="fa-solid ${c.is_active ? "fa-ban" : "fa-check"}"></i>
+            <button class="btn btn-sm btn-icon ${c.is_active ?"btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
+              <i class="fa-solid ${c.is_active ?"fa-ban" : "fa-check"}"></i>
             </button>
           </div>
         </td>
@@ -1068,7 +1073,7 @@ async function toggleCustomerActive(id, currentlyActive) {
       ? "Deactivating will hide this customer from new invoice selectors. Existing invoices are preserved."
       : "Reactivating will make this customer selectable again on invoices.",
     actionLabel: currentlyActive ? "Deactivate Customer" : "Reactivate Customer",
-    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentlyActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentlyActive ? "warning" : "info",
   });

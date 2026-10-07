@@ -10,13 +10,16 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   <span style="color:var(--text2); font-size:12px;" id="payrollRunsCount">Loading cycles...</span>
-                  <button class="btn btn-fill btn-primary" id="btnOpenCurrentCycle" onclick="PayrollApp.openRun('current')">
+                  <button class="btn btn-outline" id="btnStartNewRun" onclick="PayrollApp.startNewRun()">
+                    <i class="fa-solid fa-plus"></i> New payroll run
+                  </button>
+                  <button class="btn btn-fill" id="btnOpenCurrentCycle" onclick="PayrollApp.openRun('current')">
                     <i class="fa-solid fa-play"></i> Open current cycle
                   </button>
                 </div>
               </div>
               <div class="payroll-table-wrap">
-                <table class="runs-table" id="payrollRunsTable">
+                <table class="runs-table responsive-card-table" id="payrollRunsTable">
                   <thead>
                     <tr>
                       <th>Period</th>
@@ -46,20 +49,19 @@
                   <div class="fxbox payroll-fx-strip" id="payrollFxStrip">
                     <i class="fa-solid fa-coins"></i>
                     <span>
-                      <strong id="payrollFxRateBadge" class="p-badge b-blue" style="font-family:monospace; font-weight:700;">50.0000</strong>
-                      EGP/USD ·
-                      <span id="payrollFxRateSourceBadge" class="badge-pill pill-neutral p-badge b-gray" style="font-size:10px; padding:2px 8px;">System Fallback (50.0)</span>
+                      FX rate: 1 USD = <strong id="payrollFxRateBadge" style="font-variant-numeric:tabular-nums;">50.0000</strong> EGP,
+                      <span id="payrollFxRateSourceBadge" class="payroll-fx-source">system fallback rate</span>
                     </span>
                     <button type="button" class="editbtn btn-ghost" id="btnToggleFxOverride" onclick="PayrollApp.toggleFxOverride()" title="Change FX rate">
                       <i class="fa-solid fa-pencil"></i>
                     </button>
                     <div id="payrollFxOverrideForm" style="display:none; align-items:center; gap:6px;">
                       <input type="number" step="0.0001" min="1" id="payrollFxRateInput" style="width:90px; padding:2px 6px; font-size:11px;" placeholder="50.0000" />
-                      <button type="button" class="btn btn-fill sm btn-primary" id="btnApplyFxRate" onclick="PayrollApp.applyFxOverride()" style="padding:3px 8px; font-size:11px;">Apply</button>
+                      <button type="button" class="btn btn-fill sm" id="btnApplyFxRate" onclick="PayrollApp.applyFxOverride()" style="padding:3px 8px; font-size:11px;">Apply</button>
                       <button type="button" class="btn sm btn-ghost" id="btnResetFxRate" onclick="PayrollApp.resetFxOverride()" style="padding:3px 8px; font-size:11px;">Reset</button>
                     </div>
                   </div>
-                  <span class="badge-pill pill-neutral p-badge b-gray" id="payrollStatusBadge">DRAFT</span>
+                  <span class="badge-pill pill-neutral p-badge b-gray" id="payrollStatusBadge">Draft</span>
                   <button class="btn sm btn-ghost" id="payrollRevertBtn" onclick="PayrollApp.openRevertModal()" style="display:none;">
                     <i class="fa-solid fa-rotate-left"></i> Revert to draft
                   </button>
@@ -68,7 +70,7 @@
 
               <!-- Lock Notice Banner -->
               <div class="lock payroll-lock-note payroll-hidden" id="payrollLockNote">
-                <i class="fa-solid fa-lock"></i> <span id="payrollLockText">Finalized — compensation lines are locked. Use Revert to Draft to edit.</span>
+                <i class="fa-solid fa-lock"></i> <span id="payrollLockText">This run is finalized. Compensation and additions are read-only.</span>
               </div>
 
               <!-- 6-Step Stepper -->
@@ -98,18 +100,18 @@
                     <div class="innerhead"><i class="fa-solid fa-building-columns"></i> Target Funding Accounts</div>
                     <div class="form">
                       <div class="field">
-                        <label for="p1ExtAccount">External Wire Account</label>
+                        <label for="p1ExtAccount">Company funding account (external salaries)</label>
                         <select id="p1ExtAccount" onchange="PayrollApp.onScreen1AccountChange()"></select>
                       </div>
                       <div class="field">
-                        <label for="p1IntAccount">Internal Cash Treasury Account</label>
+                        <label for="p1IntAccount">Company funding account (internal salaries)</label>
                         <select id="p1IntAccount" onchange="PayrollApp.onScreen1AccountChange()"></select>
                       </div>
                       <div class="field">
                         <label>FX Conversion Rate (USD &rarr; EGP)</label>
                         <div style="display:flex; gap:8px; align-items:center;">
                           <input type="number" step="0.0001" min="1" id="p1FxRateInput" placeholder="50.0000" style="width:120px;" />
-                          <button type="button" class="btn btn-fill sm btn-primary" id="btnP1ApplyFx" onclick="PayrollApp.applyScreen1Fx()">Apply</button>
+                          <button type="button" class="btn btn-fill sm" id="btnP1ApplyFx" onclick="PayrollApp.applyScreen1Fx()">Apply</button>
                           <button type="button" class="btn sm btn-ghost" id="btnP1ResetFx" onclick="PayrollApp.resetScreen1Fx()">Reset</button>
                         </div>
                       </div>
@@ -142,7 +144,7 @@
                 </div>
 
                 <div class="footer payroll-footer-actions">
-                  <button class="btn btn-fill btn-primary" id="btnP1Proceed" onclick="PayrollApp.proceedFromScreen1()">
+                  <button class="btn btn-fill" id="btnP1Proceed" onclick="PayrollApp.proceedFromScreen1()">
                     Next: Review &amp; Approve <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </div>
@@ -153,6 +155,9 @@
                 <div class="title-row">
                   <div class="section-title"><i class="fa-solid fa-list-check"></i> Compensation Review</div>
                 </div>
+
+                <!-- Blocking readiness issues: submission is disabled until these are fixed -->
+                <div class="payroll-readiness" id="p2ReadinessPanel" role="alert" hidden></div>
 
                 <!-- 4 KPI Stat Cards -->
                 <div class="stats payroll-stats" id="payrollStatsGrid"></div>
@@ -171,7 +176,7 @@
 
                 <!-- Payroll Worksheet Table (Restricted Columns) -->
                 <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet" id="payrollWorksheetTable">
+                  <table class="payroll-worksheet responsive-card-table" id="payrollWorksheetTable">
                     <thead>
                       <tr>
                         <th class="col-id payroll-id-th">ID</th>
@@ -179,7 +184,7 @@
                         <th class="num payroll-num-th">Base Ext</th>
                         <th class="num payroll-num-th">Base Int</th>
                         <th class="num payroll-num-th">Bonus / Commission</th>
-                        <th class="num payroll-num-th">Total Comp</th>
+                        <th class="num payroll-num-th">Total comp (gross)</th>
                         <th class="col-actions" style="width:50px; text-align:center;"></th>
                       </tr>
                     </thead>
@@ -198,11 +203,15 @@
                 </div>
 
                 <div class="footer payroll-footer-actions">
-                  <div class="left-info" id="p2StepHint" style="display:none;">Step 2 of 6 — Review base compensation and dynamic additions. Submit &amp; Approve to advance to statutory processing.</div>
+                  <div class="left-info" id="p2StepHint" style="display:none;">Step 2 of 6 — Review base compensation and dynamic additions. Submit for approval, then approve to advance to statutory processing.</div>
+                  <div class="left-info" id="p2ApprovalHint"></div>
                   <button class="btn btn-ghost" id="btnP2Back" onclick="PayrollApp.setStep(0)"><i class="fa-solid fa-arrow-left"></i> Back</button>
                   <button class="btn btn-ghost" id="btnP2SaveDraft" onclick="PayrollApp.saveDraftRun()"><i class="fa-solid fa-floppy-disk"></i> Save Draft</button>
-                  <button class="btn btn-fill btn-primary" id="btnP2Approve" onclick="PayrollApp.submitAndApproveRun()">
-                    Submit &amp; Approve <i class="fa-solid fa-check"></i>
+                  <label class="p2-self-approve" id="p2SelfApproveRow" hidden>
+                    <input type="checkbox" id="p2SelfApprove"> I am approving my own submission
+                  </label>
+                  <button class="btn btn-fill" id="btnP2Approve" onclick="PayrollApp.submitAndApproveRun()">
+                    Submit for approval <i class="fa-solid fa-paper-plane"></i>
                   </button>
                 </div>
               </div>
@@ -244,7 +253,7 @@
 
                 <div class="footer payroll-footer-actions">
                   <button class="btn btn-ghost" id="btnP3Back" onclick="PayrollApp.setStep(1)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-fill btn-primary" id="btnP3Next" onclick="PayrollApp.setStep(3)">
+                  <button class="btn btn-fill" id="btnP3Next" onclick="PayrollApp.setStep(3)">
                     Next: Payment Preview <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </div>
@@ -278,14 +287,14 @@
                     <div class="hint sub" id="p4RecipientsSub">All recipients ready</div>
                   </div>
                   <div class="stat payroll-card payroll-stat" id="p4MissingBankCard">
-                    <div class="lbl label">Missing Bank Details</div>
+                    <div class="lbl label">Missing bank details</div>
                     <div class="val value" id="p4MissingBankCount" style="color:var(--warning, #e07d10);">0</div>
-                    <div class="hint sub" id="p4MissingBankSub">Non-blocking warning (D-006)</div>
+                    <div class="hint sub" id="p4MissingBankSub">Payment can still be recorded</div>
                   </div>
                 </div>
 
                 <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet" id="payrollPaymentPreviewTable">
+                  <table class="payroll-worksheet responsive-card-table" id="payrollPaymentPreviewTable">
                     <thead>
                       <tr>
                         <th class="col-id payroll-id-th">ID</th>
@@ -312,7 +321,8 @@
                 <div class="footer payroll-footer-actions">
                   <div class="left-info" style="display:none;">Step 4 of 6 — Review disbursement allocations. Click Next to perform payment funding confirmation.</div>
                   <button class="btn btn-ghost" id="btnP4Back" onclick="PayrollApp.setStep(2)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-fill btn-primary" id="btnP4Next" onclick="PayrollApp.setStep(4)">
+                  <button class="btn btn-outline" id="btnP4ExportCsv" onclick="PayrollApp.exportRunCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                  <button class="btn btn-fill" id="btnP4Next" onclick="PayrollApp.setStep(4)">
                     Next: Confirm Payment <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </div>
@@ -323,8 +333,8 @@
                 <div class="title-row">
                   <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Payment Confirmation</div>
                   <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="p-badge b-green" id="p5RunStatusBadge" style="display:none;">PAID</span>
-                    <span class="p-badge b-gray" id="p5StatutoryBadge" style="display:none;">Not Recorded</span>
+                    <span class="p-badge b-green" id="p5RunStatusBadge" style="display:none;">Salaries paid</span>
+                    <span class="p-badge b-gray" id="p5StatutoryBadge" style="display:none;">Statutory not recorded</span>
                   </div>
                 </div>
 
@@ -345,8 +355,8 @@
                           <span class="v" id="p5IntPayDate">-</span>
                         </div>
                         <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-building-columns"></i> Bank Account</span>
-                          <span class="v" id="p5IntAccount">Treasury Cash Vault</span>
+                          <span class="k"><i class="fa-solid fa-building-columns"></i> Company funding account</span>
+                          <span class="v" id="p5IntAccount">—</span>
                         </div>
                         <div class="disburse-row">
                           <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
@@ -372,8 +382,8 @@
                           <span class="v" id="p5ExtPayDate">-</span>
                         </div>
                         <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-building-columns"></i> Bank Account</span>
-                          <span class="v" id="p5ExtAccount">Operating Bank Wire Account</span>
+                          <span class="k"><i class="fa-solid fa-building-columns"></i> Company funding account</span>
+                          <span class="v" id="p5ExtAccount">—</span>
                         </div>
                         <div class="disburse-row">
                           <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
@@ -395,9 +405,11 @@
                 </div>
 
                 <div style="padding:0 20px 14px">
-                  <button type="button" class="btn btn-fill btn-primary" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
-                    <i class="fa-solid fa-paper-plane"></i> Confirm &amp; Disburse Payroll
+                  <button type="button" class="btn btn-outline" id="btnP5ExportCsv" onclick="PayrollApp.exportRunCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                  <button type="button" class="btn btn-fill" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
+                    <i class="fa-solid fa-paper-plane"></i> Confirm and record as paid
                   </button>
+                  <p class="payroll-subtitle" id="p5ConfirmHint" hidden></p>
                 </div>
 
                 <!-- Per-line Disbursal Results Table (Shown when Disbursed) -->
@@ -406,14 +418,24 @@
                     <table class="payroll-worksheet" id="payrollDisburseResultsTable">
                       <thead>
                         <tr>
-                          <th>Employee</th>
-                          <th class="num">Total Disbursement</th>
-                          <th>Status</th>
-                          <th>Paid At</th>
-                          <th>Notes</th>
+                          <th scope="col">Employee</th>
+                          <th scope="col">Employee bank details</th>
+                          <th scope="col" class="num payroll-col-ext">External</th>
+                          <th scope="col" class="num payroll-col-int">Internal</th>
+                          <th scope="col" class="num">Total paid</th>
+                          <th scope="col">Status</th>
                         </tr>
                       </thead>
                       <tbody id="payrollDisburseResultsTableBody"></tbody>
+                      <tfoot>
+                        <tr class="payroll-totals-row">
+                          <td colspan="2">Totals</td>
+                          <td class="num payroll-num payroll-col-ext" id="p5TotExt">-</td>
+                          <td class="num payroll-num payroll-col-int" id="p5TotInt">-</td>
+                          <td class="num payroll-num" id="p5TotNet">-</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
 
@@ -421,7 +443,7 @@
                     <h4>
                       <span class="pill-success badge-pill" id="payrollJournalBadge">Posted</span>
                       General Ledger Journal Entry
-                      <button type="button" class="btn btn-ghost btn-sm" onclick="PayrollApp.toggleJournalDetails()" id="btnToggleJournal" style="margin-left:auto; padding:2px 8px; font-size:11px; background:#fff;">
+                      <button type="button" class="btn btn-ghost btn-sm" onclick="PayrollApp.toggleJournalDetails()" id="btnToggleJournal" style="margin-left:auto; padding:2px 8px; font-size:11px;">
                         View Lines <i class="fa-solid fa-chevron-down" id="payrollJournalChevron"></i>
                       </button>
                     </h4>
@@ -435,7 +457,7 @@
                 <div class="footer payroll-footer-actions">
                   <div class="left-info" style="display:none;">Step 5 of 6 — Disbursement execution complete. Proceed to statutory tax and social insurance reconciliation.</div>
                   <button class="btn btn-ghost" id="btnP5Back" onclick="PayrollApp.setStep(3)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-fill btn-primary" id="btnP5ProceedStatutory" onclick="PayrollApp.setStep(5)">
+                  <button class="btn btn-fill" id="btnP5ProceedStatutory" onclick="PayrollApp.setStep(5)">
                     Next: Statutory Payments <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </div>
@@ -459,7 +481,7 @@
                       <div class="stat-obl-head">
                         <div>
                           <div class="stat-obl-title"><i class="fa-solid fa-shield-halved"></i> Social Insurance</div>
-                          <div class="stat-obl-sub">Employee + Employer · National Social Insurance Authority</div>
+                          <div class="stat-obl-sub">Employee and employer contributions</div>
                         </div>
                         <span class="stage-badge unrecorded" id="p6SiStatusBadge">Unrecorded</span>
                       </div>
@@ -488,7 +510,7 @@
                         <div class="stage-hint"><i class="fa-solid fa-circle-info"></i> Record the obligation to unlock payment settlement.</div>
                         <div class="stat-obl-meta">
                           <div class="stat-obl-row">
-                            <span class="k"><i class="fa-solid fa-building-columns"></i> Debit From Bank Account</span>
+                            <span class="k"><i class="fa-solid fa-building-columns"></i> Debit from company bank account</span>
                             <select id="p6SiDebitAccount"></select>
                           </div>
                           <div class="stat-obl-row">
@@ -498,7 +520,7 @@
                         </div>
                         <div class="stat-obl-actions">
                           <button type="button" class="btn btn-fill" id="btnP6SettleSocialIns" onclick="PayrollApp.settleStatutory('si')" disabled>
-                            <i class="fa-solid fa-money-bill-transfer"></i> Confirm &amp; Remit Payment
+                            <i class="fa-solid fa-money-bill-transfer"></i> Record remittance
                           </button>
                         </div>
                       </div>
@@ -512,7 +534,7 @@
                       <div class="stat-obl-head">
                         <div>
                           <div class="stat-obl-title"><i class="fa-solid fa-receipt"></i> Salary Income Tax</div>
-                          <div class="stat-obl-sub">Withheld · Egyptian Tax Authority (EETAX) Portal</div>
+                          <div class="stat-obl-sub">Withheld from salaries</div>
                         </div>
                         <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Unrecorded</span>
                       </div>
@@ -541,7 +563,7 @@
                         <div class="stage-hint"><i class="fa-solid fa-circle-info"></i> Record the obligation to unlock payment settlement.</div>
                         <div class="stat-obl-meta">
                           <div class="stat-obl-row">
-                            <span class="k"><i class="fa-solid fa-building-columns"></i> Debit From Bank Account</span>
+                            <span class="k"><i class="fa-solid fa-building-columns"></i> Debit from company bank account</span>
                             <select id="p6TaxDebitAccount"></select>
                           </div>
                           <div class="stat-obl-row">
@@ -551,7 +573,7 @@
                         </div>
                         <div class="stat-obl-actions">
                           <button type="button" class="btn btn-fill" id="btnP6SettleTax" onclick="PayrollApp.settleStatutory('tax')" disabled>
-                            <i class="fa-solid fa-money-bill-transfer"></i> Confirm &amp; Remit Payment
+                            <i class="fa-solid fa-money-bill-transfer"></i> Record remittance
                           </button>
                         </div>
                       </div>
@@ -585,7 +607,7 @@
                 <div class="footer payroll-footer-actions">
                   <div class="left-info" style="display:none;">Step 6 of 6 — Statutory liabilities reconciled and recorded. Cycle journey complete.</div>
                   <button class="btn btn-ghost" id="btnP6Back" onclick="PayrollApp.setStep(4)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-fill btn-primary" id="btnP6Finish" onclick="PayrollApp.showPage('list')">
+                  <button class="btn btn-fill" id="btnP6Finish" onclick="PayrollApp.showPage('list')">
                     <i class="fa-solid fa-check"></i> Finish &amp; Return to Runs
                   </button>
                 </div>
@@ -596,7 +618,7 @@
                 <div class="left-info" id="payrollStepHint">Review payroll lines, then proceed to the next stage.</div>
                 <div class="btns">
                   <button class="btn btn-ghost" id="payrollBackBtn" onclick="PayrollApp.goBack()">Back</button>
-                  <button class="btn btn-primary" id="payrollNextBtn" onclick="PayrollApp.goNext()">Next</button>
+                  <button class="btn btn-fill" id="payrollNextBtn" onclick="PayrollApp.goNext()">Next</button>
                 </div>
               </div>
             </div>
@@ -619,7 +641,7 @@
                         <i class="fa-solid fa-building-columns"></i>
                       </div>
                       <div>
-                        <div class="payroll-panel-title">Funding bank accounts</div>
+                        <div class="payroll-panel-title">Funding company bank accounts</div>
                         <div class="payroll-subtitle">Target accounts used to disburse External and Internal salaries.</div>
                       </div>
                     </div>
@@ -645,7 +667,7 @@
                         <!-- Populated dynamically with active bank accounts -->
                       </select>
                       <div class="field-hint">
-                        <i class="fa-solid fa-circle-info"></i> Clears domestic EGP net pay directly to local employee accounts
+                        <i class="fa-solid fa-circle-info"></i> Funding account for domestic EGP net pay
                       </div>
                     </div>
                     <div class="settings-card-callout callout-blue">
@@ -694,7 +716,7 @@
                         <span class="input-affix suffix">EGP</span>
                       </div>
                       <div class="field-hint">
-                        <i class="fa-solid fa-circle-info"></i> Overrides automatic market rate lookup for this payroll calculation
+                        <i class="fa-solid fa-circle-info"></i> Manual exchange rate used for this payroll calculation
                       </div>
                     </div>
                   </div>
@@ -712,7 +734,7 @@
                         <div class="payroll-subtitle">Organization-wide statutory rates (internal estimates). Requires finance settings write permission.</div>
                       </div>
                     </div>
-                    <span class="settings-pill pill-emerald"><i class="fa-solid fa-gavel"></i> Law 148</span>
+                    <span class="settings-pill pill-emerald"><i class="fa-solid fa-gavel"></i> Social insurance</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">
@@ -758,7 +780,7 @@
                         <div class="payroll-subtitle">Effective-dated statutory parameters (Super-Admin / Financial-Admin only).</div>
                       </div>
                     </div>
-                    <span class="settings-pill pill-purple"><i class="fa-solid fa-landmark"></i> Tax Authority</span>
+                    <span class="settings-pill pill-purple"><i class="fa-solid fa-landmark"></i> Income tax</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">
@@ -797,7 +819,7 @@
                 </div>
                 <div class="save-bar-actions">
                   <button class="btn btn-ghost" onclick="PayrollApp.showPage('list')">Cancel</button>
-                  <button class="btn btn-primary" onclick="PayrollApp.saveSettings()">
+                  <button class="btn btn-fill" onclick="PayrollApp.saveSettings()">
                     <i class="fa-solid fa-check"></i> Save settings
                   </button>
                 </div>
@@ -806,12 +828,22 @@
           </div>
 
           <!-- Revert to Draft Confirmation Modal (Reason input only) -->
-          <div class="payroll-modal-overlay" id="payrollRevertModal">
-            <div class="payroll-modal-box">
-              <h3 style="margin:0 0 6px 0; font-size:1.15rem; font-weight:800;">Revert this run to Draft?</h3>
-              <p class="payroll-subtitle" style="margin:0 0 10px 0;">This unlocks employee lines for editing again. A reason is required and will be logged in the audit trail.</p>
-              <textarea id="payrollRevertReason" placeholder="Reason for reverting (required)..."></textarea>
-              <div class="actions">
+          <div class="modal-overlay" id="payrollRevertModal" role="dialog" aria-modal="true" aria-labelledby="payrollRevertTitle">
+            <div class="modal modal-v2">
+              <div class="modal-head">
+                <div class="modal-head-text">
+                  <h3 id="payrollRevertTitle">Revert this run to Draft?</h3>
+                  <p>This unlocks employee lines for editing again. A reason is required and will be logged in the audit trail.</p>
+                </div>
+                <button class="modal-close" onclick="PayrollApp.closeRevertModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <div class="form-field">
+                  <label for="payrollRevertReason">Reason for reverting <span class="req">*</span></label>
+                  <textarea id="payrollRevertReason" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-foot">
                 <button class="btn btn-ghost" onclick="PayrollApp.closeRevertModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="PayrollApp.confirmRevert()">Revert to draft</button>
               </div>

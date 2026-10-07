@@ -77,6 +77,7 @@ async function handleLoginSuccess(data){
   } finally {
     try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
     hideAppLoader();
+    if (window.Router) Router.boot();
   }
 }
 
@@ -127,14 +128,7 @@ function initMockAdminData(){
   ];
 
   const adminUser = employees[0];
-  const avatarEl = document.getElementById('adminUserAvatar');
-  if (avatarEl) avatarEl.textContent = getInitials(adminUser.name);
-  const railAvatarEl = document.getElementById('adminRailUserAvatar');
-  if (railAvatarEl) railAvatarEl.textContent = getInitials(adminUser.name);
-  const nameEl = document.getElementById('adminUserName');
-  if (nameEl) nameEl.textContent = adminUser.name;
-  const roleEl = document.getElementById('adminUserRole');
-  if (roleEl) roleEl.textContent = adminUser.role;
+  fillAccountIdentity('admin', { name: adminUser.name, role: adminUser.role });
 
   renderAdminPortal();
   initCharts();
@@ -176,12 +170,7 @@ function initMockEmployeeData(){
     { id: 'CLM-201', category: 'Dental', service: 'Dental Routine Checkup', amount: 180, status: 'Pending', date: getPastDate(0, 7) }
   ];
 
-  const avatarEl = document.getElementById('empUserAvatar');
-  if (avatarEl) avatarEl.textContent = getInitials(currentLoggedInEmployee.name);
-  const nameEl = document.getElementById('empUserName');
-  if (nameEl) nameEl.textContent = currentLoggedInEmployee.name;
-  const roleEl = document.getElementById('empUserRole');
-  if (roleEl) roleEl.textContent = currentLoggedInEmployee.role;
+  fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
 
   renderEmployeePortal();
   initCharts();
@@ -208,6 +197,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'hr' || mockParam === 'hr_admin') {
       SessionInfo.set({ portal: 'admin', roles: ['HR-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_HR });
@@ -219,6 +209,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'finance' || mockParam === 'financial_admin') {
       SessionInfo.set({ portal: 'admin', roles: ['Financial-Admin'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_FINANCE });
@@ -230,6 +221,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'payroll' || mockParam === 'payroll_maker') {
       SessionInfo.set({ portal: 'admin', roles: ['Payroll-Maker'], employee_id: 1, name: 'Sarah Connor', permissions: MOCK_PERMISSIONS_PAYROLL });
@@ -241,6 +233,7 @@ async function bootstrapAppFromSession(){
       initMockAdminData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     } else if (mockParam === 'employee') {
       SessionInfo.set({ portal: 'employee', roles: [], employee_id: 2, name: 'John Doe', permissions: MOCK_PERMISSIONS_EMPLOYEE });
@@ -252,6 +245,7 @@ async function bootstrapAppFromSession(){
       initMockEmployeeData();
       if (window.AdminNav && typeof window.AdminNav.syncModuleVisibility === 'function') window.AdminNav.syncModuleVisibility();
       if (typeof updateFinanceNavVisibility === 'function') updateFinanceNavVisibility();
+      if (window.Router) Router.boot();
       return;
     }
   }
@@ -296,14 +290,23 @@ async function bootstrapAppFromSession(){
   }
   try { initCharts(); } catch(chartErr){ console.error('Chart init failed:', chartErr); }
   hideAppLoader();
+  if (window.Router) await Router.boot();
 }
 
 window.addEventListener('DOMContentLoaded', () => { applySavedSidebarCollapse(); bootstrapAppFromSession(); });
 
+// Quiet inline notice on the login card; shown only after an in-page session expiry.
+function setLoginNotice(visible){
+  const el = document.getElementById('loginNotice');
+  if (el) el.hidden = !visible;
+}
+
 async function logout(){
+  setLoginNotice(false);
   await Api.logout();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
   insuranceCategories = []; insuranceConsumption = [];
+  if (window.AdminNav) AdminNav.resetMemory();
   document.getElementById('admin-app').classList.remove('active');
   document.getElementById('employee-app').classList.remove('active');
   hideAppLoader();
@@ -324,12 +327,13 @@ window.addEventListener('hrflow:session-expired', (e) => {
   e.preventDefault();
   employees = []; requests = []; insuranceClaims = []; empVacationHistory = []; empInsuranceHistory = []; currentLoggedInEmployee = null;
   insuranceCategories = []; insuranceConsumption = [];
+  if (window.AdminNav) AdminNav.resetMemory();
   document.getElementById('admin-app').classList.remove('active');
   document.getElementById('employee-app').classList.remove('active');
   hideAppLoader();
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loginThemeToggle').style.display = 'flex';
   document.getElementById('loginErr').style.display = 'none';
-  toast('Your session expired. Please sign in again.', 'fa-solid fa-triangle-exclamation');
+  setLoginNotice(true);
   initGoogleSignIn('googleSignInButton', handleLoginSuccess, handleLoginError);
 });

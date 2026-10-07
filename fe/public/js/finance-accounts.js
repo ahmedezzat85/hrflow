@@ -110,24 +110,24 @@ function renderFinanceAccounts(items) {
       const bookBal = acc.book_balance !== undefined ? acc.book_balance : acc.current_balance;
       const availBal = acc.available_balance !== undefined ? acc.available_balance : acc.current_balance;
       const recBal = acc.reconciled_balance !== undefined ? acc.reconciled_balance : 0;
-      const feedText = acc.last_import_date ? `Feed: ${acc.last_import_date}` : "No feed";
+      const feedText = acc.last_import_date ? `Last import: ${acc.last_import_date}` : "No imports yet";
       const recText = acc.last_reconciled_date
         ? `Reconciled: ${acc.last_reconciled_date}`
         : (acc.unreconciled_count ? `Unreconciled (${acc.unreconciled_count})` : "Unreconciled");
 
       return `
-    <tr class="${acc.is_active ? "" : "account-inactive"}">
+    <tr class="${acc.is_active ?"" : "account-inactive"}">
       <td data-label="Account">
         <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
-          <i class="fa-solid ${isCash ? "fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
-          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent);text-decoration:none;word-break:break-word;">
+          <i class="fa-solid ${isCash ?"fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
+          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent-text);text-decoration:none;word-break:break-word;">
             ${acc.account_name}
           </a>
         </div>
         ${acc.bank_name && !isCash ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}${acc.country ? ' · ' + acc.country : ''}</div>` : (acc.country ? `<div style="font-size:12px;color:var(--text3);">${acc.country}</div>` : '')}
       </td>
       <td data-label="Type & ID">
-        <span class="badge ${isCash ? "badge-info" : "badge-neutral"}">
+        <span class="badge ${isCash ?"badge-info" : "badge-neutral"}">
           ${typeLabel}
         </span>
         <code style="margin-left:4px;font-size:11.5px;">${FinanceFormat.formatMaskedAccountNumber(acc.account_number, isCash)}</code>
@@ -136,7 +136,7 @@ function renderFinanceAccounts(items) {
       <td data-label="Book Balance" class="cell-money" style="text-align:right;font-weight:700;">
         ${FinanceFormat.renderMoneyHtml(bookBal, acc.currency)}
       </td>
-      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent);">
+      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent-text);">
         ${FinanceFormat.renderMoneyHtml(availBal, acc.currency)}
       </td>
       <td data-label="Reconciled" class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">
@@ -147,21 +147,21 @@ function renderFinanceAccounts(items) {
         <div style="margin-top:2px;"><i class="fa-solid fa-scale-balanced" style="font-size:10px;"></i> ${recText}</div>
       </td>
       <td data-label="Status" style="text-align:center;">
-        <span class="status-led-badge ${acc.is_active ? "status-led-active" : "status-led-inactive"}" title="${acc.is_active ? "Active" : "Inactive"}">
+        <span class="status-led-badge ${acc.is_active ?"status-led-active" : "status-led-inactive"}" title="${acc.is_active ? "Active" : "Inactive"}">
           <span class="led-dot"></span>
           ${acc.is_active ? "Active" : "Inactive"}
         </span>
       </td>
       <td data-label="Actions" class="col-actions">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;justify-content:flex-end;">
-          <button class="btn btn-sm btn-fill btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace" aria-label="Open Account Workspace" style="padding:6px 10px;">
+          <button class="btn btn-sm btn-outline btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace" aria-label="Open Account Workspace" style="padding:6px 10px;">
             <i class="fa-solid fa-folder-open"></i>
           </button>
           <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account" aria-label="Edit Account" style="padding:6px 10px;">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${acc.is_active ? "btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" aria-label="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" style="padding:6px 10px;">
-            <i class="fa-solid ${acc.is_active ? "fa-power-off" : "fa-check"}"></i>
+          <button class="btn btn-sm ${acc.is_active ?"btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" aria-label="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" style="padding:6px 10px;">
+            <i class="fa-solid ${acc.is_active ?"fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
@@ -318,13 +318,13 @@ async function toggleCompanyBankAccountActive(id, currentActive) {
   const action = currentActive ? "deactivate" : "reactivate";
 
   const result = await FinanceCommand.confirmAction({
-    title: `${currentActive ? "Deactivate" : "Reactivate"} Bank Account`,
+    title: `${currentActive ? "Deactivate" : "Reactivate"} company bank account`,
     summary: acc ? `<strong>${acc.account_name}</strong> · ${acc.currency} · Balance: ${FinanceFormat.renderMoneyHtml(acc.current_balance || 0, acc.currency)}` : `Account #${id}`,
     consequence: currentActive
       ? "Deactivating this account will prevent new payments, cheques, or transfers from using it. Existing transaction history remains intact."
       : "Reactivating will restore this account to active payment and ledger selections.",
     actionLabel: currentActive ? "Deactivate Account" : "Reactivate Account",
-    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentActive ? "warning" : "info",
   });
@@ -355,6 +355,7 @@ let _workspaceLedgerDirectionFilter = "all";
 async function openAccountWorkspace(accountId, initialTab = "activity") {
   _activeWorkspaceAccountId = accountId;
   _isWorkspaceAccountNumberRevealed = false;
+  if (window.Router) Router.setParams([accountId], ["a-finance-accounts", "a-finance-banking"]);
 
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
   const paneStatements = document.getElementById("financeSubPaneStatements");
@@ -379,6 +380,7 @@ async function openAccountWorkspace(accountId, initialTab = "activity") {
   try {
     _isWorkspaceAccountNumberRevealed = false;
     const acc = await FinanceApi.getAccount(accountId, { reveal: false });
+    if (_activeWorkspaceAccountId !== accountId) return; // a later workspace was opened meanwhile
     _activeWorkspaceAccount = acc;
     renderWorkspaceHeader(acc);
     populateWorkspaceSettings(acc);
@@ -390,6 +392,7 @@ async function openAccountWorkspace(accountId, initialTab = "activity") {
 }
 
 function closeAccountWorkspace() {
+  if (window.Router) Router.setParams([], ["a-finance-accounts", "a-finance-banking"]);
   _activeWorkspaceAccountId = null;
   _activeWorkspaceAccount = null;
   _isWorkspaceAccountNumberRevealed = false;
@@ -426,7 +429,7 @@ function renderWorkspaceHeader(acc) {
     statusBadge.className = `status-led-badge ${acc.is_active ? "status-led-active" : "status-led-inactive"}`;
   }
   if (instEl) {
-    instEl.innerHTML = `<i class="fa-solid ${acc.account_type === "cash" ? "fa-wallet" : "fa-building-columns"}"></i> ${acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "Bank")}`;
+    instEl.innerHTML = `<i class="fa-solid ${acc.account_type ==="cash" ? "fa-wallet" : "fa-building-columns"}"></i> ${acc.bank_name || (acc.account_type === "cash" ? "Cash Custody" : "Bank")}`;
   }
   if (countryEl) {
     countryEl.innerHTML = `<i class="fa-solid fa-globe"></i> ${acc.country || "Global"}`;
@@ -692,7 +695,7 @@ function renderWorkspaceLedger(items) {
   if (empty) empty.style.display = "none";
 
   const acc = _activeWorkspaceAccount;
-  const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+  const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
 
   tbody.innerHTML = items
     .map((tx) => {
@@ -703,7 +706,7 @@ function renderWorkspaceLedger(items) {
       let fxDisplay = "—";
       if (tx.fx_rate) {
         const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
-        const eqSym = eqCurr === "EGP" ? "E£" : "$";
+        const eqSym = eqCurr === "EGP" ? "EGP " : "$";
         const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
         fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
       }
@@ -720,7 +723,7 @@ function renderWorkspaceLedger(items) {
         <tr>
           <td data-label="Date"><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
           <td data-label="Category"><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td data-label="Payment Type"><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td data-label="Payment Type"><span class="badge badge-pending">${escapeHtml(_paymentTypeLabel(tx))}</span></td>
           <td data-label="Reference"><span style="font-size:12px;">${tx.reference || "—"}</span></td>
           <td data-label="Description"><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
           <td data-label="In (+)" class="cell-money" style="text-align:right;">${inDisplay}</td>
@@ -867,7 +870,7 @@ async function loadFinanceCategories() {
 
 function filterFinanceCategories(filterType, btn) {
   _currentCategoryStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPaneCategories .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSettingsPaneCategories .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinanceCategories();
@@ -876,6 +879,17 @@ function filterFinanceCategories(filterType, btn) {
 function filterFinanceCategoriesByKind(kind) {
   _currentCategoryKindFilter = kind;
   loadFinanceCategories();
+}
+
+// Payment method shown to people: the type's name, never the raw code (OUTBOUND_TRANS).
+function _paymentTypeLabel(tx) {
+  const code = tx.payment_type_code || "";
+  if (!code) return "—";
+  const known = (FinanceState.paymentTypes || []).find((p) => p.code === code);
+  if (known && known.name) return known.name;
+  if (tx.payment_type_name) return tx.payment_type_name;
+  const words = code.replace(/_/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function _categoryKindBadge(kind) {
@@ -912,14 +926,14 @@ function renderFinanceCategories(items) {
           : '<span style="color:var(--text3);font-size:12px;">Standard</span>'
         }
       </td>
-      <td><span class="badge ${c.is_active ? "badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td><span class="badge ${c.is_active ?"badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm" onclick="openEditFinanceCategoryModal(${c.id})" title="Edit Category">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${c.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleFinanceCategoryActive(${c.id}, ${c.is_active})" title="${c.is_active ? "Deactivate Category" : "Reactivate Category"}">
-            <i class="fa-solid ${c.is_active ? "fa-power-off" : "fa-check"}"></i>
+          <button class="btn btn-sm ${c.is_active ?"btn-danger" : "btn-fill"}" onclick="toggleFinanceCategoryActive(${c.id}, ${c.is_active})" title="${c.is_active ? "Deactivate Category" : "Reactivate Category"}">
+            <i class="fa-solid ${c.is_active ?"fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
@@ -999,7 +1013,7 @@ async function toggleFinanceCategoryActive(id, currentActive) {
       ? "Deactivating this category will hide it from new transaction forms. Deactivated categories remain on historical records."
       : "Reactivating will make this category available again for new transactions.",
     actionLabel: currentActive ? "Deactivate Category" : "Reactivate Category",
-    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentActive ? "warning" : "info",
   });
@@ -1068,7 +1082,7 @@ async function loadFinancePaymentTypes() {
 
 function filterFinancePaymentTypes(filterType, btn) {
   _currentPaymentTypeStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
+  const tabs = document.querySelectorAll("#financeSettingsPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
   tabs.forEach((t) => t.classList.remove("active"));
   if (btn) btn.classList.add("active");
   loadFinancePaymentTypes();
@@ -1104,14 +1118,14 @@ function renderFinancePaymentTypes(items) {
           : '<span style="color:var(--text3);font-size:12px;">No</span>'
         }
       </td>
-      <td><span class="badge ${pt.is_active ? "badge-approved" : "badge-rejected"}">${pt.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
+      <td><span class="badge ${pt.is_active ?"badge-approved" : "badge-rejected"}">${pt.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
       <td>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm" onclick="openEditFinancePaymentTypeModal(${pt.id})" title="Edit Payment Type">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-sm ${pt.is_active ? "btn-danger" : "btn-fill"}" onclick="toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})" title="${pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type"}">
-            <i class="fa-solid ${pt.is_active ? "fa-power-off" : "fa-check"}"></i>
+          <button class="btn btn-sm ${pt.is_active ?"btn-danger" : "btn-fill"}" onclick="toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})" title="${pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type"}">
+            <i class="fa-solid ${pt.is_active ?"fa-power-off" : "fa-check"}"></i>
           </button>
         </div>
       </td>
@@ -1193,7 +1207,7 @@ async function toggleFinancePaymentTypeActive(id, currentActive) {
       ? "Deactivating this payment type will hide it from new transaction forms. Historical records are preserved."
       : "Reactivating will restore this payment type to active form dropdowns.",
     actionLabel: currentActive ? "Deactivate Payment Type" : "Reactivate Payment Type",
-    actionClass: currentActive ? "btn btn-danger" : "btn btn-primary",
+    actionClass: currentActive ? "btn btn-danger" : "btn btn-fill",
     requireReason: false,
     severity: currentActive ? "warning" : "info",
   });
@@ -1252,7 +1266,7 @@ async function viewAccountLedger(accountId) {
   metaEl.textContent = `${typeLabel} · ${institution} · ${acc.currency} · ${maskedNum}`;
     }
     if (balEl) {
-      const symbol = acc.currency === "EGP" ? "E£" : "$";
+      const symbol = acc.currency === "EGP" ? "EGP " : "$";
       balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
     }
   }
@@ -1365,7 +1379,7 @@ async function loadAccountTransactions() {
       const breakdownEl = document.getElementById("financeLedgerPettyBreakdown");
 
       const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
-      const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+      const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
 
       if (totalOutEl) totalOutEl.textContent = `${symbol}${Number(summary.total_out || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
       if (countEl) countEl.textContent = summary.transactions ? summary.transactions.length : 0;
@@ -1382,7 +1396,7 @@ async function loadAccountTransactions() {
     if (acc) {
       const balEl = document.getElementById("financeLedgerCurrentBalance");
       if (balEl) {
-        const symbol = acc.currency === "EGP" ? "E£" : "$";
+        const symbol = acc.currency === "EGP" ? "EGP " : "$";
         balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
       }
     }
@@ -1434,7 +1448,7 @@ function renderAccountTransactions(items) {
   if (empty) empty.style.display = "none";
 
   const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
-  const symbol = acc && acc.currency === "EGP" ? "E£" : "$";
+  const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
 
   tbody.innerHTML = items
     .map((tx) => {
@@ -1445,7 +1459,7 @@ function renderAccountTransactions(items) {
       let fxDisplay = "—";
       if (tx.fx_rate) {
         const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
-        const eqSym = eqCurr === "EGP" ? "E£" : "$";
+        const eqSym = eqCurr === "EGP" ? "EGP " : "$";
         const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
         fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
       }
@@ -1462,7 +1476,7 @@ function renderAccountTransactions(items) {
         <tr>
           <td><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
           <td><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td><span class="badge badge-pending">${escapeHtml(_paymentTypeLabel(tx))}</span></td>
           <td><span style="font-size:12px;">${tx.reference || "—"}</span></td>
           <td><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
           <td style="text-align:right;">${inDisplay}</td>
@@ -2115,7 +2129,7 @@ async function openAddFinanceTransactionModal(defaultType = "money_out", isGloba
 
   if (isGlobal) {
     if (titleEl) titleEl.textContent = "Quick-Add Transaction";
-    if (subtitleEl) subtitleEl.textContent = "Global quick-add transaction entry across any active bank account.";
+    if (subtitleEl) subtitleEl.textContent = "Global quick-add transaction entry across any active company bank account.";
     if (acctSelectGroup) acctSelectGroup.style.display = "block";
 
     if (!FinanceState.accounts || !FinanceState.accounts.length) {
@@ -2297,7 +2311,7 @@ async function saveFinanceTransaction(andAddAnother = false) {
   const accountId = document.getElementById("fFinanceTxAccountId").value || _currentLedgerAccountId;
 
   if (!accountId) {
-    toast("Please select a bank account", "fa-solid fa-circle-exclamation");
+    toast("Please select a company bank account", "fa-solid fa-circle-exclamation");
     document.getElementById("fFinanceTxAccountSelect")?.focus();
     return;
   }
@@ -2563,8 +2577,8 @@ function renderFinanceTransfers(items) {
         typeBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:600;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Internal Move</span>`;
       }
 
-      const fromSymbol = t.from_currency === "EGP" ? "E£" : "$";
-      const toSymbol = t.to_currency === "EGP" ? "E£" : "$";
+      const fromSymbol = t.from_currency === "EGP" ? "EGP " : "$";
+      const toSymbol = t.to_currency === "EGP" ? "EGP " : "$";
 
       let legsStatus = "";
       if (t.outflow_transaction_id && t.inflow_transaction_id) {
@@ -2589,7 +2603,7 @@ function renderFinanceTransfers(items) {
           <td data-label="Inflow" class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
           <td data-label="FX Rate" style="text-align:right;">${fxDisplay}</td>
           <td data-label="Reference / Memo">
-            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--primary);">${t.exchange_reference}</strong><br>` : ""}
+            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--accent-text);">${t.exchange_reference}</strong><br>` : ""}
             <span style="font-size:12px; color:var(--text2);">${t.note || "—"}</span>
           </td>
           <td data-label="Legs Status" class="col-actions" style="text-align:center;">${legsStatus}</td>
@@ -2612,7 +2626,7 @@ async function openRecordFinanceTransferModal(presetFromAccountId = null) {
 
   const accountOptions = '<option value="">-- Select Account --</option>' +
     activeAccounts
-      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${a.account_name} (${a.currency} • ${a.currency === "EGP" ? "E£" : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
+      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${a.account_name} (${a.currency} • ${a.currency === "EGP" ? "EGP " : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
       .join("");
 
   if (fromSel) fromSel.innerHTML = accountOptions;
@@ -2974,7 +2988,20 @@ async function matchInTransitTransfer(transferId) {
   const transfer = (FinanceState.transfers || []).find((t) => t.id === transferId);
   if (!transfer) return;
 
-  const targetAccountId = prompt(`Match in-transit transfer #${transferId} (${transfer.from_amount} ${transfer.from_currency}). Enter destination Bank Account ID:`);
+  const candidates = (FinanceState.accounts || []).filter((a) => a.is_active !== false && (!transfer.to_currency || a.currency === transfer.to_currency));
+  const matchResult = await FinanceCommand.confirmAction({
+    title: "Match in-transit transfer",
+    consequence: `Match in-transit transfer #${transferId} (${transfer.from_amount} ${transfer.from_currency}) to a destination company bank account.`,
+    actionLabel: "Match transfer",
+    severity: "warning",
+    actionClass: "btn btn-fill",
+    summary: `<label for="matchTransferTargetAccount" style="display:block;margin-bottom:6px;">Destination company bank account</label>` +
+      `<select id="matchTransferTargetAccount" class="form-control">` +
+      candidates.map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.account_name)} (${escapeHtml(a.currency)})</option>`).join("") +
+      `</select>`,
+  });
+  if (!matchResult.confirmed) return;
+  const targetAccountId = (document.getElementById("matchTransferTargetAccount") || {}).value;
   if (!targetAccountId) return;
 
   try {

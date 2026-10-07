@@ -1,7 +1,7 @@
 # HRFlow UI/UX fix plan and coding-agent handoff
 
-**Status:** Proposed, awaiting owner approval per slice
-**Created:** 2026-10-04
+**Status:** Decisions finalized with the owner on 2026-10-04; each slice still needs the owner's go-ahead before coding
+**Created:** 2026-10-04 · **Updated:** 2026-10-04 (owner decisions recorded, branch confirmed)
 **Source of findings:** `docs/REVIEW.md` (sections 3.4, 3.5, 3.6 and 8A). Finding IDs below (UX-nn, FE-nn, LIVE-nn, SEC-nn) refer to that file.
 **Scope:** frontend presentation and interaction only. Backend, security and payroll-calculation fixes are separate work (REVIEW.md section 6, Phases 0–2).
 
@@ -17,9 +17,9 @@ Target outcome: the scored areas in REVIEW.md section 3.6 for navigation, visual
 
 | Item | Value |
 | :--- | :--- |
-| Working branch | `ui/ux-fixes` (owner creates it) |
-| Required base | A commit that contains the RBAC work (`feature/rbac` @ `98d40dd` or later). The System pages, permission-gated navigation and `session.js` changes live there. If `main` does not yet contain it, branch from `feature/rbac`, not from `main`. |
-| Review baseline | `feature/rbac` @ `98d40dd3768bd99a7f3ed6b34a16f0011ceab244` |
+| Working branch | `fix/review-ui-fixes` (created by the owner) |
+| Base | `main` @ `a967a1a37dc206f59cefcebd26e5b99edd49e007` ("Merge pull request #24 from ahmedezzat85/feature/rbac"). The RBAC work is included, so the System pages and permission-gated navigation are present. |
+| Review baseline | `feature/rbac` @ `98d40dd3768bd99a7f3ed6b34a16f0011ceab244`. The only commit between it and the base is the docs commit `3692766`, so the file and line references in this plan still apply. |
 
 Every slice starts with a branch-intake block: branch, HEAD, merge-base with `main`, slice id, files in scope.
 
@@ -63,7 +63,7 @@ Sizes: S under a day, M 1–3 days, L more.
 
 | Change | Files |
 | :--- | :--- |
-| Show the page title. Remove the `display:none` on `.topbar h2, .topbar .sub`, and place title and subtitle at the left of the topbar on every page in both portals. Exactly one `h1` per view. | `fe/src/styles/layout.css:406-422`; `fe/src/partials/admin/topbar.html`; `fe/src/partials/employee/topbar.html`; `fe/public/js/ui.js` (`showSection` titles map) |
+| **Subtitle part superseded by D-014 (title only; the title still shows on every page).** Show the page title. Remove the `display:none` on `.topbar h2, .topbar .sub`, and place title and subtitle at the left of the topbar on every page in both portals. Exactly one `h1` per view. | `fe/src/styles/layout.css:406-422`; `fe/src/partials/admin/topbar.html`; `fe/src/partials/employee/topbar.html`; `fe/public/js/ui.js` (`showSection` titles map) |
 | Topbar no longer overlaps content: give it a solid surface background and bottom border (or make it non-sticky). | `fe/src/styles/layout.css` |
 | Define the classes that are used but have no CSS: `btn-outline`, `hide-mobile`, and the `badge badge-*` family (`approved`, `pending`, `rejected`, `info`, `grey`, `warning`, `danger`, `success`, `neutral`, `primary`, `indigo`, `secondary`) plus `status-badge status-*`, all mapped to tokens. | `fe/src/styles/components.css`; reference `fe/public/js/finance-core.js:200-274` for the class names in use |
 | Stop payroll CSS leaking: prefix every unscoped generic selector in the payroll stylesheet (`.btn`, `.btn:hover`, `.btn.sm`, `.btn-fill`, `.footer`, `.tag`, `.toggle`, `.muted`, `.external`, `.internal`, `.expand`, `.plus`, `.si`, `.tax`, and the rest) with `#a-finance-payroll`. Delete payroll's `.btn*` overrides so payroll uses the shared button. | `fe/src/styles/modules/payroll.css` (starts at `:434`) |
@@ -119,7 +119,8 @@ Sizes: S under a day, M 1–3 days, L more.
 | Replace internal wording: "Missing Bank Details (D-006)" → "Missing bank details"; "Warning (non-blocking D-006): … MISSING_BANK_DETAILS" → "Warning: bank details missing for N employee(s). Payment can still be recorded."; "INTERNAL RAIL" / "EXTERNAL RAIL" → "Internal salaries" / "External salaries". | `finance-payroll.js`; `payroll-table.js`; `finance-payroll.html` |
 | Reword copy that claims capabilities that do not exist: "Confirm & Disburse Payroll" → "Confirm and record as paid"; "Funds released" → "Payroll recorded as paid"; "Clears domestic EGP net pay directly…" and "Overrides automatic market rate lookup" → neutral text about a manual rate; "Auto-generate Vendor Bill… on each renewal" and "Schedule Report Delivery" hidden or labelled "not yet available". | `finance-payroll.html:648,697`; `finance-payroll.js:1436,1476`; `finance-subscriptions.html:137`; `finance-report-modals.html:83` |
 | Remove the "Visualizations in development" panel from Finance Overview. | `finance-dashboard.html` |
-| Notification bell: remove from both topbars (wire-up is a later feature). | `admin/topbar.html`; `employee/topbar.html` |
+| **Superseded by D-014 (bell is now visible with a placeholder popover).** Notification bell: remove from both topbars (owner decision; notifications are a later feature). | `admin/topbar.html`; `employee/topbar.html` |
+| "My Payslips" (owner decision): keep the menu item and replace the broken page with a "coming soon" state: a short message that payslips are not available yet, no table, no Refresh button. Remove the call to the undefined `loadMyPayslips()` and the `refreshMyPayslips()` handler so opening the page raises no error. | `fe/src/partials/employee/sections/payslips.html`; `fe/public/js/finance-nav.js:157-158` |
 | "Pending Requests Queue": default filter is Pending, or rename the heading to "Requests". Users role filter options come from the roles API. Add Employee internal salary starts empty. | `requests.html`; `requests.js`; `system-users.html:24-27`; `system-access.js`; `employee-modal.html` |
 
 **Acceptance criteria**
@@ -130,6 +131,7 @@ Sizes: S under a day, M 1–3 days, L more.
 4. Opening step 2 of a finalized run shows the lock banner and no active edit or submit controls.
 5. None of these strings appear in the UI: "D-006", "MISSING_BANK_DETAILS", "RAIL", "Funds released", "market rate lookup", "in development".
 6. Only one money-formatting function is defined; the others call it.
+7. Opening "My Payslips" shows the "coming soon" state and logs no console error. Neither topbar contains a bell.
 
 **Manual check on the real backend is required** for criteria 3 and 4.
 **Note:** this slice fixes how payroll figures are displayed. The underlying calculation defects (REVIEW.md FIN-01, FIN-02, FIN-09) remain until the backend payroll slices.
@@ -225,7 +227,7 @@ Sizes: S under a day, M 1–3 days, L more.
 | :--- | :--- |
 | "Export CSV" button on screens 4 and 5 calling `GET /api/finance/payroll/runs/{id}/export` through the authenticated download helper. Add the API client method. Delete the unused `payroll-cycle-bar.html` and the `exportToExcel`/`exportToPDF` code that targets it. | `finance-payroll.html`; `finance-payroll.js`; `fe/api/finance/payroll-api.js`; `fe/src/partials/admin/sections/payroll-cycle-bar.html`; `export.js:242,345` |
 | Confirmation before recording payment: dialog shows totals, number of recipients and number with missing bank details. The action no longer silently submits, approves and finalizes; if the run is not finalized, the button is disabled with an explanation. | `finance-payroll.js:1441-1476` |
-| "Submit & Approve" becomes two visible steps. Self-approval is sent only when the user ticks an explicit "I am approving my own submission" box, shown only to users holding both permissions. | `finance-payroll.js` (calls to `approvePayrollRun(id, true)`); `finance-payroll.html:204` |
+| "Submit & Approve" becomes two separate actions, "Submit for approval" and "Approve" (owner decision). Self-approval is sent only when the user ticks an explicit "I am approving my own submission" box, shown only to users holding both `finance.payroll.prepare` and `finance.payroll.approve`; without the tick the Approve button stays disabled for the submitter. | `finance-payroll.js` (calls to `approvePayrollRun(id, true)`); `finance-payroll.html:204` |
 | Bonus and commission entry uses inline validation, not `alert()`. `payrollRevertModal` goes through `ModalController`. | `finance-payroll.js:919`; `finance-payroll.html` |
 | Phone layout: compact stepper ("Step 2 of 6" with a menu); runs list and the review and preview tables use card rows below 768px. | `payroll.css`; `payroll-table.js`; `finance-payroll.js` |
 
@@ -282,7 +284,8 @@ U4 and U3 come early because they are small and remove the most visible trust pr
 - Backend security, payroll calculation and ledger fixes (Phases 0–2).
 - Removing mock mode from production builds and per-environment `config.js` (FE-01, FE-02).
 - Build restructuring or any framework change (section 5 of REVIEW.md).
-- Employee payslips page (roadmap Slice 4; FE-06). Until it is built, hide the "My Payslips" nav item in U3 if the owner agrees.
+- Building the employee payslips page (roadmap Slice 4; FE-06). U3 only replaces the broken page with a "coming soon" state.
+- Notifications (the bell is removed in U3).
 - Role-aware bootstrap for Finance-only and Payroll-only users (FE-05).
 - Escaping every remaining `innerHTML` call site not touched by these slices (SEC-02); track the remaining count at the end of U5.
 

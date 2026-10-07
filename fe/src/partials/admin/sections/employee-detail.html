@@ -3,7 +3,7 @@
             <i class="fa-solid fa-arrow-left"></i> Back to Employees
           </button>
           <div class="card emp-summary-card" style="margin-bottom:20px">
-            <div class="profile-head" id="detailProfileHead"></div>
+            <div id="detailProfileHead"></div>
             <div id="detailInfoGrid"></div>
           </div>
           <div class="employee-detail-workspace">
@@ -119,7 +119,7 @@
 
               <div class="card employee-bank-card" id="bankAccountCard">
                 <div class="card-head">
-                  <h3><i class="fa-solid fa-building-columns"></i> Bank Account</h3>
+                  <h3><i class="fa-solid fa-building-columns"></i> Employee bank account</h3>
                   <button class="action-btn" id="bankAccountActionBtn" onclick="openBankAccountModal(event)" title="Edit Bank Details">
                     <i class="fa-solid fa-pen"></i>
                   </button>
@@ -128,12 +128,22 @@
                   <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
+                  <button type="button" class="btn btn-outline btn-sm" id="bankAccountStatusActionBtn" hidden></button>
                 </div>
                 <div class="card-body" id="bankAccountDetailsBody">
                   <div class="iban-row"><span class="k">Bank</span><span class="v" id="bankDetailName">—</span></div>
                   <div class="iban-row"><span class="k">IBAN</span><span class="v" id="bankDetailIban">—</span></div>
                   <div class="iban-row"><span class="k">SWIFT</span><span class="v" id="bankDetailSwift">—</span></div>
                   <p class="helper">Masked by default. Click edit to reveal or update.</p>
+                </div>
+              </div>
+
+              <div class="card employee-bank-card payroll-payments-card" id="payrollPaymentsCard">
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-money-check-dollar"></i> Payroll and payments</h3>
+                </div>
+                <div class="card-body" id="payrollPaymentsBody">
+                  <p class="helper">Loading…</p>
                 </div>
               </div>
 
@@ -148,6 +158,7 @@
                   <span class="badge-pill" id="socialInsurancePill" style="background:var(--surface2);color:var(--text2);">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
+                  <button type="button" class="btn btn-outline btn-sm" id="socialInsuranceStatusActionBtn" hidden></button>
                 </div>
                 <div class="card-body" id="socialInsuranceDetailsBody">
                   <div class="iban-row"><span class="k">Coverage</span><span class="v" id="socialInsCoverage">—</span></div>

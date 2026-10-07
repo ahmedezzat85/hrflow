@@ -192,9 +192,9 @@ const PayrollTableController = {
               <th style="padding:12px 14px; text-align:left; min-width:200px;">Employee</th>
               <th style="padding:12px 14px; text-align:right; min-width:110px;">Base Salary</th>
               <th style="padding:12px 14px; text-align:right; min-width:90px;">Overtime</th>
-              <th style="padding:12px 14px; text-align:right; min-width:100px; color:var(--primary, #2563EB);">Bonus ✎</th>
-              <th style="padding:12px 14px; text-align:right; min-width:110px; color:var(--primary, #2563EB);">Sales Comm. ✎</th>
-              <th style="padding:12px 14px; text-align:right; min-width:110px; color:var(--primary, #2563EB);">Supp. Comm. ✎</th>
+              <th style="padding:12px 14px; text-align:right; min-width:100px; color:var(--accent-text);">Bonus ✎</th>
+              <th style="padding:12px 14px; text-align:right; min-width:110px; color:var(--accent-text);">Sales Comm. ✎</th>
+              <th style="padding:12px 14px; text-align:right; min-width:110px; color:var(--accent-text);">Supp. Comm. ✎</th>
               <th style="padding:12px 14px; text-align:center; min-width:90px;">Source</th>
               <th style="padding:12px 14px; text-align:right; min-width:100px; color:var(--danger, #EF4444);">Deductions</th>
               <th style="padding:12px 14px; text-align:right; min-width:120px; font-weight:700;">Net Pay</th>
@@ -223,7 +223,7 @@ const PayrollTableController = {
         html += `
           <tr class="payroll-group-header-row" style="background:var(--bg-secondary, #F1F5F9); border-top:2px solid var(--border-color, #CBD5E1); border-bottom:1px solid var(--border-color, #E2E8F0);">
             <td colspan="9" style="padding:10px 14px; font-weight:700; color:var(--text-primary, #0F172A); font-size:0.85rem;">
-              <i class="fa-solid fa-layer-group" style="color:var(--primary, #2563EB); margin-right:8px;"></i>
+              <i class="fa-solid fa-layer-group" style="color:var(--accent-text); margin-right:8px;"></i>
               Account Group: <strong>${groupName}</strong>
               <span class="badge" style="margin-left:8px; background:var(--surface, #fff); border:1px solid var(--border-color, #CBD5E1); color:var(--text-muted, #475569); font-size:0.75rem; font-weight:600;">
                 ${rows.length} ${rows.length === 1 ? 'employee' : 'employees'}
@@ -252,7 +252,7 @@ const PayrollTableController = {
           html += `
             <tr class="${rowClass}" id="payrollRow_${r.id}" style="${rowStyle}">
               <td style="padding:10px 14px;">
-                <div style="font-weight:600; color:var(--text-primary);">${r.name}</div>
+                <div style="font-weight:600; color:var(--text-primary);"><a class="payroll-emp-link" href="#/hr/employee-detail/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}">${escapeHtml(r.name)}</a></div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">
                   <span>${r.id}</span> · <span>${r.department}</span>
                 </div>
@@ -339,7 +339,7 @@ const PayrollTableController = {
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums;" class="gt-supp">${this.formatMoney(groupTotals.supportComm)}</td>
             <td style="padding:10px 14px; text-align:center; color:var(--text-muted); font-size:0.75rem;">—</td>
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger, #EF4444);" class="gt-ded">-${this.formatMoney(groupTotals.deductions)}</td>
-            <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--primary, #2563EB); font-size:0.92rem;" class="gt-net">${this.formatMoney(groupTotals.netPay)}</td>
+            <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--accent-text); font-size:0.92rem;" class="gt-net">${this.formatMoney(groupTotals.netPay)}</td>
           </tr>
         `;
       });
@@ -348,7 +348,7 @@ const PayrollTableController = {
       html += `
         <tr class="payroll-grand-totals-row" style="background:var(--surface, #ffffff); border-top:3px double var(--border-color, #94A3B8); font-weight:800; font-size:0.9rem;">
           <td style="padding:12px 14px; text-align:left; color:var(--text-primary); text-transform:uppercase;">
-            <i class="fa-solid fa-coins" style="color:var(--primary, #2563EB); margin-right:6px;"></i> GRAND TOTAL
+            <i class="fa-solid fa-coins" style="color:var(--accent-text); margin-right:6px;"></i> GRAND TOTAL
           </td>
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums;" id="grandTotalBase">${this.formatMoney(grandTotals.baseSalary)}</td>
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums;" id="grandTotalOT">${this.formatMoney(grandTotals.overtime)}</td>
@@ -357,7 +357,7 @@ const PayrollTableController = {
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums;" id="grandTotalSupp">${this.formatMoney(grandTotals.supportComm)}</td>
           <td style="padding:12px 14px; text-align:center; font-size:0.75rem; color:var(--text-muted);">${grandTotals.count} staff</td>
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger, #EF4444);" id="grandTotalDed">-${this.formatMoney(grandTotals.deductions)}</td>
-          <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--primary, #2563EB); font-size:1.02rem;" id="grandTotalNet">${this.formatMoney(grandTotals.netPay)}</td>
+          <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--accent-text); font-size:1.02rem;" id="grandTotalNet">${this.formatMoney(grandTotals.netPay)}</td>
         </tr>
       `;
     }

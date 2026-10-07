@@ -16,7 +16,7 @@ function computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal){
 function renderSalaryPage(filter=''){
   const f = filter.toLowerCase();
   const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
-  document.getElementById('statPayroll').textContent = fmtMoney(totalPayroll);
+  document.getElementById('statPayroll').textContent = fmtUSD(totalPayroll);
   const allRaises = employees.flatMap(e=>(e.salaryHistory || []).map(h=>({...h, emp:e.name, empId:e.id})));
   const thisYearRaises = allRaises.filter(h=>h.date && h.date.startsWith('2026'));
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
@@ -38,7 +38,7 @@ function renderSalaryPage(filter=''){
     const intCash = Number(e.internalSalaryUsd || 0);
     const total = ext + intCash;
     return `<tr>
-      <td class="tname"><div class="avatar">${initials(e.name)}</div>${e.name}</td>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div>${escapeHtml(e.name)}</td>
       <td>${e.dept || e.department || '—'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -57,7 +57,7 @@ function renderSalaryPage(filter=''){
       <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
-          ${canWriteSalary ? `<button class="btn btn-sm btn-fill btn-raise-action" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>` : ''}
+          ${canWriteSalary ? `<button class="btn btn-sm btn-outline btn-raise-action" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>` : ''}
           ${canWriteSalary ? `<button class="btn btn-sm btn-comp-plan" onclick="openCompPlanModal('${e.id}')"><i class="fa-solid fa-file-contract"></i> Plan</button>` : ''}
         </div>
       </td>
@@ -74,13 +74,13 @@ function renderSalaryPage(filter=''){
     const newInternal = Number(h.newInternal || 0);
     const newExternal = Number(h.newExternal || 0);
     const d = computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal);
-    return `<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtUSD(newInternal)}</td><td>${fmtUSD(newExternal)}</td><td>${fmtUSD(newInternal+newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${h.reason}</td></tr>`;
+    return `<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtUSD(newInternal)}</td><td>${fmtUSD(newExternal)}</td><td>${fmtUSD(newInternal+newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${escapeHtml(h.reason)}</td></tr>`;
   }).join('') || renderEmptyTableRow(9, 'No raises recorded yet.', 'fa-solid fa-sack-dollar');
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
 function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
-  sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name} — ${e.job_role || e.role}</option>`).join('');
+  sel.innerHTML = employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
   document.getElementById('rNewInternal').value = '';
   document.getElementById('rNewExternal').value = '';
@@ -124,7 +124,12 @@ async function applyRaise(evt){
   const reason = document.getElementById('rReason').value;
   const internalVal = document.getElementById('rNewInternal').value;
   const externalVal = document.getElementById('rNewExternal').value;
-  if(!emp || !date || internalVal === '' || externalVal === ''){ toast('Please complete all fields.','fa-solid fa-triangle-exclamation'); return; }
+  if (!FinanceForm.validateRequiredFields('raiseModal', [
+    { id: 'rEmpSelect', message: 'Select an employee.' },
+    { id: 'rNewInternal', message: 'Enter the new internal salary (0 if none).', check: (v) => v !== '' && Number(v) >= 0 },
+    { id: 'rNewExternal', message: 'Enter the new external salary (0 if none).', check: (v) => v !== '' && Number(v) >= 0 },
+    { id: 'rDate', message: 'Select an effective date.' },
+  ])) return;
 
   const payload = {
     employee_id: empId,
@@ -264,14 +269,10 @@ async function saveCompPlanComponent(evt) {
   const notes = document.getElementById('compPlanNotes').value;
   const salaryBasis = type === 'internal_usd_cash' ? (document.getElementById('compPlanSalaryBasis')?.value || 'NET') : 'NET';
 
-  if (!amountVal || Number(amountVal) <= 0) {
-    toast('Please specify a valid amount greater than 0.', 'fa-solid fa-triangle-exclamation');
-    return;
-  }
-  if (!startDate) {
-    toast('Please specify an effective start date.', 'fa-solid fa-triangle-exclamation');
-    return;
-  }
+  if (!FinanceForm.validateRequiredFields('compensationPlanModal', [
+    { id: 'compPlanAmount', message: 'Enter an amount greater than 0.', check: (v) => Number(v) > 0 },
+    { id: 'compPlanStartDate', message: 'Select an effective start date.' },
+  ])) return;
 
   setButtonLoading(btn, true, 'Saving…');
   try {
@@ -302,4 +303,4 @@ async function saveCompPlanComponent(evt) {
   } finally {
     setButtonLoading(btn, false);
   }
-}
+}

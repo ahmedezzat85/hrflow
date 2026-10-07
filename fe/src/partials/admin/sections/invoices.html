@@ -3,7 +3,7 @@
           <div class="invoice-toolbar-row">
             <div class="invoice-period-picker-wrap">
               <button type="button" class="btn-period-trigger" id="invPeriodBtn" onclick="openInvoicePeriodModal()">
-                <i class="fa-regular fa-calendar" style="color:var(--accent);"></i>
+                <i class="fa-regular fa-calendar" style="color:var(--accent-text);"></i>
                 <span id="invPeriodBtnLabel">—</span>
                 <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--text2);margin-left:4px;"></i>
               </button>
@@ -16,12 +16,12 @@
                 <i class="fa-solid fa-magnifying-glass"></i> Preview Eligible Employees
               </button>
               <button type="button" class="btn btn-fill" onclick="generateBulkInvoices(event)">
-                <i class="fa-solid fa-file-invoice-dollar"></i> Generate Invoices
+                <i class="fa-solid fa-file-invoice-dollar"></i> Generate salary payment docs
               </button>
             </div>
           </div>
           <div class="invoice-toolbar-caption">
-            Generate external-salary consultant fee invoices for eligible employees based on approved rates.
+            Generate external-salary payment docs for eligible employees based on approved rates.
           </div>
           <div class="card" style="margin-bottom:20px;">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -52,8 +52,8 @@
           <div class="card" id="invoiceHistoryCard">
             <div class="card-head">
               <div style="display:flex;align-items:center;gap:10px;">
-                <h3>Invoice History</h3>
-                <span id="invoiceHistoryTotalBadge" class="badge-pill pill-info" style="display:none;">0 Invoices</span>
+                <h3>Salary payment doc history</h3>
+                <span id="invoiceHistoryTotalBadge" class="badge-pill pill-info" style="display:none;">0 docs</span>
               </div>
               <div class="invoice-history-toolbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <div class="sort-toolbar-group" style="display:flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 5px;">
@@ -62,7 +62,7 @@
                     Name <i id="sortNameIcon" class="fa-solid fa-arrow-up-a-z"></i>
                   </button>
                   <button type="button" class="btn-sort-pill" id="sortByNumberBtn" onclick="toggleInvoiceSort('number')">
-                    Invoice # <i id="sortNumberIcon" class="fa-solid fa-sort"></i>
+                    Doc # <i id="sortNumberIcon" class="fa-solid fa-sort"></i>
                   </button>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline" id="toggleAllMonthsBtn" onclick="toggleAllInvoiceMonths()" style="font-size:12px;padding:5px 10px;">
@@ -71,7 +71,7 @@
               </div>
             </div>
             <div id="invoiceHistoryContainer" class="invoice-history-container">
-              <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>Loading invoice history...</p></div>
+              <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>Loading salary payment doc history...</p></div>
             </div>
           </div>
         </section>

@@ -7,11 +7,29 @@
   }
 
   .topbar {
-    padding: 12px 14px 6px;
+    padding: 4px 16px;
+    flex-wrap: nowrap;
+  }
+
+  .topbar-lead {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .topbar h1 {
+    font-size: 16px;
   }
 
   .top-actions {
+    flex-shrink: 0;
+    margin-left: auto;
     gap: 8px;
+  }
+
+  .topbar .icon-btn,
+  .topbar .hamburger {
+    width: 44px;
+    height: 44px;
   }
 
   .icon-btn,
@@ -348,26 +366,14 @@
     padding: 16px 14px;
   }
 
-  /* Login screen */
-  .login-visual {
-    display: none;
+  /* Login screen: the two columns stack (see login.css) */
+  .login-scope {
+    flex-direction: column;
+    gap: 4px;
   }
 
-  .login-form-wrap {
-    padding: 36px 20px;
-  }
-
-  .login-card {
-    grid-template-columns: 1fr;
-    max-width: 440px;
-    margin: 0 14px;
-  }
-
-  #login-screen {
-    min-height: 100vh;
-    min-height: 100dvh;
-    align-items: flex-start;
-    padding-top: 40px;
+  .login-scope-name {
+    flex: none;
   }
 
   .toast-wrap {
@@ -505,3 +511,44 @@
   }
 }
 
+
+/* Touch targets: at least 44px on phones (U9) */
+@media (max-width: 768px) {
+  .btn,
+  .btn-sm,
+  .icon-btn,
+  .icon-action,
+  .action-btn,
+  .filter-tab,
+  .filter-chip-remove,
+  .pagination-btn,
+  .hamburger,
+  .modal-close,
+  .btn-filter-pill,
+  .btn-sort-pill,
+  .btn-period-trigger,
+  .employee-quick-action,
+  .btn-icon-xs,
+  .nav-item,
+  .rail-btn,
+  .toast-close,
+  .kpi-drilldown-link {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]) {
+    min-height: 44px;
+  }
+
+  .search-box input {
+    min-height: 44px;
+  }
+
+  .kpi-drilldown-link {
+    display: inline-flex;
+    align-items: center;
+  }
+}

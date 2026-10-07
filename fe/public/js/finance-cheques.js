@@ -86,7 +86,7 @@ function renderFinanceCheques(items) {
       if (c.status === "draft") {
         actionsHtml = `
           <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm btn-primary" onclick="promoteDraftChequeAction(${c.id})" title="Issue Cheque"><i class="fa-solid fa-stamp"></i> Issue</button>
+            <button class="btn btn-sm btn-outline" onclick="promoteDraftChequeAction(${c.id})" title="Issue Cheque"><i class="fa-solid fa-stamp"></i> Issue</button>
             <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Draft"><i class="fa-solid fa-ban"></i></button>
           </div>
         `;
@@ -366,8 +366,8 @@ async function openIssueChequeModal() {
   const bankSel = document.getElementById("chequeAccountId");
   if (bankSel) {
     const banks = (FinanceState.accounts || []).filter((a) => (a.account_type === "bank" || !a.account_type || a.account_type !== "cash") && a.is_active);
-    bankSel.innerHTML = '<option value="">— Select bank account —</option>' +
-      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'E£' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
+    bankSel.innerHTML = '<option value="">— Select company bank account —</option>' +
+      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
   }
 
   const cashSel = document.getElementById("chequeDestinationCashAccountId");
@@ -450,7 +450,7 @@ async function saveIssueCheque(isDraft = false) {
   const notes = document.getElementById("chequeNotes").value.trim();
 
   const rules = [
-    { id: "chequeAccountId", label: "Source Bank Account" },
+    { id: "chequeAccountId", label: "Source company bank account" },
     { id: "chequeNumber", label: "Cheque Number" },
     { id: "chequeIssueDate", label: "Issue Date" },
     { id: "chequeAmount", label: "Cheque Amount", check: (v) => parseFloat(v) > 0, message: "Please enter a valid cheque amount greater than 0." },
@@ -511,7 +511,7 @@ async function openWithdrawCashModal() {
   if (bankSel) {
     const banks = (FinanceState.accounts || []).filter((a) => (a.account_type === "bank" || !a.account_type || a.account_type !== "cash") && a.is_active);
     bankSel.innerHTML = '<option value="">— Select bank —</option>' +
-      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'E£' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
+      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
   }
 
   const cashSel = document.getElementById("withdrawDestCashAccountId");
@@ -554,7 +554,7 @@ async function saveWithdrawCash() {
   const description = document.getElementById("withdrawDescription").value.trim();
 
   const isValid = FinanceForm.validateRequiredFields("financeWithdrawCashModal", [
-    { id: "withdrawSourceAccountId", label: "Source Bank Account" },
+    { id: "withdrawSourceAccountId", label: "Source company bank account" },
     { id: "withdrawDestCashAccountId", label: "Destination Cash Drawer" },
     { id: "withdrawAmount", label: "Withdrawal Amount", check: (v) => parseFloat(v) > 0, message: "Please enter a valid withdrawal amount greater than 0." },
     { id: "withdrawDate", label: "Withdrawal Date" },

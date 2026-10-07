@@ -14,13 +14,12 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
     const searchBtn = page.locator('#adminSearchBtn');
     await expect(searchBtn).toHaveAttribute('aria-label', 'Search across workspace (Ctrl+K)');
 
-    const notifBtn = page.locator('#adminNotificationBtn');
-    await expect(notifBtn).toHaveAttribute('aria-label', 'Notifications');
-    // Fake red dot removed
-    await expect(notifBtn.locator('.dot')).toHaveCount(0);
+    // Legacy bell id stays absent; the bell is #adminNotifBtn (placeholder popover)
+    await expect(page.locator('#adminNotificationBtn')).toHaveCount(0);
 
-    const themeToggle = page.locator('#adminThemeToggle');
-    await expect(themeToggle).toHaveAttribute('aria-label', 'Toggle light/dark theme');
+    // Theme control moved into the account menu (top-right avatar)
+    await expect(page.locator('#adminThemeToggle')).toHaveCount(0);
+    await expect(page.locator('#adminAccountBtn')).toHaveAttribute('aria-label', 'Account menu');
   });
 
   test('AC 2: Employee topbar buttons have valid aria-labels and clean notification bell', async ({ page }) => {
@@ -33,12 +32,11 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
     const searchBtn = page.locator('#empSearchBtn');
     await expect(searchBtn).toHaveAttribute('aria-label', 'Search across workspace (Ctrl+K)');
 
-    const notifBtn = page.locator('#empNotificationBtn');
-    await expect(notifBtn).toHaveAttribute('aria-label', 'Notifications');
-    await expect(notifBtn.locator('.dot')).toHaveCount(0);
+    await expect(page.locator('#empNotificationBtn')).toHaveCount(0);
 
-    const themeToggle = page.locator('#empThemeToggle');
-    await expect(themeToggle).toHaveAttribute('aria-label', 'Toggle light/dark theme');
+    // Theme control moved into the account menu (top-right avatar)
+    await expect(page.locator('#empThemeToggle')).toHaveCount(0);
+    await expect(page.locator('#empAccountBtn')).toHaveAttribute('aria-label', 'Account menu');
   });
 
   test('AC 3: Attention-item route for Transfers opens Banking page on Transfers tab', async ({ page }) => {
