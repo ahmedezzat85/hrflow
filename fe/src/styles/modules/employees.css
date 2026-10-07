@@ -289,3 +289,25 @@
   }
 }
 
+
+/* Compensation card on the employee profile (H1) */
+.employee-compensation-card{margin-bottom:20px}
+.employee-compensation-card[hidden],
+.employee-compensation-actions[hidden],
+#rEmpSelect[hidden],
+#rEmpName[hidden]{display:none}
+.employee-compensation-actions{display:flex;gap:8px;flex-wrap:wrap}
+.compensation-metrics{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px;
+}
+.compensation-metric{background:var(--surface2);border-radius:var(--radius);padding:12px 14px;min-width:0}
+.compensation-k{
+  font-size:var(--fs-xs);font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:4px;
+}
+.compensation-v{font-size:var(--fs-lg);font-weight:700;font-family:var(--font-head);font-variant-numeric:tabular-nums;color:var(--text)}
+.compensation-date{font-size:var(--fs-base)}
+.compensation-internal{color:var(--accent-text)}
+.compensation-external{color:var(--success)}
+.compensation-sub{font-size:var(--fs-sm);font-weight:500;font-family:var(--font-body, inherit);color:var(--text2)}
+.compensation-history-label{font-size:var(--fs-sm);font-weight:600;color:var(--text2);margin-bottom:6px}

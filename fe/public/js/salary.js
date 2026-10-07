@@ -82,6 +82,14 @@ function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
   sel.innerHTML = employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
+  // Opened for one employee (profile): show the name read-only instead of a dropdown
+  const nameField = document.getElementById('rEmpName');
+  const fixedEmp = empId ? employees.find(e=>String(e.id)===String(empId)) : null;
+  sel.hidden = !!fixedEmp;
+  if (nameField) {
+    nameField.hidden = !fixedEmp;
+    nameField.value = fixedEmp ? `${fixedEmp.name} — ${fixedEmp.job_role || fixedEmp.role || ''}` : '';
+  }
   document.getElementById('rNewInternal').value = '';
   document.getElementById('rNewExternal').value = '';
   document.getElementById('rDate').value = new Date().toISOString().slice(0, 10);
@@ -90,15 +98,13 @@ function openRaiseModal(empId=null){
   document.getElementById('raiseModal').classList.add('active');
 }
 function onRaiseEmployeeChange(){
-  const empId = Number(document.getElementById('rEmpSelect').value);
-  const emp = employees.find(e=>e.id===empId);
+  const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
   document.getElementById('rvCurrentInternal').value = emp ? fmtUSD(emp.internalSalaryUsd || 0) : '—';
   document.getElementById('rvCurrentExternal').value = emp ? fmtUSD(emp.externalSalaryUsd || 0) : '—';
   updateRaisePreview();
 }
 function updateRaisePreview(){
-  const empId = Number(document.getElementById('rEmpSelect').value);
-  const emp = employees.find(e=>e.id===empId);
+  const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
   const preview = document.getElementById('raisePreview');
   const internalVal = document.getElementById('rNewInternal').value;
   const externalVal = document.getElementById('rNewExternal').value;
@@ -119,7 +125,7 @@ function updateRaisePreview(){
 async function applyRaise(evt){
   const btn = (evt && evt.currentTarget) || document.getElementById('raiseModalSaveBtn') || document.querySelector('#raiseModal .btn-fill');
   const empId = Number(document.getElementById('rEmpSelect').value);
-  const emp = employees.find(e=>e.id===empId);
+  const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
   const date = document.getElementById('rDate').value;
   const reason = document.getElementById('rReason').value;
   const internalVal = document.getElementById('rNewInternal').value;
@@ -146,6 +152,7 @@ async function applyRaise(evt){
     const pctStr = (result.total_delta_pct>=0?'+':'') + result.total_delta_pct.toFixed(1) + '%';
     toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtUSD(result.new_internal_salary_usd + result.new_external_salary_usd)}.`);
     await loadAdminData();
+    if (typeof refreshProfileCompensation === 'function') refreshProfileCompensation();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   finally { setButtonLoading(btn, false); }
 }
@@ -298,6 +305,7 @@ async function saveCompPlanComponent(evt) {
 
     await reloadCompPlanData(currentCompPlanEmpId);
     renderSalaryPage(document.getElementById('salarySearch')?.value || '');
+    if (typeof refreshProfileCompensation === 'function') refreshProfileCompensation();
   } catch (err) {
     toast(err.message || 'Failed to update component', 'fa-solid fa-triangle-exclamation');
   } finally {

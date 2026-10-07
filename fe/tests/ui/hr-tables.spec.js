@@ -83,7 +83,7 @@ test.describe('U7 HR tables and cross-links', () => {
     await ready(page);
     await page.evaluate(() => viewProfile(1));
     await expect(page.locator('#payrollPaymentsCard')).toBeVisible();
-    await expect(page.locator('#payrollPaymentsBody')).toContainText('Compensation plan');
+    await expect(page.locator('#payrollPaymentsBody')).toContainText('Monthly total');
   });
 
   test('an admin can open the receipt of a claim that has one', async ({ page }) => {
