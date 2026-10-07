@@ -3,6 +3,10 @@
 
 
 /* finance-dashboard */
+#a-finance-statutory .stat-summary-grid {
+  margin-bottom: 20px;
+}
+
 #a-finance-dashboard .fd-u1 {
   margin-bottom: 16px;
 }

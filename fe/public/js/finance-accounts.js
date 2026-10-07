@@ -110,7 +110,7 @@ function renderFinanceAccounts(items) {
       const bookBal = acc.book_balance !== undefined ? acc.book_balance : acc.current_balance;
       const availBal = acc.available_balance !== undefined ? acc.available_balance : acc.current_balance;
       const recBal = acc.reconciled_balance !== undefined ? acc.reconciled_balance : 0;
-      const feedText = acc.last_import_date ? `Feed: ${acc.last_import_date}` : "No feed";
+      const feedText = acc.last_import_date ? `Last import: ${acc.last_import_date}` : "No imports yet";
       const recText = acc.last_reconciled_date
         ? `Reconciled: ${acc.last_reconciled_date}`
         : (acc.unreconciled_count ? `Unreconciled (${acc.unreconciled_count})` : "Unreconciled");
@@ -723,7 +723,7 @@ function renderWorkspaceLedger(items) {
         <tr>
           <td data-label="Date"><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
           <td data-label="Category"><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td data-label="Payment Type"><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td data-label="Payment Type"><span class="badge badge-pending">${escapeHtml(_paymentTypeLabel(tx))}</span></td>
           <td data-label="Reference"><span style="font-size:12px;">${tx.reference || "—"}</span></td>
           <td data-label="Description"><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
           <td data-label="In (+)" class="cell-money" style="text-align:right;">${inDisplay}</td>
@@ -879,6 +879,17 @@ function filterFinanceCategories(filterType, btn) {
 function filterFinanceCategoriesByKind(kind) {
   _currentCategoryKindFilter = kind;
   loadFinanceCategories();
+}
+
+// Payment method shown to people: the type's name, never the raw code (OUTBOUND_TRANS).
+function _paymentTypeLabel(tx) {
+  const code = tx.payment_type_code || "";
+  if (!code) return "—";
+  const known = (FinanceState.paymentTypes || []).find((p) => p.code === code);
+  if (known && known.name) return known.name;
+  if (tx.payment_type_name) return tx.payment_type_name;
+  const words = code.replace(/_/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function _categoryKindBadge(kind) {
@@ -1465,7 +1476,7 @@ function renderAccountTransactions(items) {
         <tr>
           <td><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
           <td><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td><span class="badge badge-pending"><code>${tx.payment_type_code || "—"}</code></span></td>
+          <td><span class="badge badge-pending">${escapeHtml(_paymentTypeLabel(tx))}</span></td>
           <td><span style="font-size:12px;">${tx.reference || "—"}</span></td>
           <td><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
           <td style="text-align:right;">${inDisplay}</td>

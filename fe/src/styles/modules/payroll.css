@@ -2062,3 +2062,15 @@
 #a-finance-payroll .payroll-fx-source {
   color: var(--text2);
 }
+
+/* A finalized run is read-only: its fields look it. */
+#a-finance-payroll input:disabled,
+#a-finance-payroll select:disabled {
+  background-color: var(--surface2);
+  color: var(--text3);
+  cursor: not-allowed;
+}
+
+#a-finance-payroll .fxbox .editbtn[hidden] {
+  display: none;
+}

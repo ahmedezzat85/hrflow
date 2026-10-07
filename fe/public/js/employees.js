@@ -705,7 +705,8 @@ async function loadBankAccountStatus(empId) {
     setCardStatusAction('bankAccountStatusActionBtn', 'Try again', () => loadBankAccountStatus(empId));
   }
 }
-async function openBankAccountModal() {
+async function openBankAccountModal(evt) {
+  const trigger = (evt && evt.currentTarget) || document.getElementById('bankAccountActionBtn');
   _bankIbanRevealed = false;
   const ibanInput = document.getElementById('fBankIban');
   const revealBtn = document.getElementById('bankRevealBtn');
@@ -729,7 +730,7 @@ async function openBankAccountModal() {
       document.getElementById('fBankSwift').value = data.swift_code || '';
     } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   }
-  document.getElementById('bankAccountModal').classList.add('active');
+  openModal('bankAccountModal', trigger);
 }
 async function toggleBankIbanReveal() {
   const ibanInput = document.getElementById('fBankIban');

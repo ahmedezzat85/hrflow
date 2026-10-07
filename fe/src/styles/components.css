@@ -1895,3 +1895,15 @@ tbody tr[hidden] {
 .card:has(> .table-wrap) {
   overflow-x: auto;
 }
+
+/* Wide tables scroll inside their card; the Actions column stays pinned to the right edge so it is always reachable. */
+@media (min-width: 769px) {
+  table.sticky-actions th:last-child,
+  table.sticky-actions td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+  }
+}

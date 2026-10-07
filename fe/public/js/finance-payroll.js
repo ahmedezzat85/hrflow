@@ -588,6 +588,15 @@
         const el = document.getElementById(id);
         if (el) el.hidden = locked;
       });
+      // Step 1 of a finalized run is read-only: disable the period, account and FX fields and hide their actions.
+      ['p1Month', 'p1PayDate', 'p1Start', 'p1End', 'p1ExtAccount', 'p1IntAccount', 'p1FxRateInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = locked;
+      });
+      ['btnP1ApplyFx', 'btnP1ResetFx', 'btnToggleFxOverride'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = locked;
+      });
     },
 
     drawStepper() {
@@ -883,11 +892,12 @@
       if (p2ApproveBtn) {
         const status = (this.currentRun && this.currentRun.status) || 'draft';
         const awaitingApproval = status === 'submitted';
+        const pastApproval = ['approved', 'finalized', 'processing', 'partially_paid', 'paid'].includes(status);
         const allowed = awaitingApproval ? this.canPermission('finance.payroll.approve') : this.canPermission('finance.payroll.prepare');
         p2ApproveBtn.innerHTML = awaitingApproval
           ? 'Approve <i class="fa-solid fa-check"></i>'
           : 'Submit for approval <i class="fa-solid fa-paper-plane"></i>';
-        p2ApproveBtn.style.display = allowed ? '' : 'none';
+        p2ApproveBtn.style.display = allowed && !pastApproval ? '' : 'none';
         const blockers = awaitingApproval ? 0 : this.blockingIssues().length;
         p2ApproveBtn.disabled = blockers > 0;
         const selfRow = document.getElementById('p2SelfApproveRow');
@@ -897,7 +907,9 @@
         }
         const hint = document.getElementById('p2ApprovalHint');
         if (hint) {
-          hint.textContent = awaitingApproval
+          hint.textContent = pastApproval
+            ? 'This run has been approved. Nothing more to approve here.'
+            : awaitingApproval
             ? (allowed ? 'Step 2 of 2: approve this run. Approval by someone other than the submitter is expected.' : 'Submitted. Waiting for an approver.')
             : (blockers > 0 ? `Fix the ${blockers} blocking issue${blockers === 1 ? '' : 's'} above to submit. You can still save a draft.`
               : (allowed ? 'Step 1 of 2: submit this run for approval.' : 'You can review this run but not submit it.'));

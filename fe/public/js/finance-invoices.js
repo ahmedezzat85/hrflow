@@ -227,7 +227,7 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve & Send Invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
+        ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve and issue invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
         ${(derivedStatus === "overdue" || derivedStatus === "sent") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
         ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-outline" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
@@ -435,10 +435,10 @@ function addInvoiceLine(data) {
   const tbody = document.getElementById("invoiceLinesBody");
   const tr = document.createElement("tr");
   tr.innerHTML = `
-    <td><input type="text" class="form-control" style="font-size:0.85rem;" placeholder="Description" value="${(data && data.description) || ""}" oninput="_updateInvoiceTotals()"></td>
-    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
-    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
-    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateInvoiceTotals()"></td>
+    <td><input type="text" class="form-control" style="font-size:0.85rem;" aria-label="Description" placeholder="Description" value="${escapeHtml((data && data.description) || "")}" oninput="_updateInvoiceTotals()"></td>
+    <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" aria-label="Quantity" placeholder="Qty" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" aria-label="Unit price" placeholder="Unit price" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
+    <td><input type="number" class="form-control inv-total" style="font-size:0.85rem;" aria-label="Line total" placeholder="Total" value="${(data && data.line_total) || 0}" min="0" step="0.01" oninput="_updateInvoiceTotals()"></td>
     <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); _updateInvoiceTotals();" title="Remove line"><i class="fa-solid fa-trash"></i></button></td>
   `;
   tbody.appendChild(tr);

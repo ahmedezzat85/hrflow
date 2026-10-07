@@ -205,6 +205,8 @@ async function openReportFromLibrary(reportKey) {
 function switchFinanceReportsTab(tabName, btn) {
   _currentReportsTab = tabName;
   _activeReportKey = tabName;
+  // A tab click puts the report in the URL (a restore from the URL passes no button).
+  if (btn && window.Router) Router.setParams([tabName], ["a-finance-reports"]);
 
   // Update tabs
   const subnav = document.getElementById("financeReportsSubNav");

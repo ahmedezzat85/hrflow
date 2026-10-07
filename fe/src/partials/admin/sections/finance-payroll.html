@@ -100,11 +100,11 @@
                     <div class="innerhead"><i class="fa-solid fa-building-columns"></i> Target Funding Accounts</div>
                     <div class="form">
                       <div class="field">
-                        <label for="p1ExtAccount">External Wire Account</label>
+                        <label for="p1ExtAccount">Company funding account (external salaries)</label>
                         <select id="p1ExtAccount" onchange="PayrollApp.onScreen1AccountChange()"></select>
                       </div>
                       <div class="field">
-                        <label for="p1IntAccount">Internal Cash Treasury Account</label>
+                        <label for="p1IntAccount">Company funding account (internal salaries)</label>
                         <select id="p1IntAccount" onchange="PayrollApp.onScreen1AccountChange()"></select>
                       </div>
                       <div class="field">
@@ -481,7 +481,7 @@
                       <div class="stat-obl-head">
                         <div>
                           <div class="stat-obl-title"><i class="fa-solid fa-shield-halved"></i> Social Insurance</div>
-                          <div class="stat-obl-sub">Employee + Employer · National Social Insurance Authority</div>
+                          <div class="stat-obl-sub">Employee and employer contributions</div>
                         </div>
                         <span class="stage-badge unrecorded" id="p6SiStatusBadge">Unrecorded</span>
                       </div>
@@ -520,7 +520,7 @@
                         </div>
                         <div class="stat-obl-actions">
                           <button type="button" class="btn btn-fill" id="btnP6SettleSocialIns" onclick="PayrollApp.settleStatutory('si')" disabled>
-                            <i class="fa-solid fa-money-bill-transfer"></i> Confirm &amp; Remit Payment
+                            <i class="fa-solid fa-money-bill-transfer"></i> Record remittance
                           </button>
                         </div>
                       </div>
@@ -534,7 +534,7 @@
                       <div class="stat-obl-head">
                         <div>
                           <div class="stat-obl-title"><i class="fa-solid fa-receipt"></i> Salary Income Tax</div>
-                          <div class="stat-obl-sub">Withheld · Egyptian Tax Authority (EETAX) Portal</div>
+                          <div class="stat-obl-sub">Withheld from salaries</div>
                         </div>
                         <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Unrecorded</span>
                       </div>
@@ -573,7 +573,7 @@
                         </div>
                         <div class="stat-obl-actions">
                           <button type="button" class="btn btn-fill" id="btnP6SettleTax" onclick="PayrollApp.settleStatutory('tax')" disabled>
-                            <i class="fa-solid fa-money-bill-transfer"></i> Confirm &amp; Remit Payment
+                            <i class="fa-solid fa-money-bill-transfer"></i> Record remittance
                           </button>
                         </div>
                       </div>
@@ -734,7 +734,7 @@
                         <div class="payroll-subtitle">Organization-wide statutory rates (internal estimates). Requires finance settings write permission.</div>
                       </div>
                     </div>
-                    <span class="settings-pill pill-emerald"><i class="fa-solid fa-gavel"></i> Law 148</span>
+                    <span class="settings-pill pill-emerald"><i class="fa-solid fa-gavel"></i> Social insurance</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">
@@ -780,7 +780,7 @@
                         <div class="payroll-subtitle">Effective-dated statutory parameters (Super-Admin / Financial-Admin only).</div>
                       </div>
                     </div>
-                    <span class="settings-pill pill-purple"><i class="fa-solid fa-landmark"></i> Tax Authority</span>
+                    <span class="settings-pill pill-purple"><i class="fa-solid fa-landmark"></i> Income tax</span>
                   </div>
                   <div class="funding-form">
                     <div class="field">

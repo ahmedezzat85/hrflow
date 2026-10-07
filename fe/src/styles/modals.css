@@ -367,3 +367,46 @@ body.modal-open {
 #financeConfirmModal {
   z-index: 9999;
 }
+
+/* New Sales Invoice: line-item inputs shrink to their column instead of widening the table past the dialog. */
+#invoiceModal table {
+  table-layout: fixed;
+}
+
+#invoiceModal table .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
+/* On a phone each line item becomes a small card: description on top, then quantity, price and total. */
+@media (max-width: 640px) {
+  #invoiceModal table {
+    table-layout: auto;
+  }
+
+  #invoiceModal table thead {
+    display: none;
+  }
+
+  #invoiceModal #invoiceLinesBody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #invoiceModal #invoiceLinesBody td {
+    display: block;
+    padding: 0;
+  }
+
+  #invoiceModal #invoiceLinesBody td:first-child,
+  #invoiceModal #invoiceLinesBody td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  #invoiceModal #invoiceLinesBody td:last-child {
+    text-align: right;
+  }
+}

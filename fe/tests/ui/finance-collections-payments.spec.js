@@ -56,7 +56,7 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.waitForTimeout(200);
 
     // INV-2026-002 is $8,400. Let's send it first to make it eligible for payment
-    const sendBtn = page.locator('#financeInvoicesTableBody tr[data-record-id="2"] button[title="Approve & Send Invoice"]');
+    const sendBtn = page.locator('#financeInvoicesTableBody tr[data-record-id="2"] button[title="Approve and issue invoice"]');
     if (await sendBtn.isVisible()) {
       await sendBtn.click();
       await page.waitForTimeout(300);
