@@ -110,6 +110,92 @@ async function confirmDelete(evt) {
   }
 }
 
+function canReadSalary() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.salary.read'); }
+function canWriteSalary() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.salary.write'); }
+
+// Profile head, left zone: monthly total only. The split, raises and actions live in the Compensation card.
+function compZoneInnerHtml(e) {
+  if (!canReadSalary()) {
+    return `<div class="esc-zone-label">Monthly Compensation</div>
+      <p class="helper">Not available for your role.</p>`;
+  }
+  const total = Number(e.internalSalaryUsd || 0) + Number(e.externalSalaryUsd || 0);
+  return `<div class="esc-zone-label">Monthly Compensation</div>
+    <div class="esc-comp-total">
+      <span class="esc-amount">${fmtUSD(total)}</span>
+      <span class="esc-unit">/ month total</span>
+    </div>
+    <button type="button" class="btn btn-quiet btn-sm" id="compDetailsLink" onclick="scrollToCompensationCard()">See compensation details <i class="fa-solid fa-arrow-down"></i></button>`;
+}
+
+function scrollToCompensationCard() {
+  const card = document.getElementById('employeeCompensationCard');
+  if (card) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+// Compensation card on the employee profile: split, next and last raise, and this employee's raise history.
+function renderCompensationCard(e) {
+  const card = document.getElementById('employeeCompensationCard');
+  if (!card) return;
+  card.hidden = !canReadSalary() || !e;
+  if (card.hidden) return;
+  const actions = document.getElementById('employeeCompensationActions');
+  if (actions) actions.hidden = !canWriteSalary();
+
+  const internalUsd = Number(e.internalSalaryUsd || 0);
+  const externalUsd = Number(e.externalSalaryUsd || 0);
+  const history = (e.salaryHistory || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const rows = history.map((h, idx) => {
+    const older = history[idx + 1];
+    const prevInternal = older ? Number(older.newInternal || 0) : Number(h.prevInternal || 0);
+    const prevExternal = older ? Number(older.newExternal || 0) : Number(h.prevExternal || 0);
+    const newInternal = Number(h.newInternal || 0);
+    const newExternal = Number(h.newExternal || 0);
+    const d = computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal);
+    const change = (prevInternal + prevExternal) > 0
+      ? `<span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span>`
+      : '<span class="compensation-sub">First record</span>';
+    return { h, d, html: `<tr>
+      <td data-label="Effective">${escapeHtml(fmtDateShort(h.date))}</td>
+      <td data-label="Internal">${fmtUSD(newInternal)}</td>
+      <td data-label="External">${fmtUSD(newExternal)}</td>
+      <td data-label="Total">${fmtUSD(newInternal + newExternal)}</td>
+      <td data-label="Change">${change}</td>
+      <td data-label="Reason">${escapeHtml(h.reason || '—')}</td>
+    </tr>` };
+  });
+  const last = rows[0];
+  const lastHtml = last
+    ? `${escapeHtml(fmtDateShort(last.h.date))}<div class="compensation-sub">${fmtDelta(last.d.totalAmt, last.d.totalPct)}</div>`
+    : '—<div class="compensation-sub">No raises yet</div>';
+
+  document.getElementById('employeeCompensationBody').innerHTML = `
+    <div class="compensation-metrics">
+      <div class="compensation-metric"><div class="compensation-k">Internal USD cash</div><div class="compensation-v compensation-internal" id="compInternalVal">${fmtUSD(internalUsd)}</div></div>
+      <div class="compensation-metric"><div class="compensation-k">External USD</div><div class="compensation-v compensation-external" id="compExternalVal">${fmtUSD(externalUsd)}</div></div>
+      <div class="compensation-metric"><div class="compensation-k">Total / month</div><div class="compensation-v" id="compTotalVal">${fmtUSD(internalUsd + externalUsd)}</div></div>
+      <div class="compensation-metric"><div class="compensation-k">Next raise</div><div class="compensation-v compensation-date" id="compNextRaiseVal">${escapeHtml(fmtDateShort(e.nextRaise))}</div></div>
+      <div class="compensation-metric"><div class="compensation-k">Last raise</div><div class="compensation-v compensation-date" id="compLastRaiseVal">${lastHtml}</div></div>
+    </div>
+    <div class="compensation-history-label">Raise history</div>
+    <table class="responsive-card-table" id="compensationHistoryTable">
+      <thead><tr><th>Effective</th><th>Internal</th><th>External</th><th>Total</th><th>Change</th><th>Reason</th></tr></thead>
+      <tbody id="compensationHistoryBody">${rows.map(r => r.html).join('') || renderEmptyTableRow(6, 'No raises recorded yet.', 'fa-solid fa-sack-dollar')}</tbody>
+    </table>`;
+}
+
+// After a raise or plan change: re-render the open profile's compensation views from the reloaded data.
+function refreshProfileCompensation() {
+  const page = document.getElementById('a-employee-detail');
+  if (!page || !page.classList.contains('active') || currentDetailEmployeeId == null) return;
+  const e = employees.find(x => String(x.id) === String(currentDetailEmployeeId));
+  if (!e) return;
+  renderCompensationCard(e);
+  const zone = document.getElementById('detailCompZone');
+  if (zone) zone.innerHTML = compZoneInnerHtml(e);
+  loadPayrollPaymentsCard(currentDetailEmployeeId);
+}
+
 function escRow(icon, label, valueHtml, opts = {}) {
   const { wrap = false, title = '' } = opts;
   return `<div class="esc-row${wrap ? ' wrap' : ''}">
@@ -125,13 +211,12 @@ async function viewProfile(id, section) {
   loadPayrollPaymentsCard(id);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
-  if (section === 'bank' || section === 'social') {
-    const targetId = section === 'bank' ? 'bankAccountCard' : 'socialInsuranceCard';
+  if (section === 'bank' || section === 'social' || section === 'compensation') {
+    const targetId = { bank: 'bankAccountCard', social: 'socialInsuranceCard', compensation: 'employeeCompensationCard' }[section];
     setTimeout(() => { const card = document.getElementById(targetId); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
   }
 
-  const internalUsd = Number(e.internalSalaryUsd || 0);
-  const externalUsd = Number(e.externalSalaryUsd || 0);
+  renderCompensationCard(e);
   const vacRemaining = (e.vacTotal || 21) - (e.vacUsed || 0);
   const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—';
 
@@ -155,27 +240,7 @@ async function viewProfile(id, section) {
 
   document.getElementById('detailInfoGrid').innerHTML = `
     <div class="esc-body">
-      <div class="esc-comp-zone">
-        <div class="esc-zone-label">Monthly Compensation</div>
-        <div class="esc-comp-total">
-          <span class="esc-amount">${fmtUSD(internalUsd + externalUsd)}</span>
-          <span class="esc-unit">/ month total</span>
-        </div>
-        <div class="esc-comp-breakdown">
-          <div class="esc-comp-piece">
-            <div class="esc-k"><i class="fa-solid fa-building"></i> Internal</div>
-            <div class="esc-v">${fmtUSD(internalUsd)}</div>
-          </div>
-          <div class="esc-comp-piece">
-            <div class="esc-k"><i class="fa-solid fa-file-invoice-dollar"></i> External</div>
-            <div class="esc-v">${fmtUSD(externalUsd)}</div>
-          </div>
-          <div class="esc-comp-piece">
-            <div class="esc-k"><i class="fa-solid fa-arrow-trend-up"></i> Next Raise</div>
-            <div class="esc-v" style="font-size:14px">${fmtDateShort(e.nextRaise)}</div>
-          </div>
-        </div>
-      </div>
+      <div class="esc-comp-zone" id="detailCompZone">${compZoneInnerHtml(e)}</div>
         <div class="esc-meta-zone">
           <div class="esc-zone-label">Employee Details</div>
           ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
@@ -621,9 +686,10 @@ async function loadPayrollPaymentsCard(empId) {
   const sections = [];
   try {
     const emp = employees.find(e => String(e.id) === String(empId));
-    const monthly = (emp ? (Number(emp.internalSalaryUsd || 0) + Number(emp.externalSalaryUsd || 0)) : 0);
-    sections.push(`<div class="iban-row"><span class="k">Compensation plan</span><span class="v">${fmtUSD(monthly)} / month</span></div>
-      <button type="button" class="btn btn-sm btn-outline" data-action="open-comp-plan" data-employee-id="${escapeHtml(empId)}"><i class="fa-solid fa-sliders"></i> View compensation plan</button>`);
+    if (canReadSalary()) {
+      const monthly = (emp ? (Number(emp.internalSalaryUsd || 0) + Number(emp.externalSalaryUsd || 0)) : 0);
+      sections.push(`<div class="iban-row"><span class="k">Monthly total</span><span class="v">${fmtUSD(monthly)} / month</span></div>`);
+    }
   } catch (e) { /* plan summary is best-effort */ }
   if (isCurrent()) body.innerHTML = sections.join('');
 

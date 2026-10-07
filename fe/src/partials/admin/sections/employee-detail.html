@@ -8,6 +8,17 @@
           </div>
           <div class="employee-detail-workspace">
             <main class="employee-detail-main">
+              <div class="card employee-compensation-card" id="employeeCompensationCard" hidden>
+                <div class="card-head">
+                  <h3><i class="fa-solid fa-sack-dollar"></i> Compensation</h3>
+                  <div class="employee-compensation-actions" id="employeeCompensationActions">
+                    <button type="button" class="btn btn-sm btn-outline" id="compEditPlanBtn" onclick="openCompPlanModal(currentDetailEmployeeId)"><i class="fa-solid fa-sliders"></i> Edit plan</button>
+                    <button type="button" class="btn btn-sm btn-fill" id="compApplyRaiseBtn" onclick="openRaiseModal(currentDetailEmployeeId)"><i class="fa-solid fa-arrow-trend-up"></i> Apply raise</button>
+                  </div>
+                </div>
+                <div id="employeeCompensationBody"></div>
+              </div>
+
               <div class="employee-detail-section-label">
                 <span>Time Off &amp; Benefits</span>
                 <span class="employee-detail-section-line"></span>
@@ -181,10 +192,6 @@
                 <button class="employee-quick-action" onclick="openBehalfClaimModal()">
                   <i class="fa-solid fa-briefcase-medical"></i>
                   <span>Medical Insurance Claim</span>
-                </button>
-                <button class="employee-quick-action employee-quick-action-primary" onclick="openRaiseModal(currentDetailEmployeeId)">
-                  <i class="fa-solid fa-arrow-trend-up"></i>
-                  <span>Apply Salary Raise</span>
                 </button>
               </div>
             </aside>

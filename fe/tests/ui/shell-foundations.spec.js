@@ -207,12 +207,13 @@ test.describe('R3 one button set', () => {
     expect([...seen.small]).toEqual(['10px']);
   });
 
-  test('R3-3: the four named screens each show exactly one primary button', async ({ page }) => {
+  test('R3-3: the named screens each show exactly one primary button; Salary and Raises is read-only and has none', async ({ page }) => {
     const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app .btn-fill')]
       .filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim().slice(0, 30)));
-    for (const id of ['a-salary', 'a-invoices', 'a-finance-dashboard', 'a-finance-payroll-runs']) {
+    for (const id of ['a-invoices', 'a-finance-dashboard', 'a-finance-payroll-runs']) {
       expect(res[id], id).toHaveLength(1);
     }
+    expect(res['a-salary'], 'a-salary').toHaveLength(0);
   });
 
   test('R3-4: a disabled primary uses the neutral surface, not the accent', async ({ page }) => {

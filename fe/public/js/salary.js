@@ -18,7 +18,8 @@ function renderSalaryPage(filter=''){
   const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
   document.getElementById('statPayroll').textContent = fmtUSD(totalPayroll);
   const allRaises = employees.flatMap(e=>(e.salaryHistory || []).map(h=>({...h, emp:e.name, empId:e.id})));
-  const thisYearRaises = allRaises.filter(h=>h.date && h.date.startsWith('2026'));
+  const thisYear = String(new Date().getFullYear());
+  const thisYearRaises = allRaises.filter(h=>h.date && h.date.startsWith(thisYear));
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
   const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct || 0),0)/thisYearRaises.length) : 0;
   document.getElementById('statAvgRaise').textContent = (avgPct>=0?'+':'') + avgPct.toFixed(1) + '%';
@@ -26,44 +27,24 @@ function renderSalaryPage(filter=''){
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
   const upcoming = employees.filter(e=>{ if (!e.nextRaise || isNaN(new Date(e.nextRaise).getTime())) return false; const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
-  const canWriteSalary = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.salary.write') : true;
-  const openRaiseModalBtn = document.getElementById('btnOpenRaiseModal');
-  if (openRaiseModalBtn) {
-    openRaiseModalBtn.style.display = canWriteSalary ? '' : 'none';
-  }
   const body = document.getElementById('salaryTableBody');
   body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f)).map(e=>{
-    const last = (e.salaryHistory && e.salaryHistory.length) ? e.salaryHistory[e.salaryHistory.length-1] : null;
+    const last = (e.salaryHistory || []).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))[0] || null;
     const ext = Number(e.externalSalaryUsd || 0);
     const intCash = Number(e.internalSalaryUsd || 0);
     const total = ext + intCash;
-    return `<tr>
-      <td class="tname"><div class="avatar">${initials(e.name)}</div>${escapeHtml(e.name)}</td>
+    const profileHref = Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '') + '/' + encodeURIComponent(e.id);
+    return `<tr class="salary-row" data-employee-id="${escapeHtml(e.id)}">
+      <td class="tname"><div class="avatar">${initials(e.name)}</div><a class="salary-emp-link" href="${profileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a></td>
       <td>${e.dept || e.department || '—'}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="comp-val-external">${fmtUSD(ext)}</span>
-          ${canWriteSalary ? `<button class="action-btn btn-comp-ext" title="Edit External USD" onclick="openCompPlanModal('${e.id}', 'external_usd')"><i class="fa-solid fa-pen"></i></button>` : ''}
-        </div>
-      </td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="comp-val-internal">${fmtUSD(intCash)}</span>
-          ${canWriteSalary ? `<button class="action-btn btn-comp-int" title="Edit Internal USD Cash" onclick="openCompPlanModal('${e.id}', 'internal_usd_cash')"><i class="fa-solid fa-pen"></i></button>` : ''}
-        </div>
-      </td>
+      <td><span class="comp-val-external">${fmtUSD(ext)}</span></td>
+      <td><span class="comp-val-internal">${fmtUSD(intCash)}</span></td>
       <td><strong>${fmtUSD(total)}</strong></td>
       <td>${e.nextRaise || '—'}</td>
       <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px;">
-          ${canWriteSalary ? `<button class="btn btn-sm btn-outline btn-raise-action" onclick="openRaiseModal('${e.id}')"><i class="fa-solid fa-arrow-trend-up"></i> Raise</button>` : ''}
-          ${canWriteSalary ? `<button class="btn btn-sm btn-comp-plan" onclick="openCompPlanModal('${e.id}')"><i class="fa-solid fa-file-contract"></i> Plan</button>` : ''}
-        </div>
-      </td>
     </tr>`;
 
-  }).join('') || renderEmptyTableRow(8, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
+  }).join('') || renderEmptyTableRow(7, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
 
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -78,10 +59,24 @@ function renderSalaryPage(filter=''){
   }).join('') || renderEmptyTableRow(9, 'No raises recorded yet.', 'fa-solid fa-sack-dollar');
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
+// Overview only: a row click opens the employee's profile, where pay is changed (links keep their own href)
+document.getElementById('salaryTableBody').addEventListener('click', e=>{
+  if (e.target.closest('a, button')) return;
+  const row = e.target.closest('tr[data-employee-id]');
+  if (row) viewProfile(row.dataset.employeeId);
+});
 function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
   sel.innerHTML = employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
+  // Opened for one employee (profile): show the name read-only instead of a dropdown
+  const nameField = document.getElementById('rEmpName');
+  const fixedEmp = empId ? employees.find(e=>String(e.id)===String(empId)) : null;
+  sel.hidden = !!fixedEmp;
+  if (nameField) {
+    nameField.hidden = !fixedEmp;
+    nameField.value = fixedEmp ? `${fixedEmp.name} — ${fixedEmp.job_role || fixedEmp.role || ''}` : '';
+  }
   document.getElementById('rNewInternal').value = '';
   document.getElementById('rNewExternal').value = '';
   document.getElementById('rDate').value = new Date().toISOString().slice(0, 10);
@@ -90,15 +85,13 @@ function openRaiseModal(empId=null){
   document.getElementById('raiseModal').classList.add('active');
 }
 function onRaiseEmployeeChange(){
-  const empId = Number(document.getElementById('rEmpSelect').value);
-  const emp = employees.find(e=>e.id===empId);
+  const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
   document.getElementById('rvCurrentInternal').value = emp ? fmtUSD(emp.internalSalaryUsd || 0) : '—';
   document.getElementById('rvCurrentExternal').value = emp ? fmtUSD(emp.externalSalaryUsd || 0) : '—';
   updateRaisePreview();
 }
 function updateRaisePreview(){
-  const empId = Number(document.getElementById('rEmpSelect').value);
-  const emp = employees.find(e=>e.id===empId);
+  const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
   const preview = document.getElementById('raisePreview');
   const internalVal = document.getElementById('rNewInternal').value;
   const externalVal = document.getElementById('rNewExternal').value;
@@ -119,7 +112,7 @@ function updateRaisePreview(){
 async function applyRaise(evt){
   const btn = (evt && evt.currentTarget) || document.getElementById('raiseModalSaveBtn') || document.querySelector('#raiseModal .btn-fill');
   const empId = Number(document.getElementById('rEmpSelect').value);
-  const emp = employees.find(e=>e.id===empId);
+  const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
   const date = document.getElementById('rDate').value;
   const reason = document.getElementById('rReason').value;
   const internalVal = document.getElementById('rNewInternal').value;
@@ -146,6 +139,7 @@ async function applyRaise(evt){
     const pctStr = (result.total_delta_pct>=0?'+':'') + result.total_delta_pct.toFixed(1) + '%';
     toast(`Raise applied to ${emp.name}: ${pctStr} → ${fmtUSD(result.new_internal_salary_usd + result.new_external_salary_usd)}.`);
     await loadAdminData();
+    if (typeof refreshProfileCompensation === 'function') refreshProfileCompensation();
   } catch(err){ toast(err.message, 'fa-solid fa-triangle-exclamation'); }
   finally { setButtonLoading(btn, false); }
 }
@@ -298,6 +292,7 @@ async function saveCompPlanComponent(evt) {
 
     await reloadCompPlanData(currentCompPlanEmpId);
     renderSalaryPage(document.getElementById('salarySearch')?.value || '');
+    if (typeof refreshProfileCompensation === 'function') refreshProfileCompensation();
   } catch (err) {
     toast(err.message || 'Failed to update component', 'fa-solid fa-triangle-exclamation');
   } finally {
