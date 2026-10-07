@@ -1,37 +1,49 @@
   <div id="login-screen">
     <div class="login-card">
-      <div class="login-visual">
-        <div class="brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
+      <img class="login-mobile-logo" src="voyance-health-logo.png" alt="Voyance Health">
+      <img class="login-mark login-mark-page" src="voyance-logo-v.png" alt="" aria-hidden="true">
+      <aside class="login-visual">
+        <img class="login-logo" src="voyance-health-logo.png" alt="Voyance Health">
+        <img class="login-mark" src="voyance-logo-v.png" alt="" aria-hidden="true">
         <div class="login-intro">
+          <div class="login-brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
           <h1>People, finance and payroll operations in one place.</h1>
           <ul class="login-scopes">
             <li class="login-scope login-scope-hr">
-              <span class="login-scope-name">HR</span>
-              <span class="login-scope-text">Employees, leave, claims, documents and salary payment documents</span>
+              <span class="login-scope-icon"><i class="fa-solid fa-users"></i></span>
+              <span>
+                <span class="login-scope-name">HR</span>
+                <span class="login-scope-text">Employees, leave, claims, documents and salary payment documents</span>
+              </span>
             </li>
             <li class="login-scope login-scope-finance">
-              <span class="login-scope-name">Finance</span>
-              <span class="login-scope-text">Company accounts, ledger, bills, sales invoices and reports</span>
+              <span class="login-scope-icon"><i class="fa-solid fa-building-columns"></i></span>
+              <span>
+                <span class="login-scope-name">Finance</span>
+                <span class="login-scope-text">Company accounts, ledger, bills, sales invoices and reports</span>
+              </span>
             </li>
             <li class="login-scope login-scope-payroll">
-              <span class="login-scope-name">Payroll</span>
-              <span class="login-scope-text">Monthly runs, net payments and statutory obligations</span>
+              <span class="login-scope-icon"><i class="fa-solid fa-money-check-dollar"></i></span>
+              <span>
+                <span class="login-scope-name">Payroll</span>
+                <span class="login-scope-text">Monthly runs, net payments and statutory obligations</span>
+              </span>
             </li>
           </ul>
         </div>
-        <div class="login-visual-foot">Internal platform of Voyance Health</div>
-      </div>
+      </aside>
       <div class="login-form-wrap">
         <div class="login-form-inner">
           <div class="login-form-head">
-            <img class="login-logo" src="voyance-health-logo.png" alt="Voyance Health">
-            <h2>Sign in</h2>
-            <p>Use your Voyance Health Google account.</p>
+            <div class="login-form-brand"><i class="fa-solid fa-heart-pulse"></i> HRFlow</div>
+            <h2>Welcome back</h2>
+            <p>Sign in with your Voyance Health Google account.</p>
           </div>
           <div class="login-err" id="loginErr" style="display:none;"><i class="fa-solid fa-circle-exclamation"></i>
             <span>Sign-in failed.</span>
           </div>
-          <div id="googleSignInButton" style="display:flex; justify-content:center; margin-top:28px;"></div>
+          <div id="googleSignInButton" class="login-google"></div>
           <p class="login-notice" id="loginNotice" role="status" hidden>You were signed out after a period of inactivity. Sign in to continue.</p>
           <p class="login-help">No access yet? Ask your HR admin to add you as an employee first.</p>
         </div>

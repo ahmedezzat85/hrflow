@@ -1857,11 +1857,6 @@ th[data-sort][aria-sort="descending"] .sort-icon {
 
 
 
-/* The Voyance logo is a single navy mark: render it white on dark surfaces */
-[data-theme="dark"] #login-screen img[src*="logo"] {
-  filter: brightness(0) invert(1);
-}
-
 /* Rows paged out by FinanceTable.attach stay hidden even in card layout */
 tbody tr[hidden] {
   display: none !important;

@@ -366,16 +366,6 @@
     padding: 16px 14px;
   }
 
-  /* Login screen: the two columns stack (see login.css) */
-  .login-scope {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .login-scope-name {
-    flex: none;
-  }
-
   .toast-wrap {
     left: 14px;
     right: 14px;

@@ -220,16 +220,53 @@ function handleGoogleCredentialResponse(response) {
     });
 }
 
+let _googleInitialized = false;
+let _googleContainerId = null;
+let _googleRenderedWidth = 0;
+
+// Google draws and styles this button itself. Only its theme and width are ours to choose. The "outline" theme
+// (white with a grey border) is used in both app themes: it is the one Google theme that stays clearly visible
+// on the dark card, where "filled_black" has no visible edge. Width follows the container within Google's 200-400px range.
+function _googleButtonWidth(container) {
+  const available = Math.round(container.clientWidth) || 320;
+  return Math.min(400, Math.max(200, available));
+}
+
 function _renderGoogleButton(containerId) {
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleGoogleCredentialResponse,
-  });
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!_googleInitialized) {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredentialResponse,
+    });
+    _googleInitialized = true;
+  }
+  _googleContainerId = containerId;
+  _googleRenderedWidth = _googleButtonWidth(container);
   google.accounts.id.renderButton(
-    document.getElementById(containerId),
-    { type: "standard", size: "large", theme: "outline", text: "signin_with", shape: "rectangular", logo_alignment: "left", width: 320 }
+    container,
+    { type: "standard", size: "large", theme: "outline", text: "signin_with", shape: "rectangular", logo_alignment: "left", width: _googleRenderedWidth }
   );
 }
+
+// Redraw the button after a resize changes the container width. Does nothing until the button exists or while the login screen is hidden.
+function refreshGoogleButton() {
+  if (!_googleContainerId || !(window.google && window.google.accounts && window.google.accounts.id)) return;
+  const container = document.getElementById(_googleContainerId);
+  if (!container || container.offsetParent === null || !container.firstElementChild) return;
+  _renderGoogleButton(_googleContainerId);
+}
+
+let _googleResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(_googleResizeTimer);
+  _googleResizeTimer = setTimeout(() => {
+    const container = _googleContainerId && document.getElementById(_googleContainerId);
+    if (!container || container.offsetParent === null) return;
+    if (Math.abs(_googleButtonWidth(container) - _googleRenderedWidth) >= 4) refreshGoogleButton();
+  }, 250);
+});
 
 function initGoogleSignIn(containerId, onSuccess, onError) {
   _onGoogleLoginSuccess = onSuccess;
