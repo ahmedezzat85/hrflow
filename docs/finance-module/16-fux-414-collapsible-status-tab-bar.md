@@ -1,5 +1,7 @@
 # FUX-414 — Collapse the Bills status tab bar into a status pill + on-demand panel
 
+> **Superseded in part (October 8, 2026):** the bill statuses, approval input and combined create-and-pay ledger fields described here are replaced by D-016 to D-019 and [18-bill-workflow-v2.md](18-bill-workflow-v2.md); the collapsible tab-bar control itself stays, listing the new eight statuses.
+
 Related: `docs/finance-module/14-fux-412-collapsible-bill-filters.md` (secondary filter panel — already implemented, different control), FUX-401 AP inbox and capture (status queues: Inbox, Needs Coding, Needs Approval, Ready to Pay, Scheduled, Paid, Exceptions), Bills page toolbar
 
 **Confirmed direction:** Variant A from the reviewed prototype (`bills-toolbar-prototype.html`, variant `#variant-a`). This is the exact and only approved layout — do not substitute the dropdown-select or horizontal-scroll variants shown as alternatives in that prototype.

@@ -147,6 +147,25 @@ Replaces Slices 2 and 3 above with a permission-based RBAC (decisions D-011 to D
 
 ---
 
+## 3B. Vendor Bill Workflow v2 (accepted October 8, 2026)
+
+Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-019. Not started.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| B1 | Eight-status model, transition table, data migration, void fix | M | — |
+| B2 | Approval rules, `finance.bill.approve` / `finance.bill.pay` | M | B1 |
+| B3 | Payment fields, same-currency and balance checks, one-transaction create-and-pay | M | B2 |
+| B4 | Drafts, PDF and multi-file upload into Draft, discard | M | B1 |
+| B5 | Bill screens behaviour in the current visual style | L | B2, B3, B4 |
+| Later | Balance check for other outflows | S | B3 |
+| Later | Bill screens visual restyle (separate plan, visual approval first) | — | B5 |
+| Later | Bulk and historical bill import; then in-app AI assistant | — | B4 |
+
+Prerequisite before B3 reaches production: run the cashbook 2026 import so account balances are accurate.
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
