@@ -102,7 +102,7 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     await expect(page.locator('#billModal')).not.toBeVisible();
   });
 
-  test('AC 4: Extracted bill starts unreviewed and is saved as a Draft', async ({ page }) => {
+  test('AC 4: Extracted bill starts unreviewed and has no status control', async ({ page }) => {
     // Open Upload / Capture modal
     await page.click('#financeCaptureBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
@@ -117,9 +117,9 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     await expect(page.locator('#billExtractionConfidenceBadge')).toBeVisible();
     await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
-    // There is no status control: an extracted bill can only be saved as a Draft
+    // There is no status control: an extracted bill's status is decided by the server
     await expect(page.locator('#billStatus')).toHaveCount(0);
-    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Draft');
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Approved');
 
     // Fill missing required coding
     await page.selectOption('#billDepartment', 'Engineering');

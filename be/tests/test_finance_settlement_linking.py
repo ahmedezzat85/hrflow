@@ -53,7 +53,6 @@ def test_bill_settlement_linking_via_transaction(app_client, admin_cookies):
                     "line_total": 500.0,
                 }
             ],
-            "created_by": "creator@hrflow.test",
         },
         cookies=admin_cookies,
     )
@@ -262,7 +261,6 @@ def test_duplicate_settlement_check_endpoint(app_client, admin_cookies):
                     "line_total": 750.0,
                 }
             ],
-            "created_by": "creator@hrflow.test",
         },
         cookies=admin_cookies,
     )

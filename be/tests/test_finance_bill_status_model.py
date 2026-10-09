@@ -15,7 +15,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
 from bill_test_helpers import (
-    CREATOR,
+    make_maker,
     create_approved,
     create_draft,
     make_account,
@@ -49,7 +49,7 @@ def test_status_in_create_and_update_returns_422(app_client, admin_cookies):
     )
     assert resp.status_code == 422
 
-    bill = create_draft(app_client, admin_cookies, vid, "S422-002")
+    bill = create_draft(app_client, make_maker(), vid, "S422-002")
     upd = app_client.put(f"{BASE}/{bill['id']}", json={"status": "paid"}, cookies=admin_cookies)
     assert upd.status_code == 422
     assert app_client.get(f"{BASE}/{bill['id']}", cookies=admin_cookies).json()["status"] == "draft"
@@ -57,7 +57,7 @@ def test_status_in_create_and_update_returns_422(app_client, admin_cookies):
 
 def test_new_bill_is_draft_and_follows_submit_approve(app_client, admin_cookies):
     vid = make_vendor(app_client, admin_cookies, "Flow Vendor")
-    bill = create_draft(app_client, admin_cookies, vid, "FLOW-001")
+    bill = create_draft(app_client, make_maker(), vid, "FLOW-001")
     assert bill["status"] == "draft"
 
     sub = app_client.post(f"{BASE}/{bill['id']}/submit", cookies=admin_cookies)
@@ -127,7 +127,7 @@ def test_invalid_transition_returns_409_with_allowed_actions(app_client, admin_c
     acct = make_account(app_client, admin_cookies, f"T-{action}-{state}", number=f"7{abs(hash((action, state))) % 10**7:07d}")
     number = f"TR-{action}-{state}"
 
-    bill = create_draft(app_client, admin_cookies, vid, number, 1000.0)
+    bill = create_draft(app_client, make_maker(), vid, number, 1000.0)
     bid = bill["id"]
     # Walk the bill into the requested state through real actions only.
     if state != "draft":
@@ -160,7 +160,7 @@ def test_invalid_transition_returns_409_with_allowed_actions(app_client, admin_c
 def test_payment_on_non_payable_bill_returns_409(app_client, admin_cookies):
     vid = make_vendor(app_client, admin_cookies, "Pay409 Vendor")
     acct = make_account(app_client, admin_cookies, "Pay409 Account", number="55443322")
-    draft = create_draft(app_client, admin_cookies, vid, "PAY409-001")
+    draft = create_draft(app_client, make_maker(), vid, "PAY409-001")
     resp = pay(app_client, admin_cookies, draft["id"], acct, 100.0)
     assert resp.status_code == 409
     assert resp.json()["detail"]["current_status"] == "draft"
@@ -238,7 +238,7 @@ def test_void_after_payment_reversal_and_reason_columns(app_client, admin_cookie
 
 def test_void_action_endpoint_with_reason(app_client, admin_cookies):
     vid = make_vendor(app_client, admin_cookies, "Void Endpoint Vendor")
-    bill = create_draft(app_client, admin_cookies, vid, "VOIDEP-001")
+    bill = create_draft(app_client, make_maker(), vid, "VOIDEP-001")
     resp = app_client.post(f"{BASE}/{bill['id']}/void", json={"reason": "Cancelled by vendor"}, cookies=admin_cookies)
     assert resp.status_code == 200
     assert resp.json()["void_reason"] == "Cancelled by vendor"
@@ -267,7 +267,7 @@ def test_payment_status_is_derived_from_payments(app_client, admin_cookies):
 def test_is_overdue_flag_only_for_open_statuses(app_client, admin_cookies):
     vid = make_vendor(app_client, admin_cookies, "Overdue Vendor")
     past = _today(-20)
-    draft = create_draft(app_client, admin_cookies, vid, "OD-DRAFT", 100.0, due_date=past)
+    draft = create_draft(app_client, make_maker(), vid, "OD-DRAFT", 100.0, due_date=past)
     approved = create_approved(app_client, admin_cookies, vid, "OD-APPR", 100.0, due_date=past)
     future = create_approved(app_client, admin_cookies, vid, "OD-FUT", 100.0, due_date=_today(20))
 
@@ -289,7 +289,7 @@ def test_is_overdue_flag_only_for_open_statuses(app_client, admin_cookies):
 
 def test_queue_filter_and_status_validation(app_client, admin_cookies):
     vid = make_vendor(app_client, admin_cookies, "Queue Vendor")
-    create_draft(app_client, admin_cookies, vid, "Q-DRAFT")
+    create_draft(app_client, make_maker(), vid, "Q-DRAFT")
     create_approved(app_client, admin_cookies, vid, "Q-APPR")
     drafts = app_client.get(BASE, params={"queue": "draft", "vendor_id": vid}, cookies=admin_cookies).json()
     assert [b["bill_number"] for b in drafts] == ["Q-DRAFT"]
@@ -303,10 +303,10 @@ def test_queue_filter_and_status_validation(app_client, admin_cookies):
 def test_non_owed_statuses_excluded_from_aging_forecast_vendor_totals(app_client, admin_cookies):
     vid = make_vendor(app_client, admin_cookies, "Owed Vendor")
     due = _today(5)
-    create_draft(app_client, admin_cookies, vid, "OWED-DRAFT", 111.0, due_date=due)
-    pend = create_draft(app_client, admin_cookies, vid, "OWED-PEND", 222.0, due_date=due)
+    create_draft(app_client, make_maker(), vid, "OWED-DRAFT", 111.0, due_date=due)
+    pend = create_draft(app_client, make_maker(), vid, "OWED-PEND", 222.0, due_date=due)
     app_client.post(f"{BASE}/{pend['id']}/submit", cookies=admin_cookies)
-    rej = create_draft(app_client, admin_cookies, vid, "OWED-REJ", 333.0, due_date=due)
+    rej = create_draft(app_client, make_maker(), vid, "OWED-REJ", 333.0, due_date=due)
     app_client.post(f"{BASE}/{rej['id']}/submit", cookies=admin_cookies)
     app_client.post(f"{BASE}/{rej['id']}/approve", json={"decision": "reject", "comment": "no"}, cookies=admin_cookies)
     create_approved(app_client, admin_cookies, vid, "OWED-APPR", 1000.0, due_date=due)

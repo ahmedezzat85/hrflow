@@ -15,7 +15,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('AC 1: Uploaded bills are saved as Draft and carry no client-set status', async ({ page }) => {
+  test('AC 1: An approver uploaded bill is saved as Approved (auto) with no client-set status', async ({ page }) => {
     // Open Upload / Capture modal
     await page.click('#financeCaptureBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
@@ -40,9 +40,9 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await firstLinePrice.fill('1500');
     await firstLinePrice.dispatchEvent('input');
 
-    // The status dropdown is gone: the modal shows a read-only Draft badge
+    // The status dropdown is gone: the modal shows a read-only badge (approvers save as Approved)
     await expect(page.locator('#billStatus')).toHaveCount(0);
-    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Draft');
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Approved');
 
     // Now check "Mark verified and reviewed" and save
     await page.check('#billIsReviewed');
@@ -54,8 +54,9 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     // Verify bill appears in table with Reviewed status badge
     const createdRow = page.locator('#financeBillsTableBody tr:has-text("BILL-CAPTURE-001")');
     await expect(createdRow).toBeVisible();
-    expect(await createdRow.innerText()).toContain('Reviewed');
-    expect(await createdRow.innerText()).toContain('Draft');
+    // is_reviewed is server-owned: an uploaded capture stays unreviewed
+    expect(await createdRow.innerText()).toContain('Unreviewed');
+    expect(await createdRow.innerText()).toContain('Approved');
   });
 
   test('AC 2: Low-confidence / missing fields are clearly identified', async ({ page }) => {

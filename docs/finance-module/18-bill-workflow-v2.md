@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Slice B1 implemented on `feature/bills-b1-status-model`; B2 to B6 not implemented.
+**Status:** Approved by owner, October 8, 2026. Slices B1 and B2 implemented on `feature/bills-b1-status-model`; B3 to B6 not implemented.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -75,12 +75,21 @@ Implementation notes (B1):
 
 Acceptance:
 
-- [ ] Any approval field in a create/update request is refused with 422.
-- [ ] A finance user's bill reaches Approved only through `approve`; a super admin's bill is Approved on save, marked auto-approved.
-- [ ] A non-super-admin approver cannot approve their own bill.
-- [ ] A material edit by a finance user returns an Approved bill to Pending approval.
-- [ ] Pay without `finance.bill.pay` returns 403.
-- [ ] Tests: `test_finance_bills_approval.py` rewritten; RBAC tests extended.
+- [x] Any approval field in a create/update request is refused with 422.
+- [x] A finance user's bill reaches Approved only through `approve`; a super admin's bill is Approved on save, marked auto-approved.
+- [x] A non-super-admin approver cannot approve their own bill.
+- [x] A material edit by a finance user returns an Approved bill to Pending approval.
+- [x] Pay without `finance.bill.pay` returns 403.
+- [x] Tests: `test_finance_bills_approval.py` rewritten; RBAC tests extended.
+
+Implementation notes (B2):
+
+- `BillCreate` / `BillUpdate` refuse (422) any of: `status`, `approval_status`, `approved_by`, `approved_at`, `approval_comment`, `requires_approval`, `created_by`, `amount_paid`, `is_reviewed`, `scheduled_payment_date`. The server sets the creator from the session.
+- `BillActor` (email, super-admin flag, permissions) is passed to every bill service action; each action writes an audit entry (`bill.<action>`, from -> to status, reason) that shows in the bill activity timeline.
+- Material-edit rule: a change to vendor, currency or lines on an Approved or Scheduled bill by a user without `finance.bill.approve` runs the `send_back` transition to Pending approval and clears the schedule and approval.
+- `withdraw` is limited to the submitter (or a super admin). Reverse payment also needs `finance.bill.pay`; create-and-pay needs both `finance.bill.pay` and `finance.bill.approve`.
+- Migration `0029_bill_approve_pay_permissions` inserts the two permission rows and grants them to no role.
+- `BillResponse` now returns `allowed_actions`.
 
 ## Slice B3: Payment fields, currency and balance checks
 

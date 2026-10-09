@@ -5,7 +5,6 @@ Mirrors be/tests/test_finance_invoices.py structure.
 """
 import pytest
 
-from bill_test_helpers import CREATOR
 
 
 def test_bill_crud_and_validation(app_client, admin_cookies):
@@ -74,15 +73,15 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     put_resp = app_client.put(f"/api/finance/bills/{bill_id}", json=update_payload, cookies=admin_cookies)
     assert put_resp.status_code == 200
     updated = put_resp.json()
-    assert updated["status"] == "draft"
+    assert updated["status"] == "approved"
     assert updated["subtotal"] == 3000.0
     assert len(updated["lines"]) == 1
 
     # 7. Filter by status
-    status_resp = app_client.get("/api/finance/bills?status=draft", cookies=admin_cookies)
+    status_resp = app_client.get("/api/finance/bills?status=approved", cookies=admin_cookies)
     assert status_resp.status_code == 200
-    draft_ids = [b["id"] for b in status_resp.json()]
-    assert bill_id in draft_ids
+    approved_ids = [b["id"] for b in status_resp.json()]
+    assert bill_id in approved_ids
 
     # 8. Filter by vendor
     vend_filter_resp = app_client.get(f"/api/finance/bills?vendor_id={vendor_id}", cookies=admin_cookies)
@@ -151,7 +150,6 @@ def test_bill_payment_recording(app_client, admin_cookies):
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
             "currency": "USD",
-            "created_by": CREATOR,
             "lines": [
                 {"description": "Hosting fee", "quantity": 1.0, "unit_price": 1500.0, "line_total": 1500.0}
             ],
@@ -162,12 +160,9 @@ def test_bill_payment_recording(app_client, admin_cookies):
     bill = bill_resp.json()
     bill_id = bill["id"]
     assert bill["total"] == 1500.0
-    assert bill["status"] == "draft"
-    assert app_client.post(f"/api/finance/bills/{bill_id}/submit", cookies=admin_cookies).status_code == 200
-    approve_resp = app_client.post(
-        f"/api/finance/bills/{bill_id}/approve", json={"decision": "approve"}, cookies=admin_cookies
-    )
-    assert approve_resp.json()["status"] == "approved"
+    # A super admin's bill is Approved on save (auto-approved)
+    assert bill["status"] == "approved"
+    assert bill["approval_status"] == "auto"
 
     # 1. List payments (none yet)
     payments_resp = app_client.get(f"/api/finance/bills/{bill_id}/payments", cookies=admin_cookies)

@@ -73,7 +73,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await expect(page.locator('#billModal')).toBeVisible();
 
     await expect(page.locator('#billStatus')).toHaveCount(0);
-    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Draft');
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Approved');
 
     await page.click('#billModal .modal-close');
     await expect(page.locator('#billModal')).not.toBeVisible();

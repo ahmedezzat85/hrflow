@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from core.permissions import require_permission, get_current_user_permissions
+from core.permissions import AccessContext, get_access_context, require_permission, get_current_user_permissions
 from models_db import AuditLogDB
 from finance.schemas import (
     BankAccountCreate,
@@ -142,9 +142,15 @@ def create_account_transaction(
     account_id: int,
     payload: LedgerTransactionCreate,
     current_user: dict = Depends(require_permission("finance.account.write")),
+    access: AccessContext = Depends(get_access_context),
     service: LedgerService = Depends(get_ledger_service),
 ):
     """Records a manual continuous ledger transaction and recomputes running balances."""
+    if payload.linked_bill_id and not (access.is_super_admin or "finance.bill.pay" in access.permissions):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: 'finance.bill.pay' required to pay a vendor bill",
+        )
     if (payload.entry_type or "").lower() == "adjustment":
         perms = set(current_user.get("permissions", [])) if isinstance(current_user, dict) else set()
         if "finance.adjustment.manage" not in perms:

@@ -102,7 +102,6 @@ def core_reports_env(app_client, admin_cookies):
             "bill_number": f"BILL-TEST-{int(datetime.utcnow().timestamp())}",
             "issue_date": (today - timedelta(days=40)).strftime("%Y-%m-%d"),
             "due_date": (today - timedelta(days=10)).strftime("%Y-%m-%d"),
-            "created_by": "creator@hrflow.test",
             "currency": "USD",
             "lines": [
                 {"description": "Server Hosting", "quantity": 1.0, "unit_price": 5000.0, "line_total": 5000.0}

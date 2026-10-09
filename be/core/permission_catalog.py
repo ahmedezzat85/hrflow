@@ -303,6 +303,18 @@ CATALOG: Tuple[PermissionDef, ...] = (
         implies=("finance.bill.read",),
     ),
     PermissionDef(
+        key="finance.bill.approve",
+        group="Finance / Spend",
+        description="Approve or reject vendor bills; bills saved by an approver are auto-approved",
+        implies=("finance.bill.read",),
+    ),
+    PermissionDef(
+        key="finance.bill.pay",
+        group="Finance / Spend",
+        description="Record payments against vendor bills (including already-paid bills, linked cheques and transactions)",
+        implies=("finance.bill.read",),
+    ),
+    PermissionDef(
         key="finance.subscription.read",
         group="Finance / Spend",
         description="View vendor subscriptions",

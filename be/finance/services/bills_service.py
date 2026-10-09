@@ -7,7 +7,8 @@ import uuid
 import hashlib
 import mimetypes
 from datetime import datetime
-from typing import List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import FrozenSet, List, Optional, Tuple
 from fastapi import HTTPException, status, UploadFile
 
 from finance.repositories.bills_repository import BillsRepository
@@ -38,14 +39,29 @@ VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
 
 
+@dataclass(frozen=True)
+class BillActor:
+    """Who is acting on a bill: identity plus the permissions that decide approval and payment rules."""
+
+    email: str
+    is_super_admin: bool = False
+    permissions: FrozenSet[str] = field(default_factory=frozenset)
+
+    def can(self, key: str) -> bool:
+        return self.is_super_admin or key in self.permissions
+
+
+SYSTEM_ACTOR = BillActor(email="system", is_super_admin=True)
+
 BILL_UPLOADS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "finance_bills"
 )
 
 
 class BillsService:
-    def __init__(self, repo: BillsRepository):
+    def __init__(self, repo: BillsRepository, audit=None):
         self.repo = repo
+        self.audit = audit
         os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -79,6 +95,7 @@ class BillsService:
             due_date=bill.due_date,
             status=bill.status,
             is_overdue=bs.is_overdue(bill.status, bill.due_date),
+            allowed_actions=bs.allowed_actions(bill.status),
             void_reason=bill.void_reason,
             voided_by=bill.voided_by,
             voided_at=bill.voided_at,
@@ -189,17 +206,37 @@ class BillsService:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
         return self._bill_to_response(bill)
 
-    def _transition(self, bill: BillDB, action: str, extra: Optional[dict] = None) -> BillDB:
+    def _audit(self, action: str, bill_id: int, actor: BillActor, from_status: Optional[str], to_status: Optional[str], reason: Optional[str] = None) -> None:
+        """One activity entry per bill action: who, when (timestamp), from/to status, reason."""
+        if not self.audit:
+            return
+        details = f"{from_status or '-'} -> {to_status or '-'}"
+        if reason and reason.strip():
+            details += f"; reason: {reason.strip()}"
+        try:
+            self.audit.log(f"bill.{action}", actor.email, "bill", bill_id, details)
+        except Exception:
+            pass
+
+    def _transition(
+        self,
+        bill: BillDB,
+        action: str,
+        extra: Optional[dict] = None,
+        actor: Optional[BillActor] = None,
+        reason: Optional[str] = None,
+    ) -> BillDB:
         """Apply a status action through BILL_TRANSITIONS. Unsupported actions return 409."""
         try:
             target = bs.next_status(action, bill.status)
         except InvalidBillTransition as e:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
-        return self.repo.set_status(bill.id, target, extra)
+        previous = bill.status
+        updated = self.repo.set_status(bill.id, target, extra)
+        self._audit(action, bill.id, actor or SYSTEM_ACTOR, previous, target, reason)
+        return updated
 
-    def create_bill(
-        self, payload: BillCreate, current_user: Optional[dict] = None
-    ) -> BillResponse:
+    def create_bill(self, payload: BillCreate, actor: BillActor) -> BillResponse:
         # Inactive vendor validation: Inactive vendors remain on history but are excluded from new bills
         vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payload.vendor_id).first()
         if not vendor:
@@ -245,32 +282,32 @@ class BillsService:
                     status_code=400,
                     detail="Payment details (bank account, payment date) are required when 'is_paid_now' is True.",
                 )
-            if payload.requires_approval and payload.approval_status != "approved":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Bill requires approval before payment can be recorded.",
-                )
+            if not actor.can("finance.bill.pay"):
+                raise HTTPException(status_code=403, detail="Permission denied: 'finance.bill.pay' required to record an already-paid bill")
+            if not actor.can("finance.bill.approve"):
+                raise HTTPException(status_code=403, detail="Permission denied: 'finance.bill.approve' required to record an already-paid bill")
 
-        # New bills start as Draft. Create-and-pay starts Approved and is settled below;
-        # B2/B3 own the approval and payment-permission rules for this path.
-        initial_status = bs.APPROVED if payload.is_paid_now else bs.DRAFT
-        is_rev = payload.is_reviewed if payload.is_reviewed is not None else True
-        if payload.capture_source in ("upload", "ocr"):
-            is_rev = False
+        # An approver's (or super admin's) bill is Approved on save and marked auto-approved;
+        # everyone else's starts as Draft and goes through submit -> approve.
+        auto_approved = actor.can("finance.bill.approve")
+        initial_status = bs.APPROVED if auto_approved else bs.DRAFT
+        is_rev = payload.capture_source not in ("upload", "ocr")
 
         data = payload.model_dump(exclude={"lines", "is_paid_now", "payment"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines", "is_paid_now", "payment"})
         data["status"] = initial_status
         data["is_reviewed"] = is_rev
-
-        user_email = (current_user.get("email") or current_user.get("sub")) if current_user else None
-        if user_email and not data.get("created_by"):
-            data["created_by"] = user_email
+        data["created_by"] = actor.email
+        if auto_approved:
+            data["approval_status"] = "auto"
+            data["approved_by"] = actor.email
+            data["approved_at"] = datetime.utcnow()
 
         lines_data = [
             (ln.model_dump() if hasattr(ln, "model_dump") else ln.dict())
             for ln in payload.lines
         ]
         bill = self.repo.create(data, lines_data)
+        self._audit("created", bill.id, actor, None, bill.status)
 
         # FUX-408: Execute settlement atomically if is_paid_now is True
         if payload.is_paid_now and payload.payment:
@@ -299,32 +336,35 @@ class BillsService:
         return self._bill_to_response(bill)
 
     def approve_bill(
-        self, bill_id: int, req: BillApprovalRequest, current_user: dict
+        self, bill_id: int, req: BillApprovalRequest, actor: BillActor
     ) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
 
-        user_email = (current_user.get("email") or current_user.get("sub") or "admin").strip()
+        user_email = actor.email
         decision = (req.decision or "").strip().lower()
         if decision not in ("approve", "reject"):
             raise HTTPException(
                 status_code=400, detail=f"Invalid decision '{req.decision}'. Must be 'approve' or 'reject'."
             )
-        # Refuse an action the transition table does not allow before any other check.
         try:
             bs.next_status(decision, bill.status)
         except InvalidBillTransition as e:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
 
-        # AC 2: Segregation of duties - prevent self-approval
-        if bill.created_by and bill.created_by.strip().lower() == user_email.lower():
+        # Segregation of duties: a creator may not approve their own bill unless super admin
+        if (
+            bill.created_by
+            and bill.created_by.strip().lower() == user_email.lower()
+            and not actor.is_super_admin
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Self-approval is prohibited by segregation of duties policy.",
             )
 
-        # AC 2: Approver authorization limit check
+        # Approver authorization limit check
         if req.approver_limit is not None and bill.total > req.approver_limit:
             raise HTTPException(
                 status_code=400,
@@ -338,7 +378,7 @@ class BillsService:
                 "approved_at": datetime.utcnow(),
                 "approval_comment": req.comment,
             }
-        elif decision == "reject":
+        else:
             if not req.comment or not req.comment.strip():
                 raise HTTPException(
                     status_code=400,
@@ -351,10 +391,10 @@ class BillsService:
                 "approval_comment": req.comment.strip(),
             }
 
-        updated = self._transition(bill, decision, updates)
+        updated = self._transition(bill, decision, updates, actor=actor, reason=req.comment)
         return self._bill_to_response(updated)
 
-    def submit_bill(self, bill_id: int) -> BillResponse:
+    def submit_bill(self, bill_id: int, actor: BillActor) -> BillResponse:
         """Draft or Rejected -> Pending approval. Clears the previous decision."""
         bill = self.repo.get_by_id(bill_id)
         if not bill:
@@ -363,18 +403,23 @@ class BillsService:
             bill,
             "submit",
             {"approval_status": "pending", "approved_by": None, "approved_at": None, "approval_comment": None},
+            actor=actor,
         )
         return self._bill_to_response(updated)
 
-    def withdraw_bill(self, bill_id: int) -> BillResponse:
-        """Pending approval -> Draft."""
+    def withdraw_bill(self, bill_id: int, actor: BillActor) -> BillResponse:
+        """Pending approval -> Draft, by the submitter (or a super admin)."""
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
-        updated = self._transition(bill, "withdraw", {"approval_status": None})
+        if bill.status == bs.PENDING_APPROVAL and not actor.is_super_admin and (
+            (bill.created_by or "").strip().lower() != actor.email.strip().lower()
+        ):
+            raise HTTPException(status_code=403, detail="Only the submitter can withdraw this bill")
+        updated = self._transition(bill, "withdraw", {"approval_status": None}, actor=actor)
         return self._bill_to_response(updated)
 
-    def schedule_bill(self, bill_id: int, req: BillScheduleRequest) -> BillResponse:
+    def schedule_bill(self, bill_id: int, req: BillScheduleRequest, actor: BillActor) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
@@ -384,10 +429,10 @@ class BillsService:
             existing = bill.notes or ""
             updates["notes"] = f"{existing}\n[Scheduled: {req.scheduled_payment_date} - {req.notes}]".strip()
 
-        updated = self._transition(bill, "schedule", updates)
+        updated = self._transition(bill, "schedule", updates, actor=actor, reason=req.scheduled_payment_date)
         return self._bill_to_response(updated)
 
-    def update_bill(self, bill_id: int, payload: BillUpdate) -> BillResponse:
+    def update_bill(self, bill_id: int, payload: BillUpdate, actor: BillActor) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
@@ -403,11 +448,45 @@ class BillsService:
                 for ln in payload.lines
             ]
 
+        # A material change (vendor, currency or lines/amount) to an Approved or Scheduled bill by a user
+        # who cannot approve sends it back to Pending approval and clears the schedule.
+        material = False
+        if data.get("vendor_id") is not None and data["vendor_id"] != bill.vendor_id:
+            material = True
+        if data.get("currency") is not None and data["currency"] != bill.currency:
+            material = True
+        if lines_data is not None:
+            old_lines = sorted((ln.description.strip(), round(ln.quantity, 4), round(ln.unit_price, 4)) for ln in (bill.lines or []))
+            new_lines = sorted(
+                (ln["description"].strip(), round(ln.get("quantity", 1.0), 4), round(ln.get("unit_price", 0.0), 4))
+                for ln in lines_data
+            )
+            if old_lines != new_lines:
+                material = True
+        send_back = material and bill.status in (bs.APPROVED, bs.SCHEDULED) and not actor.can("finance.bill.approve")
+
+        previous = bill.status
         updated = self.repo.update(bill_id, data, lines_data)
+        if send_back:
+            updated = self._transition(
+                updated,
+                "send_back",
+                {
+                    "scheduled_payment_date": None,
+                    "approval_status": "pending",
+                    "approved_by": None,
+                    "approved_at": None,
+                    "approval_comment": None,
+                },
+                actor=actor,
+                reason="Material edit by a user without approval rights",
+            )
+        else:
+            self._audit("updated", bill_id, actor, previous, updated.status)
         return self._bill_to_response(updated)
 
     def void_bill(
-        self, bill_id: int, reason: Optional[str] = None, current_user: Optional[dict] = None
+        self, bill_id: int, reason: Optional[str] = None, actor: BillActor = SYSTEM_ACTOR
     ) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
@@ -426,9 +505,7 @@ class BillsService:
                     "allowed_actions": bs.allowed_actions(bill.status),
                 },
             )
-        voided_by = None
-        if current_user:
-            voided_by = (current_user.get("email") or current_user.get("sub") or "user")
+        voided_by = actor.email
         voided = self._transition(
             bill,
             "void",
@@ -437,6 +514,8 @@ class BillsService:
                 "voided_by": voided_by,
                 "voided_at": datetime.utcnow(),
             },
+            actor=actor,
+            reason=reason,
         )
         return self._bill_to_response(voided)
 
@@ -450,7 +529,7 @@ class BillsService:
         payments = self.repo.list_payments(bill_id)
         return [self._payment_to_response(p) for p in payments]
 
-    def record_payment(self, bill_id: int, payload: PaymentCreate) -> PaymentResponse:
+    def record_payment(self, bill_id: int, payload: PaymentCreate, actor: BillActor = SYSTEM_ACTOR) -> PaymentResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
@@ -475,12 +554,14 @@ class BillsService:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+        refreshed = self.repo.get_by_id(bill_id)
+        self._audit("payment_recorded", bill_id, actor, bill.status, refreshed.status if refreshed else None, f"{payload.amount}")
         return self._payment_to_response(payment)
 
     def reverse_payment(
-        self, bill_id: int, payment_id: int, req: PaymentReversalRequest, current_user: dict
+        self, bill_id: int, payment_id: int, req: PaymentReversalRequest, actor: BillActor
     ) -> PaymentResponse:
-        user_email = (current_user.get("email") or current_user.get("sub") or "admin").strip()
+        user_email = actor.email
         try:
             payment = self.repo.reverse_payment(
                 bill_id=bill_id,
@@ -491,6 +572,8 @@ class BillsService:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+        refreshed = self.repo.get_by_id(bill_id)
+        self._audit("payment_reversed", bill_id, actor, None, refreshed.status if refreshed else None, req.reason)
         return self._payment_to_response(payment)
 
     # ------------------------------------------------------------------

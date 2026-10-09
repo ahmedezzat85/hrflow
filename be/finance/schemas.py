@@ -620,17 +620,23 @@ class BillBase(BaseModel):
     attachment_url: Optional[str] = None
     attachment_name: Optional[str] = None
     file_fingerprint: Optional[str] = None
-    is_reviewed: Optional[bool] = True
     is_duplicate_override: Optional[bool] = False
     duplicate_override_reason: Optional[str] = None
-    created_by: Optional[str] = None
-    requires_approval: Optional[bool] = False
-    approval_status: Optional[str] = None  # pending | approved | rejected
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
-    approval_comment: Optional[str] = None
-    scheduled_payment_date: Optional[str] = None
-    amount_paid: float = 0.0
+
+
+# Fields the server owns. A client that sends any of them in a create/update is refused (422).
+BILL_SERVER_OWNED_FIELDS = (
+    "status",
+    "approval_status",
+    "approved_by",
+    "approved_at",
+    "approval_comment",
+    "requires_approval",
+    "created_by",
+    "amount_paid",
+    "is_reviewed",
+    "scheduled_payment_date",
+)
 
 
 class BillPaymentInline(BaseModel):
@@ -642,9 +648,11 @@ class BillPaymentInline(BaseModel):
 
 
 def _reject_client_status(data):
-    """Bill status is set only by server actions (D-016); a client-supplied status is refused."""
-    if isinstance(data, dict) and "status" in data:
-        raise ValueError("status cannot be set by the client; it changes only through bill actions")
+    """Status and approval fields are set only by server actions (D-016, D-017); a client-supplied value is refused."""
+    if isinstance(data, dict):
+        sent = [k for k in BILL_SERVER_OWNED_FIELDS if k in data]
+        if sent:
+            raise ValueError(f"{', '.join(sent)} cannot be set by the client; set by the server through bill actions")
     return data
 
 
@@ -681,17 +689,8 @@ class BillUpdate(BaseModel):
     attachment_url: Optional[str] = None
     attachment_name: Optional[str] = None
     file_fingerprint: Optional[str] = None
-    is_reviewed: Optional[bool] = None
     is_duplicate_override: Optional[bool] = None
     duplicate_override_reason: Optional[str] = None
-    created_by: Optional[str] = None
-    requires_approval: Optional[bool] = None
-    approval_status: Optional[str] = None
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
-    approval_comment: Optional[str] = None
-    scheduled_payment_date: Optional[str] = None
-    amount_paid: Optional[float] = None
     lines: Optional[List[BillLineCreate]] = None
 
 
@@ -699,6 +698,16 @@ class BillResponse(BillBase):
     id: int
     status: str
     is_overdue: bool = False
+    is_reviewed: Optional[bool] = True
+    created_by: Optional[str] = None
+    requires_approval: Optional[bool] = False
+    approval_status: Optional[str] = None  # pending | approved | rejected | auto
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_comment: Optional[str] = None
+    scheduled_payment_date: Optional[str] = None
+    amount_paid: float = 0.0
+    allowed_actions: List[str] = []
     void_reason: Optional[str] = None
     voided_by: Optional[str] = None
     voided_at: Optional[datetime] = None

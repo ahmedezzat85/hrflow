@@ -125,7 +125,6 @@ def test_cash_vs_accrual_basis_calculation(app_client, admin_cookies):
             "issue_date": today_str,
             "due_date": today_str,
             "currency": "USD",
-            "created_by": "creator@hrflow.test",
             "lines": [{"description": "Security Audit", "quantity": 1, "unit_price": 10000.0}],
         },
         cookies=admin_cookies,

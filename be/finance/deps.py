@@ -72,7 +72,8 @@ def get_bills_repo(db: Session = Depends(get_db)) -> BillsRepository:
 def get_bills_service(
     repo: BillsRepository = Depends(get_bills_repo),
 ) -> BillsService:
-    return BillsService(repo)
+    from repositories.sql.audit import SqlAuditRepository
+    return BillsService(repo, audit=SqlAuditRepository())
 
 
 def get_categories_repo(db: Session = Depends(get_db)) -> CategoriesRepository:

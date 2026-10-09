@@ -19,6 +19,7 @@
   const BILL_OPEN_STATUSES = ["approved", "scheduled", "partially_paid"];
   const BILL_TRANSITIONS = {
     submit: { draft: "pending_approval", rejected: "pending_approval" },
+    send_back: { approved: "pending_approval", scheduled: "pending_approval" },
     withdraw: { pending_approval: "draft" },
     approve: { pending_approval: "approved" },
     reject: { pending_approval: "rejected" },
@@ -29,6 +30,21 @@
     void: { draft: "void", pending_approval: "void", rejected: "void", approved: "void", scheduled: "void" },
   };
   const _billAllowedActions = (status) => Object.keys(BILL_TRANSITIONS).filter((a) => BILL_TRANSITIONS[a][status]);
+  const _can = (key) => typeof SessionInfo === "undefined" || typeof SessionInfo.hasPermission !== "function" || SessionInfo.hasPermission(key);
+  const _forbid = (key) => {
+    const err = new Error(`Permission denied: '${key}' required`);
+    err.status = 403;
+    return err;
+  };
+  const SERVER_OWNED = ["status", "approval_status", "approved_by", "approved_at", "approval_comment", "requires_approval", "created_by", "amount_paid", "is_reviewed", "scheduled_payment_date"];
+  const _refuseServerOwned = (payload) => {
+    const sent = SERVER_OWNED.filter((k) => k in payload);
+    if (sent.length) {
+      const err = new Error(`${sent.join(", ")} cannot be set by the client; set by the server through bill actions`);
+      err.status = 422;
+      throw err;
+    }
+  };
   const _billNext = (action, bill) => {
     const target = (BILL_TRANSITIONS[action] || {})[bill.status];
     if (!target) {
@@ -237,19 +253,19 @@
         throw new Error("A valid reason is required when overriding a duplicate bill detection.");
       }
 
-      if ("status" in payload) {
-        const err = new Error("status cannot be set by the client; it changes only through bill actions");
-        err.status = 422;
-        throw err;
+      _refuseServerOwned(payload);
+
+      if (payload.is_paid_now) {
+        if (!payload.payment) {
+          throw new Error("Payment details (bank account, payment date) are required when 'is_paid_now' is True.");
+        }
+        if (!_can("finance.bill.pay") || !_can("finance.bill.approve")) throw _forbid("finance.bill.pay");
       }
 
-      if (payload.is_paid_now && !payload.payment) {
-        throw new Error("Payment details (bank account, payment date) are required when 'is_paid_now' is True.");
-      }
-
-      // New bills start as Draft; create-and-pay starts Approved and is settled below.
-      const st = payload.is_paid_now ? "approved" : "draft";
-      const isRev = payload.is_reviewed !== undefined ? !!payload.is_reviewed : true;
+      // An approver's bill is Approved on save (auto-approved); everyone else's starts as Draft.
+      const autoApproved = _can("finance.bill.approve");
+      const st = autoApproved ? "approved" : "draft";
+      const isRev = !(payload.capture_source === "upload" || payload.capture_source === "ocr");
 
       const newBill = {
         id: FinanceMockState.bills.length + 1,
@@ -257,6 +273,9 @@
         status: st,
         amount_paid: 0.0,
         is_reviewed: isRev,
+        created_by: "admin@voyance.health",
+        approval_status: autoApproved ? "auto" : null,
+        approved_by: autoApproved ? "admin@voyance.health" : null,
         vendor_name: vend ? vend.name : null,
         subtotal, tax_amount: 0, total: subtotal,
         created_at: new Date().toISOString(),
@@ -284,17 +303,29 @@
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
 
-      if ("status" in payload) {
-        const err = new Error("status cannot be set by the client; it changes only through bill actions");
-        err.status = 422;
-        throw err;
-      }
+      _refuseServerOwned(payload);
       if (bill.status === "void") throw new Error("Cannot update a voided bill");
+
+      // A material edit (vendor, currency, lines) by a user who cannot approve sends an Approved/Scheduled bill back.
+      const oldLines = JSON.stringify((bill.lines || []).map((l) => [String(l.description || "").trim(), Number(l.quantity), Number(l.unit_price)]).sort());
+      const newLines = payload.lines ? JSON.stringify(payload.lines.map((l) => [String(l.description || "").trim(), Number(l.quantity ?? 1), Number(l.unit_price ?? 0)]).sort()) : oldLines;
+      const material = (payload.vendor_id !== undefined && parseInt(payload.vendor_id, 10) !== bill.vendor_id)
+        || (payload.currency !== undefined && payload.currency !== bill.currency)
+        || oldLines !== newLines;
+      const sendBack = material && ["approved", "scheduled"].includes(bill.status) && !_can("finance.bill.approve");
 
       Object.assign(bill, payload);
       if (payload.lines) {
         bill.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
         bill.total = bill.subtotal;
+      }
+      if (sendBack) {
+        bill.status = _billNext("send_back", bill);
+        bill.scheduled_payment_date = null;
+        bill.approval_status = "pending";
+        bill.approved_by = null;
+        bill.approved_at = null;
+        bill.approval_comment = null;
       }
       return bill;
     }
@@ -352,11 +383,13 @@
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
+      if (!_can("finance.bill.approve")) throw _forbid("finance.bill.approve");
       const decision = payload.decision || "approve";
       if (decision !== "approve" && decision !== "reject") throw new Error(`Invalid decision '${decision}'. Must be 'approve' or 'reject'.`);
       const target = _billNext(decision, bill);
       const approverEmail = payload.approver_email || "admin@voyance.health";
-      if (bill.created_by && bill.created_by.toLowerCase() === approverEmail.toLowerCase()) {
+      const isSuper = typeof SessionInfo !== "undefined" && (SessionInfo.getRoles() || []).includes("Super-Admin");
+      if (bill.created_by && bill.created_by.toLowerCase() === approverEmail.toLowerCase() && !isSuper) {
         throw new Error("Self-approval is prohibited by segregation of duties policy.");
       }
       if (payload.approver_limit !== undefined && payload.approver_limit !== null && bill.total > payload.approver_limit) {
@@ -392,6 +425,7 @@
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
       if (!bill) throw new Error("Bill not found");
+      if (!_can("finance.bill.pay")) throw _forbid("finance.bill.pay");
       _billNext("pay", bill);
       const existingPayments = (FinanceMockState.billPayments || []).filter(
         (p) => p.related_bill_id === bill.id && !p.is_reversed
@@ -421,6 +455,7 @@
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
       if (!bill) throw new Error("Bill not found");
+      if (!_can("finance.bill.pay")) throw _forbid("finance.bill.pay");
       const payment = (FinanceMockState.billPayments || []).find(
         (p) => p.id === parseInt(paymentId, 10) && p.related_bill_id === bill.id
       );

@@ -3,7 +3,6 @@ be/tests/test_finance_cheques.py
 Unit and integration tests for Phase 5: Cheque & Teller Withdrawal Module.
 """
 import pytest
-from bill_test_helpers import approve_existing
 
 
 
@@ -27,7 +26,6 @@ def test_issue_vendor_payment_cheque(app_client, admin_cookies):
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
             "currency": "USD",
-            "created_by": "creator@hrflow.test",
             "lines": [
                 {"description": "Server hardware", "quantity": 1.0, "unit_price": 3000.0, "line_total": 3000.0}
             ],
@@ -36,8 +34,7 @@ def test_issue_vendor_payment_cheque(app_client, admin_cookies):
     )
     assert bill_resp.status_code == 201
     bill_id = bill_resp.json()["id"]
-    assert bill_resp.json()["status"] == "draft"
-    assert approve_existing(app_client, admin_cookies, bill_id)["status"] == "approved"
+    assert bill_resp.json()["status"] == "approved"
 
     # 2. Setup bank account
     acc_resp = app_client.post(

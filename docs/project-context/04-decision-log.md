@@ -309,7 +309,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-017 — Bill Approval and Bill Permissions
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B2).
 - **Decision:**
   - New permissions `finance.bill.approve` and `finance.bill.pay`. Super admin holds them; no seeded role is granted them for now, so Financial-Admin keeps create/edit but loses approve and pay until granted.
   - Bills saved by a holder of `finance.bill.approve` are Approved immediately, marked auto-approved. Others submit for approval; the super admin approves or rejects (reason required).

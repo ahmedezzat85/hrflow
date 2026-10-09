@@ -3,6 +3,7 @@ be/tests/test_finance_bill_payment_guard.py
 Tests for Story FUX-408: Combined create-and-pay bill action with settlement-status integrity guard.
 """
 import pytest
+from bill_test_helpers import make_maker
 
 
 def test_direct_status_paid_rejected_on_create(app_client, admin_cookies):
@@ -188,8 +189,8 @@ def test_combined_create_and_pay_action_partial_settlement(app_client, admin_coo
     assert created_bill["remaining_balance"] == 600.0
 
 
-def test_combined_create_and_pay_blocked_when_approval_required(app_client, admin_cookies):
-    """If a bill requires approval and is not approved, the combined create-and-pay action is blocked."""
+def test_combined_create_and_pay_blocked_without_approve_and_pay_permissions(app_client, admin_cookies):
+    """A finance user without finance.bill.approve / finance.bill.pay cannot use the combined create-and-pay action."""
     vend_resp = app_client.post(
         "/api/finance/vendors",
         json={"name": "FUX408 Vendor Approval Required"},
@@ -218,8 +219,6 @@ def test_combined_create_and_pay_blocked_when_approval_required(app_client, admi
         "category": "Capital Expenditure",
         "issue_date": "2026-09-10",
         "due_date": "2026-09-25",
-        "requires_approval": True,
-        "approval_status": "pending",
         "currency": "USD",
         "lines": [{"description": "Machinery", "quantity": 1, "unit_price": 5000.0, "line_total": 5000.0}],
         "is_paid_now": True,
@@ -230,6 +229,11 @@ def test_combined_create_and_pay_blocked_when_approval_required(app_client, admi
             "method": "bank_transfer",
         },
     }
-    resp = app_client.post("/api/finance/bills", json=combined_payload, cookies=admin_cookies)
-    assert resp.status_code == 400
-    assert "requires approval before payment can be recorded" in resp.json()["detail"]
+    maker = make_maker()
+    resp = app_client.post("/api/finance/bills", json=combined_payload, cookies=maker)
+    assert resp.status_code == 403
+    assert "finance.bill.pay" in resp.json()["detail"]
+
+    # No bill was left behind
+    listed = app_client.get("/api/finance/bills", params={"search": "BILL-COMBINED-APP-01"}, cookies=admin_cookies).json()
+    assert listed == []

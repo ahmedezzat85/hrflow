@@ -33,6 +33,11 @@ let _currentBillQueueCounts = {
   overdue: 0,
 };
 
+// Frontend visibility only; the backend enforces finance.bill.approve / finance.bill.pay.
+function _canBill(key) {
+  return typeof SessionInfo === "undefined" || typeof SessionInfo.hasPermission !== "function" || SessionInfo.hasPermission(key);
+}
+
 function isBillStatusPanelExpanded() {
   const panel = document.getElementById("financeBillStatusPanel");
   return panel ? panel.style.display !== "none" : false;
@@ -488,10 +493,10 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
         <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${(derivedStatus === "draft" || derivedStatus === "rejected") ? `<button class="btn btn-sm btn-outline btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval"><i class="fa-solid fa-paper-plane"></i> Submit</button>` : ""}
-        ${derivedStatus === "pending_approval" ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
+        ${(derivedStatus === "pending_approval" && _canBill("finance.bill.approve")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
         ${derivedStatus === "pending_approval" ? `<button class="btn btn-sm btn-outline btn-withdraw-bill" onclick="withdrawBillToDraft(${bill.id})" title="Withdraw to draft"><i class="fa-solid fa-rotate-left"></i> Withdraw</button>` : ""}
         ${derivedStatus === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
-        ${(derivedStatus === "approved" || derivedStatus === "scheduled" || derivedStatus === "partially_paid") ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${((derivedStatus === "approved" || derivedStatus === "scheduled" || derivedStatus === "partially_paid") && _canBill("finance.bill.pay")) ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
         ${(derivedStatus === "draft" || derivedStatus === "pending_approval" || derivedStatus === "rejected" || derivedStatus === "approved" || derivedStatus === "scheduled") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
@@ -880,7 +885,7 @@ function _resetBillPaidNowSection() {
 function _resetBillStatusDisplay(bill = null) {
   const readOnlyContainer = document.getElementById("billStatusReadOnlyContainer");
   const readOnlyBadge = document.getElementById("billStatusReadOnlyBadge");
-  const status = bill ? FinanceFormat.getDerivedBillStatus(bill) : "draft";
+  const status = bill ? FinanceFormat.getDerivedBillStatus(bill) : (_canBill("finance.bill.approve") ? "approved" : "draft");
   const info = (FinanceFormat.STATUS_MAP.bill || {})[status] || { label: status, badgeClass: "badge-grey" };
   if (readOnlyContainer) readOnlyContainer.style.display = "block";
   if (readOnlyBadge) {
@@ -1089,7 +1094,6 @@ async function saveBillModal() {
   const billNumber = document.getElementById("billNumber").value.trim();
   const issueDate = document.getElementById("billIssueDate").value;
   const dueDate = document.getElementById("billDueDate").value;
-  const isReviewed = document.getElementById("billIsReviewed").checked;
 
   const isValid = FinanceForm.validateRequiredFields("billModal", [
     { id: "billVendorId", label: "Vendor" },
@@ -1169,7 +1173,6 @@ async function saveBillModal() {
     capture_source: document.getElementById("billCaptureSource").value || "manual",
     file_fingerprint: document.getElementById("billFileFingerprint").value || null,
     attachment_name: document.getElementById("billAttachedFileName")?.textContent || null,
-    is_reviewed: isReviewed,
     is_duplicate_override: dupOverride,
     duplicate_override_reason: dupOverride ? dupReason : null,
     lines,

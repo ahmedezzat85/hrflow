@@ -7,9 +7,9 @@ Gated by RBAC permissions:
 - finance.account.write (issue, update status)
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from core.permissions import require_permission
+from core.permissions import AccessContext, get_access_context, require_permission
 from finance.schemas import (
     ChequeCreate,
     ChequeStatusUpdate,
@@ -61,11 +61,17 @@ def get_cheque(
 def issue_cheque(
     payload: ChequeCreate,
     current_user: dict = Depends(require_permission("finance.account.write")),
+    access: AccessContext = Depends(get_access_context),
     service: ChequesService = Depends(get_cheques_service),
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
     idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Issues or drafts a new cheque, generating continuous ledger transactions and updating balances."""
+    if payload.linked_bill_id and not (access.is_super_admin or "finance.bill.pay" in access.permissions):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: 'finance.bill.pay' required to pay a vendor bill",
+        )
     user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
     return idempotency.execute_idempotent(
         idempotency_key=idempotency_key,
