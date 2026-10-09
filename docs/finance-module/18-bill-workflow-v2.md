@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Slices B1 to B3 implemented on `feature/bills-b1-status-model`; B4 to B6 not implemented.
+**Status:** Approved by owner, October 8, 2026. Slices B1 to B4 implemented on `feature/bills-b1-status-model`; B5 and B6 not implemented.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -151,13 +151,21 @@ Implementation notes (B3):
 
 Acceptance:
 
-- [ ] A draft saves with only a vendor, or only an attachment.
-- [ ] Leaving Draft with a missing required field is refused field by field.
-- [ ] Five PDFs from three vendors yield five Drafts, each with its own vendor or a "vendor to confirm" flag.
-- [ ] Discarding a draft removes row and file; DELETE on any other bill is refused.
-- [ ] The Miscellaneous vendor exists after migration and cannot be deleted, renamed or deactivated.
-- [ ] A bill saved with a blank number gets the next `EXP-YYMM-NNNN` number; numbers never repeat.
-- [ ] Tests: `test_finance_bill_extraction.py`, `test_finance_bill_attachments.py` updated; new draft-lifecycle tests.
+- [x] A draft saves with only a vendor, or only an attachment.
+- [x] Leaving Draft with a missing required field is refused field by field.
+- [x] Five PDFs from three vendors yield five Drafts, each with its own vendor or a "vendor to confirm" flag.
+- [x] Discarding a draft removes row and file; DELETE on any other bill is refused.
+- [x] The Miscellaneous vendor exists after migration and cannot be deleted, renamed or deactivated.
+- [x] A bill saved with a blank number gets the next `EXP-YYMM-NNNN` number; numbers never repeat.
+- [x] Tests: `test_finance_bill_extraction.py`, `test_finance_bill_attachments.py` updated; new draft-lifecycle tests.
+
+Implementation notes (B4):
+
+- Migration `0030_bill_draft_fields` also adds `vendor_to_confirm` and `suggested_vendor_name`. Its downgrade deletes drafts that have no vendor (they cannot exist in the old schema) and fills other empty fields with placeholders.
+- `BillBase` makes vendor, bill number and dates optional. A draft needs `vendor_id` or an attachment (422 otherwise). Leaving Draft (`submit`, or a bill born Approved from an approver) runs `_validate_leaving_draft`: required vendor, bill number, issue date, due date and category (422, one entry per field, FastAPI-style `loc`/`msg`), inactive vendor, bill-number reuse and duplicate detection.
+- `POST /bills/upload` (multipart `files`) returns one result per file. Only PDF and photo types are accepted; a file already uploaded (same SHA-256) is reported with `duplicate_of` instead of creating a second draft. Uploads are always Drafts, even for approvers. A vendor counts as matched only when the extracted vendor id exists, is active and carries the extracted name; otherwise `vendor_to_confirm` is set and the extracted name is stored as `suggested_vendor_name`. No vendor is ever created. Editing the draft with a vendor clears the flag.
+- `DELETE /bills/{id}` now discards a Draft (row, lines, file, one `bill.discarded` activity entry, 204); any other status returns 409 `delete_not_allowed`. Cancelling is `POST /bills/{id}/void`.
+- Frontend: "Upload drafts" button (multi-file) that opens the list on the Draft status; "Vendor to confirm" badge; Discard action on drafts; Void on the other open statuses.
 
 ## Slice B5: Bill screens, behaviour only (current visual style)
 

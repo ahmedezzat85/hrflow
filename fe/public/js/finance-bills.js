@@ -460,8 +460,8 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
     return `
     <tr data-record-id="${bill.id}">
-      <td><strong>${bill.bill_number}</strong></td>
-      <td>${bill.vendor_name || "—"}</td>
+      <td><strong>${bill.bill_number || "(no number yet)"}</strong></td>
+      <td>${bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—")}${bill.vendor_to_confirm ? ' <span class="badge badge-warning" title="The vendor on the document could not be matched with confidence">Vendor to confirm</span>' : ""}</td>
       <td>
         <span class="badge badge-info">${bill.category || "General"}</span>
         ${bill.department ? `<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${bill.department}</div>` : ""}
@@ -497,7 +497,8 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
         ${derivedStatus === "pending_approval" ? `<button class="btn btn-sm btn-outline btn-withdraw-bill" onclick="withdrawBillToDraft(${bill.id})" title="Withdraw to draft"><i class="fa-solid fa-rotate-left"></i> Withdraw</button>` : ""}
         ${derivedStatus === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
         ${((derivedStatus === "approved" || derivedStatus === "scheduled" || derivedStatus === "partially_paid") && _canBill("finance.bill.pay")) ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${(derivedStatus === "draft" || derivedStatus === "pending_approval" || derivedStatus === "rejected" || derivedStatus === "approved" || derivedStatus === "scheduled") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
+        ${derivedStatus === "draft" ? `<button class="btn btn-sm btn-danger btn-discard-draft" onclick="confirmDiscardDraft(${bill.id})" title="Discard draft (deletes it permanently)"><i class="fa-solid fa-trash"></i></button>` : ""}
+        ${(derivedStatus === "pending_approval" || derivedStatus === "rejected" || derivedStatus === "approved" || derivedStatus === "scheduled") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
   `;
@@ -1276,6 +1277,47 @@ async function saveBillModal() {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
   } finally {
     if (btn) btn.disabled = false;
+  }
+}
+
+async function confirmDiscardDraft(billId) {
+  const bill = (FinanceState.bills || []).find((b) => b.id === parseInt(billId, 10));
+  const result = await FinanceCommand.confirmAction({
+    title: "Discard draft",
+    summary: bill ? `<strong>${bill.bill_number || "Draft"}</strong> · ${bill.vendor_name || bill.suggested_vendor_name || "No vendor yet"}` : `Draft #${billId}`,
+    consequence: "Discarding deletes this draft and its uploaded file permanently. Only drafts can be discarded; other bills are voided.",
+    actionLabel: "Discard draft",
+    actionClass: "btn btn-danger",
+    requireReason: false,
+    severity: "danger",
+  });
+  if (!result.confirmed) return;
+  try {
+    await FinanceApi.discardBill(billId);
+    showToast("Draft discarded", "success");
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+
+// Multi-file upload: each PDF or photo becomes its own Draft; the list then opens filtered to Drafts
+async function onBillDraftFilesChosen(input) {
+  const files = Array.from(input.files || []);
+  input.value = "";
+  if (!files.length) return;
+  try {
+    const results = await FinanceApi.uploadBillFiles(files);
+    const created = results.filter((r) => r.bill);
+    const toConfirm = created.filter((r) => r.bill.vendor_to_confirm).length;
+    const failed = results.filter((r) => !r.bill);
+    let msg = `${created.length} draft${created.length === 1 ? "" : "s"} created`;
+    if (toConfirm) msg += `, ${toConfirm} need${toConfirm === 1 ? "s" : ""} the vendor confirmed`;
+    if (failed.length) msg += `; ${failed.length} not created (${failed.map((f) => `${f.filename}: ${f.error}`).join("; ")})`;
+    showToast(msg, failed.length ? "warning" : "success");
+    setBillWorkQueue("draft");
+  } catch (err) {
+    showToast("Upload failed: " + (err.message || JSON.stringify(err)), "error");
   }
 }
 

@@ -149,7 +149,7 @@ Replaces Slices 2 and 3 above with a permission-based RBAC (decisions D-011 to D
 
 ## 3B. Vendor Bill Workflow v2 (accepted October 8, 2026)
 
-Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-020. B1 to B3 implemented on `feature/bills-b1-status-model`; B4 to B6 not started.
+Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-020. B1 to B4 implemented on `feature/bills-b1-status-model`; B5 and B6 not started.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |

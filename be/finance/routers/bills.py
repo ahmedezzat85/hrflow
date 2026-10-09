@@ -22,6 +22,7 @@ from finance.schemas import (
     BillApprovalRequest,
     BillScheduleRequest,
     BillVoidRequest,
+    BillUploadResponse,
     BillCategoryQualityReportResponse,
     BillDocumentExtractionResponse,
     BillPaymentCreate,
@@ -54,6 +55,20 @@ async def extract_bill_document(
     Does not auto-promote or approve the bill. Reviews are strictly required.
     """
     return await service.extract_document(file=file)
+
+
+@router.post("/upload", response_model=BillUploadResponse)
+async def upload_bill_drafts(
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Upload several PDFs or photos at once. Each file becomes its own Draft with its own vendor match;
+    a weak match leaves the vendor empty and flags "vendor to confirm". Never creates a vendor.
+    """
+    return await service.upload_drafts(files, actor=_actor(access))
 
 
 @router.get("/category-quality-report", response_model=BillCategoryQualityReportResponse)
@@ -203,16 +218,16 @@ def update_vendor_bill(
     return service.update_bill(bill_id, payload, actor=_actor(access))
 
 
-@router.delete("/{bill_id}", response_model=BillResponse)
-def void_vendor_bill(
+@router.delete("/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)
+def discard_vendor_bill(
     bill_id: int,
-    reason: Optional[str] = Query(None, description="Reason for voiding the bill"),
     current_user: dict = Depends(require_permission("finance.bill.write")),
     access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
 ):
-    """Void a bill (irreversible; kept on record with the reason). Refused while unreversed payments exist."""
-    return service.void_bill(bill_id, reason=reason, actor=_actor(access))
+    """Discard draft: permanently deletes a Draft, its lines and its file. Any other bill returns 409;
+    cancelling a bill is POST /bills/{id}/void with a reason."""
+    service.discard_bill(bill_id, actor=_actor(access))
 
 
 @router.post("/{bill_id}/void", response_model=BillResponse)

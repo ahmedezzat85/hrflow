@@ -264,7 +264,7 @@ def test_every_action_writes_an_activity_entry(app_client, admin_cookies):
     app_client.post(f"{BASE}/{bid}/submit", cookies=maker)
     app_client.post(f"{BASE}/{bid}/approve", json={"decision": "approve"}, cookies=admin_cookies)
     app_client.post(f"{BASE}/{bid}/schedule", json={"scheduled_payment_date": "2026-12-01"}, cookies=maker)
-    app_client.delete(f"{BASE}/{bid}", params={"reason": "Duplicate"}, cookies=admin_cookies)
+    app_client.post(f"{BASE}/{bid}/void", json={"reason": "Duplicate"}, cookies=admin_cookies)
 
     timeline = app_client.get(f"/api/finance/activity/bill/{bid}", cookies=admin_cookies).json()["timeline"]
     audit = [e for e in timeline if e["id"].startswith("audit-")]

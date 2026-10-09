@@ -94,7 +94,7 @@ def _post_action(client, cookies, action, bill_id):
     if action == "schedule":
         return client.post(f"{BASE}/{bill_id}/schedule", json={"scheduled_payment_date": "2026-12-01"}, cookies=cookies)
     if action == "void":
-        return client.delete(f"{BASE}/{bill_id}", cookies=cookies)
+        return client.post(f"{BASE}/{bill_id}/void", json={}, cookies=cookies)
     return client.post(f"{BASE}/{bill_id}/{action}", cookies=cookies)
 
 
@@ -143,7 +143,7 @@ def test_invalid_transition_returns_409_with_allowed_actions(app_client, admin_c
     if state == "partially_paid":
         assert pay(app_client, admin_cookies, bid, acct, 400.0).status_code == 201
     if state == "void":
-        assert app_client.delete(f"{BASE}/{bid}", cookies=admin_cookies).status_code == 200
+        assert app_client.post(f"{BASE}/{bid}/void", json={}, cookies=admin_cookies).status_code == 200
 
     before = app_client.get(f"{BASE}/{bid}", cookies=admin_cookies).json()["status"]
     assert before == state
@@ -173,7 +173,7 @@ def test_partially_paid_bill_cannot_be_voided(app_client, admin_cookies):
     bill = create_approved(app_client, admin_cookies, vid, "NOVOID-001", 1000.0)
     assert pay(app_client, admin_cookies, bill["id"], acct, 300.0).status_code == 201
 
-    resp = app_client.delete(f"{BASE}/{bill['id']}", params={"reason": "Entered by mistake"}, cookies=admin_cookies)
+    resp = app_client.post(f"{BASE}/{bill['id']}/void", json={"reason": "Entered by mistake"}, cookies=admin_cookies)
     assert resp.status_code == 409
     after = app_client.get(f"{BASE}/{bill['id']}", cookies=admin_cookies).json()
     assert after["status"] == "partially_paid"
@@ -204,7 +204,7 @@ def test_void_refused_while_unreversed_payment_exists_on_legacy_row(app_client, 
         )
         db.commit()
 
-    resp = app_client.delete(f"{BASE}/{bill['id']}", cookies=admin_cookies)
+    resp = app_client.post(f"{BASE}/{bill['id']}/void", json={}, cookies=admin_cookies)
     assert resp.status_code == 409
     assert resp.json()["detail"]["code"] == "has_unreversed_payments"
 
@@ -226,7 +226,7 @@ def test_void_after_payment_reversal_and_reason_columns(app_client, admin_cookie
     assert reverted["status"] == "approved"
     assert reverted["amount_paid"] == 0.0
 
-    voided = app_client.delete(f"{BASE}/{bill['id']}", params={"reason": "Duplicate"}, cookies=admin_cookies)
+    voided = app_client.post(f"{BASE}/{bill['id']}/void", json={"reason": "Duplicate"}, cookies=admin_cookies)
     assert voided.status_code == 200
     body = voided.json()
     assert body["status"] == "void"

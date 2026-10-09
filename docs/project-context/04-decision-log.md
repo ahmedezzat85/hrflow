@@ -334,7 +334,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-019 — Bill Drafts and PDF Upload
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B4).
 - **Decision:**
   - Draft holds unfinished bills; it needs a vendor or an attachment. Leaving Draft runs full validation.
   - Every PDF or photo upload creates a Draft; several files can be uploaded at once from different vendors, each becoming its own Draft with its own vendor match. Weak matches are flagged "vendor to confirm"; new vendors are suggested, never auto-created.

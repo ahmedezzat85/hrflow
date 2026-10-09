@@ -604,12 +604,13 @@ class BillLineResponse(BillLineBase):
 # Bill Schemas (Accounts Payable)
 # ==========================================
 class BillBase(BaseModel):
-    vendor_id: int = Field(..., description="ID of the vendor")
-    bill_number: str = Field(..., min_length=1, max_length=50, description="Unique bill reference number")
+    # vendor, bill number and dates may be empty on a Draft; leaving Draft requires them (D-019)
+    vendor_id: Optional[int] = Field(None, description="ID of the vendor")
+    bill_number: Optional[str] = Field(None, min_length=1, max_length=50, description="Unique bill reference number")
     category_id: Optional[int] = Field(None, description="ID of the governed transaction category")
     category: Optional[str] = Field("Operating Expense", max_length=100)
-    issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
-    due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
+    issue_date: Optional[str] = Field(None, description="Date issued (YYYY-MM-DD)")
+    due_date: Optional[str] = Field(None, description="Payment due date (YYYY-MM-DD)")
     currency: str = Field("EGP", min_length=3, max_length=10)
     notes: Optional[str] = None
     capture_source: Optional[str] = Field("manual", max_length=20)
@@ -636,6 +637,8 @@ BILL_SERVER_OWNED_FIELDS = (
     "amount_paid",
     "is_reviewed",
     "scheduled_payment_date",
+    "vendor_to_confirm",
+    "suggested_vendor_name",
 )
 
 
@@ -722,6 +725,8 @@ class BillResponse(BillBase):
     approval_comment: Optional[str] = None
     scheduled_payment_date: Optional[str] = None
     amount_paid: float = 0.0
+    vendor_to_confirm: bool = False
+    suggested_vendor_name: Optional[str] = None
     allowed_actions: List[str] = []
     void_reason: Optional[str] = None
     voided_by: Optional[str] = None
@@ -770,13 +775,13 @@ class BillDocumentExtractionResponse(BaseModel):
 
 class BillCategoryQualityReportItem(BaseModel):
     id: int
-    bill_number: str
-    vendor_id: int
+    bill_number: Optional[str] = None
+    vendor_id: Optional[int] = None
     vendor_name: Optional[str] = None
     category_id: Optional[int] = None
     category_name: Optional[str] = None
     raw_category: Optional[str] = None
-    issue_date: str
+    issue_date: Optional[str] = None
     total: float
     status: str
 
@@ -792,6 +797,17 @@ class BillApprovalRequest(BaseModel):
     decision: str = Field(..., description="approve | reject")
     comment: Optional[str] = Field(None, max_length=500, description="Optional comment, required on rejection")
     approver_limit: Optional[float] = Field(None, description="Optional maximum approval authority for the approver")
+
+
+class BillUploadResult(BaseModel):
+    filename: str
+    bill: Optional["BillResponse"] = None
+    error: Optional[str] = None
+    duplicate_of: Optional[int] = None
+
+
+class BillUploadResponse(BaseModel):
+    results: List[BillUploadResult] = []
 
 
 class BillVoidRequest(BaseModel):
@@ -820,10 +836,10 @@ class BillDuplicateCheckRequest(BaseModel):
 
 class BillDuplicateCandidate(BaseModel):
     id: int
-    bill_number: str
-    vendor_id: int
+    bill_number: Optional[str] = None
+    vendor_id: Optional[int] = None
     vendor_name: Optional[str] = None
-    issue_date: str
+    issue_date: Optional[str] = None
     total: float
     status: str
     matched_field: str
@@ -832,6 +848,9 @@ class BillDuplicateCandidate(BaseModel):
 
 class BillDuplicateCheckResponse(BaseModel):
     candidates: List[BillDuplicateCandidate] = []
+
+
+BillUploadResult.model_rebuild()
 
 
 class BillQueueCountsResponse(BaseModel):

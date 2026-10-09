@@ -21,6 +21,8 @@ from finance.schemas import (
     BillDuplicateCheckResponse,
     BillDuplicateCandidate,
     BillQueueCountsResponse,
+    BillUploadResponse,
+    BillUploadResult,
     BillApprovalRequest,
     BillScheduleRequest,
     BillCategoryQualityReportItem,
@@ -124,6 +126,8 @@ class BillsService:
             approval_comment=bill.approval_comment,
             scheduled_payment_date=bill.scheduled_payment_date,
             amount_paid=paid,
+            vendor_to_confirm=bool(bill.vendor_to_confirm),
+            suggested_vendor_name=bill.suggested_vendor_name,
             created_at=bill.created_at,
             lines=lines,
         )
@@ -236,44 +240,109 @@ class BillsService:
         self._audit(action, bill.id, actor or SYSTEM_ACTOR, previous, target, reason)
         return updated
 
-    def create_bill(self, payload: BillCreate, actor: BillActor) -> BillResponse:
-        # Inactive vendor validation: Inactive vendors remain on history but are excluded from new bills
-        vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payload.vendor_id).first()
+    # Required to leave Draft, field by field (D-019)
+    REQUIRED_TO_LEAVE_DRAFT = (
+        ("vendor_id", "Vendor is required"),
+        ("bill_number", "Bill number is required"),
+        ("issue_date", "Issue date is required"),
+        ("due_date", "Due date is required"),
+    )
+
+    def _validate_leaving_draft(
+        self,
+        *,
+        vendor_id,
+        bill_number,
+        issue_date,
+        due_date,
+        category_id,
+        category,
+        total: float,
+        file_fingerprint,
+        is_duplicate_override,
+        duplicate_override_reason,
+        exclude_id: Optional[int] = None,
+    ) -> None:
+        """Full checks a bill must pass to leave Draft: required fields (422, one entry per field),
+        category, inactive vendor, bill-number reuse and duplicate detection."""
+        values = {"vendor_id": vendor_id, "bill_number": bill_number, "issue_date": issue_date, "due_date": due_date}
+        errors = []
+        for field_name, message in self.REQUIRED_TO_LEAVE_DRAFT:
+            v = values[field_name]
+            if v is None or (isinstance(v, str) and not v.strip()):
+                errors.append({"loc": ["body", field_name], "msg": message, "type": "missing_field"})
+        if not category_id and not (category and category.strip()):
+            errors.append({"loc": ["body", "category"], "msg": "Category is required", "type": "missing_field"})
+        if errors:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
+
+        vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == vendor_id).first()
         if not vendor:
-            raise HTTPException(status_code=400, detail=f"Vendor with ID {payload.vendor_id} not found")
+            raise HTTPException(status_code=400, detail=f"Vendor with ID {vendor_id} not found")
         if not vendor.is_active:
             raise HTTPException(status_code=400, detail=f"Vendor '{vendor.name}' is inactive and cannot be assigned to new bills")
 
-        existing = self.repo.get_by_number(payload.bill_number)
-        if existing and not payload.is_duplicate_override:
+        existing = self.repo.get_by_number(bill_number)
+        if existing and existing.id != exclude_id and not is_duplicate_override:
             raise HTTPException(
                 status_code=400,
-                detail=f"Bill number '{payload.bill_number}' is already in use",
+                detail=f"Bill number '{bill_number}' is already in use",
             )
 
-        # Duplicate detection check
-        calc_total = sum(
-            ln.line_total if ln.line_total else (ln.quantity * ln.unit_price)
-            for ln in payload.lines
-        )
         duplicates = self.repo.find_duplicate_candidates(
-            vendor_id=payload.vendor_id,
-            bill_number=payload.bill_number,
-            issue_date=payload.issue_date,
-            total=calc_total,
-            file_fingerprint=payload.file_fingerprint,
+            vendor_id=vendor_id,
+            bill_number=bill_number,
+            issue_date=issue_date,
+            total=total,
+            file_fingerprint=file_fingerprint,
+            exclude_id=exclude_id,
         )
-        if duplicates and not payload.is_duplicate_override:
+        if duplicates and not is_duplicate_override:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Potential duplicate bill detected ({duplicates[0]['matched_field']}: {duplicates[0]['matching_value']}). Authorized override required.",
             )
 
-        if payload.is_duplicate_override and not (payload.duplicate_override_reason and payload.duplicate_override_reason.strip()):
+        if is_duplicate_override and not (duplicate_override_reason and duplicate_override_reason.strip()):
             raise HTTPException(
                 status_code=400,
                 detail="A valid reason is required when overriding a duplicate bill detection.",
             )
+
+    def create_bill(self, payload: BillCreate, actor: BillActor) -> BillResponse:
+        calc_total = sum(
+            ln.line_total if ln.line_total else (ln.quantity * ln.unit_price)
+            for ln in payload.lines
+        )
+        # An approver's (or super admin's) bill is Approved on save and marked auto-approved;
+        # everyone else's starts as Draft and goes through submit -> approve.
+        auto_approved = actor.can("finance.bill.approve")
+
+        if auto_approved or payload.is_paid_now:
+            # Leaving Draft (here: born Approved) runs the full checks
+            self._validate_leaving_draft(
+                vendor_id=payload.vendor_id,
+                bill_number=payload.bill_number,
+                issue_date=payload.issue_date,
+                due_date=payload.due_date,
+                category_id=payload.category_id,
+                category=payload.category,
+                total=calc_total,
+                file_fingerprint=payload.file_fingerprint,
+                is_duplicate_override=payload.is_duplicate_override,
+                duplicate_override_reason=payload.duplicate_override_reason,
+            )
+        else:
+            # A Draft needs a vendor or an attachment; everything else may be filled in later
+            if payload.vendor_id is None and not (payload.attachment_name or payload.attachment_url):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=[{"loc": ["body", "vendor_id"], "msg": "A draft needs a vendor or an attachment", "type": "missing_field"}],
+                )
+            if payload.vendor_id is not None:
+                vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payload.vendor_id).first()
+                if not vendor:
+                    raise HTTPException(status_code=400, detail=f"Vendor with ID {payload.vendor_id} not found")
 
         # FUX-408: Combined create-and-pay validation
         if payload.is_paid_now:
@@ -287,9 +356,6 @@ class BillsService:
             if not actor.can("finance.bill.approve"):
                 raise HTTPException(status_code=403, detail="Permission denied: 'finance.bill.approve' required to record an already-paid bill")
 
-        # An approver's (or super admin's) bill is Approved on save and marked auto-approved;
-        # everyone else's starts as Draft and goes through submit -> approve.
-        auto_approved = actor.can("finance.bill.approve")
         initial_status = bs.APPROVED if auto_approved else bs.DRAFT
         is_rev = payload.capture_source not in ("upload", "ocr")
 
@@ -411,6 +477,23 @@ class BillsService:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+        try:
+            bs.next_status("submit", bill.status)
+        except InvalidBillTransition as e:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
+        self._validate_leaving_draft(
+            vendor_id=bill.vendor_id,
+            bill_number=bill.bill_number,
+            issue_date=bill.issue_date,
+            due_date=bill.due_date,
+            category_id=bill.category_id,
+            category=bill.category,
+            total=bill.total or 0.0,
+            file_fingerprint=bill.file_fingerprint,
+            is_duplicate_override=bool(bill.is_duplicate_override),
+            duplicate_override_reason=bill.duplicate_override_reason,
+            exclude_id=bill.id,
+        )
         updated = self._transition(
             bill,
             "submit",
@@ -453,6 +536,12 @@ class BillsService:
             raise HTTPException(status_code=400, detail="Cannot update a voided bill")
 
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
+        if data.get("vendor_id") is not None and (bill.vendor_to_confirm or bill.suggested_vendor_name):
+            vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == data["vendor_id"]).first()
+            if not vendor:
+                raise HTTPException(status_code=400, detail=f"Vendor with ID {data['vendor_id']} not found")
+            data["vendor_to_confirm"] = False
+            data["suggested_vendor_name"] = None
         lines_data = None
         if payload.lines is not None:
             lines_data = [
@@ -530,6 +619,132 @@ class BillsService:
             reason=reason,
         )
         return self._bill_to_response(voided)
+
+    def discard_bill(self, bill_id: int, actor: BillActor) -> None:
+        """Discard draft: permanently deletes a Draft, its lines and its attachment, with one activity line.
+        Every other bill is kept; cancelling is Void."""
+        bill = self.repo.get_by_id(bill_id)
+        if not bill:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+        if bill.status != bs.DRAFT:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "delete_not_allowed",
+                    "message": "Only a draft can be discarded. Use Void to cancel any other bill.",
+                    "current_status": bill.status,
+                    "allowed_actions": bs.allowed_actions(bill.status),
+                },
+            )
+        file_path = bill.attachment_url
+        label = bill.bill_number or bill.attachment_name or "draft"
+        self.repo.delete_bill(bill_id)
+        if file_path:
+            if not os.path.isabs(file_path):
+                file_path = os.path.join(BILL_UPLOADS_DIR, file_path)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            except OSError:
+                pass
+        self._audit("discarded", bill_id, actor, bs.DRAFT, None, label)
+
+    UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic"}
+
+    async def upload_drafts(self, files: List[UploadFile], actor: BillActor) -> BillUploadResponse:
+        """Multi-file upload: each PDF or photo becomes its own Draft with its own vendor match.
+        A weak vendor match leaves the vendor empty and flags 'vendor to confirm'; a vendor read from the
+        document that does not exist is suggested by name, never created."""
+        vendors = [
+            {"id": v.id, "name": v.name}
+            for v in self.repo.db.query(VendorDB).filter(VendorDB.is_active == True).all()  # noqa: E712
+            if v.name
+        ]
+        results: List[BillUploadResult] = []
+        for file in files:
+            filename = os.path.basename(file.filename or "") or "upload"
+            ext = os.path.splitext(filename)[1].lower()
+            content = await file.read()
+            if ext not in self.UPLOAD_EXTENSIONS:
+                results.append(BillUploadResult(filename=filename, error="Unsupported file type (use PDF or a photo)"))
+                continue
+            if not content:
+                results.append(BillUploadResult(filename=filename, error="The file is empty"))
+                continue
+
+            fingerprint = hashlib.sha256(content).hexdigest()
+            dup = self.repo.db.query(BillDB).filter(BillDB.file_fingerprint == fingerprint, BillDB.status != bs.VOID).first()
+            if dup:
+                results.append(BillUploadResult(filename=filename, error=f"Already uploaded as bill #{dup.id}", duplicate_of=dup.id))
+                continue
+
+            extraction = None
+            if ext == ".pdf":
+                try:
+                    extraction = BillPdfExtractor.parse_document(content=content, filename=filename, known_vendors=vendors)
+                except ValueError:
+                    extraction = None
+                if extraction is not None and not extraction.is_readable:
+                    extraction = None
+
+            unique_name = f"{uuid.uuid4().hex}_{filename}"
+            file_path = os.path.join(BILL_UPLOADS_DIR, unique_name)
+            with open(file_path, "wb") as fh:
+                fh.write(content)
+
+            data = {
+                "status": bs.DRAFT,
+                "capture_source": "upload",
+                "is_reviewed": False,
+                "created_by": actor.email,
+                "attachment_name": filename,
+                "attachment_url": file_path,
+                "file_fingerprint": fingerprint,
+                "currency": "EGP",
+                "vendor_to_confirm": True,
+            }
+            lines_data: List[dict] = []
+            if extraction is not None:
+                missing = set(extraction.missing_fields or [])
+                data["extraction_confidence"] = extraction.extraction_confidence
+                data["missing_fields"] = ",".join(sorted(missing)) if missing else None
+                if extraction.bill_number and "bill_number" not in missing:
+                    data["bill_number"] = extraction.bill_number
+                if extraction.issue_date and "issue_date" not in missing:
+                    data["issue_date"] = extraction.issue_date
+                if extraction.due_date and "due_date" not in missing:
+                    data["due_date"] = extraction.due_date
+                if extraction.currency:
+                    data["currency"] = extraction.currency
+                lines_data = [
+                    {"description": ln.description, "quantity": ln.quantity, "unit_price": ln.unit_price, "line_total": ln.line_total}
+                    for ln in (extraction.lines or [])
+                ]
+                if not lines_data and extraction.total:
+                    lines_data = [{"description": "Invoice total", "quantity": 1.0, "unit_price": extraction.total, "line_total": extraction.total}]
+                # Strong match only: the vendor id must exist, be active and carry the extracted name
+                matched = next(
+                    (v for v in vendors if v["id"] == extraction.vendor_id and extraction.vendor_name and v["name"].lower() == extraction.vendor_name.lower()),
+                    None,
+                )
+                if matched:
+                    data["vendor_id"] = matched["id"]
+                    data["vendor_to_confirm"] = False
+                elif extraction.vendor_name:
+                    data["suggested_vendor_name"] = extraction.vendor_name[:255]
+            try:
+                bill = self.repo.create(data, lines_data)
+            except Exception as e:  # keep one bad file from sinking the batch
+                self.repo.db.rollback()
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
+                results.append(BillUploadResult(filename=filename, error=f"Could not create the draft: {e}"))
+                continue
+            self._audit("created", bill.id, actor, None, bill.status, f"uploaded {filename}")
+            results.append(BillUploadResult(filename=filename, bill=self._bill_to_response(bill)))
+        return BillUploadResponse(results=results)
 
     # ------------------------------------------------------------------
     # Payment (outgoing) on a bill

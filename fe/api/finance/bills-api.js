@@ -391,8 +391,52 @@
       bill.voided_at = new Date().toISOString();
       return bill;
     }
-    const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
-    return apiRequest("DELETE", `/api/finance/bills/${id}${q}`, null, true, _getIdempHeaders());
+    return apiRequest("POST", `/api/finance/bills/${id}/void`, { reason: reason || null }, true, _getIdempHeaders());
+  },
+  // Discard a Draft: permanent delete. Every other bill is kept; cancelling is Void.
+  async discardBill(id) {
+    if (_isMock()) {
+      const idx = FinanceMockState.bills.findIndex((b) => b.id === parseInt(id, 10));
+      if (idx < 0) throw new Error("Bill not found");
+      const bill = FinanceMockState.bills[idx];
+      if (bill.status !== "draft") {
+        const err = new Error("Only a draft can be discarded. Use Void to cancel any other bill.");
+        err.status = 409;
+        err.detail = { code: "delete_not_allowed", message: err.message, current_status: bill.status, allowed_actions: _billAllowedActions(bill.status) };
+        throw err;
+      }
+      FinanceMockState.bills.splice(idx, 1);
+      return bill;
+    }
+    return apiRequest("DELETE", `/api/finance/bills/${id}`, null, true, _getIdempHeaders());
+  },
+  // Several PDFs or photos at once: each file becomes its own Draft with its own vendor match
+  async uploadBillFiles(files) {
+    if (_isMock()) {
+      const results = [];
+      for (const file of files) {
+        const name = file.name || "upload.pdf";
+        const base = name.replace(/\.[^.]+$/, "");
+        const vendor = (FinanceMockState.vendors || []).find((v) => base.toLowerCase().includes(v.name.toLowerCase().split(" ")[0]));
+        const id = Math.max(0, ...FinanceMockState.bills.map((b) => b.id)) + 1;
+        const bill = {
+          id, vendor_id: vendor ? vendor.id : null, vendor_name: vendor ? vendor.name : null,
+          vendor_to_confirm: !vendor, suggested_vendor_name: vendor ? null : base,
+          bill_number: null, issue_date: null, due_date: null, status: "draft", currency: "EGP",
+          subtotal: 0, tax_amount: 0, total: 0, amount_paid: 0, capture_source: "upload", is_reviewed: false,
+          attachment_name: name, attachment_url: `/api/finance/bills/${id}/attachment`,
+          file_fingerprint: `sha256-mock-${name}-${id}`, created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
+        };
+        FinanceMockState.bills.push(bill);
+        results.push({ filename: name, bill, error: null, duplicate_of: null });
+      }
+      return results;
+    }
+    const results = [];
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const body = await apiRequest("POST", "/api/finance/bills/upload", formData);
+    return (body && body.results) || results;
   },
   async submitBill(id) {
     if (_isMock()) {

@@ -95,7 +95,7 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     assert any(b["id"] == bill_id for b in search_resp.json())
 
     # 10. Void bill
-    void_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
+    void_resp = app_client.post(f"/api/finance/bills/{bill_id}/void", json={}, cookies=admin_cookies)
     assert void_resp.status_code == 200
     assert void_resp.json()["status"] == "void"
 
@@ -106,7 +106,7 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     assert update_voided_resp.status_code == 400
 
     # 12. Cannot void again
-    re_void_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
+    re_void_resp = app_client.post(f"/api/finance/bills/{bill_id}/void", json={}, cookies=admin_cookies)
     assert re_void_resp.status_code == 409
 
     # 13. Total bill count increased by 1
@@ -212,7 +212,7 @@ def test_bill_payment_recording(app_client, admin_cookies):
     # 8. (Payment-type rules, currency and balance checks live in test_finance_bill_payment_rules.py)
 
     # 9. Cannot void a paid bill
-    void_paid_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
+    void_paid_resp = app_client.post(f"/api/finance/bills/{bill_id}/void", json={}, cookies=admin_cookies)
     assert void_paid_resp.status_code == 409
 
     # 10. Cannot pay against a voided bill
@@ -228,7 +228,7 @@ def test_bill_payment_recording(app_client, admin_cookies):
         cookies=admin_cookies,
     )
     void_bill_id = void_bill_resp.json()["id"]
-    app_client.delete(f"/api/finance/bills/{void_bill_id}", cookies=admin_cookies)
+    app_client.post(f"/api/finance/bills/{void_bill_id}/void", json={}, cookies=admin_cookies)
     voided_pay = app_client.post(
         f"/api/finance/bills/{void_bill_id}/payments",
         json=partial_payment,

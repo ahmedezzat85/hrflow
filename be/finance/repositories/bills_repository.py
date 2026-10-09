@@ -224,7 +224,9 @@ class BillsRepository:
     def get_by_id(self, bill_id: int) -> Optional[BillDB]:
         return self._load_bill_full(bill_id)
 
-    def get_by_number(self, bill_number: str) -> Optional[BillDB]:
+    def get_by_number(self, bill_number: Optional[str]) -> Optional[BillDB]:
+        if not bill_number or not bill_number.strip():
+            return None
         return (
             self.db.query(BillDB)
             .filter(BillDB.bill_number == bill_number.strip())
@@ -256,12 +258,12 @@ class BillsRepository:
                 category_id = cat.id
 
         bill = BillDB(
-            vendor_id=data["vendor_id"],
-            bill_number=data["bill_number"].strip(),
+            vendor_id=data.get("vendor_id"),
+            bill_number=(data.get("bill_number") or "").strip() or None,
             category_id=category_id,
             category=category_name,
-            issue_date=data["issue_date"],
-            due_date=data["due_date"],
+            issue_date=data.get("issue_date") or None,
+            due_date=data.get("due_date") or None,
             status=data.get("status", bs.DRAFT),
             currency=data.get("currency", "EGP"),
             notes=data.get("notes", ""),
@@ -284,6 +286,8 @@ class BillsRepository:
             approval_comment=data.get("approval_comment"),
             scheduled_payment_date=data.get("scheduled_payment_date"),
             amount_paid=data.get("amount_paid", 0.0),
+            vendor_to_confirm=bool(data.get("vendor_to_confirm", False)),
+            suggested_vendor_name=data.get("suggested_vendor_name"),
         )
         self.db.add(bill)
         self.db.flush()  # obtain bill.id before inserting lines
@@ -380,6 +384,10 @@ class BillsRepository:
             bill.scheduled_payment_date = data["scheduled_payment_date"]
         if "amount_paid" in data and data["amount_paid"] is not None:
             bill.amount_paid = data["amount_paid"]
+        if "vendor_to_confirm" in data and data["vendor_to_confirm"] is not None:
+            bill.vendor_to_confirm = data["vendor_to_confirm"]
+        if "suggested_vendor_name" in data:
+            bill.suggested_vendor_name = data["suggested_vendor_name"]
 
         if lines_data is not None:
             # Replace all lines
@@ -416,6 +424,15 @@ class BillsRepository:
             setattr(bill, key, value)
         self.db.commit()
         return self._load_bill_full(bill_id)
+
+    def delete_bill(self, bill_id: int) -> bool:
+        """Hard-delete a bill and its lines. Only used to discard a Draft (D-019)."""
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            return False
+        self.db.delete(bill)
+        self.db.commit()
+        return True
 
     def count_unreversed_payments(self, bill_id: int) -> int:
         return (

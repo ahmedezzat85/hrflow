@@ -184,7 +184,7 @@ def test_bill_void_reason(client, db_session):
     bill_id = resp.json()["id"]
 
     # Void bill with reason
-    void_resp = client.delete(f"/api/finance/bills/{bill_id}?reason=Service+cancelled")
+    void_resp = client.post(f"/api/finance/bills/{bill_id}/void", json={"reason": "Service cancelled"})
     assert void_resp.status_code == 200
     bill = db_session.query(BillDB).filter_by(id=bill_id).first()
     assert bill.status == "void"

@@ -20,6 +20,8 @@
             <div style="display: flex; gap: 8px;">
               <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()"><i class="fa-solid fa-plus"></i> Add Vendor</button>
               <button class="btn btn-outline" id="financeCaptureBillBtn" onclick="openCaptureBillModal()"><i class="fa-solid fa-file-arrow-up"></i> Upload / Capture</button>
+              <button class="btn btn-outline" id="financeUploadDraftsBtn" onclick="document.getElementById('financeBillsUploadInput').click()" title="Upload several PDFs or photos; each becomes its own draft"><i class="fa-solid fa-files"></i> Upload drafts</button>
+              <input type="file" id="financeBillsUploadInput" multiple accept=".pdf,image/*" style="display:none" onchange="onBillDraftFilesChosen(this)">
               <button class="btn btn-fill" id="financeRecordBillBtn" onclick="openAddBillModal()"><i class="fa-solid fa-plus"></i> Record Bill</button>
             </div>
           </div>
