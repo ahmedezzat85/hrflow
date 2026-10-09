@@ -2067,3 +2067,32 @@
   border-bottom: 2px solid var(--accent);
 }
 #a-finance-bills > .toolbar { row-gap: 10px; }
+
+/* ── Direction A, Slice 5: Record / Edit bill dialog (visual only, scoped to #billModal) ── */
+#billModal .modal-head {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+#billModal .modal-head-icon {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  font-size: var(--fs-md);
+}
+#billModal .modal-head-text h3 { font-size: var(--fs-lg); font-weight: 700; }
+#billModal .modal-body { padding: 20px 24px; }
+#billModal .form-section { margin-bottom: 22px; }
+#billModal .form-section-label { color: var(--text2); margin-bottom: 12px; }
+#billModal .form-field input,
+#billModal .form-field select,
+#billModal .form-field textarea { border-width: 1px; border-color: var(--border2); }
+#billModal .modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
