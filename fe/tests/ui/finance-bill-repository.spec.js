@@ -20,6 +20,8 @@ test.describe('FUX-407 — Bill document storage and repository view', () => {
     const billWithAttRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")');
     await expect(billWithAttRow).toBeVisible();
 
+    // Direction A (D-021): the attachment action lives in the row's More menu
+    await billWithAttRow.locator('.btn-bill-more').click();
     const paperclipBtn = billWithAttRow.locator('.btn-bill-attachment');
     await expect(paperclipBtn).toBeVisible();
 
@@ -46,6 +48,7 @@ test.describe('FUX-407 — Bill document storage and repository view', () => {
   test('2. Detail drawer shows working Preview and Download buttons on the Attachments panel', async ({ page }) => {
     // Open detail drawer for BILL-2026-003
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")');
+    await billRow.locator('.btn-bill-more').click();
     await billRow.locator('.btn-view-bill').click();
 
     await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
@@ -82,6 +85,7 @@ test.describe('FUX-407 — Bill document storage and repository view', () => {
   test('3. Edit bill modal provides preview, download, and remove buttons for existing attachment', async ({ page }) => {
     // Open edit modal for BILL-2026-003
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")');
+    await billRow.locator('.btn-bill-more').click();
     await billRow.locator('button[title="Edit Bill"]').click();
 
     await expect(page.locator('#billModal')).toBeVisible();

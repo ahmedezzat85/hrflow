@@ -476,6 +476,80 @@ function _billFlags(bill) {
   return flags.length ? `<span class="bill-flags">${flags.join("")}</span>` : "";
 }
 
+// "30 Sep 2026" style for the Bills table. Local to Bills: FinanceFormat.formatFinanceDate (ISO) is shared.
+const _BILL_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function _billDate(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ""));
+  if (!m) return FinanceFormat.formatFinanceDate(value);
+  return `${Number(m[3])} ${_BILL_MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+}
+
+// Relative note under the due date for owed bills: "8 days late", "Due today", "Due in 5 days".
+function _billDueNote(dueDate) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate || ""));
+  if (!m) return "";
+  const due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const days = Math.round((due - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  const n = Math.abs(days);
+  const unit = n === 1 ? "day" : "days";
+  if (days < 0) return `${n} ${unit} late`;
+  return days === 0 ? "Due today" : `Due in ${n} ${unit}`;
+}
+
+// Row "more" menu: position:fixed so the table card's overflow cannot clip it.
+function closeBillRowMenus(returnFocus) {
+  document.querySelectorAll("#financeBillsTableBody .bill-row-menu:not([hidden])").forEach((menu) => {
+    menu.hidden = true;
+    const cell = menu.closest("td");
+    if (cell) cell.classList.remove("bill-menu-open");
+    const btn = menu.parentElement.querySelector(".btn-bill-more");
+    if (btn) {
+      btn.setAttribute("aria-expanded", "false");
+      if (returnFocus) btn.focus();
+    }
+  });
+}
+
+function _placeBillRowMenu(btn, menu) {
+  const r = btn.getBoundingClientRect();
+  const h = menu.offsetHeight;
+  menu.style.left = `${Math.max(8, r.right - menu.offsetWidth)}px`;
+  menu.style.top = `${r.bottom + h + 8 > window.innerHeight ? Math.max(8, r.top - h - 4) : r.bottom + 4}px`;
+}
+
+function toggleBillRowMenu(btn, event) {
+  if (event) event.stopPropagation();
+  const menu = btn.parentElement.querySelector(".bill-row-menu");
+  const wasOpen = !menu.hidden;
+  closeBillRowMenus();
+  if (wasOpen) return;
+  menu.hidden = false;
+  const cell = btn.closest("td");
+  if (cell) cell.classList.add("bill-menu-open"); // lifts the sticky actions cell above later rows
+  btn.setAttribute("aria-expanded", "true");
+  _placeBillRowMenu(btn, menu);
+  const first = menu.querySelector("[role=menuitem]");
+  if (first) first.focus();
+}
+
+document.addEventListener("click", () => closeBillRowMenus());
+window.addEventListener("scroll", () => {
+  const menu = document.querySelector("#financeBillsTableBody .bill-row-menu:not([hidden])");
+  if (menu) _placeBillRowMenu(menu.parentElement.querySelector(".btn-bill-more"), menu);
+}, true);
+document.addEventListener("keydown", (e) => {
+  const menu = e.target && e.target.closest && e.target.closest(".bill-row-menu");
+  if (e.key === "Escape" && document.querySelector("#financeBillsTableBody .bill-row-menu:not([hidden])")) {
+    closeBillRowMenus(true);
+  } else if (menu && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+    e.preventDefault();
+    const items = Array.from(menu.querySelectorAll("[role=menuitem]"));
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+  }
+});
+
 function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
   const tbody = document.getElementById("financeBillsTableBody");
   const empty = document.getElementById("financeBillsEmpty");
@@ -498,41 +572,38 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
     const confidencePct = hasConfidence ? Math.round(bill.extraction_confidence * 100) : null;
     const confidenceBadgeClass = hasConfidence && confidencePct < 80 ? "badge-warning" : "badge-info";
 
+    const owed = ["approved", "scheduled", "partially_paid"].includes(derivedStatus);
+    const rel = owed ? _billDueNote(bill.due_date) : "";
+    const num = bill.bill_number || "(no number yet)";
+    const vendor = bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—");
+
     return `
     <tr data-record-id="${bill.id}">
-      <td><strong>${bill.bill_number || "(no number yet)"}</strong></td>
-      <td>${bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—")}</td>
-      <td>
-        <span class="badge badge-info">${bill.category || "General"}</span>
-        ${bill.department ? `<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${bill.department}</div>` : ""}
-      </td>
-      <td>${FinanceFormat.formatFinanceDate(bill.issue_date)}</td>
-      <td>${FinanceFormat.formatFinanceDate(bill.due_date)}</td>
+      <td><div class="bill-cell-main">${vendor}</div><div class="bill-cell-sub">${num} · ${_billDate(bill.issue_date)}</div></td>
+      <td><div class="bill-cell-main">${bill.category || "General"}</div><div class="bill-cell-sub">${bill.department || "&nbsp;"}</div></td>
+      <td><div class="bill-cell-main">${_billDate(bill.due_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}">${rel || "&nbsp;"}</div></td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill)}</div></td>
       <td>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <div style="display:flex; gap:4px; align-items:center;">
-            ${bill.capture_source === "upload"
-              ? `<span class="badge badge-secondary" title="Uploaded Scan / File"><i class="fa-solid fa-file-arrow-up"></i> Upload</span>`
-              : `<span class="badge badge-grey" title="Manual Entry"><i class="fa-solid fa-keyboard"></i> Manual</span>`}
-            ${hasConfidence ? `<span class="badge ${confidenceBadgeClass}" title="Extraction confidence: ${confidencePct}%">${confidencePct}%</span>` : ""}
-          </div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            ${bill.is_reviewed
-              ? `<span class="badge badge-approved" style="font-size:10px;"><i class="fa-solid fa-check"></i> Reviewed</span>`
-              : `<span class="badge badge-warning" style="font-size:10px;" title="Review Required"><i class="fa-solid fa-triangle-exclamation"></i> Unreviewed</span>`}
-            ${bill.is_duplicate_override
-              ? `<span class="badge badge-rejected" style="font-size:10px;" title="Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}"><i class="fa-solid fa-flag"></i> Dup Override</span>`
-              : ""}
+        <div class="bill-cell-main bill-cell-narrow">${bill.capture_source === "upload" ? "Upload" : "Manual"}${hasConfidence ? ` · <span class="bill-confidence${confidencePct < 80 ? " bill-confidence--low" : ""}" title="Extraction confidence: ${confidencePct}%">${confidencePct}%</span>` : ""}</div>
+        <div class="bill-cell-sub bill-cell-narrow">${bill.is_reviewed
+          ? `<span class="bill-review bill-review--ok">Reviewed</span>`
+          : `<span class="bill-review bill-review--todo" title="Review Required">Unreviewed</span>`}${bill.is_duplicate_override
+          ? ` · <span class="bill-review bill-review--dup" title="Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}">Dup override</span>`
+          : ""}</div>
+      </td>
+      <td>
+        <div class="bill-row-actions">
+          ${_billPrimaryActionHtml(bill, derivedStatus)}
+          <div class="bill-row-menu-wrap">
+            <button type="button" class="btn btn-sm btn-outline btn-bill-more" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Bill ${bill.bill_number || ""}" title="More actions" onclick="toggleBillRowMenu(this, event)"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>
+            <div class="bill-row-menu" role="menu" hidden>
+              <button type="button" role="menuitem" class="bill-row-menu-item btn-view-bill" onclick="closeBillRowMenus(); FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details">View details</button>
+              ${bill.status !== "void" ? `<button type="button" role="menuitem" class="bill-row-menu-item" onclick="closeBillRowMenus(); openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}">Edit bill</button>` : ""}
+              ${(bill.attachment_name || bill.attachment_url) ? `<button type="button" role="menuitem" class="bill-row-menu-item btn-bill-attachment" onclick="closeBillRowMenus(); previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}">View attachment</button>` : ""}
+            </div>
           </div>
         </div>
-      </td>
-      <td style="display:flex; gap:6px; flex-wrap:wrap;">
-        ${(bill.attachment_name || bill.attachment_url) ? `<button class="btn btn-sm btn-outline btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip"></i></button>` : ""}
-        <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
-        ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${_billPrimaryActionHtml(bill, derivedStatus)}
       </td>
     </tr>
   `;

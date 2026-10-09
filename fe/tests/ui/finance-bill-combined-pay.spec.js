@@ -97,8 +97,9 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     const paidRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-002")');
     await expect(paidRow).toBeVisible();
 
-    // Click edit button (button with fa-pen icon)
-    await paidRow.locator('button:has(.fa-pen)').click();
+    // Direction A (D-021): Edit lives in the row's More menu
+    await paidRow.locator('.btn-bill-more').click();
+    await paidRow.locator('button[title="Edit Bill"]').click();
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Check that "Bill is already paid" group is hidden in edit mode
