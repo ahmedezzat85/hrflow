@@ -444,6 +444,38 @@ function applyAndRenderBills() {
   FinanceTable.initAllTablesDensity();
 }
 
+// ── Direction A (D-021): bill status pill and outlined flags. Presentation only. ──
+// Colour classes come from the shared STATUS_MAP so D-016 meanings are unchanged;
+// FinanceFormat.formatStatusBadge stays untouched because other pages share it.
+function _billStatusPill(status) {
+  const norm = (status || "").toLowerCase().trim();
+  const item = (FinanceFormat.STATUS_MAP.bill || {})[norm] || { label: (status || "Unknown"), badgeClass: "badge-grey" };
+  return `<span class="badge ${item.badgeClass} status-badge-wrap bill-pill bill-pill--${norm}" role="status" aria-label="Status: ${item.label}"><span class="bill-pill-dot" aria-hidden="true"></span>${item.label}</span>`;
+}
+
+// Whole days between the due date and today (local), for the "N days late" flag text only.
+// Whether a bill is overdue stays server-owned (bill.is_overdue, open statuses only).
+function _billDaysLate(dueDate) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate || ""));
+  if (!m) return 0;
+  const due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((today - due) / 86400000));
+}
+
+function _billFlags(bill) {
+  const flags = [];
+  if (bill.is_overdue) {
+    const d = _billDaysLate(bill.due_date);
+    flags.push(`<span class="bill-flag bill-flag--overdue" title="Overdue: the due date has passed">${d > 0 ? `${d} ${d === 1 ? "day" : "days"} late` : "Overdue"}</span>`);
+  }
+  if (bill.vendor_to_confirm) {
+    flags.push('<span class="bill-flag bill-flag--confirm" title="The vendor on the document could not be matched with confidence">Vendor to confirm</span>');
+  }
+  return flags.length ? `<span class="bill-flags">${flags.join("")}</span>` : "";
+}
+
 function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
   const tbody = document.getElementById("financeBillsTableBody");
   const empty = document.getElementById("financeBillsEmpty");
@@ -469,7 +501,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
     return `
     <tr data-record-id="${bill.id}">
       <td><strong>${bill.bill_number || "(no number yet)"}</strong></td>
-      <td>${bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—")}${bill.vendor_to_confirm ? ' <span class="badge badge-warning" title="The vendor on the document could not be matched with confidence">Vendor to confirm</span>' : ""}</td>
+      <td>${bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—")}</td>
       <td>
         <span class="badge badge-info">${bill.category || "General"}</span>
         ${bill.department ? `<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${bill.department}</div>` : ""}
@@ -477,7 +509,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td>${FinanceFormat.formatFinanceDate(bill.issue_date)}</td>
       <td>${FinanceFormat.formatFinanceDate(bill.due_date)}</td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
-      <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}${bill.is_overdue ? ' <span class="badge badge-rejected" title="Due date has passed"><i class="fa-solid fa-circle-exclamation"></i> Overdue</span>' : ""}</td>
+      <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill)}</div></td>
       <td>
         <div style="display:flex; flex-direction:column; gap:3px;">
           <div style="display:flex; gap:4px; align-items:center;">
@@ -2564,9 +2596,7 @@ async function renderBillDrawerActions(data) {
 
   const statusEl = document.getElementById("financeDetailDrawerStatusBadge");
   if (statusEl) {
-    statusEl.innerHTML = FinanceFormat.formatStatusBadge("bill", bill.status)
-      + (bill.is_overdue ? ' <span class="badge badge-rejected" title="Due date has passed"><i class="fa-solid fa-circle-exclamation"></i> Overdue</span>' : "")
-      + (bill.vendor_to_confirm ? ' <span class="badge badge-warning">Vendor to confirm</span>' : "");
+    statusEl.innerHTML = _billStatusPill(FinanceFormat.getDerivedBillStatus(bill)) + _billFlags(bill);
   }
 
   const allowed = bill.allowed_actions || [];

@@ -1850,3 +1850,53 @@
   justify-content: center;
   gap: 12px;
 }
+
+/* ── Finance UI restyle, direction A (D-021): Bills status pills and flags ──
+   Colour classes (.badge-*) still come from components.css so D-016 meanings are unchanged. */
+.bill-status-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.bill-flags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bill-pill {
+  gap: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bill-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.bill-pill--draft {
+  background: transparent;
+  border: 1px dashed var(--border2);
+  color: var(--text2);
+}
+.bill-pill--void {
+  background: var(--surface2);
+  color: var(--text2);
+  font-weight: 500;
+}
+.bill-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.bill-flag--overdue { color: var(--danger); }
+.bill-flag--confirm { color: var(--warning); }
