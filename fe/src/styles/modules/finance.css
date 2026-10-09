@@ -2014,6 +2014,8 @@
   max-width: 100%;
   background: transparent;
   padding: 0;
+  border: 0;
+  box-shadow: none;
   gap: 6px;
 }
 .bill-status-tabs .filter-tab {
@@ -2036,3 +2038,32 @@
   color: var(--accent-text);
 }
 .bill-status-tabs .filter-tab .badge { font-size: 11px; padding: 0 6px; }
+
+/* ── Direction A, Slice 4: Bills header and toolbar ──
+   Underline sub-nav on the Bills page only; the same SpendTabs bar on Subscriptions and Statutory is unchanged. */
+#financeBillSubNav.filter-tabs {
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border2);
+  border-radius: 0;
+  box-shadow: none;
+  gap: 18px;
+}
+#financeBillSubNav .filter-tab {
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--text2);
+}
+#financeBillSubNav .filter-tab:hover { color: var(--text); }
+#financeBillSubNav .filter-tab.active {
+  background: transparent;
+  color: var(--accent-text);
+  border: 0;
+  border-bottom: 2px solid var(--accent);
+}
+#a-finance-bills > .toolbar { row-gap: 10px; }
