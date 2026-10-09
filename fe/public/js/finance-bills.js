@@ -10,24 +10,27 @@ let _billTableInitialized = false;
 
 const BILL_QUEUE_LABELS = {
   all: "All",
-  inbox: "Inbox",
-  needs_coding: "Needs Coding",
-  needs_approval: "Needs Approval",
-  ready_to_pay: "Ready to Pay",
+  draft: "Draft",
+  pending_approval: "Pending Approval",
+  rejected: "Rejected",
+  approved: "Approved",
   scheduled: "Scheduled",
+  partially_paid: "Partially Paid",
   paid: "Paid",
-  exceptions: "Exceptions",
+  void: "Void",
 };
 
 let _currentBillQueueCounts = {
   all: 0,
-  inbox: 0,
-  needs_coding: 0,
-  needs_approval: 0,
-  ready_to_pay: 0,
+  draft: 0,
+  pending_approval: 0,
+  rejected: 0,
+  approved: 0,
   scheduled: 0,
+  partially_paid: 0,
   paid: 0,
-  exceptions: 0,
+  void: 0,
+  overdue: 0,
 };
 
 function isBillStatusPanelExpanded() {
@@ -91,13 +94,14 @@ function setBillWorkQueue(queue) {
 function _updateBillQueueTabs(activeQueue) {
   const queueMap = {
     all: "tabBillQueueAll",
-    inbox: "tabBillQueueInbox",
-    needs_coding: "tabBillQueueCoding",
-    needs_approval: "tabBillQueueApproval",
-    ready_to_pay: "tabBillQueueReady",
+    draft: "tabBillQueueDraft",
+    pending_approval: "tabBillQueuePendingApproval",
+    rejected: "tabBillQueueRejected",
+    approved: "tabBillQueueApproved",
     scheduled: "tabBillQueueScheduled",
+    partially_paid: "tabBillQueuePartiallyPaid",
     paid: "tabBillQueuePaid",
-    exceptions: "tabBillQueueExceptions",
+    void: "tabBillQueueVoid",
   };
   const current = activeQueue || "all";
   Object.entries(queueMap).forEach(([q, tabId]) => {
@@ -116,23 +120,26 @@ async function loadFinanceBillQueueCounts() {
     if (!counts) return;
     _currentBillQueueCounts = {
       all: counts.all ?? 0,
-      inbox: counts.inbox ?? 0,
-      needs_coding: counts.needs_coding ?? 0,
-      needs_approval: counts.needs_approval ?? 0,
-      ready_to_pay: counts.ready_to_pay ?? 0,
+      draft: counts.draft ?? 0,
+      pending_approval: counts.pending_approval ?? 0,
+      rejected: counts.rejected ?? 0,
+      approved: counts.approved ?? 0,
       scheduled: counts.scheduled ?? 0,
+      partially_paid: counts.partially_paid ?? 0,
       paid: counts.paid ?? 0,
-      exceptions: counts.exceptions ?? 0,
+      void: counts.void ?? 0,
+      overdue: counts.overdue ?? 0,
     };
     const badgeMap = {
       badgeBillQueueAll: _currentBillQueueCounts.all,
-      badgeBillQueueInbox: _currentBillQueueCounts.inbox,
-      badgeBillQueueCoding: _currentBillQueueCounts.needs_coding,
-      badgeBillQueueApproval: _currentBillQueueCounts.needs_approval,
-      badgeBillQueueReady: _currentBillQueueCounts.ready_to_pay,
+      badgeBillQueueDraft: _currentBillQueueCounts.draft,
+      badgeBillQueuePendingApproval: _currentBillQueueCounts.pending_approval,
+      badgeBillQueueRejected: _currentBillQueueCounts.rejected,
+      badgeBillQueueApproved: _currentBillQueueCounts.approved,
       badgeBillQueueScheduled: _currentBillQueueCounts.scheduled,
+      badgeBillQueuePartiallyPaid: _currentBillQueueCounts.partially_paid,
       badgeBillQueuePaid: _currentBillQueueCounts.paid,
-      badgeBillQueueExceptions: _currentBillQueueCounts.exceptions,
+      badgeBillQueueVoid: _currentBillQueueCounts.void,
     };
     Object.entries(badgeMap).forEach(([id, count]) => {
       const el = document.getElementById(id);
@@ -309,6 +316,7 @@ async function loadFinanceBills(incomingParams) {
     const params = {};
     if (statusFilter && statusFilter.value) params.status = statusFilter.value;
     if (cachedState.queue && cachedState.queue !== "all") params.queue = cachedState.queue;
+    else if (!params.status) params.queue = "all"; // "All" excludes Void, matching the tab counts
 
     const [items] = await Promise.all([
       FinanceApi.getBills(Object.keys(params).length ? params : undefined),
@@ -456,7 +464,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td>${FinanceFormat.formatFinanceDate(bill.issue_date)}</td>
       <td>${FinanceFormat.formatFinanceDate(bill.due_date)}</td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
-      <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}</td>
+      <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}${bill.is_overdue ? ' <span class="badge badge-rejected" title="Due date has passed"><i class="fa-solid fa-circle-exclamation"></i> Overdue</span>' : ""}</td>
       <td>
         <div style="display:flex; flex-direction:column; gap:3px;">
           <div style="display:flex; gap:4px; align-items:center;">
@@ -479,14 +487,36 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
         ${(bill.attachment_name || bill.attachment_url) ? `<button class="btn btn-sm btn-outline btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip"></i></button>` : ""}
         <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
         ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(derivedStatus === "needs_approval" || (bill.requires_approval && bill.approval_status !== "approved")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
-        ${((derivedStatus === "ready_to_pay" || derivedStatus === "unpaid") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved")) ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "partially_paid" || derivedStatus === "scheduled") && bill.is_reviewed && (!bill.requires_approval || bill.approval_status === "approved") ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${(derivedStatus === "unpaid" || derivedStatus === "overdue" || derivedStatus === "ready_to_pay" || derivedStatus === "inbox" || derivedStatus === "needs_coding" || derivedStatus === "needs_approval") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
+        ${(derivedStatus === "draft" || derivedStatus === "rejected") ? `<button class="btn btn-sm btn-outline btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval"><i class="fa-solid fa-paper-plane"></i> Submit</button>` : ""}
+        ${derivedStatus === "pending_approval" ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
+        ${derivedStatus === "pending_approval" ? `<button class="btn btn-sm btn-outline btn-withdraw-bill" onclick="withdrawBillToDraft(${bill.id})" title="Withdraw to draft"><i class="fa-solid fa-rotate-left"></i> Withdraw</button>` : ""}
+        ${derivedStatus === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
+        ${(derivedStatus === "approved" || derivedStatus === "scheduled" || derivedStatus === "partially_paid") ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${(derivedStatus === "draft" || derivedStatus === "pending_approval" || derivedStatus === "rejected" || derivedStatus === "approved" || derivedStatus === "scheduled") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
   `;
   }).join("");
+}
+
+async function submitBillForApproval(id) {
+  try {
+    await FinanceApi.submitBill(id);
+    showToast("Bill submitted for approval", "success");
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || err), "error");
+  }
+}
+
+async function withdrawBillToDraft(id) {
+  try {
+    await FinanceApi.withdrawBill(id);
+    showToast("Bill withdrawn to draft", "success");
+    loadFinanceBills();
+  } catch (err) {
+    showToast("Error: " + (err.message || err), "error");
+  }
 }
 
 function filterFinanceBills(query) {
@@ -715,8 +745,6 @@ async function handleBillFileSelected(event) {
       confidenceBadge.className = "badge badge-warning";
     }
 
-    const statusEl = document.getElementById("billStatus");
-    if (statusEl) statusEl.value = "inbox";
 
     // FUX-413: DO NOT fabricate mock numbers, dates, or line items for unreadable scans!
     // Leave fields untouched for manual entry
@@ -734,8 +762,6 @@ async function handleBillFileSelected(event) {
     confidenceBadge.className = confPct < 80 ? "badge badge-warning" : "badge badge-info";
   }
 
-  const statusEl = document.getElementById("billStatus");
-  if (statusEl) statusEl.value = confPct < 80 ? "inbox" : "needs_coding";
 
   // Prefill extracted invoice / bill number
   if (extraction.bill_number) {
@@ -852,22 +878,14 @@ function _resetBillPaidNowSection() {
 }
 
 function _resetBillStatusDisplay(bill = null) {
-  const statusSel = document.getElementById("billStatus");
   const readOnlyContainer = document.getElementById("billStatusReadOnlyContainer");
   const readOnlyBadge = document.getElementById("billStatusReadOnlyBadge");
-
-  // If editing a bill that has payments recorded or is in settled status, show read-only status badge
-  const isSettledOrPaid = bill && (bill.status === "paid" || bill.status === "partially_paid" || (bill.amount_paid && bill.amount_paid > 0));
-  if (isSettledOrPaid) {
-    if (statusSel) statusSel.style.display = "none";
-    if (readOnlyContainer) readOnlyContainer.style.display = "block";
-    if (readOnlyBadge) {
-      readOnlyBadge.textContent = bill.status === "paid" ? "Paid" : "Partially Paid";
-      readOnlyBadge.className = bill.status === "paid" ? "badge badge-success" : "badge badge-warning";
-    }
-  } else {
-    if (statusSel) statusSel.style.display = "block";
-    if (readOnlyContainer) readOnlyContainer.style.display = "none";
+  const status = bill ? FinanceFormat.getDerivedBillStatus(bill) : "draft";
+  const info = (FinanceFormat.STATUS_MAP.bill || {})[status] || { label: status, badgeClass: "badge-grey" };
+  if (readOnlyContainer) readOnlyContainer.style.display = "block";
+  if (readOnlyBadge) {
+    readOnlyBadge.textContent = info.label;
+    readOnlyBadge.className = "badge " + info.badgeClass;
   }
 }
 
@@ -896,7 +914,6 @@ function openCaptureBillModal() {
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = "";
   document.getElementById("billDueDate").value = "";
-  document.getElementById("billStatus").value = "inbox";
   document.getElementById("billCurrency").value = "USD";
   document.getElementById("billNotes").value = "";
   document.getElementById("billIsReviewed").checked = false;
@@ -932,7 +949,6 @@ function openAddBillModal() {
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("billDueDate").value = "";
-  document.getElementById("billStatus").value = "needs_coding";
   document.getElementById("billCurrency").value = "USD";
   document.getElementById("billNotes").value = "";
   document.getElementById("billIsReviewed").checked = true;
@@ -983,7 +999,6 @@ async function openEditBillModal(billId) {
     document.getElementById("billLegalEntity").value = bill.legal_entity || "Voyance Health Inc";
     document.getElementById("billIssueDate").value = bill.issue_date || "";
     document.getElementById("billDueDate").value = bill.due_date || "";
-    document.getElementById("billStatus").value = bill.status || "inbox";
     document.getElementById("billCurrency").value = bill.currency || "USD";
     document.getElementById("billNotes").value = bill.notes || "";
     document.getElementById("billIsReviewed").checked = !!bill.is_reviewed;
@@ -1074,7 +1089,6 @@ async function saveBillModal() {
   const billNumber = document.getElementById("billNumber").value.trim();
   const issueDate = document.getElementById("billIssueDate").value;
   const dueDate = document.getElementById("billDueDate").value;
-  const status = document.getElementById("billStatus").value;
   const isReviewed = document.getElementById("billIsReviewed").checked;
 
   const isValid = FinanceForm.validateRequiredFields("billModal", [
@@ -1084,12 +1098,6 @@ async function saveBillModal() {
     { id: "billDueDate", label: "Due Date" },
   ]);
   if (!isValid) return;
-
-  // AC 1: Uploaded/unreviewed bills cannot move directly to ready_to_pay or paid
-  if ((status === "ready_to_pay" || status === "paid") && !isReviewed) {
-    showToast("Unreviewed bills cannot be marked Ready to Pay or Paid. Please check 'Mark verified and reviewed' first.", "warning");
-    return;
-  }
 
   // AC 3: Duplicate detection check
   const dupBanner = document.getElementById("billDuplicateBanner");
@@ -1156,7 +1164,6 @@ async function saveBillModal() {
     category: document.getElementById("billCategory")?.value.trim() || null,
     issue_date: issueDate,
     due_date: dueDate,
-    status: status,
     currency: document.getElementById("billCurrency").value,
     notes: document.getElementById("billNotes").value.trim(),
     capture_source: document.getElementById("billCaptureSource").value || "manual",

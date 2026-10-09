@@ -2,16 +2,17 @@
 be/tests/test_finance_bills_approval.py
 Tests for Story 4.2: Bill approval and payment.
 Verifies:
- - AC 1: A bill cannot move to Ready to Pay before required approvals complete.
+ - AC 1: A bill cannot be scheduled or paid before it is approved (B1 status model).
  - AC 2: Unauthorized or over-limit approvals are rejected server-side (self-approval segregation & limits).
  - AC 3: Payment cannot exceed remaining balance.
  - AC 4: Payment and reversal update bill and ledger atomically.
 """
 import pytest
 
+from bill_test_helpers import create_approved
+
 
 def test_bill_approval_required_before_payable(app_client, admin_cookies):
-    # Setup vendor
     vend = app_client.post(
         "/api/finance/vendors",
         json={"name": "Approval Vendor LLC", "category": "Legal"},
@@ -19,7 +20,6 @@ def test_bill_approval_required_before_payable(app_client, admin_cookies):
     ).json()
     vendor_id = vend["id"]
 
-    # Create bill that requires approval (amount >= 1000)
     b_resp = app_client.post(
         "/api/finance/bills",
         json={
@@ -27,34 +27,36 @@ def test_bill_approval_required_before_payable(app_client, admin_cookies):
             "bill_number": "APP-2026-001",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "needs_approval",
             "lines": [{"description": "Legal Retainer", "quantity": 1, "unit_price": 2500, "line_total": 2500}],
         },
         cookies=admin_cookies,
     )
     assert b_resp.status_code == 201
-    bill = b_resp.json()
-    bill_id = bill["id"]
-    assert bill["requires_approval"] is True
-    assert bill["approval_status"] == "pending"
+    bill_id = b_resp.json()["id"]
+    assert b_resp.json()["status"] == "draft"
 
-    # AC 1: Attempting to move directly to ready_to_pay without approval must fail
-    up_resp = app_client.put(
-        f"/api/finance/bills/{bill_id}",
-        json={"status": "ready_to_pay"},
-        cookies=admin_cookies,
-    )
-    assert up_resp.status_code == 400
-    assert "approval" in up_resp.json()["detail"].lower()
+    # A status can never be forced through update
+    up_resp = app_client.put(f"/api/finance/bills/{bill_id}", json={"status": "approved"}, cookies=admin_cookies)
+    assert up_resp.status_code == 422
 
-    # AC 1: Attempting to schedule payment without approval must fail
+    # Scheduling a bill that is not approved fails with 409
     sch_resp = app_client.post(
         f"/api/finance/bills/{bill_id}/schedule",
         json={"scheduled_payment_date": "2026-09-25"},
         cookies=admin_cookies,
     )
-    assert sch_resp.status_code == 400
-    assert "approval" in sch_resp.json()["detail"].lower()
+    assert sch_resp.status_code == 409
+    assert sch_resp.json()["detail"]["current_status"] == "draft"
+
+    # Submitted but not yet approved is still not schedulable
+    app_client.post(f"/api/finance/bills/{bill_id}/submit", cookies=admin_cookies)
+    sch2 = app_client.post(
+        f"/api/finance/bills/{bill_id}/schedule",
+        json={"scheduled_payment_date": "2026-09-25"},
+        cookies=admin_cookies,
+    )
+    assert sch2.status_code == 409
+    assert sch2.json()["detail"]["current_status"] == "pending_approval"
 
 
 def test_bill_approval_policies_and_segregation(app_client, admin_cookies):
@@ -73,7 +75,6 @@ def test_bill_approval_policies_and_segregation(app_client, admin_cookies):
             "bill_number": "APP-2026-002",
             "issue_date": "2026-09-05",
             "due_date": "2026-10-05",
-            "status": "needs_approval",
             "created_by": "admin@hrflow.test",  # same as admin_cookies user
             "lines": [{"description": "High Performance Compute", "quantity": 1, "unit_price": 6000, "line_total": 6000}],
         },
@@ -81,6 +82,7 @@ def test_bill_approval_policies_and_segregation(app_client, admin_cookies):
     )
     assert b_resp.status_code == 201
     bill_id = b_resp.json()["id"]
+    assert app_client.post(f"/api/finance/bills/{bill_id}/submit", cookies=admin_cookies).status_code == 200
 
     # AC 2: Self-approval is rejected server-side
     self_app = app_client.post(
@@ -115,7 +117,7 @@ def test_bill_approval_policies_and_segregation(app_client, admin_cookies):
     )
     assert valid_app.status_code == 200
     approved_bill = valid_app.json()
-    assert approved_bill["status"] == "ready_to_pay"
+    assert approved_bill["status"] == "approved"
     assert approved_bill["approval_status"] == "approved"
     assert approved_bill["approved_by"] == "admin@hrflow.test"
     assert approved_bill["approval_comment"] == "Reviewed and approved by VP"
@@ -145,13 +147,13 @@ def test_bill_rejection_policy(app_client, admin_cookies):
             "bill_number": "APP-2026-003",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-15",
-            "status": "needs_approval",
             "created_by": "staff@hrflow.test",
             "lines": [{"description": "Ergonomic Chairs", "quantity": 5, "unit_price": 400, "line_total": 2000}],
         },
         cookies=admin_cookies,
     )
     bill_id = b_resp.json()["id"]
+    app_client.post(f"/api/finance/bills/{bill_id}/submit", cookies=admin_cookies)
 
     # Rejection without reason fails
     no_reason = app_client.post(
@@ -161,7 +163,7 @@ def test_bill_rejection_policy(app_client, admin_cookies):
     )
     assert no_reason.status_code == 400
 
-    # Rejection with reason succeeds and sets status to exceptions
+    # Rejection with reason succeeds and sets status to rejected
     rej_ok = app_client.post(
         f"/api/finance/bills/{bill_id}/approve",
         json={"decision": "reject", "comment": "Chair purchase exceeded departmental Q3 budget allotment."},
@@ -169,7 +171,7 @@ def test_bill_rejection_policy(app_client, admin_cookies):
     )
     assert rej_ok.status_code == 200
     rejected_bill = rej_ok.json()
-    assert rejected_bill["status"] == "exceptions"
+    assert rejected_bill["status"] == "rejected"
     assert rejected_bill["approval_status"] == "rejected"
     assert "budget allotment" in rejected_bill["approval_comment"]
 
@@ -197,20 +199,10 @@ def test_bill_partial_payment_overpayment_and_atomic_reversal(app_client, admin_
     ).json()
 
     # Create approved bill for $4,000 total
-    b_resp = app_client.post(
-        "/api/finance/bills",
-        json={
-            "vendor_id": vend["id"],
-            "bill_number": "PAY-2026-001",
-            "issue_date": "2026-09-01",
-            "due_date": "2026-09-30",
-            "status": "ready_to_pay",
-            "approval_status": "approved",
-            "lines": [{"description": "Server Racks Hosting", "quantity": 1, "unit_price": 4000, "line_total": 4000}],
-        },
-        cookies=admin_cookies,
+    b_resp = create_approved(
+        app_client, admin_cookies, vend["id"], "PAY-2026-001", 4000.0
     )
-    bill_id = b_resp.json()["id"]
+    bill_id = b_resp["id"]
 
     # AC 3: Overpayment cannot exceed remaining balance
     over_pay = app_client.post(
@@ -287,9 +279,9 @@ def test_bill_partial_payment_overpayment_and_atomic_reversal(app_client, admin_
     acc_check2 = app_client.get(f"/api/finance/accounts/{account_id}", cookies=admin_cookies).json()
     assert acc_check2["current_balance"] == 50000.0
 
-    # Verify bill status is restored to ready_to_pay, amount_paid = 0, remaining = 4000
+    # Verify bill status is restored to approved, amount_paid = 0, remaining = 4000
     bill_after_rev = app_client.get(f"/api/finance/bills/{bill_id}", cookies=admin_cookies).json()
-    assert bill_after_rev["status"] == "ready_to_pay"
+    assert bill_after_rev["status"] == "approved"
     assert bill_after_rev["amount_paid"] == 0.0
     assert bill_after_rev["remaining_balance"] == 4000.0
 

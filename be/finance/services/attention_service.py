@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional, Set
 from datetime import datetime
 from sqlalchemy.orm import Session
 
+from finance.bill_status import OPEN_STATUSES
 from finance.models import (
     FinanceBankAccountDB,
     SalesInvoiceDB,
@@ -220,7 +221,7 @@ class AttentionQueueService:
         if can_bills:
             bills = (
                 self.db.query(BillDB)
-                .filter(~BillDB.status.in_(["void", "paid"]))
+                .filter(BillDB.status.in_(OPEN_STATUSES))
                 .all()
             )
             for bill in bills:
@@ -236,7 +237,7 @@ class AttentionQueueService:
                     continue
 
                 diff = 0
-                is_overdue = bill.status == "overdue"
+                is_overdue = False
                 if bill.due_date:
                     try:
                         due_dt = datetime.strptime(bill.due_date, "%Y-%m-%d").date()

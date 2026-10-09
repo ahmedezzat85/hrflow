@@ -19,6 +19,7 @@ from finance.schemas import (
     BillQueueCountsResponse,
     BillApprovalRequest,
     BillScheduleRequest,
+    BillVoidRequest,
     BillCategoryQualityReportResponse,
     BillDocumentExtractionResponse,
     PaymentCreate,
@@ -76,8 +77,9 @@ def check_bill_duplicate(
 
 @router.get("", response_model=List[BillResponse])
 def list_vendor_bills(
-    status: Optional[str] = Query(None, description="Filter by status: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void"),
-    queue: Optional[str] = Query(None, description="AP Inbox work queue: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|all"),
+    status: Optional[str] = Query(None, description="Filter by status: draft|pending_approval|rejected|approved|scheduled|partially_paid|paid|void"),
+    queue: Optional[str] = Query(None, description="Status queue: one of the eight statuses, or all (everything except void)"),
+    overdue: Optional[bool] = Query(None, description="true: only open bills whose due date has passed"),
     vendor_id: Optional[int] = Query(None, description="Filter by vendor ID"),
     search: Optional[str] = Query(None, description="Search by bill number, vendor name, or department"),
     has_attachment: Optional[bool] = Query(None, description="Filter bills having or missing attachment"),
@@ -95,6 +97,7 @@ def list_vendor_bills(
         has_attachment=has_attachment,
         limit=limit,
         offset=offset,
+        overdue=overdue,
     )
 
 
@@ -140,6 +143,26 @@ def approve_vendor_bill(
     return service.approve_bill(bill_id, payload, current_user=current_user)
 
 
+@router.post("/{bill_id}/submit", response_model=BillResponse)
+def submit_vendor_bill(
+    bill_id: int,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Submit a Draft (or resubmit a Rejected) bill for approval."""
+    return service.submit_bill(bill_id)
+
+
+@router.post("/{bill_id}/withdraw", response_model=BillResponse)
+def withdraw_vendor_bill(
+    bill_id: int,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Withdraw a Pending approval bill back to Draft."""
+    return service.withdraw_bill(bill_id)
+
+
 @router.post("/{bill_id}/schedule", response_model=BillResponse)
 def schedule_vendor_bill(
     bill_id: int,
@@ -171,8 +194,19 @@ def void_vendor_bill(
     current_user: dict = Depends(require_permission("finance.bill.write")),
     service: BillsService = Depends(get_bills_service),
 ):
-    """Void a bill (irreversible soft-delete via status change)."""
-    return service.void_bill(bill_id, reason=reason)
+    """Void a bill (irreversible; kept on record with the reason). Refused while unreversed payments exist."""
+    return service.void_bill(bill_id, reason=reason, current_user=current_user)
+
+
+@router.post("/{bill_id}/void", response_model=BillResponse)
+def void_vendor_bill_action(
+    bill_id: int,
+    payload: BillVoidRequest,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Void a bill with a reason."""
+    return service.void_bill(bill_id, reason=payload.reason, current_user=current_user)
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────

@@ -50,26 +50,29 @@
               <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">
                 <i class="fa-solid fa-list-ul"></i> All <span class="badge badge-grey" id="badgeBillQueueAll">0</span>
               </button>
-              <button type="button" class="filter-tab" id="tabBillQueueInbox" role="tab" aria-selected="false" onclick="setBillWorkQueue('inbox')">
-                <i class="fa-solid fa-inbox"></i> Inbox <span class="badge badge-grey" id="badgeBillQueueInbox">0</span>
+              <button type="button" class="filter-tab" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')">
+                <i class="fa-solid fa-file-pen"></i> Draft <span class="badge badge-grey" id="badgeBillQueueDraft">0</span>
               </button>
-              <button type="button" class="filter-tab" id="tabBillQueueCoding" role="tab" aria-selected="false" onclick="setBillWorkQueue('needs_coding')">
-                <i class="fa-solid fa-tags"></i> Needs Coding <span class="badge badge-grey" id="badgeBillQueueCoding">0</span>
+              <button type="button" class="filter-tab" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')">
+                <i class="fa-solid fa-user-check"></i> Pending Approval <span class="badge badge-grey" id="badgeBillQueuePendingApproval">0</span>
               </button>
-              <button type="button" class="filter-tab" id="tabBillQueueApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('needs_approval')">
-                <i class="fa-solid fa-user-check"></i> Needs Approval <span class="badge badge-grey" id="badgeBillQueueApproval">0</span>
+              <button type="button" class="filter-tab" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')">
+                <i class="fa-solid fa-circle-xmark"></i> Rejected <span class="badge badge-grey" id="badgeBillQueueRejected">0</span>
               </button>
-              <button type="button" class="filter-tab" id="tabBillQueueReady" role="tab" aria-selected="false" onclick="setBillWorkQueue('ready_to_pay')">
-                <i class="fa-solid fa-money-check-dollar"></i> Ready to Pay <span class="badge badge-grey" id="badgeBillQueueReady">0</span>
+              <button type="button" class="filter-tab" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')">
+                <i class="fa-solid fa-circle-check"></i> Approved <span class="badge badge-grey" id="badgeBillQueueApproved">0</span>
               </button>
               <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">
                 <i class="fa-solid fa-calendar-check"></i> Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span>
               </button>
+              <button type="button" class="filter-tab" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')">
+                <i class="fa-solid fa-circle-half-stroke"></i> Partially Paid <span class="badge badge-grey" id="badgeBillQueuePartiallyPaid">0</span>
+              </button>
               <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">
                 <i class="fa-solid fa-circle-check"></i> Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span>
               </button>
-              <button type="button" class="filter-tab" id="tabBillQueueExceptions" role="tab" aria-selected="false" onclick="setBillWorkQueue('exceptions')">
-                <i class="fa-solid fa-triangle-exclamation"></i> Exceptions <span class="badge badge-grey" id="badgeBillQueueExceptions">0</span>
+              <button type="button" class="filter-tab" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')">
+                <i class="fa-solid fa-ban"></i> Void <span class="badge badge-grey" id="badgeBillQueueVoid">0</span>
               </button>
             </div>
           </div>
@@ -81,9 +84,13 @@
                 <label for="financeBillStatusFilter" style="font-size: 11.5px; font-weight: 600; color: var(--text2);">Status</label>
                 <select id="financeBillStatusFilter" class="form-control filter-select" aria-label="Filter bills by status" onchange="onBillFilterChanged()">
                   <option value="">All Statuses</option>
-                  <option value="unpaid">Unpaid</option>
+                  <option value="draft">Draft</option>
+                  <option value="pending_approval">Pending Approval</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="approved">Approved</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="partially_paid">Partially Paid</option>
                   <option value="paid">Paid</option>
-                  <option value="overdue">Overdue</option>
                   <option value="void">Void</option>
                 </select>
               </div>

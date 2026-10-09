@@ -81,7 +81,7 @@ async getFinanceSummary(params = {}) {
           : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
         data_scope: `${entity}_${currency.toLowerCase()}`,
         open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,
-        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => b.status === "unpaid").length,
+        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => ["approved", "scheduled", "partially_paid"].includes(b.status)).length,
         active_subscriptions_count: (FinanceMockState.subscriptions || []).filter((s) => s.is_active).length,
         generated_at: new Date().toISOString(),
         kpis: {
@@ -824,7 +824,7 @@ async getEntityActivity(entityType, entityId) {
           entity_type: "bill",
           entity_id: b.id,
           title: `Bill ${b.bill_number}`,
-          badge: (b.status || "unpaid").toUpperCase(),
+          badge: (b.status || "draft").toUpperCase(),
           amount: b.total,
           currency: b.currency || "USD",
           date: b.issue_date,
@@ -836,7 +836,7 @@ async getEntityActivity(entityType, entityId) {
           event: "bill_received",
           plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
           actor: b.created_by || "finance@voyance.health",
-          state_transition: { from_state: "inbox", to_state: b.status || "unpaid" },
+          state_transition: { from_state: "draft", to_state: b.status || "draft" },
         }));
 
         const attrs = [
@@ -881,7 +881,7 @@ async getEntityActivity(entityType, entityId) {
           vendor_name: "Amazon Web Services",
           total: 4200.0,
           currency: "USD",
-          status: "unpaid",
+          status: "approved",
           issue_date: "2026-09-01",
           due_date: "2026-09-30",
           category: "Infrastructure",
@@ -899,7 +899,7 @@ async getEntityActivity(entityType, entityId) {
             event: "created",
             plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
             actor: bill.created_by || "ap@voyance.health",
-            state_transition: { from_state: null, to_state: bill.status || "unpaid" },
+            state_transition: { from_state: null, to_state: bill.status || "draft" },
           },
         ];
 
@@ -910,7 +910,7 @@ async getEntityActivity(entityType, entityId) {
             event: "approved",
             plain_text: `Bill approval recorded: ${bill.approval_status} by ${bill.approved_by || "manager"}${bill.approval_comment ? ` ("${bill.approval_comment}")` : ""}`,
             actor: bill.approved_by || "manager",
-            state_transition: { from_state: "needs_approval", to_state: bill.approval_status === "approved" ? "ready_to_pay" : "exceptions" },
+            state_transition: { from_state: "pending_approval", to_state: bill.approval_status === "approved" ? "approved" : "rejected" },
           });
         }
 
@@ -921,7 +921,7 @@ async getEntityActivity(entityType, entityId) {
             event: "scheduled",
             plain_text: `Payment scheduled for ${bill.scheduled_payment_date}`,
             actor: "finance@voyance.health",
-            state_transition: { from_state: "ready_to_pay", to_state: "scheduled" },
+            state_transition: { from_state: "approved", to_state: "scheduled" },
           });
         }
 
@@ -932,7 +932,7 @@ async getEntityActivity(entityType, entityId) {
             event: "payment",
             plain_text: `Payment of ${p.amount.toLocaleString()} ${p.currency || "USD"} recorded (Ref: ${p.reference || "N/A"})`,
             actor: "ap@voyance.health",
-            state_transition: { from_state: "ready_to_pay", to_state: "partially_paid" },
+            state_transition: { from_state: "approved", to_state: "partially_paid" },
           });
           if (p.is_reversed) {
             timeline.push({
@@ -941,7 +941,7 @@ async getEntityActivity(entityType, entityId) {
               event: "reversal",
               plain_text: `Payment #${p.id} reversed: ${p.reversal_reason || "Voided by user"}`,
               actor: p.reversed_by || "admin@voyance.health",
-              state_transition: { from_state: "paid", to_state: "ready_to_pay" },
+              state_transition: { from_state: "paid", to_state: "approved" },
             });
           }
         }
@@ -971,7 +971,7 @@ async getEntityActivity(entityType, entityId) {
           entity_type: "bill",
           entity_id: bill.id,
           title: `Bill ${bill.bill_number}`,
-          status: bill.status || "unpaid",
+          status: bill.status || "draft",
           summary: {
             reference: bill.bill_number,
             counterparty: bill.vendor_name || vendor.name,

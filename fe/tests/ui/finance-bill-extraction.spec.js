@@ -102,7 +102,7 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     await expect(page.locator('#billModal')).not.toBeVisible();
   });
 
-  test('AC 4: Extracted bill cannot move to ready_to_pay without explicit human review checkbox', async ({ page }) => {
+  test('AC 4: Extracted bill starts unreviewed and is saved as a Draft', async ({ page }) => {
     // Open Upload / Capture modal
     await page.click('#financeCaptureBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
@@ -117,12 +117,9 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     await expect(page.locator('#billExtractionConfidenceBadge')).toBeVisible();
     await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
-    // Try setting status to ready_to_pay
-    await page.selectOption('#billStatus', 'ready_to_pay');
-    await page.click('#billModalSaveBtn');
-
-    // Modal must NOT close because is_reviewed is still unchecked!
-    await expect(page.locator('#billModal')).toBeVisible();
+    // There is no status control: an extracted bill can only be saved as a Draft
+    await expect(page.locator('#billStatus')).toHaveCount(0);
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Draft');
 
     // Fill missing required coding
     await page.selectOption('#billDepartment', 'Engineering');

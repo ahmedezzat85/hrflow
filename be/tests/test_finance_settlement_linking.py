@@ -3,6 +3,7 @@ be/tests/test_finance_settlement_linking.py
 Automated backend tests for FUX-406: Unified settlement linking across Bill Payment,
 Invoice Payment, and Add Transaction.
 """
+from bill_test_helpers import approve_existing
 import pytest
 
 
@@ -52,13 +53,14 @@ def test_bill_settlement_linking_via_transaction(app_client, admin_cookies):
                     "line_total": 500.0,
                 }
             ],
-            "status": "ready_to_pay",
+            "created_by": "creator@hrflow.test",
         },
         cookies=admin_cookies,
     )
     assert bill_res.status_code == 201
     bill_id = bill_res.json()["id"]
     assert bill_res.json()["total"] == 500.0
+    approve_existing(app_client, admin_cookies, bill_id)
 
     # 4. Partial settlement via Add Transaction with linked_bill_id
     tx1_res = app_client.post(
@@ -260,13 +262,14 @@ def test_duplicate_settlement_check_endpoint(app_client, admin_cookies):
                     "line_total": 750.0,
                 }
             ],
-            "status": "ready_to_pay",
+            "created_by": "creator@hrflow.test",
         },
         cookies=admin_cookies,
     )
     assert bill_res.status_code == 201
     bill_id = bill_res.json()["id"]
     assert bill_res.json()["total"] == 750.0
+    approve_existing(app_client, admin_cookies, bill_id)
 
     # Duplicate check for matching amount and date
     chk_res = app_client.get(

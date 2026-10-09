@@ -12,6 +12,8 @@ Verifies:
 """
 import logging
 import pytest
+from bill_test_helpers import approve_existing
+
 
 
 def test_bill_creation_and_update_with_category_id(app_client, admin_cookies):
@@ -149,7 +151,7 @@ def test_record_payment_directly_uses_category_id(app_client, admin_cookies):
             "category_id": cat_id,
             "issue_date": "2026-09-02",
             "due_date": "2026-09-20",
-            "status": "ready_to_pay",
+            "created_by": "creator@hrflow.test",
             "is_reviewed": True,
             "currency": "USD",
             "lines": [{"description": "Monthly Subscription", "quantity": 1, "unit_price": 250.0, "line_total": 250.0}],
@@ -158,6 +160,7 @@ def test_record_payment_directly_uses_category_id(app_client, admin_cookies):
     )
     assert bill_resp.status_code == 201
     bill_id = bill_resp.json()["id"]
+    approve_existing(app_client, admin_cookies, bill_id)
 
     # 4. Record payment
     pay_resp = app_client.post(
@@ -223,7 +226,7 @@ def test_record_payment_fallback_warning_when_category_id_missing(app_client, ad
             "category": "UnmappedExoticCategory99",
             "issue_date": "2026-09-02",
             "due_date": "2026-09-20",
-            "status": "ready_to_pay",
+            "created_by": "creator@hrflow.test",
             "is_reviewed": True,
             "currency": "USD",
             "lines": [{"description": "Uncategorized Item", "quantity": 1, "unit_price": 100.0, "line_total": 100.0}],
@@ -232,6 +235,7 @@ def test_record_payment_fallback_warning_when_category_id_missing(app_client, ad
     )
     assert bill_resp.status_code == 201
     bill_id = bill_resp.json()["id"]
+    approve_existing(app_client, admin_cookies, bill_id)
 
     # 3. Record payment and check warning logged
     with caplog.at_level(logging.WARNING):

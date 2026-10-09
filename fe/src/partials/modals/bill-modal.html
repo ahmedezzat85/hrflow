@@ -124,19 +124,10 @@
             <input type="hidden" id="billCategory" value="">
           </div>
           <div class="form-field">
-            <label for="billStatus">Work Queue & Status</label>
-            <select id="billStatus">
-              <option value="inbox">Inbox (Unreviewed)</option>
-              <option value="needs_coding">Needs Coding</option>
-              <option value="needs_approval">Needs Approval</option>
-              <option value="ready_to_pay">Ready to Pay</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="exceptions">Exceptions</option>
-              <option value="void">Void</option>
-            </select>
-            <div id="billStatusReadOnlyContainer" style="display:none; margin-top: 4px;">
-              <span id="billStatusReadOnlyBadge" class="badge badge-success" style="font-size:0.85rem; padding: 6px 12px;">Paid</span>
-              <span style="font-size:0.78rem; color:var(--text3); margin-left:6px;">(Status derived from payments)</span>
+            <label>Status</label>
+            <div id="billStatusReadOnlyContainer" style="margin-top: 4px;">
+              <span id="billStatusReadOnlyBadge" class="badge badge-grey" style="font-size:0.85rem; padding: 6px 12px;">Draft</span>
+              <span style="font-size:0.78rem; color:var(--text3); margin-left:6px;">(Status changes through bill actions, not by editing)</span>
             </div>
           </div>
           <div class="form-field">

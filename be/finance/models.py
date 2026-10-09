@@ -144,7 +144,7 @@ class BillDB(Base):
     category = Column(String(100), default="Operating Expense")
     issue_date = Column(String(20), nullable=False)
     due_date = Column(String(20), nullable=False)
-    status = Column(String(30), default="unpaid", nullable=False, index=True)  # inbox | needs_coding | needs_approval | ready_to_pay | scheduled | paid | exceptions | void
+    status = Column(String(30), default="draft", nullable=False, index=True)  # draft | pending_approval | rejected | approved | scheduled | partially_paid | paid | void
     currency = Column(String(10), default="USD", nullable=False)
     subtotal = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
@@ -169,6 +169,9 @@ class BillDB(Base):
     approval_comment = Column(Text, nullable=True)
     scheduled_payment_date = Column(String(20), nullable=True)
     amount_paid = Column(Float, default=0.0, nullable=False)
+    void_reason = Column(Text, nullable=True)
+    voided_by = Column(String(255), nullable=True)
+    voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="bills")

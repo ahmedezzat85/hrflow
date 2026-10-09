@@ -17,6 +17,7 @@ from finance.models import (
     TransactionCategoryDB,
     BillDB,
 )
+from finance import bill_status as bs
 from finance.repositories.ledger_repository import LedgerRepository
 
 VALID_STATUS_TRANSITIONS = {
@@ -185,7 +186,8 @@ class ChequesRepository:
         if cheque.linked_bill_id:
             bill = self.db.query(BillDB).filter(BillDB.id == cheque.linked_bill_id).first()
             if bill:
-                bill.status = "paid"
+                # Temporary until B3: a posted cheque counts as full payment of its linked bill.
+                bill.status = bs.derive_payment_status(bill, active_cheque_linked=True)
 
     def _reverse_cheque_ledger_entries(self, cheque: FinanceChequeDB):
         """Removes or reverses posted ledger transactions and restores bill status if applicable."""
@@ -200,11 +202,10 @@ class ChequesRepository:
         cheque.linked_transaction_id = None
         cheque.linked_cash_transaction_id = None
 
-        # If linked to a bill, check if bill should revert to unpaid
+        # If linked to a bill, re-derive its status from the remaining payments / cheques
         if cheque.linked_bill_id:
             bill = self.db.query(BillDB).filter(BillDB.id == cheque.linked_bill_id).first()
             if bill:
-                other_payments = [p for p in (bill.payments or []) if not getattr(p, "is_reversed", False)]
                 other_cheques = (
                     self.db.query(FinanceChequeDB)
                     .filter(
@@ -214,8 +215,7 @@ class ChequesRepository:
                     )
                     .count()
                 )
-                if not other_payments and not other_cheques:
-                    bill.status = "unpaid"
+                bill.status = bs.derive_payment_status(bill, active_cheque_linked=other_cheques > 0)
 
     def create_cheque(self, data: dict, created_by: Optional[str] = None) -> FinanceChequeDB:
         account_id = data["account_id"]

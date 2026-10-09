@@ -109,7 +109,9 @@ async function apiRequest(method, path, body = null, auth = true, extraHeaders =
 
   if (!res.ok) {
     const detail = (data && (data.detail || data.error)) || `Request failed (${res.status})`;
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const err = new Error(typeof detail === "string" ? detail : (detail && !Array.isArray(detail) && detail.message) || JSON.stringify(detail));
+    if (detail && typeof detail === "object") { err.detail = detail; err.status = res.status; }
+    throw err;
   }
   return data;
 }
@@ -139,7 +141,7 @@ function apiRequestWithProgress(method, path, body, onProgress) {
         resolve(data);
       } else {
         const detail = (data && (data.detail || data.error)) || `Request failed (${xhr.status})`;
-        reject(new Error(typeof detail === "string" ? detail : JSON.stringify(detail)));
+        reject(new Error(typeof detail === "string" ? detail : (detail && !Array.isArray(detail) && detail.message) || JSON.stringify(detail)));
       }
     };
     xhr.onerror = () => reject(new Error("Network error - is the backend server running?"));

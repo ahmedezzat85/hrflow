@@ -223,7 +223,7 @@ def seed_forecast_data(session):
         tax_amount=0.0,
         total=12000.0,
         currency="USD",
-        status="open",
+        status="approved",
     )
     session.add(b1)
     session.flush()

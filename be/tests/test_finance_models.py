@@ -134,7 +134,7 @@ def test_vendor_bill_lines_and_subscriptions(db_session):
         category="Cloud Infrastructure",
         issue_date="2026-09-01",
         due_date="2026-09-15",
-        status="unpaid",
+        status="approved",
         subtotal=1200.0,
         tax_amount=0.0,
         total=1200.0,

@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict, Any
 from sqlalchemy.orm import Session
 
+from finance import bill_status as bs
+
 from finance.models import (
     BillDB,
     SalesInvoiceDB,
@@ -42,15 +44,8 @@ class SettlementService:
         if not bill:
             raise ValueError(f"Bill #{bill_id} not found")
 
-        if bill.status in ("void",):
-            raise ValueError("Cannot record payment against a voided bill")
-
-        if (
-            bill.requires_approval
-            and bill.approval_status != "approved"
-            and bill.status not in ("ready_to_pay", "scheduled", "paid")
-        ):
-            raise ValueError("Bill requires approval before payment can be recorded.")
+        if bill.status not in bs.OPEN_STATUSES:
+            raise ValueError(f"Cannot record payment against a bill in '{bill.status}' status")
 
         # Calculate remaining balance excluding reversed payments
         existing_payments = (
@@ -83,10 +78,7 @@ class SettlementService:
 
         # Update bill status & amount_paid
         bill.amount_paid = round(paid_so_far + payment_amount, 2)
-        if bill.amount_paid >= bill.total - 0.01:
-            bill.status = "paid"
-        elif bill.status in ("ready_to_pay", "scheduled", "partially_paid", "unpaid"):
-            bill.status = "partially_paid"
+        bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         return bill, payment
 
@@ -278,7 +270,7 @@ class SettlementService:
                 self.db.query(BillDB)
                 .filter(
                     BillDB.vendor_id == payee_id,
-                    BillDB.status.notin_(["paid", "void"]),
+                    BillDB.status.in_(bs.OPEN_STATUSES),
                 )
                 .all()
             )

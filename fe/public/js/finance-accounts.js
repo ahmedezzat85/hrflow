@@ -1646,7 +1646,7 @@ async function onTxVendorSelected() {
   if (vendorId) {
     try {
       const bills = await FinanceApi.getBills({ vendor_id: vendorId, queue: "all" });
-      const openBills = (bills || []).filter((b) => b.status !== "paid" && b.status !== "void");
+      const openBills = (bills || []).filter((b) => ["approved", "scheduled", "partially_paid"].includes(b.status));
       _currentOpenBills = openBills;
 
       if (billSel) {

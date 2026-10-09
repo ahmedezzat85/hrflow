@@ -56,7 +56,6 @@ def test_finance_stubs_admin_authorized(app_client, admin_cookies):
             "bill_number": "STUB-BILL-001",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "unpaid",
             "lines": [],
         },
         cookies=admin_cookies,

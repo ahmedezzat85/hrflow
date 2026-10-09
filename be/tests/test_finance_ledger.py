@@ -293,6 +293,7 @@ def test_invoice_and_bill_payments_auto_post_to_ledger(db_session):
         {
             "vendor_id": vendor.id,
             "bill_number": "BILL-AWS-001",
+            "status": "approved",
             "category": "Cloud Infrastructure",
             "issue_date": "2026-09-02",
             "due_date": "2026-09-20",

@@ -15,7 +15,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('AC 1: Uploaded bills do not become payable until required fields are reviewed', async ({ page }) => {
+  test('AC 1: Uploaded bills are saved as Draft and carry no client-set status', async ({ page }) => {
     // Open Upload / Capture modal
     await page.click('#financeCaptureBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
@@ -40,24 +40,22 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await firstLinePrice.fill('1500');
     await firstLinePrice.dispatchEvent('input');
 
-    // Attempt to set status to Ready to Pay while is_reviewed is UNCHECKED
-    await page.selectOption('#billStatus', 'ready_to_pay');
-    await page.click('#billModalSaveBtn');
+    // The status dropdown is gone: the modal shows a read-only Draft badge
+    await expect(page.locator('#billStatus')).toHaveCount(0);
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Draft');
 
-    // Modal must still be open because unreviewed bills cannot move directly to ready_to_pay
-    await expect(page.locator('#billModal')).toBeVisible();
-
-    // Now check "Mark verified and reviewed"
+    // Now check "Mark verified and reviewed" and save
     await page.check('#billIsReviewed');
     await page.click('#billModalSaveBtn');
 
-    // Modal closes upon successful review and save
+    // Modal closes upon successful save
     await expect(page.locator('#billModal')).not.toBeVisible();
 
     // Verify bill appears in table with Reviewed status badge
     const createdRow = page.locator('#financeBillsTableBody tr:has-text("BILL-CAPTURE-001")');
     await expect(createdRow).toBeVisible();
     expect(await createdRow.innerText()).toContain('Reviewed');
+    expect(await createdRow.innerText()).toContain('Draft');
   });
 
   test('AC 2: Low-confidence / missing fields are clearly identified', async ({ page }) => {
@@ -137,10 +135,9 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     // Verify AP Inbox Work Queue tabs are present
     await expect(page.locator('#financeBillWorkQueueTabs')).toBeVisible();
     await expect(page.locator('#tabBillQueueAll')).toBeVisible();
-    await expect(page.locator('#tabBillQueueInbox')).toBeVisible();
-    await expect(page.locator('#tabBillQueueCoding')).toBeVisible();
-    await expect(page.locator('#tabBillQueueApproval')).toBeVisible();
-    await expect(page.locator('#tabBillQueueReady')).toBeVisible();
+    for (const id of ['Draft', 'PendingApproval', 'Rejected', 'Approved', 'Scheduled', 'PartiallyPaid', 'Paid', 'Void']) {
+      await expect(page.locator(`#tabBillQueue${id}`)).toBeVisible();
+    }
 
     // Verify badges contain numbers
     const allBadge = page.locator('#badgeBillQueueAll');
@@ -148,10 +145,10 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     const allCount = parseInt(await allBadge.innerText(), 10);
     expect(allCount).toBeGreaterThan(0);
 
-    // Filter by "Needs Coding" queue tab (clicks and auto-collapses panel)
-    await page.click('#tabBillQueueCoding');
+    // Filter by "Draft" queue tab (clicks and auto-collapses panel)
+    await page.click('#tabBillQueueDraft');
     await expect(page.locator('#financeBillStatusPanel')).not.toBeVisible();
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Needs Coding');
+    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Draft');
 
     // Switch to "All" queue tab by reopening panel
     await page.click('#financeBillChangeViewBtn');

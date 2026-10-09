@@ -323,7 +323,7 @@ def get_entity_activity(
             event="created",
             plain_text=f"Vendor bill {bill.bill_number} received from {vendor_name} for {bill.total:,.2f} {bill.currency}",
             actor="ap@voyancemed.com",
-            state_transition={"from_state": None, "to_state": "unpaid"},
+            state_transition={"from_state": None, "to_state": "draft"},
         ))
 
         for p in (bill.payments or []):
@@ -333,7 +333,7 @@ def get_entity_activity(
                 event="payment_recorded",
                 plain_text=f"Outflow payment of {p.amount:,.2f} {p.currency} executed to {vendor_name}",
                 actor="admin@voyancemed.com",
-                state_transition={"from_state": "unpaid", "to_state": "paid"} if bill.status == "paid" else None,
+                state_transition={"from_state": "approved", "to_state": "paid"} if bill.status == "paid" else None,
                 linked_record={"entity_type": "payment", "entity_id": p.id, "title": f"Payment #{p.id}"},
             ))
 
@@ -344,7 +344,7 @@ def get_entity_activity(
                 event="voided",
                 plain_text=f"Vendor bill {bill.bill_number} voided with audit consequence tracking",
                 actor="admin@voyancemed.com",
-                state_transition={"from_state": "unpaid", "to_state": "void"},
+                state_transition={"from_state": "approved", "to_state": "void"},
             ))
 
         all_audits = audit_repo.list_all()
@@ -786,7 +786,7 @@ def get_entity_activity(
         bills = db.query(BillDB).filter(BillDB.vendor_id == vend.id).all()
         paid_bills = [b for b in bills if str(b.status).lower() == "paid"]
         total_spend = sum(float(b.total or 0.0) for b in paid_bills)
-        open_bills = [b for b in bills if str(b.status).lower() not in ("paid", "void")]
+        open_bills = [b for b in bills if str(b.status).lower() in ("approved", "scheduled", "partially_paid")]
         open_total = sum(float(b.total or 0.0) for b in open_bills)
 
         related: List[RelatedRecordItem] = []
@@ -809,7 +809,7 @@ def get_entity_activity(
                 event="bill_received",
                 plain_text=f"Bill {b.bill_number} recorded for {b.currency} {float(b.total):,.2f}",
                 actor=b.created_by or "finance@voyance.health",
-                state_transition={"from_state": "inbox", "to_state": b_status},
+                state_transition={"from_state": "draft", "to_state": b_status},
             ))
 
         # Payment instructions info

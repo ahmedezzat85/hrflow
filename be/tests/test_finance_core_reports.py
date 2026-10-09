@@ -9,6 +9,8 @@ Unit and integration tests for Story 7.2 Core accounting and aging reports:
 - AP Aging (Vendor 30-day aging buckets)
 """
 import pytest
+from bill_test_helpers import approve_existing
+
 from datetime import datetime, timedelta
 from fastapi import status
 
@@ -100,7 +102,7 @@ def core_reports_env(app_client, admin_cookies):
             "bill_number": f"BILL-TEST-{int(datetime.utcnow().timestamp())}",
             "issue_date": (today - timedelta(days=40)).strftime("%Y-%m-%d"),
             "due_date": (today - timedelta(days=10)).strftime("%Y-%m-%d"),
-            "status": "unpaid",
+            "created_by": "creator@hrflow.test",
             "currency": "USD",
             "lines": [
                 {"description": "Server Hosting", "quantity": 1.0, "unit_price": 5000.0, "line_total": 5000.0}
@@ -109,6 +111,7 @@ def core_reports_env(app_client, admin_cookies):
         cookies=admin_cookies,
     )
     assert bill_res.status_code in (status.HTTP_200_OK, status.HTTP_201_CREATED)
+    approve_existing(app_client, admin_cookies, bill_res.json()["id"])
 
     # 6. Ledger Transactions
     tx_in = app_client.post(

@@ -57,7 +57,7 @@ def test_valid_table_queries(app_client, admin_cookies):
     assert res_inv.status_code == 200
     assert isinstance(res_inv.json(), list)
 
-    res_bills = app_client.get("/api/finance/bills?status=unpaid&limit=25&offset=0", cookies=admin_cookies)
+    res_bills = app_client.get("/api/finance/bills?status=approved&limit=25&offset=0", cookies=admin_cookies)
     assert res_bills.status_code == 200
     assert isinstance(res_bills.json(), list)
 

@@ -14,6 +14,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
+from finance import bill_status as bs
+
 from finance.models import (
     BillDB,
     BillLineDB,
@@ -62,6 +64,7 @@ class BillsRepository:
         has_attachment: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
+        overdue: Optional[bool] = None,
     ) -> List[BillDB]:
         query = (
             self.db.query(BillDB)
@@ -69,24 +72,14 @@ class BillsRepository:
         )
         if queue:
             q_norm = queue.lower().strip()
-            if q_norm == "inbox":
-                query = query.filter(BillDB.status == "inbox")
-            elif q_norm == "needs_coding":
-                query = query.filter(BillDB.status == "needs_coding")
-            elif q_norm == "needs_approval":
-                query = query.filter(BillDB.status == "needs_approval")
-            elif q_norm == "ready_to_pay":
-                query = query.filter(BillDB.status.in_(["ready_to_pay", "unpaid"]))
-            elif q_norm == "scheduled":
-                query = query.filter(BillDB.status == "scheduled")
-            elif q_norm == "paid":
-                query = query.filter(BillDB.status == "paid")
-            elif q_norm == "exceptions":
-                query = query.filter(BillDB.status == "exceptions")
+            if q_norm in bs.VALID_BILL_STATUSES:
+                query = query.filter(BillDB.status == q_norm)
             elif q_norm == "all":
-                query = query.filter(BillDB.status != "void")
+                query = query.filter(BillDB.status != bs.VOID)
         elif status:
             query = query.filter(BillDB.status == status)
+        if overdue is True:
+            query = query.filter(BillDB.status.in_(bs.OPEN_STATUSES), BillDB.due_date < datetime.utcnow().strftime("%Y-%m-%d"))
 
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
@@ -145,25 +138,19 @@ class BillsRepository:
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
         bills = query.all()
-        counts = {
-            "inbox": 0,
-            "needs_coding": 0,
-            "needs_approval": 0,
-            "ready_to_pay": 0,
-            "scheduled": 0,
-            "paid": 0,
-            "exceptions": 0,
-            "all": 0,
-        }
+        counts = {st: 0 for st in bs.BILL_STATUSES}
+        counts["overdue"] = 0
+        counts["all"] = 0
         for b in bills:
-            if b.status == "void":
+            st = (b.status or "").lower()
+            if st not in bs.VALID_BILL_STATUSES:
+                continue
+            counts[st] += 1
+            if st == bs.VOID:
                 continue
             counts["all"] += 1
-            st = (b.status or "").lower()
-            if st in counts:
-                counts[st] += 1
-            elif st == "unpaid":
-                counts["ready_to_pay"] += 1
+            if bs.is_overdue(st, b.due_date):
+                counts["overdue"] += 1
         return counts
 
     def find_duplicate_candidates(
@@ -273,7 +260,7 @@ class BillsRepository:
             category=category_name,
             issue_date=data["issue_date"],
             due_date=data["due_date"],
-            status=data.get("status", "inbox"),
+            status=data.get("status", bs.DRAFT),
             currency=data.get("currency", "USD"),
             notes=data.get("notes", ""),
             capture_source=data.get("capture_source", "manual"),
@@ -318,14 +305,6 @@ class BillsRepository:
         bill.tax_amount = tax_amount
         bill.total = total
 
-        # Flag for approval if explicitly marked or placed in needs_approval queue
-        if bill.requires_approval or bill.status == "needs_approval":
-            bill.requires_approval = True
-            if not bill.approval_status:
-                bill.approval_status = "pending"
-            if bill.status in ("ready_to_pay", "unpaid") and bill.approval_status != "approved":
-                bill.status = "needs_approval"
-
         self.db.commit()
         return self._load_bill_full(bill.id)
 
@@ -354,8 +333,6 @@ class BillsRepository:
             bill.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:
             bill.due_date = data["due_date"]
-        if "status" in data and data["status"] is not None:
-            bill.status = data["status"]
         if "currency" in data and data["currency"] is not None:
             bill.currency = data["currency"]
         if "notes" in data and data["notes"] is not None:
@@ -424,9 +401,23 @@ class BillsRepository:
         self.db.commit()
         return self._load_bill_full(bill_id)
 
-    def void_bill(self, bill_id: int) -> Optional[BillDB]:
-        """Void a bill (soft-delete via status change)."""
-        return self.update(bill_id, {"status": "void"})
+    def set_status(self, bill_id: int, new_status: str, extra: Optional[dict] = None) -> Optional[BillDB]:
+        """Persist a status chosen by BillsService / bill_status. The only write path for status."""
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            return None
+        bill.status = new_status
+        for key, value in (extra or {}).items():
+            setattr(bill, key, value)
+        self.db.commit()
+        return self._load_bill_full(bill_id)
+
+    def count_unreversed_payments(self, bill_id: int) -> int:
+        return (
+            self.db.query(PaymentDB)
+            .filter(PaymentDB.related_bill_id == bill_id, PaymentDB.is_reversed == False)  # noqa: E712
+            .count()
+        )
 
     # ------------------------------------------------------------------
     # Writes: Payment
@@ -578,14 +569,7 @@ class BillsRepository:
 
         if bill.amount_paid <= 0.001:
             bill.amount_paid = 0.0
-            if bill.scheduled_payment_date:
-                bill.status = "scheduled"
-            else:
-                bill.status = "ready_to_pay"
-        elif bill.amount_paid < bill.total - 0.01:
-            bill.status = "partially_paid"
-        else:
-            bill.status = "paid"
+        bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         self.db.commit()
         self.db.refresh(payment)

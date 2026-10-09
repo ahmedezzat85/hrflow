@@ -297,7 +297,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-016 — Vendor Bill Status Model
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented; plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B1); plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
 - **Decision:**
   - Eight bill statuses: Draft, Pending approval, Rejected, Approved, Scheduled, Partially paid, Paid, Void. `inbox`, `needs_coding`, `unpaid`, `ready_to_pay` and `exceptions` are removed; the `is_reviewed` flag is no longer used.
   - Overdue is a flag derived from the due date, not a status.
@@ -350,6 +350,7 @@ This document records durable product and architectural decisions approved by th
   - Spend with a vendor or shop is recorded as a bill (one-step "Already paid" where it is already paid). Plain transactions are for bank fees, transfers, exchange, withdrawals and money in.
   - Every route that pays a bill (bill dialogs, manual transaction linked to a bill, cheque linked to a bill) goes through the settlement service with the D-017 permission and D-018 checks.
   - Undoing a cheque posts reversing entries with a reason; ledger rows are never deleted for a reversal.
+- **Amendment (owner decision, October 9, 2026) — unknown or minor vendors:** spend with a shop not worth tracking is still a bill, recorded against a protected **Miscellaneous** vendor with the shop name in Details; category carries the reporting. A blank bill number is auto-assigned (`EXP-YYMM-NNNN`). A shop can be promoted to its own vendor at any time; earlier bills stay under Miscellaneous. Delivered in slices B4 and B5.
 - **Rationale:** Code review on October 9, 2026 found foreign-currency manual entries reducing balances by the unconverted amount, withdrawals crediting cash accounts in the wrong currency, cheques marking bills paid without a payment record, and cheque reversals deleting ledger rows.
 
 ---

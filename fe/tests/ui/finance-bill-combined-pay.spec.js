@@ -68,13 +68,12 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await expect(createdRow.locator('.status-badge-wrap')).toContainText('Paid');
   });
 
-  test('AC 3: Bill Status dropdown does not offer Paid or Partially Paid as directly selectable options', async ({ page }) => {
+  test('AC 3: The bill form has no status dropdown; status is a read-only badge', async ({ page }) => {
     await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
-    const statusOptions = await page.locator('#billStatus option').allTextContents();
-    expect(statusOptions).not.toContain('Paid');
-    expect(statusOptions).not.toContain('Partially Paid');
+    await expect(page.locator('#billStatus')).toHaveCount(0);
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Draft');
 
     await page.click('#billModal .modal-close');
     await expect(page.locator('#billModal')).not.toBeVisible();
@@ -92,8 +91,8 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     // Check that "Bill is already paid" group is hidden in edit mode
     await expect(page.locator('#billIsPaidNowGroup')).not.toBeVisible();
 
-    // Check that editable status dropdown is hidden and read-only status badge is visible
-    await expect(page.locator('#billStatus')).not.toBeVisible();
+    // Check that there is no editable status dropdown and the read-only status badge is visible
+    await expect(page.locator('#billStatus')).toHaveCount(0);
     await expect(page.locator('#billStatusReadOnlyContainer')).toBeVisible();
     await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Paid');
 
@@ -101,7 +100,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await expect(page.locator('#billModal')).not.toBeVisible();
   });
 
-  test('AC 5: Server-side integrity guard in mock mode blocks direct status="paid" without is_paid_now', async ({ page }) => {
+  test('AC 5: Mock mode refuses any client-supplied status on create', async ({ page }) => {
     const errorMsg = await page.evaluate(async () => {
       try {
         await window.FinanceApi.createBill({
@@ -118,6 +117,6 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
       }
     });
 
-    expect(errorMsg).toContain('Paid or partially paid status cannot be set directly');
+    expect(errorMsg).toContain('status cannot be set by the client');
   });
 });

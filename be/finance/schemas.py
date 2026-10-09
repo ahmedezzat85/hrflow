@@ -610,7 +610,6 @@ class BillBase(BaseModel):
     category: Optional[str] = Field("Operating Expense", max_length=100)
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    status: str = Field("unpaid", description="inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void|unpaid")
     currency: str = Field("USD", min_length=3, max_length=10)
     notes: Optional[str] = None
     capture_source: Optional[str] = Field("manual", max_length=20)
@@ -642,20 +641,36 @@ class BillPaymentInline(BaseModel):
     reference: Optional[str] = Field(None, max_length=100, description="Payment reference / check number")
 
 
+def _reject_client_status(data):
+    """Bill status is set only by server actions (D-016); a client-supplied status is refused."""
+    if isinstance(data, dict) and "status" in data:
+        raise ValueError("status cannot be set by the client; it changes only through bill actions")
+    return data
+
+
 class BillCreate(BillBase):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_client_status(data)
+
     lines: List[BillLineCreate] = Field(default_factory=list)
     is_paid_now: Optional[bool] = Field(False, description="Flag indicating bill is already paid upon creation")
     payment: Optional[BillPaymentInline] = Field(None, description="Inline payment details when is_paid_now is True")
 
 
 class BillUpdate(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_client_status(data)
+
     vendor_id: Optional[int] = None
     bill_number: Optional[str] = Field(None, max_length=50)
     category_id: Optional[int] = None
     category: Optional[str] = Field(None, max_length=100)
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
-    status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     notes: Optional[str] = None
     capture_source: Optional[str] = None
@@ -682,6 +697,11 @@ class BillUpdate(BaseModel):
 
 class BillResponse(BillBase):
     id: int
+    status: str
+    is_overdue: bool = False
+    void_reason: Optional[str] = None
+    voided_by: Optional[str] = None
+    voided_at: Optional[datetime] = None
     subtotal: float
     tax_amount: float
     total: float
@@ -750,6 +770,10 @@ class BillApprovalRequest(BaseModel):
     approver_limit: Optional[float] = Field(None, description="Optional maximum approval authority for the approver")
 
 
+class BillVoidRequest(BaseModel):
+    reason: Optional[str] = Field(None, max_length=500, description="Reason for voiding the bill")
+
+
 class BillScheduleRequest(BaseModel):
     scheduled_payment_date: str = Field(..., description="Scheduled payment date (YYYY-MM-DD)")
     payment_method: Optional[str] = Field("bank_transfer")
@@ -787,13 +811,15 @@ class BillDuplicateCheckResponse(BaseModel):
 
 
 class BillQueueCountsResponse(BaseModel):
-    inbox: int = 0
-    needs_coding: int = 0
-    needs_approval: int = 0
-    ready_to_pay: int = 0
+    draft: int = 0
+    pending_approval: int = 0
+    rejected: int = 0
+    approved: int = 0
     scheduled: int = 0
+    partially_paid: int = 0
     paid: int = 0
-    exceptions: int = 0
+    void: int = 0
+    overdue: int = 0
     all: int = 0
 
 

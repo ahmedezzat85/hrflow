@@ -171,7 +171,7 @@
           }
           if (c.linked_bill_id) {
             const bill = (FinanceMockState.bills || []).find((b) => b.id === c.linked_bill_id);
-            if (bill) bill.status = "unpaid";
+            if (bill) bill.status = bill.scheduled_payment_date ? "scheduled" : "approved";
           }
         }
       }

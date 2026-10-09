@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
+from finance.bill_status import OPEN_STATUSES
 from finance.models import (
     VendorDB,
     VendorPaymentInstructionDB,
@@ -289,7 +290,7 @@ class VendorsRepository:
         bills = self.db.query(BillDB).filter(BillDB.vendor_id == vendor_id, BillDB.status != "void").all()
         bill_ids = [b.id for b in bills]
 
-        open_statuses = {"ready_to_pay", "scheduled", "needs_approval", "inbox", "needs_coding", "unpaid", "partially_paid"}
+        open_statuses = set(OPEN_STATUSES)
         open_bills = [b for b in bills if b.status in open_statuses]
         open_bills_count = len(open_bills)
         open_bills_total = round(sum(b.total - (b.amount_paid or 0.0) for b in open_bills), 2)

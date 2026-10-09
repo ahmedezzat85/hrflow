@@ -9,6 +9,7 @@ Covers:
 - Multi-currency conversion policy disclosure.
 """
 import pytest
+from bill_test_helpers import approve_existing
 from datetime import datetime
 
 
@@ -124,11 +125,13 @@ def test_cash_vs_accrual_basis_calculation(app_client, admin_cookies):
             "issue_date": today_str,
             "due_date": today_str,
             "currency": "USD",
+            "created_by": "creator@hrflow.test",
             "lines": [{"description": "Security Audit", "quantity": 1, "unit_price": 10000.0}],
         },
         cookies=admin_cookies,
     )
     assert bill_res.status_code == 201
+    approve_existing(app_client, admin_cookies, bill_res.json()["id"])
 
     # 6. Test Cash Basis Query
     cash_res = app_client.get(

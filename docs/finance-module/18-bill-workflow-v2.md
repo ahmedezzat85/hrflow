@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Not implemented.
+**Status:** Approved by owner, October 8, 2026. Slice B1 implemented on `feature/bills-b1-status-model`; B2 to B6 not implemented.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -46,11 +46,19 @@ Frontend minimum: remove the status dropdown from `bill-modal.html` (read-only b
 
 Acceptance:
 
-- [ ] Migration maps every old status and runs up and down on a copy of `hrflow_Prod.db`.
-- [ ] A status change not in the transition table is refused with 409; `status` in create/update is refused with 422.
-- [ ] A partially paid bill cannot be voided.
-- [ ] Draft, Pending approval and Rejected are excluded from AP aging, the forecast and vendor open totals.
-- [ ] Tests: new `test_finance_bill_status_model.py`; `test_finance_bills_inbox.py` retired; `test_finance_bills.py` updated.
+- [x] Migration maps every old status and runs up and down on a copy of `hrflow_Prod.db`.
+- [x] A status change not in the transition table is refused with 409; `status` in create/update is refused with 422.
+- [x] A partially paid bill cannot be voided.
+- [x] Draft, Pending approval and Rejected are excluded from AP aging, the forecast and vendor open totals.
+- [x] Tests: new `test_finance_bill_status_model.py`; `test_finance_bills_inbox.py` retired; `test_finance_bills.py` updated.
+
+Implementation notes (B1):
+
+- Status logic lives in `be/finance/bill_status.py` (`BILL_TRANSITIONS`, `OPEN_STATUSES`, `derive_payment_status`, `is_overdue`); `bills_service` applies every action through it. A refused action returns 409 with `detail = {code, message, action, current_status, allowed_actions}`.
+- B1 adds `POST /bills/{id}/submit` and `POST /bills/{id}/withdraw` (permission `finance.bill.write` until B2) and `POST /bills/{id}/void`; `DELETE` still voids until B4. Create-and-pay starts the bill Approved and settles it (B2/B3 tighten this path). `requires_approval` is still honoured on create-and-pay until B2 replaces it.
+- A cheque linked to a bill counts as payment in `derive_payment_status` until B3 gives cheques payment records.
+- Extra readers updated beyond the list above: `reports_service` (operating spend now counts only Approved, Scheduled, Partially paid and Paid bills; unpaid count, balance sheet and trial balance AP), `settlement_service.check_duplicate_settlement`, `routers/activity.py`, `attention_service`, the mock API, `finance-accounts.js`.
+- List filter `overdue=true` added; `queue-counts` returns the eight statuses plus `overdue` and `all`.
 
 ## Slice B2: Approval rules and permissions
 
@@ -116,11 +124,12 @@ Acceptance:
 
 ## Slice B4: Drafts and PDF upload
 
-1. Migration `0030_bill_draft_fields`: `vendor_id`, `bill_number`, `issue_date`, `due_date` become nullable (Alembic batch mode on SQLite).
+1. Migration `0030_bill_draft_fields`: `vendor_id`, `bill_number`, `issue_date`, `due_date` become nullable (Alembic batch mode on SQLite). The same migration seeds a protected **Miscellaneous** vendor (added 9 Oct 2026, D-020 amendment): it cannot be deleted, renamed or deactivated, and is the vendor for shops not worth tracking.
 2. A draft needs a vendor or an attachment. Leaving Draft runs the full checks (required fields, category, inactive vendor, duplicate detection).
-3. PDF upload creates a Draft with the file and extracted fields (`bill_extractor.py`, FUX-413).
-4. Multi-file upload: several PDFs or photos at once, any mix of vendors. Each file becomes its own Draft with its own vendor match; a weak match leaves the vendor empty and flags "vendor to confirm"; a new vendor is suggested, never auto-created. After upload the list opens filtered to the new drafts.
-5. `DELETE /bills/{id}` on a Draft deletes it, its lines and attachment, with one activity line. On other statuses DELETE returns 409; cancelling is `POST /bills/{id}/void` with a reason.
+3. Bill number is optional when leaving Draft: a blank number is auto-assigned as `EXP-YYMM-NNNN` (sequence per month, unique). Duplicate detection still compares vendor, date and amount, so two equal Miscellaneous receipts on the same day get the existing warning with override.
+4. PDF upload creates a Draft with the file and extracted fields (`bill_extractor.py`, FUX-413).
+5. Multi-file upload: several PDFs or photos at once, any mix of vendors. Each file becomes its own Draft with its own vendor match; a weak match leaves the vendor empty and flags "vendor to confirm"; a new vendor is suggested, never auto-created. After upload the list opens filtered to the new drafts.
+6. `DELETE /bills/{id}` on a Draft deletes it, its lines and attachment, with one activity line. On other statuses DELETE returns 409; cancelling is `POST /bills/{id}/void` with a reason.
 
 Acceptance:
 
@@ -128,6 +137,8 @@ Acceptance:
 - [ ] Leaving Draft with a missing required field is refused field by field.
 - [ ] Five PDFs from three vendors yield five Drafts, each with its own vendor or a "vendor to confirm" flag.
 - [ ] Discarding a draft removes row and file; DELETE on any other bill is refused.
+- [ ] The Miscellaneous vendor exists after migration and cannot be deleted, renamed or deactivated.
+- [ ] A bill saved with a blank number gets the next `EXP-YYMM-NNNN` number; numbers never repeat.
 - [ ] Tests: `test_finance_bill_extraction.py`, `test_finance_bill_attachments.py` updated; new draft-lifecycle tests.
 
 ## Slice B5: Bill screens, behaviour only (current visual style)
@@ -136,6 +147,7 @@ New-bill form (`bill-modal.html`, `finance-bills.js`):
 
 - Super admin: "Not paid yet / Already paid" choice, starting on the user's last choice (first time Not paid yet). "Already paid" shows source account (bill currency only), payment type (filtered by account type), amount paid, payment date, reference (empty), details (vendor name), cheque number for Cheque.
 - Finance user: no payment choice; primary button "Submit for approval".
+- Vendor list shows Miscellaneous first; Bill number field hint: "Leave blank to auto-number"; with Miscellaneous the Details field prompts for the shop name.
 - Defaults: currency EGP, account CASH - EGP, Cash payment. Changing currency moves the account to that currency's cash account.
 - "Saves as" line naming the resulting status. Footer: Save as draft, "Add another after saving", Cancel, primary action. Line items optional.
 

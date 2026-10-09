@@ -31,21 +31,9 @@ from finance.schemas import (
 )
 from finance.models import BillDB, PaymentDB, VendorDB
 from finance.services.bill_extractor import BillPdfExtractor
+from finance import bill_status as bs
+from finance.bill_status import VALID_BILL_STATUSES, InvalidBillTransition
 
-
-VALID_BILL_STATUSES = {
-    "inbox",
-    "needs_coding",
-    "needs_approval",
-    "ready_to_pay",
-    "scheduled",
-    "paid",
-    "partially_paid",
-    "exceptions",
-    "void",
-    "unpaid",
-    "overdue",
-}
 VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
 
@@ -90,6 +78,10 @@ class BillsService:
             issue_date=bill.issue_date,
             due_date=bill.due_date,
             status=bill.status,
+            is_overdue=bs.is_overdue(bill.status, bill.due_date),
+            void_reason=bill.void_reason,
+            voided_by=bill.voided_by,
+            voided_at=bill.voided_at,
             currency=bill.currency,
             subtotal=bill.subtotal,
             tax_amount=bill.tax_amount,
@@ -156,11 +148,12 @@ class BillsService:
         has_attachment: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
+        overdue: Optional[bool] = None,
     ) -> List[BillResponse]:
         if status and status not in VALID_BILL_STATUSES:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid status '{status}'. Must be one of: {', '.join(VALID_BILL_STATUSES)}",
+                detail=f"Invalid status '{status}'. Must be one of: {', '.join(bs.BILL_STATUSES)}",
             )
         bills = self.repo.list_all(
             status=status,
@@ -170,6 +163,7 @@ class BillsService:
             has_attachment=has_attachment,
             limit=limit,
             offset=offset,
+            overdue=overdue,
         )
         return [self._bill_to_response(b) for b in bills]
 
@@ -195,12 +189,17 @@ class BillsService:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
         return self._bill_to_response(bill)
 
+    def _transition(self, bill: BillDB, action: str, extra: Optional[dict] = None) -> BillDB:
+        """Apply a status action through BILL_TRANSITIONS. Unsupported actions return 409."""
+        try:
+            target = bs.next_status(action, bill.status)
+        except InvalidBillTransition as e:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
+        return self.repo.set_status(bill.id, target, extra)
+
     def create_bill(
         self, payload: BillCreate, current_user: Optional[dict] = None
     ) -> BillResponse:
-        if payload.status not in VALID_BILL_STATUSES:
-            raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
-
         # Inactive vendor validation: Inactive vendors remain on history but are excluded from new bills
         vendor = self.repo.db.query(VendorDB).filter(VendorDB.id == payload.vendor_id).first()
         if not vendor:
@@ -239,13 +238,6 @@ class BillsService:
                 detail="A valid reason is required when overriding a duplicate bill detection.",
             )
 
-        # FUX-408: Integrity Guard - Paid status cannot be set directly without settlement
-        if payload.status in ("paid", "partially_paid") and not payload.is_paid_now:
-            raise HTTPException(
-                status_code=400,
-                detail="Paid or partially paid status cannot be set directly. It is derived from recorded settlements.",
-            )
-
         # FUX-408: Combined create-and-pay validation
         if payload.is_paid_now:
             if not payload.payment:
@@ -259,16 +251,12 @@ class BillsService:
                     detail="Bill requires approval before payment can be recorded.",
                 )
 
-        # AC 1: Uploaded bills do not become payable until required fields are reviewed
-        initial_status = payload.status
+        # New bills start as Draft. Create-and-pay starts Approved and is settled below;
+        # B2/B3 own the approval and payment-permission rules for this path.
+        initial_status = bs.APPROVED if payload.is_paid_now else bs.DRAFT
         is_rev = payload.is_reviewed if payload.is_reviewed is not None else True
         if payload.capture_source in ("upload", "ocr"):
             is_rev = False
-            if initial_status in ("ready_to_pay", "paid"):
-                initial_status = "inbox"
-        elif payload.is_paid_now:
-            # When creating and paying simultaneously, set initial working status to ready_to_pay
-            initial_status = "ready_to_pay"
 
         data = payload.model_dump(exclude={"lines", "is_paid_now", "payment"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines", "is_paid_now", "payment"})
         data["status"] = initial_status
@@ -317,10 +305,17 @@ class BillsService:
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
 
-        if bill.status in ("void", "paid"):
-            raise HTTPException(status_code=400, detail=f"Cannot approve bill in '{bill.status}' status")
-
         user_email = (current_user.get("email") or current_user.get("sub") or "admin").strip()
+        decision = (req.decision or "").strip().lower()
+        if decision not in ("approve", "reject"):
+            raise HTTPException(
+                status_code=400, detail=f"Invalid decision '{req.decision}'. Must be 'approve' or 'reject'."
+            )
+        # Refuse an action the transition table does not allow before any other check.
+        try:
+            bs.next_status(decision, bill.status)
+        except InvalidBillTransition as e:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
 
         # AC 2: Segregation of duties - prevent self-approval
         if bill.created_by and bill.created_by.strip().lower() == user_email.lower():
@@ -336,14 +331,12 @@ class BillsService:
                 detail=f"Bill total (${bill.total:,.2f}) exceeds approver authorization limit (${req.approver_limit:,.2f}).",
             )
 
-        decision = req.decision.strip().lower()
         if decision == "approve":
             updates = {
                 "approval_status": "approved",
                 "approved_by": user_email,
                 "approved_at": datetime.utcnow(),
                 "approval_comment": req.comment,
-                "status": "ready_to_pay",
             }
         elif decision == "reject":
             if not req.comment or not req.comment.strip():
@@ -356,14 +349,29 @@ class BillsService:
                 "approved_by": user_email,
                 "approved_at": datetime.utcnow(),
                 "approval_comment": req.comment.strip(),
-                "status": "exceptions",
             }
-        else:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid decision '{req.decision}'. Must be 'approve' or 'reject'."
-            )
 
-        updated = self.repo.update(bill_id, updates)
+        updated = self._transition(bill, decision, updates)
+        return self._bill_to_response(updated)
+
+    def submit_bill(self, bill_id: int) -> BillResponse:
+        """Draft or Rejected -> Pending approval. Clears the previous decision."""
+        bill = self.repo.get_by_id(bill_id)
+        if not bill:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+        updated = self._transition(
+            bill,
+            "submit",
+            {"approval_status": "pending", "approved_by": None, "approved_at": None, "approval_comment": None},
+        )
+        return self._bill_to_response(updated)
+
+    def withdraw_bill(self, bill_id: int) -> BillResponse:
+        """Pending approval -> Draft."""
+        bill = self.repo.get_by_id(bill_id)
+        if not bill:
+            raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
+        updated = self._transition(bill, "withdraw", {"approval_status": None})
         return self._bill_to_response(updated)
 
     def schedule_bill(self, bill_id: int, req: BillScheduleRequest) -> BillResponse:
@@ -371,25 +379,12 @@ class BillsService:
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
 
-        if bill.status in ("void", "paid"):
-            raise HTTPException(status_code=400, detail=f"Cannot schedule bill in '{bill.status}' status")
-
-        # AC 1: Cannot move to scheduled before required approvals complete
-        if bill.requires_approval and bill.approval_status != "approved":
-            raise HTTPException(
-                status_code=400,
-                detail="Bill requires approval before it can be scheduled for payment.",
-            )
-
-        updates = {
-            "scheduled_payment_date": req.scheduled_payment_date,
-            "status": "scheduled",
-        }
+        updates = {"scheduled_payment_date": req.scheduled_payment_date}
         if req.notes:
             existing = bill.notes or ""
             updates["notes"] = f"{existing}\n[Scheduled: {req.scheduled_payment_date} - {req.notes}]".strip()
 
-        updated = self.repo.update(bill_id, updates)
+        updated = self._transition(bill, "schedule", updates)
         return self._bill_to_response(updated)
 
     def update_bill(self, bill_id: int, payload: BillUpdate) -> BillResponse:
@@ -399,36 +394,6 @@ class BillsService:
 
         if bill.status == "void":
             raise HTTPException(status_code=400, detail="Cannot update a voided bill")
-
-        if payload.status and payload.status not in VALID_BILL_STATUSES:
-            raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'")
-
-        # FUX-408: Integrity Guard - Paid status cannot be directly set via bill update
-        if payload.status in ("paid", "partially_paid"):
-            raise HTTPException(
-                status_code=400,
-                detail="Bill status cannot be directly updated to paid or partially paid. Record a payment via settlement instead.",
-            )
-
-        # AC 1: Uploaded/unreviewed bills cannot move directly to ready_to_pay or paid without being reviewed
-        target_status = payload.status or bill.status
-        is_rev = payload.is_reviewed if payload.is_reviewed is not None else bill.is_reviewed
-        if target_status in ("ready_to_pay", "paid") and not is_rev:
-            raise HTTPException(
-                status_code=400,
-                detail="Uploaded bills must be reviewed and coded before moving to ready_to_pay or paid status.",
-            )
-
-        # AC 1: A bill cannot move to Ready to Pay before required approvals complete
-        if (
-            target_status in ("ready_to_pay", "paid")
-            and bill.requires_approval
-            and bill.approval_status != "approved"
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Bill requires approval before moving to ready_to_pay or paid status.",
-            )
 
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
         lines_data = None
@@ -441,21 +406,38 @@ class BillsService:
         updated = self.repo.update(bill_id, data, lines_data)
         return self._bill_to_response(updated)
 
-    def void_bill(self, bill_id: int, reason: Optional[str] = None) -> BillResponse:
+    def void_bill(
+        self, bill_id: int, reason: Optional[str] = None, current_user: Optional[dict] = None
+    ) -> BillResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
-        if bill.status == "void":
-            raise HTTPException(status_code=400, detail="Bill is already voided")
-        if bill.status == "paid":
-            raise HTTPException(status_code=400, detail="Cannot void a paid bill. Record a vendor credit instead.")
-
-        if reason and reason.strip():
-            existing_notes = bill.notes or ""
-            updated_notes = f"{existing_notes}\n[Void reason: {reason.strip()}]".strip()
-            self.repo.update(bill_id, {"notes": updated_notes})
-
-        voided = self.repo.void_bill(bill_id)
+        try:
+            bs.next_status("void", bill.status)
+        except InvalidBillTransition as e:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
+        if self.repo.count_unreversed_payments(bill_id) > 0 or (bill.amount_paid or 0.0) > 0.001:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "has_unreversed_payments",
+                    "message": "Cannot void a bill that has unreversed payments. Reverse the payments first.",
+                    "current_status": bill.status,
+                    "allowed_actions": bs.allowed_actions(bill.status),
+                },
+            )
+        voided_by = None
+        if current_user:
+            voided_by = (current_user.get("email") or current_user.get("sub") or "user")
+        voided = self._transition(
+            bill,
+            "void",
+            {
+                "void_reason": reason.strip() if reason and reason.strip() else None,
+                "voided_by": voided_by,
+                "voided_at": datetime.utcnow(),
+            },
+        )
         return self._bill_to_response(voided)
 
     # ------------------------------------------------------------------
@@ -473,22 +455,14 @@ class BillsService:
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
 
-        if bill.status in ("void",):
-            raise HTTPException(status_code=400, detail="Cannot record payment against a voided bill")
-
-        # AC 1: Cannot pay unapproved bill that requires approval
-        if (
-            bill.requires_approval
-            and bill.approval_status != "approved"
-            and bill.status not in ("ready_to_pay", "scheduled", "paid")
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Bill requires approval before payment can be recorded.",
-            )
-
         if payload.direction != "outgoing":
             raise HTTPException(status_code=400, detail="Bill payments must be direction=outgoing")
+
+        if bill.status not in (bs.APPROVED, bs.SCHEDULED, bs.PARTIALLY_PAID):
+            try:
+                bs.next_status("pay", bill.status)
+            except InvalidBillTransition as e:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
 
         if payload.method not in VALID_PAYMENT_METHODS:
             raise HTTPException(status_code=400, detail=f"Invalid payment method '{payload.method}'")

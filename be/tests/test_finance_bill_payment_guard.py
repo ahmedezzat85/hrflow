@@ -27,8 +27,7 @@ def test_direct_status_paid_rejected_on_create(app_client, admin_cookies):
         "lines": [{"description": "License", "quantity": 1, "unit_price": 500.0, "line_total": 500.0}],
     }
     resp_paid = app_client.post("/api/finance/bills", json=bad_paid_payload, cookies=admin_cookies)
-    assert resp_paid.status_code == 400
-    assert "Paid or partially paid status cannot be set directly" in resp_paid.json()["detail"]
+    assert resp_paid.status_code == 422
 
     # 2. Attempt status="partially_paid" directly without is_paid_now
     bad_partial_payload = {
@@ -37,8 +36,7 @@ def test_direct_status_paid_rejected_on_create(app_client, admin_cookies):
         "status": "partially_paid",
     }
     resp_part = app_client.post("/api/finance/bills", json=bad_partial_payload, cookies=admin_cookies)
-    assert resp_part.status_code == 400
-    assert "Paid or partially paid status cannot be set directly" in resp_part.json()["detail"]
+    assert resp_part.status_code == 422
 
 
 def test_direct_status_paid_rejected_on_update(app_client, admin_cookies):
@@ -58,7 +56,6 @@ def test_direct_status_paid_rejected_on_update(app_client, admin_cookies):
         "category": "Services",
         "issue_date": "2026-09-01",
         "due_date": "2026-09-30",
-        "status": "ready_to_pay",
         "currency": "USD",
         "lines": [{"description": "Consulting", "quantity": 1, "unit_price": 1000.0, "line_total": 1000.0}],
     }
@@ -68,13 +65,11 @@ def test_direct_status_paid_rejected_on_update(app_client, admin_cookies):
 
     # Attempt to directly update status to 'paid'
     update_paid = app_client.put(f"/api/finance/bills/{bill_id}", json={"status": "paid"}, cookies=admin_cookies)
-    assert update_paid.status_code == 400
-    assert "cannot be directly updated to paid or partially paid" in update_paid.json()["detail"]
+    assert update_paid.status_code == 422
 
     # Attempt to directly update status to 'partially_paid'
     update_part = app_client.put(f"/api/finance/bills/{bill_id}", json={"status": "partially_paid"}, cookies=admin_cookies)
-    assert update_part.status_code == 400
-    assert "cannot be directly updated to paid or partially paid" in update_part.json()["detail"]
+    assert update_part.status_code == 422
 
 
 def test_combined_create_and_pay_action_full_settlement(app_client, admin_cookies):
@@ -110,7 +105,6 @@ def test_combined_create_and_pay_action_full_settlement(app_client, admin_cookie
         "category": "Office Supplies",
         "issue_date": "2026-09-10",
         "due_date": "2026-09-25",
-        "status": "ready_to_pay",
         "currency": "USD",
         "lines": [{"description": "Supplies", "quantity": 2, "unit_price": 250.0, "line_total": 500.0}],
         "is_paid_now": True,
@@ -175,7 +169,6 @@ def test_combined_create_and_pay_action_partial_settlement(app_client, admin_coo
         "category": "Hosting",
         "issue_date": "2026-09-10",
         "due_date": "2026-09-25",
-        "status": "ready_to_pay",
         "currency": "USD",
         "lines": [{"description": "Server", "quantity": 1, "unit_price": 1000.0, "line_total": 1000.0}],
         "is_paid_now": True,
@@ -225,7 +218,6 @@ def test_combined_create_and_pay_blocked_when_approval_required(app_client, admi
         "category": "Capital Expenditure",
         "issue_date": "2026-09-10",
         "due_date": "2026-09-25",
-        "status": "needs_approval",
         "requires_approval": True,
         "approval_status": "pending",
         "currency": "USD",
