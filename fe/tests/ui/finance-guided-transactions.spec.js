@@ -69,12 +69,11 @@ test.describe('Story 5.2: Guided Transaction Entry', () => {
     await page.selectOption('#fFinanceTxCategory', { index: 1 });
     await page.click('#financeTxSaveBtn');
 
-    // Toast error warning about explicit exchange rate
-    await expect(page.locator('.toast')).toContainText('Foreign currency transaction');
+    // The entry is refused: manual entries are in the account currency (exchange only through FX transfers)
+    await expect(page.locator('.toast')).toContainText('must match the account currency');
     await expect(page.locator('#financeTransactionModal')).toBeVisible();
-
-    // Fill valid FX rate
-    await page.fill('#fFinanceTxFxRate', '1.08');
+    // There is no exchange-rate input on a manual entry
+    await expect(page.locator('#fFinanceTxFxRate')).not.toBeVisible();
   });
 
   test('AC 3: Preview describes financial effect in plain language and journal entries for adjustment', async ({ page }) => {

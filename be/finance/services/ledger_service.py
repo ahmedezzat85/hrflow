@@ -233,14 +233,34 @@ class LedgerService:
                 detail="Transaction amount must be strictly greater than 0",
             )
 
-        # Currency mismatch validation: transaction currency vs account currency
-        tx_curr = (payload.currency or "USD").upper()
-        acct_curr = (account.currency if account else "USD").upper()
+        # D-020: a manual entry is in its account's currency. Exchange happens only through FX transfers,
+        # so there is no exchange rate on manual entries.
+        tx_curr = (payload.currency or (account.currency if account else "USD")).upper()
+        acct_curr = (account.currency if account else tx_curr).upper()
         if tx_curr != acct_curr:
-            if not payload.fx_rate or payload.fx_rate <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "currency_mismatch",
+                    "message": f"The transaction currency ({tx_curr}) must match the account currency ({acct_curr}). Use an FX transfer to exchange currencies.",
+                },
+            )
+
+        # D-020: a teller withdrawal funds a cash account in the same currency as the bank account
+        if payload.destination_cash_account_id and payload.direction == "out" and self.accounts_repo:
+            dest = self.accounts_repo.get_by_id(payload.destination_cash_account_id)
+            if not dest:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Destination cash account {payload.destination_cash_account_id} not found",
+                )
+            if (dest.currency or "").upper() != acct_curr:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Currency mismatch between transaction ({tx_curr}) and account ({acct_curr}). An exchange rate (fx_rate) is required.",
+                    detail={
+                        "code": "currency_mismatch",
+                        "message": f"A cash withdrawal must go to a cash account in the same currency: '{dest.account_name}' is {dest.currency}, the bank account is {acct_curr}.",
+                    },
                 )
 
         # Guided entry type validation
@@ -256,10 +276,6 @@ class LedgerService:
 
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
         data["source"] = "manual"
-
-        # Auto-compute base_amount if foreign currency
-        if tx_curr != acct_curr and payload.fx_rate:
-            data["base_amount"] = self.compute_equivalent_amount(payload.amount, tx_curr, payload.fx_rate, acct_curr)
 
         # Resolve category string fallback if category_id not provided
         if not data.get("category_id") and payload.category and self.categories_repo:
@@ -287,6 +303,17 @@ class LedgerService:
 
         # Validate and resolve payee information
         self._validate_and_resolve_payee(data)
+
+        # D-020: spend is a bill. Money out to a vendor is recorded as a bill (and paid through it);
+        # plain transactions are for bank fees, transfers, exchange, withdrawals and money in.
+        if data.get("direction") == "out" and data.get("payee_type") == "vendor" and not data.get("linked_bill_id"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "vendor_payment_needs_bill",
+                    "message": "A payment to a vendor is recorded as a bill. Use New bill (Already paid) or link this payment to the vendor's bill.",
+                },
+            )
 
         # Unified settlement linking (FUX-406)
         if data.get("linked_bill_id"):

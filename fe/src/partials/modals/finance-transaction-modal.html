@@ -84,10 +84,9 @@
             </div>
 
             <!-- FX Rate (conditional / mismatch) -->
-            <div class="form-field" id="fFinanceTxFxGroup">
-              <label for="fFinanceTxFxRate">FX Rate <span id="fFinanceTxFxLabel" class="opt">(Optional if same currency)</span></label>
-              <input type="number" id="fFinanceTxFxRate" step="0.0001" min="0" placeholder="e.g. 48.50" oninput="updateTransactionPreview()">
-            </div>
+            <!-- D-020: no exchange rate on manual entries; exchange happens only through FX transfers -->
+            <input type="hidden" id="fFinanceTxFxRate" value="">
+            <div class="form-field" id="fFinanceTxFxGroup" style="display:none;"><span id="fFinanceTxFxLabel"></span></div>
 
             <!-- Currency Mismatch Warning Alert -->
             <div class="form-field full" id="fFinanceTxCurrencyWarning" style="display: none;">
@@ -123,6 +122,9 @@
             </div>
 
             <!-- Payee Type (Classification) -->
+            <div class="form-field full" id="fFinanceTxVendorBillHint" style="display:none; font-size:0.82rem; color:var(--warning-text, #b45309);">
+              <i class="fa-solid fa-circle-info"></i> A payment to a vendor is recorded as a bill. Use New bill (Already paid), or link this payment to the vendor's bill below.
+            </div>
             <div class="form-field" id="fFinanceTxPayeeTypeGroup">
               <label for="fFinanceTxPayeeType">Payee Type</label>
               <select id="fFinanceTxPayeeType" onchange="onTxPayeeTypeChanged()">

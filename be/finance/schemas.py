@@ -149,8 +149,22 @@ class LedgerTransactionBase(BaseModel):
     destination_cash_account_id: Optional[int] = None
 
 
+def _reject_manual_rate(data):
+    """D-020: manual entries are in their account's currency; exchange happens only through FX transfers."""
+    if isinstance(data, dict):
+        sent = [k for k in ("fx_rate", "base_amount") if data.get(k) is not None]
+        if sent:
+            raise ValueError(f"{', '.join(sent)} is not accepted on a manual entry; use an FX transfer to exchange currencies")
+    return data
+
+
 class LedgerTransactionCreate(LedgerTransactionBase):
     category: Optional[str] = None  # Backwards compatibility string fallback
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_rate(cls, data):
+        return _reject_manual_rate(data)
 
 
 class LedgerTransactionResponse(LedgerTransactionBase):
@@ -169,6 +183,11 @@ class LedgerTransactionResponse(LedgerTransactionBase):
 
 
 class LedgerTransactionUpdate(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_rate(cls, data):
+        return _reject_manual_rate(data)
+
     date: Optional[str] = Field(None, description="Transaction date (YYYY-MM-DD)")
     amount: Optional[float] = Field(None, gt=0.0, description="Transaction amount")
     direction: Optional[str] = Field(None, description="Transaction direction: in or out")

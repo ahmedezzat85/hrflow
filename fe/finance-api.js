@@ -1938,10 +1938,17 @@ async getFeatureFlags() {
       const txCurr = (payload.currency || (acc ? acc.currency : "USD")).toUpperCase();
       const acctCurr = (acc ? acc.currency : "USD").toUpperCase();
 
+      // D-020: manual entries are in the account currency, with no exchange rate
+      if (payload.fx_rate || payload.base_amount) {
+        const err = new Error("fx_rate, base_amount is not accepted on a manual entry; use an FX transfer to exchange currencies");
+        err.status = 422;
+        throw err;
+      }
       if (txCurr !== acctCurr) {
-        if (!payload.fx_rate || parseFloat(payload.fx_rate) <= 0) {
-          throw new Error(`Currency mismatch between transaction (${txCurr}) and account (${acctCurr}). An exchange rate (fx_rate) is required.`);
-        }
+        throw new Error(`The transaction currency (${txCurr}) must match the account currency (${acctCurr}). Use an FX transfer to exchange currencies.`);
+      }
+      if (payload.direction === "out" && payload.payee_type === "vendor" && !payload.linked_bill_id) {
+        throw new Error("A payment to a vendor is recorded as a bill. Use New bill (Already paid) or link this payment to the vendor's bill.");
       }
 
       if (entryType === "adjustment") {

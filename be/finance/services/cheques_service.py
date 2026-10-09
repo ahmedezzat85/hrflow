@@ -160,6 +160,15 @@ class ChequesService:
                     status_code=400,
                     detail=f"Destination account '{cash_acc.account_name}' must be of account_type 'cash', not '{cash_acc.account_type}'",
                 )
+            # D-020: a cash withdrawal funds a cash account in the same currency as the bank account
+            if (cash_acc.currency or "").upper() != (bank_acc.currency or "").upper():
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "currency_mismatch",
+                        "message": f"A cash withdrawal must go to a cash account in the same currency: '{cash_acc.account_name}' is {cash_acc.currency}, the bank account is {bank_acc.currency}.",
+                    },
+                )
 
         # Validate linked bill if present
         if payload.linked_bill_id:

@@ -344,7 +344,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-020 — Banking Rules: Same-Currency Entries, Spend as Bills, Cheque Reversals
 
-- **Status:** Accepted by owner, October 9, 2026. Not implemented; slice B6 and additions to B1 to B3 in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Status:** Accepted by owner, October 9, 2026. Implemented on `feature/bills-b1-status-model` (slice B6).
 - **Decision:**
   - A ledger transaction is always in its account's currency. Manual entries lose the exchange-rate path; exchange happens only through FX transfers. Cash withdrawals (teller or cheque) require the cash account to have the bank account's currency.
   - Spend with a vendor or shop is recorded as a bill (one-step "Already paid" where it is already paid). Plain transactions are for bank fees, transfers, exchange, withdrawals and money in.

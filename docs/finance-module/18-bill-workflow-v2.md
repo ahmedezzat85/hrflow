@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Slices B1 to B5 implemented on `feature/bills-b1-status-model`; B6 not implemented.
+**Status:** Approved by owner, October 8, 2026. All slices B1 to B6 implemented on `feature/bills-b1-status-model`.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -207,11 +207,18 @@ Implementation notes (B5):
 
 Acceptance:
 
-- [ ] A USD transaction on an EGP account is refused; no rate field remains on manual entries.
-- [ ] A USD withdrawal into CASH - EGP is refused, for both teller withdrawals and cheques.
-- [ ] Stopping a cheque keeps its original entries, adds reversing entries, restores the balance and reverses its bill payment.
-- [ ] A vendor money-out without a bill is refused (if the enforcement is confirmed).
-- [ ] Tests: `test_finance_ledger.py`, `test_finance_cheques.py`, `test_finance_cheque_lifecycle.py` updated; new tests per criterion.
+- [x] A USD transaction on an EGP account is refused; no rate field remains on manual entries.
+- [x] A USD withdrawal into CASH - EGP is refused, for both teller withdrawals and cheques.
+- [x] Stopping a cheque keeps its original entries, adds reversing entries, restores the balance and reverses its bill payment.
+- [x] A vendor money-out without a bill is refused (if the enforcement is confirmed).
+- [x] Tests: `test_finance_ledger.py`, `test_finance_cheques.py`, `test_finance_cheque_lifecycle.py` updated; new tests per criterion.
+
+Implementation notes (B6):
+
+- Manual entries: `LedgerTransactionCreate` / `LedgerTransactionUpdate` refuse `fx_rate` and `base_amount` (422); a transaction whose currency differs from its account's returns 400 `currency_mismatch`. The FX-rate field is gone from the transaction form (it stays hidden and empty); FX transfers are the only way to exchange.
+- Cash withdrawals: a teller withdrawal (`destination_cash_account_id`) and a cash-withdrawal cheque are refused with `currency_mismatch` when the cash account's currency differs from the bank account's.
+- Cheque reversals: `_reverse_cheque_ledger_entries` keeps the posted rows and adds opposite `cheque_reversal` entries (reference `REV-TX-<original id>`, the reason in `reason` and the description). The linked bill payment is reversed through `SettlementService.reverse_cheque_bill_payment`, which recomputes `amount_paid` and the bill status.
+- Spend is a bill (confirmed as proposed): a manual money-out with a vendor payee and no `linked_bill_id` is refused with 400 `vendor_payment_needs_bill`; the transaction form shows the same hint and blocks the save. Money in, bank fees, transfers, exchange and withdrawals are unaffected.
 
 ## Order, tests, risks
 

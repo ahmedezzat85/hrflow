@@ -131,6 +131,37 @@ class SettlementService:
 
         return bill, payment
 
+    def reverse_cheque_bill_payment(self, bill_id: int, cheque_number: str, reason: str, reversed_by: str = "system") -> Optional[PaymentDB]:
+        """
+        Reverse the payment a linked cheque made against a bill (cheque stopped, voided, bounced or replaced).
+        Marks the payment reversed, recomputes amount_paid and derives the bill status again.
+        """
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            return None
+        payment = (
+            self.db.query(PaymentDB)
+            .filter(
+                PaymentDB.related_bill_id == bill.id,
+                PaymentDB.reference == f"CHK-{cheque_number}",
+                PaymentDB.is_reversed == False,  # noqa: E712
+            )
+            .first()
+        )
+        if payment:
+            payment.is_reversed = True
+            payment.reversed_at = datetime.utcnow()
+            payment.reversed_by = reversed_by
+            payment.reversal_reason = reason
+            self.db.flush()
+        remaining = [
+            p for p in self.db.query(PaymentDB).filter(PaymentDB.related_bill_id == bill.id).all()
+            if not p.is_reversed
+        ]
+        bill.amount_paid = round(sum(float(p.amount) for p in remaining), 2)
+        bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
+        return payment
+
     def settle_invoice(
         self,
         invoice_id: int,
