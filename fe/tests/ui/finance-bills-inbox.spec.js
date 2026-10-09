@@ -130,10 +130,6 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 4: Queue counts and statuses update after each transition', async ({ page }) => {
-    // Open status panel via Change view button
-    await page.click('#financeBillChangeViewBtn');
-    await expect(page.locator('#financeBillStatusPanel')).toBeVisible();
-
     // Verify AP Inbox Work Queue tabs are present
     await expect(page.locator('#financeBillWorkQueueTabs')).toBeVisible();
     await expect(page.locator('#tabBillQueueAll')).toBeVisible();
@@ -147,17 +143,14 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     const allCount = parseInt(await allBadge.innerText(), 10);
     expect(allCount).toBeGreaterThan(0);
 
-    // Filter by "Draft" queue tab (clicks and auto-collapses panel)
+    // Filter by "Draft" queue tab (status row stays visible, selection is reflected via aria-selected)
     await page.click('#tabBillQueueDraft');
-    await expect(page.locator('#financeBillStatusPanel')).not.toBeVisible();
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Draft');
+    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'false');
 
-    // Switch to "All" queue tab by reopening panel
-    await page.click('#financeBillChangeViewBtn');
-    await expect(page.locator('#financeBillStatusPanel')).toBeVisible();
+    // Switch back to "All"
     await page.click('#tabBillQueueAll');
-    await expect(page.locator('#financeBillStatusPanel')).not.toBeVisible();
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('All');
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 });

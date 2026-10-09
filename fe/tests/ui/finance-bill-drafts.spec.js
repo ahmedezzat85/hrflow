@@ -18,7 +18,7 @@ test.describe('Vendor Bill Workflow v2 (B4) — drafts and multi-file upload', (
     ]);
 
     // The list opens filtered to Drafts and shows the three new drafts
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Draft');
+    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
     const rows = page.locator('#financeBillsTableBody tr');
     await expect(rows.filter({ hasText: 'Amazon Web Services' }).filter({ hasText: '(no number yet)' })).toHaveCount(1);
     const unmatched = rows.filter({ hasText: 'Vendor to confirm' });

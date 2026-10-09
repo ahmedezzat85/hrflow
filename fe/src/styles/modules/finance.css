@@ -1979,3 +1979,60 @@
 .bill-row-actions .btn-resubmit-bill { height: auto; min-height: 28px; padding: 3px 10px; }
 #financeBillsTable thead th:nth-child(6) { max-width: 110px; white-space: normal; line-height: 1.2; }
 #financeBillsTable td.bill-menu-open { z-index: 60 !important; }
+
+/* ── Direction A, Slice 3: always-visible status row (supersedes FUX-414) ── */
+.bill-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 6px 0 10px;
+}
+.bill-status-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.bill-overdue-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+/* Wraps to a second line when narrow; also overrides the mobile horizontal-scroll rule for .filter-tabs */
+#a-finance-bills .filter-tabs.bill-status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  overflow: visible;
+  width: auto;
+  max-width: 100%;
+  background: transparent;
+  padding: 0;
+  gap: 6px;
+}
+.bill-status-tabs .filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bill-status-tabs .filter-tab:hover { background: var(--surface2); }
+.bill-status-tabs .filter-tab.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.bill-status-tabs .filter-tab .badge { font-size: 11px; padding: 0 6px; }

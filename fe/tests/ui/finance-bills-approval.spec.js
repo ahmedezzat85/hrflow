@@ -3,11 +3,7 @@ import { confirmDialog } from './helpers/confirm.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 async function selectBillQueue(page, tabSelector) {
-  const panel = page.locator('#financeBillStatusPanel');
-  if (!(await panel.isVisible())) {
-    await page.click('#financeBillChangeViewBtn');
-    await expect(panel).toBeVisible();
-  }
+  // Direction A (D-021): the status row is always visible
   await page.click(tabSelector);
 }
 

@@ -38,44 +38,6 @@ function _canBill(key) {
   return typeof SessionInfo === "undefined" || typeof SessionInfo.hasPermission !== "function" || SessionInfo.hasPermission(key);
 }
 
-function isBillStatusPanelExpanded() {
-  const panel = document.getElementById("financeBillStatusPanel");
-  return panel ? panel.style.display !== "none" : false;
-}
-
-function setBillStatusPanelExpanded(expanded) {
-  const panel = document.getElementById("financeBillStatusPanel");
-  const btn = document.getElementById("financeBillChangeViewBtn");
-  const icon = document.getElementById("financeBillChangeViewIcon");
-  if (panel) {
-    panel.style.display = expanded ? "block" : "none";
-  }
-  if (btn) {
-    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    btn.classList.toggle("active", !!expanded);
-  }
-  if (icon) {
-    icon.style.transform = expanded ? "rotate(180deg)" : "rotate(0deg)";
-  }
-}
-
-function toggleBillStatusPanel() {
-  const current = isBillStatusPanelExpanded();
-  setBillStatusPanelExpanded(!current);
-}
-
-function _updateBillActiveStatusPill(activeQueue) {
-  const current = activeQueue || "all";
-  const labelEl = document.getElementById("financeBillActiveStatusLabel");
-  const countEl = document.getElementById("financeBillActiveStatusCount");
-  if (labelEl) {
-    labelEl.textContent = BILL_QUEUE_LABELS[current] || "All";
-  }
-  if (countEl) {
-    countEl.textContent = _currentBillQueueCounts[current] ?? 0;
-  }
-}
-
 function _updateBillViewResultCount(filteredCount, totalCount) {
   const countTextEl = document.getElementById("financeBillViewResultCount");
   if (!countTextEl) return;
@@ -91,8 +53,6 @@ function setBillWorkQueue(queue) {
   FinanceTable.saveState("finance_bills", state);
 
   _updateBillQueueTabs(state.queue);
-  _updateBillActiveStatusPill(state.queue);
-  setBillStatusPanelExpanded(false); // auto-collapse panel on selection
   loadFinanceBills();
 }
 
@@ -116,7 +76,6 @@ function _updateBillQueueTabs(activeQueue) {
     tabEl.classList.toggle("active", isActive);
     tabEl.setAttribute("aria-selected", isActive ? "true" : "false");
   });
-  _updateBillActiveStatusPill(current);
 }
 
 async function loadFinanceBillQueueCounts() {
@@ -153,7 +112,6 @@ async function loadFinanceBillQueueCounts() {
       if (el) el.textContent = count;
     });
     const state = FinanceTable.getState("finance_bills");
-    _updateBillActiveStatusPill(state.queue || "all");
   } catch (err) {
     console.warn("Failed to load bill queue counts:", err);
   }
@@ -2030,9 +1988,7 @@ function switchBillSubTab(subTab) {
   const boxBill = document.getElementById("financeBillSearchBox");
   const filterToggleBtn = document.getElementById("financeBillFilterToggleBtn");
   const filterPanel = document.getElementById("financeBillFilterPanel");
-  const workQueueTabs = document.getElementById("financeBillWorkQueueTabs");
-  const statusToggleBar = document.getElementById("financeBillStatusToggleBar");
-  const statusPanel = document.getElementById("financeBillStatusPanel");
+  const statusRow = document.getElementById("financeBillStatusRow");
   const boxVend = document.getElementById("financeVendorSearchBox");
   const conBill = document.getElementById("financeBillsContainer");
   const conVend = document.getElementById("financeVendorsContainer");
@@ -2053,9 +2009,7 @@ function switchBillSubTab(subTab) {
     if (boxBill) boxBill.style.display = "none";
     if (filterToggleBtn) filterToggleBtn.style.display = "none";
     if (filterPanel) filterPanel.style.display = "none";
-    if (statusToggleBar) statusToggleBar.style.display = "none";
-    if (statusPanel) statusPanel.style.display = "none";
-    if (workQueueTabs) workQueueTabs.style.display = "none";
+    if (statusRow) statusRow.style.display = "none";
     if (boxVend) boxVend.style.display = "block";
     if (conBill) conBill.style.display = "none";
     if (conVend) conVend.style.display = "block";
@@ -2075,10 +2029,7 @@ function switchBillSubTab(subTab) {
     }
     if (boxBill) boxBill.style.display = "block";
     if (filterToggleBtn) filterToggleBtn.style.display = "inline-flex";
-    if (statusToggleBar) statusToggleBar.style.display = "flex";
-    if (statusPanel) statusPanel.style.display = "none";
-    setBillStatusPanelExpanded(false);
-    if (workQueueTabs) workQueueTabs.style.display = "flex";
+    if (statusRow) statusRow.style.display = "flex";
     const savedPref = localStorage.getItem(_getBillFilterStorageKey());
     setBillFilterPanelExpanded(savedPref === "true", false);
     if (boxVend) boxVend.style.display = "none";
@@ -2473,9 +2424,6 @@ window.isBillFilterPanelExpanded = isBillFilterPanelExpanded;
 window.updateBillFilterBadge = updateBillFilterBadge;
 window.onBillFilterChanged = onBillFilterChanged;
 window.resetBillSecondaryFilters = resetBillSecondaryFilters;
-window.toggleBillStatusPanel = toggleBillStatusPanel;
-window.setBillStatusPanelExpanded = setBillStatusPanelExpanded;
-window.isBillStatusPanelExpanded = isBillStatusPanelExpanded;
 window.setBillWorkQueue = setBillWorkQueue;
 window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;

@@ -26,59 +26,24 @@
             </div>
           </div>
 
-          <!-- FUX-414: Status Toggle Bar (always visible, single row, ~40px tall) -->
-          <div id="financeBillStatusToggleBar" class="finance-bill-status-toggle-bar" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; margin: 6px 0 8px 0; padding: 2px 0;">
-            <!-- Left side: active status pill + result count -->
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <span id="financeBillActiveStatusPill" class="badge badge-primary" style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px; cursor: default; user-select: none;">
-                <span id="financeBillActiveStatusLabel">All</span>
-                <span id="financeBillActiveStatusCount" class="badge badge-grey" style="font-size: 11px; padding: 1px 6px; border-radius: 9999px; margin: 0;">0</span>
-              </span>
-              <span id="financeBillViewResultCount" style="font-size: 12px; color: var(--text3, #64748b);">Showing 0 of 0 bills</span>
+          <!-- Direction A (D-021): always-visible status row; replaces the FUX-414 pill + Change view panel -->
+          <div id="financeBillStatusRow" class="bill-status-row">
+            <div class="filter-tabs bill-status-tabs" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues">
+              <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">All <span class="badge badge-grey" id="badgeBillQueueAll">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')">Draft <span class="badge badge-grey" id="badgeBillQueueDraft">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')">Pending Approval <span class="badge badge-grey" id="badgeBillQueuePendingApproval">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')">Rejected <span class="badge badge-grey" id="badgeBillQueueRejected">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')">Approved <span class="badge badge-grey" id="badgeBillQueueApproved">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')">Partially Paid <span class="badge badge-grey" id="badgeBillQueuePartiallyPaid">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')">Void <span class="badge badge-grey" id="badgeBillQueueVoid">0</span></button>
             </div>
-
-            <!-- Right side: Overdue only toggle and Change view button with chevron -->
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <label for="financeBillOverdueOnly" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+            <div class="bill-status-row-meta">
+              <span id="financeBillViewResultCount">Showing 0 of 0 bills</span>
+              <label for="financeBillOverdueOnly" class="bill-overdue-toggle">
                 <input type="checkbox" id="financeBillOverdueOnly" onchange="onBillOverdueOnlyChange()"> Overdue only <span class="badge badge-grey" id="financeBillOverdueCount">0</span>
               </label>
-              <button type="button" class="btn btn-outline btn-sm" id="financeBillChangeViewBtn" aria-expanded="false" aria-controls="financeBillStatusPanel" onclick="toggleBillStatusPanel()" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: 12px;">
-                <span>Change view</span>
-                <i class="fa-solid fa-chevron-down" id="financeBillChangeViewIcon" style="font-size: 10px; transition: transform 0.2s ease;"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- FUX-414: Status Tabs Panel (hidden by default, toggled by Change view) -->
-          <div id="financeBillStatusPanel" class="finance-bill-status-panel" style="display: none; background: var(--surface2, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;" role="region" aria-label="Status queue tabs">
-            <div class="filter-tabs" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues" style="margin: 0; overflow-x: auto; white-space: nowrap;">
-              <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">
-                <i class="fa-solid fa-list-ul"></i> All <span class="badge badge-grey" id="badgeBillQueueAll">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')">
-                <i class="fa-solid fa-file-pen"></i> Draft <span class="badge badge-grey" id="badgeBillQueueDraft">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')">
-                <i class="fa-solid fa-user-check"></i> Pending Approval <span class="badge badge-grey" id="badgeBillQueuePendingApproval">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')">
-                <i class="fa-solid fa-circle-xmark"></i> Rejected <span class="badge badge-grey" id="badgeBillQueueRejected">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')">
-                <i class="fa-solid fa-circle-check"></i> Approved <span class="badge badge-grey" id="badgeBillQueueApproved">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">
-                <i class="fa-solid fa-calendar-check"></i> Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')">
-                <i class="fa-solid fa-circle-half-stroke"></i> Partially Paid <span class="badge badge-grey" id="badgeBillQueuePartiallyPaid">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">
-                <i class="fa-solid fa-circle-check"></i> Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')">
-                <i class="fa-solid fa-ban"></i> Void <span class="badge badge-grey" id="badgeBillQueueVoid">0</span>
-              </button>
             </div>
           </div>
 

@@ -1,150 +1,118 @@
 import { test, expect } from '@playwright/test';
 import { openAdminPage } from './helpers/admin-nav.js';
 
-test.describe('FUX-414 — Collapsible Bills status tab bar into status pill + panel', () => {
+// Direction A (D-021) supersedes FUX-414: the status tabs are an always-visible row.
+// There is no active-status pill, "Change view" button or hidden panel any more.
+const TAB_IDS = ['All', 'Draft', 'PendingApproval', 'Rejected', 'Approved', 'Scheduled', 'PartiallyPaid', 'Paid', 'Void'];
+
+test.describe('Bills status row (D-021, supersedes FUX-414)', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
     page.on('pageerror', (err) => console.error('BROWSER ERROR:', err));
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
-    // Navigate to Vendor Bills section
     await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('AC 1: On page load, status panel is collapsed; only toggle bar is visible with active pill and count', async ({ page }) => {
-    // Status toggle bar is visible
-    const toggleBar = page.locator('#financeBillStatusToggleBar');
-    await expect(toggleBar).toBeVisible();
-
-    // Status tabs panel is collapsed by default
-    const statusPanel = page.locator('#financeBillStatusPanel');
-    await expect(statusPanel).not.toBeVisible();
-
-    // Active pill displays "All" and non-zero count
-    const activePill = page.locator('#financeBillActiveStatusPill');
-    await expect(activePill).toBeVisible();
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('All');
-    const activeCount = parseInt(await page.locator('#financeBillActiveStatusCount').innerText(), 10);
-    expect(activeCount).toBeGreaterThan(0);
-
-    // Result count shows "Showing X of Y bills"
-    const resultCount = page.locator('#financeBillViewResultCount');
-    await expect(resultCount).toBeVisible();
-    await expect(resultCount).toContainText(`Showing ${activeCount} of ${activeCount} bills`);
-
-    // "Change view" button is present with correct ARIA attributes
-    const changeViewBtn = page.locator('#financeBillChangeViewBtn');
-    await expect(changeViewBtn).toBeVisible();
-    await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'false');
-    await expect(changeViewBtn).toHaveAttribute('aria-controls', 'financeBillStatusPanel');
-  });
-
-  test('AC 2: Clicking "Change view" reveals status tabs panel, and clicking again collapses it without changing view', async ({ page }) => {
-    const changeViewBtn = page.locator('#financeBillChangeViewBtn');
-    const statusPanel = page.locator('#financeBillStatusPanel');
-
-    // Initially collapsed
-    await expect(statusPanel).not.toBeVisible();
-
-    // Click "Change view" to expand
-    await changeViewBtn.click();
-    await expect(statusPanel).toBeVisible();
-    await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'true');
-
-    // All status queue tabs are visible inside the panel
-    await expect(page.locator('#tabBillQueueAll')).toBeVisible();
-    for (const id of ['Draft', 'PendingApproval', 'Rejected', 'Approved', 'Scheduled', 'PartiallyPaid', 'Paid', 'Void']) {
+  test('AC 1: All nine status tabs, counts, result count and Overdue only are visible on load; no hidden panel remains', async ({ page }) => {
+    await expect(page.locator('#financeBillStatusRow')).toBeVisible();
+    await expect(page.locator('#financeBillWorkQueueTabs')).toHaveAttribute('role', 'tablist');
+    for (const id of TAB_IDS) {
       await expect(page.locator(`#tabBillQueue${id}`)).toBeVisible();
+      await expect(page.locator(`#tabBillQueue${id}`)).toHaveAttribute('role', 'tab');
+      await expect(page.locator(`#badgeBillQueue${id}`)).toBeVisible();
     }
-
-    // "All" tab is currently active
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#tabBillQueueAll')).toHaveClass(/active/);
 
-    // Click "Change view" again to collapse
-    await changeViewBtn.click();
-    await expect(statusPanel).not.toBeVisible();
-    await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'false');
+    const allCount = parseInt(await page.locator('#badgeBillQueueAll').innerText(), 10);
+    expect(allCount).toBeGreaterThan(0);
+    await expect(page.locator('#financeBillViewResultCount')).toContainText(`Showing ${allCount} of ${allCount} bills`);
+    await expect(page.locator('#financeBillOverdueOnly')).toBeVisible();
 
-    // Selection unchanged: active pill still says "All"
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('All');
+    for (const gone of ['#financeBillStatusToggleBar', '#financeBillActiveStatusPill', '#financeBillChangeViewBtn', '#financeBillStatusPanel']) {
+      await expect(page.locator(gone)).toHaveCount(0);
+    }
+    // Direction A: no icons on in-page tabs
+    await expect(page.locator('#financeBillWorkQueueTabs i')).toHaveCount(0);
   });
 
-  test('AC 3: Selecting a different status tab switches view, updates pill and count, and auto-collapses panel', async ({ page }) => {
-    const changeViewBtn = page.locator('#financeBillChangeViewBtn');
-    const statusPanel = page.locator('#financeBillStatusPanel');
+  test('AC 2: Selecting a status tab filters the table, keeps the row visible and updates aria-selected and result count', async ({ page }) => {
+    const expectedApprovalCount = await page.locator('#badgeBillQueuePendingApproval').innerText();
 
-    // 1. Expand panel
-    await changeViewBtn.click();
-    await expect(statusPanel).toBeVisible();
-
-    // Read count from Pending Approval tab badge
-    const approvalBadge = page.locator('#badgeBillQueuePendingApproval');
-    const expectedApprovalCount = await approvalBadge.innerText();
-
-    // 2. Click "Pending Approval" tab
     await page.click('#tabBillQueuePendingApproval');
 
-    // 3. Verify panel auto-collapses automatically after tab click
-    await expect(statusPanel).not.toBeVisible();
-    await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'false');
-
-    // 4. Verify toggle bar pill updates immediately to "Needs Approval" and its count
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Pending Approval');
-    await expect(page.locator('#financeBillActiveStatusCount')).toHaveText(expectedApprovalCount);
-
-    // 5. Verify result count updates to reflect current view
+    await expect(page.locator('#financeBillStatusRow')).toBeVisible();
+    await expect(page.locator('#tabBillQueuePendingApproval')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#tabBillQueuePendingApproval')).toHaveClass(/active/);
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'false');
     await expect(page.locator('#financeBillViewResultCount')).toContainText(`Showing ${expectedApprovalCount} of`);
+    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")')).toBeVisible();
+    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toHaveCount(0);
 
-    // 6. Verify table rows reflect Pending Approval queue
-    const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
-    await expect(billRow).toBeVisible();
+    await page.click('#tabBillQueueAll');
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toBeVisible();
   });
 
-  test('AC 4: Keyboard accessibility — Change view operates via Enter and Space with ARIA state', async ({ page }) => {
-    const changeViewBtn = page.locator('#financeBillChangeViewBtn');
-    const statusPanel = page.locator('#financeBillStatusPanel');
+  test('AC 3: Overdue only narrows the list and the control stays in the row', async ({ page }) => {
+    const overdueCount = parseInt(await page.locator('#financeBillOverdueCount').innerText(), 10);
+    expect(overdueCount).toBeGreaterThan(0);
+    await page.locator('#financeBillOverdueOnly').check();
+    await expect(page.locator('#financeBillsTableBody tr')).toHaveCount(overdueCount);
+    await page.locator('#financeBillOverdueOnly').uncheck();
+    await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
+  });
 
-    await changeViewBtn.focus();
-    await expect(changeViewBtn).toBeFocused();
-
-    // Activate with Enter key
+  test('AC 4: Keyboard, tabs are focusable buttons that activate with Enter and Space', async ({ page }) => {
+    const draft = page.locator('#tabBillQueueDraft');
+    await draft.focus();
+    await expect(draft).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(statusPanel).toBeVisible();
-    await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'true');
+    await expect(draft).toHaveAttribute('aria-selected', 'true');
 
-    // Close with Space key
+    const paid = page.locator('#tabBillQueuePaid');
+    await paid.focus();
     await page.keyboard.press('Space');
-    await expect(statusPanel).not.toBeVisible();
-    await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'false');
+    await expect(paid).toHaveAttribute('aria-selected', 'true');
+    await expect(draft).toHaveAttribute('aria-selected', 'false');
   });
 
-  test('AC 5: Status panel and FUX-412 secondary filter panel operate independently', async ({ page }) => {
-    const statusPanel = page.locator('#financeBillStatusPanel');
+  for (const width of [1100, 1300, 1440]) {
+    test(`AC 5: Row wraps cleanly at ${width}px (no horizontal overflow, every tab inside the viewport)`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.locator('#financeBillStatusRow')).toBeVisible();
+      const m = await page.evaluate(() => {
+        const row = document.getElementById('financeBillStatusRow').getBoundingClientRect();
+        const tabs = [...document.querySelectorAll('#financeBillWorkQueueTabs .filter-tab')].map((t) => t.getBoundingClientRect());
+        return {
+          rowRight: row.right,
+          maxRight: Math.max(...tabs.map((t) => t.right)),
+          minLeft: Math.min(...tabs.map((t) => t.left)),
+          docOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+          vw: window.innerWidth,
+        };
+      });
+      expect(m.docOverflow).toBe(false);
+      expect(m.maxRight).toBeLessThanOrEqual(m.rowRight + 1);
+      expect(m.maxRight).toBeLessThanOrEqual(m.vw);
+      expect(m.minLeft).toBeGreaterThanOrEqual(0);
+    });
+  }
+
+  test('AC 6: Status row and FUX-412 secondary filter panel operate independently', async ({ page }) => {
     const filterPanel = page.locator('#financeBillFilterPanel');
-    const changeViewBtn = page.locator('#financeBillChangeViewBtn');
-    const filterToggleBtn = page.locator('#financeBillFilterToggleBtn');
-
-    // Both start collapsed
-    await expect(statusPanel).not.toBeVisible();
     await expect(filterPanel).not.toBeVisible();
-
-    // Open FUX-412 filter panel
-    await filterToggleBtn.click();
+    await page.locator('#financeBillFilterToggleBtn').click();
     await expect(filterPanel).toBeVisible();
-    await expect(statusPanel).not.toBeVisible(); // Status panel must remain collapsed
-
-    // Open Status panel
-    await changeViewBtn.click();
-    await expect(statusPanel).toBeVisible();
-    await expect(filterPanel).toBeVisible(); // Both can be open simultaneously
-
-    // Close status panel
-    await changeViewBtn.click();
-    await expect(statusPanel).not.toBeVisible();
-    await expect(filterPanel).toBeVisible(); // Filter panel stays open
+    await expect(page.locator('#financeBillStatusRow')).toBeVisible();
+    await page.click('#tabBillQueueDraft');
+    await expect(filterPanel).toBeVisible();
+    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
   });
 });
