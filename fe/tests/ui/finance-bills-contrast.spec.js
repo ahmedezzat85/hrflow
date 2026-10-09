@@ -56,10 +56,7 @@ for (const theme of ['light', 'dark']) {
         '<div class="bill-cell-sub bill-cell-sub--late" data-k="late note">3 days late</div>' +
         '<div class="bill-cell-sub" data-k="sub">BILL-1 · 1 Sep 2026</div>' +
         '<div class="bill-cell-main" data-k="main">Vendor</div>' +
-        '<span class="bill-review bill-review--ok" data-k="reviewed">Reviewed</span>' +
-        '<span class="bill-review bill-review--todo" data-k="unreviewed">Unreviewed</span>' +
-        '<span class="bill-review bill-review--dup" data-k="dup">Dup override</span>' +
-        '<span class="bill-confidence bill-confidence--low" data-k="low confidence">70%</span>';
+        `<div data-k="all flags">${window._billFlags({ is_overdue: true, due_date: '2020-01-01', is_duplicate_override: true, extraction_confidence: 0.7, is_reviewed: false })}</div>`;
       document.getElementById('a-finance-bills').appendChild(host);
 
       const out = {};
@@ -75,7 +72,8 @@ for (const theme of ['light', 'dark']) {
 
     expect(Object.keys(results).length).toBeGreaterThan(20);
     expect(Object.keys(results).filter((k) => k.startsWith('pill ')).length).toBe(STATUSES.length);
-    expect(Object.keys(results).filter((k) => k.startsWith('flags #')).length).toBe(2);
+    expect(Object.keys(results).filter((k) => k.startsWith('flags #')).length).toBe(3);
+    expect(Object.keys(results).filter((k) => k.startsWith('all flags #')).length).toBe(4);
     const failing = Object.entries(results).filter(([, v]) => v < 4.5).map(([k, v]) => `${k}: ${v.toFixed(2)}`);
     expect(failing, `Below 4.5:1 in ${theme}`).toEqual([]);
   });

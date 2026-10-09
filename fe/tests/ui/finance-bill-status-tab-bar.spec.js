@@ -60,6 +60,18 @@ test.describe('Bills status row (D-021, supersedes FUX-414)', () => {
     await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toBeVisible();
   });
 
+  test('AC 2b: Status tags are coloured, not white, and the selected tag has a ring', async ({ page }) => {
+    const bg = (id) => page.locator(id).evaluate((el) => getComputedStyle(el).backgroundColor);
+    const paid = await bg('#tabBillQueuePaid');
+    const rejected = await bg('#tabBillQueueRejected');
+    const approved = await bg('#tabBillQueueApproved');
+    expect(new Set([paid, rejected, approved]).size).toBe(3);
+    for (const c of [paid, rejected, approved]) expect(c).not.toBe('rgb(255, 255, 255)');
+    await page.click('#tabBillQueuePaid');
+    expect(await page.locator('#tabBillQueuePaid').evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none');
+    expect(await page.locator('#tabBillQueueAll').evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none');
+  });
+
   test('AC 3: Overdue only narrows the list and the control stays in the row', async ({ page }) => {
     const overdueCount = parseInt(await page.locator('#financeBillOverdueCount').innerText(), 10);
     expect(overdueCount).toBeGreaterThan(0);

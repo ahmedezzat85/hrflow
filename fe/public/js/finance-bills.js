@@ -424,13 +424,17 @@ function _billDaysLate(dueDate) {
 
 function _billFlags(bill) {
   const flags = [];
+  const tag = (cls, text, title) => `<span class="bill-flag bill-flag--${cls}" title="${title}">${text}</span>`;
   if (bill.is_overdue) {
     const d = _billDaysLate(bill.due_date);
-    flags.push(`<span class="bill-flag bill-flag--overdue" title="Overdue: the due date has passed">${d > 0 ? `${d} ${d === 1 ? "day" : "days"} late` : "Overdue"}</span>`);
+    flags.push(tag("overdue", d > 0 ? `${d} ${d === 1 ? "day" : "days"} late` : "Overdue", "Overdue: the due date has passed"));
   }
-  if (bill.vendor_to_confirm) {
-    flags.push('<span class="bill-flag bill-flag--confirm" title="The vendor on the document could not be matched with confidence">Vendor to confirm</span>');
+  if (bill.vendor_to_confirm) flags.push(tag("confirm", "Vendor to confirm", "The vendor on the document could not be matched with confidence"));
+  if (bill.is_duplicate_override) flags.push(tag("overdue", "Duplicate override", `Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}`));
+  if (bill.extraction_confidence != null && Math.round(bill.extraction_confidence * 100) < 80) {
+    flags.push(tag("confirm", `Low confidence ${Math.round(bill.extraction_confidence * 100)}%`, "Extraction confidence is below 80%"));
   }
+  if (!bill.is_reviewed) flags.push(tag("confirm", "Unreviewed", "Review Required"));
   return flags.length ? `<span class="bill-flags">${flags.join("")}</span>` : "";
 }
 
@@ -526,10 +530,6 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
   tbody.innerHTML = items.map((bill) => {
     const derivedStatus = FinanceFormat.getDerivedBillStatus(bill);
-    const hasConfidence = bill.extraction_confidence != null;
-    const confidencePct = hasConfidence ? Math.round(bill.extraction_confidence * 100) : null;
-    const confidenceBadgeClass = hasConfidence && confidencePct < 80 ? "badge-warning" : "badge-info";
-
     const owed = ["approved", "scheduled", "partially_paid"].includes(derivedStatus);
     const rel = owed ? _billDueNote(bill.due_date) : "";
     const num = bill.bill_number || "(no number yet)";
@@ -537,22 +537,14 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
     return `
     <tr data-record-id="${bill.id}">
-      <td><div class="bill-cell-main">${vendor}</div><div class="bill-cell-sub">${num} · ${_billDate(bill.issue_date)}</div></td>
+      <td><div class="bill-cell-main">${vendor}</div><div class="bill-cell-sub">${num}</div></td>
       <td><div class="bill-cell-main">${bill.category || "General"}</div><div class="bill-cell-sub">${bill.department || "&nbsp;"}</div></td>
-      <td><div class="bill-cell-main">${_billDate(bill.due_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}">${rel || "&nbsp;"}</div></td>
+      <td><div class="bill-cell-main">${_billDate(bill.issue_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="${owed ? `Due ${_billDate(bill.due_date)}` : ""}">${rel || "&nbsp;"}</div></td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill)}</div></td>
       <td>
-        <div class="bill-cell-main bill-cell-narrow">${bill.capture_source === "upload" ? "Upload" : "Manual"}${hasConfidence ? ` · <span class="bill-confidence${confidencePct < 80 ? " bill-confidence--low" : ""}" title="Extraction confidence: ${confidencePct}%">${confidencePct}%</span>` : ""}</div>
-        <div class="bill-cell-sub bill-cell-narrow">${bill.is_reviewed
-          ? `<span class="bill-review bill-review--ok">Reviewed</span>`
-          : `<span class="bill-review bill-review--todo" title="Review Required">Unreviewed</span>`}${bill.is_duplicate_override
-          ? ` · <span class="bill-review bill-review--dup" title="Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}">Dup override</span>`
-          : ""}</div>
-      </td>
-      <td>
         <div class="bill-row-actions">
-          ${_billPrimaryActionHtml(bill, derivedStatus)}
+          ${_billPrimaryActionHtml(bill, derivedStatus) || `<button type="button" class="btn btn-sm btn-outline btn-view-primary" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" aria-label="View Bill ${bill.bill_number || ""}">View</button>`}
           <div class="bill-row-menu-wrap">
             <button type="button" class="btn btn-sm btn-outline btn-bill-more" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Bill ${bill.bill_number || ""}" title="More actions" onclick="toggleBillRowMenu(this, event)"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>
             <div class="bill-row-menu" role="menu" hidden>
@@ -592,19 +584,19 @@ async function withdrawBillToDraft(id) {
 function _billPrimaryActionHtml(bill, status) {
   switch (status) {
     case "draft":
-      return `<button class="btn btn-sm btn-outline btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval"><i class="fa-solid fa-paper-plane"></i> Submit</button>`;
+      return `<button class="btn btn-sm btn-fill btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval">Submit</button>`;
     case "rejected":
-      return `<button class="btn btn-sm btn-outline btn-resubmit-bill" onclick="openEditBillModal(${bill.id})" title="Edit and resubmit"><i class="fa-solid fa-rotate-right"></i> Edit &amp; resubmit</button>`;
+      return `<button class="btn btn-sm btn-outline btn-resubmit-bill" onclick="openEditBillModal(${bill.id})" title="Edit and resubmit">Edit &amp; resubmit</button>`;
     case "pending_approval":
       return _canBill("finance.bill.approve")
-        ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>`
+        ? `<button class="btn btn-sm btn-fill btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve">Approve</button>`
         : "";
     case "approved":
     case "scheduled":
     case "partially_paid":
       return _canBill("finance.bill.pay")
-        ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>`
-        : (status === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : "");
+        ? `<button class="btn btn-sm btn-fill btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment">Pay</button>`
+        : (status === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment">Schedule</button>` : "");
     default:
       return "";
   }

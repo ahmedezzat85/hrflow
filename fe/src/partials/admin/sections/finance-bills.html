@@ -82,18 +82,17 @@
           </div>
 
           <!-- 1. Bills Sub-View -->
-          <div class="card" id="financeBillsContainer">
+          <div class="card clean-table-card" id="financeBillsContainer">
             <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
             <table class="responsive-card-table sticky-actions" id="financeBillsTable">
               <thead>
                 <tr>
-                  <th data-sort="vendor_name">Vendor</th>
+                  <th data-sort="vendor_name">Bill</th>
                   <th data-sort="category">Category</th>
-                  <th data-sort="due_date">Due date</th>
+                  <th data-sort="issue_date">Bill date</th>
                   <th class="cell-money" data-sort="total">Amount</th>
                   <th data-sort="status">Status</th>
-                  <th>Capture &amp; review</th>
-                  <th>Actions</th>
+                  <th class="col-actions"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody id="financeBillsTableBody"></tbody>
@@ -106,7 +105,7 @@
           </div>
 
           <!-- 2. Vendors Sub-View -->
-          <div class="card" id="financeVendorsContainer" style="display: none;">
+          <div class="card clean-table-card" id="financeVendorsContainer" style="display: none;">
             <div class="section-loading-bar" id="financeVendorsLoadingBar"><span></span></div>
             <div id="financeVendorFilterChips" style="display: none;"></div>
             <table class="responsive-card-table" id="financeVendorsTable">

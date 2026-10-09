@@ -33,6 +33,19 @@ test.describe('Bills header and toolbar, direction A', () => {
     await expect(page.locator('#financeAddVendorBtn')).toBeVisible();
   });
 
+  test('the same underline tab bar is used on Subscriptions and Statutory (no icons, no style switch)', async ({ page }) => {
+    await page.click('#tabFinanceSubscriptions');
+    const subs = page.locator('#financeSpendSubNavSubscriptions');
+    await expect(subs).toBeVisible();
+    await expect(subs.locator('.filter-tab')).toHaveCount(4);
+    await expect(subs.locator('.filter-tab i')).toHaveCount(0);
+    expect(await subs.locator('.filter-tab.active').evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe('2px');
+    await page.click('#subtabSpendSubStatutory');
+    const stat = page.locator('#financeSpendSubNavStatutory');
+    await expect(stat.locator('.filter-tab i')).toHaveCount(0);
+    expect(await stat.locator('.filter-tab.active').evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe('2px');
+  });
+
   test('toolbar wraps cleanly when narrow (no horizontal overflow)', async ({ page }) => {
     for (const width of [1100, 900]) {
       await page.setViewportSize({ width, height: 900 });

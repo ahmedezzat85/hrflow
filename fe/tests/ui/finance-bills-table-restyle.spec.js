@@ -12,11 +12,13 @@ test.describe('Bills table, direction A', () => {
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 
-  test('dates keep the year, vendor cell stacks bill number, overdue note sits under the due date', async ({ page }) => {
+  test('bill date keeps the year, vendor cell stacks the bill number, overdue note sits under the bill date, no due-date or capture column', async ({ page }) => {
     const row = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(row.first()).toContainText('Amazon Web Services');
-    await expect(row.first()).toContainText('BILL-2026-001 · 1 Sep 2026');
-    await expect(row.first()).toContainText('30 Sep 2026');
+    await expect(row.first().locator('td').first()).toContainText('BILL-2026-001');
+    await expect(row.first()).toContainText('1 Sep 2026');
+    await expect(row.first().locator('.bill-cell-sub--late')).toHaveAttribute('title', 'Due 30 Sep 2026');
+    await expect(page.locator('#financeBillsTable thead th')).toHaveText(['Bill', 'Category', 'Bill date', 'Amount', 'Status', 'Actions']);
     await expect(row.first().locator('.bill-cell-sub--late')).toContainText(/\d+ days? late/);
     await expect(row.first().locator('td.cell-money')).toContainText('$4,200.00');
   });

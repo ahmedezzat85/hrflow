@@ -1934,10 +1934,6 @@
 .bill-cell-sub--late { color: var(--danger); font-weight: 600; }
 #financeBillsTable td.cell-money { white-space: nowrap; }
 #financeBillsTable .bill-status-cell { flex-wrap: nowrap; }
-.bill-confidence--low { color: var(--warning); }
-.bill-review--ok { color: var(--success); }
-.bill-review--todo { color: var(--warning); font-weight: 600; }
-.bill-review--dup { color: var(--danger); font-weight: 600; }
 .bill-row-actions {
   display: flex;
   align-items: center;
@@ -1971,13 +1967,9 @@
 }
 .bill-row-menu-item:hover,
 .bill-row-menu-item:focus-visible { background: var(--surface2); }
-.bill-cell-narrow { max-width: 130px; }
 .bill-row-actions .btn { white-space: nowrap; }
-.bill-row-actions .btn-resubmit-bill { white-space: normal; max-width: 96px; line-height: 1.15; }
 .bill-row-actions .btn { min-height: 28px; height: 28px; padding: 0 10px; font-size: 12.5px; }
 .bill-row-actions .btn-bill-more { width: 28px; padding: 0; justify-content: center; }
-.bill-row-actions .btn-resubmit-bill { height: auto; min-height: 28px; padding: 3px 10px; }
-#financeBillsTable thead th:nth-child(6) { max-width: 110px; white-space: normal; line-height: 1.2; }
 #financeBillsTable td.bill-menu-open { z-index: 60 !important; }
 
 /* ── Direction A, Slice 3: always-visible status row (supersedes FUX-414) ── */
@@ -2032,16 +2024,11 @@
   cursor: pointer;
 }
 .bill-status-tabs .filter-tab:hover { background: var(--surface2); }
-.bill-status-tabs .filter-tab.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
 .bill-status-tabs .filter-tab .badge { font-size: 11px; padding: 0 6px; }
 
 /* ── Direction A, Slice 4: Bills header and toolbar ──
-   Underline sub-nav on the Bills page only; the same SpendTabs bar on Subscriptions and Statutory is unchanged. */
-#financeBillSubNav.filter-tabs {
+   Underline sub-nav on all three Spend pages (owner decision, one shared SpendTabs bar). */
+.filter-tabs.spend-subnav {
   background: transparent;
   padding: 0;
   border: 0;
@@ -2050,7 +2037,7 @@
   box-shadow: none;
   gap: 18px;
 }
-#financeBillSubNav .filter-tab {
+.spend-subnav .filter-tab {
   padding: 8px 2px;
   border: 0;
   border-radius: 0;
@@ -2059,8 +2046,8 @@
   background: transparent;
   color: var(--text2);
 }
-#financeBillSubNav .filter-tab:hover { color: var(--text); }
-#financeBillSubNav .filter-tab.active {
+.spend-subnav .filter-tab:hover { color: var(--text); }
+.spend-subnav .filter-tab.active {
   background: transparent;
   color: var(--accent-text);
   border: 0;
@@ -2096,3 +2083,66 @@
   border-top: 1px solid var(--border);
   background: var(--surface2);
 }
+
+/* ── Restyle follow-up (owner decisions 2026-10-09): clean table chrome, coloured status tags ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.clean-table-card {
+  padding: 0;
+  box-shadow: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.clean-table-card thead th {
+  background: var(--surface2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text2);
+}
+.clean-table-card th[data-sort] .sort-icon { display: none; }
+.clean-table-card th[data-sort][aria-sort="ascending"] .sort-icon,
+.clean-table-card th[data-sort][aria-sort="descending"] .sort-icon { display: inline-block; }
+.clean-table-card th[data-sort]:hover { background: var(--surface2); color: var(--text); }
+.clean-table-card .empty-state,
+.clean-table-card [id$="Pagination"] { padding: 12px 16px; }
+#financeBillsTable td.cell-money .money,
+#financeBillsTable td.cell-money strong { color: var(--text); font-weight: 600; }
+
+/* Status filter tags carry their status colour (same palette as the pills) */
+.bill-status-tabs .filter-tab .badge {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-weight: 500;
+  opacity: .85;
+}
+.bill-status-tabs .filter-tab {
+  border-color: transparent;
+  background: var(--border2);
+  color: var(--text);
+}
+.bill-status-tabs .filter-tab:hover { filter: brightness(.96); background: var(--border2); }
+#tabBillQueueDraft { border: 1px dashed var(--text3); }
+#tabBillQueuePendingApproval { background: var(--info-soft); color: var(--info); }
+#tabBillQueueRejected { background: var(--danger-soft); color: var(--danger); }
+#tabBillQueueApproved { background: var(--accent-soft); color: var(--accent-text); }
+#tabBillQueuePartiallyPaid { background: var(--warning-soft); color: var(--warning); }
+#tabBillQueuePaid { background: var(--success-soft); color: var(--success); }
+#tabBillQueueAll { color: var(--text); }
+/* Selected: ring and bold, so selection never relies on colour alone */
+.bill-status-tabs .filter-tab.active,
+.bill-status-tabs .filter-tab[aria-selected="true"] {
+  box-shadow: inset 0 0 0 2px currentColor;
+  font-weight: 700;
+}
+#tabBillQueueAll.active { background: var(--text); color: var(--surface); box-shadow: none; }
+.card.clean-table-card > table.sticky-actions thead th:last-child { background: var(--surface2); }

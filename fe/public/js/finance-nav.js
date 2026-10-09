@@ -195,7 +195,7 @@ const SpendTabs = {
     { key: 'statutory', icon: 'fa-landmark', label: 'Statutory', page: 'a-finance-statutory' },
   ],
   BARS: [
-    { container: 'financeBillSubNav', page: 'a-finance-bills', active: 'bills', plain: true, ids: { bills: 'tabFinanceBills', vendors: 'tabFinanceVendors', subscriptions: 'tabFinanceSubscriptions', statutory: 'tabFinanceStatutory' } },
+    { container: 'financeBillSubNav', page: 'a-finance-bills', active: 'bills', ids: { bills: 'tabFinanceBills', vendors: 'tabFinanceVendors', subscriptions: 'tabFinanceSubscriptions', statutory: 'tabFinanceStatutory' } },
     { container: 'financeSpendSubNavSubscriptions', page: 'a-finance-subscriptions', active: 'subscriptions', ids: { bills: 'subtabSpendSubBills', vendors: 'subtabSpendSubVendors', subscriptions: 'subtabSpendSubSubscriptions', statutory: 'subtabSpendSubStatutory' } },
     { container: 'financeSpendSubNavStatutory', page: 'a-finance-statutory', active: 'statutory', ids: { bills: 'subtabSpendStatBills', vendors: 'subtabSpendStatVendors', subscriptions: 'subtabSpendStatSubscriptions', statutory: 'subtabSpendStatStatutory' } },
   ],
@@ -203,6 +203,7 @@ const SpendTabs = {
     this.BARS.forEach((bar) => {
       const el = document.getElementById(bar.container);
       if (!el) return;
+      el.classList.add('spend-subnav');
       el.innerHTML = this.TABS.map((t) => {
         const active = t.key === bar.active;
         let action = '';
@@ -213,7 +214,7 @@ const SpendTabs = {
         } else if (!active) {
           action = `if(window.AdminNav)AdminNav.go('${t.page}')`;
         }
-        return `<button class="filter-tab${active ? ' active' : ''}" id="${bar.ids[t.key]}" role="tab" aria-selected="${active}" tabindex="${active ? 0 : -1}"${action ? ` onclick="${action}"` : ''}>${bar.plain ? '' : `<i class="fa-solid ${t.icon}"></i> `}${t.label}</button>`;
+        return `<button class="filter-tab${active ? ' active' : ''}" id="${bar.ids[t.key]}" role="tab" aria-selected="${active}" tabindex="${active ? 0 : -1}"${action ? ` onclick="${action}"` : ''}>${t.label}</button>`;
       }).join('');
       if (typeof initAccessibleTablist === 'function') initAccessibleTablist(el);
     });
