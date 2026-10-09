@@ -1,5 +1,7 @@
 # FUX-408 — Combined create-and-pay bill action with settlement-status integrity guard
 
+> **Superseded in part (October 8, 2026):** the bill statuses, approval input and combined create-and-pay ledger fields described here are replaced by D-016 to D-019 and [18-bill-workflow-v2.md](18-bill-workflow-v2.md).
+
 Related: `docs/finance-module/08-fux-406-unified-settlement-linking.md` (SettlementService), `docs/finance-module/09-fux-407-bill-document-repository.md`
 
 ## Context

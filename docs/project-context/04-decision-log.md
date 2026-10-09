@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner review  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 1, 2026  
+**Last updated:** October 9, 2026  
 **Branch note:** D-011 to D-013 and the D-008/D-009/D-010 amendments were added on `feature/rbac` (base `c236b00`) and accepted by the owner on October 1, 2026. They are not part of `main` until the branch is merged. The bullet tagged **[Pending owner OK]** (startup seeding) was found during the October 1, 2026 code reconciliation, after that approval, and is not yet accepted.  
 **Authority:** Owner-approved decisions, reconciled against repository context documents  
 
@@ -294,6 +294,63 @@ This document records durable product and architectural decisions approved by th
 - **Details:** Remembered pages are kept in memory only (never persisted) and cleared on sign-out, session expiry and session change. Pages not listed in the sidebar are remembered as their parent sidebar page (for example employee detail as Employees). Module visibility rules (`AdminNav.canSeeModule`) are unchanged.
 - **Amends:** the "rail click only switches the panel" behaviour in `docs/ui-design/dual-rail-navigation-plan-v2.md`; D-010 is otherwise unchanged.
 - **Rationale:** A rail click that leaves the previous page on screen under a different module's menu was a navigation glitch.
+
+### D-016 — Vendor Bill Status Model
+
+- **Status:** Accepted by owner, October 8, 2026. Not implemented; plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Decision:**
+  - Eight bill statuses: Draft, Pending approval, Rejected, Approved, Scheduled, Partially paid, Paid, Void. `inbox`, `needs_coding`, `unpaid`, `ready_to_pay` and `exceptions` are removed; the `is_reviewed` flag is no longer used.
+  - Overdue is a flag derived from the due date, not a status.
+  - Status changes only through server actions; no form or API input sets it directly. Partially paid and Paid come only from recorded payments.
+  - Void means cancelled and kept on record with a reason, excluded from every total, final. A bill with unreversed payments cannot be voided. Only drafts may be deleted.
+  - Only Approved, Scheduled and Partially paid count as money owed (AP aging, cash forecast, vendor open totals). Draft, Pending approval and Rejected do not.
+- **Rationale:** The old set mixed workflow queues, payment state and date facts; most moves were free edits and several statuses had no user meaning for a single operator.
+- **Supersedes:** FUX-401 status queues; the status list in FUX-414 (the tab-bar control itself stays).
+
+### D-017 — Bill Approval and Bill Permissions
+
+- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Decision:**
+  - New permissions `finance.bill.approve` and `finance.bill.pay`. Super admin holds them; no seeded role is granted them for now, so Financial-Admin keeps create/edit but loses approve and pay until granted.
+  - Bills saved by a holder of `finance.bill.approve` are Approved immediately, marked auto-approved. Others submit for approval; the super admin approves or rejects (reason required).
+  - A creator may not approve their own bill unless super admin.
+  - Withdrawing a submitted bill returns it to Draft. A rejected bill is edited and resubmitted, or voided.
+  - A material edit (vendor, amount, currency, lines) by a non-approver returns an Approved or Scheduled bill to Pending approval.
+  - Approval fields (`approval_status`, `approved_by`, `approved_at`, `created_by`) are server-controlled and refused as input.
+  - Finance users cannot record a bill as already paid; payment needs `finance.bill.pay`. Approval applies to every finance-user bill (no threshold yet).
+- **Rationale:** Today self-approval is blocked even for super admin while the approval fields are writable by any bill-write user, which blocks honest use without preventing misuse.
+
+### D-018 — Bill Payment Fields, Currency and Balance Rules
+
+- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Decision:**
+  - No exchange rate on bills or bill payments. The paying account must be in the bill's currency; a mismatch is an error. Currency exchange happens only through account transfers.
+  - A bill payment the account balance cannot cover is an error, for every account (no overdraft). Extending the check to other outflows is a later slice.
+  - Source account and payment type are separate fields, defaulting to CASH - EGP and Cash payment; payment types are limited to outgoing types that fit the account kind. Cheque payments require a cheque number.
+  - The ledger row records the chosen payment type, the reference as entered (empty by default), details as entered (default vendor name), the vendor as payee and the creating user. New bills default to EGP.
+  - Creating a bill as already paid is one transaction: bill, payment, balance and ledger row together or nothing.
+  - The cashbook layout is a reference, not a specification.
+- **Rationale:** Live data showed USD bill payments posted against an EGP account with no rate; the ledger ignored entered references and recorded every bill payment as an outgoing transfer.
+
+### D-019 — Bill Drafts and PDF Upload
+
+- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Decision:**
+  - Draft holds unfinished bills; it needs a vendor or an attachment. Leaving Draft runs full validation.
+  - Every PDF or photo upload creates a Draft; several files can be uploaded at once from different vendors, each becoming its own Draft with its own vendor match. Weak matches are flagged "vendor to confirm"; new vendors are suggested, never auto-created.
+  - Discard draft deletes it permanently.
+  - The new-bill form offers "Not paid yet / Already paid" to approvers, starting on the user's last choice, and an "Add another after saving" option.
+- **Deferred:** a visual restyle of the bill screens (separate plan, shown visually before approval) and bulk/historical import (separate plan; historical bills link to existing ledger transactions rather than posting payments again).
+
+### D-020 — Banking Rules: Same-Currency Entries, Spend as Bills, Cheque Reversals
+
+- **Status:** Accepted by owner, October 9, 2026. Not implemented; slice B6 and additions to B1 to B3 in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Decision:**
+  - A ledger transaction is always in its account's currency. Manual entries lose the exchange-rate path; exchange happens only through FX transfers. Cash withdrawals (teller or cheque) require the cash account to have the bank account's currency.
+  - Spend with a vendor or shop is recorded as a bill (one-step "Already paid" where it is already paid). Plain transactions are for bank fees, transfers, exchange, withdrawals and money in.
+  - Every route that pays a bill (bill dialogs, manual transaction linked to a bill, cheque linked to a bill) goes through the settlement service with the D-017 permission and D-018 checks.
+  - Undoing a cheque posts reversing entries with a reason; ledger rows are never deleted for a reversal.
+- **Rationale:** Code review on October 9, 2026 found foreign-currency manual entries reducing balances by the unconverted amount, withdrawals crediting cash accounts in the wrong currency, cheques marking bills paid without a payment record, and cheque reversals deleting ledger rows.
 
 ---
 
