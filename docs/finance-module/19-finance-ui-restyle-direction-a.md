@@ -1,6 +1,6 @@
 # 19. Finance UI restyle, direction A "Clean Table" (Bills first)
 
-Status: ACCEPTED (D-021, 2026-10-09). Not yet implemented. Visual restyle only; bill workflow (D-016 to D-020) is unchanged.
+Status: IMPLEMENTED (D-021, 2026-10-09; branch feature/finance-ui-restyle-a, Bills page only). Visual restyle only; bill workflow (D-016 to D-020) is unchanged.
 
 Visual reference (direction A and the real "Today" screenshots): https://claude.ai/artifact/VRNNo1BR7vVJpBa258bwoC
 Other directions explored and not chosen: B Compact Ledger, C Soft Cards, D Structured Workbench (same canvas).
