@@ -1445,6 +1445,10 @@ const FinanceDrawer = {
       }
     }
 
+    if (data.entity_type === "bill" && typeof window.renderBillDrawerActions === "function") {
+      window.renderBillDrawerActions(data);
+    }
+
     // 4. Attachments Panel
     const attachList = document.getElementById("financeDrawerAttachmentsList");
     if (attachList) {

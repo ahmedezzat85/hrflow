@@ -37,8 +37,11 @@
               <span id="financeBillViewResultCount" style="font-size: 12px; color: var(--text3, #64748b);">Showing 0 of 0 bills</span>
             </div>
 
-            <!-- Right side: Change view button with chevron -->
-            <div>
+            <!-- Right side: Overdue only toggle and Change view button with chevron -->
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <label for="financeBillOverdueOnly" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                <input type="checkbox" id="financeBillOverdueOnly" onchange="onBillOverdueOnlyChange()"> Overdue only <span class="badge badge-grey" id="financeBillOverdueCount">0</span>
+              </label>
               <button type="button" class="btn btn-outline btn-sm" id="financeBillChangeViewBtn" aria-expanded="false" aria-controls="financeBillStatusPanel" onclick="toggleBillStatusPanel()" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: 12px;">
                 <span>Change view</span>
                 <i class="fa-solid fa-chevron-down" id="financeBillChangeViewIcon" style="font-size: 10px; transition: transform 0.2s ease;"></i>

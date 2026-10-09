@@ -681,6 +681,7 @@ class BillCreate(BillBase):
         return _reject_client_status(data)
 
     lines: List[BillLineCreate] = Field(default_factory=list)
+    save_as_draft: bool = Field(False, description="Save as a Draft even when the user could approve (the screen's Save as draft)")
     is_paid_now: Optional[bool] = Field(False, description="Flag indicating bill is already paid upon creation")
     payment: Optional[BillPaymentInline] = Field(None, description="Inline payment details when is_paid_now is True")
 

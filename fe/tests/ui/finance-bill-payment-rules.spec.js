@@ -53,7 +53,7 @@ test.describe('Vendor Bill Workflow v2 (B3) — payment fields, currency and bal
   test('A cash account pays with Cash payment only', async ({ page }) => {
     await page.evaluate(async () => {
       await FinanceApi.createBill({
-        vendor_id: 1, bill_number: 'BILL-EGP-CASH-1', issue_date: '2026-09-01', due_date: '2026-12-01', currency: 'EGP',
+        vendor_id: 1, bill_number: 'BILL-EGP-CASH-1', issue_date: '2026-09-01', due_date: '2026-12-01', currency: 'EGP', category_id: 8,
         lines: [{ description: 'Office supplies', quantity: 1, unit_price: 500, line_total: 500 }],
       });
       await loadFinanceBills();

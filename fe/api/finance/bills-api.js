@@ -78,6 +78,23 @@
     }
     return { account, pt, pAmt };
   };
+  const _missingToLeaveDraft = (b) => {
+    const errors = [];
+    const need = (field, value, msg) => { if (value === null || value === undefined || String(value).trim() === "") errors.push({ loc: ["body", field], msg, type: "missing_field" }); };
+    need("vendor_id", b.vendor_id, "Vendor is required");
+    need("bill_number", b.bill_number, "Bill number is required");
+    need("issue_date", b.issue_date, "Issue date is required");
+    need("due_date", b.due_date, "Due date is required");
+    if (!b.category_id && !String(b.category || "").trim()) errors.push({ loc: ["body", "category"], msg: "Category is required", type: "missing_field" });
+    return errors;
+  };
+  const _validationError = (errors) => {
+    const err = new Error(errors.map((e) => e.msg).join("; "));
+    err.status = 422;
+    err.detail = errors;
+    return err;
+  };
+  const _withFlags = (b) => ({ ...b, is_overdue: _billIsOverdue(b), allowed_actions: _billAllowedActions(b.status) });
   const _billNext = (action, bill) => {
     const target = (BILL_TRANSITIONS[action] || {})[bill.status];
     if (!target) {
@@ -138,7 +155,7 @@
 // Vendor Bills
   async getBills(params) {
     if (_isMock()) {
-      let list = FinanceMockState.bills.map((b) => ({ ...b, is_overdue: _billIsOverdue(b) }));
+      let list = FinanceMockState.bills.map((b) => _withFlags(b));
       if (params && params.queue) {
         const q = params.queue.toLowerCase().trim();
         if (BILL_STATUSES.includes(q)) list = list.filter((b) => b.status === q);
@@ -237,7 +254,7 @@
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
-      return bill;
+      return _withFlags(bill);
     }
     return apiRequest("GET", `/api/finance/bills/${id}`);
   },
@@ -270,23 +287,32 @@
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
 
-      // Check duplicate
-      const dupRes = await this.checkDuplicateBills({
-        vendor_id: payload.vendor_id,
-        bill_number: payload.bill_number,
-        issue_date: payload.issue_date,
-        total: subtotal,
-        file_fingerprint: payload.file_fingerprint,
-      });
-      const candidates = dupRes?.candidates || [];
-      if (candidates.length > 0 && !payload.is_duplicate_override) {
-        throw new Error(`Potential duplicate bill detected (${candidates[0].matched_field}: ${candidates[0].matching_value}). Authorized override required.`);
-      }
-      if (payload.is_duplicate_override && !payload.duplicate_override_reason?.trim()) {
-        throw new Error("A valid reason is required when overriding a duplicate bill detection.");
+      _refuseServerOwned(payload);
+      if (payload.save_as_draft && payload.is_paid_now) throw new Error("A draft cannot be recorded as already paid");
+      const autoApproved = _can("finance.bill.approve") && !payload.save_as_draft;
+
+      if (autoApproved || payload.is_paid_now) {
+        // Leaving Draft (here: born Approved) runs the full checks
+        const missing = _missingToLeaveDraft(payload);
+        if (missing.length) throw _validationError(missing);
+        const dupRes = await this.checkDuplicateBills({
+          vendor_id: payload.vendor_id,
+          bill_number: payload.bill_number,
+          issue_date: payload.issue_date,
+          total: subtotal,
+          file_fingerprint: payload.file_fingerprint,
+        });
+        const candidates = dupRes?.candidates || [];
+        if (candidates.length > 0 && !payload.is_duplicate_override) {
+          throw new Error(`Potential duplicate bill detected (${candidates[0].matched_field}: ${candidates[0].matching_value}). Authorized override required.`);
+        }
+        if (payload.is_duplicate_override && !payload.duplicate_override_reason?.trim()) {
+          throw new Error("A valid reason is required when overriding a duplicate bill detection.");
+        }
+      } else if (!payload.vendor_id && !payload.attachment_name) {
+        throw _validationError([{ loc: ["body", "vendor_id"], msg: "A draft needs a vendor or an attachment", type: "missing_field" }]);
       }
 
-      _refuseServerOwned(payload);
 
       if (payload.is_paid_now) {
         if (!payload.payment) {
@@ -295,8 +321,7 @@
         if (!_can("finance.bill.pay") || !_can("finance.bill.approve")) throw _forbid("finance.bill.pay");
       }
 
-      // An approver's bill is Approved on save (auto-approved); everyone else's starts as Draft.
-      const autoApproved = _can("finance.bill.approve");
+      // An approver's bill is Approved on save (auto-approved) unless saved as a draft.
       const st = autoApproved ? "approved" : "draft";
       const isRev = !(payload.capture_source === "upload" || payload.capture_source === "ocr");
 
@@ -311,6 +336,7 @@
         id: FinanceMockState.bills.length + 1,
         ...payload,
         status: st,
+        save_as_draft: undefined,
         amount_paid: 0.0,
         is_reviewed: isRev,
         created_by: "admin@voyance.health",
@@ -442,7 +468,10 @@
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
-      bill.status = _billNext("submit", bill);
+      const target = _billNext("submit", bill);
+      const missing = _missingToLeaveDraft(bill);
+      if (missing.length) throw _validationError(missing);
+      bill.status = target;
       bill.approval_status = "pending";
       bill.approved_by = null;
       bill.approved_at = null;

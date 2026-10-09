@@ -135,6 +135,8 @@ async function loadFinanceBillQueueCounts() {
       void: counts.void ?? 0,
       overdue: counts.overdue ?? 0,
     };
+    const overdueCountEl = document.getElementById("financeBillOverdueCount");
+    if (overdueCountEl) overdueCountEl.textContent = _currentBillQueueCounts.overdue;
     const badgeMap = {
       badgeBillQueueAll: _currentBillQueueCounts.all,
       badgeBillQueueDraft: _currentBillQueueCounts.draft,
@@ -215,6 +217,10 @@ function updateBillFilterBadge() {
     badge.removeAttribute("aria-label");
   }
   return activeCount;
+}
+
+function onBillOverdueOnlyChange() {
+  loadFinanceBills();
 }
 
 function onBillFilterChanged() {
@@ -320,6 +326,8 @@ async function loadFinanceBills(incomingParams) {
 
     const params = {};
     if (statusFilter && statusFilter.value) params.status = statusFilter.value;
+    const overdueOnly = document.getElementById("financeBillOverdueOnly");
+    if (overdueOnly && overdueOnly.checked) params.overdue = true;
     if (cachedState.queue && cachedState.queue !== "all") params.queue = cachedState.queue;
     else if (!params.status) params.queue = "all"; // "All" excludes Void, matching the tab counts
 
@@ -491,14 +499,8 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         ${(bill.attachment_name || bill.attachment_url) ? `<button class="btn btn-sm btn-outline btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip"></i></button>` : ""}
         <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
-        ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${(derivedStatus === "draft" || derivedStatus === "rejected") ? `<button class="btn btn-sm btn-outline btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval"><i class="fa-solid fa-paper-plane"></i> Submit</button>` : ""}
-        ${(derivedStatus === "pending_approval" && _canBill("finance.bill.approve")) ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>` : ""}
-        ${derivedStatus === "pending_approval" ? `<button class="btn btn-sm btn-outline btn-withdraw-bill" onclick="withdrawBillToDraft(${bill.id})" title="Withdraw to draft"><i class="fa-solid fa-rotate-left"></i> Withdraw</button>` : ""}
-        ${derivedStatus === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : ""}
-        ${((derivedStatus === "approved" || derivedStatus === "scheduled" || derivedStatus === "partially_paid") && _canBill("finance.bill.pay")) ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${derivedStatus === "draft" ? `<button class="btn btn-sm btn-danger btn-discard-draft" onclick="confirmDiscardDraft(${bill.id})" title="Discard draft (deletes it permanently)"><i class="fa-solid fa-trash"></i></button>` : ""}
-        ${(derivedStatus === "pending_approval" || derivedStatus === "rejected" || derivedStatus === "approved" || derivedStatus === "scheduled") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidBill(${bill.id})" title="Void Bill"><i class="fa-solid fa-ban"></i></button>` : ""}
+        ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}"><i class="fa-solid fa-pen"></i></button>` : ""}
+        ${_billPrimaryActionHtml(bill, derivedStatus)}
       </td>
     </tr>
   `;
@@ -522,6 +524,28 @@ async function withdrawBillToDraft(id) {
     loadFinanceBills();
   } catch (err) {
     showToast("Error: " + (err.message || err), "error");
+  }
+}
+
+// One primary row action per status (everything else lives in the bill detail)
+function _billPrimaryActionHtml(bill, status) {
+  switch (status) {
+    case "draft":
+      return `<button class="btn btn-sm btn-outline btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval"><i class="fa-solid fa-paper-plane"></i> Submit</button>`;
+    case "rejected":
+      return `<button class="btn btn-sm btn-outline btn-resubmit-bill" onclick="openEditBillModal(${bill.id})" title="Edit and resubmit"><i class="fa-solid fa-rotate-right"></i> Edit &amp; resubmit</button>`;
+    case "pending_approval":
+      return _canBill("finance.bill.approve")
+        ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>`
+        : "";
+    case "approved":
+    case "scheduled":
+    case "partially_paid":
+      return _canBill("finance.bill.pay")
+        ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>`
+        : (status === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : "");
+    default:
+      return "";
   }
 }
 
@@ -842,10 +866,9 @@ function toggleBillPaidNowSection(checked) {
   if (section) section.style.display = checked ? "block" : "none";
   if (checked) {
     _populateBillPaidNowAccounts();
-    const totalEl = document.getElementById("billTotalDisplay");
     const amountInput = document.getElementById("billPaidNowAmount");
     if (amountInput && (!amountInput.value || amountInput.dataset.autofilled === "true")) {
-      const currentTotal = totalEl ? parseFloat(totalEl.textContent) || 0 : 0;
+      const currentTotal = _billTotalAmount();
       amountInput.value = currentTotal > 0 ? currentTotal.toFixed(2) : "";
       amountInput.dataset.autofilled = "true";
     }
@@ -907,6 +930,25 @@ function onBillPaymentTypeChange(typeSelId, chequeGroupId) {
   const group = document.getElementById(chequeGroupId);
   const code = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.code : "";
   if (group) group.style.display = code === "CHK" ? "block" : "none";
+}
+
+let _billPaymentContext = { remaining: 0, currency: "EGP" };
+
+// Shows the bill balance (and the paying account's balance) after the amount typed in the Pay dialog
+function updateBillPaymentBalanceAfter() {
+  const el = document.getElementById("billPaymentBalanceAfter");
+  if (!el) return;
+  const amount = parseFloat(document.getElementById("billPaymentAmount")?.value) || 0;
+  const fmt = (v) => Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const billAfter = Math.round((_billPaymentContext.remaining - amount) * 100) / 100;
+  let text = `Bill balance after payment: ${_billPaymentContext.currency} ${fmt(Math.max(0, billAfter))}`;
+  const acc = _billPayAccounts.find((a) => String(a.id) === String(document.getElementById("billPaymentBankAccountId")?.value));
+  if (acc) {
+    const accAfter = Math.round((Number(acc.current_balance) - amount) * 100) / 100;
+    text += ` · ${acc.account_name} after payment: ${acc.currency} ${fmt(accAfter)}`;
+    el.style.color = accAfter < 0 || billAfter < 0 ? "var(--danger, #ef4444)" : "var(--text2)";
+  }
+  el.textContent = text;
 }
 
 function onBillPaymentAccountChange() {
@@ -987,6 +1029,8 @@ function openCaptureBillModal() {
 
   _updateBillTotals();
   _checkBillMissingFields();
+  _billEditStatus = null;
+  _applyBillRoleView();
   openModal("billModal");
 }
 
@@ -1013,16 +1057,23 @@ function openAddBillModal() {
   }
   document.getElementById("billCategory").value = "";
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
-  document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
-  document.getElementById("billDueDate").value = "";
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("billIssueDate").value = today;
+  document.getElementById("billDueDate").value = today;
   document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
   document.getElementById("billIsReviewed").checked = true;
   document.getElementById("billLinesBody").innerHTML = "";
+  const amountEl = document.getElementById("billAmount");
+  if (amountEl) { amountEl.value = ""; amountEl.disabled = false; }
+  const paidAmt = document.getElementById("billPaidNowAmount");
+  if (paidAmt) { paidAmt.value = ""; delete paidAmt.dataset.autofilled; }
+  ["billPaidNowReference", "billPaidNowDetails", "billPaidNowChequeNumber"].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
+  _billEditStatus = null;
 
   _updateBillTotals();
-  addBillLine();
   _checkBillMissingFields();
+  _applyBillRoleView();
   openModal("billModal");
 }
 
@@ -1097,7 +1148,15 @@ async function openEditBillModal(billId) {
     (bill.lines || []).forEach((ln) => addBillLine(ln));
     if (!bill.lines || !bill.lines.length) addBillLine();
     _updateBillTotals();
+    const amountEl = document.getElementById("billAmount");
+    if (amountEl && !_billHasLineItems()) { amountEl.value = bill.total ? Number(bill.total).toFixed(2) : ""; amountEl.disabled = false; }
+    _billEditStatus = bill.status;
+    _resetBillStatusDisplay(bill);
     _checkBillMissingFields();
+    _applyBillRoleView();
+    if (bill.status === "rejected" && bill.approval_comment) {
+      showToast(`Rejected: ${bill.approval_comment}`, "warning");
+    }
     openModal("billModal");
   } catch (err) {
     showToast("Failed to load bill: " + (err.message || err), "error");
@@ -1140,29 +1199,220 @@ function _updateBillTotals() {
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
   if (totalEl) totalEl.textContent = subtotal.toFixed(2);
 
-  // FUX-408: Sync inline payment amount if checked
-  const isPaidNowCheckbox = document.getElementById("billIsPaidNow");
+  _syncBillAmountField();
+}
+
+
+// ── B5: new-bill form behaviour (current visual style) ─────────────────────
+function _billPaidChoiceKey() {
+  const email = (typeof SessionInfo !== "undefined" && SessionInfo.getEmail && SessionInfo.getEmail()) || "default";
+  return `hrflow_bill_paid_choice_${email}`;
+}
+
+function _billCanPayNow() {
+  return _canBill("finance.bill.approve") && _canBill("finance.bill.pay");
+}
+
+// Edit mode of an existing bill: set by openEditBillModal, cleared by openAddBillModal
+let _billEditStatus = null;
+
+function _billPrimaryLabel() {
+  const editing = !!document.getElementById("billModalId").value;
+  if (!editing) {
+    if (!_canBill("finance.bill.approve")) return "Submit for approval";
+    return document.getElementById("billIsPaidNow")?.checked ? "Save as paid" : "Save bill";
+  }
+  if (_billEditStatus === "draft") return _canBill("finance.bill.approve") ? "Save and approve" : "Submit for approval";
+  if (_billEditStatus === "rejected") return "Resubmit for approval";
+  return "Save changes";
+}
+
+function _billSavesAs(mode) {
+  const editing = !!document.getElementById("billModalId").value;
+  const label = (st) => (FinanceFormat.STATUS_MAP.bill[st] || { label: st }).label;
+  if (mode === "draft") return label("draft");
+  if (!editing) {
+    if (!_canBill("finance.bill.approve")) return label("pending_approval");
+    return document.getElementById("billIsPaidNow")?.checked ? label("paid") : label("approved");
+  }
+  if (_billEditStatus === "draft") return _canBill("finance.bill.approve") ? label("approved") : label("pending_approval");
+  if (_billEditStatus === "rejected") return label("pending_approval");
+  if ((_billEditStatus === "approved" || _billEditStatus === "scheduled") && !_canBill("finance.bill.approve")) {
+    return `${label(_billEditStatus)} (a change to vendor, amount or lines goes back to ${label("pending_approval")})`;
+  }
+  return label(_billEditStatus || "draft");
+}
+
+function updateBillSavesAsLine() {
+  const el = document.getElementById("billSavesAsLine");
+  if (el) el.textContent = `Saves as: ${_billSavesAs("primary")}`;
+  const btn = document.getElementById("billModalSaveBtn");
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> ${_billPrimaryLabel()}`;
+}
+
+function _applyBillRoleView() {
+  const editing = !!document.getElementById("billModalId").value;
+  const group = document.getElementById("billIsPaidNowGroup");
+  const showChoice = !editing && _billCanPayNow();
+  if (group) group.style.display = showChoice ? "block" : "none";
+  const draftBtn = document.getElementById("billSaveDraftBtn");
+  if (draftBtn) draftBtn.style.display = (!editing || _billEditStatus === "draft") ? "" : "none";
+  const another = document.getElementById("billAddAnotherWrap");
+  if (another) another.style.display = editing ? "none" : "flex";
+
+  // A user who cannot pay a bill never sees payment fields
+  const yes = document.getElementById("billPaidChoiceYes");
+  const no = document.getElementById("billPaidChoiceNo");
+  let remembered = "no";
+  try { remembered = localStorage.getItem(_billPaidChoiceKey()) || "no"; } catch (_) {}
+  const wantPaid = showChoice && remembered === "yes";
+  if (yes) yes.checked = wantPaid;
+  if (no) no.checked = !wantPaid;
+  const chk = document.getElementById("billIsPaidNow");
+  if (chk) chk.checked = wantPaid;
+  const section = document.getElementById("billPaidNowSection");
+  if (section) section.style.display = wantPaid ? "block" : "none";
+  if (wantPaid) {
+    const dateEl = document.getElementById("billPaidNowDate");
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split("T")[0];
+    _populateBillPaidNowAccounts();
+  }
+  updateBillSavesAsLine();
+}
+
+function onBillPaidChoiceChange() {
+  const yes = !!document.getElementById("billPaidChoiceYes")?.checked;
+  try { localStorage.setItem(_billPaidChoiceKey(), yes ? "yes" : "no"); } catch (_) {}
+  const chk = document.getElementById("billIsPaidNow");
+  if (chk) chk.checked = yes;
+  toggleBillPaidNowSection(yes);
+  const dateEl = document.getElementById("billPaidNowDate");
+  if (yes && dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split("T")[0];
+  updateBillSavesAsLine();
+}
+
+function onBillCurrencyChange() {
+  // Changing the currency moves the payment account to that currency's cash account
+  if (document.getElementById("billIsPaidNow")?.checked) _populateBillPaidNowAccounts();
+}
+
+// Line items are optional: without them the Amount field is the bill total
+function _billHasLineItems() {
+  return Array.from(document.querySelectorAll("#billLinesBody tr")).some((r) => {
+    const desc = r.querySelector("input[type='text']")?.value.trim();
+    const total = parseFloat(r.querySelector(".bill-total")?.value) || 0;
+    return desc || total > 0;
+  });
+}
+
+function _billTotalAmount() {
+  if (_billHasLineItems()) {
+    return Array.from(document.querySelectorAll("#billLinesBody tr")).reduce((sum, r) => sum + (parseFloat(r.querySelector(".bill-total")?.value) || 0), 0);
+  }
+  return parseFloat(document.getElementById("billAmount")?.value) || 0;
+}
+
+function onBillAmountInput() {
+  _syncBillPaidNowAmount();
+}
+
+function _syncBillPaidNowAmount() {
   const paidNowAmount = document.getElementById("billPaidNowAmount");
-  if (isPaidNowCheckbox && isPaidNowCheckbox.checked && paidNowAmount && (!paidNowAmount.value || paidNowAmount.dataset.autofilled === "true")) {
-    paidNowAmount.value = subtotal.toFixed(2);
+  if (paidNowAmount && document.getElementById("billIsPaidNow")?.checked && (!paidNowAmount.value || paidNowAmount.dataset.autofilled === "true")) {
+    const total = _billTotalAmount();
+    paidNowAmount.value = total > 0 ? total.toFixed(2) : "";
     paidNowAmount.dataset.autofilled = "true";
   }
 }
 
-async function saveBillModal() {
+function _syncBillAmountField() {
+  const amount = document.getElementById("billAmount");
+  if (!amount) return;
+  if (_billHasLineItems()) {
+    amount.value = _billTotalAmount().toFixed(2);
+    amount.disabled = true;
+  } else {
+    amount.disabled = false;
+  }
+  _syncBillPaidNowAmount();
+}
+
+// ── Server errors shown beside their field ─────────────────────────────────
+const BILL_FIELD_IDS = {
+  vendor_id: "billVendorId",
+  bill_number: "billNumber",
+  issue_date: "billIssueDate",
+  due_date: "billDueDate",
+  category: "billCategoryId",
+  currency: "billCurrency",
+  lines: "billAmount",
+};
+const BILL_PAYMENT_ERROR_FIELDS = {
+  currency_mismatch: ["billPaidNowBankAccountId", "billPaymentBankAccountId"],
+  insufficient_balance: ["billPaidNowBankAccountId", "billPaymentBankAccountId"],
+  payment_type_not_allowed: ["billPaidNowTypeId", "billPaymentTypeId"],
+  cheque_number_required: ["billPaidNowChequeNumber", "billPaymentChequeNumber"],
+};
+
+// Returns true when the error was placed beside a field
+function showBillServerErrors(err, modalId) {
+  const detail = err && err.detail;
+  let placed = false;
+  const put = (id, msg) => {
+    const el = document.getElementById(id);
+    if (el && el.offsetParent !== null) {
+      FinanceForm.setFieldError(el, msg);
+      placed = true;
+    }
+  };
+  if (Array.isArray(detail)) {
+    detail.forEach((e) => {
+      const field = Array.isArray(e.loc) ? e.loc[e.loc.length - 1] : null;
+      if (field && BILL_FIELD_IDS[field]) put(BILL_FIELD_IDS[field], e.msg || "Invalid value");
+    });
+  } else if (detail && detail.code && BILL_PAYMENT_ERROR_FIELDS[detail.code]) {
+    BILL_PAYMENT_ERROR_FIELDS[detail.code].forEach((id) => put(id, detail.message || err.message));
+  }
+  return placed;
+}
+
+function _reportBillError(err) {
+  if (!showBillServerErrors(err)) showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  else showToast("Please fix the highlighted fields.", "warning");
+}
+
+async function saveBillModal(mode = "primary") {
   const billId = document.getElementById("billModalId").value;
+  const isDraftSave = mode === "draft";
+  FinanceForm.clearErrors("billModal");
+
   const vendorId = document.getElementById("billVendorId").value;
   const billNumber = document.getElementById("billNumber").value.trim();
   const issueDate = document.getElementById("billIssueDate").value;
   const dueDate = document.getElementById("billDueDate").value;
+  const hasAttachment = !!(_currentModalPendingFile || document.getElementById("billAttachedFileName")?.textContent);
+  const total = _billTotalAmount();
 
-  const isValid = FinanceForm.validateRequiredFields("billModal", [
-    { id: "billVendorId", label: "Vendor" },
-    { id: "billNumber", label: "Bill Number" },
-    { id: "billIssueDate", label: "Issue Date" },
-    { id: "billDueDate", label: "Due Date" },
-  ]);
-  if (!isValid) return;
+  if (isDraftSave) {
+    // A draft needs a vendor or an attachment; everything else can be filled in later
+    if (!vendorId && !hasAttachment) {
+      FinanceForm.setFieldError("billVendorId", "A draft needs a vendor or an attachment.");
+      return;
+    }
+  } else {
+    const isValid = FinanceForm.validateRequiredFields("billModal", [
+      { id: "billVendorId", label: "Vendor" },
+      { id: "billNumber", label: "Bill Number" },
+      { id: "billCategoryId", label: "Expense Category" },
+      { id: "billIssueDate", label: "Issue Date" },
+      { id: "billDueDate", label: "Due Date" },
+    ]);
+    if (!isValid) return;
+    if (!billId && !(total > 0)) {
+      FinanceForm.setFieldError("billAmount", "Enter the bill amount (or add line items).");
+      return;
+    }
+  }
 
   // AC 3: Duplicate detection check
   const dupBanner = document.getElementById("billDuplicateBanner");
@@ -1170,11 +1420,11 @@ async function saveBillModal() {
   const dupOverride = document.getElementById("billDuplicateOverrideCheckbox").checked;
   const dupReason = document.getElementById("billDuplicateOverrideReason").value.trim();
 
-  if (dupVisible && !dupOverride) {
+  if (!isDraftSave && dupVisible && !dupOverride) {
     showToast("Potential duplicate detected. Request an authorized override with reason to proceed.", "warning");
     return;
   }
-  if (dupVisible && dupOverride && !dupReason) {
+  if (!isDraftSave && dupVisible && dupOverride && !dupReason) {
     showToast("Please provide an override reason for the duplicate bill.", "warning");
     document.getElementById("billDuplicateOverrideReason").focus();
     return;
@@ -1185,13 +1435,18 @@ async function saveBillModal() {
     const desc = r.querySelector("input[type='text']")?.value.trim();
     const qty = parseFloat(r.querySelector(".bill-qty")?.value) || 1;
     const price = parseFloat(r.querySelector(".bill-price")?.value) || 0;
-    const total = parseFloat(r.querySelector(".bill-total")?.value) || 0;
-    if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
+    const lineTotal = parseFloat(r.querySelector(".bill-total")?.value) || 0;
+    if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: lineTotal });
   });
+  if (!lines.length && total > 0) {
+    // Line items are optional: the Amount becomes a single line
+    const vendorSel = document.getElementById("billVendorId");
+    const vendorText = vendorSel && vendorSel.selectedOptions[0] ? vendorSel.selectedOptions[0].textContent.trim() : "";
+    lines.push({ description: vendorText && vendorSel.value ? `Bill ${billNumber || vendorText}` : "Bill total", quantity: 1, unit_price: total, line_total: total });
+  }
 
-  // FUX-408: Handle combined create-and-pay if isPaidNow is checked
-  const isPaidNowCheckbox = document.getElementById("billIsPaidNow");
-  const isPaidNow = !billId && isPaidNowCheckbox && isPaidNowCheckbox.checked;
+  // Already paid (create only, approvers with pay rights)
+  const isPaidNow = !billId && !isDraftSave && !!document.getElementById("billIsPaidNow")?.checked && _billCanPayNow();
   let paymentData = null;
   if (isPaidNow) {
     const bankAccountId = document.getElementById("billPaidNowBankAccountId").value;
@@ -1200,44 +1455,30 @@ async function saveBillModal() {
     const paymentTypeId = document.getElementById("billPaidNowTypeId").value;
     const chequeNumber = document.getElementById("billPaidNowChequeNumber").value.trim();
     const paymentDetails = document.getElementById("billPaidNowDetails").value.trim() || null;
-    const paymentRef = document.getElementById("billPaidNowReference").value.trim() || null;
-
-    if (!bankAccountId) {
-      showToast("Please select a company bank account for the payment.", "warning");
-      document.getElementById("billPaidNowBankAccountId").focus();
-      return;
-    }
-    if (!paymentDate) {
-      showToast("Please enter the payment date.", "warning");
-      document.getElementById("billPaidNowDate").focus();
-      return;
-    }
-
-    if (!paymentTypeId) {
-      showToast("Please select the payment type.", "warning");
-      document.getElementById("billPaidNowTypeId").focus();
-      return;
-    }
+    const paymentRef = document.getElementById("billPaidNowReference").value.trim() || "";
+    if (!bankAccountId) { FinanceForm.setFieldError("billPaidNowBankAccountId", "Select the account the bill was paid from."); return; }
+    if (!paymentDate) { FinanceForm.setFieldError("billPaidNowDate", "Enter the payment date."); return; }
+    if (!paymentTypeId) { FinanceForm.setFieldError("billPaidNowTypeId", "Select the payment type."); return; }
     paymentData = {
       bank_account_id: parseInt(bankAccountId, 10),
       payment_type_id: parseInt(paymentTypeId, 10),
       payment_date: paymentDate,
       amount: !isNaN(paymentAmount) && paymentAmount > 0 ? paymentAmount : null,
-      reference: paymentRef || "",
+      reference: paymentRef,
       details: paymentDetails,
       cheque_number: chequeNumber || null,
     };
   }
 
   const payload = {
-    vendor_id: parseInt(vendorId, 10),
-    bill_number: billNumber,
+    vendor_id: vendorId ? parseInt(vendorId, 10) : null,
+    bill_number: billNumber || null,
     department: document.getElementById("billDepartment").value || null,
     legal_entity: document.getElementById("billLegalEntity").value || "Voyance Health Inc",
     category_id: document.getElementById("billCategoryId")?.value ? parseInt(document.getElementById("billCategoryId").value, 10) : null,
     category: document.getElementById("billCategory")?.value.trim() || null,
-    issue_date: issueDate,
-    due_date: dueDate,
+    issue_date: issueDate || null,
+    due_date: dueDate || null,
     currency: document.getElementById("billCurrency").value,
     notes: document.getElementById("billNotes").value.trim(),
     capture_source: document.getElementById("billCaptureSource").value || "manual",
@@ -1248,35 +1489,66 @@ async function saveBillModal() {
     lines,
     ...(isPaidNow ? { is_paid_now: true, payment: paymentData } : {}),
   };
+  // Null fields are not sent on an update (the server ignores them) and not needed on a draft
+  Object.keys(payload).forEach((k) => { if (payload[k] === null && k !== "category_id") delete payload[k]; });
 
+  const approver = _canBill("finance.bill.approve");
   const btn = document.getElementById("billModalSaveBtn");
+  const draftBtn = document.getElementById("billSaveDraftBtn");
   if (btn) btn.disabled = true;
+  if (draftBtn) draftBtn.disabled = true;
   try {
     let savedBill = null;
     if (billId) {
       savedBill = await FinanceApi.updateBill(billId, payload);
-      showToast("Bill updated", "success");
     } else {
+      if (isDraftSave) payload.save_as_draft = true;
       savedBill = await FinanceApi.createBill(payload);
-      showToast(isPaidNow ? "Bill created and payment recorded" : "Bill created", "success");
+      // From here the bill exists: further saves update it
+      document.getElementById("billModalId").value = savedBill.id;
     }
 
     // If a new physical file was chosen, upload it to durable attachment storage
     if (_currentModalPendingFile && savedBill && savedBill.id) {
       try {
         await FinanceApi.uploadBillAttachment(savedBill.id, _currentModalPendingFile);
+        _currentModalPendingFile = null;
       } catch (uploadErr) {
         console.warn("Failed to upload bill attachment:", uploadErr);
         showToast("Bill saved, but attachment upload failed: " + (uploadErr.message || uploadErr), "warning");
       }
     }
 
-    closeBillModal();
+    // Leaving Draft: a finance user submits for approval; an approver also approves
+    let message = isPaidNow ? "Bill created and payment recorded" : (billId ? "Bill updated" : "Bill created");
+    if (!isDraftSave && savedBill && (savedBill.status === "draft" || savedBill.status === "rejected")) {
+      savedBill = await FinanceApi.submitBill(savedBill.id);
+      message = "Bill submitted for approval";
+      if (approver && _billEditStatus !== "rejected") {
+        try {
+          savedBill = await FinanceApi.approveBill(savedBill.id, { decision: "approve" });
+          message = "Bill saved and approved";
+        } catch (approveErr) {
+          message = "Bill submitted; a different approver must approve it (" + (approveErr.message || approveErr) + ")";
+        }
+      }
+    } else if (isDraftSave) {
+      message = "Saved as draft";
+    }
+    showToast(message, "success");
+
+    const addAnother = !billId && !!document.getElementById("billAddAnother")?.checked;
+    if (addAnother) {
+      openAddBillModal();
+    } else {
+      closeBillModal();
+    }
     loadFinanceBills();
   } catch (err) {
-    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+    _reportBillError(err);
   } finally {
     if (btn) btn.disabled = false;
+    if (draftBtn) draftBtn.disabled = false;
   }
 }
 
@@ -1295,6 +1567,7 @@ async function confirmDiscardDraft(billId) {
   try {
     await FinanceApi.discardBill(billId);
     showToast("Draft discarded", "success");
+    if (window.FinanceDrawer && FinanceDrawer.current) FinanceDrawer.close();
     loadFinanceBills();
   } catch (err) {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
@@ -1321,29 +1594,41 @@ async function onBillDraftFilesChosen(input) {
   }
 }
 
-async function confirmVoidBill(billId) {
+function confirmVoidBill(billId) {
   const bill = (FinanceState.bills || []).find((b) => b.id === parseInt(billId, 10));
-  const billSummary = bill
-    ? `<strong>${bill.bill_number}</strong> · ${bill.vendor_name || "Vendor"} · ${FinanceFormat.renderMoneyHtml(bill.total || 0, bill.currency || "USD")}`
-    : `Bill #${billId}`;
+  document.getElementById("billVoidBillId").value = billId;
+  const summary = document.getElementById("billVoidSummary");
+  if (summary) {
+    summary.innerHTML = bill
+      ? `<strong>${FinanceFormat.escapeHtml(bill.bill_number || "Bill")}</strong> · ${FinanceFormat.escapeHtml(bill.vendor_name || "Vendor")} · ${FinanceFormat.renderMoneyHtml(bill.total || 0, bill.currency || "EGP")}`
+      : `Bill #${billId}`;
+  }
+  document.getElementById("billVoidReason").value = "Duplicate";
+  document.getElementById("billVoidNote").value = "";
+  openModal("billVoidModal");
+}
 
-  const result = await FinanceCommand.confirmAction({
-    title: "Void Vendor Bill",
-    summary: billSummary,
-    consequence: "Voiding will mark this bill as void and cancel all pending payables. This cannot be undone.",
-    actionLabel: "Void Bill",
-    actionClass: "btn btn-danger",
-    requireReason: true,
-    severity: "danger",
-  });
-  if (!result.confirmed) return;
+function closeBillVoidModal() {
+  closeModal("billVoidModal");
+}
 
+async function submitBillVoid() {
+  const billId = document.getElementById("billVoidBillId").value;
+  const reason = document.getElementById("billVoidReason").value;
+  const note = document.getElementById("billVoidNote").value.trim();
+  const full = note ? `${reason}: ${note}` : reason;
+  const btn = document.getElementById("billVoidSubmitBtn");
+  if (btn) btn.disabled = true;
   try {
-    await FinanceApi.voidBill(billId, result.reason);
-    showToast("Bill voided successfully", "success");
+    await FinanceApi.voidBill(billId, full);
+    showToast("Bill voided", "success");
+    closeBillVoidModal();
+    if (window.FinanceDrawer && FinanceDrawer.current) FinanceDrawer.close();
     loadFinanceBills();
   } catch (err) {
     showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1396,6 +1681,8 @@ async function openBillPaymentModal(billId) {
     } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
   }
   await onBillPaymentAccountChange();
+  _billPaymentContext = { remaining, currency: curr };
+  updateBillPaymentBalanceAfter();
 
   openModal("billPaymentModal");
 }
@@ -1448,13 +1735,14 @@ async function _saveBillPaymentImpl() {
     await FinanceApi.recordBillPayment(billId, payload);
     showToast("Bill payment recorded successfully", "success");
     closeBillPaymentModal();
+    if (window.FinanceDrawer && FinanceDrawer.current) FinanceDrawer.load(FinanceDrawer.current.entityType, FinanceDrawer.current.entityId);
     loadFinanceBills();
   } catch (err) {
-    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+    _reportBillError(err);
   }
 }
 
-function openBillApprovalModal(billId) {
+function openBillApprovalModal(billId, decision) {
   FinanceForm.clearErrors("billApprovalModal");
   const bill = (FinanceState.bills || []).find((b) => b.id === billId);
   if (!bill) return;
@@ -1490,7 +1778,7 @@ function openBillApprovalModal(billId) {
     }
   }
 
-  document.getElementById("billApprovalDecision").value = "approve";
+  document.getElementById("billApprovalDecision").value = decision === "reject" ? "reject" : "approve";
   document.getElementById("billApproverLimit").value = "50000";
   document.getElementById("billApprovalComment").value = "";
   onBillApprovalDecisionChange();
@@ -2265,3 +2553,57 @@ window.previewCurrentModalBillDocument = previewCurrentModalBillDocument;
 window.downloadCurrentModalBillDocument = downloadCurrentModalBillDocument;
 window.removeBillModalAttachment = removeBillModalAttachment;
 
+// ── Bill detail: status badge, Overdue flag and actions by status and permission ──
+async function renderBillDrawerActions(data) {
+  const host = document.getElementById("financeDetailDrawerActions");
+  if (!host || !data || data.entity_type !== "bill") return;
+  const id = data.entity_id;
+  let bill = null;
+  try { bill = await FinanceApi.getBill(id); } catch (_) { return; }
+  if (!window.FinanceDrawer || !FinanceDrawer.current || FinanceDrawer.current.entityId !== id) return;
+
+  const statusEl = document.getElementById("financeDetailDrawerStatusBadge");
+  if (statusEl) {
+    statusEl.innerHTML = FinanceFormat.formatStatusBadge("bill", bill.status)
+      + (bill.is_overdue ? ' <span class="badge badge-rejected" title="Due date has passed"><i class="fa-solid fa-circle-exclamation"></i> Overdue</span>' : "")
+      + (bill.vendor_to_confirm ? ' <span class="badge badge-warning">Vendor to confirm</span>' : "");
+  }
+
+  const allowed = bill.allowed_actions || [];
+  const btns = [];
+  const add = (cls, icon, label, onclick, title) => btns.push(`<button type="button" class="btn btn-sm ${cls}" onclick="${onclick}" title="${title || label}"><i class="fa-solid ${icon}"></i> ${label}</button>`);
+  if (bill.status === "draft") {
+    add("btn-outline btn-drawer-submit", "fa-paper-plane", "Submit for approval", `submitBillForApproval(${id})`);
+    add("btn-outline btn-drawer-edit", "fa-pen", "Edit", `FinanceDrawer.close(); openEditBillModal(${id})`);
+    add("btn-danger btn-drawer-discard", "fa-trash", "Discard draft", `confirmDiscardDraft(${id})`);
+  }
+  if (bill.status === "rejected") add("btn-outline btn-drawer-resubmit", "fa-rotate-right", "Edit and resubmit", `FinanceDrawer.close(); openEditBillModal(${id})`);
+  if (bill.status === "pending_approval") {
+    if (_canBill("finance.bill.approve")) {
+      add("btn-warning btn-drawer-approve", "fa-stamp", "Approve", `FinanceDrawer.close(); openBillApprovalModal(${id}, 'approve')`);
+      add("btn-outline btn-drawer-reject", "fa-circle-xmark", "Reject", `FinanceDrawer.close(); openBillApprovalModal(${id}, 'reject')`);
+    }
+    add("btn-outline btn-drawer-withdraw", "fa-rotate-left", "Withdraw", `withdrawBillToDraft(${id})`);
+  }
+  if (allowed.includes("schedule") && _canBill("finance.bill.write")) add("btn-outline btn-drawer-schedule", "fa-calendar-plus", "Schedule payment", `FinanceDrawer.close(); openScheduleBillModal(${id})`);
+  if (allowed.includes("pay") && _canBill("finance.bill.pay")) add("btn-outline btn-drawer-pay", "fa-money-bill-wave", "Record payment", `FinanceDrawer.close(); openBillPaymentModal(${id})`);
+  if (bill.status !== "draft" && allowed.includes("void") && _canBill("finance.bill.write")) add("btn-danger btn-drawer-void", "fa-ban", "Void bill", `FinanceDrawer.close(); confirmVoidBill(${id})`);
+  host.innerHTML = btns.join("");
+
+  // The reason a bill was rejected stays visible to whoever resubmits it
+  let banner = document.getElementById("financeDrawerBillBanner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "financeDrawerBillBanner";
+    const nav = document.querySelector("#financeDetailDrawer .finance-drawer-nav");
+    if (nav) nav.parentNode.insertBefore(banner, nav);
+  }
+  if (bill.status === "rejected" && bill.approval_comment) {
+    banner.style.cssText = "margin:8px 20px 0; padding:8px 12px; border:1px solid var(--danger,#ef4444); border-radius:6px; font-size:0.85rem;";
+    banner.innerHTML = `<strong>Rejected:</strong> ${FinanceFormat.escapeHtml(bill.approval_comment)}`;
+  } else {
+    banner.style.cssText = "display:none;";
+    banner.innerHTML = "";
+  }
+}
+window.renderBillDrawerActions = renderBillDrawerActions;

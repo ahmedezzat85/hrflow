@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Slices B1 to B4 implemented on `feature/bills-b1-status-model`; B5 and B6 not implemented.
+**Status:** Approved by owner, October 8, 2026. Slices B1 to B5 implemented on `feature/bills-b1-status-model`; B6 not implemented.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -183,11 +183,20 @@ List: existing status tab bar (FUX-414) with All plus eight statuses and counts,
 
 Acceptance:
 
-- [ ] No control sets a bill status directly.
-- [ ] Super admin records a paid cash bill in one save typing only vendor, number, category and amount.
-- [ ] A finance user sees no payment fields and cannot approve.
-- [ ] Each server error appears next to its field.
-- [ ] `npm run build` passes; Playwright `finance-bills-inbox`, `finance-bills-approval`, `finance-bill-combined-pay`, `finance-bill-status-tab-bar` rewritten and passing.
+- [x] No control sets a bill status directly.
+- [x] Super admin records a paid cash bill in one save typing only vendor, number, category and amount.
+- [x] A finance user sees no payment fields and cannot approve.
+- [x] Each server error appears next to its field.
+- [x] `npm run build` passes; Playwright `finance-bills-inbox`, `finance-bills-approval`, `finance-bill-combined-pay`, `finance-bill-status-tab-bar` rewritten and passing.
+
+Implementation notes (B5):
+
+- `BillCreate.save_as_draft` (client intent, not server-owned) lets an approver save a Draft; combined with `is_paid_now` it is refused (400).
+- New-bill form: "Not paid yet / Already paid" radios for users with both approve and pay (remembered per user in localStorage), a bill Amount field so line items are optional (without lines the amount becomes a single line), currency EGP and the cash account in the bill currency with Cash payment as defaults, a "Saves as" line, and a footer with Save as draft, Add another after saving, Cancel and the primary action (Save bill / Save as paid for approvers, Submit for approval for finance users, Save and approve, Resubmit for approval or Save changes when editing). A finance user's primary action creates a Draft and submits it; an approver's Draft edit is submitted and approved.
+- Bill detail (drawer): status badge with Overdue and Vendor to confirm flags; actions by status and permission (Submit, Edit, Discard draft, Approve, Reject, Withdraw, Edit and resubmit, Schedule payment, Record payment, Void bill); the rejection reason stays visible in a banner. Void asks for a reason (Duplicate, Entered by mistake, Cancelled by vendor, Other) and an optional note.
+- List: the status tab bar keeps All plus the eight statuses with counts; an "Overdue only" toggle with count; one primary row action per status (Draft Submit, Pending Approve, Rejected Edit and resubmit, Approved/Scheduled/Partially paid Pay, or Schedule for users who cannot pay).
+- Record payment shows the bill balance and the paying account's balance after the typed amount. Server errors (422 field lists and payment codes) appear beside their field.
+- Rewritten Playwright specs: finance-bills-inbox, finance-bills-approval, finance-bill-combined-pay, finance-bill-status-tab-bar (tab ids), plus new finance-bills-screens, -permissions, -payment-rules and -drafts.
 
 ## Slice B6: Banking rules (added 9 Oct 2026, D-020)
 

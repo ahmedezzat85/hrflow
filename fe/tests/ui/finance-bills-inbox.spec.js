@@ -106,6 +106,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     // Try to save without override -> should be blocked
     await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
+    await page.fill('#billAmount', '1500');
     await page.check('#billIsReviewed');
     await page.click('#billModalSaveBtn');
     await expect(page.locator('#billModal')).toBeVisible();

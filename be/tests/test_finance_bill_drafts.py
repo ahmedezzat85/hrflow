@@ -278,3 +278,24 @@ def test_migration_0030_makes_draft_fields_nullable_and_back(tmp_path):
         assert conn.execute(sa.text("SELECT COUNT(*) FROM finance_bill_lines")).scalar() == 0
     cols = {c["name"]: c for c in sa.inspect(engine).get_columns("finance_bills")}
     assert cols["vendor_id"]["nullable"] is False and "vendor_to_confirm" not in cols
+
+
+# ── B5: Save as draft for a user who could approve ───────────────────────────
+def test_save_as_draft_keeps_an_approvers_bill_a_draft(app_client, admin_cookies):
+    vid = make_vendor(app_client, admin_cookies, "Save As Draft Vendor")
+    resp = app_client.post(
+        BASE,
+        json={"vendor_id": vid, "save_as_draft": True, "bill_number": "SAD-001"},
+        cookies=admin_cookies,
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["status"] == "draft" and body["approval_status"] is None and body["created_by"] == "admin@hrflow.test"
+
+    both = app_client.post(
+        BASE,
+        json={"vendor_id": vid, "save_as_draft": True, "is_paid_now": True,
+              "payment": {"bank_account_id": 1, "payment_type_id": 1, "payment_date": "2026-09-01"}},
+        cookies=admin_cookies,
+    )
+    assert both.status_code == 400

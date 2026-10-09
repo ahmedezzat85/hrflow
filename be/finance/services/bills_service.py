@@ -316,7 +316,9 @@ class BillsService:
         )
         # An approver's (or super admin's) bill is Approved on save and marked auto-approved;
         # everyone else's starts as Draft and goes through submit -> approve.
-        auto_approved = actor.can("finance.bill.approve")
+        if payload.save_as_draft and payload.is_paid_now:
+            raise HTTPException(status_code=400, detail="A draft cannot be recorded as already paid")
+        auto_approved = actor.can("finance.bill.approve") and not payload.save_as_draft
 
         if auto_approved or payload.is_paid_now:
             # Leaving Draft (here: born Approved) runs the full checks
@@ -359,7 +361,7 @@ class BillsService:
         initial_status = bs.APPROVED if auto_approved else bs.DRAFT
         is_rev = payload.capture_source not in ("upload", "ocr")
 
-        data = payload.model_dump(exclude={"lines", "is_paid_now", "payment"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines", "is_paid_now", "payment"})
+        data = payload.model_dump(exclude={"lines", "is_paid_now", "payment", "save_as_draft"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines", "is_paid_now", "payment", "save_as_draft"})
         data["status"] = initial_status
         data["is_reviewed"] = is_rev
         data["created_by"] = actor.email

@@ -31,8 +31,10 @@ test.describe('Vendor Bill Workflow v2 (B4) — drafts and multi-file upload', (
     await page.evaluate(() => setBillWorkQueue('draft'));
     const draftRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")');
     await expect(draftRow).toBeVisible();
-    await expect(draftRow.locator('button.btn-discard-draft')).toBeVisible();
-    await draftRow.locator('button.btn-discard-draft').click();
+    await expect(draftRow.locator('button.btn-discard-draft')).toHaveCount(0); // not a row action
+    await draftRow.locator('button.btn-view-bill').click();
+    await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
+    await page.locator('button.btn-drawer-discard').click();
     await confirmDialog(page);
     await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")')).toHaveCount(0);
 
@@ -40,6 +42,8 @@ test.describe('Vendor Bill Workflow v2 (B4) — drafts and multi-file upload', (
     await page.evaluate(() => setBillWorkQueue('approved'));
     const approvedRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(approvedRow).toBeVisible();
-    await expect(approvedRow.locator('button.btn-discard-draft')).toHaveCount(0);
+    await approvedRow.locator('button.btn-view-bill').click();
+    await expect(page.locator('button.btn-drawer-void')).toBeVisible();
+    await expect(page.locator('button.btn-drawer-discard')).toHaveCount(0);
   });
 });

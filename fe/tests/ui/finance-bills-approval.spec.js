@@ -99,9 +99,11 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const approvedRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(approvedRow).toBeVisible();
 
-    // Pay and Schedule buttons are now available!
+    // The approved bill's primary action is Pay; Schedule lives in the bill detail
     await expect(approvedRow.locator('button.btn-pay-bill')).toBeVisible();
-    await expect(approvedRow.locator('button.btn-schedule-bill')).toBeVisible();
+    await approvedRow.locator('button.btn-view-bill').click();
+    await expect(page.locator('button.btn-drawer-schedule')).toBeVisible();
+    await page.click('#financeDetailDrawerCloseBtn');
   });
 
   test('AC 3: Overpayment prevention, partial payment, and balance tracking', async ({ page }) => {
@@ -153,7 +155,9 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(billRow).toBeVisible();
 
-    await billRow.locator('button.btn-schedule-bill').click();
+    await billRow.locator('button.btn-view-bill').click();
+    await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
+    await page.locator('button.btn-drawer-schedule').click();
     await expect(page.locator('#billScheduleModal')).toBeVisible();
     await expect(page.locator('#billScheduleBillNumber')).toHaveText('BILL-2026-001');
 
