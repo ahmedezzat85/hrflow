@@ -12,7 +12,7 @@ Verifies:
 """
 import logging
 import pytest
-from bill_test_helpers import approve_existing
+from bill_test_helpers import approve_existing, payment_type_id
 
 
 
@@ -168,7 +168,7 @@ def test_record_payment_directly_uses_category_id(app_client, admin_cookies):
             "bank_account_id": bank_account_id,
             "payment_date": "2026-09-05",
             "amount": 250.0,
-            "method": "bank_transfer",
+            "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
             "reference": "REF-FUX-411-001",
         },
         cookies=admin_cookies,
@@ -242,7 +242,7 @@ def test_record_payment_fallback_warning_when_category_id_missing(app_client, ad
                 "bank_account_id": bank_account_id,
                 "payment_date": "2026-09-05",
                 "amount": 100.0,
-                "method": "bank_transfer",
+                "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
             },
             cookies=admin_cookies,
         )

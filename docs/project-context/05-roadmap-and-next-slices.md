@@ -149,13 +149,13 @@ Replaces Slices 2 and 3 above with a permission-based RBAC (decisions D-011 to D
 
 ## 3B. Vendor Bill Workflow v2 (accepted October 8, 2026)
 
-Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-020. B1 and B2 implemented on `feature/bills-b1-status-model`; B3 to B6 not started.
+Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-020. B1 to B3 implemented on `feature/bills-b1-status-model`; B4 to B6 not started.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
 | B1 | Eight-status model, transition table, data migration, void fix (**done**: `feature/bills-b1-status-model`, draft PR) | M | — |
 | B2 | Approval rules, `finance.bill.approve` / `finance.bill.pay` (**done**: `feature/bills-b1-status-model`) | M | B1 |
-| B3 | Payment fields, same-currency and balance checks, one-transaction create-and-pay | M | B2 |
+| B3 | Payment fields, same-currency and balance checks, one-transaction create-and-pay (**done**: `feature/bills-b1-status-model`) | M | B2 |
 | B4 | Drafts, PDF and multi-file upload into Draft, discard, Miscellaneous vendor, bill auto-numbering | M | B1 |
 | B5 | Bill screens behaviour in the current visual style | L | B2, B3, B4 |
 | B6 | Banking rules: same-currency entries and withdrawals, cheque reversals, spend as bills (D-020) | M | B3 |

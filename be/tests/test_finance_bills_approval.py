@@ -16,6 +16,7 @@ Verifies:
 import pytest
 
 from bill_test_helpers import (
+    payment_type_id,
     approve_existing,
     create_approved,
     create_draft,
@@ -213,11 +214,12 @@ def test_already_paid_create_needs_pay_and_approve_permissions(app_client, admin
     payload = {
         "vendor_id": vid,
         "bill_number": "AP-PAID-001",
+        "currency": "USD",
         "issue_date": "2026-09-01",
         "due_date": "2026-09-30",
         "lines": [{"description": "Thing", "quantity": 1, "unit_price": 200.0, "line_total": 200.0}],
         "is_paid_now": True,
-        "payment": {"bank_account_id": acct, "payment_date": "2026-09-02", "amount": 200.0, "method": "bank_transfer"},
+        "payment": {"bank_account_id": acct, "payment_date": "2026-09-02", "amount": 200.0, "payment_type_id": payment_type_id("OUTBOUND_TRANS")},
     }
     assert app_client.post(BASE, json=payload, cookies=maker).status_code == 403
     ok = app_client.post(BASE, json={**payload, "bill_number": "AP-PAID-002"}, cookies=admin_cookies)

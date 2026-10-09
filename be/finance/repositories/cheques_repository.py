@@ -16,6 +16,7 @@ from finance.models import (
     PaymentTypeDB,
     TransactionCategoryDB,
     BillDB,
+    PaymentDB,
 )
 from finance import bill_status as bs
 from finance.repositories.ledger_repository import LedgerRepository
@@ -182,12 +183,19 @@ class ChequesRepository:
             self.db.flush()
             cheque.linked_cash_transaction_id = inflow_tx.id
 
-        # 5. If linked to bill, mark bill as paid
+        # 5. If linked to a bill, pay it through the settlement service: same currency, no overdraft,
+        #    a payment record and amount_paid. Refusals abort the posting (BillPaymentError / ValueError).
         if cheque.linked_bill_id:
-            bill = self.db.query(BillDB).filter(BillDB.id == cheque.linked_bill_id).first()
-            if bill:
-                # Temporary until B3: a posted cheque counts as full payment of its linked bill.
-                bill.status = bs.derive_payment_status(bill, active_cheque_linked=True)
+            from finance.services.settlement_service import SettlementService
+            SettlementService(self.db).settle_bill(
+                bill_id=cheque.linked_bill_id,
+                amount=cheque.amount,
+                payment_date=posting_date,
+                bank_account_id=cheque.account_id,
+                payment_type_id=payment_type_id,
+                reference=f"CHK-{cheque.cheque_number}",
+                cheque_number=cheque.cheque_number,
+            )
 
     def _reverse_cheque_ledger_entries(self, cheque: FinanceChequeDB):
         """Removes or reverses posted ledger transactions and restores bill status if applicable."""
@@ -202,20 +210,31 @@ class ChequesRepository:
         cheque.linked_transaction_id = None
         cheque.linked_cash_transaction_id = None
 
-        # If linked to a bill, re-derive its status from the remaining payments / cheques
+        # If linked to a bill, reverse the payment this cheque made and re-derive the bill status
         if cheque.linked_bill_id:
             bill = self.db.query(BillDB).filter(BillDB.id == cheque.linked_bill_id).first()
             if bill:
-                other_cheques = (
-                    self.db.query(FinanceChequeDB)
+                payment = (
+                    self.db.query(PaymentDB)
                     .filter(
-                        FinanceChequeDB.linked_bill_id == bill.id,
-                        FinanceChequeDB.id != cheque.id,
-                        FinanceChequeDB.status.in_(["issued", "outstanding", "cleared"]),
+                        PaymentDB.related_bill_id == bill.id,
+                        PaymentDB.reference == f"CHK-{cheque.cheque_number}",
+                        PaymentDB.is_reversed == False,  # noqa: E712
                     )
-                    .count()
+                    .first()
                 )
-                bill.status = bs.derive_payment_status(bill, active_cheque_linked=other_cheques > 0)
+                if payment:
+                    payment.is_reversed = True
+                    payment.reversed_at = datetime.utcnow()
+                    payment.reversed_by = "system"
+                    payment.reversal_reason = f"Cheque #{cheque.cheque_number} reversed ({cheque.status})"
+                    self.db.flush()
+                remaining = [
+                    p for p in self.db.query(PaymentDB).filter(PaymentDB.related_bill_id == bill.id).all()
+                    if not p.is_reversed
+                ]
+                bill.amount_paid = round(sum(float(p.amount) for p in remaining), 2)
+                bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
     def create_cheque(self, data: dict, created_by: Optional[str] = None) -> FinanceChequeDB:
         account_id = data["account_id"]

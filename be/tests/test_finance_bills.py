@@ -4,6 +4,7 @@ Tests for Phase 4.4: Vendor Bill CRUD + Payment recording (Accounts Payable).
 Mirrors be/tests/test_finance_invoices.py structure.
 """
 import pytest
+from bill_test_helpers import payment_type_id
 
 
 
@@ -176,7 +177,7 @@ def test_bill_payment_recording(app_client, admin_cookies):
         "currency": "USD",
         "payment_date": "2026-09-15",
         "bank_account_id": account_id,
-        "method": "bank_transfer",
+        "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
         "reference": "WIRE-2026-0915-B",
     }
     pay_resp = app_client.post(f"/api/finance/bills/{bill_id}/payments", json=partial_payment, cookies=admin_cookies)
@@ -208,10 +209,7 @@ def test_bill_payment_recording(app_client, admin_cookies):
     all_payments = app_client.get(f"/api/finance/bills/{bill_id}/payments", cookies=admin_cookies)
     assert len(all_payments.json()) == 2
 
-    # 8. Incoming direction rejected for bill payments
-    bad_direction_payload = {**partial_payment, "direction": "incoming"}
-    bad_dir_resp = app_client.post(f"/api/finance/bills/{bill_id}/payments", json=bad_direction_payload, cookies=admin_cookies)
-    assert bad_dir_resp.status_code == 400
+    # 8. (Payment-type rules, currency and balance checks live in test_finance_bill_payment_rules.py)
 
     # 9. Cannot void a paid bill
     void_paid_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)

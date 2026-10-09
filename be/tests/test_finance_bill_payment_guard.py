@@ -3,7 +3,7 @@ be/tests/test_finance_bill_payment_guard.py
 Tests for Story FUX-408: Combined create-and-pay bill action with settlement-status integrity guard.
 """
 import pytest
-from bill_test_helpers import make_maker
+from bill_test_helpers import make_maker, payment_type_id
 
 
 def test_direct_status_paid_rejected_on_create(app_client, admin_cookies):
@@ -113,7 +113,7 @@ def test_combined_create_and_pay_action_full_settlement(app_client, admin_cookie
             "bank_account_id": account_id,
             "payment_date": "2026-09-10",
             "amount": 500.0,
-            "method": "bank_transfer",
+            "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
             "reference": "WIRE-REF-9988",
         },
     }
@@ -177,7 +177,7 @@ def test_combined_create_and_pay_action_partial_settlement(app_client, admin_coo
             "bank_account_id": account_id,
             "payment_date": "2026-09-10",
             "amount": 400.0,
-            "method": "bank_transfer",
+            "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
             "reference": "PARTIAL-DEPOSIT",
         },
     }
@@ -226,7 +226,7 @@ def test_combined_create_and_pay_blocked_without_approve_and_pay_permissions(app
             "bank_account_id": account_id,
             "payment_date": "2026-09-10",
             "amount": 5000.0,
-            "method": "bank_transfer",
+            "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
         },
     }
     maker = make_maker()

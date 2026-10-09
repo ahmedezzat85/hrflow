@@ -293,6 +293,12 @@
       if (params && params.is_active !== undefined) {
         list = list.filter((p) => p.is_active === (params.is_active === "true" || params.is_active === true));
       }
+      if (params && params.usage === "bill_payment") {
+        // Mirrors be/finance/bill_payment_rules.py
+        const byAccountType = { cash: ["CASH"], bank: ["OUTBOUND_TRANS", "CHK", "DEBIT_CARD"] };
+        const allowed = params.account_type ? (byAccountType[String(params.account_type).toLowerCase()] || []) : [].concat(...Object.values(byAccountType));
+        list = list.filter((p) => p.is_active && allowed.includes(p.code));
+      }
       return list;
     }
     let url = "/api/finance/payment-types";

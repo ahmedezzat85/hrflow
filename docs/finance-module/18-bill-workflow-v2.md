@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Slices B1 and B2 implemented on `feature/bills-b1-status-model`; B3 to B6 not implemented.
+**Status:** Approved by owner, October 8, 2026. Slices B1 to B3 implemented on `feature/bills-b1-status-model`; B4 to B6 not implemented.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -123,13 +123,22 @@ The bill stays linked through `linked_bill_id`. Creating a bill with "Already pa
 
 Acceptance:
 
-- [ ] USD bill from an EGP account fails with `currency_mismatch`, nothing changed.
-- [ ] Payment above the account balance fails with `insufficient_balance`, nothing changed.
-- [ ] Cash payment from a bank account, or Outgoing transfer from a cash account, fails.
-- [ ] Ledger row carries the entered type, reference, details, cheque number, vendor payee and creator.
-- [ ] A failed "Already paid" save leaves no bill behind.
-- [ ] A cheque or manual transaction linked to a bill creates a payment record, updates `amount_paid`, and is refused on currency mismatch, insufficient balance or missing `finance.bill.pay`.
-- [ ] Tests: new `test_finance_bill_payment_rules.py`; `test_finance_bill_payment_guard.py` and `test_finance_settlement_linking.py` updated.
+- [x] USD bill from an EGP account fails with `currency_mismatch`, nothing changed.
+- [x] Payment above the account balance fails with `insufficient_balance`, nothing changed.
+- [x] Cash payment from a bank account, or Outgoing transfer from a cash account, fails.
+- [x] Ledger row carries the entered type, reference, details, cheque number, vendor payee and creator.
+- [x] A failed "Already paid" save leaves no bill behind.
+- [x] A cheque or manual transaction linked to a bill creates a payment record, updates `amount_paid`, and is refused on currency mismatch, insufficient balance or missing `finance.bill.pay`.
+- [x] Tests: new `test_finance_bill_payment_rules.py`; `test_finance_bill_payment_guard.py` and `test_finance_settlement_linking.py` updated.
+
+Implementation notes (B3):
+
+- One shared input, `BillPaymentInput` (`bank_account_id`, `payment_type_id`, `amount`, `payment_date`, `reference`, `details`, `cheque_number`), used by `BillPaymentInline` (create-and-pay) and `BillPaymentCreate` (Pay dialog). `PaymentCreate` stays for invoice payments. There is no `direction`, `method`, `currency` or exchange-rate field on a bill payment; the payment currency is the bill's.
+- `settlement_service.settle_bill` is the single path for the Pay dialog, create-and-pay, a manual transaction with `linked_bill_id` and a cheque with `linked_bill_id`. Refusals carry `detail = {code, message}` (HTTP 400): `currency_mismatch`, `insufficient_balance`, `payment_type_not_allowed`, `cheque_number_required`; over-payment keeps its plain "exceeds remaining" message.
+- Allowed types (`be/finance/bill_payment_rules.py`): cash account -> `CASH`; bank account -> `OUTBOUND_TRANS`, `CHK`, `DEBIT_CARD`. `GET /finance/payment-types?usage=bill_payment&account_type=` returns them and needs only `finance.bill.read`.
+- `bills_repository.record_payment` writes the ledger row from the entered fields (type, reference as entered, details defaulting to the vendor name, cheque number, vendor payee, creator) and balances come from `recalculate_account_running_balances`. Create-and-pay commits bill, payment, ledger row and balance in one transaction.
+- Cheques linked to a bill now create a payment record when posted and reverse it when the cheque is stopped, voided, bounced or replaced (the temporary B1 "cheque counts as paid" allowance is gone). B6 still owns reversing entries instead of deleting rows.
+- New bills default to EGP. The Pay dialog and "Already paid" form offer only accounts in the bill currency, with the payment type list filtered by account type and a cheque-number field for Cheque.
 
 ## Slice B4: Drafts and PDF upload
 

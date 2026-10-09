@@ -123,17 +123,22 @@ def approve_existing(client, cookies, bill_id):
     return resp.json()
 
 
-def pay(client, cookies, bill_id, account_id, amount, date="2026-09-15", reference="PAY-REF"):
-    return client.post(
-        f"/api/finance/bills/{bill_id}/payments",
-        json={
-            "direction": "outgoing",
-            "amount": amount,
-            "currency": "USD",
-            "payment_date": date,
-            "bank_account_id": account_id,
-            "method": "bank_transfer",
-            "reference": reference,
-        },
-        cookies=cookies,
-    )
+def payment_type_id(code="OUTBOUND_TRANS"):
+    """Id of a seeded payment type: CASH, OUTBOUND_TRANS (Outgoing transfer), CHK (Cheque), DEBIT_CARD ..."""
+    from db import get_db_context
+    from finance.models import PaymentTypeDB
+
+    with get_db_context() as db:
+        return db.query(PaymentTypeDB).filter(PaymentTypeDB.code == code).one().id
+
+
+def pay(client, cookies, bill_id, account_id, amount, date="2026-09-15", reference="PAY-REF", type_code="OUTBOUND_TRANS", **extra):
+    payload = {
+        "amount": amount,
+        "payment_date": date,
+        "bank_account_id": account_id,
+        "payment_type_id": payment_type_id(type_code),
+        "reference": reference,
+    }
+    payload.update(extra)
+    return client.post(f"/api/finance/bills/{bill_id}/payments", json=payload, cookies=cookies)

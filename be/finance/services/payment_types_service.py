@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from finance.repositories.payment_types_repository import PaymentTypesRepository
 from finance.schemas import PaymentTypeCreate, PaymentTypeUpdate, PaymentTypeResponse
 from finance.models import PaymentTypeDB
+from finance import bill_payment_rules as rules
 
 
 class PaymentTypesService:
@@ -28,8 +29,19 @@ class PaymentTypesService:
     def list_payment_types(
         self,
         is_active: Optional[bool] = None,
+        usage: Optional[str] = None,
+        account_type: Optional[str] = None,
     ) -> List[PaymentTypeResponse]:
         pts = self.repo.list_all(is_active=is_active)
+        if usage == "bill_payment":
+            # Only the types a vendor-bill payment may use (D-018), optionally for one account type
+            if account_type:
+                allowed = rules.BILL_PAYMENT_TYPE_CODES_BY_ACCOUNT_TYPE.get(account_type.lower(), frozenset())
+            else:
+                allowed = rules.ALL_BILL_PAYMENT_TYPE_CODES
+            pts = [p for p in pts if p.code in allowed and p.is_active]
+        elif usage:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown usage '{usage}'")
         return [self.to_response(p) for p in pts]
 
     def get_payment_type(self, pt_id: int) -> PaymentTypeResponse:

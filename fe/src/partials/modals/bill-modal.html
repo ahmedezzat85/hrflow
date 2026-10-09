@@ -166,8 +166,8 @@
               <div style="font-size:0.78rem; color:var(--text2); margin-bottom:8px;">Record bill creation and full settlement as one atomic action:</div>
               <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-field">
-                  <label for="billPaidNowBankAccountId">Paid from company bank account <span class="req">*</span></label>
-                  <select id="billPaidNowBankAccountId">
+                  <label for="billPaidNowBankAccountId">Paid from account (bill currency) <span class="req">*</span></label>
+                  <select id="billPaidNowBankAccountId" onchange="onBillPaidNowAccountChange()">
                     <option value="">— Select account —</option>
                   </select>
                 </div>
@@ -180,17 +180,22 @@
                   <input type="number" id="billPaidNowAmount" placeholder="0.00" min="0.01" step="0.01">
                 </div>
                 <div class="form-field">
-                  <label for="billPaidNowMethod">Payment Method</label>
-                  <select id="billPaidNowMethod">
-                    <option value="bank_transfer" selected>Bank Transfer</option>
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="other">Other</option>
+                  <label for="billPaidNowTypeId">Payment type <span class="req">*</span></label>
+                  <select id="billPaidNowTypeId" onchange="onBillPaymentTypeChange('billPaidNowTypeId', 'billPaidNowChequeGroup')">
+                    <option value="">— Select account first —</option>
                   </select>
                 </div>
-                <div class="form-field full">
-                  <label for="billPaidNowReference">Payment Reference / Note</label>
-                  <input type="text" id="billPaidNowReference" placeholder="e.g. Wire confirmation, receipt #">
+                <div class="form-field" id="billPaidNowChequeGroup" style="display:none;">
+                  <label for="billPaidNowChequeNumber">Cheque number <span class="req">*</span></label>
+                  <input type="text" id="billPaidNowChequeNumber" maxlength="50">
+                </div>
+                <div class="form-field">
+                  <label for="billPaidNowReference">Reference</label>
+                  <input type="text" id="billPaidNowReference" placeholder="Optional">
+                </div>
+                <div class="form-field">
+                  <label for="billPaidNowDetails">Details</label>
+                  <input type="text" id="billPaidNowDetails" placeholder="Defaults to the vendor name">
                 </div>
               </div>
             </div>
@@ -278,23 +283,28 @@
           <input type="date" id="billPaymentDate" required>
         </div>
         <div class="form-field full">
-          <label for="billPaymentBankAccountId">Company bank account <span class="req">*</span></label>
-          <select id="billPaymentBankAccountId" required>
+          <label for="billPaymentBankAccountId">Paid from account (bill currency) <span class="req">*</span></label>
+          <select id="billPaymentBankAccountId" required onchange="onBillPaymentAccountChange()">
             <option value="">— Select account —</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="billPaymentMethod">Method</label>
-          <select id="billPaymentMethod">
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="other">Other</option>
+          <label for="billPaymentTypeId">Payment type <span class="req">*</span></label>
+          <select id="billPaymentTypeId" onchange="onBillPaymentTypeChange('billPaymentTypeId', 'billPaymentChequeGroup')">
+            <option value="">— Select account first —</option>
           </select>
+        </div>
+        <div class="form-field" id="billPaymentChequeGroup" style="display:none;">
+          <label for="billPaymentChequeNumber">Cheque number <span class="req">*</span></label>
+          <input type="text" id="billPaymentChequeNumber" maxlength="50">
         </div>
         <div class="form-field">
           <label for="billPaymentReference">Reference</label>
-          <input type="text" id="billPaymentReference" placeholder="Wire ref, check #, etc.">
+          <input type="text" id="billPaymentReference" placeholder="Optional">
+        </div>
+        <div class="form-field">
+          <label for="billPaymentDetails">Details</label>
+          <input type="text" id="billPaymentDetails" placeholder="Defaults to the vendor name">
         </div>
       </div>
     </div>

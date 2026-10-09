@@ -322,7 +322,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-018 — Bill Payment Fields, Currency and Balance Rules
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B3).
 - **Decision:**
   - No exchange rate on bills or bill payments. The paying account must be in the bill's currency; a mismatch is an error. Currency exchange happens only through account transfers.
   - A bill payment the account balance cannot cover is an error, for every account (no overdraft). Extending the check to other outflows is a later slice.

@@ -60,7 +60,7 @@ class LedgerRepository:
             .first()
         )
 
-    def recalculate_account_running_balances(self, account_id: int) -> float:
+    def recalculate_account_running_balances(self, account_id: int, commit: bool = True) -> float:
         """
         Single source of truth continuous balance recomputation for an account.
         Iterates chronologically (date ASC, id ASC) from opening_balance and commits.
@@ -89,7 +89,8 @@ class LedgerRepository:
             tx.running_balance = round(running, 4)
 
         bank_account.current_balance = round(running, 4)
-        self.db.commit()
+        if commit:
+            self.db.commit()
         return bank_account.current_balance
 
     def create_transaction(

@@ -57,6 +57,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     const accSelect = page.locator('#billPaidNowBankAccountId');
     await expect(accSelect.locator('option')).not.toHaveCount(1);
     await accSelect.selectOption({ index: 1 });
+    await expect(page.locator('#billPaidNowTypeId')).not.toHaveValue('');
 
     // Save Bill
     await page.click('#billModalSaveBtn');

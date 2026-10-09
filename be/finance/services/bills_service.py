@@ -26,16 +26,16 @@ from finance.schemas import (
     BillCategoryQualityReportItem,
     BillCategoryQualityReportResponse,
     BillDocumentExtractionResponse,
-    PaymentCreate,
+    BillPaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
 )
 from finance.models import BillDB, PaymentDB, VendorDB
 from finance.services.bill_extractor import BillPdfExtractor
 from finance import bill_status as bs
+from finance.bill_payment_rules import BillPaymentError
 from finance.bill_status import VALID_BILL_STATUSES, InvalidBillTransition
 
-VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
 
 
@@ -306,33 +306,45 @@ class BillsService:
             (ln.model_dump() if hasattr(ln, "model_dump") else ln.dict())
             for ln in payload.lines
         ]
-        bill = self.repo.create(data, lines_data)
+        # Create-and-pay commits bill, payment, balance change and ledger row in one transaction;
+        # a refused payment leaves no bill behind.
+        db = self.repo.db
+        try:
+            bill = self.repo.create(data, lines_data, commit=not payload.is_paid_now)
+            if payload.is_paid_now and payload.payment:
+                pay = payload.payment
+                self.repo.record_payment(
+                    {
+                        "bank_account_id": pay.bank_account_id,
+                        "payment_type_id": pay.payment_type_id,
+                        "amount": pay.amount if pay.amount is not None else bill.total,
+                        "payment_date": pay.payment_date,
+                        "reference": pay.reference or "",
+                        "details": pay.details,
+                        "cheque_number": pay.cheque_number,
+                        "related_bill_id": bill.id,
+                        "created_by": actor.email,
+                    },
+                    commit=False,
+                )
+                db.commit()
+        except BillPaymentError as e:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=e.detail())
+        except HTTPException:
+            db.rollback()
+            raise
+        except ValueError as e:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception:
+            db.rollback()
+            raise
+
+        bill = self.repo.get_by_id(bill.id)
         self._audit("created", bill.id, actor, None, bill.status)
-
-        # FUX-408: Execute settlement atomically if is_paid_now is True
-        if payload.is_paid_now and payload.payment:
-            pay_amt = payload.payment.amount if payload.payment.amount is not None else bill.total
-            payment_dict = {
-                "bank_account_id": payload.payment.bank_account_id,
-                "amount": pay_amt,
-                "payment_date": payload.payment.payment_date,
-                "method": payload.payment.method or "bank_transfer",
-                "reference": payload.payment.reference or bill.bill_number,
-                "related_bill_id": bill.id,
-                "currency": bill.currency or "USD",
-                "direction": "outgoing",
-            }
-            try:
-                self.repo.record_payment(payment_dict)
-            except Exception as e:
-                # If payment fails, repo already raises or fails. Re-raise as HTTPException for clean client error
-                if isinstance(e, HTTPException):
-                    raise e
-                raise HTTPException(status_code=400, detail=f"Failed to record settlement: {str(e)}")
-
-            # Reload bill with updated amount_paid and status
-            bill = self.repo.get_by_id(bill.id)
-
+        if payload.is_paid_now:
+            self._audit("payment_recorded", bill.id, actor, bs.APPROVED, bill.status, f"{bill.amount_paid}")
         return self._bill_to_response(bill)
 
     def approve_bill(
@@ -529,13 +541,10 @@ class BillsService:
         payments = self.repo.list_payments(bill_id)
         return [self._payment_to_response(p) for p in payments]
 
-    def record_payment(self, bill_id: int, payload: PaymentCreate, actor: BillActor = SYSTEM_ACTOR) -> PaymentResponse:
+    def record_payment(self, bill_id: int, payload: BillPaymentCreate, actor: BillActor = SYSTEM_ACTOR) -> PaymentResponse:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
-
-        if payload.direction != "outgoing":
-            raise HTTPException(status_code=400, detail="Bill payments must be direction=outgoing")
 
         if bill.status not in (bs.APPROVED, bs.SCHEDULED, bs.PARTIALLY_PAID):
             try:
@@ -543,15 +552,17 @@ class BillsService:
             except InvalidBillTransition as e:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
 
-        if payload.method not in VALID_PAYMENT_METHODS:
-            raise HTTPException(status_code=400, detail=f"Invalid payment method '{payload.method}'")
-
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
         data["related_bill_id"] = bill_id  # always tie to this bill
+        data["created_by"] = actor.email
 
         try:
             payment = self.repo.record_payment(data)
+        except BillPaymentError as e:
+            self.repo.db.rollback()
+            raise HTTPException(status_code=400, detail=e.detail())
         except ValueError as e:
+            self.repo.db.rollback()
             raise HTTPException(status_code=400, detail=str(e))
 
         refreshed = self.repo.get_by_id(bill_id)

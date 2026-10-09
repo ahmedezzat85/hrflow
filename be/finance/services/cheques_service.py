@@ -9,6 +9,7 @@ from finance.schemas import (
     ChequeReplaceRequest,
     ChequeResponse,
 )
+from finance.bill_payment_rules import BillPaymentError
 from finance.models import FinanceChequeDB, FinanceBankAccountDB, BillDB
 
 
@@ -177,7 +178,11 @@ class ChequesService:
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
         try:
             cheque = self.repo.create_cheque(data, created_by=created_by)
+        except BillPaymentError as e:
+            self.repo.db.rollback()
+            raise HTTPException(status_code=400, detail=e.detail())
         except ValueError as e:
+            self.repo.db.rollback()
             raise HTTPException(status_code=400, detail=str(e))
 
         return self._cheque_to_response(cheque)

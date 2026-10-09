@@ -856,16 +856,76 @@ function toggleBillPaidNowSection(checked) {
   }
 }
 
+let _billPayAccounts = [];
+
+function _billAccountLabel(a) {
+  return `${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})`;
+}
+
+// Accounts a bill can be paid from: same currency as the bill (no exchange on bills), cash first.
+async function _loadBillPayAccounts(currency) {
+  const accounts = await FinanceApi.getAccounts({ is_active: true });
+  const curr = String(currency || "EGP").toUpperCase();
+  _billPayAccounts = (accounts || [])
+    .filter((a) => String(a.currency || "").toUpperCase() === curr)
+    .sort((x, y) => (x.account_type === "cash" ? -1 : 1) - (y.account_type === "cash" ? -1 : 1));
+  return _billPayAccounts;
+}
+
+function _fillBillPayAccountSelect(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  if (!_billPayAccounts.length) {
+    sel.innerHTML = "<option value=''>— No account in the bill currency —</option>";
+    return;
+  }
+  sel.innerHTML = `<option value="">— Select account —</option>` + _billPayAccounts.map((a) => `<option value="${a.id}">${_billAccountLabel(a)}</option>`).join("");
+  sel.value = String(_billPayAccounts[0].id); // default: the cash account in the bill currency, else the first
+}
+
+async function _fillBillPaymentTypes(accountSelId, typeSelId, chequeGroupId) {
+  const typeSel = document.getElementById(typeSelId);
+  if (!typeSel) return;
+  const acc = _billPayAccounts.find((a) => String(a.id) === String(document.getElementById(accountSelId)?.value));
+  if (!acc) {
+    typeSel.innerHTML = "<option value=''>— Select account first —</option>";
+    onBillPaymentTypeChange(typeSelId, chequeGroupId);
+    return;
+  }
+  let types = [];
+  try {
+    types = await FinanceApi.getPaymentTypes({ usage: "bill_payment", account_type: acc.account_type });
+  } catch (_) {}
+  const defaultCode = acc.account_type === "cash" ? "CASH" : "OUTBOUND_TRANS";
+  typeSel.innerHTML = types.map((t) => `<option value="${t.id}" data-code="${t.code}"${t.code === defaultCode ? " selected" : ""}>${t.name}</option>`).join("");
+  onBillPaymentTypeChange(typeSelId, chequeGroupId);
+}
+
+function onBillPaymentTypeChange(typeSelId, chequeGroupId) {
+  const sel = document.getElementById(typeSelId);
+  const group = document.getElementById(chequeGroupId);
+  const code = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.code : "";
+  if (group) group.style.display = code === "CHK" ? "block" : "none";
+}
+
+function onBillPaymentAccountChange() {
+  return _fillBillPaymentTypes("billPaymentBankAccountId", "billPaymentTypeId", "billPaymentChequeGroup");
+}
+
+function onBillPaidNowAccountChange() {
+  return _fillBillPaymentTypes("billPaidNowBankAccountId", "billPaidNowTypeId", "billPaidNowChequeGroup");
+}
+
 async function _populateBillPaidNowAccounts() {
   const accSel = document.getElementById("billPaidNowBankAccountId");
   if (!accSel) return;
-  if (accSel.options.length > 1) return; // already loaded
   try {
-    const accounts = await FinanceApi.getAccounts({ is_active: true });
-    accSel.innerHTML = `<option value="">— Select account —</option>` + accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+    await _loadBillPayAccounts(document.getElementById("billCurrency")?.value || "EGP");
+    _fillBillPayAccountSelect("billPaidNowBankAccountId");
   } catch (_) {
     accSel.innerHTML = "<option value=''>— No accounts available —</option>";
   }
+  await onBillPaidNowAccountChange();
 }
 
 function _resetBillPaidNowSection() {
@@ -919,7 +979,7 @@ function openCaptureBillModal() {
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = "";
   document.getElementById("billDueDate").value = "";
-  document.getElementById("billCurrency").value = "USD";
+  document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
   document.getElementById("billIsReviewed").checked = false;
   document.getElementById("billLinesBody").innerHTML = "";
@@ -954,7 +1014,7 @@ function openAddBillModal() {
   document.getElementById("billLegalEntity").value = "Voyance Health Inc";
   document.getElementById("billIssueDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("billDueDate").value = "";
-  document.getElementById("billCurrency").value = "USD";
+  document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
   document.getElementById("billIsReviewed").checked = true;
   document.getElementById("billLinesBody").innerHTML = "";
@@ -1136,7 +1196,9 @@ async function saveBillModal() {
     const bankAccountId = document.getElementById("billPaidNowBankAccountId").value;
     const paymentDate = document.getElementById("billPaidNowDate").value;
     const paymentAmount = parseFloat(document.getElementById("billPaidNowAmount").value);
-    const paymentMethod = document.getElementById("billPaidNowMethod").value || "bank_transfer";
+    const paymentTypeId = document.getElementById("billPaidNowTypeId").value;
+    const chequeNumber = document.getElementById("billPaidNowChequeNumber").value.trim();
+    const paymentDetails = document.getElementById("billPaidNowDetails").value.trim() || null;
     const paymentRef = document.getElementById("billPaidNowReference").value.trim() || null;
 
     if (!bankAccountId) {
@@ -1150,12 +1212,19 @@ async function saveBillModal() {
       return;
     }
 
+    if (!paymentTypeId) {
+      showToast("Please select the payment type.", "warning");
+      document.getElementById("billPaidNowTypeId").focus();
+      return;
+    }
     paymentData = {
       bank_account_id: parseInt(bankAccountId, 10),
+      payment_type_id: parseInt(paymentTypeId, 10),
       payment_date: paymentDate,
       amount: !isNaN(paymentAmount) && paymentAmount > 0 ? paymentAmount : null,
-      method: paymentMethod,
-      reference: paymentRef,
+      reference: paymentRef || "",
+      details: paymentDetails,
+      cheque_number: chequeNumber || null,
     };
   }
 
@@ -1273,16 +1342,18 @@ async function openBillPaymentModal(billId) {
   }
 
   document.getElementById("billPaymentDate").value = new Date().toISOString().split("T")[0];
-  document.getElementById("billPaymentMethod").value = "bank_transfer";
   document.getElementById("billPaymentReference").value = "";
+  document.getElementById("billPaymentDetails").value = "";
+  document.getElementById("billPaymentChequeNumber").value = "";
 
   const accSel = document.getElementById("billPaymentBankAccountId");
   if (accSel) {
     try {
-      const accounts = await FinanceApi.getAccounts({ is_active: true });
-      accSel.innerHTML = `<option value="">— Select account —</option>` + accounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+      await _loadBillPayAccounts(curr);
+      _fillBillPayAccountSelect("billPaymentBankAccountId");
     } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
   }
+  await onBillPaymentAccountChange();
 
   openModal("billPaymentModal");
 }
@@ -1304,7 +1375,8 @@ async function _saveBillPaymentImpl() {
   const bill = (FinanceState.bills || []).find((b) => String(b.id) === String(billId));
 
   const isValid = FinanceForm.validateRequiredFields("billPaymentModal", [
-    { id: "billPaymentBankAccountId", label: "Company bank account" },
+    { id: "billPaymentBankAccountId", label: "Account" },
+    { id: "billPaymentTypeId", label: "Payment type" },
     { id: "billPaymentAmount", label: "Payment Amount", check: (v) => parseFloat(v) > 0, message: "Enter a valid payment amount greater than 0." },
     { id: "billPaymentDate", label: "Payment Date" },
   ]);
@@ -1321,13 +1393,13 @@ async function _saveBillPaymentImpl() {
   }
 
   const payload = {
-    direction: "outgoing",
     amount,
-    currency: bill?.currency || "USD",
     payment_date: paymentDate,
     bank_account_id: parseInt(bankAccountId, 10),
-    method: document.getElementById("billPaymentMethod").value,
+    payment_type_id: parseInt(document.getElementById("billPaymentTypeId").value, 10),
     reference: document.getElementById("billPaymentReference").value.trim(),
+    details: document.getElementById("billPaymentDetails").value.trim() || null,
+    cheque_number: document.getElementById("billPaymentChequeNumber").value.trim() || null,
   };
 
   try {

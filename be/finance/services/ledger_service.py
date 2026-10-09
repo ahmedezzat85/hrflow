@@ -291,6 +291,16 @@ class LedgerService:
         # Unified settlement linking (FUX-406)
         if data.get("linked_bill_id"):
             from finance.services.settlement_service import SettlementService
+            from finance import bill_payment_rules as rules
+            from finance.models import PaymentTypeDB
+
+            if data.get("direction") != "out":
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A transaction linked to a vendor bill must be money out")
+            if not data.get("payment_type_id") and account is not None:
+                code = rules.DEFAULT_PAYMENT_TYPE_CODE_BY_ACCOUNT_TYPE.get((account.account_type or "bank").lower())
+                default_pt = self.repo.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == code).first() if code else None
+                if default_pt:
+                    data["payment_type_id"] = default_pt.id
             settlement_svc = SettlementService(self.repo.db)
             try:
                 settlement_svc.settle_bill(
@@ -298,11 +308,16 @@ class LedgerService:
                     amount=data["amount"],
                     payment_date=data["date"],
                     bank_account_id=account_id,
-                    currency=data.get("currency", account.currency if account else "USD"),
-                    reference=data.get("reference", ""),
+                    payment_type_id=data.get("payment_type_id"),
+                    reference=data.get("reference") or "",
+                    cheque_number=data.get("cheque_number"),
                 )
                 data["source"] = "bill_payment"
+            except rules.BillPaymentError as e:
+                self.repo.db.rollback()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.detail())
             except ValueError as e:
+                self.repo.db.rollback()
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         elif data.get("linked_invoice_id"):
             from finance.services.settlement_service import SettlementService

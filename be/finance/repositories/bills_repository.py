@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 from finance import bill_status as bs
+from finance import bill_payment_rules as rules
+from finance.repositories.ledger_repository import LedgerRepository
 
 from finance.models import (
     BillDB,
@@ -240,7 +242,7 @@ class BillsRepository:
     # ------------------------------------------------------------------
     # Writes: Bill
     # ------------------------------------------------------------------
-    def create(self, data: dict, lines_data: List[dict]) -> BillDB:
+    def create(self, data: dict, lines_data: List[dict], commit: bool = True) -> BillDB:
         """Create a bill with its lines. Totals are computed from lines."""
         category_id = data.get("category_id")
         category_name = data.get("category", "Operating Expense")
@@ -261,7 +263,7 @@ class BillsRepository:
             issue_date=data["issue_date"],
             due_date=data["due_date"],
             status=data.get("status", bs.DRAFT),
-            currency=data.get("currency", "USD"),
+            currency=data.get("currency", "EGP"),
             notes=data.get("notes", ""),
             capture_source=data.get("capture_source", "manual"),
             extraction_confidence=data.get("extraction_confidence"),
@@ -305,7 +307,10 @@ class BillsRepository:
         bill.tax_amount = tax_amount
         bill.total = total
 
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return self._load_bill_full(bill.id)
 
     def update(self, bill_id: int, data: dict, lines_data: Optional[List[dict]] = None) -> Optional[BillDB]:
@@ -422,85 +427,80 @@ class BillsRepository:
     # ------------------------------------------------------------------
     # Writes: Payment
     # ------------------------------------------------------------------
-    def record_payment(self, data: dict) -> PaymentDB:
+    def record_payment(self, data: dict, commit: bool = True) -> PaymentDB:
         """
-        Record an outgoing payment against a bill.
-        Adjusts the bank account's current_balance atomically (-amount for outgoing).
-        Enforces that payment cannot exceed remaining balance.
-        Marks bill as 'paid' once fully settled, or 'partially_paid'.
+        Record an outgoing payment against a bill through the settlement service (currency,
+        balance and payment-type checks), then write the ledger row and recompute the account
+        balance with recalculate_account_running_balances so backdated payments keep running
+        balances correct. With commit=False the caller owns the transaction (create-and-pay).
         """
-        bank_account = (
-            self.db.query(FinanceBankAccountDB)
-            .filter(FinanceBankAccountDB.id == data["bank_account_id"])
-            .first()
+        from finance.services.settlement_service import SettlementService
+        from finance.repositories.ledger_repository import LedgerRepository
+
+        bill_id = data.get("related_bill_id")
+        if not bill_id:
+            raise ValueError("A bill payment must reference a bill")
+
+        settlement_svc = SettlementService(self.db)
+        bill, payment = settlement_svc.settle_bill(
+            bill_id=bill_id,
+            amount=data["amount"],
+            payment_date=data["payment_date"],
+            bank_account_id=data["bank_account_id"],
+            payment_type_id=data.get("payment_type_id"),
+            reference=data.get("reference") or "",
+            cheque_number=data.get("cheque_number"),
         )
-        if not bank_account:
-            raise ValueError(f"Bank account {data['bank_account_id']} not found")
+        self.db.flush()
 
-        bill = None
-        if data.get("related_bill_id"):
-            from finance.services.settlement_service import SettlementService
-            settlement_svc = SettlementService(self.db)
-            bill, payment = settlement_svc.settle_bill(
-                bill_id=data["related_bill_id"],
-                amount=data["amount"],
-                payment_date=data["payment_date"],
-                bank_account_id=bank_account.id,
-                currency=data.get("currency", "USD"),
-                reference=data.get("reference", ""),
-                method=data.get("method", "bank_transfer"),
-            )
+        payment_type = None
+        if data.get("payment_type_id"):
+            payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == data["payment_type_id"]).first()
         else:
-            payment = PaymentDB(
-                direction=data.get("direction", "outgoing"),
-                related_invoice_id=data.get("related_invoice_id"),
-                related_bill_id=data.get("related_bill_id"),
-                amount=data["amount"],
-                currency=data.get("currency", "USD"),
-                payment_date=data["payment_date"],
-                bank_account_id=data["bank_account_id"],
-                method=data.get("method", "bank_transfer"),
-                reference=data.get("reference", ""),
-                is_reversed=False,
-            )
-            self.db.add(payment)
-
-        # Adjust balance: incoming → credit, outgoing → debit
-        if payment.direction == "incoming":
-            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
-        else:
-            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
+            account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == data["bank_account_id"]).first()
+            code = rules.DEFAULT_PAYMENT_TYPE_CODE_BY_ACCOUNT_TYPE.get((account.account_type or "bank").lower()) if account else None
+            payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == code).first() if code else None
 
         # Record corresponding ledger transaction for single source of truth (FUX-411)
         bill_cat = None
-        if bill and bill.category_id:
+        if bill.category_id:
             bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == bill.category_id).first()
         if not bill_cat:
             logger.warning(
-                f"[FUX-411] Bill #{bill.id if bill else 'unknown'} ({bill.bill_number if bill else 'N/A'}) has missing or invalid category_id at payment time. Explicitly falling back to 'Other'."
+                f"[FUX-411] Bill #{bill.id} ({bill.bill_number}) has missing or invalid category_id at payment time. Explicitly falling back to 'Other'."
             )
             bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
-        outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
+
+        vendor = self.db.query(VendorDB).filter(VendorDB.id == bill.vendor_id).first() if bill.vendor_id else None
+        vendor_name = vendor.name if vendor else None
+        details = (data.get("details") or "").strip() or vendor_name or f"Bill {bill.bill_number}"
 
         ledger_tx = LedgerTransactionDB(
-            account_id=bank_account.id,
+            account_id=payment.bank_account_id,
             date=payment.payment_date,
             amount=payment.amount,
-            direction="in" if payment.direction == "incoming" else "out",
+            direction="out",
             currency=payment.currency,
             category_id=bill_cat.id if bill_cat else None,
-            payment_type_id=outbound_pt.id if outbound_pt else None,
-            reference=bill.bill_number if bill else (payment.reference or ""),
-            description=f"Payment for bill #{bill.bill_number}" if bill else (payment.reference or f"Outgoing payment #{payment.id}"),
+            payment_type_id=payment_type.id if payment_type else None,
+            reference=(data.get("reference") or "").strip(),
+            description=details,
+            cheque_number=(data.get("cheque_number") or "").strip() or None,
+            payee_type="vendor" if vendor else "none",
+            payee_id=vendor.id if vendor else None,
+            payee_name=vendor_name,
             source="bill_payment",
-            linked_bill_id=payment.related_bill_id,
-            running_balance=bank_account.current_balance,
-            created_at=payment.created_at,
+            linked_bill_id=bill.id,
+            running_balance=0.0,
+            created_by=data.get("created_by"),
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        LedgerRepository(self.db).recalculate_account_running_balances(payment.bank_account_id, commit=False)
 
-        self.db.commit()
-        self.db.refresh(payment)
+        if commit:
+            self.db.commit()
+            self.db.refresh(payment)
         return payment
 
     def reverse_payment(
@@ -533,19 +533,13 @@ class BillsRepository:
         if not bill:
             raise ValueError(f"Bill {bill_id} not found")
 
-        # 1. Reverse balance on bank account
-        if payment.direction == "outgoing":
-            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
-        else:
-            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
-
-        # 2. Mark payment as reversed
+        # 1. Mark payment as reversed
         payment.is_reversed = True
         payment.reversed_at = datetime.utcnow()
         payment.reversed_by = reversed_by
         payment.reversal_reason = reason.strip()
 
-        # 3. Add reversal ledger entry
+        # 2. Add reversal ledger entry; balances come from the ledger, never set directly
         ledger_tx = LedgerTransactionDB(
             account_id=bank_account.id,
             date=datetime.utcnow().strftime("%Y-%m-%d"),
@@ -556,11 +550,15 @@ class BillsRepository:
             description=f"Reversal of payment #{payment.id}: {reason.strip()}",
             source="bill_payment_reversal",
             linked_bill_id=bill_id,
-            running_balance=bank_account.current_balance,
+            running_balance=0.0,
+            created_by=reversed_by,
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
-        # 4. Recalculate bill status and amount_paid
+        # 3. Recalculate bill amount_paid and status
+        self.db.flush()
         remaining_payments = [
             p for p in self.list_payments(bill_id) if not p.is_reversed and p.id != payment.id
         ]

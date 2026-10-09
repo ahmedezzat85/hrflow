@@ -639,6 +639,39 @@ async getFeatureFlags() {
       throw err;
     }
   };
+  // Mirrors be/finance/bill_payment_rules.py and settlement_service.settle_bill (D-018)
+  const BILL_PAYMENT_TYPES = { cash: ["CASH"], bank: ["OUTBOUND_TRANS", "CHK", "DEBIT_CARD"] };
+  const BILL_PAYMENT_METHOD = { CASH: "cash", OUTBOUND_TRANS: "bank_transfer", CHK: "cheque", DEBIT_CARD: "card" };
+  const _paymentError = (code, message) => {
+    const err = new Error(message);
+    err.status = 400;
+    err.detail = { code, message };
+    return err;
+  };
+  const _checkBillPayment = (bill, payload, paidSoFar) => {
+    const account = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.bank_account_id, 10));
+    if (!account) throw new Error(`Bank account ${payload.bank_account_id} not found`);
+    const pt = (FinanceMockState.paymentTypes || []).find((t) => t.id === parseInt(payload.payment_type_id, 10));
+    const allowed = BILL_PAYMENT_TYPES[(account.account_type || "bank").toLowerCase()] || [];
+    if (!pt || !pt.is_active || !allowed.includes(pt.code)) {
+      throw _paymentError("payment_type_not_allowed", `Payment type '${pt ? pt.name : payload.payment_type_id}' cannot be used to pay a bill from a ${account.account_type} account.`);
+    }
+    if (pt.code === "CHK" && !String(payload.cheque_number || "").trim()) {
+      throw _paymentError("cheque_number_required", "A cheque number is required for a cheque payment.");
+    }
+    if (String(account.currency || "").toUpperCase() !== String(bill.currency || "").toUpperCase()) {
+      throw _paymentError("currency_mismatch", `Account currency (${account.currency}) differs from the bill currency (${bill.currency}). Transfer funds into a ${bill.currency} account first.`);
+    }
+    const pAmt = parseFloat(payload.amount);
+    const remaining = round(bill.total - paidSoFar, 2);
+    if (pAmt > remaining + 0.01) {
+      throw new Error(`Payment amount ($${pAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
+    }
+    if (round(account.current_balance || 0, 4) + 0.0001 < pAmt) {
+      throw _paymentError("insufficient_balance", `Account '${account.account_name}' balance (${Number(account.current_balance).toFixed(2)} ${account.currency}) is below the payment (${pAmt.toFixed(2)}).`);
+    }
+    return { account, pt, pAmt };
+  };
   const _billNext = (action, bill) => {
     const target = (BILL_TRANSITIONS[action] || {})[bill.status];
     if (!target) {
@@ -861,6 +894,13 @@ async getFeatureFlags() {
       const st = autoApproved ? "approved" : "draft";
       const isRev = !(payload.capture_source === "upload" || payload.capture_source === "ocr");
 
+      if (payload.is_paid_now) {
+        const subtotalNow = (payload.lines || []).reduce((sum, ln) => sum + (ln.line_total || ln.quantity * ln.unit_price), 0);
+        const payAmt = payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : subtotalNow;
+        // A refused payment leaves no bill behind
+        _checkBillPayment({ currency: payload.currency || "EGP", total: subtotalNow }, { ...payload.payment, amount: payAmt }, 0);
+      }
+
       const newBill = {
         id: FinanceMockState.bills.length + 1,
         ...payload,
@@ -881,10 +921,12 @@ async getFeatureFlags() {
       if (payload.is_paid_now && payload.payment) {
         await this.recordBillPayment(newBill.id, {
           bank_account_id: payload.payment.bank_account_id,
+          payment_type_id: payload.payment.payment_type_id,
           payment_date: payload.payment.payment_date,
           amount: payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : newBill.total,
-          method: payload.payment.method || "bank_transfer",
-          reference: payload.payment.reference || newBill.bill_number,
+          reference: payload.payment.reference || "",
+          details: payload.payment.details || null,
+          cheque_number: payload.payment.cheque_number || null,
         });
       }
 
@@ -1024,21 +1066,23 @@ async getFeatureFlags() {
       const existingPayments = (FinanceMockState.billPayments || []).filter(
         (p) => p.related_bill_id === bill.id && !p.is_reversed
       );
-      const paidSoFar = existingPayments.reduce((s, p) => s + (p.amount || 0), 0);
-      const remaining = round(bill.total - paidSoFar, 2);
-      const pAmt = parseFloat(payload.amount);
-      if (pAmt > remaining + 0.01) {
-        throw new Error(`Payment amount ($${pAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
-      }
+      const paidSoFar = existingPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const { account, pt, pAmt } = _checkBillPayment(bill, payload, paidSoFar);
       const newPayment = {
         id: FinanceMockState.billPayments.length + 1,
-        ...payload,
-        amount: pAmt,
+        direction: "outgoing",
         related_bill_id: parseInt(billId, 10),
+        amount: pAmt,
+        currency: bill.currency,
+        payment_date: payload.payment_date,
+        bank_account_id: account.id,
+        method: BILL_PAYMENT_METHOD[pt.code] || "other",
+        reference: payload.reference || "",
         is_reversed: false,
         created_at: new Date().toISOString(),
       };
       FinanceMockState.billPayments.push(newPayment);
+      account.current_balance = round(account.current_balance - pAmt, 2);
       bill.amount_paid = round(paidSoFar + pAmt, 2);
       bill.status = _billDerivePaymentStatus(bill);
       return newPayment;
@@ -1055,6 +1099,8 @@ async getFeatureFlags() {
       );
       if (!payment) throw new Error("Payment not found");
       if (payment.is_reversed) throw new Error("Payment has already been reversed");
+      const payAccount = (FinanceMockState.accounts || []).find((a) => a.id === payment.bank_account_id);
+      if (payAccount) payAccount.current_balance = round(payAccount.current_balance + payment.amount, 2);
       payment.is_reversed = true;
       payment.reversed_at = new Date().toISOString();
       payment.reversed_by = "admin@voyance.health";
@@ -1723,6 +1769,12 @@ async getFeatureFlags() {
       let list = [...FinanceMockState.paymentTypes];
       if (params && params.is_active !== undefined) {
         list = list.filter((p) => p.is_active === (params.is_active === "true" || params.is_active === true));
+      }
+      if (params && params.usage === "bill_payment") {
+        // Mirrors be/finance/bill_payment_rules.py
+        const byAccountType = { cash: ["CASH"], bank: ["OUTBOUND_TRANS", "CHK", "DEBIT_CARD"] };
+        const allowed = params.account_type ? (byAccountType[String(params.account_type).toLowerCase()] || []) : [].concat(...Object.values(byAccountType));
+        list = list.filter((p) => p.is_active && allowed.includes(p.code));
       }
       return list;
     }

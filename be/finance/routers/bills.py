@@ -24,7 +24,7 @@ from finance.schemas import (
     BillVoidRequest,
     BillCategoryQualityReportResponse,
     BillDocumentExtractionResponse,
-    PaymentCreate,
+    BillPaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
 )
@@ -246,7 +246,7 @@ def list_bill_payments(
 )
 def record_bill_payment(
     bill_id: int,
-    payload: PaymentCreate,
+    payload: BillPaymentCreate,
     current_user: dict = Depends(require_permission("finance.bill.pay")),
     access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),

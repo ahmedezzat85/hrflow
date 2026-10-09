@@ -9,7 +9,7 @@ Covers:
 - Duplicate detection & Vendor 360 spend metrics.
 """
 import pytest
-from bill_test_helpers import approve_existing
+from bill_test_helpers import approve_existing, payment_type_id
 
 from datetime import datetime
 from finance.models import VendorDB, VendorPaymentInstructionDB, BillDB
@@ -292,6 +292,7 @@ def test_vendor_360_profile_and_spend_metrics(app_client, admin_cookies):
             "bill_number": f"BILL-360-PAID-{vendor_id}",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
+            "currency": "USD",
             "lines": [{"description": "Maintenance", "quantity": 1, "unit_price": 2500.0}],
         },
         cookies=admin_cookies,
@@ -302,10 +303,10 @@ def test_vendor_360_profile_and_spend_metrics(app_client, admin_cookies):
     app_client.post(
         f"/api/finance/bills/{b1_id}/payments",
         json={
-            "direction": "outgoing",
             "amount": 2500.0,
             "payment_date": "2026-09-05",
             "bank_account_id": bank_id,
+            "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
         },
         cookies=admin_cookies,
     )

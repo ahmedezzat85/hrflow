@@ -121,6 +121,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     // 1. Attempt overpayment of $5,000 (exceeds remaining balance of $4,200)
     await page.fill('#billPaymentAmount', '5000');
     await page.selectOption('#billPaymentBankAccountId', { index: 1 });
+    await expect(page.locator('#billPaymentTypeId')).not.toHaveValue('');
     await page.click('#billPaymentSubmitBtn');
 
     // Overpayment blocked, modal remains visible

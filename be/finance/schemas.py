@@ -610,7 +610,7 @@ class BillBase(BaseModel):
     category: Optional[str] = Field("Operating Expense", max_length=100)
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    currency: str = Field("USD", min_length=3, max_length=10)
+    currency: str = Field("EGP", min_length=3, max_length=10)
     notes: Optional[str] = None
     capture_source: Optional[str] = Field("manual", max_length=20)
     extraction_confidence: Optional[float] = None
@@ -639,12 +639,27 @@ BILL_SERVER_OWNED_FIELDS = (
 )
 
 
-class BillPaymentInline(BaseModel):
-    bank_account_id: int = Field(..., description="ID of bank account used for payment")
-    amount: Optional[float] = Field(None, ge=0.01, description="Payment amount. If omitted, defaults to bill total.")
+class BillPaymentInput(BaseModel):
+    """Shared input for every vendor-bill payment (Pay dialog and create-and-pay). No exchange rate:
+    a bill is paid from an account in the bill's currency."""
+
+    bank_account_id: int = Field(..., description="Source account (must be in the bill's currency)")
+    payment_type_id: int = Field(..., description="Payment type: Cash payment (cash account) or Outgoing transfer / Cheque / Debit card (bank account)")
+    amount: Optional[float] = Field(None, ge=0.01, description="Payment amount. If omitted on create-and-pay, defaults to the bill total.")
     payment_date: str = Field(..., description="Date payment was made (YYYY-MM-DD)")
-    method: Optional[str] = Field("bank_transfer", description="Payment method: bank_transfer, cash, card, other")
-    reference: Optional[str] = Field(None, max_length=100, description="Payment reference / check number")
+    reference: Optional[str] = Field("", max_length=100, description="Optional payment reference")
+    details: Optional[str] = Field(None, max_length=255, description="Ledger details; defaults to the vendor name")
+    cheque_number: Optional[str] = Field(None, max_length=50, description="Required for a Cheque payment")
+
+
+class BillPaymentInline(BillPaymentInput):
+    """Inline payment on create-and-pay ("Already paid")."""
+
+
+class BillPaymentCreate(BillPaymentInput):
+    """Payment recorded from the Pay dialog."""
+
+    amount: float = Field(..., gt=0.0, description="Payment amount")
 
 
 def _reject_client_status(data):
