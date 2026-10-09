@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner review  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 8, 2026  
+**Last updated:** October 9, 2026  
 **Branch note:** D-011 to D-013 and the D-008/D-009/D-010 amendments were added on `feature/rbac` (base `c236b00`) and accepted by the owner on October 1, 2026. They are not part of `main` until the branch is merged. The bullet tagged **[Pending owner OK]** (startup seeding) was found during the October 1, 2026 code reconciliation, after that approval, and is not yet accepted.  
 **Authority:** Owner-approved decisions, reconciled against repository context documents  
 
@@ -341,6 +341,16 @@ This document records durable product and architectural decisions approved by th
   - Discard draft deletes it permanently.
   - The new-bill form offers "Not paid yet / Already paid" to approvers, starting on the user's last choice, and an "Add another after saving" option.
 - **Deferred:** a visual restyle of the bill screens (separate plan, shown visually before approval) and bulk/historical import (separate plan; historical bills link to existing ledger transactions rather than posting payments again).
+
+### D-020 — Banking Rules: Same-Currency Entries, Spend as Bills, Cheque Reversals
+
+- **Status:** Accepted by owner, October 9, 2026. Not implemented; slice B6 and additions to B1 to B3 in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Decision:**
+  - A ledger transaction is always in its account's currency. Manual entries lose the exchange-rate path; exchange happens only through FX transfers. Cash withdrawals (teller or cheque) require the cash account to have the bank account's currency.
+  - Spend with a vendor or shop is recorded as a bill (one-step "Already paid" where it is already paid). Plain transactions are for bank fees, transfers, exchange, withdrawals and money in.
+  - Every route that pays a bill (bill dialogs, manual transaction linked to a bill, cheque linked to a bill) goes through the settlement service with the D-017 permission and D-018 checks.
+  - Undoing a cheque posts reversing entries with a reason; ledger rows are never deleted for a reversal.
+- **Rationale:** Code review on October 9, 2026 found foreign-currency manual entries reducing balances by the unconverted amount, withdrawals crediting cash accounts in the wrong currency, cheques marking bills paid without a payment record, and cheque reversals deleting ledger rows.
 
 ---
 

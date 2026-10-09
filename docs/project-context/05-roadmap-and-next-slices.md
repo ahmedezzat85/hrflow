@@ -149,7 +149,7 @@ Replaces Slices 2 and 3 above with a permission-based RBAC (decisions D-011 to D
 
 ## 3B. Vendor Bill Workflow v2 (accepted October 8, 2026)
 
-Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-019. Not started.
+Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md). Decisions D-016 to D-020. Not started.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
@@ -158,6 +158,7 @@ Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workf
 | B3 | Payment fields, same-currency and balance checks, one-transaction create-and-pay | M | B2 |
 | B4 | Drafts, PDF and multi-file upload into Draft, discard | M | B1 |
 | B5 | Bill screens behaviour in the current visual style | L | B2, B3, B4 |
+| B6 | Banking rules: same-currency entries and withdrawals, cheque reversals, spend as bills (D-020) | M | B3 |
 | Later | Balance check for other outflows | S | B3 |
 | Later | Bill screens visual restyle (separate plan, visual approval first) | — | B5 |
 | Later | Bulk and historical bill import; then in-app AI assistant | — | B4 |

@@ -40,6 +40,7 @@ Backend:
 5. Void: reason in the new columns, not appended to notes. Void is refused while any unreversed payment exists. (Today only `paid` is blocked, so a partially paid bill can be voided and its payment orphaned.)
 6. Update every reader of bill statuses: `bills_repository.get_queue_counts` and list `queue` filter, `vendors_repository.get_vendor_metrics`, `attention_service` (overdue from due date), `forecast_service`, `reports_service` (unpaid count, AP aging), `routers/activity.py`.
 7. `subscriptions_repository`: auto-created bills become Approved (auto-approved by system) instead of `ready_to_pay`.
+8. Other routes that change a bill's status must stop writing it directly (added 9 Oct 2026): `cheques_repository._post_cheque_ledger_entries` sets `bill.status = "paid"` and `_reverse_cheque_ledger_entries` sets `"unpaid"`. Replace both with one shared helper that derives Approved / Scheduled / Partially paid / Paid from recorded, unreversed payments.
 
 Frontend minimum: remove the status dropdown from `bill-modal.html` (read-only badge instead); `FinanceFormat.getDerivedBillStatus`, labels and badge colours use the new keys; the existing status tab bar lists the eight statuses.
 
@@ -62,6 +63,7 @@ Acceptance:
 7. A user without `finance.bill.approve` who changes vendor, amount, currency or lines of an Approved or Scheduled bill sends it back to Pending approval and clears the schedule. Notes, attachment and due date do not.
 8. Recording a payment (Pay dialog or "Already paid") needs `finance.bill.pay`; scheduling needs `finance.bill.write`.
 9. Every action writes an activity entry (who, when, from/to status, reason).
+10. Every other route that pays a bill needs `finance.bill.pay` too (added 9 Oct 2026): a manual ledger transaction with `linked_bill_id` (`ledger_service.record_manual_transaction`) and a cheque with `linked_bill_id` (`cheques_service.issue_cheque`).
 
 Acceptance:
 
@@ -98,6 +100,8 @@ Ledger row written by `bills_repository.record_payment`:
 | `payee_type`, `payee_id`, `payee_name` | Empty | The bill's vendor |
 | `created_by` | Empty | Current user |
 
+Every route that pays a bill goes through `settlement_service.settle_bill` with these checks, creating a payment record and updating `amount_paid` (added 9 Oct 2026): the bill dialogs, a manual transaction with `linked_bill_id`, and a cheque with `linked_bill_id` (today the cheque path only flips the status, with no payment record or amount check). Balances are updated with `recalculate_account_running_balances`, not by setting `current_balance` directly, so backdated payments keep running balances correct.
+
 The bill stays linked through `linked_bill_id`. Creating a bill with "Already paid" commits bill, payment, balance change and ledger row in one transaction. New bills default to EGP. `GET /finance/payment-types?usage=bill_payment&account_type=...` supplies the allowed types.
 
 Acceptance:
@@ -107,6 +111,7 @@ Acceptance:
 - [ ] Cash payment from a bank account, or Outgoing transfer from a cash account, fails.
 - [ ] Ledger row carries the entered type, reference, details, cheque number, vendor payee and creator.
 - [ ] A failed "Already paid" save leaves no bill behind.
+- [ ] A cheque or manual transaction linked to a bill creates a payment record, updates `amount_paid`, and is refused on currency mismatch, insufficient balance or missing `finance.bill.pay`.
 - [ ] Tests: new `test_finance_bill_payment_rules.py`; `test_finance_bill_payment_guard.py` and `test_finance_settlement_linking.py` updated.
 
 ## Slice B4: Drafts and PDF upload
@@ -146,9 +151,24 @@ Acceptance:
 - [ ] Each server error appears next to its field.
 - [ ] `npm run build` passes; Playwright `finance-bills-inbox`, `finance-bills-approval`, `finance-bill-combined-pay`, `finance-bill-status-tab-bar` rewritten and passing.
 
+## Slice B6: Banking rules (added 9 Oct 2026, D-020)
+
+1. **Same currency for manual transactions.** `ledger_service.record_manual_transaction` refuses a transaction whose currency differs from its account's; the `fx_rate` path for manual entries is removed. Exchange happens only through FX transfers. Today a foreign-currency entry lowers the balance by the foreign amount, because `recalculate_account_running_balances` uses `amount` and ignores `base_amount`.
+2. **Same currency for cash withdrawals.** A teller withdrawal (`destination_cash_account_id` on a manual outflow) and a cash-withdrawal cheque (`cheques_service.issue_cheque`) are refused when the cash account's currency differs from the bank account's. Today the same number is added in the other currency.
+3. **Cheque reversals post reversing entries.** When a cheque is stopped, voided, bounced or replaced, `_reverse_cheque_ledger_entries` adds opposite entries with the reason instead of deleting the original rows; the bill payment it made is reversed through the settlement service.
+4. **Spend is a bill.** Payments to a vendor or shop are recorded as bills; plain transactions are for bank fees, transfers, exchange, withdrawals and money in. Proposed enforcement, to confirm at plan approval: a manual money-out with a vendor payee and no `linked_bill_id` is refused with a message pointing to New bill; the money-out form shows the same hint.
+
+Acceptance:
+
+- [ ] A USD transaction on an EGP account is refused; no rate field remains on manual entries.
+- [ ] A USD withdrawal into CASH - EGP is refused, for both teller withdrawals and cheques.
+- [ ] Stopping a cheque keeps its original entries, adds reversing entries, restores the balance and reverses its bill payment.
+- [ ] A vendor money-out without a bill is refused (if the enforcement is confirmed).
+- [ ] Tests: `test_finance_ledger.py`, `test_finance_cheques.py`, `test_finance_cheque_lifecycle.py` updated; new tests per criterion.
+
 ## Order, tests, risks
 
-Order B1 -> B2 -> B3 -> B4 -> B5 (B4 needs only B1). Each slice ships the smallest frontend change that keeps the bill screen usable. Tests: targeted `pytest be/tests/<file> -q`, then the finance suite; UI slices run `npm run build` then named specs with `--reporter=line`, compared against the known failing Playwright baseline.
+Order B1 -> B2 -> B3 -> B4 -> B5 -> B6 (B4 needs only B1; B6 needs B3). Each slice ships the smallest frontend change that keeps the bill screen usable. Tests: targeted `pytest be/tests/<file> -q`, then the finance suite; UI slices run `npm run build` then named specs with `--reporter=line`, compared against the known failing Playwright baseline.
 
 | Risk | Effect | Mitigation |
 | --- | --- | --- |
