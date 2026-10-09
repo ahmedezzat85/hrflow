@@ -160,7 +160,7 @@ Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workf
 | B5 | Bill screens behaviour in the current visual style (**done**: `feature/bills-b1-status-model`) | L | B2, B3, B4 |
 | B6 | Banking rules: same-currency entries and withdrawals, cheque reversals, spend as bills (D-020) (**done**: `feature/bills-b1-status-model`) | M | B3 |
 | Later | Balance check for other outflows | S | B3 |
-| Later | Bill screens visual restyle, direction A (D-021; plan approved, not started: [19](../finance-module/19-finance-ui-restyle-direction-a.md)) | — | B5 |
+| Later | Bill screens visual restyle, direction A (D-021; implemented on branch feature/finance-ui-restyle-a, pending merge: [19](../finance-module/19-finance-ui-restyle-direction-a.md)) | — | B5 |
 | Later | Bulk and historical bill import; then in-app AI assistant | — | B4 |
 
 Prerequisite before B3 reaches production: run the cashbook 2026 import so account balances are accurate.
