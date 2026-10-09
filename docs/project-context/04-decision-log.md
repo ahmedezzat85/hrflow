@@ -340,7 +340,7 @@ This document records durable product and architectural decisions approved by th
   - Every PDF or photo upload creates a Draft; several files can be uploaded at once from different vendors, each becoming its own Draft with its own vendor match. Weak matches are flagged "vendor to confirm"; new vendors are suggested, never auto-created.
   - Discard draft deletes it permanently.
   - The new-bill form offers "Not paid yet / Already paid" to approvers, starting on the user's last choice, and an "Add another after saving" option.
-- **Deferred:** a visual restyle of the bill screens (separate plan, shown visually before approval) and bulk/historical import (separate plan; historical bills link to existing ledger transactions rather than posting payments again).
+- **Deferred:** a visual restyle of the bill screens (separate plan, shown visually before approval; decided in D-021) and bulk/historical import (separate plan; historical bills link to existing ledger transactions rather than posting payments again).
 
 ### D-020 — Banking Rules: Same-Currency Entries, Spend as Bills, Cheque Reversals
 
@@ -352,6 +352,18 @@ This document records durable product and architectural decisions approved by th
   - Undoing a cheque posts reversing entries with a reason; ledger rows are never deleted for a reversal.
 - **Amendment (owner decision, October 9, 2026) — unknown or minor vendors:** spend with a shop not worth tracking is still a bill, recorded against a protected **Miscellaneous** vendor with the shop name in Details; category carries the reporting. A blank bill number is auto-assigned (`EXP-YYMM-NNNN`). A shop can be promoted to its own vendor at any time; earlier bills stay under Miscellaneous. Delivered in slices B4 and B5.
 - **Rationale:** Code review on October 9, 2026 found foreign-currency manual entries reducing balances by the unconverted amount, withdrawals crediting cash accounts in the wrong currency, cheques marking bills paid without a payment record, and cheque reversals deleting ledger rows.
+
+### D-021 — Finance Bills Visual Restyle: Direction A "Clean Table"
+
+- **Status:** Accepted by owner, October 9, 2026. Not implemented; plan in [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md).
+- **Decision:**
+  - Restyle the shared Finance components (data table, status pills and flags, status filter, page header and toolbar, summary cards, dialog) with direction A "Clean Table", starting with the Bills page. Sales invoices are not restyled in this work; they get a regression check only. Three other directions (Compact Ledger, Soft Cards, Structured Workbench) were explored and not chosen.
+  - FUX-414's status pill with a "Change view" panel is replaced by an always-visible status row with counts and an Overdue only control. The row wraps to a second line when narrow. This is an explicit owner override of FUX-414's "exact and only approved layout".
+  - The FUX-415 global density setting stays and Regular remains the default. The three density class definitions are not changed.
+  - In-page tabs and text buttons carry no icons. Icons stay in the sidebar, search box, filter button and row "more" menu.
+  - Table dates keep the year. Two solid blue primary buttons (top-bar "Add transaction" and the page-level "Record bill") are accepted; the top bar is not changed.
+- **Scope:** Visual only. No API, schema, permission or workflow change; D-016 to D-020 are unchanged.
+- **Rationale:** Today's bill rows are 100 to 200 px tall because text wraps; direction A reaches about 53 px at Regular with the lowest review risk of the four directions explored on the "Finance Restyle: Alternative Directions" design canvas.
 
 ---
 

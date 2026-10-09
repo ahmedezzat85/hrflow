@@ -191,7 +191,7 @@ Order B1 -> B2 -> B3 -> B4 -> B5 -> B6 (B4 needs only B1; B6 needs B3). Each sli
 
 ## Deferred
 
-- **Visual restyle plan** (separate; shown visually first): status pills, single-select tag filters, compact table, summary cards, segmented controls, dialog layout. Reference: "Vendor Bills UI" design canvas.
+- **Visual restyle plan** (separate; shown visually first): status pills, single-select tag filters, compact table, summary cards, segmented controls, dialog layout. Reference: "Vendor Bills UI" design canvas. Decided in D-021 (direction A) and planned in [19-finance-ui-restyle-direction-a.md](19-finance-ui-restyle-direction-a.md). It runs after B5 is merged: B5 builds the bill screens' behaviour in today's style and the restyle then changes only their look.
 - **Balance check for other outflows** (manual ledger entries, statutory payments, payroll funding): small follow-up slice after B3.
 - **Bulk and historical import** (own plan): spreadsheet import with row-level preview creating Drafts or Approved bills; historical bills imported as Paid and linked to ledger transactions already imported from the cashbook (never paid twice), using unlinked-settlement matching; vendor matching by tax registration number and remembered aliases. An in-app AI assistant comes later, calling the same bill functions with the user's permissions and landing everything as Drafts.
 - Skipped by owner: USD-equivalent consolidated reporting, monthly cash count, correcting dev bills BILL-001/BILL-006.
