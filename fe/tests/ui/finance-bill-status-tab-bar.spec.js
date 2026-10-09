@@ -57,13 +57,9 @@ test.describe('FUX-414 — Collapsible Bills status tab bar into status pill + p
 
     // All status queue tabs are visible inside the panel
     await expect(page.locator('#tabBillQueueAll')).toBeVisible();
-    await expect(page.locator('#tabBillQueueInbox')).toBeVisible();
-    await expect(page.locator('#tabBillQueueCoding')).toBeVisible();
-    await expect(page.locator('#tabBillQueueApproval')).toBeVisible();
-    await expect(page.locator('#tabBillQueueReady')).toBeVisible();
-    await expect(page.locator('#tabBillQueueScheduled')).toBeVisible();
-    await expect(page.locator('#tabBillQueuePaid')).toBeVisible();
-    await expect(page.locator('#tabBillQueueExceptions')).toBeVisible();
+    for (const id of ['Draft', 'PendingApproval', 'Rejected', 'Approved', 'Scheduled', 'PartiallyPaid', 'Paid', 'Void']) {
+      await expect(page.locator(`#tabBillQueue${id}`)).toBeVisible();
+    }
 
     // "All" tab is currently active
     await expect(page.locator('#tabBillQueueAll')).toHaveClass(/active/);
@@ -85,25 +81,25 @@ test.describe('FUX-414 — Collapsible Bills status tab bar into status pill + p
     await changeViewBtn.click();
     await expect(statusPanel).toBeVisible();
 
-    // Read count from Needs Approval tab badge
-    const approvalBadge = page.locator('#badgeBillQueueApproval');
+    // Read count from Pending Approval tab badge
+    const approvalBadge = page.locator('#badgeBillQueuePendingApproval');
     const expectedApprovalCount = await approvalBadge.innerText();
 
-    // 2. Click "Needs Approval" tab
-    await page.click('#tabBillQueueApproval');
+    // 2. Click "Pending Approval" tab
+    await page.click('#tabBillQueuePendingApproval');
 
     // 3. Verify panel auto-collapses automatically after tab click
     await expect(statusPanel).not.toBeVisible();
     await expect(changeViewBtn).toHaveAttribute('aria-expanded', 'false');
 
     // 4. Verify toggle bar pill updates immediately to "Needs Approval" and its count
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Needs Approval');
+    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Pending Approval');
     await expect(page.locator('#financeBillActiveStatusCount')).toHaveText(expectedApprovalCount);
 
     // 5. Verify result count updates to reflect current view
     await expect(page.locator('#financeBillViewResultCount')).toContainText(`Showing ${expectedApprovalCount} of`);
 
-    // 6. Verify table rows reflect Needs Approval queue
+    // 6. Verify table rows reflect Pending Approval queue
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(billRow).toBeVisible();
   });

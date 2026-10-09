@@ -129,11 +129,10 @@ def test_currency_and_account_mismatch_prevented(app_client, admin_cookies):
         cookies=admin_cookies,
     )
     assert err_res.status_code == 400
-    assert "Currency mismatch" in err_res.json()["detail"]
-    assert "exchange rate" in err_res.json()["detail"].lower()
+    assert err_res.json()["detail"]["code"] == "currency_mismatch"
 
-    # Post with valid fx_rate
-    ok_res = app_client.post(
+    # A rate does not rescue it: manual entries carry no exchange rate (D-020)
+    rate_res = app_client.post(
         f"/api/finance/accounts/{acc_id}/transactions",
         json={
             "date": "2026-09-14",
@@ -142,15 +141,26 @@ def test_currency_and_account_mismatch_prevented(app_client, admin_cookies):
             "currency": "EGP",
             "fx_rate": 50.0,
             "entry_type": "money_out",
-            "reference": "EGP-DISBURSE",
+        },
+        cookies=admin_cookies,
+    )
+    assert rate_res.status_code == 422
+
+    # A same-currency entry posts normally
+    ok_res = app_client.post(
+        f"/api/finance/accounts/{acc_id}/transactions",
+        json={
+            "date": "2026-09-14",
+            "amount": 1000.0,
+            "direction": "out",
+            "currency": "USD",
+            "entry_type": "money_out",
+            "reference": "USD-DISBURSE",
         },
         cookies=admin_cookies,
     )
     assert ok_res.status_code == 201, ok_res.text
-    tx = ok_res.json()
-    assert tx["currency"] == "EGP"
-    assert tx["fx_rate"] == 50.0
-    assert tx["base_amount"] == 1000.0
+    assert ok_res.json()["currency"] == "USD"
 
 
 def test_adjustment_requires_authorization_and_reason(app_client, admin_cookies, employee_cookies):

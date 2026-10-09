@@ -293,6 +293,7 @@ def test_invoice_and_bill_payments_auto_post_to_ledger(db_session):
         {
             "vendor_id": vendor.id,
             "bill_number": "BILL-AWS-001",
+            "status": "approved",
             "category": "Cloud Infrastructure",
             "issue_date": "2026-09-02",
             "due_date": "2026-09-20",
@@ -301,8 +302,13 @@ def test_invoice_and_bill_payments_auto_post_to_ledger(db_session):
         [{"description": "GPU instances", "quantity": 1, "unit_price": 1200.0}],
     )
 
-    # Record bill payment of 1200 USD
+    # Record bill payment of 1200 USD through the settlement service (Outgoing transfer, bank account)
+    from finance.models import PaymentTypeDB
+    outgoing = PaymentTypeDB(name="Outgoing Transfer", code="OUTBOUND_TRANS")
+    db_session.add(outgoing)
+    db_session.flush()
     bill_pmt = bill_repo.record_payment({
+        "payment_type_id": outgoing.id,
         "bank_account_id": account.id,
         "related_bill_id": bill.id,
         "amount": 1200.0,

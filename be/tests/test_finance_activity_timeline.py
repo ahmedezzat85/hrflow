@@ -150,7 +150,6 @@ def test_bill_activity_timeline_and_payments(app_client, admin_cookies):
             "category": "SaaS",
             "issue_date": "2026-09-03",
             "due_date": "2026-09-20",
-            "status": "unpaid",
             "currency": "USD",
             "lines": [{"description": "APM licenses", "quantity": 1, "unit_price": 1200.0}],
         },

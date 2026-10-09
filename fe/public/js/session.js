@@ -50,6 +50,7 @@ const MOCK_PERMISSIONS_ALL = [
   ...MOCK_PERMISSIONS_EMPLOYEE.filter(k => !MOCK_PERMISSIONS_HR.includes(k)),
   ...MOCK_PERMISSIONS_FINANCE,
   "finance.payroll.prepare",
+  "finance.bill.approve", "finance.bill.pay",
 ];
 
 async function handleLoginSuccess(data){

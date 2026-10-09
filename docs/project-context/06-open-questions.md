@@ -221,6 +221,14 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-011`)  
   - [rbac/implementation-plan.md](rbac/implementation-plan.md)  
 
+### Q-014 — Finance Bills Restyle: Direction, FUX-414 Layout, Density Default, Button Icons
+- **Status:** Resolved — D-021 (October 9, 2026): direction A "Clean Table"; FUX-414 pill and Change view replaced by an always-visible status row (owner override); FUX-415 density setting kept with Regular as default; no icons on in-page tabs and text buttons.  
+- **Question:**  
+  Which visual direction for the shared Finance components, may it replace the FUX-414 layout, should the density default change, and should in-page tabs and text buttons keep icons?  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-021`)  
+  - [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md)  
+
 ---
 
 ## Resolved-Question Procedure

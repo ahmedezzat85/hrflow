@@ -138,13 +138,14 @@ class BillDB(Base):
     __tablename__ = "finance_bills"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=False, index=True)
-    bill_number = Column(String(50), nullable=False, index=True)
+    # vendor_id, bill_number, issue_date and due_date may be empty only while the bill is a Draft (D-019)
+    vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=True, index=True)
+    bill_number = Column(String(50), nullable=True, index=True)
     category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     category = Column(String(100), default="Operating Expense")
-    issue_date = Column(String(20), nullable=False)
-    due_date = Column(String(20), nullable=False)
-    status = Column(String(30), default="unpaid", nullable=False, index=True)  # inbox | needs_coding | needs_approval | ready_to_pay | scheduled | paid | exceptions | void
+    issue_date = Column(String(20), nullable=True)
+    due_date = Column(String(20), nullable=True)
+    status = Column(String(30), default="draft", nullable=False, index=True)  # draft | pending_approval | rejected | approved | scheduled | partially_paid | paid | void
     currency = Column(String(10), default="USD", nullable=False)
     subtotal = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
@@ -169,6 +170,11 @@ class BillDB(Base):
     approval_comment = Column(Text, nullable=True)
     scheduled_payment_date = Column(String(20), nullable=True)
     amount_paid = Column(Float, default=0.0, nullable=False)
+    vendor_to_confirm = Column(Boolean, default=False, nullable=False)  # upload could not match the vendor with confidence
+    suggested_vendor_name = Column(String(255), nullable=True)  # vendor name read from the document; never auto-created
+    void_reason = Column(Text, nullable=True)
+    voided_by = Column(String(255), nullable=True)
+    voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("VendorDB", back_populates="bills")

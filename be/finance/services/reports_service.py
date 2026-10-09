@@ -11,6 +11,7 @@ from sqlalchemy import func, and_, or_
 
 from fastapi import HTTPException, status
 
+from finance.bill_status import OPEN_STATUSES, SPEND_STATUSES
 from finance.models import (
     FinanceBankAccountDB,
     LedgerTransactionDB,
@@ -108,7 +109,7 @@ class ReportsService:
             invoices = inv_q.all()
             revenue = round(sum(float(i.total or 0.0) for i in invoices), 2)
 
-            bill_q = self.db.query(BillDB).filter(BillDB.status != "void")
+            bill_q = self.db.query(BillDB).filter(BillDB.status.in_(SPEND_STATUSES))
             if start_date:
                 bill_q = bill_q.filter(BillDB.issue_date >= start_date)
             if end_date:
@@ -186,7 +187,7 @@ class ReportsService:
             margin_valid = False
 
         open_inv_count = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.status.in_(["sent", "draft", "overdue", "partially_paid"])).count()
-        unpaid_bills_count = self.db.query(BillDB).filter(BillDB.status.in_(["unpaid", "overdue", "partially_paid"])).count()
+        unpaid_bills_count = self.db.query(BillDB).filter(BillDB.status.in_(OPEN_STATUSES)).count()
         active_sub_count = self.db.query(SubscriptionDB).filter(SubscriptionDB.is_active == True).count()
 
         now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -1217,7 +1218,7 @@ class ReportsService:
                     })
 
                 bill_q = self.db.query(BillDB).filter(
-                    BillDB.status != "void",
+                    BillDB.status.in_(SPEND_STATUSES),
                     BillDB.issue_date >= start_d,
                     BillDB.issue_date <= end_d,
                 )
@@ -1382,7 +1383,7 @@ class ReportsService:
 
         # 3. Accounts Payable (Unpaid Bills as of cutoff)
         bill_filter = [
-            BillDB.status.notin_(["void", "paid"]),
+            BillDB.status.in_(OPEN_STATUSES),
             BillDB.issue_date <= cutoff,
         ]
         ap_q = self.db.query(BillDB).filter(*bill_filter)
@@ -1502,7 +1503,7 @@ class ReportsService:
 
         # Accounts Payable (Liability - Credit)
         ap_q = self.db.query(BillDB).filter(
-            BillDB.status.notin_(["void", "paid"]),
+            BillDB.status.in_(OPEN_STATUSES),
             BillDB.issue_date <= cutoff,
         )
         if curr_norm != "ALL":
@@ -1721,7 +1722,7 @@ class ReportsService:
         curr_norm = (currency or "USD").upper()
 
         q = self.db.query(BillDB).filter(
-            BillDB.status.notin_(["void", "paid"]),
+            BillDB.status.in_(OPEN_STATUSES),
             BillDB.issue_date <= cutoff_str,
         )
         if curr_norm != "ALL":

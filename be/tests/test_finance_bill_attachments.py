@@ -25,7 +25,6 @@ def test_bill_attachment_lifecycle(app_client, admin_cookies, employee_cookies):
             "category": "Legal & Professional",
             "issue_date": "2026-09-10",
             "due_date": "2026-10-10",
-            "status": "needs_coding",
             "currency": "USD",
             "lines": [{"description": "Retainer", "quantity": 1.0, "unit_price": 1200.0, "line_total": 1200.0}],
         },

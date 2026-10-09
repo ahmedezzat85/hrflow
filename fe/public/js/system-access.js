@@ -71,6 +71,8 @@
     { key: "finance.vendor_payment.reveal", group: "Finance / Spend", description: "Reveal sensitive vendor payment and bank instructions", assignable: true, implies: ["finance.vendor.read"] },
     { key: "finance.bill.read", group: "Finance / Spend", description: "View vendor bills", assignable: true, implies: [] },
     { key: "finance.bill.write", group: "Finance / Spend", description: "Create, update, and void vendor bills", assignable: true, implies: ["finance.bill.read"] },
+    { key: "finance.bill.approve", group: "Finance / Spend", description: "Approve or reject vendor bills; bills saved by an approver are auto-approved", assignable: true, implies: ["finance.bill.read"] },
+    { key: "finance.bill.pay", group: "Finance / Spend", description: "Record payments against vendor bills (including already-paid bills, linked cheques and transactions)", assignable: true, implies: ["finance.bill.read"] },
     { key: "finance.subscription.read", group: "Finance / Spend", description: "View vendor subscriptions", assignable: true, implies: [] },
     { key: "finance.subscription.write", group: "Finance / Spend", description: "Create and manage vendor subscriptions", assignable: true, implies: ["finance.subscription.read"] },
     { key: "finance.statutory.read", group: "Finance / Spend", description: "View statutory obligations and payments", assignable: true, implies: [] },

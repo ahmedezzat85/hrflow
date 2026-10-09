@@ -1597,6 +1597,8 @@ function onTxPayeeTypeChanged() {
   const cpInput = document.getElementById("fFinanceTxCounterparty");
 
   if (vendorGroup) vendorGroup.style.display = payeeType === "vendor" ? "block" : "none";
+  const billHint = document.getElementById("fFinanceTxVendorBillHint");
+  if (billHint) billHint.style.display = payeeType === "vendor" && (document.getElementById("fFinanceTxDirection")?.value || "out") === "out" ? "block" : "none";
   if (empGroup) empGroup.style.display = payeeType === "employee" ? "block" : "none";
   if (custGroup) custGroup.style.display = payeeType === "customer" ? "block" : "none";
 
@@ -1646,7 +1648,7 @@ async function onTxVendorSelected() {
   if (vendorId) {
     try {
       const bills = await FinanceApi.getBills({ vendor_id: vendorId, queue: "all" });
-      const openBills = (bills || []).filter((b) => b.status !== "paid" && b.status !== "void");
+      const openBills = (bills || []).filter((b) => ["approved", "scheduled", "partially_paid"].includes(b.status));
       _currentOpenBills = openBills;
 
       if (billSel) {
@@ -2363,8 +2365,12 @@ async function saveFinanceTransaction(andAddAnother = false) {
     toast("Please enter a valid amount greater than zero", "fa-solid fa-circle-exclamation");
     return;
   }
-  if (acc && currency !== acc.currency && (!fx_rate || fx_rate <= 0)) {
-    toast(`Foreign currency transaction (${currency} vs account ${acc.currency}) requires an explicit exchange rate.`, "fa-solid fa-circle-exclamation");
+  if (acc && currency !== acc.currency) {
+    toast(`The transaction currency (${currency}) must match the account currency (${acc.currency}). Use an FX transfer to exchange currencies.`, "fa-solid fa-circle-exclamation");
+    return;
+  }
+  if (payeeType === "vendor" && direction === "out" && !linked_bill_id) {
+    toast("A payment to a vendor is recorded as a bill. Use New bill (Already paid) or link this payment to the vendor's bill.", "fa-solid fa-circle-exclamation");
     return;
   }
   if (entryType === "adjustment" && !reason) {

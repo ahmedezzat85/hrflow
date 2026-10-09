@@ -9,6 +9,7 @@ from finance.schemas import (
     ChequeReplaceRequest,
     ChequeResponse,
 )
+from finance.bill_payment_rules import BillPaymentError
 from finance.models import FinanceChequeDB, FinanceBankAccountDB, BillDB
 
 
@@ -159,6 +160,15 @@ class ChequesService:
                     status_code=400,
                     detail=f"Destination account '{cash_acc.account_name}' must be of account_type 'cash', not '{cash_acc.account_type}'",
                 )
+            # D-020: a cash withdrawal funds a cash account in the same currency as the bank account
+            if (cash_acc.currency or "").upper() != (bank_acc.currency or "").upper():
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "currency_mismatch",
+                        "message": f"A cash withdrawal must go to a cash account in the same currency: '{cash_acc.account_name}' is {cash_acc.currency}, the bank account is {bank_acc.currency}.",
+                    },
+                )
 
         # Validate linked bill if present
         if payload.linked_bill_id:
@@ -177,7 +187,11 @@ class ChequesService:
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
         try:
             cheque = self.repo.create_cheque(data, created_by=created_by)
+        except BillPaymentError as e:
+            self.repo.db.rollback()
+            raise HTTPException(status_code=400, detail=e.detail())
         except ValueError as e:
+            self.repo.db.rollback()
             raise HTTPException(status_code=400, detail=str(e))
 
         return self._cheque_to_response(cheque)

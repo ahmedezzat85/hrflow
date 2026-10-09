@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
+from finance.bill_status import OPEN_STATUSES
 from finance.models import (
     FinanceBankAccountDB,
     SalesInvoiceDB,
@@ -178,7 +179,7 @@ class CashForecastService:
 
         # (b) Vendor Bills (Outflows)
         bill_query = self.db.query(BillDB).filter(
-            ~BillDB.status.in_(["void", "draft"])
+            BillDB.status.in_(OPEN_STATUSES)
         )
         if curr_filter != "ALL":
             bill_query = bill_query.filter(BillDB.currency == curr_filter)

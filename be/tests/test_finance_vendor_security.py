@@ -9,6 +9,8 @@ Covers:
 - Duplicate detection & Vendor 360 spend metrics.
 """
 import pytest
+from bill_test_helpers import approve_existing, payment_type_id
+
 from datetime import datetime
 from finance.models import VendorDB, VendorPaymentInstructionDB, BillDB
 from models_db import AuditLogDB
@@ -290,37 +292,38 @@ def test_vendor_360_profile_and_spend_metrics(app_client, admin_cookies):
             "bill_number": f"BILL-360-PAID-{vendor_id}",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "ready_to_pay",
+            "currency": "USD",
             "lines": [{"description": "Maintenance", "quantity": 1, "unit_price": 2500.0}],
         },
         cookies=admin_cookies,
     )
     b1_id = b1_resp.json()["id"]
+    approve_existing(app_client, admin_cookies, b1_id)
 
     app_client.post(
         f"/api/finance/bills/{b1_id}/payments",
         json={
-            "direction": "outgoing",
             "amount": 2500.0,
             "payment_date": "2026-09-05",
             "bank_account_id": bank_id,
+            "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
         },
         cookies=admin_cookies,
     )
 
     # 3. Create open bill ($4,000 unpaid)
-    app_client.post(
+    open_resp = app_client.post(
         "/api/finance/bills",
         json={
             "vendor_id": vendor_id,
             "bill_number": f"BILL-360-OPEN-{vendor_id}",
             "issue_date": "2026-09-10",
             "due_date": "2026-10-10",
-            "status": "ready_to_pay",
             "lines": [{"description": "Consumables", "quantity": 1, "unit_price": 4000.0}],
         },
         cookies=admin_cookies,
     )
+    approve_existing(app_client, admin_cookies, open_resp.json()["id"])
 
     # 4. Fetch Vendor 360 summary
     summary_resp = app_client.get(f"/api/finance/vendors/{vendor_id}/360", cookies=admin_cookies)

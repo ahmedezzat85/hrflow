@@ -3,13 +3,15 @@ be/finance/routers/bills.py
 Production router for Vendor Bills (Accounts Payable).
 Full CRUD + payment recording, gated with RBAC permissions:
  - finance.bill.read  (list, get, list payments)
- - finance.bill.write (create, update, void, record payment)
+ - finance.bill.write (create, update, void, submit, withdraw, schedule)
+ - finance.bill.approve (approve / reject)
+ - finance.bill.pay (record and reverse payments)
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status, UploadFile, File
 from fastapi.responses import FileResponse
 
-from core.permissions import require_permission
+from core.permissions import AccessContext, get_access_context, require_permission
 from finance.schemas import (
     BillCreate,
     BillUpdate,
@@ -19,17 +21,27 @@ from finance.schemas import (
     BillQueueCountsResponse,
     BillApprovalRequest,
     BillScheduleRequest,
+    BillVoidRequest,
+    BillUploadResponse,
     BillCategoryQualityReportResponse,
     BillDocumentExtractionResponse,
-    PaymentCreate,
+    BillPaymentCreate,
     PaymentResponse,
     PaymentReversalRequest,
 )
-from finance.services.bills_service import BillsService
+from finance.services.bills_service import BillActor, BillsService
 from finance.deps import get_bills_service, get_idempotency_key, get_idempotency_service
 from finance.services.idempotency import IdempotencyService
 
 router = APIRouter(prefix="/api/finance/bills", tags=["Finance - Vendor Bills"])
+
+
+def _actor(access: AccessContext) -> BillActor:
+    return BillActor(
+        email=access.email,
+        is_super_admin=access.is_super_admin,
+        permissions=frozenset(access.permissions),
+    )
 
 
 @router.post("/extract", response_model=BillDocumentExtractionResponse)
@@ -43,6 +55,20 @@ async def extract_bill_document(
     Does not auto-promote or approve the bill. Reviews are strictly required.
     """
     return await service.extract_document(file=file)
+
+
+@router.post("/upload", response_model=BillUploadResponse)
+async def upload_bill_drafts(
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
+    service: BillsService = Depends(get_bills_service),
+):
+    """
+    Upload several PDFs or photos at once. Each file becomes its own Draft with its own vendor match;
+    a weak match leaves the vendor empty and flags "vendor to confirm". Never creates a vendor.
+    """
+    return await service.upload_drafts(files, actor=_actor(access))
 
 
 @router.get("/category-quality-report", response_model=BillCategoryQualityReportResponse)
@@ -76,8 +102,9 @@ def check_bill_duplicate(
 
 @router.get("", response_model=List[BillResponse])
 def list_vendor_bills(
-    status: Optional[str] = Query(None, description="Filter by status: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void"),
-    queue: Optional[str] = Query(None, description="AP Inbox work queue: inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|all"),
+    status: Optional[str] = Query(None, description="Filter by status: draft|pending_approval|rejected|approved|scheduled|partially_paid|paid|void"),
+    queue: Optional[str] = Query(None, description="Status queue: one of the eight statuses, or all (everything except void)"),
+    overdue: Optional[bool] = Query(None, description="true: only open bills whose due date has passed"),
     vendor_id: Optional[int] = Query(None, description="Filter by vendor ID"),
     search: Optional[str] = Query(None, description="Search by bill number, vendor name, or department"),
     has_attachment: Optional[bool] = Query(None, description="Filter bills having or missing attachment"),
@@ -95,6 +122,7 @@ def list_vendor_bills(
         has_attachment=has_attachment,
         limit=limit,
         offset=offset,
+        overdue=overdue,
     )
 
 
@@ -112,6 +140,7 @@ def get_vendor_bill(
 def create_vendor_bill(
     payload: BillCreate,
     current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
     idempotency: IdempotencyService = Depends(get_idempotency_service),
@@ -122,7 +151,7 @@ def create_vendor_bill(
         idempotency_key=idempotency_key,
         user_email=user_email,
         endpoint_path="/api/finance/bills:create",
-        operation_fn=lambda: service.create_bill(payload, current_user=current_user),
+        operation_fn=lambda: service.create_bill(payload, actor=_actor(access)),
     )
 
 
@@ -130,14 +159,37 @@ def create_vendor_bill(
 def approve_vendor_bill(
     bill_id: int,
     payload: BillApprovalRequest,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    current_user: dict = Depends(require_permission("finance.bill.approve")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
 ):
     """
     Approve or reject a vendor bill.
     Enforces segregation of duties (no self-approval) and approver authorization limits.
     """
-    return service.approve_bill(bill_id, payload, current_user=current_user)
+    return service.approve_bill(bill_id, payload, actor=_actor(access))
+
+
+@router.post("/{bill_id}/submit", response_model=BillResponse)
+def submit_vendor_bill(
+    bill_id: int,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Submit a Draft (or resubmit a Rejected) bill for approval."""
+    return service.submit_bill(bill_id, actor=_actor(access))
+
+
+@router.post("/{bill_id}/withdraw", response_model=BillResponse)
+def withdraw_vendor_bill(
+    bill_id: int,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Withdraw a Pending approval bill back to Draft."""
+    return service.withdraw_bill(bill_id, actor=_actor(access))
 
 
 @router.post("/{bill_id}/schedule", response_model=BillResponse)
@@ -145,12 +197,13 @@ def schedule_vendor_bill(
     bill_id: int,
     payload: BillScheduleRequest,
     current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
 ):
     """
     Schedule an approved vendor bill for future payment.
     """
-    return service.schedule_bill(bill_id, payload)
+    return service.schedule_bill(bill_id, payload, actor=_actor(access))
 
 
 @router.put("/{bill_id}", response_model=BillResponse)
@@ -158,21 +211,35 @@ def update_vendor_bill(
     bill_id: int,
     payload: BillUpdate,
     current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
 ):
     """Update a bill's fields and/or replace its line items."""
-    return service.update_bill(bill_id, payload)
+    return service.update_bill(bill_id, payload, actor=_actor(access))
 
 
-@router.delete("/{bill_id}", response_model=BillResponse)
-def void_vendor_bill(
+@router.delete("/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)
+def discard_vendor_bill(
     bill_id: int,
-    reason: Optional[str] = Query(None, description="Reason for voiding the bill"),
     current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
 ):
-    """Void a bill (irreversible soft-delete via status change)."""
-    return service.void_bill(bill_id, reason=reason)
+    """Discard draft: permanently deletes a Draft, its lines and its file. Any other bill returns 409;
+    cancelling a bill is POST /bills/{id}/void with a reason."""
+    service.discard_bill(bill_id, actor=_actor(access))
+
+
+@router.post("/{bill_id}/void", response_model=BillResponse)
+def void_vendor_bill_action(
+    bill_id: int,
+    payload: BillVoidRequest,
+    current_user: dict = Depends(require_permission("finance.bill.write")),
+    access: AccessContext = Depends(get_access_context),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Void a bill with a reason."""
+    return service.void_bill(bill_id, reason=payload.reason, actor=_actor(access))
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────
@@ -194,8 +261,9 @@ def list_bill_payments(
 )
 def record_bill_payment(
     bill_id: int,
-    payload: PaymentCreate,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    payload: BillPaymentCreate,
+    current_user: dict = Depends(require_permission("finance.bill.pay")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
     idempotency: IdempotencyService = Depends(get_idempotency_service),
@@ -210,7 +278,7 @@ def record_bill_payment(
         idempotency_key=idempotency_key,
         user_email=user_email,
         endpoint_path=f"/api/finance/bills:{bill_id}:payments",
-        operation_fn=lambda: service.record_payment(bill_id, payload),
+        operation_fn=lambda: service.record_payment(bill_id, payload, actor=_actor(access)),
     )
 
 
@@ -222,7 +290,8 @@ def reverse_bill_payment(
     bill_id: int,
     payment_id: int,
     payload: PaymentReversalRequest,
-    current_user: dict = Depends(require_permission("finance.bill.write")),
+    current_user: dict = Depends(require_permission("finance.bill.pay")),
+    access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
 ):
     """
@@ -233,7 +302,7 @@ def reverse_bill_payment(
         bill_id=bill_id,
         payment_id=payment_id,
         req=payload,
-        current_user=current_user,
+        actor=_actor(access),
     )
 
 

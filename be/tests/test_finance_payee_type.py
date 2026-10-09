@@ -4,6 +4,7 @@ Automated tests for FUX-405: Employee Payee Type, validation rules,
 and include_internal reporting toggle.
 """
 import pytest
+from bill_test_helpers import create_approved
 from models_db import EmployeeDB
 
 
@@ -118,7 +119,8 @@ def test_payee_type_vendor_and_employee(app_client, admin_cookies):
         db.refresh(emp)
         emp_id = emp.id
 
-    # 4. Record Vendor transaction with payee_id
+    # 4. Record Vendor transaction with payee_id (spend is a bill: the payment is linked to the vendor's bill)
+    vendor_bill = create_approved(app_client, admin_cookies, vendor_id, "PT-AWS-1", 1500.0, currency="USD")
     tx_v_res = app_client.post(
         f"/api/finance/accounts/{acc_id}/transactions",
         json={
@@ -129,6 +131,7 @@ def test_payee_type_vendor_and_employee(app_client, admin_cookies):
             "entry_type": "money_out",
             "payee_type": "vendor",
             "payee_id": vendor_id,
+            "linked_bill_id": vendor_bill["id"],
             "description": "Monthly AWS compute",
         },
         cookies=admin_cookies,
@@ -311,7 +314,8 @@ def test_reports_include_internal_filtering(app_client, admin_cookies):
         emp_id = emp.id
 
     # 4. Record Outflows:
-    # Tx A: Vendor spend (1000)
+    # Tx A: Vendor spend (1000), paid against the vendor's bill (spend is a bill)
+    chair_bill = create_approved(app_client, admin_cookies, vendor_id, "PT-CHAIRS-1", 1000.0, currency="USD")
     app_client.post(
         f"/api/finance/accounts/{acc_id}/transactions",
         json={
@@ -321,6 +325,7 @@ def test_reports_include_internal_filtering(app_client, admin_cookies):
             "currency": "USD",
             "payee_type": "vendor",
             "payee_id": vendor_id,
+            "linked_bill_id": chair_bill["id"],
             "description": "Desk chairs",
         },
         cookies=admin_cookies,

@@ -1,6 +1,6 @@
 # Vendor Bill Workflow v2: Statuses, Approval, Payments and Drafts
 
-**Status:** Approved by owner, October 8, 2026. Not implemented.
+**Status:** Approved by owner, October 8, 2026. All slices B1 to B6 implemented on `feature/bills-b1-status-model`.
 **Baseline:** `main` @ `f01f226` (latest Alembic revision `0027_single_assigned_role`).
 **Decisions:** D-016 to D-019 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md).
 **Supersedes in part:** FUX-401 status queues (Inbox, Needs Coding, Needs Approval, Ready to Pay, Exceptions), [10-fux-408-combined-bill-payment-guard.md](10-fux-408-combined-bill-payment-guard.md) (combined create-and-pay ledger fields and approval input), [16-fux-414-collapsible-status-tab-bar.md](16-fux-414-collapsible-status-tab-bar.md) (status list only; the tab-bar control stays).
@@ -46,11 +46,19 @@ Frontend minimum: remove the status dropdown from `bill-modal.html` (read-only b
 
 Acceptance:
 
-- [ ] Migration maps every old status and runs up and down on a copy of `hrflow_Prod.db`.
-- [ ] A status change not in the transition table is refused with 409; `status` in create/update is refused with 422.
-- [ ] A partially paid bill cannot be voided.
-- [ ] Draft, Pending approval and Rejected are excluded from AP aging, the forecast and vendor open totals.
-- [ ] Tests: new `test_finance_bill_status_model.py`; `test_finance_bills_inbox.py` retired; `test_finance_bills.py` updated.
+- [x] Migration maps every old status and runs up and down on a copy of `hrflow_Prod.db`.
+- [x] A status change not in the transition table is refused with 409; `status` in create/update is refused with 422.
+- [x] A partially paid bill cannot be voided.
+- [x] Draft, Pending approval and Rejected are excluded from AP aging, the forecast and vendor open totals.
+- [x] Tests: new `test_finance_bill_status_model.py`; `test_finance_bills_inbox.py` retired; `test_finance_bills.py` updated.
+
+Implementation notes (B1):
+
+- Status logic lives in `be/finance/bill_status.py` (`BILL_TRANSITIONS`, `OPEN_STATUSES`, `derive_payment_status`, `is_overdue`); `bills_service` applies every action through it. A refused action returns 409 with `detail = {code, message, action, current_status, allowed_actions}`.
+- B1 adds `POST /bills/{id}/submit` and `POST /bills/{id}/withdraw` (permission `finance.bill.write` until B2) and `POST /bills/{id}/void`; `DELETE` still voids until B4. Create-and-pay starts the bill Approved and settles it (B2/B3 tighten this path). `requires_approval` is still honoured on create-and-pay until B2 replaces it.
+- A cheque linked to a bill counts as payment in `derive_payment_status` until B3 gives cheques payment records.
+- Extra readers updated beyond the list above: `reports_service` (operating spend now counts only Approved, Scheduled, Partially paid and Paid bills; unpaid count, balance sheet and trial balance AP), `settlement_service.check_duplicate_settlement`, `routers/activity.py`, `attention_service`, the mock API, `finance-accounts.js`.
+- List filter `overdue=true` added; `queue-counts` returns the eight statuses plus `overdue` and `all`.
 
 ## Slice B2: Approval rules and permissions
 
@@ -67,12 +75,21 @@ Acceptance:
 
 Acceptance:
 
-- [ ] Any approval field in a create/update request is refused with 422.
-- [ ] A finance user's bill reaches Approved only through `approve`; a super admin's bill is Approved on save, marked auto-approved.
-- [ ] A non-super-admin approver cannot approve their own bill.
-- [ ] A material edit by a finance user returns an Approved bill to Pending approval.
-- [ ] Pay without `finance.bill.pay` returns 403.
-- [ ] Tests: `test_finance_bills_approval.py` rewritten; RBAC tests extended.
+- [x] Any approval field in a create/update request is refused with 422.
+- [x] A finance user's bill reaches Approved only through `approve`; a super admin's bill is Approved on save, marked auto-approved.
+- [x] A non-super-admin approver cannot approve their own bill.
+- [x] A material edit by a finance user returns an Approved bill to Pending approval.
+- [x] Pay without `finance.bill.pay` returns 403.
+- [x] Tests: `test_finance_bills_approval.py` rewritten; RBAC tests extended.
+
+Implementation notes (B2):
+
+- `BillCreate` / `BillUpdate` refuse (422) any of: `status`, `approval_status`, `approved_by`, `approved_at`, `approval_comment`, `requires_approval`, `created_by`, `amount_paid`, `is_reviewed`, `scheduled_payment_date`. The server sets the creator from the session.
+- `BillActor` (email, super-admin flag, permissions) is passed to every bill service action; each action writes an audit entry (`bill.<action>`, from -> to status, reason) that shows in the bill activity timeline.
+- Material-edit rule: a change to vendor, currency or lines on an Approved or Scheduled bill by a user without `finance.bill.approve` runs the `send_back` transition to Pending approval and clears the schedule and approval.
+- `withdraw` is limited to the submitter (or a super admin). Reverse payment also needs `finance.bill.pay`; create-and-pay needs both `finance.bill.pay` and `finance.bill.approve`.
+- Migration `0029_bill_approve_pay_permissions` inserts the two permission rows and grants them to no role.
+- `BillResponse` now returns `allowed_actions`.
 
 ## Slice B3: Payment fields, currency and balance checks
 
@@ -106,29 +123,49 @@ The bill stays linked through `linked_bill_id`. Creating a bill with "Already pa
 
 Acceptance:
 
-- [ ] USD bill from an EGP account fails with `currency_mismatch`, nothing changed.
-- [ ] Payment above the account balance fails with `insufficient_balance`, nothing changed.
-- [ ] Cash payment from a bank account, or Outgoing transfer from a cash account, fails.
-- [ ] Ledger row carries the entered type, reference, details, cheque number, vendor payee and creator.
-- [ ] A failed "Already paid" save leaves no bill behind.
-- [ ] A cheque or manual transaction linked to a bill creates a payment record, updates `amount_paid`, and is refused on currency mismatch, insufficient balance or missing `finance.bill.pay`.
-- [ ] Tests: new `test_finance_bill_payment_rules.py`; `test_finance_bill_payment_guard.py` and `test_finance_settlement_linking.py` updated.
+- [x] USD bill from an EGP account fails with `currency_mismatch`, nothing changed.
+- [x] Payment above the account balance fails with `insufficient_balance`, nothing changed.
+- [x] Cash payment from a bank account, or Outgoing transfer from a cash account, fails.
+- [x] Ledger row carries the entered type, reference, details, cheque number, vendor payee and creator.
+- [x] A failed "Already paid" save leaves no bill behind.
+- [x] A cheque or manual transaction linked to a bill creates a payment record, updates `amount_paid`, and is refused on currency mismatch, insufficient balance or missing `finance.bill.pay`.
+- [x] Tests: new `test_finance_bill_payment_rules.py`; `test_finance_bill_payment_guard.py` and `test_finance_settlement_linking.py` updated.
+
+Implementation notes (B3):
+
+- One shared input, `BillPaymentInput` (`bank_account_id`, `payment_type_id`, `amount`, `payment_date`, `reference`, `details`, `cheque_number`), used by `BillPaymentInline` (create-and-pay) and `BillPaymentCreate` (Pay dialog). `PaymentCreate` stays for invoice payments. There is no `direction`, `method`, `currency` or exchange-rate field on a bill payment; the payment currency is the bill's.
+- `settlement_service.settle_bill` is the single path for the Pay dialog, create-and-pay, a manual transaction with `linked_bill_id` and a cheque with `linked_bill_id`. Refusals carry `detail = {code, message}` (HTTP 400): `currency_mismatch`, `insufficient_balance`, `payment_type_not_allowed`, `cheque_number_required`; over-payment keeps its plain "exceeds remaining" message.
+- Allowed types (`be/finance/bill_payment_rules.py`): cash account -> `CASH`; bank account -> `OUTBOUND_TRANS`, `CHK`, `DEBIT_CARD`. `GET /finance/payment-types?usage=bill_payment&account_type=` returns them and needs only `finance.bill.read`.
+- `bills_repository.record_payment` writes the ledger row from the entered fields (type, reference as entered, details defaulting to the vendor name, cheque number, vendor payee, creator) and balances come from `recalculate_account_running_balances`. Create-and-pay commits bill, payment, ledger row and balance in one transaction.
+- Cheques linked to a bill now create a payment record when posted and reverse it when the cheque is stopped, voided, bounced or replaced (the temporary B1 "cheque counts as paid" allowance is gone). B6 still owns reversing entries instead of deleting rows.
+- New bills default to EGP. The Pay dialog and "Already paid" form offer only accounts in the bill currency, with the payment type list filtered by account type and a cheque-number field for Cheque.
 
 ## Slice B4: Drafts and PDF upload
 
-1. Migration `0030_bill_draft_fields`: `vendor_id`, `bill_number`, `issue_date`, `due_date` become nullable (Alembic batch mode on SQLite).
+1. Migration `0030_bill_draft_fields`: `vendor_id`, `bill_number`, `issue_date`, `due_date` become nullable (Alembic batch mode on SQLite). The same migration seeds a protected **Miscellaneous** vendor (added 9 Oct 2026, D-020 amendment): it cannot be deleted, renamed or deactivated, and is the vendor for shops not worth tracking.
 2. A draft needs a vendor or an attachment. Leaving Draft runs the full checks (required fields, category, inactive vendor, duplicate detection).
-3. PDF upload creates a Draft with the file and extracted fields (`bill_extractor.py`, FUX-413).
-4. Multi-file upload: several PDFs or photos at once, any mix of vendors. Each file becomes its own Draft with its own vendor match; a weak match leaves the vendor empty and flags "vendor to confirm"; a new vendor is suggested, never auto-created. After upload the list opens filtered to the new drafts.
-5. `DELETE /bills/{id}` on a Draft deletes it, its lines and attachment, with one activity line. On other statuses DELETE returns 409; cancelling is `POST /bills/{id}/void` with a reason.
+3. Bill number is optional when leaving Draft: a blank number is auto-assigned as `EXP-YYMM-NNNN` (sequence per month, unique). Duplicate detection still compares vendor, date and amount, so two equal Miscellaneous receipts on the same day get the existing warning with override.
+4. PDF upload creates a Draft with the file and extracted fields (`bill_extractor.py`, FUX-413).
+5. Multi-file upload: several PDFs or photos at once, any mix of vendors. Each file becomes its own Draft with its own vendor match; a weak match leaves the vendor empty and flags "vendor to confirm"; a new vendor is suggested, never auto-created. After upload the list opens filtered to the new drafts.
+6. `DELETE /bills/{id}` on a Draft deletes it, its lines and attachment, with one activity line. On other statuses DELETE returns 409; cancelling is `POST /bills/{id}/void` with a reason.
 
 Acceptance:
 
-- [ ] A draft saves with only a vendor, or only an attachment.
-- [ ] Leaving Draft with a missing required field is refused field by field.
-- [ ] Five PDFs from three vendors yield five Drafts, each with its own vendor or a "vendor to confirm" flag.
-- [ ] Discarding a draft removes row and file; DELETE on any other bill is refused.
-- [ ] Tests: `test_finance_bill_extraction.py`, `test_finance_bill_attachments.py` updated; new draft-lifecycle tests.
+- [x] A draft saves with only a vendor, or only an attachment.
+- [x] Leaving Draft with a missing required field is refused field by field.
+- [x] Five PDFs from three vendors yield five Drafts, each with its own vendor or a "vendor to confirm" flag.
+- [x] Discarding a draft removes row and file; DELETE on any other bill is refused.
+- [x] The Miscellaneous vendor exists after migration and cannot be deleted, renamed or deactivated.
+- [x] A bill saved with a blank number gets the next `EXP-YYMM-NNNN` number; numbers never repeat.
+- [x] Tests: `test_finance_bill_extraction.py`, `test_finance_bill_attachments.py` updated; new draft-lifecycle tests.
+
+Implementation notes (B4):
+
+- Migration `0030_bill_draft_fields` also adds `vendor_to_confirm` and `suggested_vendor_name`. Its downgrade deletes drafts that have no vendor (they cannot exist in the old schema) and fills other empty fields with placeholders.
+- `BillBase` makes vendor, bill number and dates optional. A draft needs `vendor_id` or an attachment (422 otherwise). Leaving Draft (`submit`, or a bill born Approved from an approver) runs `_validate_leaving_draft`: required vendor, bill number, issue date, due date and category (422, one entry per field, FastAPI-style `loc`/`msg`), inactive vendor, bill-number reuse and duplicate detection.
+- `POST /bills/upload` (multipart `files`) returns one result per file. Only PDF and photo types are accepted; a file already uploaded (same SHA-256) is reported with `duplicate_of` instead of creating a second draft. Uploads are always Drafts, even for approvers. A vendor counts as matched only when the extracted vendor id exists, is active and carries the extracted name; otherwise `vendor_to_confirm` is set and the extracted name is stored as `suggested_vendor_name`. No vendor is ever created. Editing the draft with a vendor clears the flag.
+- `DELETE /bills/{id}` now discards a Draft (row, lines, file, one `bill.discarded` activity entry, 204); any other status returns 409 `delete_not_allowed`. Cancelling is `POST /bills/{id}/void`.
+- Frontend: "Upload drafts" button (multi-file) that opens the list on the Draft status; "Vendor to confirm" badge; Discard action on drafts; Void on the other open statuses.
 
 ## Slice B5: Bill screens, behaviour only (current visual style)
 
@@ -136,6 +173,7 @@ New-bill form (`bill-modal.html`, `finance-bills.js`):
 
 - Super admin: "Not paid yet / Already paid" choice, starting on the user's last choice (first time Not paid yet). "Already paid" shows source account (bill currency only), payment type (filtered by account type), amount paid, payment date, reference (empty), details (vendor name), cheque number for Cheque.
 - Finance user: no payment choice; primary button "Submit for approval".
+- Vendor list shows Miscellaneous first; Bill number field hint: "Leave blank to auto-number"; with Miscellaneous the Details field prompts for the shop name.
 - Defaults: currency EGP, account CASH - EGP, Cash payment. Changing currency moves the account to that currency's cash account.
 - "Saves as" line naming the resulting status. Footer: Save as draft, "Add another after saving", Cancel, primary action. Line items optional.
 
@@ -145,11 +183,20 @@ List: existing status tab bar (FUX-414) with All plus eight statuses and counts,
 
 Acceptance:
 
-- [ ] No control sets a bill status directly.
-- [ ] Super admin records a paid cash bill in one save typing only vendor, number, category and amount.
-- [ ] A finance user sees no payment fields and cannot approve.
-- [ ] Each server error appears next to its field.
-- [ ] `npm run build` passes; Playwright `finance-bills-inbox`, `finance-bills-approval`, `finance-bill-combined-pay`, `finance-bill-status-tab-bar` rewritten and passing.
+- [x] No control sets a bill status directly.
+- [x] Super admin records a paid cash bill in one save typing only vendor, number, category and amount.
+- [x] A finance user sees no payment fields and cannot approve.
+- [x] Each server error appears next to its field.
+- [x] `npm run build` passes; Playwright `finance-bills-inbox`, `finance-bills-approval`, `finance-bill-combined-pay`, `finance-bill-status-tab-bar` rewritten and passing.
+
+Implementation notes (B5):
+
+- `BillCreate.save_as_draft` (client intent, not server-owned) lets an approver save a Draft; combined with `is_paid_now` it is refused (400).
+- New-bill form: "Not paid yet / Already paid" radios for users with both approve and pay (remembered per user in localStorage), a bill Amount field so line items are optional (without lines the amount becomes a single line), currency EGP and the cash account in the bill currency with Cash payment as defaults, a "Saves as" line, and a footer with Save as draft, Add another after saving, Cancel and the primary action (Save bill / Save as paid for approvers, Submit for approval for finance users, Save and approve, Resubmit for approval or Save changes when editing). A finance user's primary action creates a Draft and submits it; an approver's Draft edit is submitted and approved.
+- Bill detail (drawer): status badge with Overdue and Vendor to confirm flags; actions by status and permission (Submit, Edit, Discard draft, Approve, Reject, Withdraw, Edit and resubmit, Schedule payment, Record payment, Void bill); the rejection reason stays visible in a banner. Void asks for a reason (Duplicate, Entered by mistake, Cancelled by vendor, Other) and an optional note.
+- List: the status tab bar keeps All plus the eight statuses with counts; an "Overdue only" toggle with count; one primary row action per status (Draft Submit, Pending Approve, Rejected Edit and resubmit, Approved/Scheduled/Partially paid Pay, or Schedule for users who cannot pay).
+- Record payment shows the bill balance and the paying account's balance after the typed amount. Server errors (422 field lists and payment codes) appear beside their field.
+- Rewritten Playwright specs: finance-bills-inbox, finance-bills-approval, finance-bill-combined-pay, finance-bill-status-tab-bar (tab ids), plus new finance-bills-screens, -permissions, -payment-rules and -drafts.
 
 ## Slice B6: Banking rules (added 9 Oct 2026, D-020)
 
@@ -160,11 +207,18 @@ Acceptance:
 
 Acceptance:
 
-- [ ] A USD transaction on an EGP account is refused; no rate field remains on manual entries.
-- [ ] A USD withdrawal into CASH - EGP is refused, for both teller withdrawals and cheques.
-- [ ] Stopping a cheque keeps its original entries, adds reversing entries, restores the balance and reverses its bill payment.
-- [ ] A vendor money-out without a bill is refused (if the enforcement is confirmed).
-- [ ] Tests: `test_finance_ledger.py`, `test_finance_cheques.py`, `test_finance_cheque_lifecycle.py` updated; new tests per criterion.
+- [x] A USD transaction on an EGP account is refused; no rate field remains on manual entries.
+- [x] A USD withdrawal into CASH - EGP is refused, for both teller withdrawals and cheques.
+- [x] Stopping a cheque keeps its original entries, adds reversing entries, restores the balance and reverses its bill payment.
+- [x] A vendor money-out without a bill is refused (if the enforcement is confirmed).
+- [x] Tests: `test_finance_ledger.py`, `test_finance_cheques.py`, `test_finance_cheque_lifecycle.py` updated; new tests per criterion.
+
+Implementation notes (B6):
+
+- Manual entries: `LedgerTransactionCreate` / `LedgerTransactionUpdate` refuse `fx_rate` and `base_amount` (422); a transaction whose currency differs from its account's returns 400 `currency_mismatch`. The FX-rate field is gone from the transaction form (it stays hidden and empty); FX transfers are the only way to exchange.
+- Cash withdrawals: a teller withdrawal (`destination_cash_account_id`) and a cash-withdrawal cheque are refused with `currency_mismatch` when the cash account's currency differs from the bank account's.
+- Cheque reversals: `_reverse_cheque_ledger_entries` keeps the posted rows and adds opposite `cheque_reversal` entries (reference `REV-TX-<original id>`, the reason in `reason` and the description). The linked bill payment is reversed through `SettlementService.reverse_cheque_bill_payment`, which recomputes `amount_paid` and the bill status.
+- Spend is a bill (confirmed as proposed): a manual money-out with a vendor payee and no `linked_bill_id` is refused with 400 `vendor_payment_needs_bill`; the transaction form shows the same hint and blocks the save. Money in, bank fees, transfers, exchange and withdrawals are unaffected.
 
 ## Order, tests, risks
 
@@ -179,7 +233,7 @@ Order B1 -> B2 -> B3 -> B4 -> B5 -> B6 (B4 needs only B1; B6 needs B3). Each sli
 
 ## Deferred
 
-- **Visual restyle plan** (separate; shown visually first): status pills, single-select tag filters, compact table, summary cards, segmented controls, dialog layout. Reference: "Vendor Bills UI" design canvas.
+- **Visual restyle plan** (separate; shown visually first): status pills, single-select tag filters, compact table, summary cards, segmented controls, dialog layout. Reference: "Vendor Bills UI" design canvas. Decided in D-021 (direction A) and planned in [19-finance-ui-restyle-direction-a.md](19-finance-ui-restyle-direction-a.md). It runs after B5 is merged: B5 builds the bill screens' behaviour in today's style and the restyle then changes only their look.
 - **Balance check for other outflows** (manual ledger entries, statutory payments, payroll funding): small follow-up slice after B3.
 - **Bulk and historical import** (own plan): spreadsheet import with row-level preview creating Drafts or Approved bills; historical bills imported as Paid and linked to ledger transactions already imported from the cashbook (never paid twice), using unlinked-settlement matching; vendor matching by tax registration number and remembered aliases. An in-app AI assistant comes later, calling the same bill functions with the user's permissions and landing everything as Drafts.
 - Skipped by owner: USD-equivalent consolidated reporting, monthly cash count, correcting dev bills BILL-001/BILL-006.

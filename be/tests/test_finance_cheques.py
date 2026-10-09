@@ -5,6 +5,7 @@ Unit and integration tests for Phase 5: Cheque & Teller Withdrawal Module.
 import pytest
 
 
+
 def test_issue_vendor_payment_cheque(app_client, admin_cookies):
     """Admin issues a cheque linked to a vendor bill; verifies single ledger outflow and bill marked paid."""
     # 1. Setup vendor and bill
@@ -33,7 +34,7 @@ def test_issue_vendor_payment_cheque(app_client, admin_cookies):
     )
     assert bill_resp.status_code == 201
     bill_id = bill_resp.json()["id"]
-    assert bill_resp.json()["status"] == "unpaid"
+    assert bill_resp.json()["status"] == "approved"
 
     # 2. Setup bank account
     acc_resp = app_client.post(

@@ -25,9 +25,9 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('AC 1: Bill in needs_approval cannot be scheduled or paid before approval', async ({ page }) => {
-    // Switch to Needs Approval queue tab
-    await selectBillQueue(page, '#tabBillQueueApproval');
+  test('AC 1: Bill in pending_approval cannot be scheduled or paid before approval', async ({ page }) => {
+    // Switch to Pending Approval queue tab
+    await selectBillQueue(page, '#tabBillQueuePendingApproval');
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(billRow).toBeVisible();
 
@@ -35,7 +35,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const approveBtn = billRow.locator('button.btn-approve-bill');
     await expect(approveBtn).toBeVisible();
 
-    // Verify "Pay" and "Schedule" buttons are NOT present while bill is in needs_approval
+    // Verify "Pay" and "Schedule" buttons are NOT present while bill is in pending_approval
     const payBtn = billRow.locator('button.btn-pay-bill');
     await expect(payBtn).not.toBeVisible();
     const scheduleBtn = billRow.locator('button.btn-schedule-bill');
@@ -43,8 +43,8 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
   });
 
   test('AC 2: Maker-checker segregation of duties and approval workflow', async ({ page }) => {
-    // Filter to BILL-2026-005 in Needs Approval queue
-    await selectBillQueue(page, '#tabBillQueueApproval');
+    // Filter to BILL-2026-005 in Pending Approval queue
+    await selectBillQueue(page, '#tabBillQueuePendingApproval');
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(billRow).toBeVisible();
 
@@ -94,14 +94,16 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     // Modal closes upon successful approval
     await expect(page.locator('#billApprovalModal')).not.toBeVisible();
 
-    // Switch to Ready to Pay queue and verify the bill transitioned
-    await selectBillQueue(page, '#tabBillQueueReady');
+    // Switch to Approved queue and verify the bill transitioned
+    await selectBillQueue(page, '#tabBillQueueApproved');
     const approvedRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(approvedRow).toBeVisible();
 
-    // Pay and Schedule buttons are now available!
+    // The approved bill's primary action is Pay; Schedule lives in the bill detail
     await expect(approvedRow.locator('button.btn-pay-bill')).toBeVisible();
-    await expect(approvedRow.locator('button.btn-schedule-bill')).toBeVisible();
+    await approvedRow.locator('button.btn-view-bill').click();
+    await expect(page.locator('button.btn-drawer-schedule')).toBeVisible();
+    await page.click('#financeDetailDrawerCloseBtn');
   });
 
   test('AC 3: Overpayment prevention, partial payment, and balance tracking', async ({ page }) => {
@@ -121,6 +123,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     // 1. Attempt overpayment of $5,000 (exceeds remaining balance of $4,200)
     await page.fill('#billPaymentAmount', '5000');
     await page.selectOption('#billPaymentBankAccountId', { index: 1 });
+    await expect(page.locator('#billPaymentTypeId')).not.toHaveValue('');
     await page.click('#billPaymentSubmitBtn');
 
     // Overpayment blocked, modal remains visible
@@ -152,7 +155,9 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(billRow).toBeVisible();
 
-    await billRow.locator('button.btn-schedule-bill').click();
+    await billRow.locator('button.btn-view-bill').click();
+    await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
+    await page.locator('button.btn-drawer-schedule').click();
     await expect(page.locator('#billScheduleModal')).toBeVisible();
     await expect(page.locator('#billScheduleBillNumber')).toHaveText('BILL-2026-001');
 

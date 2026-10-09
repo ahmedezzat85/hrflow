@@ -14,6 +14,10 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
+from finance import bill_status as bs
+from finance import bill_payment_rules as rules
+from finance.repositories.ledger_repository import LedgerRepository
+
 from finance.models import (
     BillDB,
     BillLineDB,
@@ -62,6 +66,7 @@ class BillsRepository:
         has_attachment: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
+        overdue: Optional[bool] = None,
     ) -> List[BillDB]:
         query = (
             self.db.query(BillDB)
@@ -69,24 +74,14 @@ class BillsRepository:
         )
         if queue:
             q_norm = queue.lower().strip()
-            if q_norm == "inbox":
-                query = query.filter(BillDB.status == "inbox")
-            elif q_norm == "needs_coding":
-                query = query.filter(BillDB.status == "needs_coding")
-            elif q_norm == "needs_approval":
-                query = query.filter(BillDB.status == "needs_approval")
-            elif q_norm == "ready_to_pay":
-                query = query.filter(BillDB.status.in_(["ready_to_pay", "unpaid"]))
-            elif q_norm == "scheduled":
-                query = query.filter(BillDB.status == "scheduled")
-            elif q_norm == "paid":
-                query = query.filter(BillDB.status == "paid")
-            elif q_norm == "exceptions":
-                query = query.filter(BillDB.status == "exceptions")
+            if q_norm in bs.VALID_BILL_STATUSES:
+                query = query.filter(BillDB.status == q_norm)
             elif q_norm == "all":
-                query = query.filter(BillDB.status != "void")
+                query = query.filter(BillDB.status != bs.VOID)
         elif status:
             query = query.filter(BillDB.status == status)
+        if overdue is True:
+            query = query.filter(BillDB.status.in_(bs.OPEN_STATUSES), BillDB.due_date < datetime.utcnow().strftime("%Y-%m-%d"))
 
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
@@ -145,25 +140,19 @@ class BillsRepository:
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
         bills = query.all()
-        counts = {
-            "inbox": 0,
-            "needs_coding": 0,
-            "needs_approval": 0,
-            "ready_to_pay": 0,
-            "scheduled": 0,
-            "paid": 0,
-            "exceptions": 0,
-            "all": 0,
-        }
+        counts = {st: 0 for st in bs.BILL_STATUSES}
+        counts["overdue"] = 0
+        counts["all"] = 0
         for b in bills:
-            if b.status == "void":
+            st = (b.status or "").lower()
+            if st not in bs.VALID_BILL_STATUSES:
+                continue
+            counts[st] += 1
+            if st == bs.VOID:
                 continue
             counts["all"] += 1
-            st = (b.status or "").lower()
-            if st in counts:
-                counts[st] += 1
-            elif st == "unpaid":
-                counts["ready_to_pay"] += 1
+            if bs.is_overdue(st, b.due_date):
+                counts["overdue"] += 1
         return counts
 
     def find_duplicate_candidates(
@@ -235,7 +224,9 @@ class BillsRepository:
     def get_by_id(self, bill_id: int) -> Optional[BillDB]:
         return self._load_bill_full(bill_id)
 
-    def get_by_number(self, bill_number: str) -> Optional[BillDB]:
+    def get_by_number(self, bill_number: Optional[str]) -> Optional[BillDB]:
+        if not bill_number or not bill_number.strip():
+            return None
         return (
             self.db.query(BillDB)
             .filter(BillDB.bill_number == bill_number.strip())
@@ -253,7 +244,7 @@ class BillsRepository:
     # ------------------------------------------------------------------
     # Writes: Bill
     # ------------------------------------------------------------------
-    def create(self, data: dict, lines_data: List[dict]) -> BillDB:
+    def create(self, data: dict, lines_data: List[dict], commit: bool = True) -> BillDB:
         """Create a bill with its lines. Totals are computed from lines."""
         category_id = data.get("category_id")
         category_name = data.get("category", "Operating Expense")
@@ -267,14 +258,14 @@ class BillsRepository:
                 category_id = cat.id
 
         bill = BillDB(
-            vendor_id=data["vendor_id"],
-            bill_number=data["bill_number"].strip(),
+            vendor_id=data.get("vendor_id"),
+            bill_number=(data.get("bill_number") or "").strip() or None,
             category_id=category_id,
             category=category_name,
-            issue_date=data["issue_date"],
-            due_date=data["due_date"],
-            status=data.get("status", "inbox"),
-            currency=data.get("currency", "USD"),
+            issue_date=data.get("issue_date") or None,
+            due_date=data.get("due_date") or None,
+            status=data.get("status", bs.DRAFT),
+            currency=data.get("currency", "EGP"),
             notes=data.get("notes", ""),
             capture_source=data.get("capture_source", "manual"),
             extraction_confidence=data.get("extraction_confidence"),
@@ -295,6 +286,8 @@ class BillsRepository:
             approval_comment=data.get("approval_comment"),
             scheduled_payment_date=data.get("scheduled_payment_date"),
             amount_paid=data.get("amount_paid", 0.0),
+            vendor_to_confirm=bool(data.get("vendor_to_confirm", False)),
+            suggested_vendor_name=data.get("suggested_vendor_name"),
         )
         self.db.add(bill)
         self.db.flush()  # obtain bill.id before inserting lines
@@ -318,15 +311,10 @@ class BillsRepository:
         bill.tax_amount = tax_amount
         bill.total = total
 
-        # Flag for approval if explicitly marked or placed in needs_approval queue
-        if bill.requires_approval or bill.status == "needs_approval":
-            bill.requires_approval = True
-            if not bill.approval_status:
-                bill.approval_status = "pending"
-            if bill.status in ("ready_to_pay", "unpaid") and bill.approval_status != "approved":
-                bill.status = "needs_approval"
-
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return self._load_bill_full(bill.id)
 
     def update(self, bill_id: int, data: dict, lines_data: Optional[List[dict]] = None) -> Optional[BillDB]:
@@ -354,8 +342,6 @@ class BillsRepository:
             bill.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:
             bill.due_date = data["due_date"]
-        if "status" in data and data["status"] is not None:
-            bill.status = data["status"]
         if "currency" in data and data["currency"] is not None:
             bill.currency = data["currency"]
         if "notes" in data and data["notes"] is not None:
@@ -398,6 +384,10 @@ class BillsRepository:
             bill.scheduled_payment_date = data["scheduled_payment_date"]
         if "amount_paid" in data and data["amount_paid"] is not None:
             bill.amount_paid = data["amount_paid"]
+        if "vendor_to_confirm" in data and data["vendor_to_confirm"] is not None:
+            bill.vendor_to_confirm = data["vendor_to_confirm"]
+        if "suggested_vendor_name" in data:
+            bill.suggested_vendor_name = data["suggested_vendor_name"]
 
         if lines_data is not None:
             # Replace all lines
@@ -424,92 +414,110 @@ class BillsRepository:
         self.db.commit()
         return self._load_bill_full(bill_id)
 
-    def void_bill(self, bill_id: int) -> Optional[BillDB]:
-        """Void a bill (soft-delete via status change)."""
-        return self.update(bill_id, {"status": "void"})
+    def set_status(self, bill_id: int, new_status: str, extra: Optional[dict] = None) -> Optional[BillDB]:
+        """Persist a status chosen by BillsService / bill_status. The only write path for status."""
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            return None
+        bill.status = new_status
+        for key, value in (extra or {}).items():
+            setattr(bill, key, value)
+        self.db.commit()
+        return self._load_bill_full(bill_id)
+
+    def delete_bill(self, bill_id: int) -> bool:
+        """Hard-delete a bill and its lines. Only used to discard a Draft (D-019)."""
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            return False
+        self.db.delete(bill)
+        self.db.commit()
+        return True
+
+    def count_unreversed_payments(self, bill_id: int) -> int:
+        return (
+            self.db.query(PaymentDB)
+            .filter(PaymentDB.related_bill_id == bill_id, PaymentDB.is_reversed == False)  # noqa: E712
+            .count()
+        )
 
     # ------------------------------------------------------------------
     # Writes: Payment
     # ------------------------------------------------------------------
-    def record_payment(self, data: dict) -> PaymentDB:
+    def record_payment(self, data: dict, commit: bool = True) -> PaymentDB:
         """
-        Record an outgoing payment against a bill.
-        Adjusts the bank account's current_balance atomically (-amount for outgoing).
-        Enforces that payment cannot exceed remaining balance.
-        Marks bill as 'paid' once fully settled, or 'partially_paid'.
+        Record an outgoing payment against a bill through the settlement service (currency,
+        balance and payment-type checks), then write the ledger row and recompute the account
+        balance with recalculate_account_running_balances so backdated payments keep running
+        balances correct. With commit=False the caller owns the transaction (create-and-pay).
         """
-        bank_account = (
-            self.db.query(FinanceBankAccountDB)
-            .filter(FinanceBankAccountDB.id == data["bank_account_id"])
-            .first()
+        from finance.services.settlement_service import SettlementService
+        from finance.repositories.ledger_repository import LedgerRepository
+
+        bill_id = data.get("related_bill_id")
+        if not bill_id:
+            raise ValueError("A bill payment must reference a bill")
+
+        settlement_svc = SettlementService(self.db)
+        bill, payment = settlement_svc.settle_bill(
+            bill_id=bill_id,
+            amount=data["amount"],
+            payment_date=data["payment_date"],
+            bank_account_id=data["bank_account_id"],
+            payment_type_id=data.get("payment_type_id"),
+            reference=data.get("reference") or "",
+            cheque_number=data.get("cheque_number"),
         )
-        if not bank_account:
-            raise ValueError(f"Bank account {data['bank_account_id']} not found")
+        self.db.flush()
 
-        bill = None
-        if data.get("related_bill_id"):
-            from finance.services.settlement_service import SettlementService
-            settlement_svc = SettlementService(self.db)
-            bill, payment = settlement_svc.settle_bill(
-                bill_id=data["related_bill_id"],
-                amount=data["amount"],
-                payment_date=data["payment_date"],
-                bank_account_id=bank_account.id,
-                currency=data.get("currency", "USD"),
-                reference=data.get("reference", ""),
-                method=data.get("method", "bank_transfer"),
-            )
+        payment_type = None
+        if data.get("payment_type_id"):
+            payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == data["payment_type_id"]).first()
         else:
-            payment = PaymentDB(
-                direction=data.get("direction", "outgoing"),
-                related_invoice_id=data.get("related_invoice_id"),
-                related_bill_id=data.get("related_bill_id"),
-                amount=data["amount"],
-                currency=data.get("currency", "USD"),
-                payment_date=data["payment_date"],
-                bank_account_id=data["bank_account_id"],
-                method=data.get("method", "bank_transfer"),
-                reference=data.get("reference", ""),
-                is_reversed=False,
-            )
-            self.db.add(payment)
-
-        # Adjust balance: incoming → credit, outgoing → debit
-        if payment.direction == "incoming":
-            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
-        else:
-            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
+            account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == data["bank_account_id"]).first()
+            code = rules.DEFAULT_PAYMENT_TYPE_CODE_BY_ACCOUNT_TYPE.get((account.account_type or "bank").lower()) if account else None
+            payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == code).first() if code else None
 
         # Record corresponding ledger transaction for single source of truth (FUX-411)
         bill_cat = None
-        if bill and bill.category_id:
+        if bill.category_id:
             bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == bill.category_id).first()
         if not bill_cat:
             logger.warning(
-                f"[FUX-411] Bill #{bill.id if bill else 'unknown'} ({bill.bill_number if bill else 'N/A'}) has missing or invalid category_id at payment time. Explicitly falling back to 'Other'."
+                f"[FUX-411] Bill #{bill.id} ({bill.bill_number}) has missing or invalid category_id at payment time. Explicitly falling back to 'Other'."
             )
             bill_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
-        outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
+
+        vendor = self.db.query(VendorDB).filter(VendorDB.id == bill.vendor_id).first() if bill.vendor_id else None
+        vendor_name = vendor.name if vendor else None
+        details = (data.get("details") or "").strip() or vendor_name or f"Bill {bill.bill_number}"
 
         ledger_tx = LedgerTransactionDB(
-            account_id=bank_account.id,
+            account_id=payment.bank_account_id,
             date=payment.payment_date,
             amount=payment.amount,
-            direction="in" if payment.direction == "incoming" else "out",
+            direction="out",
             currency=payment.currency,
             category_id=bill_cat.id if bill_cat else None,
-            payment_type_id=outbound_pt.id if outbound_pt else None,
-            reference=bill.bill_number if bill else (payment.reference or ""),
-            description=f"Payment for bill #{bill.bill_number}" if bill else (payment.reference or f"Outgoing payment #{payment.id}"),
+            payment_type_id=payment_type.id if payment_type else None,
+            reference=(data.get("reference") or "").strip(),
+            description=details,
+            cheque_number=(data.get("cheque_number") or "").strip() or None,
+            payee_type="vendor" if vendor else "none",
+            payee_id=vendor.id if vendor else None,
+            payee_name=vendor_name,
             source="bill_payment",
-            linked_bill_id=payment.related_bill_id,
-            running_balance=bank_account.current_balance,
-            created_at=payment.created_at,
+            linked_bill_id=bill.id,
+            running_balance=0.0,
+            created_by=data.get("created_by"),
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        LedgerRepository(self.db).recalculate_account_running_balances(payment.bank_account_id, commit=False)
 
-        self.db.commit()
-        self.db.refresh(payment)
+        if commit:
+            self.db.commit()
+            self.db.refresh(payment)
         return payment
 
     def reverse_payment(
@@ -542,19 +550,13 @@ class BillsRepository:
         if not bill:
             raise ValueError(f"Bill {bill_id} not found")
 
-        # 1. Reverse balance on bank account
-        if payment.direction == "outgoing":
-            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
-        else:
-            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
-
-        # 2. Mark payment as reversed
+        # 1. Mark payment as reversed
         payment.is_reversed = True
         payment.reversed_at = datetime.utcnow()
         payment.reversed_by = reversed_by
         payment.reversal_reason = reason.strip()
 
-        # 3. Add reversal ledger entry
+        # 2. Add reversal ledger entry; balances come from the ledger, never set directly
         ledger_tx = LedgerTransactionDB(
             account_id=bank_account.id,
             date=datetime.utcnow().strftime("%Y-%m-%d"),
@@ -565,11 +567,15 @@ class BillsRepository:
             description=f"Reversal of payment #{payment.id}: {reason.strip()}",
             source="bill_payment_reversal",
             linked_bill_id=bill_id,
-            running_balance=bank_account.current_balance,
+            running_balance=0.0,
+            created_by=reversed_by,
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
-        # 4. Recalculate bill status and amount_paid
+        # 3. Recalculate bill amount_paid and status
+        self.db.flush()
         remaining_payments = [
             p for p in self.list_payments(bill_id) if not p.is_reversed and p.id != payment.id
         ]
@@ -578,14 +584,7 @@ class BillsRepository:
 
         if bill.amount_paid <= 0.001:
             bill.amount_paid = 0.0
-            if bill.scheduled_payment_date:
-                bill.status = "scheduled"
-            else:
-                bill.status = "ready_to_pay"
-        elif bill.amount_paid < bill.total - 0.01:
-            bill.status = "partially_paid"
-        else:
-            bill.status = "paid"
+        bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         self.db.commit()
         self.db.refresh(payment)

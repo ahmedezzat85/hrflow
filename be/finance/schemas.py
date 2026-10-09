@@ -149,8 +149,22 @@ class LedgerTransactionBase(BaseModel):
     destination_cash_account_id: Optional[int] = None
 
 
+def _reject_manual_rate(data):
+    """D-020: manual entries are in their account's currency; exchange happens only through FX transfers."""
+    if isinstance(data, dict):
+        sent = [k for k in ("fx_rate", "base_amount") if data.get(k) is not None]
+        if sent:
+            raise ValueError(f"{', '.join(sent)} is not accepted on a manual entry; use an FX transfer to exchange currencies")
+    return data
+
+
 class LedgerTransactionCreate(LedgerTransactionBase):
     category: Optional[str] = None  # Backwards compatibility string fallback
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_rate(cls, data):
+        return _reject_manual_rate(data)
 
 
 class LedgerTransactionResponse(LedgerTransactionBase):
@@ -169,6 +183,11 @@ class LedgerTransactionResponse(LedgerTransactionBase):
 
 
 class LedgerTransactionUpdate(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_rate(cls, data):
+        return _reject_manual_rate(data)
+
     date: Optional[str] = Field(None, description="Transaction date (YYYY-MM-DD)")
     amount: Optional[float] = Field(None, gt=0.0, description="Transaction amount")
     direction: Optional[str] = Field(None, description="Transaction direction: in or out")
@@ -604,14 +623,14 @@ class BillLineResponse(BillLineBase):
 # Bill Schemas (Accounts Payable)
 # ==========================================
 class BillBase(BaseModel):
-    vendor_id: int = Field(..., description="ID of the vendor")
-    bill_number: str = Field(..., min_length=1, max_length=50, description="Unique bill reference number")
+    # vendor, bill number and dates may be empty on a Draft; leaving Draft requires them (D-019)
+    vendor_id: Optional[int] = Field(None, description="ID of the vendor")
+    bill_number: Optional[str] = Field(None, min_length=1, max_length=50, description="Unique bill reference number")
     category_id: Optional[int] = Field(None, description="ID of the governed transaction category")
     category: Optional[str] = Field("Operating Expense", max_length=100)
-    issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
-    due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    status: str = Field("unpaid", description="inbox|needs_coding|needs_approval|ready_to_pay|scheduled|paid|exceptions|void|unpaid")
-    currency: str = Field("USD", min_length=3, max_length=10)
+    issue_date: Optional[str] = Field(None, description="Date issued (YYYY-MM-DD)")
+    due_date: Optional[str] = Field(None, description="Payment due date (YYYY-MM-DD)")
+    currency: str = Field("EGP", min_length=3, max_length=10)
     notes: Optional[str] = None
     capture_source: Optional[str] = Field("manual", max_length=20)
     extraction_confidence: Optional[float] = None
@@ -621,41 +640,83 @@ class BillBase(BaseModel):
     attachment_url: Optional[str] = None
     attachment_name: Optional[str] = None
     file_fingerprint: Optional[str] = None
-    is_reviewed: Optional[bool] = True
     is_duplicate_override: Optional[bool] = False
     duplicate_override_reason: Optional[str] = None
-    created_by: Optional[str] = None
-    requires_approval: Optional[bool] = False
-    approval_status: Optional[str] = None  # pending | approved | rejected
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
-    approval_comment: Optional[str] = None
-    scheduled_payment_date: Optional[str] = None
-    amount_paid: float = 0.0
 
 
-class BillPaymentInline(BaseModel):
-    bank_account_id: int = Field(..., description="ID of bank account used for payment")
-    amount: Optional[float] = Field(None, ge=0.01, description="Payment amount. If omitted, defaults to bill total.")
+# Fields the server owns. A client that sends any of them in a create/update is refused (422).
+BILL_SERVER_OWNED_FIELDS = (
+    "status",
+    "approval_status",
+    "approved_by",
+    "approved_at",
+    "approval_comment",
+    "requires_approval",
+    "created_by",
+    "amount_paid",
+    "is_reviewed",
+    "scheduled_payment_date",
+    "vendor_to_confirm",
+    "suggested_vendor_name",
+)
+
+
+class BillPaymentInput(BaseModel):
+    """Shared input for every vendor-bill payment (Pay dialog and create-and-pay). No exchange rate:
+    a bill is paid from an account in the bill's currency."""
+
+    bank_account_id: int = Field(..., description="Source account (must be in the bill's currency)")
+    payment_type_id: int = Field(..., description="Payment type: Cash payment (cash account) or Outgoing transfer / Cheque / Debit card (bank account)")
+    amount: Optional[float] = Field(None, ge=0.01, description="Payment amount. If omitted on create-and-pay, defaults to the bill total.")
     payment_date: str = Field(..., description="Date payment was made (YYYY-MM-DD)")
-    method: Optional[str] = Field("bank_transfer", description="Payment method: bank_transfer, cash, card, other")
-    reference: Optional[str] = Field(None, max_length=100, description="Payment reference / check number")
+    reference: Optional[str] = Field("", max_length=100, description="Optional payment reference")
+    details: Optional[str] = Field(None, max_length=255, description="Ledger details; defaults to the vendor name")
+    cheque_number: Optional[str] = Field(None, max_length=50, description="Required for a Cheque payment")
+
+
+class BillPaymentInline(BillPaymentInput):
+    """Inline payment on create-and-pay ("Already paid")."""
+
+
+class BillPaymentCreate(BillPaymentInput):
+    """Payment recorded from the Pay dialog."""
+
+    amount: float = Field(..., gt=0.0, description="Payment amount")
+
+
+def _reject_client_status(data):
+    """Status and approval fields are set only by server actions (D-016, D-017); a client-supplied value is refused."""
+    if isinstance(data, dict):
+        sent = [k for k in BILL_SERVER_OWNED_FIELDS if k in data]
+        if sent:
+            raise ValueError(f"{', '.join(sent)} cannot be set by the client; set by the server through bill actions")
+    return data
 
 
 class BillCreate(BillBase):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_client_status(data)
+
     lines: List[BillLineCreate] = Field(default_factory=list)
+    save_as_draft: bool = Field(False, description="Save as a Draft even when the user could approve (the screen's Save as draft)")
     is_paid_now: Optional[bool] = Field(False, description="Flag indicating bill is already paid upon creation")
     payment: Optional[BillPaymentInline] = Field(None, description="Inline payment details when is_paid_now is True")
 
 
 class BillUpdate(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_client_status(data)
+
     vendor_id: Optional[int] = None
     bill_number: Optional[str] = Field(None, max_length=50)
     category_id: Optional[int] = None
     category: Optional[str] = Field(None, max_length=100)
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
-    status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     notes: Optional[str] = None
     capture_source: Optional[str] = None
@@ -666,22 +727,30 @@ class BillUpdate(BaseModel):
     attachment_url: Optional[str] = None
     attachment_name: Optional[str] = None
     file_fingerprint: Optional[str] = None
-    is_reviewed: Optional[bool] = None
     is_duplicate_override: Optional[bool] = None
     duplicate_override_reason: Optional[str] = None
-    created_by: Optional[str] = None
-    requires_approval: Optional[bool] = None
-    approval_status: Optional[str] = None
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
-    approval_comment: Optional[str] = None
-    scheduled_payment_date: Optional[str] = None
-    amount_paid: Optional[float] = None
     lines: Optional[List[BillLineCreate]] = None
 
 
 class BillResponse(BillBase):
     id: int
+    status: str
+    is_overdue: bool = False
+    is_reviewed: Optional[bool] = True
+    created_by: Optional[str] = None
+    requires_approval: Optional[bool] = False
+    approval_status: Optional[str] = None  # pending | approved | rejected | auto
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_comment: Optional[str] = None
+    scheduled_payment_date: Optional[str] = None
+    amount_paid: float = 0.0
+    vendor_to_confirm: bool = False
+    suggested_vendor_name: Optional[str] = None
+    allowed_actions: List[str] = []
+    void_reason: Optional[str] = None
+    voided_by: Optional[str] = None
+    voided_at: Optional[datetime] = None
     subtotal: float
     tax_amount: float
     total: float
@@ -726,13 +795,13 @@ class BillDocumentExtractionResponse(BaseModel):
 
 class BillCategoryQualityReportItem(BaseModel):
     id: int
-    bill_number: str
-    vendor_id: int
+    bill_number: Optional[str] = None
+    vendor_id: Optional[int] = None
     vendor_name: Optional[str] = None
     category_id: Optional[int] = None
     category_name: Optional[str] = None
     raw_category: Optional[str] = None
-    issue_date: str
+    issue_date: Optional[str] = None
     total: float
     status: str
 
@@ -748,6 +817,21 @@ class BillApprovalRequest(BaseModel):
     decision: str = Field(..., description="approve | reject")
     comment: Optional[str] = Field(None, max_length=500, description="Optional comment, required on rejection")
     approver_limit: Optional[float] = Field(None, description="Optional maximum approval authority for the approver")
+
+
+class BillUploadResult(BaseModel):
+    filename: str
+    bill: Optional["BillResponse"] = None
+    error: Optional[str] = None
+    duplicate_of: Optional[int] = None
+
+
+class BillUploadResponse(BaseModel):
+    results: List[BillUploadResult] = []
+
+
+class BillVoidRequest(BaseModel):
+    reason: Optional[str] = Field(None, max_length=500, description="Reason for voiding the bill")
 
 
 class BillScheduleRequest(BaseModel):
@@ -772,10 +856,10 @@ class BillDuplicateCheckRequest(BaseModel):
 
 class BillDuplicateCandidate(BaseModel):
     id: int
-    bill_number: str
-    vendor_id: int
+    bill_number: Optional[str] = None
+    vendor_id: Optional[int] = None
     vendor_name: Optional[str] = None
-    issue_date: str
+    issue_date: Optional[str] = None
     total: float
     status: str
     matched_field: str
@@ -786,14 +870,19 @@ class BillDuplicateCheckResponse(BaseModel):
     candidates: List[BillDuplicateCandidate] = []
 
 
+BillUploadResult.model_rebuild()
+
+
 class BillQueueCountsResponse(BaseModel):
-    inbox: int = 0
-    needs_coding: int = 0
-    needs_approval: int = 0
-    ready_to_pay: int = 0
+    draft: int = 0
+    pending_approval: int = 0
+    rejected: int = 0
+    approved: int = 0
     scheduled: int = 0
+    partially_paid: int = 0
     paid: int = 0
-    exceptions: int = 0
+    void: int = 0
+    overdue: int = 0
     all: int = 0
 
 

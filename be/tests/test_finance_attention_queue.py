@@ -97,7 +97,7 @@ def seed_attention_records(db_session):
         bill_number="BILL-ATTN-501",
         issue_date=five_days_ago,
         due_date=five_days_ago,
-        status="unpaid",
+        status="approved",
         currency="USD",
         total=3200.0,
     )
@@ -106,7 +106,7 @@ def seed_attention_records(db_session):
         bill_number="BILL-ATTN-502",
         issue_date=today_str,
         due_date=two_days_ahead,
-        status="unpaid",
+        status="approved",
         currency="USD",
         total=1200.0,
     )

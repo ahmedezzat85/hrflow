@@ -608,6 +608,109 @@ async getFeatureFlags() {
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
 
+  // Vendor Bill Workflow v2 (D-016): mirrors be/finance/bill_status.py
+  const BILL_STATUSES = ["draft", "pending_approval", "rejected", "approved", "scheduled", "partially_paid", "paid", "void"];
+  const BILL_OPEN_STATUSES = ["approved", "scheduled", "partially_paid"];
+  const BILL_TRANSITIONS = {
+    submit: { draft: "pending_approval", rejected: "pending_approval" },
+    send_back: { approved: "pending_approval", scheduled: "pending_approval" },
+    withdraw: { pending_approval: "draft" },
+    approve: { pending_approval: "approved" },
+    reject: { pending_approval: "rejected" },
+    schedule: { approved: "scheduled" },
+    unschedule: { scheduled: "approved" },
+    pay: { approved: "partially_paid", scheduled: "partially_paid", partially_paid: "partially_paid" },
+    reverse_payment: { paid: "approved", partially_paid: "approved" },
+    void: { draft: "void", pending_approval: "void", rejected: "void", approved: "void", scheduled: "void" },
+  };
+  const _billAllowedActions = (status) => Object.keys(BILL_TRANSITIONS).filter((a) => BILL_TRANSITIONS[a][status]);
+  const _can = (key) => typeof SessionInfo === "undefined" || typeof SessionInfo.hasPermission !== "function" || SessionInfo.hasPermission(key);
+  const _forbid = (key) => {
+    const err = new Error(`Permission denied: '${key}' required`);
+    err.status = 403;
+    return err;
+  };
+  const SERVER_OWNED = ["status", "approval_status", "approved_by", "approved_at", "approval_comment", "requires_approval", "created_by", "amount_paid", "is_reviewed", "scheduled_payment_date"];
+  const _refuseServerOwned = (payload) => {
+    const sent = SERVER_OWNED.filter((k) => k in payload);
+    if (sent.length) {
+      const err = new Error(`${sent.join(", ")} cannot be set by the client; set by the server through bill actions`);
+      err.status = 422;
+      throw err;
+    }
+  };
+  // Mirrors be/finance/bill_payment_rules.py and settlement_service.settle_bill (D-018)
+  const BILL_PAYMENT_TYPES = { cash: ["CASH"], bank: ["OUTBOUND_TRANS", "CHK", "DEBIT_CARD"] };
+  const BILL_PAYMENT_METHOD = { CASH: "cash", OUTBOUND_TRANS: "bank_transfer", CHK: "cheque", DEBIT_CARD: "card" };
+  const _paymentError = (code, message) => {
+    const err = new Error(message);
+    err.status = 400;
+    err.detail = { code, message };
+    return err;
+  };
+  const _checkBillPayment = (bill, payload, paidSoFar) => {
+    const account = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.bank_account_id, 10));
+    if (!account) throw new Error(`Bank account ${payload.bank_account_id} not found`);
+    const pt = (FinanceMockState.paymentTypes || []).find((t) => t.id === parseInt(payload.payment_type_id, 10));
+    const allowed = BILL_PAYMENT_TYPES[(account.account_type || "bank").toLowerCase()] || [];
+    if (!pt || !pt.is_active || !allowed.includes(pt.code)) {
+      throw _paymentError("payment_type_not_allowed", `Payment type '${pt ? pt.name : payload.payment_type_id}' cannot be used to pay a bill from a ${account.account_type} account.`);
+    }
+    if (pt.code === "CHK" && !String(payload.cheque_number || "").trim()) {
+      throw _paymentError("cheque_number_required", "A cheque number is required for a cheque payment.");
+    }
+    if (String(account.currency || "").toUpperCase() !== String(bill.currency || "").toUpperCase()) {
+      throw _paymentError("currency_mismatch", `Account currency (${account.currency}) differs from the bill currency (${bill.currency}). Transfer funds into a ${bill.currency} account first.`);
+    }
+    const pAmt = parseFloat(payload.amount);
+    const remaining = round(bill.total - paidSoFar, 2);
+    if (pAmt > remaining + 0.01) {
+      throw new Error(`Payment amount ($${pAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
+    }
+    if (round(account.current_balance || 0, 4) + 0.0001 < pAmt) {
+      throw _paymentError("insufficient_balance", `Account '${account.account_name}' balance (${Number(account.current_balance).toFixed(2)} ${account.currency}) is below the payment (${pAmt.toFixed(2)}).`);
+    }
+    return { account, pt, pAmt };
+  };
+  const _missingToLeaveDraft = (b) => {
+    const errors = [];
+    const need = (field, value, msg) => { if (value === null || value === undefined || String(value).trim() === "") errors.push({ loc: ["body", field], msg, type: "missing_field" }); };
+    need("vendor_id", b.vendor_id, "Vendor is required");
+    need("bill_number", b.bill_number, "Bill number is required");
+    need("issue_date", b.issue_date, "Issue date is required");
+    need("due_date", b.due_date, "Due date is required");
+    if (!b.category_id && !String(b.category || "").trim()) errors.push({ loc: ["body", "category"], msg: "Category is required", type: "missing_field" });
+    return errors;
+  };
+  const _validationError = (errors) => {
+    const err = new Error(errors.map((e) => e.msg).join("; "));
+    err.status = 422;
+    err.detail = errors;
+    return err;
+  };
+  const _withFlags = (b) => ({ ...b, is_overdue: _billIsOverdue(b), allowed_actions: _billAllowedActions(b.status) });
+  const _billNext = (action, bill) => {
+    const target = (BILL_TRANSITIONS[action] || {})[bill.status];
+    if (!target) {
+      const err = new Error(`Cannot ${action.replace("_", " ")} a bill in '${bill.status}' status`);
+      err.status = 409;
+      err.detail = { code: "invalid_transition", message: err.message, action, current_status: bill.status, allowed_actions: _billAllowedActions(bill.status) };
+      throw err;
+    }
+    return target;
+  };
+  const _billIsOverdue = (b) => {
+    if (!BILL_OPEN_STATUSES.includes(b.status) || !b.due_date) return false;
+    return b.due_date < new Date().toISOString().slice(0, 10);
+  };
+  const _billDerivePaymentStatus = (bill) => {
+    if (["draft", "pending_approval", "rejected", "void"].includes(bill.status)) return bill.status;
+    const paid = round(bill.amount_paid || 0, 2);
+    if (paid > 0.001) return paid >= bill.total - 0.01 ? "paid" : "partially_paid";
+    return bill.scheduled_payment_date ? "scheduled" : "approved";
+  };
+  root.FinanceBillStatus = { BILL_STATUSES, BILL_OPEN_STATUSES, BILL_TRANSITIONS, derivePaymentStatus: _billDerivePaymentStatus };
+
   if (!FinanceMockState.vendors) {
     FinanceMockState.vendors = [
     { id: 1, name: "Amazon Web Services", legal_name: "Amazon Web Services Inc", category: "Infrastructure", default_category_id: 8, contact_name: "AWS Accounts Team", contact_email: "aws-receivables@amazon.com", contact_phone: "+1 800-555-0199", tax_id: "VAT-1294819", remit_address: "410 Terry Ave N, Seattle WA", country: "United States", payment_terms_days: 30, default_currency: "USD", default_department: "Engineering", tax_treatment: "standard", onboarding_status: "active", notes: "Hosting & compute", is_active: true },
@@ -625,12 +728,14 @@ async getFeatureFlags() {
 
   if (!FinanceMockState.bills) {
     FinanceMockState.bills = [
-    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "ready_to_pay", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "approved", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
     { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
-    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category_id: null, category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "inbox", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
-    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category_id: 9, category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "needs_coding", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
-    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "needs_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
-    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "exceptions", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
+    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category_id: null, category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "draft", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
+    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category_id: 9, category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "draft", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
+    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "pending_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
+    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "rejected", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, approval_status: "rejected", approval_comment: "Duplicate of BILL-2026-002", notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
+    { id: 7, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-007", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-20", due_date: "2026-11-20", status: "scheduled", scheduled_payment_date: "2026-11-15", currency: "USD", subtotal: 640.0, tax_amount: 0.0, total: 640.0, amount_paid: 0.0, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Scheduled support plan", created_at: "2026-09-20T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 7, bill_id: 7, description: "Support plan", quantity: 1, unit_price: 640.0, line_total: 640.0 }] },
+    { id: 8, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-008", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-02", due_date: "2026-09-30", status: "void", void_reason: "Duplicate", voided_by: "admin@voyance.health", currency: "USD", subtotal: 99.0, tax_amount: 0.0, total: 99.0, amount_paid: 0.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Cancelled add-on", created_at: "2026-09-02T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 8, bill_id: 8, description: "Add-on", quantity: 1, unit_price: 99.0, line_total: 99.0 }] },
   ];
   }
 
@@ -644,20 +749,15 @@ async getFeatureFlags() {
 // Vendor Bills
   async getBills(params) {
     if (_isMock()) {
-      let list = [...FinanceMockState.bills];
+      let list = FinanceMockState.bills.map((b) => _withFlags(b));
       if (params && params.queue) {
         const q = params.queue.toLowerCase().trim();
-        if (q === "inbox") list = list.filter((b) => b.status === "inbox");
-        else if (q === "needs_coding") list = list.filter((b) => b.status === "needs_coding");
-        else if (q === "needs_approval") list = list.filter((b) => b.status === "needs_approval");
-        else if (q === "ready_to_pay") list = list.filter((b) => b.status === "ready_to_pay" || b.status === "unpaid");
-        else if (q === "scheduled") list = list.filter((b) => b.status === "scheduled");
-        else if (q === "paid") list = list.filter((b) => b.status === "paid");
-        else if (q === "exceptions") list = list.filter((b) => b.status === "exceptions");
+        if (BILL_STATUSES.includes(q)) list = list.filter((b) => b.status === q);
         else if (q === "all") list = list.filter((b) => b.status !== "void");
       } else if (params && params.status) {
         list = list.filter((b) => b.status === params.status);
       }
+      if (params && String(params.overdue) === "true") list = list.filter((b) => b.is_overdue);
       if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
       if (params && params.has_attachment !== undefined && params.has_attachment !== null && params.has_attachment !== "") {
         const hasAtt = String(params.has_attachment).toLowerCase() === "true" || params.has_attachment === true;
@@ -680,22 +780,15 @@ async getFeatureFlags() {
     if (_isMock()) {
       let list = FinanceMockState.bills || [];
       if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
-      const counts = {
-        inbox: 0,
-        needs_coding: 0,
-        needs_approval: 0,
-        ready_to_pay: 0,
-        scheduled: 0,
-        paid: 0,
-        exceptions: 0,
-        all: 0,
-      };
+      const counts = { overdue: 0, all: 0 };
+      BILL_STATUSES.forEach((st) => { counts[st] = 0; });
       for (const b of list) {
-        if (b.status === "void") continue;
-        counts.all++;
         const st = (b.status || "").toLowerCase();
-        if (st in counts) counts[st]++;
-        else if (st === "unpaid") counts.ready_to_pay++;
+        if (!(st in counts)) continue;
+        counts[st]++;
+        if (st === "void") continue;
+        counts.all++;
+        if (_billIsOverdue(b)) counts.overdue++;
       }
       return counts;
     }
@@ -755,7 +848,7 @@ async getFeatureFlags() {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
-      return bill;
+      return _withFlags(bill);
     }
     return apiRequest("GET", `/api/finance/bills/${id}`);
   },
@@ -788,51 +881,61 @@ async getFeatureFlags() {
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
 
-      // Check duplicate
-      const dupRes = await this.checkDuplicateBills({
-        vendor_id: payload.vendor_id,
-        bill_number: payload.bill_number,
-        issue_date: payload.issue_date,
-        total: subtotal,
-        file_fingerprint: payload.file_fingerprint,
-      });
-      const candidates = dupRes?.candidates || [];
-      if (candidates.length > 0 && !payload.is_duplicate_override) {
-        throw new Error(`Potential duplicate bill detected (${candidates[0].matched_field}: ${candidates[0].matching_value}). Authorized override required.`);
-      }
-      if (payload.is_duplicate_override && !payload.duplicate_override_reason?.trim()) {
-        throw new Error("A valid reason is required when overriding a duplicate bill detection.");
+      _refuseServerOwned(payload);
+      if (payload.save_as_draft && payload.is_paid_now) throw new Error("A draft cannot be recorded as already paid");
+      const autoApproved = _can("finance.bill.approve") && !payload.save_as_draft;
+
+      if (autoApproved || payload.is_paid_now) {
+        // Leaving Draft (here: born Approved) runs the full checks
+        const missing = _missingToLeaveDraft(payload);
+        if (missing.length) throw _validationError(missing);
+        const dupRes = await this.checkDuplicateBills({
+          vendor_id: payload.vendor_id,
+          bill_number: payload.bill_number,
+          issue_date: payload.issue_date,
+          total: subtotal,
+          file_fingerprint: payload.file_fingerprint,
+        });
+        const candidates = dupRes?.candidates || [];
+        if (candidates.length > 0 && !payload.is_duplicate_override) {
+          throw new Error(`Potential duplicate bill detected (${candidates[0].matched_field}: ${candidates[0].matching_value}). Authorized override required.`);
+        }
+        if (payload.is_duplicate_override && !payload.duplicate_override_reason?.trim()) {
+          throw new Error("A valid reason is required when overriding a duplicate bill detection.");
+        }
+      } else if (!payload.vendor_id && !payload.attachment_name) {
+        throw _validationError([{ loc: ["body", "vendor_id"], msg: "A draft needs a vendor or an attachment", type: "missing_field" }]);
       }
 
-      // FUX-408: Integrity guard
-      if ((payload.status === "paid" || payload.status === "partially_paid") && !payload.is_paid_now) {
-        throw new Error("Paid or partially paid status cannot be set directly. It is derived from recorded settlements.");
-      }
 
       if (payload.is_paid_now) {
         if (!payload.payment) {
           throw new Error("Payment details (bank account, payment date) are required when 'is_paid_now' is True.");
         }
-        if (payload.requires_approval && payload.approval_status !== "approved") {
-          throw new Error("Bill requires approval before payment can be recorded.");
-        }
+        if (!_can("finance.bill.pay") || !_can("finance.bill.approve")) throw _forbid("finance.bill.pay");
       }
 
-      let st = payload.status || "inbox";
-      let isRev = payload.is_reviewed !== undefined ? !!payload.is_reviewed : true;
-      if (!isRev && (st === "ready_to_pay" || st === "paid")) {
-        throw new Error("Unreviewed bills cannot be marked Ready to Pay or Paid.");
-      }
+      // An approver's bill is Approved on save (auto-approved) unless saved as a draft.
+      const st = autoApproved ? "approved" : "draft";
+      const isRev = !(payload.capture_source === "upload" || payload.capture_source === "ocr");
+
       if (payload.is_paid_now) {
-        st = "ready_to_pay";
+        const subtotalNow = (payload.lines || []).reduce((sum, ln) => sum + (ln.line_total || ln.quantity * ln.unit_price), 0);
+        const payAmt = payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : subtotalNow;
+        // A refused payment leaves no bill behind
+        _checkBillPayment({ currency: payload.currency || "EGP", total: subtotalNow }, { ...payload.payment, amount: payAmt }, 0);
       }
 
       const newBill = {
         id: FinanceMockState.bills.length + 1,
         ...payload,
         status: st,
+        save_as_draft: undefined,
         amount_paid: 0.0,
         is_reviewed: isRev,
+        created_by: "admin@voyance.health",
+        approval_status: autoApproved ? "auto" : null,
+        approved_by: autoApproved ? "admin@voyance.health" : null,
         vendor_name: vend ? vend.name : null,
         subtotal, tax_amount: 0, total: subtotal,
         created_at: new Date().toISOString(),
@@ -844,10 +947,12 @@ async getFeatureFlags() {
       if (payload.is_paid_now && payload.payment) {
         await this.recordBillPayment(newBill.id, {
           bank_account_id: payload.payment.bank_account_id,
+          payment_type_id: payload.payment.payment_type_id,
           payment_date: payload.payment.payment_date,
           amount: payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : newBill.total,
-          method: payload.payment.method || "bank_transfer",
-          reference: payload.payment.reference || newBill.bill_number,
+          reference: payload.payment.reference || "",
+          details: payload.payment.details || null,
+          cheque_number: payload.payment.cheque_number || null,
         });
       }
 
@@ -860,21 +965,29 @@ async getFeatureFlags() {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
 
-      // FUX-408: Integrity guard
-      if (payload.status === "paid" || payload.status === "partially_paid") {
-        throw new Error("Bill status cannot be directly updated to paid or partially paid. Record a payment via settlement instead.");
-      }
+      _refuseServerOwned(payload);
+      if (bill.status === "void") throw new Error("Cannot update a voided bill");
 
-      const targetStatus = payload.status || bill.status;
-      const isRev = payload.is_reviewed !== undefined ? payload.is_reviewed : bill.is_reviewed;
-      if ((targetStatus === "ready_to_pay" || targetStatus === "paid") && !isRev) {
-        throw new Error("Uploaded bills must be reviewed and coded before moving to ready_to_pay or paid status.");
-      }
+      // A material edit (vendor, currency, lines) by a user who cannot approve sends an Approved/Scheduled bill back.
+      const oldLines = JSON.stringify((bill.lines || []).map((l) => [String(l.description || "").trim(), Number(l.quantity), Number(l.unit_price)]).sort());
+      const newLines = payload.lines ? JSON.stringify(payload.lines.map((l) => [String(l.description || "").trim(), Number(l.quantity ?? 1), Number(l.unit_price ?? 0)]).sort()) : oldLines;
+      const material = (payload.vendor_id !== undefined && parseInt(payload.vendor_id, 10) !== bill.vendor_id)
+        || (payload.currency !== undefined && payload.currency !== bill.currency)
+        || oldLines !== newLines;
+      const sendBack = material && ["approved", "scheduled"].includes(bill.status) && !_can("finance.bill.approve");
 
       Object.assign(bill, payload);
       if (payload.lines) {
         bill.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
         bill.total = bill.subtotal;
+      }
+      if (sendBack) {
+        bill.status = _billNext("send_back", bill);
+        bill.scheduled_payment_date = null;
+        bill.approval_status = "pending";
+        bill.approved_by = null;
+        bill.approved_at = null;
+        bill.approval_comment = null;
       }
       return bill;
     }
@@ -884,12 +997,92 @@ async getFeatureFlags() {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
-      bill.status = "void";
-      if (reason) bill.notes = `${bill.notes || ""}\n[Void reason: ${reason}]`.trim();
+      const target = _billNext("void", bill);
+      const hasPayments = (FinanceMockState.billPayments || []).some((p) => p.related_bill_id === bill.id && !p.is_reversed);
+      if (hasPayments || (bill.amount_paid || 0) > 0.001) {
+        const err = new Error("Cannot void a bill that has unreversed payments. Reverse the payments first.");
+        err.status = 409;
+        err.detail = { code: "has_unreversed_payments", message: err.message, current_status: bill.status, allowed_actions: _billAllowedActions(bill.status) };
+        throw err;
+      }
+      bill.status = target;
+      bill.void_reason = reason && reason.trim() ? reason.trim() : null;
+      bill.voided_by = "admin@voyance.health";
+      bill.voided_at = new Date().toISOString();
       return bill;
     }
-    const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
-    return apiRequest("DELETE", `/api/finance/bills/${id}${q}`, null, true, _getIdempHeaders());
+    return apiRequest("POST", `/api/finance/bills/${id}/void`, { reason: reason || null }, true, _getIdempHeaders());
+  },
+  // Discard a Draft: permanent delete. Every other bill is kept; cancelling is Void.
+  async discardBill(id) {
+    if (_isMock()) {
+      const idx = FinanceMockState.bills.findIndex((b) => b.id === parseInt(id, 10));
+      if (idx < 0) throw new Error("Bill not found");
+      const bill = FinanceMockState.bills[idx];
+      if (bill.status !== "draft") {
+        const err = new Error("Only a draft can be discarded. Use Void to cancel any other bill.");
+        err.status = 409;
+        err.detail = { code: "delete_not_allowed", message: err.message, current_status: bill.status, allowed_actions: _billAllowedActions(bill.status) };
+        throw err;
+      }
+      FinanceMockState.bills.splice(idx, 1);
+      return bill;
+    }
+    return apiRequest("DELETE", `/api/finance/bills/${id}`, null, true, _getIdempHeaders());
+  },
+  // Several PDFs or photos at once: each file becomes its own Draft with its own vendor match
+  async uploadBillFiles(files) {
+    if (_isMock()) {
+      const results = [];
+      for (const file of files) {
+        const name = file.name || "upload.pdf";
+        const base = name.replace(/\.[^.]+$/, "");
+        const vendor = (FinanceMockState.vendors || []).find((v) => base.toLowerCase().includes(v.name.toLowerCase().split(" ")[0]));
+        const id = Math.max(0, ...FinanceMockState.bills.map((b) => b.id)) + 1;
+        const bill = {
+          id, vendor_id: vendor ? vendor.id : null, vendor_name: vendor ? vendor.name : null,
+          vendor_to_confirm: !vendor, suggested_vendor_name: vendor ? null : base,
+          bill_number: null, issue_date: null, due_date: null, status: "draft", currency: "EGP",
+          subtotal: 0, tax_amount: 0, total: 0, amount_paid: 0, capture_source: "upload", is_reviewed: false,
+          attachment_name: name, attachment_url: `/api/finance/bills/${id}/attachment`,
+          file_fingerprint: `sha256-mock-${name}-${id}`, created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
+        };
+        FinanceMockState.bills.push(bill);
+        results.push({ filename: name, bill, error: null, duplicate_of: null });
+      }
+      return results;
+    }
+    const results = [];
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const body = await apiRequest("POST", "/api/finance/bills/upload", formData);
+    return (body && body.results) || results;
+  },
+  async submitBill(id) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      const target = _billNext("submit", bill);
+      const missing = _missingToLeaveDraft(bill);
+      if (missing.length) throw _validationError(missing);
+      bill.status = target;
+      bill.approval_status = "pending";
+      bill.approved_by = null;
+      bill.approved_at = null;
+      bill.approval_comment = null;
+      return bill;
+    }
+    return apiRequest("POST", `/api/finance/bills/${id}/submit`, {});
+  },
+  async withdrawBill(id) {
+    if (_isMock()) {
+      const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
+      if (!bill) throw new Error("Bill not found");
+      bill.status = _billNext("withdraw", bill);
+      bill.approval_status = null;
+      return bill;
+    }
+    return apiRequest("POST", `/api/finance/bills/${id}/withdraw`, {});
   },
   async getBillPayments(billId) {
     if (_isMock()) return FinanceMockState.billPayments.filter((p) => p.related_bill_id === parseInt(billId, 10));
@@ -899,31 +1092,26 @@ async getFeatureFlags() {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
+      if (!_can("finance.bill.approve")) throw _forbid("finance.bill.approve");
       const decision = payload.decision || "approve";
+      if (decision !== "approve" && decision !== "reject") throw new Error(`Invalid decision '${decision}'. Must be 'approve' or 'reject'.`);
+      const target = _billNext(decision, bill);
       const approverEmail = payload.approver_email || "admin@voyance.health";
-      if (bill.created_by && bill.created_by.toLowerCase() === approverEmail.toLowerCase()) {
-        throw new Error("Segregation of duties: Creator cannot approve their own bill.");
+      const isSuper = typeof SessionInfo !== "undefined" && (SessionInfo.getRoles() || []).includes("Super-Admin");
+      if (bill.created_by && bill.created_by.toLowerCase() === approverEmail.toLowerCase() && !isSuper) {
+        throw new Error("Self-approval is prohibited by segregation of duties policy.");
       }
       if (payload.approver_limit !== undefined && payload.approver_limit !== null && bill.total > payload.approver_limit) {
         throw new Error(`Bill total ($${bill.total.toFixed(2)}) exceeds approver authorization limit ($${payload.approver_limit.toFixed(2)}). Escalation required.`);
       }
-      if (decision === "approve") {
-        bill.requires_approval = true;
-        bill.approval_status = "approved";
-        bill.approved_by = approverEmail;
-        bill.approved_at = new Date().toISOString();
-        bill.approval_comment = payload.comment || null;
-        if (bill.status === "needs_approval") {
-          bill.status = "ready_to_pay";
-        }
-      } else if (decision === "reject") {
-        bill.requires_approval = true;
-        bill.approval_status = "rejected";
-        bill.approved_by = approverEmail;
-        bill.approved_at = new Date().toISOString();
-        bill.approval_comment = payload.comment || null;
-        bill.status = "exceptions";
+      if (decision === "reject" && !(payload.comment || "").trim()) {
+        throw new Error("A comment or reason is required when rejecting a bill.");
       }
+      bill.approval_status = decision === "approve" ? "approved" : "rejected";
+      bill.approved_by = approverEmail;
+      bill.approved_at = new Date().toISOString();
+      bill.approval_comment = decision === "approve" ? (payload.comment || null) : payload.comment.trim();
+      bill.status = target;
       return bill;
     }
     return apiRequest("POST", `/api/finance/bills/${id}/approve`, payload);
@@ -932,16 +1120,12 @@ async getFeatureFlags() {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(id, 10));
       if (!bill) throw new Error("Bill not found");
-      if (bill.requires_approval && bill.approval_status !== "approved") {
-        throw new Error("Bill must be approved before scheduling payment.");
-      }
+      const target = _billNext("schedule", bill);
       bill.scheduled_payment_date = payload.scheduled_payment_date;
       if (payload.notes) {
-        bill.notes = `${bill.notes || ""}\n[Scheduled notes: ${payload.notes}]`.trim();
+        bill.notes = `${bill.notes || ""}\n[Scheduled: ${payload.scheduled_payment_date} - ${payload.notes}]`.trim();
       }
-      if (bill.status !== "paid" && bill.status !== "partially_paid") {
-        bill.status = "scheduled";
-      }
+      bill.status = target;
       return bill;
     }
     return apiRequest("POST", `/api/finance/bills/${id}/schedule`, payload);
@@ -950,34 +1134,30 @@ async getFeatureFlags() {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
       if (!bill) throw new Error("Bill not found");
-      if (bill.status === "void") throw new Error("Cannot pay a void bill");
-      if (bill.requires_approval && bill.approval_status !== "approved") {
-        throw new Error("Bill requires approval before payment can be recorded.");
-      }
+      if (!_can("finance.bill.pay")) throw _forbid("finance.bill.pay");
+      _billNext("pay", bill);
       const existingPayments = (FinanceMockState.billPayments || []).filter(
         (p) => p.related_bill_id === bill.id && !p.is_reversed
       );
-      const paidSoFar = existingPayments.reduce((s, p) => s + (p.amount || 0), 0);
-      const remaining = round(bill.total - paidSoFar, 2);
-      const pAmt = parseFloat(payload.amount);
-      if (pAmt > remaining + 0.01) {
-        throw new Error(`Payment amount ($${pAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
-      }
+      const paidSoFar = existingPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const { account, pt, pAmt } = _checkBillPayment(bill, payload, paidSoFar);
       const newPayment = {
         id: FinanceMockState.billPayments.length + 1,
-        ...payload,
-        amount: pAmt,
+        direction: "outgoing",
         related_bill_id: parseInt(billId, 10),
+        amount: pAmt,
+        currency: bill.currency,
+        payment_date: payload.payment_date,
+        bank_account_id: account.id,
+        method: BILL_PAYMENT_METHOD[pt.code] || "other",
+        reference: payload.reference || "",
         is_reversed: false,
         created_at: new Date().toISOString(),
       };
       FinanceMockState.billPayments.push(newPayment);
+      account.current_balance = round(account.current_balance - pAmt, 2);
       bill.amount_paid = round(paidSoFar + pAmt, 2);
-      if (bill.amount_paid >= bill.total - 0.01) {
-        bill.status = "paid";
-      } else if (["ready_to_pay", "scheduled", "partially_paid", "unpaid"].includes(bill.status)) {
-        bill.status = "partially_paid";
-      }
+      bill.status = _billDerivePaymentStatus(bill);
       return newPayment;
     }
     return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload);
@@ -986,11 +1166,14 @@ async getFeatureFlags() {
     if (_isMock()) {
       const bill = FinanceMockState.bills.find((b) => b.id === parseInt(billId, 10));
       if (!bill) throw new Error("Bill not found");
+      if (!_can("finance.bill.pay")) throw _forbid("finance.bill.pay");
       const payment = (FinanceMockState.billPayments || []).find(
         (p) => p.id === parseInt(paymentId, 10) && p.related_bill_id === bill.id
       );
       if (!payment) throw new Error("Payment not found");
       if (payment.is_reversed) throw new Error("Payment has already been reversed");
+      const payAccount = (FinanceMockState.accounts || []).find((a) => a.id === payment.bank_account_id);
+      if (payAccount) payAccount.current_balance = round(payAccount.current_balance + payment.amount, 2);
       payment.is_reversed = true;
       payment.reversed_at = new Date().toISOString();
       payment.reversed_by = "admin@voyance.health";
@@ -1001,14 +1184,8 @@ async getFeatureFlags() {
       );
       const remainingPaid = remainingPayments.reduce((s, p) => s + (p.amount || 0), 0);
       bill.amount_paid = round(remainingPaid, 2);
-      if (bill.amount_paid <= 0.001) {
-        bill.amount_paid = 0.0;
-        bill.status = bill.scheduled_payment_date ? "scheduled" : "ready_to_pay";
-      } else if (bill.amount_paid < bill.total - 0.01) {
-        bill.status = "partially_paid";
-      } else {
-        bill.status = "paid";
-      }
+      if (bill.amount_paid <= 0.001) bill.amount_paid = 0.0;
+      bill.status = _billDerivePaymentStatus(bill);
       return payment;
     }
     return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload);
@@ -1666,6 +1843,12 @@ async getFeatureFlags() {
       if (params && params.is_active !== undefined) {
         list = list.filter((p) => p.is_active === (params.is_active === "true" || params.is_active === true));
       }
+      if (params && params.usage === "bill_payment") {
+        // Mirrors be/finance/bill_payment_rules.py
+        const byAccountType = { cash: ["CASH"], bank: ["OUTBOUND_TRANS", "CHK", "DEBIT_CARD"] };
+        const allowed = params.account_type ? (byAccountType[String(params.account_type).toLowerCase()] || []) : [].concat(...Object.values(byAccountType));
+        list = list.filter((p) => p.is_active && allowed.includes(p.code));
+      }
       return list;
     }
     let url = "/api/finance/payment-types";
@@ -1755,10 +1938,17 @@ async getFeatureFlags() {
       const txCurr = (payload.currency || (acc ? acc.currency : "USD")).toUpperCase();
       const acctCurr = (acc ? acc.currency : "USD").toUpperCase();
 
+      // D-020: manual entries are in the account currency, with no exchange rate
+      if (payload.fx_rate || payload.base_amount) {
+        const err = new Error("fx_rate, base_amount is not accepted on a manual entry; use an FX transfer to exchange currencies");
+        err.status = 422;
+        throw err;
+      }
       if (txCurr !== acctCurr) {
-        if (!payload.fx_rate || parseFloat(payload.fx_rate) <= 0) {
-          throw new Error(`Currency mismatch between transaction (${txCurr}) and account (${acctCurr}). An exchange rate (fx_rate) is required.`);
-        }
+        throw new Error(`The transaction currency (${txCurr}) must match the account currency (${acctCurr}). Use an FX transfer to exchange currencies.`);
+      }
+      if (payload.direction === "out" && payload.payee_type === "vendor" && !payload.linked_bill_id) {
+        throw new Error("A payment to a vendor is recorded as a bill. Use New bill (Already paid) or link this payment to the vendor's bill.");
       }
 
       if (entryType === "adjustment") {
@@ -2563,7 +2753,7 @@ async getFeatureFlags() {
           }
           if (c.linked_bill_id) {
             const bill = (FinanceMockState.bills || []).find((b) => b.id === c.linked_bill_id);
-            if (bill) bill.status = "unpaid";
+            if (bill) bill.status = bill.scheduled_payment_date ? "scheduled" : "approved";
           }
         }
       }
@@ -2802,7 +2992,8 @@ async getFeatureFlags() {
           legal_entity: "Voyance Health Inc",
           issue_date: billingDate,
           due_date: billingDate,
-          status: "ready_to_pay",
+          status: "approved",
+          approval_status: "auto",
           currency,
           subtotal: amount,
           tax_amount: 0.0,
@@ -4912,7 +5103,7 @@ async getFinanceSummary(params = {}) {
           : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
         data_scope: `${entity}_${currency.toLowerCase()}`,
         open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,
-        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => b.status === "unpaid").length,
+        unpaid_bills_count: (FinanceMockState.bills || []).filter((b) => ["approved", "scheduled", "partially_paid"].includes(b.status)).length,
         active_subscriptions_count: (FinanceMockState.subscriptions || []).filter((s) => s.is_active).length,
         generated_at: new Date().toISOString(),
         kpis: {
@@ -5655,7 +5846,7 @@ async getEntityActivity(entityType, entityId) {
           entity_type: "bill",
           entity_id: b.id,
           title: `Bill ${b.bill_number}`,
-          badge: (b.status || "unpaid").toUpperCase(),
+          badge: (b.status || "draft").toUpperCase(),
           amount: b.total,
           currency: b.currency || "USD",
           date: b.issue_date,
@@ -5667,7 +5858,7 @@ async getEntityActivity(entityType, entityId) {
           event: "bill_received",
           plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
           actor: b.created_by || "finance@voyance.health",
-          state_transition: { from_state: "inbox", to_state: b.status || "unpaid" },
+          state_transition: { from_state: "draft", to_state: b.status || "draft" },
         }));
 
         const attrs = [
@@ -5712,7 +5903,7 @@ async getEntityActivity(entityType, entityId) {
           vendor_name: "Amazon Web Services",
           total: 4200.0,
           currency: "USD",
-          status: "unpaid",
+          status: "approved",
           issue_date: "2026-09-01",
           due_date: "2026-09-30",
           category: "Infrastructure",
@@ -5730,7 +5921,7 @@ async getEntityActivity(entityType, entityId) {
             event: "created",
             plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
             actor: bill.created_by || "ap@voyance.health",
-            state_transition: { from_state: null, to_state: bill.status || "unpaid" },
+            state_transition: { from_state: null, to_state: bill.status || "draft" },
           },
         ];
 
@@ -5741,7 +5932,7 @@ async getEntityActivity(entityType, entityId) {
             event: "approved",
             plain_text: `Bill approval recorded: ${bill.approval_status} by ${bill.approved_by || "manager"}${bill.approval_comment ? ` ("${bill.approval_comment}")` : ""}`,
             actor: bill.approved_by || "manager",
-            state_transition: { from_state: "needs_approval", to_state: bill.approval_status === "approved" ? "ready_to_pay" : "exceptions" },
+            state_transition: { from_state: "pending_approval", to_state: bill.approval_status === "approved" ? "approved" : "rejected" },
           });
         }
 
@@ -5752,7 +5943,7 @@ async getEntityActivity(entityType, entityId) {
             event: "scheduled",
             plain_text: `Payment scheduled for ${bill.scheduled_payment_date}`,
             actor: "finance@voyance.health",
-            state_transition: { from_state: "ready_to_pay", to_state: "scheduled" },
+            state_transition: { from_state: "approved", to_state: "scheduled" },
           });
         }
 
@@ -5763,7 +5954,7 @@ async getEntityActivity(entityType, entityId) {
             event: "payment",
             plain_text: `Payment of ${p.amount.toLocaleString()} ${p.currency || "USD"} recorded (Ref: ${p.reference || "N/A"})`,
             actor: "ap@voyance.health",
-            state_transition: { from_state: "ready_to_pay", to_state: "partially_paid" },
+            state_transition: { from_state: "approved", to_state: "partially_paid" },
           });
           if (p.is_reversed) {
             timeline.push({
@@ -5772,7 +5963,7 @@ async getEntityActivity(entityType, entityId) {
               event: "reversal",
               plain_text: `Payment #${p.id} reversed: ${p.reversal_reason || "Voided by user"}`,
               actor: p.reversed_by || "admin@voyance.health",
-              state_transition: { from_state: "paid", to_state: "ready_to_pay" },
+              state_transition: { from_state: "paid", to_state: "approved" },
             });
           }
         }
@@ -5802,7 +5993,7 @@ async getEntityActivity(entityType, entityId) {
           entity_type: "bill",
           entity_id: bill.id,
           title: `Bill ${bill.bill_number}`,
-          status: bill.status || "unpaid",
+          status: bill.status || "draft",
           summary: {
             reference: bill.bill_number,
             counterparty: bill.vendor_name || vendor.name,

@@ -15,66 +15,78 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('AC 1 & 2: Checkbox "Bill is already paid" reveals payment fields and creates fully settled bill atomically', async ({ page }) => {
+  test('AC 1 & 2: A super admin records a paid cash bill in one save, typing only vendor, number, category and amount', async ({ page }) => {
     await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
-    // Verify "Bill is already paid" group is visible in create mode
-    const paidNowGroup = page.locator('#billIsPaidNowGroup');
-    await expect(paidNowGroup).toBeVisible();
-    const paidNowCheckbox = page.locator('#billIsPaidNow');
-    await expect(paidNowCheckbox).not.toBeChecked();
+    // Super admin gets the "Not paid yet / Already paid" choice, starting on Not paid yet
+    await expect(page.locator('#billIsPaidNowGroup')).toBeVisible();
+    await expect(page.locator('#billPaidChoiceNo')).toBeChecked();
+    await expect(page.locator('#billPaidNowSection')).not.toBeVisible();
+    await expect(page.locator('#billSavesAsLine')).toContainText('Approved');
 
-    const paidNowSection = page.locator('#billPaidNowSection');
-    await expect(paidNowSection).not.toBeVisible();
-
-    // Fill standard bill fields
+    // Defaults: currency EGP; line items are optional
+    await expect(page.locator('#billCurrency')).toHaveValue('EGP');
     await page.selectOption('#billVendorId', { index: 1 });
     await page.fill('#billNumber', 'BILL-FUX408-001');
-    await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
-    await page.fill('#billIssueDate', '2026-03-10');
-    await page.fill('#billDueDate', '2026-03-31');
+    await page.fill('#billAmount', '450');
 
-    // Fill line item: $450.00
-    const firstLineDesc = page.locator('#billLinesBody tr input[type="text"]').first();
-    await firstLineDesc.fill('Kubernetes Cluster');
-    const firstLinePrice = page.locator('#billLinesBody tr input.bill-price').first();
-    await firstLinePrice.fill('450');
-    await firstLinePrice.dispatchEvent('input');
+    // Already paid: the cash account in the bill currency and Cash payment are the defaults
+    await page.check('#billPaidChoiceYes');
+    await expect(page.locator('#billPaidNowSection')).toBeVisible();
+    await expect(page.locator('#billSavesAsLine')).toContainText('Paid');
+    await expect(page.locator('#billPaidNowAmount')).toHaveValue('450.00');
+    await expect(page.locator('#billPaidNowBankAccountId option:checked')).toContainText('Petty Cash');
+    await expect(page.locator('#billPaidNowTypeId option:checked')).toContainText('Cash');
+    await expect(page.locator('#billPaidNowReference')).toHaveValue('');
 
-    await expect(page.locator('#billTotalDisplay')).toHaveText('450.00');
-
-    // Check "Bill is already paid"
-    await paidNowCheckbox.check();
-    await expect(paidNowSection).toBeVisible();
-
-    // Verify payment amount defaults to 450.00
-    const amtInput = page.locator('#billPaidNowAmount');
-    await expect(amtInput).toHaveValue('450.00');
-
-    // Select bank account
-    const accSelect = page.locator('#billPaidNowBankAccountId');
-    await expect(accSelect.locator('option')).not.toHaveCount(1);
-    await accSelect.selectOption({ index: 1 });
-
-    // Save Bill
+    // One save
     await page.click('#billModalSaveBtn');
     await expect(page.locator('#billModal')).not.toBeVisible();
 
-    // Verify created bill appears in table with Paid badge
     const createdRow = page.locator('#financeBillsTableBody tr:has-text("BILL-FUX408-001")');
     await expect(createdRow).toBeVisible();
     await expect(createdRow.locator('.status-badge-wrap')).toContainText('Paid');
+
+    // The choice is remembered for next time
+    await page.click('#financeRecordBillBtn');
+    await expect(page.locator('#billPaidChoiceYes')).toBeChecked();
+    await page.click('#billModal .modal-close');
   });
 
-  test('AC 3: Bill Status dropdown does not offer Paid or Partially Paid as directly selectable options', async ({ page }) => {
+  test('A finance user sees no payment fields and the primary action is Submit for approval', async ({ page }) => {
+    await page.goto('/?mock=finance');
+    await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
+    await openAdminPage(page, 'a-finance-bills');
+    await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
+    await page.click('#financeRecordBillBtn');
+    await expect(page.locator('#billModal')).toBeVisible();
+    await expect(page.locator('#billIsPaidNowGroup')).not.toBeVisible();
+    await expect(page.locator('#billPaidNowSection')).not.toBeVisible();
+    await expect(page.locator('#billModalSaveBtn')).toContainText('Submit for approval');
+    await expect(page.locator('#billSavesAsLine')).toContainText('Pending Approval');
+    await expect(page.locator('#billSaveDraftBtn')).toBeVisible();
+
+    await page.selectOption('#billVendorId', { index: 1 });
+    await page.fill('#billNumber', 'BILL-FIN-SUBMIT-1');
+    await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
+    await page.fill('#billAmount', '75');
+    await page.click('#billModalSaveBtn');
+    await expect(page.locator('#billModal')).not.toBeVisible();
+    await page.evaluate(() => setBillWorkQueue('pending_approval'));
+    const row = page.locator('#financeBillsTableBody tr:has-text("BILL-FIN-SUBMIT-1")');
+    await expect(row).toBeVisible();
+    // and cannot approve it
+    await expect(row.locator('button.btn-approve-bill')).toHaveCount(0);
+  });
+
+  test('AC 3: The bill form has no status dropdown; status is a read-only badge', async ({ page }) => {
     await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
-    const statusOptions = await page.locator('#billStatus option').allTextContents();
-    expect(statusOptions).not.toContain('Paid');
-    expect(statusOptions).not.toContain('Partially Paid');
+    await expect(page.locator('#billStatus')).toHaveCount(0);
+    await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Approved');
 
     await page.click('#billModal .modal-close');
     await expect(page.locator('#billModal')).not.toBeVisible();
@@ -92,8 +104,8 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     // Check that "Bill is already paid" group is hidden in edit mode
     await expect(page.locator('#billIsPaidNowGroup')).not.toBeVisible();
 
-    // Check that editable status dropdown is hidden and read-only status badge is visible
-    await expect(page.locator('#billStatus')).not.toBeVisible();
+    // Check that there is no editable status dropdown and the read-only status badge is visible
+    await expect(page.locator('#billStatus')).toHaveCount(0);
     await expect(page.locator('#billStatusReadOnlyContainer')).toBeVisible();
     await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Paid');
 
@@ -101,7 +113,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await expect(page.locator('#billModal')).not.toBeVisible();
   });
 
-  test('AC 5: Server-side integrity guard in mock mode blocks direct status="paid" without is_paid_now', async ({ page }) => {
+  test('AC 5: Mock mode refuses any client-supplied status on create', async ({ page }) => {
     const errorMsg = await page.evaluate(async () => {
       try {
         await window.FinanceApi.createBill({
@@ -118,6 +130,6 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
       }
     });
 
-    expect(errorMsg).toContain('Paid or partially paid status cannot be set directly');
+    expect(errorMsg).toContain('status cannot be set by the client');
   });
 });

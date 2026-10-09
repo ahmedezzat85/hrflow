@@ -4,6 +4,8 @@ Tests for Phase 4.4: Vendor Bill CRUD + Payment recording (Accounts Payable).
 Mirrors be/tests/test_finance_invoices.py structure.
 """
 import pytest
+from bill_test_helpers import payment_type_id
+
 
 
 def test_bill_crud_and_validation(app_client, admin_cookies):
@@ -30,7 +32,6 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
         "category": "Infrastructure",
         "issue_date": "2026-09-01",
         "due_date": "2026-09-30",
-        "status": "unpaid",
         "currency": "USD",
         "notes": "Phase 4.4 test bill",
         "lines": [
@@ -53,19 +54,18 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     assert dup_resp.status_code == 400
     assert "already in use" in dup_resp.json()["detail"]
 
-    # 4. Invalid status rejection
-    bad_status_payload = {**create_payload, "bill_number": "BILL-TEST-BADSTATUS", "status": "invalid_status"}
+    # 4. A client-supplied status is refused (status is server-owned)
+    bad_status_payload = {**create_payload, "bill_number": "BILL-TEST-BADSTATUS", "status": "approved"}
     bad_resp = app_client.post("/api/finance/bills", json=bad_status_payload, cookies=admin_cookies)
-    assert bad_resp.status_code == 400
+    assert bad_resp.status_code == 422
 
     # 5. Get by ID
     get_resp = app_client.get(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
     assert get_resp.status_code == 200
     assert get_resp.json()["bill_number"] == "BILL-TEST-0001"
 
-    # 6. Update — change status and replace lines
+    # 6. Update — change notes and replace lines (status is untouched)
     update_payload = {
-        "status": "overdue",
         "notes": "Updated notes",
         "lines": [
             {"description": "New Line Item", "quantity": 2.0, "unit_price": 1500.0, "line_total": 3000.0},
@@ -74,15 +74,15 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     put_resp = app_client.put(f"/api/finance/bills/{bill_id}", json=update_payload, cookies=admin_cookies)
     assert put_resp.status_code == 200
     updated = put_resp.json()
-    assert updated["status"] == "overdue"
+    assert updated["status"] == "approved"
     assert updated["subtotal"] == 3000.0
     assert len(updated["lines"]) == 1
 
     # 7. Filter by status
-    status_resp = app_client.get("/api/finance/bills?status=overdue", cookies=admin_cookies)
+    status_resp = app_client.get("/api/finance/bills?status=approved", cookies=admin_cookies)
     assert status_resp.status_code == 200
-    overdue_ids = [b["id"] for b in status_resp.json()]
-    assert bill_id in overdue_ids
+    approved_ids = [b["id"] for b in status_resp.json()]
+    assert bill_id in approved_ids
 
     # 8. Filter by vendor
     vend_filter_resp = app_client.get(f"/api/finance/bills?vendor_id={vendor_id}", cookies=admin_cookies)
@@ -95,7 +95,7 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     assert any(b["id"] == bill_id for b in search_resp.json())
 
     # 10. Void bill
-    void_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
+    void_resp = app_client.post(f"/api/finance/bills/{bill_id}/void", json={}, cookies=admin_cookies)
     assert void_resp.status_code == 200
     assert void_resp.json()["status"] == "void"
 
@@ -106,8 +106,8 @@ def test_bill_crud_and_validation(app_client, admin_cookies):
     assert update_voided_resp.status_code == 400
 
     # 12. Cannot void again
-    re_void_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
-    assert re_void_resp.status_code == 400
+    re_void_resp = app_client.post(f"/api/finance/bills/{bill_id}/void", json={}, cookies=admin_cookies)
+    assert re_void_resp.status_code == 409
 
     # 13. Total bill count increased by 1
     final_list_resp = app_client.get("/api/finance/bills", cookies=admin_cookies)
@@ -150,7 +150,6 @@ def test_bill_payment_recording(app_client, admin_cookies):
             "bill_number": "BILL-PAY-TEST-001",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "unpaid",
             "currency": "USD",
             "lines": [
                 {"description": "Hosting fee", "quantity": 1.0, "unit_price": 1500.0, "line_total": 1500.0}
@@ -162,7 +161,9 @@ def test_bill_payment_recording(app_client, admin_cookies):
     bill = bill_resp.json()
     bill_id = bill["id"]
     assert bill["total"] == 1500.0
-    assert bill["status"] == "unpaid"
+    # A super admin's bill is Approved on save (auto-approved)
+    assert bill["status"] == "approved"
+    assert bill["approval_status"] == "auto"
 
     # 1. List payments (none yet)
     payments_resp = app_client.get(f"/api/finance/bills/{bill_id}/payments", cookies=admin_cookies)
@@ -176,7 +177,7 @@ def test_bill_payment_recording(app_client, admin_cookies):
         "currency": "USD",
         "payment_date": "2026-09-15",
         "bank_account_id": account_id,
-        "method": "bank_transfer",
+        "payment_type_id": payment_type_id("OUTBOUND_TRANS"),
         "reference": "WIRE-2026-0915-B",
     }
     pay_resp = app_client.post(f"/api/finance/bills/{bill_id}/payments", json=partial_payment, cookies=admin_cookies)
@@ -208,14 +209,11 @@ def test_bill_payment_recording(app_client, admin_cookies):
     all_payments = app_client.get(f"/api/finance/bills/{bill_id}/payments", cookies=admin_cookies)
     assert len(all_payments.json()) == 2
 
-    # 8. Incoming direction rejected for bill payments
-    bad_direction_payload = {**partial_payment, "direction": "incoming"}
-    bad_dir_resp = app_client.post(f"/api/finance/bills/{bill_id}/payments", json=bad_direction_payload, cookies=admin_cookies)
-    assert bad_dir_resp.status_code == 400
+    # 8. (Payment-type rules, currency and balance checks live in test_finance_bill_payment_rules.py)
 
     # 9. Cannot void a paid bill
-    void_paid_resp = app_client.delete(f"/api/finance/bills/{bill_id}", cookies=admin_cookies)
-    assert void_paid_resp.status_code == 400
+    void_paid_resp = app_client.post(f"/api/finance/bills/{bill_id}/void", json={}, cookies=admin_cookies)
+    assert void_paid_resp.status_code == 409
 
     # 10. Cannot pay against a voided bill
     void_bill_resp = app_client.post(
@@ -225,19 +223,18 @@ def test_bill_payment_recording(app_client, admin_cookies):
             "bill_number": "BILL-VOID-TEST-001",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "unpaid",
             "lines": [],
         },
         cookies=admin_cookies,
     )
     void_bill_id = void_bill_resp.json()["id"]
-    app_client.delete(f"/api/finance/bills/{void_bill_id}", cookies=admin_cookies)
+    app_client.post(f"/api/finance/bills/{void_bill_id}/void", json={}, cookies=admin_cookies)
     voided_pay = app_client.post(
         f"/api/finance/bills/{void_bill_id}/payments",
         json=partial_payment,
         cookies=admin_cookies,
     )
-    assert voided_pay.status_code == 400
+    assert voided_pay.status_code == 409
 
 
 def test_bill_rbac_employee_cannot_access(app_client, employee_cookies):

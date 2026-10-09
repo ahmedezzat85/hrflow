@@ -16,7 +16,9 @@ from finance.models import (
     PaymentTypeDB,
     TransactionCategoryDB,
     BillDB,
+    PaymentDB,
 )
+from finance import bill_status as bs
 from finance.repositories.ledger_repository import LedgerRepository
 
 VALID_STATUS_TRANSITIONS = {
@@ -181,41 +183,76 @@ class ChequesRepository:
             self.db.flush()
             cheque.linked_cash_transaction_id = inflow_tx.id
 
-        # 5. If linked to bill, mark bill as paid
+        # 5. If linked to a bill, pay it through the settlement service: same currency, no overdraft,
+        #    a payment record and amount_paid. Refusals abort the posting (BillPaymentError / ValueError).
         if cheque.linked_bill_id:
-            bill = self.db.query(BillDB).filter(BillDB.id == cheque.linked_bill_id).first()
-            if bill:
-                bill.status = "paid"
+            from finance.services.settlement_service import SettlementService
+            SettlementService(self.db).settle_bill(
+                bill_id=cheque.linked_bill_id,
+                amount=cheque.amount,
+                payment_date=posting_date,
+                bank_account_id=cheque.account_id,
+                payment_type_id=payment_type_id,
+                reference=f"CHK-{cheque.cheque_number}",
+                cheque_number=cheque.cheque_number,
+            )
 
-    def _reverse_cheque_ledger_entries(self, cheque: FinanceChequeDB):
-        """Removes or reverses posted ledger transactions and restores bill status if applicable."""
-        txs = (
+    def _reverse_cheque_ledger_entries(self, cheque: FinanceChequeDB, reason: Optional[str] = None):
+        """
+        D-020: reverse the ledger entries a cheque posted by ADDING opposite entries with the reason; the
+        originals are kept for the audit trail. The bill payment the cheque made is reversed through the
+        settlement service.
+        """
+        reason_text = (reason or cheque.exception_reason or f"Cheque marked as {cheque.status}").strip()
+        originals = (
             self.db.query(LedgerTransactionDB)
-            .filter(LedgerTransactionDB.linked_cheque_id == cheque.id)
+            .filter(LedgerTransactionDB.linked_cheque_id == cheque.id, LedgerTransactionDB.source == "cheque")
             .all()
         )
-        for tx in txs:
-            self.db.delete(tx)
+        already = {
+            r.reference
+            for r in self.db.query(LedgerTransactionDB)
+            .filter(LedgerTransactionDB.linked_cheque_id == cheque.id, LedgerTransactionDB.source == "cheque_reversal")
+            .all()
+        }
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        for tx in originals:
+            marker = f"REV-TX-{tx.id}"
+            if marker in already:
+                continue
+            self.db.add(
+                LedgerTransactionDB(
+                    account_id=tx.account_id,
+                    date=today,
+                    amount=tx.amount,
+                    direction="in" if tx.direction == "out" else "out",
+                    currency=tx.currency,
+                    category_id=tx.category_id,
+                    payment_type_id=tx.payment_type_id,
+                    reference=marker,
+                    description=f"Reversal of cheque #{cheque.cheque_number} entry #{tx.id}: {reason_text}",
+                    cheque_number=cheque.cheque_number,
+                    source="cheque_reversal",
+                    linked_cheque_id=cheque.id,
+                    linked_bill_id=tx.linked_bill_id,
+                    reason=reason_text,
+                    running_balance=0.0,
+                    created_by="system",
+                )
+            )
+        self.db.flush()
 
         cheque.linked_transaction_id = None
         cheque.linked_cash_transaction_id = None
 
-        # If linked to a bill, check if bill should revert to unpaid
+        # If linked to a bill, reverse the payment this cheque made and re-derive the bill status
         if cheque.linked_bill_id:
-            bill = self.db.query(BillDB).filter(BillDB.id == cheque.linked_bill_id).first()
-            if bill:
-                other_payments = [p for p in (bill.payments or []) if not getattr(p, "is_reversed", False)]
-                other_cheques = (
-                    self.db.query(FinanceChequeDB)
-                    .filter(
-                        FinanceChequeDB.linked_bill_id == bill.id,
-                        FinanceChequeDB.id != cheque.id,
-                        FinanceChequeDB.status.in_(["issued", "outstanding", "cleared"]),
-                    )
-                    .count()
-                )
-                if not other_payments and not other_cheques:
-                    bill.status = "unpaid"
+            from finance.services.settlement_service import SettlementService
+            SettlementService(self.db).reverse_cheque_bill_payment(
+                cheque.linked_bill_id,
+                cheque.cheque_number,
+                f"Cheque #{cheque.cheque_number} reversed ({cheque.status}): {reason_text}",
+            )
 
     def create_cheque(self, data: dict, created_by: Optional[str] = None) -> FinanceChequeDB:
         account_id = data["account_id"]
@@ -394,7 +431,7 @@ class ChequesRepository:
                 )
         elif status in EXCEPTION_STATUSES:
             # Reverse / remove any active ledger transactions posted for this cheque
-            self._reverse_cheque_ledger_entries(cheque)
+            self._reverse_cheque_ledger_entries(cheque, reason=effective_reason)
 
         self.db.commit()
 
@@ -430,7 +467,7 @@ class ChequesRepository:
             raise ValueError(f"Replacement cheque number '{new_cheque_number}' already exists on account")
 
         # 1. Reverse old cheque ledger entries and update status
-        self._reverse_cheque_ledger_entries(old_cheque)
+        self._reverse_cheque_ledger_entries(old_cheque, reason=reason)
         old_cheque.status = "replaced"
         old_cheque.exception_reason = reason
         if evidence:

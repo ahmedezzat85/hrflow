@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict, Any
 from sqlalchemy.orm import Session
 
+from finance import bill_status as bs
+from finance import bill_payment_rules as rules
+
 from finance.models import (
     BillDB,
     SalesInvoiceDB,
@@ -30,41 +33,82 @@ class SettlementService:
         amount: float,
         payment_date: str,
         bank_account_id: int,
-        currency: str = "USD",
+        payment_type_id: Optional[int] = None,
         reference: str = "",
-        method: str = "bank_transfer",
+        cheque_number: Optional[str] = None,
     ) -> Tuple[BillDB, PaymentDB]:
         """
-        Record a settlement against a vendor bill.
-        Enforces remaining balance checks, transitions bill status, and creates PaymentDB.
+        Record a settlement against a vendor bill: the single path for every route that pays a bill
+        (bill dialogs, create-and-pay, linked manual transactions and linked cheques).
+
+        Refuses with BillPaymentError (code):
+          currency_mismatch      - account currency differs from the bill currency
+          insufficient_balance   - account balance below the payment (no overdraft, any account)
+          payment_type_not_allowed - type not allowed for the account type (cash -> Cash payment;
+                                     bank -> Outgoing transfer, Cheque, Debit card)
+          cheque_number_required - Cheque payments need a cheque number
+        and with a plain ValueError when the payment exceeds the remaining balance.
+        Creates the PaymentDB record and updates amount_paid / status; the caller owns the ledger row
+        and the balance recalculation.
         """
         bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
         if not bill:
             raise ValueError(f"Bill #{bill_id} not found")
 
-        if bill.status in ("void",):
-            raise ValueError("Cannot record payment against a voided bill")
+        if bill.status not in bs.OPEN_STATUSES:
+            raise ValueError(f"Cannot record payment against a bill in '{bill.status}' status")
 
-        if (
-            bill.requires_approval
-            and bill.approval_status != "approved"
-            and bill.status not in ("ready_to_pay", "scheduled", "paid")
-        ):
-            raise ValueError("Bill requires approval before payment can be recorded.")
+        account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
+        if not account:
+            raise ValueError(f"Bank account {bank_account_id} not found")
+
+        payment_amount = float(amount)
+        if payment_amount <= 0:
+            raise ValueError("Payment amount must be greater than 0")
+
+        # Payment type must be allowed for this account type
+        account_type = (account.account_type or "bank").lower()
+        allowed_codes = rules.BILL_PAYMENT_TYPE_CODES_BY_ACCOUNT_TYPE.get(account_type, frozenset())
+        if payment_type_id is None:
+            default_code = rules.DEFAULT_PAYMENT_TYPE_CODE_BY_ACCOUNT_TYPE.get(account_type)
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == default_code).first() if default_code else None
+        else:
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == payment_type_id).first()
+        if pt is None:
+            raise rules.BillPaymentError("payment_type_not_allowed", "Payment type not found")
+        if not pt.is_active or pt.code not in allowed_codes:
+            raise rules.BillPaymentError(
+                "payment_type_not_allowed",
+                f"Payment type '{pt.name}' cannot be used to pay a bill from a {account_type} account.",
+            )
+        if pt.code == rules.CHEQUE and not (cheque_number and cheque_number.strip()):
+            raise rules.BillPaymentError("cheque_number_required", "A cheque number is required for a cheque payment.")
+
+        # Same currency: no exchange rate on bills or bill payments
+        if (account.currency or "").upper() != (bill.currency or "").upper():
+            raise rules.BillPaymentError(
+                "currency_mismatch",
+                f"Account currency ({account.currency}) differs from the bill currency ({bill.currency}). Transfer funds into a {bill.currency} account first.",
+            )
 
         # Calculate remaining balance excluding reversed payments
         existing_payments = (
             self.db.query(PaymentDB)
-            .filter(PaymentDB.related_bill_id == bill.id, PaymentDB.is_reversed == False)
+            .filter(PaymentDB.related_bill_id == bill.id, PaymentDB.is_reversed == False)  # noqa: E712
             .all()
         )
         paid_so_far = sum(float(p.amount) for p in existing_payments)
         remaining = round(bill.total - paid_so_far, 2)
-        payment_amount = float(amount)
-
         if payment_amount > remaining + 0.01:
             raise ValueError(
                 f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f})."
+            )
+
+        # No overdraft on any account
+        if round(float(account.current_balance or 0.0), 4) + 0.0001 < payment_amount:
+            raise rules.BillPaymentError(
+                "insufficient_balance",
+                f"Account '{account.account_name}' balance ({float(account.current_balance or 0.0):,.2f} {account.currency}) is below the payment ({payment_amount:,.2f}).",
             )
 
         payment = PaymentDB(
@@ -72,23 +116,51 @@ class SettlementService:
             related_bill_id=bill.id,
             related_invoice_id=None,
             amount=payment_amount,
-            currency=currency,
+            currency=bill.currency,
             payment_date=payment_date,
-            bank_account_id=bank_account_id,
-            method=method or "bank_transfer",
-            reference=reference or bill.bill_number,
+            bank_account_id=account.id,
+            method=rules.METHOD_BY_PAYMENT_TYPE_CODE.get(pt.code, "other"),
+            reference=reference or "",
             is_reversed=False,
         )
         self.db.add(payment)
 
         # Update bill status & amount_paid
         bill.amount_paid = round(paid_so_far + payment_amount, 2)
-        if bill.amount_paid >= bill.total - 0.01:
-            bill.status = "paid"
-        elif bill.status in ("ready_to_pay", "scheduled", "partially_paid", "unpaid"):
-            bill.status = "partially_paid"
+        bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         return bill, payment
+
+    def reverse_cheque_bill_payment(self, bill_id: int, cheque_number: str, reason: str, reversed_by: str = "system") -> Optional[PaymentDB]:
+        """
+        Reverse the payment a linked cheque made against a bill (cheque stopped, voided, bounced or replaced).
+        Marks the payment reversed, recomputes amount_paid and derives the bill status again.
+        """
+        bill = self.db.query(BillDB).filter(BillDB.id == bill_id).first()
+        if not bill:
+            return None
+        payment = (
+            self.db.query(PaymentDB)
+            .filter(
+                PaymentDB.related_bill_id == bill.id,
+                PaymentDB.reference == f"CHK-{cheque_number}",
+                PaymentDB.is_reversed == False,  # noqa: E712
+            )
+            .first()
+        )
+        if payment:
+            payment.is_reversed = True
+            payment.reversed_at = datetime.utcnow()
+            payment.reversed_by = reversed_by
+            payment.reversal_reason = reason
+            self.db.flush()
+        remaining = [
+            p for p in self.db.query(PaymentDB).filter(PaymentDB.related_bill_id == bill.id).all()
+            if not p.is_reversed
+        ]
+        bill.amount_paid = round(sum(float(p.amount) for p in remaining), 2)
+        bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
+        return payment
 
     def settle_invoice(
         self,
@@ -278,7 +350,7 @@ class SettlementService:
                 self.db.query(BillDB)
                 .filter(
                     BillDB.vendor_id == payee_id,
-                    BillDB.status.notin_(["paid", "void"]),
+                    BillDB.status.in_(bs.OPEN_STATUSES),
                 )
                 .all()
             )

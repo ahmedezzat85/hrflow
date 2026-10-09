@@ -6,6 +6,8 @@ Related: `docs/finance-module/14-fux-412-collapsible-bill-filters.md` (secondary
 
 **Confirmed direction:** Variant A from the reviewed prototype (`bills-toolbar-prototype.html`, variant `#variant-a`). This is the exact and only approved layout — do not substitute the dropdown-select or horizontal-scroll variants shown as alternatives in that prototype.
 
+> **Superseded (owner decision D-021, October 9, 2026):** once the restyle in [19-finance-ui-restyle-direction-a.md](19-finance-ui-restyle-direction-a.md) is implemented, this layout (status pill + Change view panel) is replaced by an always-visible status row with counts. Until then this document describes the current behaviour.
+
 **User story:** As a bills user, I want the row of status tabs (Inbox, Needs Coding, Needs Approval, Ready to Pay, Scheduled, Paid, Exceptions, All) hidden by default and shown only when I ask for it, so the page does not permanently show a wide tab bar I am not using.
 
 ## Scope clarification (do not confuse with FUX-412)

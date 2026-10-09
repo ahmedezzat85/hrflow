@@ -117,7 +117,6 @@ def test_account_transactions_and_petty_summary_api(app_client, admin_cookies, e
         "payment_type_id": pt_id,
         "reference": "INV-REF-999",
         "description": "API Test Manual Deposit",
-        "fx_rate": 48.5,
     }
     tx_resp = app_client.post(
         f"/api/finance/accounts/{acc_id}/transactions",
@@ -128,7 +127,7 @@ def test_account_transactions_and_petty_summary_api(app_client, admin_cookies, e
     tx_data = tx_resp.json()
     assert tx_data["id"] is not None
     assert tx_data["running_balance"] == 12500.0
-    assert tx_data["fx_equivalent"] == round(2500.0 * 48.5, 4)
+    assert tx_data["fx_rate"] is None  # no exchange rate on manual entries (D-020)
     tx_id = tx_data["id"]
 
     # 4. List transactions for this account

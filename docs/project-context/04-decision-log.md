@@ -297,7 +297,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-016 — Vendor Bill Status Model
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented; plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B1); plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
 - **Decision:**
   - Eight bill statuses: Draft, Pending approval, Rejected, Approved, Scheduled, Partially paid, Paid, Void. `inbox`, `needs_coding`, `unpaid`, `ready_to_pay` and `exceptions` are removed; the `is_reviewed` flag is no longer used.
   - Overdue is a flag derived from the due date, not a status.
@@ -309,7 +309,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-017 — Bill Approval and Bill Permissions
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B2).
 - **Decision:**
   - New permissions `finance.bill.approve` and `finance.bill.pay`. Super admin holds them; no seeded role is granted them for now, so Financial-Admin keeps create/edit but loses approve and pay until granted.
   - Bills saved by a holder of `finance.bill.approve` are Approved immediately, marked auto-approved. Others submit for approval; the super admin approves or rejects (reason required).
@@ -322,7 +322,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-018 — Bill Payment Fields, Currency and Balance Rules
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B3).
 - **Decision:**
   - No exchange rate on bills or bill payments. The paying account must be in the bill's currency; a mismatch is an error. Currency exchange happens only through account transfers.
   - A bill payment the account balance cannot cover is an error, for every account (no overdraft). Extending the check to other outflows is a later slice.
@@ -334,23 +334,36 @@ This document records durable product and architectural decisions approved by th
 
 ### D-019 — Bill Drafts and PDF Upload
 
-- **Status:** Accepted by owner, October 8, 2026. Not implemented.
+- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B4).
 - **Decision:**
   - Draft holds unfinished bills; it needs a vendor or an attachment. Leaving Draft runs full validation.
   - Every PDF or photo upload creates a Draft; several files can be uploaded at once from different vendors, each becoming its own Draft with its own vendor match. Weak matches are flagged "vendor to confirm"; new vendors are suggested, never auto-created.
   - Discard draft deletes it permanently.
   - The new-bill form offers "Not paid yet / Already paid" to approvers, starting on the user's last choice, and an "Add another after saving" option.
-- **Deferred:** a visual restyle of the bill screens (separate plan, shown visually before approval) and bulk/historical import (separate plan; historical bills link to existing ledger transactions rather than posting payments again).
+- **Deferred:** a visual restyle of the bill screens (separate plan, shown visually before approval; decided in D-021) and bulk/historical import (separate plan; historical bills link to existing ledger transactions rather than posting payments again).
 
 ### D-020 — Banking Rules: Same-Currency Entries, Spend as Bills, Cheque Reversals
 
-- **Status:** Accepted by owner, October 9, 2026. Not implemented; slice B6 and additions to B1 to B3 in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Status:** Accepted by owner, October 9, 2026. Implemented on `feature/bills-b1-status-model` (slice B6).
 - **Decision:**
   - A ledger transaction is always in its account's currency. Manual entries lose the exchange-rate path; exchange happens only through FX transfers. Cash withdrawals (teller or cheque) require the cash account to have the bank account's currency.
   - Spend with a vendor or shop is recorded as a bill (one-step "Already paid" where it is already paid). Plain transactions are for bank fees, transfers, exchange, withdrawals and money in.
   - Every route that pays a bill (bill dialogs, manual transaction linked to a bill, cheque linked to a bill) goes through the settlement service with the D-017 permission and D-018 checks.
   - Undoing a cheque posts reversing entries with a reason; ledger rows are never deleted for a reversal.
+- **Amendment (owner decision, October 9, 2026) — unknown or minor vendors:** spend with a shop not worth tracking is still a bill, recorded against a protected **Miscellaneous** vendor with the shop name in Details; category carries the reporting. A blank bill number is auto-assigned (`EXP-YYMM-NNNN`). A shop can be promoted to its own vendor at any time; earlier bills stay under Miscellaneous. Delivered in slices B4 and B5.
 - **Rationale:** Code review on October 9, 2026 found foreign-currency manual entries reducing balances by the unconverted amount, withdrawals crediting cash accounts in the wrong currency, cheques marking bills paid without a payment record, and cheque reversals deleting ledger rows.
+
+### D-021 — Finance Bills Visual Restyle: Direction A "Clean Table"
+
+- **Status:** Accepted by owner, October 9, 2026. Not implemented; plan in [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md).
+- **Decision:**
+  - Restyle the shared Finance components (data table, status pills and flags, status filter, page header and toolbar, summary cards, dialog) with direction A "Clean Table", starting with the Bills page. Sales invoices are not restyled in this work; they get a regression check only. Three other directions (Compact Ledger, Soft Cards, Structured Workbench) were explored and not chosen.
+  - FUX-414's status pill with a "Change view" panel is replaced by an always-visible status row with counts and an Overdue only control. The row wraps to a second line when narrow. This is an explicit owner override of FUX-414's "exact and only approved layout".
+  - The FUX-415 global density setting stays and Regular remains the default. The three density class definitions are not changed.
+  - In-page tabs and text buttons carry no icons. Icons stay in the sidebar, search box, filter button and row "more" menu.
+  - Table dates keep the year. Two solid blue primary buttons (top-bar "Add transaction" and the page-level "Record bill") are accepted; the top bar is not changed.
+- **Scope:** Visual only. No API, schema, permission or workflow change; D-016 to D-020 are unchanged.
+- **Rationale:** Today's bill rows are 100 to 200 px tall because text wraps; direction A reaches about 53 px at Regular with the lowest review risk of the four directions explored on the "Finance Restyle: Alternative Directions" design canvas.
 
 ---
 
