@@ -1,7 +1,7 @@
 # 22. Finance restyle v2: backend support (three small API additions)
 
 Status: **APPROVED by the owner on 10 Oct 2026 (D-027). Not implemented.**
-Work type: backend only (`be/`). Runs **in parallel** with the UI plan [21-finance-ui-restyle-v2.md](21-finance-ui-restyle-v2.md), which is done by a different agent on a different branch. The UI already works without these fields (it feature-detects them), so nothing here blocks the UI and nothing in the UI blocks this.
+Work type: backend only (`be/`). Runs **in parallel** with the UI plan [21-finance-ui-restyle-v2.md](21-finance-ui-restyle-v2.md) on its own branch. The UI already works without these fields (it feature-detects them), so nothing here blocks the UI and nothing in the UI blocks this.
 
 ## 1. Why
 
@@ -72,7 +72,7 @@ The approved Finance design (doc 21) shows three things the API does not return 
 
 ## 4. Git and delivery
 
-- **Work in a separate checkout from the UI agent.** The UI agent works in the owner's folder on `feature/finance-ui-restyle-v2`; two agents switching branches in one folder would overwrite each other's files. Use your own clone or your own environment, branch `feature/finance-restyle-v2-backend` from an up-to-date `main`.
+- Branch `feature/finance-restyle-v2-backend` from an up-to-date `main`, in the current working directory.
 - One commit per slice (`feat(finance): BE-1 category colour (D-027)` and so on), push after each slice, one draft PR into `main` at the end. Do not merge.
 - Tests: during work only the targeted file (`pytest be/tests/<file> -q --tb=short`); once at the end `pytest be/tests -q -k "finance or rbac"`. Report exact results and any pre-existing failures.
 
