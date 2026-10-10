@@ -1,6 +1,6 @@
 # 22. Finance restyle v2: backend support (three small API additions)
 
-Status: **APPROVED by the owner on 10 Oct 2026 (D-027). Not implemented.**
+Status: **Implemented on 10 Oct 2026 (D-027).**
 Work type: backend only (`be/`). Runs **in parallel** with the UI plan [21-finance-ui-restyle-v2.md](21-finance-ui-restyle-v2.md), which is done by a different agent on a different branch. The UI already works without these fields (it feature-detects them), so nothing here blocks the UI and nothing in the UI blocks this.
 
 ## 1. Why
