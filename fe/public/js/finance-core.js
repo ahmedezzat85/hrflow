@@ -266,6 +266,151 @@ const FinanceFormat = {
   },
 };
 
+// ==========================================
+// Finance UI helpers (restyle v2, D-027): class-based markup only, no colour literals.
+// Styles live in src/styles/modules/finance-v2.css under the .fv scope.
+// ==========================================
+const FinanceUI = {
+  HUES: ["blue", "orange", "teal", "violet", "green", "pink", "sky", "ochre"],
+
+  // Stable identity colour per record id: slot = ((id - 1) mod 8) + 1 (doc 21 section 3.3).
+  hueForId(id) {
+    const n = parseInt(id, 10);
+    if (!Number.isFinite(n)) return this.HUES[0];
+    return this.HUES[(((n - 1) % 8) + 8) % 8];
+  },
+
+  // Backend colour when present and valid; otherwise the index in sort order; "Other"/inactive are faint.
+  hueForCategory(category, sortedCategories) {
+    if (!category) return "faint";
+    if (category.is_active === false || category.active === false) return "faint";
+    const name = String(category.name || "").trim().toLowerCase();
+    if (name === "other") return "faint";
+    if (category.color && this.HUES.includes(category.color)) return category.color;
+    const list = Array.isArray(sortedCategories) ? sortedCategories : [];
+    const idx = list.findIndex((c) => c === category || (c && category.id !== undefined && c.id === category.id));
+    return this.HUES[(idx >= 0 ? idx : 0) % 8];
+  },
+
+  initials(name) {
+    const words = String(name || "").replace(/[^\p{L}\p{N}\s]/gu, " ").trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return "?";
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  },
+
+  esc(v) {
+    return FinanceFormat.escapeHtml(v === undefined || v === null ? "" : String(v));
+  },
+
+  avatar(name, hue, size) {
+    const sz = size === "lg" ? " fv-avatar--lg" : "";
+    return `<span class="fv-avatar fv-hue-${this.esc(hue || "blue")}${sz}" aria-hidden="true">${this.esc(this.initials(name))}</span>`;
+  },
+
+  dot(hue) {
+    return `<span class="fv-dot fv-hue-${this.esc(hue || "faint")}" aria-hidden="true"></span>`;
+  },
+
+  // Status text -> pill group (doc 21 section 3.2).
+  STATUS_GROUPS: {
+    draft: "draft",
+    pending_approval: "waiting", pending: "waiting", estimated: "waiting", needs_review: "waiting",
+    awaiting_second_leg: "waiting", notice_due: "waiting", awaiting_leg: "waiting",
+    approved: "open", sent: "open", issued: "open", accrued: "open",
+    scheduled: "planned",
+    partially_paid: "part", partial: "part",
+    paid: "settled", cleared: "settled", remitted: "settled", reconciled: "settled", active: "settled", completed: "settled",
+    rejected: "problem", bounced: "problem", urgent: "problem", overdue: "problem",
+    void: "closed", voided: "closed", inactive: "closed", closed: "closed", stopped: "closed", cancelled: "closed",
+  },
+
+  statusGroup(status) {
+    const key = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+    return this.STATUS_GROUPS[key] || "closed";
+  },
+
+  statusPill(group, label, attrs) {
+    const g = this.STATUS_GROUPS[group] ? this.STATUS_GROUPS[group] : group;
+    return `<span class="fv-status fv-status--${this.esc(g)}"${attrs ? " " + attrs : ""}><span class="fv-status__dot" aria-hidden="true"></span>${this.esc(label)}</span>`;
+  },
+
+  // Area tile: overview/sales/spend/banking/reports/settings.
+  AREAS: {
+    overview: { hue: "blue", icon: "fa-grip", name: "Overview" },
+    sales: { hue: "teal", icon: "fa-arrow-down", name: "Sales" },
+    spend: { hue: "orange", icon: "fa-arrow-up", name: "Spend" },
+    banking: { hue: "sky", icon: "fa-building-columns", name: "Banking" },
+    reports: { hue: "violet", icon: "fa-chart-column", name: "Reports" },
+    settings: { hue: "slate", icon: "fa-sliders", name: "Settings" },
+  },
+
+  areaTile(area, iconClass, size) {
+    const a = this.AREAS[area] || this.AREAS.overview;
+    const icon = iconClass || a.icon;
+    const sz = size === "lg" ? " fv-tile--lg" : "";
+    return `<span class="fv-tile fv-hue-${a.hue}${sz}" aria-hidden="true"><i class="fa-solid ${this.esc(icon)}"></i></span>`;
+  },
+
+  // "1 Sep 2026" (keeps the year). Accepts ISO strings; no timezone shift for date-only values.
+  formatDate(value) {
+    if (!value) return "—";
+    const s = String(value).trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    if (m) return `${parseInt(m[3], 10)} ${months[parseInt(m[2], 10) - 1]} ${m[1]}`;
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  },
+
+  // tone: "late" | "warn" | "info"
+  dateCell(date, note, tone) {
+    const n = note ? `<span class="fv-note fv-note--${this.esc(tone || "info")}">${this.esc(note)}</span>` : "";
+    return `<div class="fv-date"><span>${this.esc(this.formatDate(date))}</span>${n}</div>`;
+  },
+
+  // Navy amount, optional second line and part-paid progress bar (pct 0..100).
+  amountCell(amount, currency, subText, progressPct) {
+    const curr = String(currency || "USD").toUpperCase().trim();
+    const full = FinanceFormat.formatMoney(amount, curr);
+    let body;
+    if (curr === "USD") {
+      body = this.esc(full);
+    } else {
+      const rest = full.startsWith(curr + " ") ? full.slice(curr.length + 1) : full;
+      body = `<span class="fv-cur">${this.esc(curr)}</span> ${this.esc(rest)}`;
+    }
+    let sub = "";
+    if (subText) sub = `<span class="fv-sub">${this.esc(subText)}</span>`;
+    let bar = "";
+    if (progressPct !== undefined && progressPct !== null) {
+      const pct = Math.max(0, Math.min(100, Number(progressPct) || 0));
+      bar = `<span class="fv-progress" role="presentation"><span class="fv-progress__fill" style="width:${pct}%"></span></span>`;
+    }
+    return `<div class="fv-amount"><span class="fv-amount__value">${body}</span>${sub}${bar}</div>`;
+  },
+
+  // Row actions: one text button plus up to three icon buttons (doc 21 section 3.5).
+  // primary: { label, onclick, kind: "fill"|"outline", id, className, attrs, disabled }
+  // icons:   [{ icon, label, onclick, id, className, attrs, disabled }] (max 3)
+  rowActions(spec) {
+    const s = spec || {};
+    let html = "";
+    if (s.primary) {
+      const p = s.primary;
+      const cls = `btn btn-sm ${p.kind === "outline" ? "btn-outline" : "btn-fill"} fv-row-btn ${p.className || ""}`.trim();
+      html += `<button type="button" class="${this.esc(cls)}"${p.id ? ` id="${this.esc(p.id)}"` : ""}${p.onclick ? ` onclick="${p.onclick}"` : ""}${p.disabled ? " disabled" : ""}${p.attrs ? " " + p.attrs : ""}>${this.esc(p.label)}</button>`;
+    }
+    (s.icons || []).slice(0, 3).forEach((ic) => {
+      const cls = `fv-icon-btn ${ic.className || ""}`.trim();
+      html += `<button type="button" class="${this.esc(cls)}"${ic.id ? ` id="${this.esc(ic.id)}"` : ""} title="${this.esc(ic.label)}" aria-label="${this.esc(ic.label)}"${ic.onclick ? ` onclick="${ic.onclick}"` : ""}${ic.disabled ? " disabled" : ""}${ic.attrs ? " " + ic.attrs : ""}><i class="fa-solid ${this.esc(ic.icon)}" aria-hidden="true"></i></button>`;
+    });
+    return `<div class="fv-row-actions">${html}</div>`;
+  },
+};
+window.FinanceUI = FinanceUI;
+
 // Global aliases for convenience
 window.FinanceFormat = FinanceFormat;
 window.formatMoney = FinanceFormat.formatMoney.bind(FinanceFormat);

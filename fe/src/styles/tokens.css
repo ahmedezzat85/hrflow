@@ -93,6 +93,46 @@
   --warning-dark: var(--warning);
   --shadow-md: var(--shadow);
   --trans: all .15s ease;
+  /* Finance UI restyle v2 (D-027): scoped by .fv in modules/finance-v2.css */
+  --ink-strong: #16245e;
+  --ink-body: #2b3a5c;
+  --ink-label: #4b5c92;
+  --ink-muted: #5d6b8f;
+  --ink-faint: #8f9cc2;
+  --fv-canvas: #f4f6fd;
+  --fv-surface: #ffffff;
+  --fv-surface-soft: #f7f9ff;
+  --fv-dialog-foot: #fbfcff;
+  --fv-line: rgba(32, 86, 232, .10);
+  --fv-line-strong: rgba(32, 86, 232, .12);
+  --fv-line-row: rgba(32, 86, 232, .07);
+  --fv-input-border: rgba(32, 86, 232, .18);
+  --fv-outline: rgba(32, 86, 232, .22);
+  --brand: #2056e8;
+  --brand-ink: #1a46bd;
+  --brand-text: #2056e8;
+  --brand-tint: #e8eeff;
+  --brand-wash: rgba(32, 86, 232, .08);
+  --fv-scrim: rgba(22, 36, 94, .42);
+  --fv-shadow-card: 0 1px 3px rgba(20, 50, 120, .05);
+  --fv-shadow-dialog: 0 24px 60px rgba(16, 30, 80, .28);
+  --fv-shadow-pill: 0 2px 6px rgba(32, 86, 232, .25);
+  --fv-shadow-hero: 0 8px 22px -10px rgba(32, 86, 232, .65);
+  --brand-gradient: linear-gradient(155deg, #2a5df0 0%, #2056e8 38%, #1a2f9c 100%);
+  --fv-on-brand: #ffffff;
+  --fv-on-brand-wash: rgba(255, 255, 255, .22);
+  --fv-hero-tile: rgba(255, 255, 255, .18);
+  --fv-tint-pct: 14%;
+  --fv-slate-tint: rgba(75, 92, 146, .12);
+  --fv-closed-bg: #eef1f8;
+  --id-blue: #2056e8;   --id-blue-ink: #1a46bd;
+  --id-orange: #e0701f; --id-orange-ink: #b2560f;
+  --id-teal: #0f9d8c;   --id-teal-ink: #0b7a6d;
+  --id-violet: #7c4ddb; --id-violet-ink: #6236c0;
+  --id-green: #3f9a3c;  --id-green-ink: #2f7a2d;
+  --id-pink: #d14d86;   --id-pink-ink: #ad3469;
+  --id-sky: #1b8fd0;    --id-sky-ink: #146fa3;
+  --id-ochre: #b98000;  --id-ochre-ink: #8a6000;
 }
 
 [data-theme="dark"] {
@@ -130,5 +170,42 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, .3);
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, .5);
+  /* Finance UI restyle v2 (D-027), dark values */
+  --ink-strong: #e9eeff;
+  --ink-body: #c9d2e8;
+  --ink-label: #a9b6dc;
+  --ink-muted: #8f9ab1;
+  --ink-faint: #6b7891;
+  --fv-canvas: #0f1117;
+  --fv-surface: #171a24;
+  --fv-surface-soft: #1d2130;
+  --fv-dialog-foot: #1a1e2b;
+  --fv-line: rgba(160, 180, 230, .12);
+  --fv-line-strong: rgba(160, 180, 230, .18);
+  --fv-line-row: rgba(160, 180, 230, .08);
+  --fv-input-border: rgba(160, 180, 230, .22);
+  --fv-outline: rgba(143, 176, 255, .35);
+  --brand: #3566ef;
+  --brand-ink: #9db8ff;
+  --brand-text: #8fb0ff;
+  --brand-tint: rgba(53, 102, 239, .22);
+  --brand-wash: rgba(53, 102, 239, .14);
+  --fv-scrim: rgba(5, 8, 20, .6);
+  --fv-shadow-card: 0 1px 3px rgba(0, 0, 0, .3);
+  --fv-shadow-dialog: 0 10px 40px rgba(0, 0, 0, .55);
+  --fv-shadow-pill: none;
+  --fv-shadow-hero: none;
+  --brand-gradient: linear-gradient(155deg, #1f48c4 0%, #1a38a0 38%, #101b5c 100%);
+  --fv-tint-pct: 18%;
+  --fv-slate-tint: rgba(160, 176, 198, .15);
+  --fv-closed-bg: rgba(160, 176, 198, .15);
+  --id-blue: #4f80f2;   --id-blue-ink: #9db8ff;
+  --id-orange: #d6742b; --id-orange-ink: #f3a467;
+  --id-teal: #1f9d8e;   --id-teal-ink: #5fd0c0;
+  --id-violet: #8f6fe8; --id-violet-ink: #b9a2ff;
+  --id-green: #4fa24c;  --id-green-ink: #7ccf78;
+  --id-pink: #d55f92;   --id-pink-ink: #f394bc;
+  --id-sky: #3f98d0;    --id-sky-ink: #7cc6f2;
+  --id-ochre: #b98a22;  --id-ochre-ink: #e3bd5a;
 }
 

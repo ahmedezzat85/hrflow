@@ -194,17 +194,20 @@ test.describe('R3 one button set', () => {
 
   test('R3-2: buttons of one size share one border radius', async ({ page }) => {
     const res = await visitAll(page, () => {
-      const radii = { default: new Set(), small: new Set() };
+      const radii = { default: new Set(), small: new Set(), finance: new Set() };
       document.querySelectorAll('#admin-app button.btn, #admin-app a.btn').forEach((b) => {
         if (b.offsetParent === null) return;
+        // Finance restyle v2 (D-027): buttons inside the .fv scope and the Finance top bar use radius 8.
+        if (b.closest('.fv, .fv-dialog, .fv-shell .topbar')) { radii.finance.add(getComputedStyle(b).borderTopLeftRadius); return; }
         radii[b.classList.contains('btn-sm') ? 'small' : 'default'].add(getComputedStyle(b).borderTopLeftRadius);
       });
-      return { default: [...radii.default], small: [...radii.small] };
+      return { default: [...radii.default], small: [...radii.small], finance: [...radii.finance] };
     });
-    const seen = { default: new Set(), small: new Set() };
-    for (const r of Object.values(res)) { r.default.forEach((v) => seen.default.add(v)); r.small.forEach((v) => seen.small.add(v)); }
+    const seen = { default: new Set(), small: new Set(), finance: new Set() };
+    for (const r of Object.values(res)) { r.default.forEach((v) => seen.default.add(v)); r.small.forEach((v) => seen.small.add(v)); r.finance.forEach((v) => seen.finance.add(v)); }
     expect([...seen.default]).toEqual(['10px']);
     expect([...seen.small]).toEqual(['10px']);
+    expect([...seen.finance].filter((v) => v !== '8px')).toEqual([]);
   });
 
   test('R3-3: the named screens each show exactly one primary button; Salary and Raises is read-only and has none', async ({ page }) => {
