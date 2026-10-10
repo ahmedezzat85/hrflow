@@ -11,15 +11,17 @@ test.describe('Bills header and toolbar, direction A', () => {
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 
-  test('action buttons and sub-nav tabs carry no icons; search and filter keep theirs', async ({ page }) => {
-    for (const id of ['financeAddVendorBtn', 'financeCaptureBillBtn', 'financeUploadDraftsBtn', 'financeRecordBillBtn']) {
+  test('action buttons and sub-nav tabs carry no icons; search keeps its icon; no Filters or Upload / Capture button', async ({ page }) => {
+    for (const id of ['financeAddVendorBtn', 'financeUploadDraftsBtn', 'financeRecordBillBtn']) {
       await expect(page.locator(`#${id}`)).toBeVisible();
       await expect(page.locator(`#${id} i`)).toHaveCount(0);
     }
     await expect(page.locator('#financeBillSubNav .filter-tab')).toHaveCount(4);
     await expect(page.locator('#financeBillSubNav .filter-tab i')).toHaveCount(0);
     await expect(page.locator('#financeBillSearchBox i')).toHaveCount(1);
-    await expect(page.locator('#financeBillFilterToggleBtn i')).toHaveCount(1);
+    await expect(page.locator('#financeCaptureBillBtn')).toHaveCount(0);
+    await expect(page.locator('#financeBillFilterToggleBtn')).toHaveCount(0);
+    await expect(page.locator('#financeUploadDraftsBtn')).toHaveText('Upload bills');
   });
 
   test('sub-nav keeps its IDs and tablist contract; active tab is underlined', async ({ page }) => {

@@ -117,14 +117,12 @@ test.describe('Bills status row (D-021, supersedes FUX-414)', () => {
     });
   }
 
-  test('AC 6: Status row and FUX-412 secondary filter panel operate independently', async ({ page }) => {
-    const filterPanel = page.locator('#financeBillFilterPanel');
-    await expect(filterPanel).not.toBeVisible();
-    await page.locator('#financeBillFilterToggleBtn').click();
-    await expect(filterPanel).toBeVisible();
-    await expect(page.locator('#financeBillStatusRow')).toBeVisible();
-    await page.click('#tabBillQueueDraft');
-    await expect(filterPanel).toBeVisible();
-    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
+  test('AC 6: No Filters button or panel exists; the tags and search are the only filters', async ({ page }) => {
+    for (const gone of ['#financeBillFilterToggleBtn', '#financeBillFilterPanel', '#financeBillStatusFilter', '#financeBillAttachmentFilter']) {
+      await expect(page.locator(gone)).toHaveCount(0);
+    }
+    await page.fill('#financeBillSearch', 'slack');
+    await expect(page.locator('#financeBillsTableBody tr')).not.toHaveCount(0);
+    await expect(page.locator('#financeBillsTableBody tr:has-text("Amazon")')).toHaveCount(0);
   });
 });

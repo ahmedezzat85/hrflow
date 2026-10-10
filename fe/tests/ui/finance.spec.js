@@ -45,7 +45,7 @@ test.describe('Finance Module UI Testing', () => {
     await expect(modal).not.toBeVisible();
   });
 
-  test('Vendor Bills: segmented tabs and filter-select dropdown', async ({ page }) => {
+  test('Vendor Bills: segmented tabs and status tags', async ({ page }) => {
     await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
 
@@ -54,16 +54,9 @@ test.describe('Finance Module UI Testing', () => {
     await expect(subNav).toBeVisible();
     await expect(page.locator('#tabFinanceBills')).toHaveClass(/active/);
 
-    // Verify filter toggle & filter-select dropdown
-    const toggleBtn = page.locator('#financeBillFilterToggleBtn');
-    if (await toggleBtn.isVisible()) {
-      if (await toggleBtn.getAttribute('aria-expanded') !== 'true') {
-        await toggleBtn.click();
-      }
-    }
-    const filterSelect = page.locator('#financeBillStatusFilter');
-    await expect(filterSelect).toBeVisible();
-    await expect(filterSelect).toHaveClass(/filter-select/);
+    // Direction A (D-021): no Filters button or panel; the status tags are always visible
+    await expect(page.locator('#financeBillFilterToggleBtn')).toHaveCount(0);
+    await expect(page.locator('#financeBillWorkQueueTabs')).toBeVisible();
   });
 
   test('Bank Accounts: tabs & withdraw modal', async ({ page }) => {

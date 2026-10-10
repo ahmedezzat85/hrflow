@@ -117,81 +117,7 @@ async function loadFinanceBillQueueCounts() {
   }
 }
 
-// ── Collapsible Bill Filters (FUX-412) ──────────────────────────────────────
-
-function _getBillFilterStorageKey() {
-  const email = (typeof SessionInfo !== "undefined" && SessionInfo.getEmail && SessionInfo.getEmail()) || "default";
-  return `hrflow_bill_filters_expanded_${email}`;
-}
-
-function isBillFilterPanelExpanded() {
-  const panel = document.getElementById("financeBillFilterPanel");
-  return panel ? panel.style.display !== "none" : false;
-}
-
-function setBillFilterPanelExpanded(expanded, persist = true) {
-  const panel = document.getElementById("financeBillFilterPanel");
-  const toggleBtn = document.getElementById("financeBillFilterToggleBtn");
-  if (panel) {
-    panel.style.display = expanded ? "block" : "none";
-  }
-  if (toggleBtn) {
-    toggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    toggleBtn.classList.toggle("active", !!expanded);
-  }
-  if (persist) {
-    try {
-      localStorage.setItem(_getBillFilterStorageKey(), expanded ? "true" : "false");
-    } catch (_) {}
-  }
-}
-
-function toggleBillFilterPanel() {
-  const current = isBillFilterPanelExpanded();
-  setBillFilterPanelExpanded(!current, true);
-}
-
-function updateBillFilterBadge() {
-  const statusFilter = document.getElementById("financeBillStatusFilter");
-  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
-  const badge = document.getElementById("financeBillFilterBadge");
-  if (!badge) return 0;
-
-  let activeCount = 0;
-  if (statusFilter && statusFilter.value && statusFilter.value.trim() !== "") {
-    activeCount++;
-  }
-  if (attachmentFilter && attachmentFilter.value && attachmentFilter.value.trim() !== "") {
-    activeCount++;
-  }
-
-  if (activeCount > 0) {
-    badge.textContent = activeCount;
-    badge.style.display = "inline-block";
-    badge.setAttribute("aria-label", `${activeCount} filters applied`);
-  } else {
-    badge.style.display = "none";
-    badge.textContent = "0";
-    badge.removeAttribute("aria-label");
-  }
-  return activeCount;
-}
-
 function onBillOverdueOnlyChange() {
-  loadFinanceBills();
-}
-
-function onBillFilterChanged() {
-  updateBillFilterBadge();
-  loadFinanceBills();
-}
-
-function resetBillSecondaryFilters() {
-  const statusFilter = document.getElementById("financeBillStatusFilter");
-  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
-  if (statusFilter) statusFilter.value = "";
-  if (attachmentFilter) attachmentFilter.value = "";
-  updateBillFilterBadge();
   loadFinanceBills();
 }
 
@@ -201,93 +127,33 @@ async function loadFinanceBills(incomingParams) {
 
   try {
     const cachedState = FinanceTable.getState("finance_bills");
-    const statusFilter = document.getElementById("financeBillStatusFilter");
     const searchInput = document.getElementById("financeBillSearch");
-    const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
 
-    // Read incoming URL query params
+    // Deep links: the status tabs are the only status filter, so a "status" link selects its tab.
     const urlParams = (typeof window !== "undefined" && window.location) ? new URLSearchParams(window.location.search) : null;
-    const urlStatus = urlParams ? urlParams.get("status") : null;
-    const urlAttachment = urlParams ? urlParams.get("attachment") : null;
-    const urlQueue = urlParams ? urlParams.get("queue") : null;
-    const urlSearch = urlParams ? urlParams.get("search") : null;
+    const wantedQueue = (incomingParams && (incomingParams.queue || incomingParams.status))
+      || (!_billTableInitialized && urlParams && (urlParams.get("queue") || urlParams.get("status")))
+      || null;
+    const wantedSearch = (incomingParams && incomingParams.search)
+      || (!_billTableInitialized && !incomingParams && urlParams && urlParams.get("search"))
+      || null;
 
-    let hasDeepLinkFilter = false;
-
-    if (incomingParams) {
-      if (incomingParams.status && statusFilter) {
-        statusFilter.value = incomingParams.status;
-        hasDeepLinkFilter = true;
-      }
-      if (incomingParams.attachment && attachmentFilter) {
-        attachmentFilter.value = incomingParams.attachment;
-        hasDeepLinkFilter = true;
-      }
-      if (incomingParams.queue) {
-        cachedState.queue = incomingParams.queue;
-        if (incomingParams.queue !== "all") hasDeepLinkFilter = true;
-      }
-      if (incomingParams.search && searchInput) {
-        searchInput.value = incomingParams.search;
-      }
-      if (incomingParams.vendor_id || incomingParams.bill_id) {
-        hasDeepLinkFilter = true;
-      }
-    } else if (!_billTableInitialized) {
-      if (urlStatus && statusFilter) {
-        statusFilter.value = urlStatus;
-        hasDeepLinkFilter = true;
-      }
-      if (urlAttachment && attachmentFilter) {
-        attachmentFilter.value = urlAttachment;
-        hasDeepLinkFilter = true;
-      }
-      if (urlQueue) {
-        cachedState.queue = urlQueue;
-        if (urlQueue !== "all") hasDeepLinkFilter = true;
-      }
-      if (urlSearch && searchInput) {
-        searchInput.value = urlSearch;
-      }
-    }
+    if (wantedQueue) cachedState.queue = wantedQueue;
+    if (wantedSearch && searchInput) searchInput.value = wantedSearch;
 
     if (!_billTableInitialized) {
-      if (!incomingParams && !urlStatus && cachedState.filters?.status && statusFilter) {
-        statusFilter.value = cachedState.filters.status;
-      }
-      if (!incomingParams && !urlSearch && cachedState.filters?.search && searchInput) {
+      if (!incomingParams && !wantedSearch && cachedState.filters?.search && searchInput) {
         searchInput.value = cachedState.filters.search;
       }
-      if (!incomingParams && !urlAttachment && cachedState.filters?.attachment && attachmentFilter) {
-        attachmentFilter.value = cachedState.filters.attachment;
-      }
-
-      // Initialize filter panel expanded/collapsed state:
-      // If a non-default filter is pre-applied (deep-link / query param), force-expand.
-      // Otherwise restore user's stored preference (default: collapsed/false).
-      const activeCount = updateBillFilterBadge();
-      const nonDefaultFilterPresent = hasDeepLinkFilter || activeCount > 0;
-      if (nonDefaultFilterPresent) {
-        setBillFilterPanelExpanded(true, false);
-      } else {
-        const savedPref = localStorage.getItem(_getBillFilterStorageKey());
-        setBillFilterPanelExpanded(savedPref === "true", false);
-      }
       _billTableInitialized = true;
-    } else {
-      updateBillFilterBadge();
-      if (hasDeepLinkFilter) {
-        setBillFilterPanelExpanded(true, false);
-      }
     }
     _updateBillQueueTabs(cachedState.queue || "all");
 
     const params = {};
-    if (statusFilter && statusFilter.value) params.status = statusFilter.value;
     const overdueOnly = document.getElementById("financeBillOverdueOnly");
     if (overdueOnly && overdueOnly.checked) params.overdue = true;
     if (cachedState.queue && cachedState.queue !== "all") params.queue = cachedState.queue;
-    else if (!params.status) params.queue = "all"; // "All" excludes Void, matching the tab counts
+    else params.queue = "all"; // "All" excludes Void, matching the tab counts
 
     const [items] = await Promise.all([
       FinanceApi.getBills(Object.keys(params).length ? params : undefined),
@@ -305,26 +171,12 @@ async function loadFinanceBills(incomingParams) {
 
 function applyAndRenderBills() {
   const state = FinanceTable.getState("finance_bills");
-  const statusFilter = document.getElementById("financeBillStatusFilter");
   const searchInput = document.getElementById("financeBillSearch");
-  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
-
-  const currentStatus = statusFilter ? statusFilter.value : "";
   const currentSearch = searchInput ? searchInput.value.trim() : "";
-  const currentAttachment = attachmentFilter ? attachmentFilter.value : "";
 
-  state.filters = {
-    ...(currentStatus ? { status: currentStatus } : {}),
-    ...(currentSearch ? { search: currentSearch } : {}),
-    ...(currentAttachment ? { attachment: currentAttachment } : {}),
-  };
+  state.filters = currentSearch ? { search: currentSearch } : {};
 
   let items = FinanceState.bills || [];
-  if (currentAttachment === "with_attachment") {
-    items = items.filter((b) => !!(b.attachment_name || b.attachment_url));
-  } else if (currentAttachment === "no_attachment") {
-    items = items.filter((b) => !(b.attachment_name || b.attachment_url));
-  }
 
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
@@ -353,35 +205,6 @@ function applyAndRenderBills() {
     FinanceTable.saveState("finance_bills", state);
     applyAndRenderBills();
   }, { sortBy: state.sortBy, sortDir: state.sortDir });
-
-  updateBillFilterBadge();
-
-  FinanceTable.renderFilterChips(
-    "financeBillFilterChips",
-    state.filters,
-    (removedKey) => {
-      if (removedKey === "status" && statusFilter) {
-        statusFilter.value = "";
-        updateBillFilterBadge();
-        loadFinanceBills();
-      } else if (removedKey === "search" && searchInput) {
-        searchInput.value = "";
-        updateBillFilterBadge();
-        applyAndRenderBills();
-      } else if (removedKey === "attachment" && attachmentFilter) {
-        attachmentFilter.value = "";
-        updateBillFilterBadge();
-        applyAndRenderBills();
-      }
-    },
-    () => {
-      if (statusFilter) statusFilter.value = "";
-      if (searchInput) searchInput.value = "";
-      if (attachmentFilter) attachmentFilter.value = "";
-      updateBillFilterBadge();
-      loadFinanceBills();
-    }
-  );
 
   FinanceTable.renderPagination(
     "financeBillsPagination",
@@ -1930,8 +1753,6 @@ function switchBillSubTab(subTab) {
   const tabBill = document.getElementById("tabFinanceBills");
   const tabVend = document.getElementById("tabFinanceVendors");
   const boxBill = document.getElementById("financeBillSearchBox");
-  const filterToggleBtn = document.getElementById("financeBillFilterToggleBtn");
-  const filterPanel = document.getElementById("financeBillFilterPanel");
   const statusRow = document.getElementById("financeBillStatusRow");
   const boxVend = document.getElementById("financeVendorSearchBox");
   const conBill = document.getElementById("financeBillsContainer");
@@ -1951,8 +1772,6 @@ function switchBillSubTab(subTab) {
       tabVend.setAttribute("tabindex", "0");
     }
     if (boxBill) boxBill.style.display = "none";
-    if (filterToggleBtn) filterToggleBtn.style.display = "none";
-    if (filterPanel) filterPanel.style.display = "none";
     if (statusRow) statusRow.style.display = "none";
     if (boxVend) boxVend.style.display = "block";
     if (conBill) conBill.style.display = "none";
@@ -1972,10 +1791,7 @@ function switchBillSubTab(subTab) {
       tabVend.setAttribute("tabindex", "-1");
     }
     if (boxBill) boxBill.style.display = "block";
-    if (filterToggleBtn) filterToggleBtn.style.display = "inline-flex";
     if (statusRow) statusRow.style.display = "flex";
-    const savedPref = localStorage.getItem(_getBillFilterStorageKey());
-    setBillFilterPanelExpanded(savedPref === "true", false);
     if (boxVend) boxVend.style.display = "none";
     if (conBill) conBill.style.display = "block";
     if (conVend) conVend.style.display = "none";
@@ -2362,12 +2178,6 @@ async function toggleVendorActive(id, currentlyActive) {
 // Window exports for Vendor Bills & Vendors
 window.loadFinanceBills = loadFinanceBills;
 window.filterFinanceBills = filterFinanceBills;
-window.toggleBillFilterPanel = toggleBillFilterPanel;
-window.setBillFilterPanelExpanded = setBillFilterPanelExpanded;
-window.isBillFilterPanelExpanded = isBillFilterPanelExpanded;
-window.updateBillFilterBadge = updateBillFilterBadge;
-window.onBillFilterChanged = onBillFilterChanged;
-window.resetBillSecondaryFilters = resetBillSecondaryFilters;
 window.setBillWorkQueue = setBillWorkQueue;
 window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;

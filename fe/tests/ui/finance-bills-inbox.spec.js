@@ -16,13 +16,12 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 1: An approver uploaded bill is saved as Approved (auto) with no client-set status', async ({ page }) => {
-    // Open Upload / Capture modal
-    await page.click('#financeCaptureBillBtn');
+    // Open the New bill dialog (single-file capture is its attach row)
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Verify modal initialized for capture / upload
     await expect(page.locator('#billCaptureSection')).toBeVisible();
-    await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
     // Fill bill details
     await page.selectOption('#billVendorId', { index: 1 });
@@ -44,14 +43,13 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await expect(page.locator('#billStatus')).toHaveCount(0);
     await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Approved');
 
-    // Now check "Mark verified and reviewed" and save
-    await page.check('#billIsReviewed');
+    // Save
     await page.click('#billModalSaveBtn');
 
     // Modal closes upon successful save
     await expect(page.locator('#billModal')).not.toBeVisible();
 
-    // Verify bill appears in table with Reviewed status badge
+    // Verify the bill appears in the table
     const createdRow = page.locator('#financeBillsTableBody tr:has-text("BILL-CAPTURE-001")');
     await expect(createdRow).toBeVisible();
     // Bills have no review state any more (D-016)
@@ -60,7 +58,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 2: Low-confidence / missing fields are clearly identified', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     const missingAlert = page.locator('#billMissingFieldsAlert');
@@ -85,7 +83,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 3: Likely duplicates are blocked or require authorized override with reason', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     const dupBanner = page.locator('#billDuplicateBanner');
@@ -107,7 +105,6 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billAmount', '1500');
-    await page.check('#billIsReviewed');
     await page.click('#billModalSaveBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
