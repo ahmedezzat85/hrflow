@@ -315,14 +315,14 @@ const FinanceUI = {
   // Status text -> pill group (doc 21 section 3.2).
   STATUS_GROUPS: {
     draft: "draft",
-    pending_approval: "waiting", pending: "waiting", estimated: "waiting", needs_review: "waiting",
+    pending_approval: "waiting", pending: "waiting", estimated: "waiting", needs_review: "waiting", outstanding: "waiting",
     awaiting_second_leg: "waiting", notice_due: "waiting", awaiting_leg: "waiting",
     approved: "open", sent: "open", issued: "open", accrued: "open",
     scheduled: "planned",
     partially_paid: "part", partial: "part",
     paid: "settled", cleared: "settled", remitted: "settled", reconciled: "settled", active: "settled", completed: "settled",
-    rejected: "problem", bounced: "problem", urgent: "problem", overdue: "problem",
-    void: "closed", voided: "closed", inactive: "closed", closed: "closed", stopped: "closed", cancelled: "closed",
+    rejected: "problem", bounced: "problem", stopped: "problem", urgent: "problem", overdue: "problem",
+    void: "closed", voided: "closed", inactive: "closed", closed: "closed", replaced: "closed", cancelled: "closed",
   },
 
   statusGroup(status) {

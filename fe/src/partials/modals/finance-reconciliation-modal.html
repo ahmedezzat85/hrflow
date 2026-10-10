@@ -1,6 +1,6 @@
 <!-- fe/src/partials/modals/finance-reconciliation-modal.html -->
 
-<div id="financeReconciliationModal" class="modal-overlay">
+<div id="financeReconciliationModal" class="modal-overlay fv fv-dialog fv-area-sky">
   <div class="modal modal-v2 modal-v2-box" role="dialog" aria-modal="true" aria-labelledby="reconciliationModalTitleText" style="max-width: 1040px; width: 95vw; max-height: 90vh; display:flex; flex-direction:column;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-scale-balanced"></i></div>
@@ -107,7 +107,7 @@
 </div>
 
 <!-- Mini Dialog: Create Ledger Entry from Statement Line -->
-<div id="reconcileCreateEntryModal" class="modal-overlay" style="z-index: 1050;">
+<div id="reconcileCreateEntryModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1050;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 480px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-plus"></i></div>
@@ -154,7 +154,7 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeReconcileCreateEntryModal()">Cancel</button>
+        <button type="button" class="btn" onclick="closeReconcileCreateEntryModal()">Cancel</button>
         <button type="submit" class="btn btn-fill"><i class="fa-solid fa-check"></i> Create &amp; Link Entry</button>
       </div>
     </form>
@@ -162,7 +162,7 @@
 </div>
 
 <!-- Mini Dialog: Ignore Statement Line with Mandatory Reason -->
-<div id="reconcileIgnoreModal" class="modal-overlay" style="z-index: 1050;">
+<div id="reconcileIgnoreModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1050;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 440px;">
     <div class="modal-head">
       <div class="modal-head-icon" style="background:rgba(239,68,68,0.1);color:#ef4444;"><i class="fa-solid fa-ban"></i></div>
@@ -182,7 +182,7 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeReconcileIgnoreModal()">Cancel</button>
+        <button type="button" class="btn" onclick="closeReconcileIgnoreModal()">Cancel</button>
         <button type="submit" class="btn btn-fill btn-danger"><i class="fa-solid fa-ban"></i> Confirm Exclusion</button>
       </div>
     </form>
@@ -190,7 +190,7 @@
 </div>
 
 <!-- Mini Dialog: Split Statement Line -->
-<div id="reconcileSplitModal" class="modal-overlay" style="z-index: 1050;">
+<div id="reconcileSplitModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1050;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 620px;">
     <div class="modal-head">
       <div class="modal-head-icon" style="background:rgba(124,58,237,0.1);color:#7c3aed;"><i class="fa-solid fa-arrows-split-up-and-left"></i></div>
@@ -218,7 +218,7 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeReconcileSplitModal()">Cancel</button>
+        <button type="button" class="btn" onclick="closeReconcileSplitModal()">Cancel</button>
         <button type="submit" id="btnConfirmSplitPortions" class="btn btn-fill" style="background:#7c3aed;color:#fff;"><i class="fa-solid fa-check"></i> Apply Split &amp; Link</button>
       </div>
     </form>
@@ -228,7 +228,7 @@
 <!-- ========================================================================= -->
 <!-- Story 6.3: Rules Engine Modal (Rules List, Order, Stats, Revert)           -->
 <!-- ========================================================================= -->
-<div id="financeReconciliationRulesModal" class="modal-overlay" style="z-index: 1060;">
+<div id="financeReconciliationRulesModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1060;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 960px; width: 95vw; max-height: 90vh; display:flex; flex-direction:column;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-sliders"></i></div>
@@ -286,7 +286,7 @@
 <!-- ========================================================================= -->
 <!-- Story 6.3: Rule Edit / Create Modal with Dry-Run Preview                  -->
 <!-- ========================================================================= -->
-<div id="financeRuleEditModal" class="modal-overlay" style="z-index: 1070;">
+<div id="financeRuleEditModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1070;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 680px; width: 95vw; max-height: 92vh; display:flex; flex-direction:column;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
@@ -401,7 +401,7 @@
       </div>
 
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeRuleEditModal()">Cancel</button>
+        <button type="button" class="btn" onclick="closeRuleEditModal()">Cancel</button>
         <button type="submit" id="btnSaveReconciliationRule" class="btn btn-fill"><i class="fa-solid fa-save"></i> Save Rule</button>
       </div>
     </form>
@@ -411,7 +411,7 @@
 <!-- ========================================================================= -->
 <!-- Story 6.3: Apply Rules Confirmation Dialog                                -->
 <!-- ========================================================================= -->
-<div id="financeApplyRulesConfirmModal" class="modal-overlay" style="z-index: 1065;">
+<div id="financeApplyRulesConfirmModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1065;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 480px;">
     <div class="modal-head">
       <div class="modal-head-icon" style="background:rgba(37,99,235,0.1);color:#2563eb;"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
@@ -430,7 +430,7 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-outline" onclick="closeApplyRulesDialog()">Cancel</button>
+      <button type="button" class="btn" onclick="closeApplyRulesDialog()">Cancel</button>
       <button type="button" id="btnConfirmExecuteRules" class="btn btn-fill" onclick="confirmExecuteStatementRules()"><i class="fa-solid fa-bolt"></i> Execute Rules Now</button>
     </div>
   </div>
@@ -439,7 +439,7 @@
 <!-- ========================================================================= -->
 <!-- Story 6.4: Period Close Modal with Zero-Difference Gate & Override        -->
 <!-- ========================================================================= -->
-<div id="reconcileCloseModal" class="modal-overlay" style="z-index: 1070;">
+<div id="reconcileCloseModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1070;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 520px;">
     <div class="modal-head">
       <div class="modal-head-icon" style="background:rgba(22,163,74,0.1);color:#16a34a;"><i class="fa-solid fa-lock"></i></div>
@@ -497,7 +497,7 @@
       </div>
 
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeReconciliationCloseModal()">Cancel</button>
+        <button type="button" class="btn" onclick="closeReconciliationCloseModal()">Cancel</button>
         <button type="submit" id="btnConfirmClosePeriod" class="btn btn-success"><i class="fa-solid fa-lock"></i> Finalize &amp; Close Period</button>
       </div>
     </form>
@@ -507,7 +507,7 @@
 <!-- ========================================================================= -->
 <!-- Story 6.4: Period Reopen Modal with Audited Reason                         -->
 <!-- ========================================================================= -->
-<div id="reconcileReopenModal" class="modal-overlay" style="z-index: 1070;">
+<div id="reconcileReopenModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1070;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 480px;">
     <div class="modal-head">
       <div class="modal-head-icon" style="background:rgba(245,158,11,0.1);color:#d97706;"><i class="fa-solid fa-lock-open"></i></div>
@@ -530,7 +530,7 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeReconciliationReopenModal()">Cancel</button>
+        <button type="button" class="btn" onclick="closeReconciliationReopenModal()">Cancel</button>
         <button type="submit" id="btnConfirmReopenPeriod" class="btn btn-warning"><i class="fa-solid fa-lock-open"></i> Confirm Reopen</button>
       </div>
     </form>
@@ -540,7 +540,7 @@
 <!-- ========================================================================= -->
 <!-- Story 6.4: Reconciliation Completion Report Modal                         -->
 <!-- ========================================================================= -->
-<div id="reconciliationCompletionReportModal" class="modal-overlay" style="z-index: 1075;">
+<div id="reconciliationCompletionReportModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1075;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 820px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">
     <div class="modal-head">
       <div class="modal-head-icon" style="background:rgba(37,99,235,0.1);color:#2563eb;"><i class="fa-solid fa-file-invoice"></i></div>

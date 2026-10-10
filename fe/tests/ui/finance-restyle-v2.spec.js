@@ -390,3 +390,69 @@ test.describe('Finance restyle v2: Banking I (S5)', () => {
     await expect(page.locator('#fFinanceTxPayeePills [data-payee="vendor"]')).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+// ---------- S6: Banking II (Transfers, Cheques, Statements) ----------
+test.describe('Finance restyle v2: Banking II (S6)', () => {
+  test('Cheques: pills only for statuses in use plus a More pill, row actions capped, footer total', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-accounts');
+    await page.click('#subtabFinanceCheques');
+    await expect(page.locator('#financeChequesTableBody tr').first()).toBeVisible();
+    expect(await css(page, '#financeChequesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    await expect(page.locator('#financeChequeStatusTabs [data-status=""]')).toBeVisible();
+    await expect(page.locator('#financeChequeStatusTabs [data-status="issued"]')).toBeVisible();
+    await expect(page.locator('#financeChequeStatusTabs [data-status="draft"]')).toHaveCount(0);
+    await expect(page.locator('#financeChequeStatusTabs .fv-pill--more')).toContainText('Draft');
+    await page.click('#financeChequeStatusTabs .fv-pill--more');
+    await expect(page.locator('#financeChequeStatusTabs [data-status="draft"]')).toBeVisible();
+    // one text button and at most three icons per row, no uppercase or monospace, ISO dates gone
+    const counts = await page.locator('#financeChequesTableBody tr').evaluateAll((rows) => rows.map((r) => [r.querySelectorAll('.fv-row-actions .btn').length, r.querySelectorAll('.fv-row-actions .fv-icon-btn').length]));
+    for (const [text, icons] of counts) { expect(text).toBeLessThanOrEqual(1); expect(icons).toBeLessThanOrEqual(3); }
+    await expect(page.locator('#financeChequesTableBody')).toContainText('2 Sep 2026');
+    await expect(page.locator('#financeChequesTableBody .btn-cheque-clear')).toHaveText('Mark cleared');
+    await expect(page.locator('#financeChequesFooter')).toContainText('not yet cleared');
+    expect(await css(page, '#financeHeadActionsCheques .btn-fill', 'height')).toBe('32px');
+  });
+
+  test('Statements: Period select replaces month/year inputs, matching bar, Reconcile action', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-accounts');
+    await page.click('#subtabFinanceStatements');
+    await expect(page.locator('#statementImportsTableBody tr').first()).toBeVisible();
+    await expect(page.locator('#financeStatementPeriodSelect option')).toHaveText(['All periods', 'Sep 2026']);
+    for (const gone of ['#financeStatementMonthFilterSelect', '#financeStatementYearFilterSelect', '#financeStatementMonthFilter']) {
+      await expect(page.locator(gone)).toHaveCount(0);
+    }
+    await expect(page.locator('#statementImportsTable thead th')).toHaveText(['Period', 'File', 'Matching', 'Status', 'Uploaded', 'Actions']);
+    await expect(page.locator('#statementImportsTableBody')).toContainText('Sep 2026');
+    await expect(page.locator('#statementImportsTableBody')).toContainText('1 of 3');
+    await expect(page.locator('#statementImportsTableBody .btn-review-statement')).toHaveText('Reconcile');
+    expect(await css(page, '#btnUploadStatement', 'height')).toBe('32px');
+    await page.selectOption('#financeStatementPeriodSelect', 'Sep 2026'.length ? '2026-09' : '');
+    await expect(page.locator('#statementImportsTableBody tr')).toHaveCount(1);
+    await page.click('#financeStatementStatusPills [data-filter="reconciled"]');
+    await expect(page.locator('#statementImportsTableBody tr')).toHaveCount(0);
+  });
+
+  test('Transfers: type pills with counts, awaiting-second-leg pill, From to layout', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-accounts');
+    await page.click('#subtabFinanceTransfers');
+    await expect(page.locator('#financeTransfersEmpty')).toBeVisible();
+    await expect(page.locator('#financeTransferTypeTabs .fv-pill')).toHaveCount(5);
+    await expect(page.locator('#financeHeadActionsTransfers .btn-fill')).toHaveText('Record transfer');
+    // a one-leg transfer shows as awaiting its second leg
+    await page.evaluate(() => { FinanceState.transfers = [
+      { id: 1, date: '2026-09-12', transfer_type: 'internal', from_account_id: 1, to_account_id: 2, from_account_name: 'Operating USD', to_account_name: 'Treasury Reserve', from_amount: 50000, from_currency: 'USD', to_amount: 50000, to_currency: 'USD', outflow_transaction_id: 7, inflow_transaction_id: null },
+    ]; renderFinanceTransfers(FinanceState.transfers); });
+    await expect(page.locator('#financeTransfersTableBody tr')).toHaveCount(1);
+    await expect(page.locator('#financeTransfersTableBody')).toContainText('Awaiting second leg');
+    await expect(page.locator('#financeTransfersTableBody')).toContainText('In: not confirmed');
+    await expect(page.locator('#financeTransfersTableBody')).toContainText('12 Sep 2026');
+    await expect(page.locator('#trPillCountAwaiting')).toHaveText('1');
+    await page.click('#financeTransferTypeTabs [data-type="awaiting"]');
+    await expect(page.locator('#financeTransfersTableBody tr')).toHaveCount(1);
+    await page.click('#financeTransferTypeTabs [data-type="external_linked"]');
+    await expect(page.locator('#financeTransfersEmpty')).toBeVisible();
+  });
+});

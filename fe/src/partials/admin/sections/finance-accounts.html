@@ -14,6 +14,33 @@
               <button class="btn btn-outline" onclick="openWithdrawCashModal()">Withdraw cash</button>
               <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()">Add account</button>
             </div>
+            <div class="fv-head-actions fv-head-actions--tight" id="financeHeadActionsStatements" data-head-for="statements" style="display:none;">
+              <div class="fv-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeStatementSearch" placeholder="Search statements..." aria-label="Search statements" oninput="filterFinanceStatements()">
+              </div>
+              <select id="financeStatementAccountFilter" class="fv-select" aria-label="Bank account" onchange="loadFinanceStatements()">
+                <option value="">All bank accounts</option>
+              </select>
+              <select id="financeStatementPeriodSelect" class="fv-select" aria-label="Period" onchange="onStatementPeriodChange(this.value)">
+                <option value="">All periods</option>
+              </select>
+              <button class="btn btn-fill" id="btnUploadStatement" onclick="openUploadStatementModal()">Upload statement</button>
+            </div>
+            <div class="fv-head-actions" id="financeHeadActionsCheques" data-head-for="cheques" style="display:none;">
+              <div class="fv-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="financeChequeSearch" placeholder="Search cheques..." aria-label="Search cheques" oninput="filterFinanceCheques()">
+              </div>
+              <button class="btn btn-outline" onclick="openWithdrawCashModal()">Withdraw cash</button>
+              <button class="btn btn-fill" onclick="openIssueChequeModal()">Issue cheque</button>
+            </div>
+            <div class="fv-head-actions" id="financeHeadActionsTransfers" data-head-for="transfers" style="display:none;">
+              <select id="financeTransferAccountFilter" class="fv-select" aria-label="Account" onchange="filterFinanceTransfers()">
+                <option value="">All accounts</option>
+              </select>
+              <button class="btn btn-fill" onclick="openRecordFinanceTransferModal()">Record transfer</button>
+            </div>
             <div class="fv-head-actions" id="financeHeadActionsLedger" data-head-for="ledger" style="display:none;">
               <select id="financeLedgerAccountSelect" class="fv-select fv-select--account" aria-label="Ledger account" onchange="onLedgerAccountSelectChange(this.value)"></select>
               <button class="btn btn-fill" id="financeLedgerRecordBtn" onclick="openAddFinanceTransactionModal()">Record transaction</button>
@@ -382,194 +409,120 @@
             </div>
           </div>
 
-          <!-- PANE 5: Account Transfers (Phase 3) -->
+          <!-- PANE 5: Account Transfers -->
           <div class="fa-u8" id="financeSubPaneTransfers">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</h2>
-                <p class="section-subtitle">Multi-currency same-bank FX conversions, internal moves, and external-linked transfers.</p>
-              </div>
-              <div class="fa-u51">
-                <select id="financeTransferAccountFilter" class="form-control fa-u75" onchange="filterFinanceTransfers()">
-                  <option value="">All Accounts</option>
-                </select>
-                <div class="filter-tabs" id="financeTransferTypeTabs">
-                  <button class="filter-tab active" data-type="all" onclick="filterFinanceTransferType('all', this)">All</button>
-                  <button class="filter-tab" data-type="same_bank_fx" onclick="filterFinanceTransferType('same_bank_fx', this)">Same-Bank FX</button>
-                  <button class="filter-tab" data-type="internal" onclick="filterFinanceTransferType('internal', this)">Internal</button>
-                  <button class="filter-tab" data-type="external_linked" onclick="filterFinanceTransferType('external_linked', this)">External</button>
-                </div>
-                <button class="btn btn-fill" onclick="openRecordFinanceTransferModal()"><i class="fa-solid fa-plus"></i> Record Transfer</button>
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financeTransferTypeTabs" role="group" aria-label="Transfer type">
+                <button class="filter-tab fv-pill active" data-type="all" aria-pressed="true" onclick="filterFinanceTransferType('all', this)">All <span class="fv-pill__count" id="trPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill" data-type="internal" aria-pressed="false" onclick="filterFinanceTransferType('internal', this)">Internal <span class="fv-pill__count" id="trPillCountInternal">0</span></button>
+                <button class="filter-tab fv-pill" data-type="same_bank_fx" aria-pressed="false" onclick="filterFinanceTransferType('same_bank_fx', this)">Same-bank FX <span class="fv-pill__count" id="trPillCountFx">0</span></button>
+                <button class="filter-tab fv-pill" data-type="external_linked" aria-pressed="false" onclick="filterFinanceTransferType('external_linked', this)">External <span class="fv-pill__count" id="trPillCountExternal">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--waiting" data-type="awaiting" aria-pressed="false" onclick="filterFinanceTransferType('awaiting', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Awaiting second leg <span class="fv-pill__count" id="trPillCountAwaiting">0</span></button>
               </div>
             </div>
-            <div class="card fa-u5">
+            <div class="fv-table-card">
               <div class="section-loading-bar" id="financeTransfersLoadingBar"><span></span></div>
-              <div class="table-wrap">
-                <table class="responsive-card-table">
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--transfers responsive-card-table" id="financeTransfersTable">
                   <thead>
                     <tr>
-                      <th class="fa-u76">Date</th>
+                      <th>Date</th>
+                      <th>From &rarr; to</th>
                       <th>Type</th>
-                      <th>Source Account</th>
-                      <th class="fa-u7">Outflow</th>
-                      <th>Destination Account</th>
-                      <th class="fa-u7">Inflow</th>
-                      <th class="fa-u7">FX Rate</th>
-                      <th>Reference / Memo</th>
-                      <th class="fa-u77">Legs Status</th>
+                      <th>Status</th>
+                      <th class="cell-money fv-num">Out / in</th>
                     </tr>
                   </thead>
                   <tbody id="financeTransfersTableBody"></tbody>
                 </table>
               </div>
-              <div class="empty-state fa-u8" id="financeTransfersEmpty">
-                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+              <div class="empty-state fa-u8 fv-empty" id="financeTransfersEmpty">
                 <p>No account transfers recorded yet.</p>
+                <button class="btn btn-fill" onclick="openRecordFinanceTransferModal()">Record transfer</button>
               </div>
+              <div class="fv-foot" id="financeTransfersFooter"></div>
             </div>
           </div>
 
-          <!-- PANE 6: Cheque Register & Teller Withdrawals (Phase 5) -->
+          <!-- PANE 6: Cheque Register & Teller Withdrawals -->
           <div class="fa-u8" id="financeSubPaneCheques">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-money-check"></i> Cheque Register</h2>
-                <p class="section-subtitle">Track issued, cleared, bounced, and voided bank cheques and direct teller cash withdrawals.</p>
-              </div>
-              <div class="fa-u51">
-                <div class="search-box fa-u78">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                  <input id="financeChequeSearch" placeholder="Search cheques / payee..." oninput="filterFinanceCheques()">
-                </div>
-                <select id="financeChequeFiscalYearFilter" class="form-control fa-u79" onchange="loadFinanceCheques()">
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financeChequeStatusTabs" role="group" aria-label="Cheque status"></div>
+              <div class="fv-pills-selects">
+                <select id="financeChequeFiscalYearFilter" class="fv-select" aria-label="Fiscal year" onchange="loadFinanceCheques()">
                   <option value="">All Fiscal Years</option>
                   <option value="2026" selected>FY 2026</option>
                   <option value="2025">FY 2025</option>
                 </select>
-                <div class="filter-tabs" id="financeChequeStatusTabs">
-                  <button class="filter-tab active" data-status="" onclick="filterFinanceChequeStatus('', this)">All</button>
-                  <button class="filter-tab" data-status="draft" onclick="filterFinanceChequeStatus('draft', this)">Draft</button>
-                  <button class="filter-tab" data-status="issued" onclick="filterFinanceChequeStatus('issued', this)">Issued</button>
-                  <button class="filter-tab" data-status="outstanding" onclick="filterFinanceChequeStatus('outstanding', this)">Outstanding</button>
-                  <button class="filter-tab" data-status="cleared" onclick="filterFinanceChequeStatus('cleared', this)">Cleared</button>
-                  <button class="filter-tab" data-status="bounced" onclick="filterFinanceChequeStatus('bounced', this)">Bounced</button>
-                  <button class="filter-tab" data-status="stopped" onclick="filterFinanceChequeStatus('stopped', this)">Stopped</button>
-                  <button class="filter-tab" data-status="voided" onclick="filterFinanceChequeStatus('voided', this)">Voided</button>
-                  <button class="filter-tab" data-status="replaced" onclick="filterFinanceChequeStatus('replaced', this)">Replaced</button>
-                </div>
-                <button class="btn btn-outline" onclick="openWithdrawCashModal()"><i class="fa-solid fa-hand-holding-dollar"></i> Withdraw Cash</button>
-                <button class="btn btn-fill" onclick="openIssueChequeModal()"><i class="fa-solid fa-plus"></i> Issue Cheque</button>
               </div>
             </div>
-            <div class="card fa-u5">
+            <div class="fv-table-card">
               <div class="section-loading-bar" id="financeChequesLoadingBar"><span></span></div>
-              <div class="table-wrap">
-                <table class="responsive-card-table">
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--cheques responsive-card-table" id="financeChequesTable">
                   <thead>
                     <tr>
-                      <th class="fa-u80">Cheque #</th>
-                      <th class="fa-u76">Issue Date</th>
-                      <th>Source Account</th>
                       <th>Payee</th>
+                      <th>Issued</th>
+                      <th>From account</th>
                       <th>Purpose</th>
-                      <th class="fa-u7">Amount</th>
-                      <th class="fa-u34">Status</th>
-                      <th class="fa-u76">Clear Date</th>
-                      <th class="fa-u81">Actions</th>
+                      <th>Status</th>
+                      <th class="cell-money fv-num">Amount</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody id="financeChequesTableBody"></tbody>
                 </table>
               </div>
-              <div class="empty-state fa-u8" id="financeChequesEmpty">
-                <i class="fa-solid fa-money-check"></i>
+              <div class="empty-state fa-u8 fv-empty" id="financeChequesEmpty">
                 <p>No cheques recorded for the selected filters.</p>
+                <button class="btn btn-fill" onclick="openIssueChequeModal()">Issue cheque</button>
               </div>
+              <div class="fv-foot" id="financeChequesFooter"></div>
             </div>
           </div>
 
-          <!-- PANE 6: Bank Statement Imports & Reconciliation -->
+          <!-- PANE 7: Bank Statement Imports & Reconciliation -->
           <div class="fa-u8" id="financeSubPaneStatements">
             <div id="accountTabStatements">
               <!-- Mobile Desktop Advisory Banner -->
               <div class="mobile-desktop-advisory fa-u8" id="reconciliationMobileAdvisory">
-                <div class="card fa-u82">
-                  <i class="fa-solid fa-laptop fa-u83"></i>
-                  <div>
-                    <strong class="fa-u84">Desktop Recommended for Bank Reconciliation</strong>
-                    <span class="fa-u85">
-                      Multi-column side-by-side reconciliation and statement line mapping require wide displays for optimal matching accuracy.
-                      For urgent tasks on mobile, review your Needs-Attention queue or Pending Approvals.
-                    </span>
-                  </div>
+                <div class="fv-callout">
+                  <strong>Desktop Recommended for Bank Reconciliation</strong>
+                  <div>Multi-column side-by-side reconciliation and statement line mapping require wide displays for optimal matching accuracy. For urgent tasks on mobile, review your Needs-Attention queue or Pending Approvals.</div>
                 </div>
               </div>
 
-              <div class="toolbar">
-                <div class="section-title-group">
-                  <h2 class="section-title"><i class="fa-solid fa-file-invoice"></i> Bank Statement Imports &amp; Reconciliation</h2>
-                  <p class="section-subtitle">Ingest monthly bank statements (CSV &amp; PDF), match against continuous ledger entries and issued cheques, and close monthly periods.</p>
-                </div>
-                <div class="fa-u51">
-                  <div class="search-box fa-u86">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input id="financeStatementSearch" placeholder="Search statements / accounts..." oninput="filterFinanceStatements()">
-                  </div>
-                  <select id="financeStatementAccountFilter" class="form-control fa-u87" onchange="loadFinanceStatements()">
-                    <option value="">All company bank accounts</option>
-                  </select>
-                  <select id="financeStatementMonthFilterSelect" class="form-control fa-u88" onchange="onStatementFilterSelectChange()">
-                    <option value="">All Months</option>
-                    <option value="01">01 - Jan</option>
-                    <option value="02">02 - Feb</option>
-                    <option value="03">03 - Mar</option>
-                    <option value="04">04 - Apr</option>
-                    <option value="05">05 - May</option>
-                    <option value="06">06 - Jun</option>
-                    <option value="07">07 - Jul</option>
-                    <option value="08">08 - Aug</option>
-                    <option value="09">09 - Sep</option>
-                    <option value="10">10 - Oct</option>
-                    <option value="11">11 - Nov</option>
-                    <option value="12">12 - Dec</option>
-                  </select>
-                  <select id="financeStatementYearFilterSelect" class="form-control fa-u88" onchange="onStatementFilterSelectChange()">
-                    <option value="">All Years</option>
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
-                  </select>
-                  <input type="month" id="financeStatementMonthFilter" class="form-control fa-u89" onchange="loadFinanceStatements()">
-                  <button class="btn btn-fill" id="btnUploadStatement" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
+              <div class="fv-pills-row">
+                <div class="fv-pills" id="financeStatementStatusPills" role="group" aria-label="Statement status">
+                  <button class="filter-tab fv-pill active" data-filter="all" aria-pressed="true" onclick="setStatementStatusFilter('all')">All <span class="fv-pill__count" id="stmtPillCountAll">0</span></button>
+                  <button class="filter-tab fv-pill fv-pill--waiting" data-filter="needs_review" aria-pressed="false" onclick="setStatementStatusFilter('needs_review')"><span class="fv-pill__dot" aria-hidden="true"></span>Needs review <span class="fv-pill__count" id="stmtPillCountReview">0</span></button>
+                  <button class="filter-tab fv-pill fv-pill--settled" data-filter="reconciled" aria-pressed="false" onclick="setStatementStatusFilter('reconciled')"><span class="fv-pill__dot" aria-hidden="true"></span>Reconciled <span class="fv-pill__count" id="stmtPillCountReconciled">0</span></button>
+                  <button class="filter-tab fv-pill fv-pill--closed" data-filter="closed" aria-pressed="false" onclick="setStatementStatusFilter('closed')"><span class="fv-pill__dot" aria-hidden="true"></span>Closed <span class="fv-pill__count" id="stmtPillCountClosed">0</span></button>
                 </div>
               </div>
-              <div class="card fa-u5">
+              <div class="fv-table-card">
                 <div class="section-loading-bar" id="financeStatementsLoadingBar"><span></span></div>
-                <div class="table-wrap">
-                  <table class="responsive-card-table" id="statementImportsTable">
+                <div class="fv-table-scroll">
+                  <table class="fv-table fv-table--statements responsive-card-table" id="statementImportsTable">
                     <thead>
                       <tr>
-                        <th class="fa-u44">Period</th>
-                        <th>Company bank account</th>
-                        <th class="fa-u90">Format</th>
-                        <th class="fa-u77">Total Lines</th>
-                        <th class="fa-u45">Resolved</th>
-                        <th class="fa-u77">Status</th>
-                        <th class="fa-u91">Uploaded At</th>
-                        <th class="fa-u92">Actions</th>
+                        <th>Period</th>
+                        <th>File</th>
+                        <th>Matching</th>
+                        <th>Status</th>
+                        <th>Uploaded</th>
+                        <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
                       </tr>
                     </thead>
                     <tbody id="statementImportsTableBody"></tbody>
                   </table>
                 </div>
-                <div class="empty-state fa-u8" id="financeStatementsEmpty">
-                  <i class="fa-solid fa-file-invoice"></i>
+                <div class="empty-state fa-u8 fv-empty" id="financeStatementsEmpty">
                   <p>No bank statements imported yet for this period.</p>
-                  <button class="btn btn-fill" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
+                  <button class="btn btn-fill" onclick="openUploadStatementModal()">Upload statement</button>
                 </div>
+                <div class="fv-foot" id="financeStatementsFooter"></div>
               </div>
             </div>
           </div>

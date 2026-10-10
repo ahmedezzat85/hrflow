@@ -31,7 +31,7 @@ test.describe('Finance Bank Statement Imports & Reconciliation UI Testing', () =
     // Verify Upload Statement button exists
     const uploadBtn = page.locator('#btnUploadStatement');
     await expect(uploadBtn).toBeVisible();
-    await expect(uploadBtn).toContainText('Upload Statement');
+    await expect(uploadBtn).toContainText('Upload statement');
 
     // Verify table structure
     const table = page.locator('#statementImportsTable');

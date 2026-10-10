@@ -15,6 +15,8 @@ let _allFinanceStatements = [];
 let _currentReconcileImport = null;
 let _currentReconcileLines = [];
 let _currentReconcileFilter = "all";
+let _statementStatusFilter = "all";
+let _statementPeriodFilter = "";
 
 async function loadFinanceStatements() {
   const bar = document.getElementById("financeStatementsLoadingBar");
@@ -22,17 +24,7 @@ async function loadFinanceStatements() {
 
   try {
     const accFilter = document.getElementById("financeStatementAccountFilter");
-    const monthFilter = document.getElementById("financeStatementMonthFilter");
-    const monthSelect = document.getElementById("financeStatementMonthFilterSelect");
-    const yearSelect = document.getElementById("financeStatementYearFilterSelect");
-
     const accountId = accFilter ? accFilter.value : "";
-    let periodMonth = "";
-    if (monthFilter && monthFilter.value) {
-      periodMonth = monthFilter.value;
-    } else if (monthSelect && yearSelect && yearSelect.value && monthSelect.value) {
-      periodMonth = `${yearSelect.value}-${monthSelect.value}`;
-    }
 
     // Populate bank account dropdown if empty
     if (accFilter && accFilter.options.length <= 1) {
@@ -46,7 +38,7 @@ async function loadFinanceStatements() {
           accounts = FinanceState.accounts;
         }
         const currentVal = accFilter.value;
-        accFilter.innerHTML = '<option value="">All company bank accounts</option>';
+        accFilter.innerHTML = '<option value="">All bank accounts</option>';
         accounts.forEach((a) => {
           if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
             const opt = document.createElement("option");
@@ -61,8 +53,10 @@ async function loadFinanceStatements() {
       }
     }
 
-    _allFinanceStatements = await FinanceApi.listAccountStatements(accountId, periodMonth);
-    renderFinanceStatementsTable(_allFinanceStatements);
+    // The account filter is server side; periods, status pills and search work on the loaded list.
+    _allFinanceStatements = (await FinanceApi.listAccountStatements(accountId, "")) || [];
+    _populateStatementPeriods(_allFinanceStatements);
+    filterFinanceStatements();
   } catch (err) {
     console.error("Failed to load statements", err);
     showToast(describeLoadFailure("bank statements", err), "error");
@@ -71,49 +65,44 @@ async function loadFinanceStatements() {
   }
 }
 
-function onStatementFilterSelectChange() {
-  const monthSelect = document.getElementById("financeStatementMonthFilterSelect");
-  const yearSelect = document.getElementById("financeStatementYearFilterSelect");
-  const monthFilter = document.getElementById("financeStatementMonthFilter");
-
-  if (!monthFilter) return;
-
-  const m = monthSelect ? monthSelect.value : "";
-  const y = yearSelect ? yearSelect.value : "";
-
-  if (y && m) {
-    monthFilter.value = `${y}-${m}`;
-  } else if (y && !m) {
-    monthFilter.value = `${y}`;
-  } else if (!y && m) {
-    const currentYear = new Date().getFullYear();
-    monthFilter.value = `${currentYear}-${m}`;
-    if (yearSelect) yearSelect.value = String(currentYear);
-  } else {
-    monthFilter.value = "";
-  }
-  loadFinanceStatements();
+// "2026-09" -> "Sep 2026"
+function _statementPeriodLabel(period) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(period || ""));
+  if (!m) return String(period || "");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[Number(m[2]) - 1]} ${m[1]}`;
 }
 
-function onStatementFilterChange(source) {
-  if (source === "select") {
-    onStatementFilterSelectChange();
-  } else {
-    const monthFilter = document.getElementById("financeStatementMonthFilter");
-    const monthSelect = document.getElementById("financeStatementMonthFilterSelect");
-    const yearSelect = document.getElementById("financeStatementYearFilterSelect");
-    if (monthFilter && monthFilter.value && monthFilter.value.includes("-")) {
-      const parts = monthFilter.value.split("-");
-      if (yearSelect) yearSelect.value = parts[0];
-      if (monthSelect) monthSelect.value = parts[1];
-    }
-    loadFinanceStatements();
-  }
+// One Period select listing the periods present (newest first), replacing the month, year and month-picker controls.
+function _populateStatementPeriods(list) {
+  const sel = document.getElementById("financeStatementPeriodSelect");
+  if (!sel) return;
+  const periods = [...new Set(list.map((s) => s.period_month).filter(Boolean))].sort().reverse();
+  sel.innerHTML = '<option value="">All periods</option>' + periods.map((p) => `<option value="${p}">${_statementPeriodLabel(p)}</option>`).join("");
+  sel.value = periods.includes(_statementPeriodFilter) ? _statementPeriodFilter : "";
+  if (sel.value === "") _statementPeriodFilter = "";
+}
+
+function onStatementPeriodChange(value) {
+  _statementPeriodFilter = value || "";
+  filterFinanceStatements();
+}
+
+function setStatementStatusFilter(filter) {
+  _statementStatusFilter = filter;
+  filterFinanceStatements();
+}
+
+function _statementGroup(stmt) {
+  if (stmt.status === "reconciled") return "reconciled";
+  if (stmt.status === "closed") return "closed";
+  return "needs_review";
 }
 
 function filterFinanceStatements() {
   const query = (document.getElementById("financeStatementSearch")?.value || "").toLowerCase().trim();
   let filtered = _allFinanceStatements;
+  if (_statementPeriodFilter) filtered = filtered.filter((s) => s.period_month === _statementPeriodFilter);
   if (query) {
     filtered = filtered.filter(
       (s) =>
@@ -122,52 +111,67 @@ function filterFinanceStatements() {
         (s.status || "").toLowerCase().includes(query)
     );
   }
-  renderFinanceStatementsTable(filtered);
+
+  // counts follow the period and search; the status pills narrow the rows
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const n = (g) => filtered.filter((s) => _statementGroup(s) === g).length;
+  setText("stmtPillCountAll", filtered.length);
+  setText("stmtPillCountReview", n("needs_review"));
+  setText("stmtPillCountReconciled", n("reconciled"));
+  setText("stmtPillCountClosed", n("closed"));
+  document.querySelectorAll("#financeStatementStatusPills .fv-pill").forEach((p) => {
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+    const on = p.dataset.filter === _statementStatusFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+
+  const rows = _statementStatusFilter === "all" ? filtered : filtered.filter((s) => _statementGroup(s) === _statementStatusFilter);
+  renderFinanceStatementsTable(rows);
 }
 
 function renderFinanceStatementsTable(statements) {
   const tbody = document.getElementById("statementImportsTableBody");
   const emptyState = document.getElementById("financeStatementsEmpty");
+  const footer = document.getElementById("financeStatementsFooter");
   if (!tbody) return;
 
   tbody.innerHTML = "";
   if (!statements || statements.length === 0) {
     if (emptyState) emptyState.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (emptyState) emptyState.style.display = "none";
+  if (footer) {
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${statements.length}</b> of <b>${statements.length}</b> ${statements.length === 1 ? "statement" : "statements"}</span>`;
+  }
 
+  const esc = FinanceUI.esc;
   statements.forEach((stmt) => {
     const tr = document.createElement("tr");
+    const group = _statementGroup(stmt);
+    const statusPill = group === "reconciled"
+      ? FinanceUI.statusPill("settled", "Reconciled")
+      : (group === "closed" ? FinanceUI.statusPill("closed", "Closed") : FinanceUI.statusPill("waiting", "Needs review"));
 
-    const statusBadge =
-      stmt.status === "reconciled"
-        ? '<span class="status-badge status-success"><i class="fa-solid fa-lock"></i> Reconciled</span>'
-        : '<span class="status-badge status-warning"><i class="fa-solid fa-clock"></i> Needs Review</span>';
-
-    const fmtBadge =
-      stmt.file_type === "pdf"
-        ? '<span class="status-badge status-danger" style="font-size:11px;">PDF</span>'
-        : '<span class="status-badge status-info" style="font-size:11px;">CSV</span>';
-
-    const progressPct = stmt.total_lines_count > 0 ? Math.round((stmt.matched_lines_count / stmt.total_lines_count) * 100) : 0;
-    const progressText = `${stmt.matched_lines_count || 0} / ${stmt.total_lines_count || 0} (${progressPct}%)`;
-
-    const uploadDate = stmt.created_at ? new Date(stmt.created_at).toLocaleDateString() : "—";
+    const total = Number(stmt.total_lines_count || 0);
+    const matched = Number(stmt.matched_lines_count || 0);
+    const pct = total > 0 ? Math.round((matched / total) * 100) : 0;
+    const toMatch = Math.max(0, total - matched);
+    const uploaded = stmt.created_at ? FinanceUI.formatDate(String(stmt.created_at).slice(0, 10)) : "—";
+    const accountName = stmt.account_name || "Company bank account #" + stmt.account_id;
 
     tr.innerHTML = `
-      <td data-label="Period" style="font-weight:600;"><i class="fa-regular fa-calendar" style="margin-right:6px;color:var(--text-muted);"></i>${escapeHtml(stmt.period_month)}</td>
-      <td data-label="Account" style="font-weight:500;">${escapeHtml(stmt.account_name || 'Company bank account #' + stmt.account_id)}</td>
-      <td data-label="Format" style="text-align:center;">${fmtBadge}</td>
-      <td data-label="Total Lines" style="text-align:center;">${stmt.total_lines_count || 0}</td>
-      <td data-label="Matched Lines" style="text-align:center;font-weight:600;color:${progressPct === 100 ? 'var(--color-success)' : 'inherit'};">${progressText}</td>
-      <td data-label="Status" style="text-align:center;">${statusBadge}</td>
-      <td data-label="Uploaded At">${uploadDate}</td>
-      <td data-label="Actions" style="text-align:center;">
-        <button class="btn btn-sm btn-outline btn-review-statement" onclick="openReconciliationModal(${stmt.id})">
-          <i class="fa-solid fa-scale-balanced"></i> Review &amp; Reconcile
-        </button>
-      </td>
+      <td data-label="Period"><div class="fv-cell-main">${FinanceUI.avatar(accountName, FinanceUI.hueForId(stmt.account_id))}<div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(_statementPeriodLabel(stmt.period_month))}</span><span class="fv-sub">${esc(accountName)}</span></div></div></td>
+      <td data-label="File"><div class="fv-date"><span>${esc(String(stmt.file_type || "csv").toUpperCase())}</span><span class="fv-sub">${total} ${total === 1 ? "line" : "lines"}</span></div></td>
+      <td data-label="Matching"><div class="fv-matching"><span class="fv-progress fv-progress--violet fv-progress--wide" role="presentation"><span class="fv-progress__fill" style="width:${pct}%"></span></span><div class="fv-date"><span class="fv-strong">${matched} of ${total}</span><span class="fv-sub">${toMatch ? `${toMatch} ${toMatch === 1 ? "line" : "lines"} to match` : "All lines matched"}</span></div></div></td>
+      <td data-label="Status">${statusPill}</td>
+      <td data-label="Uploaded">${esc(uploaded)}</td>
+      <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({
+        primary: { label: group === "needs_review" ? "Reconcile" : "Review", kind: group === "needs_review" ? "fill" : "outline", className: "btn-review-statement", onclick: `openReconciliationModal(${stmt.id})`, attrs: 'title="Review &amp; Reconcile"' },
+      })}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -2121,8 +2125,8 @@ window.closeReconcileCreateEntryModal = closeReconcileCreateEntryModal;
 window.handleReconcileCreateEntrySubmit = handleReconcileCreateEntrySubmit;
 window.finalizeStatementReconciliation = finalizeStatementReconciliation;
 window.syncStatementUploadPeriod = syncStatementUploadPeriod;
-window.onStatementFilterSelectChange = onStatementFilterSelectChange;
-window.onStatementFilterChange = onStatementFilterChange;
+window.onStatementPeriodChange = onStatementPeriodChange;
+window.setStatementStatusFilter = setStatementStatusFilter;
 window.onStatementAccountSelected = onStatementAccountSelected;
 
 // Story 6.3 Rules Engine Window Exports

@@ -2,6 +2,11 @@
 // 5.5 Cheque Register & Direct Teller Withdrawals (Phase 5)
 // ==========================================
 let _currentChequeStatusFilter = "";
+let _chequeMoreOpen = false;
+const _CHEQUE_STATUSES = [
+  ["draft", "Draft"], ["issued", "Issued"], ["outstanding", "Outstanding"], ["cleared", "Cleared"],
+  ["bounced", "Bounced"], ["stopped", "Stopped"], ["voided", "Voided"], ["replaced", "Replaced"],
+];
 
 async function loadFinanceCheques() {
   const bar = document.getElementById("financeChequesLoadingBar");
@@ -13,9 +18,9 @@ async function loadFinanceCheques() {
     const searchInput = document.getElementById("financeChequeSearch");
     const search = searchInput ? searchInput.value.trim() : "";
 
+    // Status is filtered on the client so the pills can show a count for every status.
     const params = {};
     if (fy) params.fiscal_year = fy;
-    if (_currentChequeStatusFilter) params.status = _currentChequeStatusFilter;
     if (search) params.search = search;
 
     const items = await FinanceApi.getCheques(params);
@@ -35,116 +40,121 @@ function filterFinanceCheques() {
 
 function filterFinanceChequeStatus(status, btn) {
   _currentChequeStatusFilter = status;
-  const tabs = document.querySelectorAll("#financeChequeStatusTabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) {
-    btn.classList.add("active");
-  } else {
-    const el = document.querySelector(`#financeChequeStatusTabs [data-status="${status}"]`);
-    if (el) el.classList.add("active");
-  }
-  loadFinanceCheques();
+  renderFinanceCheques(FinanceState.cheques || []);
 }
 
-function renderFinanceCheques(items) {
+function toggleChequeMoreStatuses() {
+  _chequeMoreOpen = !_chequeMoreOpen;
+  renderFinanceCheques(FinanceState.cheques || []);
+}
+
+// Status pills: All plus every status that has a cheque; the others sit behind a dashed "More" pill in the same row.
+function _renderChequeStatusPills(list) {
+  const host = document.getElementById("financeChequeStatusTabs");
+  if (!host) return;
+  const count = (s) => list.filter((c) => c.status === s).length;
+  const pill = (status, label, n, group) => {
+    const on = _currentChequeStatusFilter === status;
+    const cls = `filter-tab fv-pill${group ? ` fv-pill--${group}` : ""}${on ? " active" : ""}${n ? "" : " fv-pill--zero"}`;
+    const dot = group ? `<span class="fv-pill__dot" aria-hidden="true"></span>` : "";
+    return `<button type="button" class="${cls}" data-status="${status}" aria-pressed="${on}" onclick="filterFinanceChequeStatus('${status}', this)">${dot}${label} <span class="fv-pill__count">${n}</span></button>`;
+  };
+  const shown = [];
+  const hidden = [];
+  _CHEQUE_STATUSES.forEach(([s, label]) => {
+    const n = count(s);
+    // the selected status stays visible even when it has no cheque
+    if (n > 0 || _chequeMoreOpen || _currentChequeStatusFilter === s) shown.push(pill(s, label, n, FinanceUI.statusGroup(s)));
+    else hidden.push(label);
+  });
+  let html = pill("", "All", list.length, "") + shown.join("");
+  if (hidden.length) {
+    html += `<button type="button" class="fv-pill fv-pill--more" aria-expanded="false" onclick="toggleChequeMoreStatuses()">More &middot; ${hidden.join(", ")} &#9662;</button>`;
+  } else if (_chequeMoreOpen) {
+    html += `<button type="button" class="fv-pill fv-pill--more" aria-expanded="true" onclick="toggleChequeMoreStatuses()">Fewer &#9652;</button>`;
+  }
+  host.innerHTML = html;
+}
+
+function renderFinanceCheques(all) {
   const tbody = document.getElementById("financeChequesTableBody");
   const empty = document.getElementById("financeChequesEmpty");
+  const footer = document.getElementById("financeChequesFooter");
   if (!tbody) return;
 
-  if (!items || items.length === 0) {
+  const list = all || [];
+  _renderChequeStatusPills(list);
+  const items = _currentChequeStatusFilter ? list.filter((c) => c.status === _currentChequeStatusFilter) : list;
+
+  if (items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
 
+  // Footer: the count and what is not yet cleared, per currency
+  if (footer) {
+    const open = {};
+    items.filter((c) => c.status === "issued" || c.status === "outstanding").forEach((c) => {
+      const cur = c.currency || "USD";
+      open[cur] = (open[cur] || 0) + Number(c.amount || 0);
+    });
+    const openText = Object.entries(open).map(([cur, v]) => `<span class="fv-foot__total">${FinanceUI.moneyHtml(v, cur)}</span>`).join(" + ");
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> ${items.length === 1 ? "cheque" : "cheques"}${openText ? ` &middot; ${openText} not yet cleared` : ""}</span>`;
+  }
+
+  const esc = FinanceUI.esc;
   tbody.innerHTML = items
     .map((c) => {
-      let purposeBadge = "";
+      // Purpose: plain text (a vendor bill shows its number as a link line)
+      let purpose = "General";
+      let purposeSub = "";
       if (c.purpose_type === "cash_withdrawal") {
-        purposeBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:600;"><i class="fa-solid fa-hand-holding-dollar"></i> Cash Drawer</span>`;
+        purpose = "Cash withdrawal";
+        purposeSub = c.destination_cash_account_name ? `Funds ${esc(c.destination_cash_account_name)}` : "";
       } else if (c.purpose_type === "vendor_payment") {
-        purposeBadge = `<span class="badge" style="background:#fef3c7; color:#92400e; font-weight:600;"><i class="fa-solid fa-file-invoice-dollar"></i> Vendor Bill</span>`;
-      } else {
-        purposeBadge = `<span class="badge badge-pending">General</span>`;
+        purpose = "Vendor bill";
+        purposeSub = c.linked_bill_number ? `<span class="fv-link">${esc(c.linked_bill_number)}</span>` : (c.linked_bill_id ? `<span class="fv-link">Bill #${esc(c.linked_bill_id)}</span>` : "");
       }
 
-      let staleBadge = "";
-      if (c.is_stale) {
-        staleBadge = `<span class="badge badge-rejected" style="margin-left:4px; font-size:10.5px;" title="${c.stale_warning || 'Stale-dated (>180 days)'}"><i class="fa-solid fa-clock-rotate-left"></i> Stale</span>`;
-      }
+      const linkage = [];
+      if (c.replaced_cheque_id) linkage.push(`Replaces #${esc(c.replaced_cheque_id)}`);
+      if (c.replacement_cheque_id) linkage.push(`Replaced by #${esc(c.replacement_cheque_id)}`);
 
-      let linkageInfo = "";
-      if (c.replaced_cheque_id) {
-        linkageInfo += `<div style="font-size:11px;color:var(--text3);margin-top:2px;"><i class="fa-solid fa-link"></i> Replaces #${c.replaced_cheque_id}</div>`;
-      }
-      if (c.replacement_cheque_id) {
-        linkageInfo += `<div style="font-size:11px;color:#7c3aed;margin-top:2px;"><i class="fa-solid fa-arrows-rotate"></i> Replaced by #${c.replacement_cheque_id}</div>`;
-      }
+      const statusLabel = (_CHEQUE_STATUSES.find(([s]) => s === c.status) || [c.status, c.status])[1];
+      const clear = c.clear_date ? `<span class="fv-sub">${esc(FinanceUI.formatDate(c.clear_date))}</span>` : "";
+      const stale = c.is_stale ? `<span class="fv-note fv-note--warn" title="${esc(c.stale_warning || "Stale-dated (>180 days)")}">Stale-dated</span>` : "";
 
-      let actionsHtml = "";
+      // One text button and up to three icons per row (Mark outstanding stays reachable through the status filters of the API)
+      let primary = null;
+      const icons = [];
       if (c.status === "draft") {
-        actionsHtml = `
-          <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm btn-outline" onclick="promoteDraftChequeAction(${c.id})" title="Issue Cheque"><i class="fa-solid fa-stamp"></i> Issue</button>
-            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Draft"><i class="fa-solid fa-ban"></i></button>
-          </div>
-        `;
-      } else if (c.status === "issued") {
-        actionsHtml = `
-          <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm" onclick="updateChequeStatusQuick(${c.id}, 'outstanding')" title="Mark Outstanding"><i class="fa-solid fa-hourglass-half"></i></button>
-            <button class="btn btn-sm" onclick="updateChequeStatusQuick(${c.id}, 'cleared')" title="Mark Cleared" style="color:var(--success);"><i class="fa-solid fa-check"></i></button>
-            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'stopped')" title="Stop Payment" style="color:#d97706;"><i class="fa-solid fa-hand"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="openChequeActionModal(${c.id}, 'bounced')" title="Mark Bounced"><i class="fa-solid fa-triangle-exclamation"></i></button>
-            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Cheque"><i class="fa-solid fa-ban"></i></button>
-            <button class="btn btn-sm" onclick="openChequeReplaceModal(${c.id})" title="Replace Cheque" style="color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i></button>
-          </div>
-        `;
-      } else if (c.status === "outstanding") {
-        actionsHtml = `
-          <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm" onclick="updateChequeStatusQuick(${c.id}, 'cleared')" title="Mark Cleared" style="color:var(--success);"><i class="fa-solid fa-check"></i></button>
-            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'stopped')" title="Stop Payment" style="color:#d97706;"><i class="fa-solid fa-hand"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="openChequeActionModal(${c.id}, 'bounced')" title="Mark Bounced"><i class="fa-solid fa-triangle-exclamation"></i></button>
-            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Cheque"><i class="fa-solid fa-ban"></i></button>
-            <button class="btn btn-sm" onclick="openChequeReplaceModal(${c.id})" title="Replace Cheque" style="color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i></button>
-          </div>
-        `;
+        primary = { label: "Issue", kind: "fill", className: "btn-cheque-issue", onclick: `promoteDraftChequeAction(${c.id})`, attrs: 'title="Issue Cheque"' };
+        icons.push({ icon: "fa-ban", label: "Void Draft", onclick: `openChequeActionModal(${c.id}, 'voided')` });
+      } else if (c.status === "issued" || c.status === "outstanding") {
+        primary = { label: "Mark cleared", kind: "fill", className: "btn-cheque-clear", onclick: `updateChequeStatusQuick(${c.id}, 'cleared')`, attrs: 'title="Mark Cleared"' };
+        icons.push({ icon: "fa-hand", label: "Stop Payment", onclick: `openChequeActionModal(${c.id}, 'stopped')` });
+        icons.push({ icon: "fa-triangle-exclamation", label: "Mark Bounced", className: "fv-icon-btn--danger", onclick: `openChequeActionModal(${c.id}, 'bounced')` });
+        icons.push({ icon: "fa-ban", label: "Void Cheque", onclick: `openChequeActionModal(${c.id}, 'voided')` });
       } else if (c.status === "cleared") {
-        actionsHtml = `
-          <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm" onclick="openChequeActionModal(${c.id}, 'voided')" title="Void Cleared Cheque"><i class="fa-solid fa-ban"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="openChequeActionModal(${c.id}, 'bounced')" title="Mark Bounced Post-Clearance"><i class="fa-solid fa-triangle-exclamation"></i></button>
-          </div>
-        `;
+        icons.push({ icon: "fa-ban", label: "Void Cleared Cheque", onclick: `openChequeActionModal(${c.id}, 'voided')` });
+        icons.push({ icon: "fa-triangle-exclamation", label: "Mark Bounced Post-Clearance", className: "fv-icon-btn--danger", onclick: `openChequeActionModal(${c.id}, 'bounced')` });
       } else if (c.status === "bounced" || c.status === "stopped") {
-        actionsHtml = `
-          <div style="display:flex;gap:4px;justify-content:center;">
-            <button class="btn btn-sm" onclick="openChequeReplaceModal(${c.id})" title="Issue Replacement Cheque" style="color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i> Replace</button>
-          </div>
-        `;
-      } else {
-        actionsHtml = `<span style="color:var(--text3); font-size:11px;">Terminal</span>`;
+        primary = { label: "Replace", kind: "outline", className: "btn-cheque-replace", onclick: `openChequeReplaceModal(${c.id})`, attrs: 'title="Issue Replacement Cheque"' };
       }
 
       return `
         <tr>
-          <td data-label="Cheque #">
-            <strong style="font-family:monospace;font-size:13px;"><i class="fa-solid fa-money-check"></i> ${c.cheque_number}</strong>
-            ${linkageInfo}
-          </td>
-          <td data-label="Issue Date"><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.issue_date)}</span></td>
-          <td data-label="Source Account"><strong>${c.account_name || '—'}</strong></td>
-          <td data-label="Payee"><strong>${c.payee}</strong></td>
-          <td data-label="Purpose">${purposeBadge}</td>
-          <td data-label="Amount" class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(-Math.abs(c.amount || 0), c.currency || "USD")}</strong></td>
-          <td data-label="Status" style="text-align:center;">
-            ${FinanceFormat.formatStatusBadge("cheque", c.status)}
-            ${staleBadge}
-          </td>
-          <td data-label="Clear Date"><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(c.clear_date)}</span></td>
-          <td data-label="Actions" style="text-align:center;">${actionsHtml}</td>
+          <td data-label="Payee"><div class="fv-cell-main">${FinanceUI.avatar(c.payee, FinanceUI.hueForId(c.id))}<div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(c.payee)}</span><span class="fv-link">Cheque ${esc(c.cheque_number)}</span>${linkage.length ? `<span class="fv-sub">${linkage.join(" &middot; ")}</span>` : ""}</div></div></td>
+          <td data-label="Issued">${esc(FinanceUI.formatDate(c.issue_date))}</td>
+          <td data-label="From account">${esc(c.account_name || "—")}</td>
+          <td data-label="Purpose"><div class="fv-date"><span>${purpose}</span>${purposeSub ? `<span class="fv-sub">${purposeSub}</span>` : ""}</div></td>
+          <td data-label="Status"><div class="fv-date">${FinanceUI.statusPill(FinanceUI.statusGroup(c.status), statusLabel)}${clear}${stale}</div></td>
+          <td data-label="Amount" class="cell-money fv-num"><span class="fv-amount__value">${FinanceUI.moneyHtml(Math.abs(c.amount || 0), c.currency || "USD")}</span></td>
+          <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({ primary, icons })}</td>
         </tr>
       `;
     })
@@ -610,6 +620,7 @@ window.switchFinanceAccountsSubTab = switchFinanceAccountsSubTab;
 window.loadFinanceCheques = loadFinanceCheques;
 window.filterFinanceCheques = filterFinanceCheques;
 window.filterFinanceChequeStatus = filterFinanceChequeStatus;
+window.toggleChequeMoreStatuses = toggleChequeMoreStatuses;
 window.updateChequeStatusQuick = updateChequeStatusQuick;
 window.openChequeActionModal = openChequeActionModal;
 window.closeChequeActionModal = closeChequeActionModal;

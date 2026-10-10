@@ -2613,7 +2613,7 @@ async function loadFinanceTransfers() {
       if (!FinanceState.accounts || !FinanceState.accounts.length) {
         FinanceState.accounts = await FinanceApi.getAccounts();
       }
-      accFilter.innerHTML = '<option value="">All Accounts</option>' +
+      accFilter.innerHTML = '<option value="">All accounts</option>' +
         (FinanceState.accounts || [])
           .map((a) => `<option value="${a.id}">${a.account_name} (${a.currency})</option>`)
           .join("");
@@ -2622,10 +2622,8 @@ async function loadFinanceTransfers() {
     const selectedAcc = accFilter ? accFilter.value : "";
     const params = {};
     if (selectedAcc) params.account_id = selectedAcc;
-    if (_currentTransferTypeFilter && _currentTransferTypeFilter !== "all") {
-      params.transfer_type = _currentTransferTypeFilter;
-    }
 
+    // The whole list is loaded: the type pills and their counts work on the client.
     const items = await FinanceApi.getTransfers(params);
     FinanceState.transfers = items;
     renderFinanceTransfers(items);
@@ -2643,65 +2641,77 @@ function filterFinanceTransfers() {
 
 function filterFinanceTransferType(type, btn) {
   _currentTransferTypeFilter = type;
-  const tabs = document.querySelectorAll("#financeTransferTypeTabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) btn.classList.add("active");
-  loadFinanceTransfers();
+  renderFinanceTransfers(FinanceState.transfers || []);
 }
 
-function renderFinanceTransfers(items) {
+// A transfer with only one posted leg is waiting for the second one.
+function _transferAwaitingSecondLeg(t) {
+  return !!(t.outflow_transaction_id) !== !!(t.inflow_transaction_id);
+}
+
+function renderFinanceTransfers(all) {
   const tbody = document.getElementById("financeTransfersTableBody");
   const empty = document.getElementById("financeTransfersEmpty");
+  const footer = document.getElementById("financeTransfersFooter");
   if (!tbody) return;
 
-  if (!items || items.length === 0) {
+  const list = all || [];
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const n = (type) => list.filter((t) => t.transfer_type === type).length;
+  setText("trPillCountAll", list.length);
+  setText("trPillCountInternal", n("internal"));
+  setText("trPillCountFx", n("same_bank_fx"));
+  setText("trPillCountExternal", n("external_linked"));
+  setText("trPillCountAwaiting", list.filter(_transferAwaitingSecondLeg).length);
+  document.querySelectorAll("#financeTransferTypeTabs .fv-pill").forEach((p) => {
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+    const on = p.dataset.type === _currentTransferTypeFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+
+  let items = list;
+  if (_currentTransferTypeFilter === "awaiting") items = items.filter(_transferAwaitingSecondLeg);
+  else if (_currentTransferTypeFilter !== "all") items = items.filter((t) => t.transfer_type === _currentTransferTypeFilter);
+
+  if (items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
+  if (footer) {
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> ${items.length === 1 ? "transfer" : "transfers"}</span>`;
+  }
 
+  const esc = FinanceUI.esc;
+  const typeLabel = { same_bank_fx: "Same-bank FX", external_linked: "External", internal: "Internal" };
   tbody.innerHTML = items
     .map((t) => {
-      let typeBadge = "";
-      if (t.transfer_type === "same_bank_fx") {
-        typeBadge = `<span class="badge" style="background:#e0e7ff; color:#3730a3; font-weight:600;"><i class="fa-solid fa-arrow-right-arrow-left"></i> FX Conversion</span>`;
-      } else if (t.transfer_type === "external_linked") {
-        typeBadge = `<span class="badge" style="background:#fef3c7; color:#92400e; font-weight:600;"><i class="fa-solid fa-globe"></i> External Linked</span>`;
-      } else {
-        typeBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:600;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Internal Move</span>`;
-      }
+      const fromName = t.from_account_name || "External";
+      const toName = t.to_account_name || "External";
+      const awaiting = _transferAwaitingSecondLeg(t);
+      let status;
+      if (t.outflow_transaction_id && t.inflow_transaction_id) status = FinanceUI.statusPill("settled", "Both legs posted", `title="Dual continuous ledger legs created"`);
+      else if (awaiting) status = FinanceUI.statusPill("waiting", "Awaiting second leg", `title="${t.outflow_transaction_id ? "Outflow leg confirmed" : "Inflow leg confirmed"}"`);
+      else status = FinanceUI.statusPill("waiting", "Pending");
 
-      const fromSymbol = t.from_currency === "EGP" ? "EGP " : "$";
-      const toSymbol = t.to_currency === "EGP" ? "EGP " : "$";
-
-      let legsStatus = "";
-      if (t.outflow_transaction_id && t.inflow_transaction_id) {
-        legsStatus = `<span class="badge badge-approved" title="Dual continuous ledger legs created"><i class="fa-solid fa-check-double"></i> Dual Legs</span>`;
-      } else if (t.outflow_transaction_id) {
-        legsStatus = `<span class="badge badge-pending" title="Outflow leg confirmed"><i class="fa-solid fa-arrow-up-right-from-square"></i> Outflow Leg</span>`;
-      } else if (t.inflow_transaction_id) {
-        legsStatus = `<span class="badge badge-pending" title="Inflow leg confirmed"><i class="fa-solid fa-arrow-down-left-and-up-right-to-center"></i> Inflow Leg</span>`;
-      } else {
-        legsStatus = `<span class="badge badge-rejected">Pending</span>`;
-      }
-
-      const fxDisplay = t.fx_rate ? `<code>${t.fx_rate}</code>` : `<span style="color:var(--text3);">1.0</span>`;
+      const outAmount = FinanceUI.moneyHtml(Math.abs(t.from_amount || 0), t.from_currency);
+      const inSub = t.inflow_transaction_id
+        ? `In: ${FinanceFormat.formatMoney(Math.abs(t.to_amount || 0), t.to_currency)}${t.fx_rate ? ` @ ${t.fx_rate}` : ""}`
+        : "In: not confirmed";
+      const ref = t.exchange_reference ? `<span class="fv-link">${esc(t.exchange_reference)}</span>` : `<span class="fv-link">Transfer #${esc(t.id)}</span>`;
+      const memo = t.note ? `<span class="fv-sub">${esc(t.note)}</span>` : "";
 
       return `
         <tr>
-          <td data-label="Date"><span style="font-family:monospace;font-size:12px;">${FinanceFormat.formatFinanceDate(t.date)}</span></td>
-          <td data-label="Type">${typeBadge}</td>
-          <td data-label="From Account"><strong>${t.from_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
-          <td data-label="Outflow" class="cell-money">${FinanceFormat.renderMoneyHtml(-Math.abs(t.from_amount || 0), t.from_currency, { extraClass: "money-negative" })}</td>
-          <td data-label="To Account"><strong>${t.to_account_name || '<span style="color:var(--text3); font-style:italic;">External</span>'}</strong></td>
-          <td data-label="Inflow" class="cell-money">${FinanceFormat.renderMoneyHtml(Math.abs(t.to_amount || 0), t.to_currency, { showSign: true, extraClass: "money-positive" })}</td>
-          <td data-label="FX Rate" style="text-align:right;">${fxDisplay}</td>
-          <td data-label="Reference / Memo">
-            ${t.exchange_reference ? `<strong style="font-size:12px; color:var(--accent-text);">${t.exchange_reference}</strong><br>` : ""}
-            <span style="font-size:12px; color:var(--text2);">${t.note || "—"}</span>
-          </td>
-          <td data-label="Legs Status" class="col-actions" style="text-align:center;">${legsStatus}</td>
+          <td data-label="Date">${esc(FinanceUI.formatDate(t.date))}</td>
+          <td data-label="From to"><div class="fv-cell-main"><span class="fv-pair">${t.from_account_id ? FinanceUI.avatar(fromName, FinanceUI.hueForId(t.from_account_id)) : FinanceUI.avatar(fromName, "faint")}<span class="fv-pair__arrow" aria-hidden="true">&rarr;</span>${t.to_account_id ? FinanceUI.avatar(toName, FinanceUI.hueForId(t.to_account_id)) : FinanceUI.avatar(toName, "faint")}</span><div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(fromName)} &rarr; ${esc(toName)}</span>${ref}${memo}</div></div></td>
+          <td data-label="Type">${esc(typeLabel[t.transfer_type] || typeLabel.internal)}</td>
+          <td data-label="Status">${status}</td>
+          <td data-label="Out / in" class="cell-money fv-num"><div class="fv-amount"><span class="fv-amount__value">${outAmount}</span><span class="fv-sub">${esc(inSub)}</span></div></td>
         </tr>
       `;
     })

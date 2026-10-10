@@ -1746,3 +1746,105 @@
   font-weight: 500;
   color: var(--ink-muted);
 }
+
+/* ---------- S6: Banking II (Transfers, Cheques, Statements) ---------- */
+.fv .fv-pill--more {
+  border: 1px dashed var(--ink-faint);
+  background: transparent;
+  color: var(--ink-label);
+}
+
+.fv .fv-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.fv .fv-pair__arrow {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.fv .fv-matching {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fv .fv-progress--wide {
+  width: 90px;
+}
+
+.fv .fv-progress--violet {
+  background: var(--fv-line);
+}
+
+.fv .fv-progress--violet .fv-progress__fill {
+  background: var(--id-violet);
+}
+
+.fv .fv-table--transfers,
+.fv .fv-table--cheques,
+.fv .fv-table--statements { table-layout: fixed; }
+
+.fv .fv-table--transfers th:nth-child(1) { width: 11%; }
+.fv .fv-table--transfers th:nth-child(2) { width: 42%; }
+.fv .fv-table--transfers th:nth-child(3) { width: 12%; }
+.fv .fv-table--transfers th:nth-child(4) { width: 17%; }
+
+.fv .fv-table--cheques th:nth-child(1) { width: 20%; }
+.fv .fv-table--cheques th:nth-child(2) { width: 9%; }
+.fv .fv-table--cheques th:nth-child(3) { width: 13%; }
+.fv .fv-table--cheques th:nth-child(4) { width: 14%; }
+.fv .fv-table--cheques th:nth-child(5) { width: 11%; }
+.fv .fv-table--cheques th:nth-child(6) { width: 9%; }
+
+.fv .fv-table--statements th:nth-child(1) { width: 22%; }
+.fv .fv-table--statements th:nth-child(2) { width: 11%; }
+.fv .fv-table--statements th:nth-child(3) { width: 24%; }
+.fv .fv-table--statements th:nth-child(4) { width: 14%; }
+.fv .fv-table--statements th:nth-child(5) { width: 12%; }
+
+.fv .fv-table--cheques td:last-child,
+.fv .fv-table--statements td:last-child {
+  text-align: right;
+}
+
+.fv .fv-table--transfers tbody td:not(:nth-child(2)),
+.fv .fv-table--cheques tbody td:nth-child(2),
+.fv .fv-table--cheques tbody td:nth-child(6),
+.fv .fv-table--statements tbody td:not(:first-child) {
+  white-space: nowrap;
+}
+
+.fv .fv-head-actions--tight .fv-search input {
+  min-width: 90px;
+  width: 110px;
+}
+
+.fv .fv-head-actions--tight .fv-select {
+  max-width: 170px;
+}
+
+/* Dialog radio and checkbox controls keep their natural size (the shared field rule widens every input) */
+.fv-dialog input[type="radio"],
+.fv-dialog input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  flex: none;
+}
+
+/* Radio groups drawn as choice bars (transfer mode, posting options); inline borders on the labels are overridden */
+.fv-dialog [role="radiogroup"] > label {
+  border: 1px solid var(--fv-input-border) !important;
+  border-radius: 9px !important;
+  background: var(--fv-surface);
+  color: var(--ink-label);
+}
+
+.fv-dialog [role="radiogroup"] > label:has(input:checked) {
+  border: 1.5px solid var(--brand) !important;
+  background: var(--brand-tint);
+  color: var(--brand-ink);
+}
