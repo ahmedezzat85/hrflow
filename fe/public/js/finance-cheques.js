@@ -69,9 +69,9 @@ function _renderChequeStatusPills(list) {
   });
   let html = pill("", "All", list.length, "") + shown.join("");
   if (hidden.length) {
-    html += `<button type="button" class="fv-pill fv-pill--more" aria-expanded="false" onclick="toggleChequeMoreStatuses()">More &middot; ${hidden.join(", ")} &#9662;</button>`;
+    html += `<button type="button" class="fv-pill fv-pill--more" aria-expanded="false" onclick="toggleChequeMoreStatuses()">More &middot; ${hidden.join(", ")} &#x25BE;</button>`;
   } else if (_chequeMoreOpen) {
-    html += `<button type="button" class="fv-pill fv-pill--more" aria-expanded="true" onclick="toggleChequeMoreStatuses()">Fewer &#9652;</button>`;
+    html += `<button type="button" class="fv-pill fv-pill--more" aria-expanded="true" onclick="toggleChequeMoreStatuses()">Fewer &#x25B4;</button>`;
   }
   host.innerHTML = html;
 }
