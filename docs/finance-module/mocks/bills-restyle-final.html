@@ -93,10 +93,13 @@ h1, h2, h3 { margin: 0; }
 [aria-checked="true"] > .sw, [aria-pressed="true"] > .sw { background: var(--accent); }
 [aria-checked="true"] > .sw::after, [aria-pressed="true"] > .sw::after { transform: translateX(12px); }
 .tablecard { overflow: hidden; }
-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-th { padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; table-layout: auto; }
+th.hug, td.hug { width: 1%; white-space: nowrap; }
+th { padding: 11px 12px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--line); }
 th.r, td.r { text-align: right; }
-td { padding: 13px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th:first-child, td:first-child { padding-left: 18px; }
+th:last-child, td:last-child { padding-right: 14px; }
+td { padding: 13px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 tbody tr { cursor: pointer; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover { background: var(--surface2); }
@@ -117,7 +120,7 @@ tbody tr:hover { background: var(--surface2); }
 .flag { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--warning); }
 .flag.d { color: var(--danger); }
 .acts { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
-.acts .btn { margin-right: 8px; }
+.acts .btn { margin-right: 6px; min-width: 76px; justify-content: center; }
 .ic { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--text3); }
 .ic:hover { background: var(--line); color: var(--text); }
 .ic.ph { visibility: hidden; }
@@ -228,8 +231,7 @@ textarea.in { height: 72px; padding-top: 9px; resize: vertical; }
 
     <div class="card tablecard">
       <table>
-        <colgroup><col style="width:24%"><col style="width:13%"><col style="width:16%"><col style="width:13%"><col style="width:16%"><col style="width:18%"></colgroup>
-        <thead><tr><th>Bill</th><th>Bill date</th><th>Category</th><th class="r">Amount</th><th>Status</th><th><span style="position:absolute;left:-9999px">Actions</span></th></tr></thead>
+        <thead><tr><th>Bill</th><th class="hug">Bill date</th><th class="hug">Category</th><th class="hug">Status</th><th class="hug r">Amount</th><th class="hug"><span style="position:absolute;left:-9999px">Actions</span></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="empty" id="empty" hidden>No bills match these filters.</div>
@@ -237,7 +239,7 @@ textarea.in { height: 72px; padding-top: 9px; resize: vertical; }
     </div>
     <ul class="notes">
       <li><b>Card style from C</b> on the table card, filter panel and dialog (the summary cards are deferred to a later piece of work): 14px radius, thin border, soft shadow; the dialog is the C modal (18px radius, 40px icon tile, Sora title).</li>
-      <li><b>Page decisions kept:</b> underline Spend tabs, nine coloured status tags with counts and Overdue only (always visible, so there is no separate Filters button or panel), search, Bill date before Category, category only, icon row actions, no review state.</li>
+      <li><b>Page decisions kept:</b> underline Spend tabs, nine coloured status tags with counts and Overdue only (always visible, so there is no separate Filters button or panel), search, Bill date before Category, category only, icon row actions, no review state; columns hug their content with even 24px gutters, the Bill column takes the free space, and Status, Amount and the actions form one cluster on the right.</li>
       <li><b>Upload:</b> one "Upload bills" button (multi-file, each file becomes a draft, D-019). The old "Upload / Capture" button is removed; single-file capture is the attach row inside the dialog.</li>
     </ul>
   </section>
@@ -367,10 +369,10 @@ textarea.in { height: 72px; padding-top: 9px; resize: vertical; }
       var flags = (b.flags || []).map(function (f) { return '<span class="flag ' + f[1] + '">' + f[0] + '</span>'; }).join('');
       var primary = b.act ? '<button type="button" class="btn sm ' + (b.act === 'Edit & resubmit' ? '' : 'primary') + '" data-a="' + b.act + '">' + b.act + '</button>' : '';
       return '<tr data-i="' + i + '"><td><div class="v">' + b.v + '</div><div class="s">' + b.no + '</div></td>' +
-        '<td>' + b.date + note + '</td><td>' + b.cat + '</td>' +
-        '<td class="r amt"><span class="cur">' + b.cur + '</span>' + b.amt + '</td>' +
-        '<td><span class="pill p-' + b.s + '">' + STATUS[b.s] + '</span>' + flags + '</td>' +
-        '<td><div class="acts">' + primary +
+        '<td class="hug">' + b.date + note + '</td><td class="hug">' + b.cat + '</td>' +
+        '<td class="hug"><span class="pill p-' + b.s + '">' + STATUS[b.s] + '</span>' + flags + '</td>' +
+        '<td class="hug r amt"><span class="cur">' + b.cur + '</span>' + b.amt + '</td>' +
+        '<td class="hug"><div class="acts">' + primary +
         (b.s !== 'void' ? '<button class="ic" type="button" data-a="Edit" aria-label="Edit bill" title="Edit">' + ICON.edit + '</button>' : '<button class="ic ph" type="button" tabindex="-1" aria-hidden="true"></button>') +
         (b.att ? '<button class="ic" type="button" data-a="Attachment" aria-label="View attachment" title="Attachment">' + ICON.clip + '</button>' : '<button class="ic ph" type="button" tabindex="-1" aria-hidden="true"></button>') +
         '</div></td></tr>';

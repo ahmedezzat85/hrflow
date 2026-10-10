@@ -2096,19 +2096,13 @@
   border-radius: 14px;
   box-shadow: var(--shadow);
 }
+/* Natural widths: every column but Bill hugs its content; Bill takes the free space */
 @media (min-width: 769px) {
-  #financeBillsTable { table-layout: fixed; }
-  #financeBillsTable th:nth-child(1) { width: 25%; }
-  #financeBillsTable th:nth-child(2) { width: 13%; }
-  #financeBillsTable th:nth-child(3) { width: 15%; }
-  #financeBillsTable th:nth-child(4) { width: 13%; }
-  #financeBillsTable th:nth-child(5) { width: 16%; }
-  #financeBillsTable th:nth-child(6) { width: 18%; }
-  /* breathing room between the amount and the status, and a consistent first column edge */
-  #financeBillsTable th:nth-child(4), #financeBillsTable td:nth-child(4) { padding-right: 24px; }
-  #financeBillsTable th:nth-child(5), #financeBillsTable td:nth-child(5) { padding-left: 20px; }
+  #financeBillsTable { table-layout: auto; }
+  #financeBillsTable th:not(:first-child),
+  #financeBillsTable td:not(:first-child) { width: 1%; white-space: nowrap; }
 }
-.bill-vendor { font-size: 13px; line-height: 1.2; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bill-vendor { font-size: 13px; line-height: 1.2; font-weight: 600; color: var(--text); }
 .bill-cell-text { font-size: 13px; line-height: 1.2; font-weight: 400; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #financeBillsTable tbody tr[data-record-id] { cursor: pointer; }
 .bill-icon-btn,
@@ -2266,7 +2260,6 @@
 /* ── Round 2: row opens the details (no eye icon), aligned action column ── */
 .bill-open {
   display: inline;
-  max-width: 100%;
   padding: 0;
   border: 0;
   background: none;
@@ -2275,16 +2268,10 @@
   color: inherit;
   text-align: left;
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .bill-open:hover { text-decoration: underline; }
 .bill-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
-.bill-row-actions .btn,
-.bill-primary-slot { width: 108px; flex: none; justify-content: center; text-align: center; }
-.bill-primary-slot { display: inline-block; height: 1px; margin-right: 6px; }
-.bill-row-actions .btn { padding: 0 8px; }
+.bill-row-actions .btn { min-width: 76px; justify-content: center; text-align: center; padding: 0 10px; }
 #financeBillsTable th.col-actions, #financeBillsTable td:last-child { text-align: right; }
 .toolbar .bill-search-right { margin-left: auto; }
 #a-finance-bills > .toolbar > div:last-child { align-items: center; flex-wrap: wrap; justify-content: flex-end; }

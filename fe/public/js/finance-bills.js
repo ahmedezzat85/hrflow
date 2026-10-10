@@ -310,11 +310,11 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td><div class="bill-vendor"><button type="button" class="bill-open btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number || ""} details">${vendor}</button></div><div class="bill-cell-sub">${num}</div></td>
       <td><div class="bill-cell-text">${_billDate(bill.issue_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="${owed ? `Due ${_billDate(bill.due_date)}` : ""}">${rel || "&nbsp;"}</div></td>
       <td><div class="bill-cell-text">${bill.category || "General"}</div></td>
-      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill, false)}</div></td>
+      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td>
         <div class="bill-row-actions">
-          ${_billPrimaryActionHtml(bill, derivedStatus) || '<span class="bill-primary-slot" aria-hidden="true"></span>'}
+          ${_billPrimaryActionHtml(bill, derivedStatus)}
           ${bill.status !== "void" ? `<button type="button" class="bill-icon-btn" onclick="openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>` : '<span class="bill-icon-slot" aria-hidden="true"></span>'}
           ${(bill.attachment_name || bill.attachment_url) ? `<button type="button" class="bill-icon-btn btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip" aria-hidden="true"></i></button>` : '<span class="bill-icon-slot" aria-hidden="true"></span>'}
         </div>

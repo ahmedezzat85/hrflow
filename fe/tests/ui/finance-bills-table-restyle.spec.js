@@ -13,8 +13,8 @@ test.describe('Bills table, direction A', () => {
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 
-  test('columns are Bill, Bill date, Category, Amount, Status, Actions; category shows no department', async ({ page }) => {
-    await expect(page.locator('#financeBillsTable thead th')).toHaveText(['Bill', 'Bill date', 'Category', 'Amount', 'Status', 'Actions']);
+  test('columns are Bill, Bill date, Category, Status, Amount, Actions; category shows no department', async ({ page }) => {
+    await expect(page.locator('#financeBillsTable thead th')).toHaveText(['Bill', 'Bill date', 'Category', 'Status', 'Amount', 'Actions']);
     const row = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")').first();
     const cells = row.locator('td');
     await expect(cells.nth(0)).toContainText('Amazon Web Services');
@@ -23,7 +23,8 @@ test.describe('Bills table, direction A', () => {
     await expect(cells.nth(1).locator('.bill-cell-sub--late')).toHaveAttribute('title', 'Due 30 Sep 2026');
     await expect(cells.nth(2)).toHaveText('Infrastructure');
     await expect(cells.nth(2)).not.toContainText('Engineering');
-    await expect(cells.nth(3)).toContainText('$4,200.00');
+    await expect(cells.nth(3)).toContainText('Approved');
+    await expect(cells.nth(4)).toContainText('$4,200.00');
   });
 
   test('no review state is shown anywhere in the list', async ({ page }) => {
@@ -69,15 +70,17 @@ test.describe('Bills table, direction A', () => {
     await expect(paid.locator('.btn-pay-bill, .btn-approve-bill, .btn-submit-bill, .btn-schedule-bill')).toHaveCount(0);
   });
 
-  test('actions line up: same primary slot width and the same Edit icon column on every row', async ({ page }) => {
+  test('actions line up: the Edit icon is in the same column on every row, and columns hug their content', async ({ page }) => {
     const m = await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#financeBillsTableBody tr')];
       const edit = rows.map((r) => r.querySelector('button[title="Edit Bill"]')).filter(Boolean).map((b) => Math.round(b.getBoundingClientRect().left));
-      const prim = rows.map((r) => r.querySelector('.bill-row-actions .btn')).filter(Boolean).map((b) => Math.round(b.getBoundingClientRect().width));
-      return { edit: [...new Set(edit)], prim: [...new Set(prim)] };
+      const ths = [...document.querySelectorAll('#financeBillsTable thead th')].map((t) => Math.round(t.getBoundingClientRect().width));
+      return { edit: [...new Set(edit)], ths, table: Math.round(document.getElementById('financeBillsTable').getBoundingClientRect().width) };
     });
     expect(m.edit.length).toBe(1);
-    expect(m.prim.length).toBe(1);
+    // every column except Bill is narrow; Bill takes the free space
+    expect(m.ths[0]).toBeGreaterThan(m.table * 0.3);
+    for (const w of m.ths.slice(1, 5)) expect(w).toBeLessThan(m.table * 0.2);
   });
 
   test('table card keeps its shadow', async ({ page }) => {
