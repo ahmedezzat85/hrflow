@@ -7502,7 +7502,7 @@ async getEntityActivity(entityType, entityId) {
         remaining_balance: accrued,
         variance_amount: 0.0,
         variance_note: null,
-        currency: data.currency || "USD",
+        currency: data.currency || "EGP",
         status: "accrued",
         due_date: data.due_date || null,
         source_type: "manual",
@@ -7580,6 +7580,9 @@ async getEntityActivity(entityType, entityId) {
       }
 
       const bankAcc = (FinanceMockState.accounts || []).find((a) => a.id === Number(data.bank_account_id));
+      if (bankAcc && (bankAcc.currency || "").toUpperCase() !== (obl.currency || "EGP").toUpperCase()) {
+        throw new Error(`currency_mismatch: Account currency (${bankAcc.currency}) differs from the obligation currency (${obl.currency}). Pay from a ${obl.currency} account.`);
+      }
       if (bankAcc) {
         bankAcc.current_balance = round(bankAcc.current_balance - settleAmt);
       }

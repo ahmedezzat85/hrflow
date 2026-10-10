@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from finance.models import StatutoryObligationDB
 from finance.repositories.statutory_repository import StatutoryObligationsRepository
-from finance.services.settlement_service import SettlementService
+from finance.services.settlement_service import SettlementService, StatutoryPaymentError
 
 VALID_OBLIGATION_TYPES = {
     "sales_tax",
@@ -106,7 +106,7 @@ class StatutoryObligationsService:
             "amount_remitted": 0.0,
             "variance_amount": 0.0,
             "variance_note": None,
-            "currency": data.get("currency", "USD"),
+            "currency": data.get("currency") or "EGP",
             "status": "accrued",
             "due_date": data.get("due_date"),
             "source_type": data.get("source_type", "manual"),
@@ -196,7 +196,7 @@ class StatutoryObligationsService:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    def settle_obligation(self, obligation_id: int, data: dict) -> Dict[str, Any]:
+    def settle_obligation(self, obligation_id: int, data: dict, user_email: Optional[str] = None) -> Dict[str, Any]:
         """
         Remit a statutory obligation via SettlementService.
         """
@@ -206,15 +206,20 @@ class StatutoryObligationsService:
                 amount=float(data["amount"]),
                 payment_date=data["payment_date"],
                 bank_account_id=int(data["bank_account_id"]),
-                currency=data.get("currency", "USD"),
+                payment_type_id=data.get("payment_type_id"),
                 reference=data.get("reference", ""),
-                method=data.get("method", "bank_transfer"),
+                method=data.get("method"),
+                created_by=user_email,
             )
             resp = self._to_response(obl)
             resp["payment_id"] = payment.id
             resp["transaction_id"] = ledger_tx.id
             return resp
+        except StatutoryPaymentError as e:
+            self.db.rollback()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.detail())
         except ValueError as e:
+            self.db.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     def update_obligation(self, obligation_id: int, data: dict) -> Dict[str, Any]:

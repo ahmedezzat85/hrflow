@@ -2440,7 +2440,7 @@ class StatutoryObligationCreate(BaseModel):
     period: str
     amount_accrued: float
     due_date: Optional[str] = None
-    currency: str = "USD"
+    currency: str = "EGP"
     notes: str = ""
 
 
@@ -2453,9 +2453,10 @@ class StatutoryObligationSettle(BaseModel):
     amount: float
     payment_date: str
     bank_account_id: int
-    currency: str = "USD"
+    currency: str = "EGP"  # accepted for compatibility; the obligation's currency is used
     reference: str = ""
-    method: str = "bank_transfer"
+    method: Optional[str] = None
+    payment_type_id: Optional[int] = Field(None, description="Outgoing payment type fitting the paying account kind (defaults by kind)")
 
 
 class VatEstimateRequest(BaseModel):
@@ -2479,7 +2480,7 @@ class StatutoryObligationResponse(BaseModel):
     remaining_balance: float = 0.0
     variance_amount: float = 0.0
     variance_note: Optional[str] = None
-    currency: str = "USD"
+    currency: str = "EGP"
     status: str
     due_date: Optional[str] = None
     source_type: str = "manual"

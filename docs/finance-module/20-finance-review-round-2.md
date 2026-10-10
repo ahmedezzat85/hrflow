@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. F1 to F3 implemented on `feature/fin-f1-invoice-rules`; F4 to F6 not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 to F4 implemented on `feature/fin-f1-invoice-rules`; F5 and F6 not implemented.
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -56,8 +56,8 @@ Acceptance:
 3. The existing estimated / accrued / remitted / variance model stays unchanged.
 
 Acceptance:
-- [ ] A new obligation without a currency is EGP.
-- [ ] An EGP obligation cannot be paid from a USD account.
+- [x] A new obligation without a currency is EGP.
+- [x] An EGP obligation cannot be paid from a USD account (400 `currency_mismatch`; payment type by account kind: cash -> Cash payment, bank -> Outgoing transfer or Debit card; no migration needed).
 
 ## Slice F5: Payroll funding posting fixes (D-025)
 

@@ -826,7 +826,7 @@ class StatutoryObligationDB(Base):
     amount_remitted = Column(Float, default=0.0, nullable=False)
     variance_amount = Column(Float, default=0.0, nullable=False)
     variance_note = Column(Text, nullable=True)
-    currency = Column(String(10), default="USD", nullable=False)
+    currency = Column(String(10), default="EGP", nullable=False)  # statutory obligations are EGP by default (D-025 context, F4)
     status = Column(String(30), default="estimated", nullable=False, index=True)
     # estimated | accrued | partially_remitted | remitted
     due_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD

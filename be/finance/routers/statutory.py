@@ -110,7 +110,7 @@ def settle_statutory_obligation(
     Record a remittance payment against an accrued or partially remitted statutory obligation.
     Atomically updates obligation status, creates linked ledger transaction, and updates bank account balance.
     """
-    return service.settle_obligation(obligation_id, payload.dict())
+    return service.settle_obligation(obligation_id, payload.dict(), user_email=current_user.get("email") or current_user.get("sub"))
 
 
 @router.patch("/{obligation_id}", response_model=StatutoryObligationResponse)

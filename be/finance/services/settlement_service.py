@@ -24,6 +24,26 @@ from finance.models import (
 )
 
 
+# Outgoing payment types a statutory remittance may use, per paying account kind (F4, D-022 rules)
+STATUTORY_PAYMENT_TYPE_CODES_BY_ACCOUNT_TYPE = {
+    "cash": frozenset({"CASH"}),
+    "bank": frozenset({"OUTBOUND_TRANS", "DEBIT_CARD"}),
+}
+DEFAULT_STATUTORY_PAYMENT_TYPE_CODE = {"cash": "CASH", "bank": "OUTBOUND_TRANS"}
+
+
+class StatutoryPaymentError(ValueError):
+    """A statutory remittance refused by a rule. `code` is the machine-readable reason."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+    def detail(self) -> dict:
+        return {"code": self.code, "message": self.message}
+
+
 class SettlementService:
     def __init__(self, db: Session):
         self.db = db
@@ -271,16 +291,22 @@ class SettlementService:
         amount: float,
         payment_date: str,
         bank_account_id: int,
-        currency: str = "USD",
+        payment_type_id: Optional[int] = None,
         reference: str = "",
-        method: str = "bank_transfer",
+        method: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> Tuple[StatutoryObligationDB, PaymentDB, LedgerTransactionDB]:
         """
         Record a settlement against a statutory obligation.
         Enforces status integrity (must be accrued or partially_remitted),
         checks remaining balance, prevents overpayment, updates obligation amount_remitted,
-        transitions status to remitted or partially_remitted, adjusts bank account balance,
-        and creates linked PaymentDB and LedgerTransactionDB records atomically.
+        transitions status to remitted or partially_remitted, and creates the linked PaymentDB
+        and LedgerTransactionDB records; the account balance comes from
+        recalculate_account_running_balances. All of it commits together.
+
+        Refuses with StatutoryPaymentError (code):
+          currency_mismatch        - paying account currency differs from the obligation currency
+          payment_type_not_allowed - type is not an outgoing type that fits the paying account kind
         """
         obligation = self.db.query(StatutoryObligationDB).filter(StatutoryObligationDB.id == obligation_id).first()
         if not obligation:
@@ -312,6 +338,26 @@ class SettlementService:
         if payment_amount <= 0:
             raise ValueError("Payment amount must be greater than 0")
 
+        # Same currency: no exchange rate on statutory payments
+        if (bank_account.currency or "").upper() != (obligation.currency or "").upper():
+            raise StatutoryPaymentError(
+                "currency_mismatch",
+                f"Account currency ({bank_account.currency}) differs from the obligation currency ({obligation.currency}). Pay from a {obligation.currency} account.",
+            )
+
+        account_type = (bank_account.account_type or "bank").lower()
+        allowed_codes = STATUTORY_PAYMENT_TYPE_CODES_BY_ACCOUNT_TYPE.get(account_type, frozenset())
+        if payment_type_id is None:
+            default_code = DEFAULT_STATUTORY_PAYMENT_TYPE_CODE.get(account_type)
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == default_code).first() if default_code else None
+        else:
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == payment_type_id).first()
+            if pt is None or not pt.is_active or pt.code not in allowed_codes:
+                raise StatutoryPaymentError(
+                    "payment_type_not_allowed",
+                    f"Payment type '{pt.name if pt else payment_type_id}' cannot be used to pay a statutory obligation from a {account_type} account.",
+                )
+
         if payment_amount > remaining + 0.001:
             raise ValueError(
                 f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
@@ -324,10 +370,10 @@ class SettlementService:
             related_invoice_id=None,
             related_statutory_obligation_id=obligation.id,
             amount=payment_amount,
-            currency=currency or obligation.currency,
+            currency=obligation.currency,
             payment_date=payment_date,
             bank_account_id=bank_account.id,
-            method=method or "bank_transfer",
+            method=method or rules.METHOD_BY_PAYMENT_TYPE_CODE.get(pt.code if pt else "", "bank_transfer"),
             reference=ref_str,
             is_reversed=False,
         )
@@ -341,9 +387,6 @@ class SettlementService:
         else:
             obligation.status = "partially_remitted"
 
-        # Balance deduction: outgoing remittance debit
-        bank_account.current_balance = round(bank_account.current_balance - payment_amount, 4)
-
         # Find category & payment type
         tax_cat = (
             self.db.query(TransactionCategoryDB)
@@ -353,8 +396,6 @@ class SettlementService:
         if not tax_cat:
             tax_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
 
-        outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
-
         ledger_tx = LedgerTransactionDB(
             account_id=bank_account.id,
             date=payment.payment_date,
@@ -362,15 +403,18 @@ class SettlementService:
             direction="out",
             currency=payment.currency,
             category_id=tax_cat.id if tax_cat else None,
-            payment_type_id=outbound_pt.id if outbound_pt else None,
+            payment_type_id=pt.id if pt else None,
             reference=ref_str,
             description=f"Statutory remittance: {obligation.obligation_type.replace('_', ' ').title()} for period {obligation.period}",
             source="statutory_remittance",
             linked_statutory_obligation_id=obligation.id,
-            running_balance=bank_account.current_balance,
-            created_at=payment.created_at,
+            running_balance=0.0,
+            created_by=created_by,
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        from finance.repositories.ledger_repository import LedgerRepository
+        LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
         self.db.commit()
         self.db.refresh(obligation)

@@ -156,18 +156,13 @@
                   </div>
                   <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="statSettleBankAccount">Paying company bank account *</label>
-                    <select id="statSettleBankAccount" required>
+                    <select id="statSettleBankAccount" required onchange="refreshStatutoryPaymentTypes()">
                       <!-- Dynamically populated with active bank accounts -->
                     </select>
                   </div>
                   <div class="form-group">
-                    <label for="statSettleMethod">Payment Method *</label>
-                    <select id="statSettleMethod">
-                      <option value="bank_transfer">Bank Transfer / ACH Wire</option>
-                      <option value="debit_card">Debit Card</option>
-                      <option value="cheque">Check</option>
-                      <option value="cash">Cash</option>
-                    </select>
+                    <label for="statSettlePaymentType">Payment type *</label>
+                    <select id="statSettlePaymentType"></select>
                   </div>
                   <div class="form-group">
                     <label for="statSettleReference">Government / Payment Ref</label>
