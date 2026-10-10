@@ -819,10 +819,11 @@
 }
 
 .fv .modal-close {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  /* drawn as a 32 px control; the hit area stays 40 px (touch target rule) */
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   background: transparent;
   color: var(--ink-label);
 }
@@ -1480,4 +1481,151 @@
 .fv-dialog .modal-v2 .form-field textarea {
   border-radius: 9px;
   border: 1px solid var(--fv-input-border);
+}
+
+/* ---------- S4: Sales ---------- */
+.fv .fv-icon-btn--danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.fv .fv-table--invoices,
+.fv .fv-table--customers { table-layout: fixed; }
+
+.fv .fv-table--invoices th:nth-child(1) { width: 22%; }
+.fv .fv-table--invoices th:nth-child(2) { width: 8.5%; }
+.fv .fv-table--invoices th:nth-child(3) { width: 10%; }
+.fv .fv-table--invoices th:nth-child(4) { width: 13%; }
+.fv .fv-table--invoices th:nth-child(5) { width: 10.5%; }
+.fv .fv-table--invoices th:nth-child(6) { width: 11.5%; }
+
+.fv .fv-table--customers th:nth-child(1) { width: 25%; }
+.fv .fv-table--customers th:nth-child(2) { width: 22%; }
+.fv .fv-table--customers th:nth-child(3) { width: 12%; }
+.fv .fv-table--customers th:nth-child(4) { width: 10%; }
+.fv .fv-table--customers th:nth-child(5) { width: 13%; }
+
+.fv .fv-table--invoices td:last-child,
+.fv .fv-table--customers td:last-child {
+  text-align: right;
+}
+
+.fv .fv-table--invoices tbody td:not(:first-child),
+.fv .fv-table--customers tbody td:not(:first-child) {
+  white-space: nowrap;
+}
+
+.fv .fv-table--invoices tbody td:nth-child(4) {
+  white-space: normal;
+}
+
+/* ---------- Invoice dialog: line items, callouts, split footer ---------- */
+.fv .fv-callout--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fv .fv-callout--warn {
+  background: var(--warning-soft);
+}
+
+.fv .fv-callout__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fv-dialog .fv-foot-split {
+  justify-content: space-between;
+}
+
+.fv-dialog .fv-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fv .fv-lines {
+  border: 1px solid var(--fv-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.fv .fv-lines__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.fv .fv-lines__table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  background: var(--fv-surface);
+  border-bottom: 1px solid var(--fv-line-strong);
+}
+
+.fv .fv-lines__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--fv-line-row);
+}
+
+.fv .fv-lines__desc { width: 40%; }
+.fv .fv-lines__act { width: 52px; }
+
+.fv .fv-lines__table td input {
+  height: 32px;
+}
+
+.fv .fv-lines__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--fv-surface-soft);
+}
+
+.fv .fv-lines__totals {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.fv .fv-lines__totals strong {
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.fv .fv-lines__grand {
+  font-family: var(--font-head);
+  font-size: 15px;
+}
+
+.fv .fv-lines .btn-danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-muted);
+}
+
+.fv-dialog--cols3 .form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.fv-dialog--cols3 .form-grid .full {
+  grid-column: 1 / -1;
+}
+
+.fv .fv-lines__table th {
+  text-transform: none;
+  letter-spacing: 0;
 }

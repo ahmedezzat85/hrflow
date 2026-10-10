@@ -14,62 +14,60 @@ test.describe('Story 3.1 — Invoice Work Queue and Detail', () => {
     await expect(page.locator('#financeInvoicesTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('Acceptance Criteria 1: Default Open view excludes Paid and Void records', async ({ page }) => {
-    // Open tab should be active by default
-    const openTab = page.locator('#tabQueueOpen');
-    await expect(openTab).toHaveClass(/active/);
-    await expect(openTab).toHaveAttribute('aria-selected', 'true');
-
-    // Status filter select should reflect "open"
-    const statusSelect = page.locator('#financeInvoiceStatusFilter');
-    await expect(statusSelect).toHaveValue('open');
-
-    // Invoices table rows should contain Open invoices (INV-2026-001, 002, 003, 004)
+  // D-027 (doc 21 section 6.2): the Open / Awaiting payment / Overdue tabs and the status select are gone.
+  // One pill row (All, Draft, Sent, Partially paid, Paid, Void) plus an "Overdue only" toggle; the default is All.
+  test('Acceptance Criteria 1: Default view is All and the old tabs and status select are gone', async ({ page }) => {
+    const allTab = page.locator('#tabQueueAll');
+    await expect(allTab).toHaveClass(/active/);
+    await expect(allTab).toHaveAttribute('aria-selected', 'true');
+    for (const gone of ['#tabQueueOpen', '#tabQueueAwaitingPayment', '#tabQueueOverdue', '#financeInvoiceStatusFilter', '#financeInvoiceFilterChips']) {
+      await expect(page.locator(gone)).toHaveCount(0);
+    }
     const tableText = await page.locator('#financeInvoicesTableBody').innerText();
-    expect(tableText).toContain('INV-2026-001');
-    expect(tableText).toContain('INV-2026-002');
-    expect(tableText).toContain('INV-2026-003');
-    expect(tableText).toContain('INV-2026-004');
-
-    // Should NOT contain Paid (INV-2026-005) or Void (INV-2026-006)
-    expect(tableText).not.toContain('INV-2026-005');
-    expect(tableText).not.toContain('INV-2026-006');
+    for (const n of ['001', '002', '003', '004', '005', '006']) expect(tableText).toContain(`INV-2026-${n}`);
+    await expect(page.locator('#badgeQueueAll')).toHaveText('6');
   });
 
-  test('Acceptance Criteria 2: Work queue tabs filter correctly across states', async ({ page }) => {
-    // 1. Draft queue
+  test('Acceptance Criteria 2: Status pills and the overdue toggle filter correctly across states', async ({ page }) => {
+    // 1. Draft
     await page.click('#tabQueueDraft');
-    await page.waitForTimeout(200);
     let tableText = await page.locator('#financeInvoicesTableBody').innerText();
     expect(tableText).toContain('INV-2026-002');
     expect(tableText).not.toContain('INV-2026-001');
     expect(tableText).not.toContain('INV-2026-005');
 
-    // 2. Overdue queue
-    await page.click('#tabQueueOverdue');
-    await page.waitForTimeout(200);
+    // 2. Sent, then Overdue only narrows it to the late invoice and shows its late note
+    await page.click('#tabQueueSent');
+    tableText = await page.locator('#financeInvoicesTableBody').innerText();
+    expect(tableText).toContain('INV-2026-001');
+    expect(tableText).toContain('INV-2026-003');
+    await page.locator('#financeInvoiceOverdueOnly').check();
     tableText = await page.locator('#financeInvoicesTableBody').innerText();
     expect(tableText).toContain('INV-2026-003');
-    expect(tableText).toContain('overdue');
+    expect(tableText).toContain('days late');
+    expect(tableText).not.toContain('INV-2026-001');
+    await page.locator('#financeInvoiceOverdueOnly').uncheck();
+
+    // 3. Partially paid
+    await page.click('#tabQueuePartiallyPaid');
+    tableText = await page.locator('#financeInvoicesTableBody').innerText();
+    expect(tableText).toContain('INV-2026-004');
     expect(tableText).not.toContain('INV-2026-001');
 
-    // 3. Paid queue
+    // 4. Paid
     await page.click('#tabQueuePaid');
-    await page.waitForTimeout(200);
     tableText = await page.locator('#financeInvoicesTableBody').innerText();
     expect(tableText).toContain('INV-2026-005');
     expect(tableText).not.toContain('INV-2026-001');
 
-    // 4. Void queue
+    // 5. Void
     await page.click('#tabQueueVoid');
-    await page.waitForTimeout(200);
     tableText = await page.locator('#financeInvoicesTableBody').innerText();
     expect(tableText).toContain('INV-2026-006');
     expect(tableText).not.toContain('INV-2026-001');
 
-    // 5. All queue
+    // 6. All
     await page.click('#tabQueueAll');
-    await page.waitForTimeout(200);
     tableText = await page.locator('#financeInvoicesTableBody').innerText();
     expect(tableText).toContain('INV-2026-001');
     expect(tableText).toContain('INV-2026-005');
@@ -77,18 +75,16 @@ test.describe('Story 3.1 — Invoice Work Queue and Detail', () => {
   });
 
   test('Acceptance Criteria 3: Outstanding balance displays total minus non-reversed payments', async ({ page }) => {
-    // Switch to All to see partial payment invoice INV-2026-004
     await page.click('#tabQueueAll');
-    await page.waitForTimeout(200);
 
     const row = page.locator('#financeInvoicesTableBody tr[data-record-id="4"]');
     await expect(row).toBeVisible();
 
-    // Total: $11,000, Paid: $4,000, Balance: $7,000
+    // Total: $11,000, Paid: $4,000, Balance: $7,000 (the Balance cell shows "of total"; the paid share is its progress bar)
     const rowText = await row.innerText();
     expect(rowText).toContain('11,000');
-    expect(rowText).toContain('4,000');
     expect(rowText).toContain('7,000');
+    expect(await row.locator('.fv-progress__fill').getAttribute('style')).toContain('36.');
   });
 
   test('Acceptance Criteria 4: Detail drawer opens with record balance, attributes, and next action', async ({ page }) => {

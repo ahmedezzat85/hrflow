@@ -240,3 +240,77 @@ test.describe('Finance restyle v2: Subscriptions and Statutory (S3)', () => {
     expect(await css(page, '#statSettleSaveBtn', 'height')).toBe('34px');
   });
 });
+
+// ---------- S4: Sales (Invoices, Customers, invoice and receipt dialogs) ----------
+test.describe('Finance restyle v2: Sales (S4)', () => {
+  for (const theme of ['light', 'dark']) {
+    test(`Invoices table chrome in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await openAdminPage(page, 'a-finance-invoices');
+      await expect(page.locator('#financeInvoicesTableBody tr').first()).toBeVisible();
+      expect(await css(page, '#financeInvoicesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+      expect(await css(page, '#financeInvoicesTable thead th', 'textTransform')).toBe('none');
+      expect(await css(page, '#financeNewInvoiceBtn', 'height')).toBe('32px');
+      expect(await css(page, '#financeInvoicesTableBody .btn-record-receipt', 'height')).toBe('28px');
+      expect(await css(page, '#financeInvoicesTableBody .fv-amount__value', 'color')).toBe(await rgb(page, 'var(--ink-strong)'));
+      expect(await css(page, '#tabQueueAll', 'backgroundColor')).toBe(await rgb(page, 'var(--brand)'));
+      await expect(page.locator('#financeInvoiceSubNav .fa-solid')).toHaveCount(0);
+      await expect(page.locator('#financeInvoiceWorkQueueTabs .fa-solid')).toHaveCount(0);
+      // at most one text button and three icon buttons per row, no menu
+      const counts = await page.locator('#financeInvoicesTableBody tr').evaluateAll((rows) => rows.map((r) => [r.querySelectorAll('.fv-row-actions .btn').length, r.querySelectorAll('.fv-row-actions .fv-icon-btn').length]));
+      for (const [text, icons] of counts) { expect(text).toBeLessThanOrEqual(1); expect(icons).toBeLessThanOrEqual(3); }
+      // the primary action is "Record receipt" (no "Pay") and the outstanding total sits in the footer, per currency
+      await expect(page.locator('#financeInvoicesTableBody .btn-record-receipt').first()).toHaveText('Record receipt');
+      await expect(page.locator('#financeInvoicesPagination')).toContainText('outstanding');
+    });
+  }
+
+  test('Customers: pills, open balance from receivables, Invoices opens the 360 drawer', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-invoices');
+    await page.click('#tabFinanceCustomers');
+    await expect(page.locator('#financeCustomersTableBody tr').first()).toBeVisible();
+    expect(await css(page, '#financeAddCustomerBtn', 'backgroundColor')).toBe(await rgb(page, 'var(--brand)'));
+    expect(await css(page, '#financeCustomersTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    await expect(page.locator('#custPillLate')).toBeVisible();
+    const apex = page.locator('#financeCustomersTableBody tr:has-text("Apex Health Partners")');
+    await expect(apex.locator('.fv-amount__value')).toContainText('$12,500.00');
+    await expect(apex).toContainText('1 open invoice');
+    const care = page.locator('#financeCustomersTableBody tr:has-text("CareFirst Health")');
+    await expect(care.locator('.fv-note--late')).toContainText('1 late');
+    await page.click('#custPillLate');
+    await expect(page.locator('#financeCustomersTableBody tr')).toHaveCount(1);
+    await page.click('#financeCustomerStatusPills [data-filter="all"]');
+    // the 360 drawer opens from the "Invoices" row action; the old "View 360" button is gone
+    await expect(page.locator('#financeCustomersTable')).not.toContainText('View 360');
+    await apex.locator('.btn-customer-invoices').click();
+    await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
+  });
+
+  test('Customers without BE-2 receivables: dash and no late pill', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-invoices');
+    await page.click('#tabFinanceCustomers');
+    await expect(page.locator('#financeCustomersTableBody tr').first()).toBeVisible();
+    await page.evaluate(() => { FinanceState.customers = FinanceState.customers.map((c) => { const { receivables, ...rest } = c; return rest; }); applyAndRenderCustomers(); });
+    await expect(page.locator('#custPillLate')).toBeHidden();
+    await expect(page.locator('#financeCustomersTableBody tr').first().locator('td').nth(4)).toHaveText('–');
+  });
+
+  test('invoice and receipt dialogs: scoped, 36 px fields, 34 px footer, "Record receipt"', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-invoices');
+    await expect(page.locator('#financeInvoicesTableBody tr').first()).toBeVisible();
+    await page.evaluate(() => openAddInvoiceModal());
+    await expect(page.locator('#invoiceModal.fv-dialog')).toBeVisible();
+    expect(await css(page, '#invoiceNumber', 'height')).toBe('36px');
+    expect(await css(page, '#invoiceModalSaveBtn', 'height')).toBe('34px');
+    await expect(page.locator('#invoiceModal .modal-foot .fa-solid')).toHaveCount(0);
+    await page.evaluate(() => closeInvoiceModal());
+    await page.locator('#financeInvoicesTableBody .btn-record-receipt').first().click();
+    await expect(page.locator('#invoicePaymentModal')).toBeVisible();
+    await expect(page.locator('#invoicePaymentTitleText')).toHaveText('Record receipt');
+    await expect(page.locator('#invoicePaymentSubmitBtn')).toHaveText('Record receipt');
+    expect(await css(page, '#paymentAmount', 'height')).toBe('36px');
+  });
+});

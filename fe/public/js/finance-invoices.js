@@ -2,37 +2,51 @@
 // 2. Sales Invoices
 // ==========================================
 let _invoiceTableInitialized = false;
-let _currentInvoiceWorkQueue = "open";
+let _currentInvoiceWorkQueue = "all";
+let _invoiceOverdueOnly = false;
+const _INVOICE_QUEUES = ["all", "draft", "sent", "partially_paid", "paid", "void"];
 
 function setInvoiceWorkQueue(queue) {
-  _currentInvoiceWorkQueue = queue;
-  const statusFilter = document.getElementById("financeInvoiceStatusFilter");
-  if (statusFilter) {
-    statusFilter.value = queue;
-  }
-  _updateInvoiceWorkQueueTabsUi(queue);
-  const state = FinanceTable.getState("finance_invoices");
-  state.page = 1;
-  FinanceTable.saveState("finance_invoices", state);
-  loadFinanceInvoices();
-}
-
-function onInvoiceStatusFilterChange(status) {
-  _currentInvoiceWorkQueue = status || "all";
+  _currentInvoiceWorkQueue = _INVOICE_QUEUES.includes(queue) ? queue : "all";
   _updateInvoiceWorkQueueTabsUi(_currentInvoiceWorkQueue);
   const state = FinanceTable.getState("finance_invoices");
   state.page = 1;
   FinanceTable.saveState("finance_invoices", state);
-  loadFinanceInvoices();
+  applyAndRenderInvoices();
+}
+
+function onInvoiceOverdueOnlyChange(checked) {
+  _invoiceOverdueOnly = !!checked;
+  const state = FinanceTable.getState("finance_invoices");
+  state.page = 1;
+  FinanceTable.saveState("finance_invoices", state);
+  applyAndRenderInvoices();
 }
 
 function _updateInvoiceWorkQueueTabsUi(activeQueue) {
   const tabs = document.querySelectorAll("#financeInvoiceWorkQueueTabs .filter-tab");
   tabs.forEach((tab) => {
-    const isMatch = tab.dataset.queue === activeQueue || (!tab.dataset.queue && activeQueue === "open");
+    const isMatch = tab.dataset.queue === activeQueue;
     tab.classList.toggle("active", isMatch);
     tab.setAttribute("aria-selected", isMatch ? "true" : "false");
     tab.setAttribute("tabindex", isMatch ? "0" : "-1");
+  });
+}
+
+// Pill and toggle counts come from the whole list, whatever the current filter.
+function _updateInvoiceCounts(all) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const n = (st) => all.filter((i) => FinanceFormat.getDerivedInvoiceStatus(i) === st).length;
+  set("badgeQueueAll", all.length);
+  set("badgeQueueDraft", n("draft"));
+  set("badgeQueueSent", n("sent"));
+  set("badgeQueuePartiallyPaid", n("partially_paid"));
+  set("badgeQueuePaid", n("paid"));
+  set("badgeQueueVoid", n("void"));
+  set("financeInvoiceOverdueCount", all.filter((i) => i.is_overdue).length);
+  document.querySelectorAll("#financeInvoiceWorkQueueTabs .fv-pill").forEach((pill) => {
+    const c = Number((pill.querySelector(".fv-pill__count") || {}).textContent || 0);
+    pill.classList.toggle("fv-pill--zero", !c);
   });
 }
 
@@ -42,17 +56,12 @@ async function loadFinanceInvoices() {
 
   try {
     const cachedState = FinanceTable.getState("finance_invoices");
-    const statusFilter = document.getElementById("financeInvoiceStatusFilter");
     const searchInput = document.getElementById("financeInvoiceSearch");
 
     if (!_invoiceTableInitialized) {
-      if (cachedState.filters?.status && statusFilter) {
-        statusFilter.value = cachedState.filters.status;
-        _currentInvoiceWorkQueue = cachedState.filters.status;
-      } else if (statusFilter) {
-        statusFilter.value = "open";
-        _currentInvoiceWorkQueue = "open";
-      }
+      // A saved filter from the old tab layout (open, awaiting_payment, overdue) falls back to All.
+      const saved = cachedState.filters?.status;
+      _currentInvoiceWorkQueue = _INVOICE_QUEUES.includes(saved) ? saved : "all";
       if (cachedState.filters?.search && searchInput) {
         searchInput.value = cachedState.filters.search;
       }
@@ -60,12 +69,8 @@ async function loadFinanceInvoices() {
       _invoiceTableInitialized = true;
     }
 
-    const params = {};
-    const effectiveStatus = (statusFilter && statusFilter.value) ? statusFilter.value : _currentInvoiceWorkQueue;
-    if (effectiveStatus && effectiveStatus !== "all") {
-      params.status = effectiveStatus;
-    }
-    const items = await FinanceApi.getInvoices(Object.keys(params).length ? params : undefined);
+    // The whole list is loaded: pills, counts and the overdue toggle filter on the client.
+    const items = await FinanceApi.getInvoices();
     FinanceState.invoices = items || [];
     applyAndRenderInvoices();
   } catch (err) {
@@ -77,18 +82,24 @@ async function loadFinanceInvoices() {
 
 function applyAndRenderInvoices() {
   const state = FinanceTable.getState("finance_invoices");
-  const statusFilter = document.getElementById("financeInvoiceStatusFilter");
   const searchInput = document.getElementById("financeInvoiceSearch");
-
-  const currentStatus = statusFilter ? statusFilter.value : "";
   const currentSearch = searchInput ? searchInput.value.trim() : "";
 
   state.filters = {
-    ...(currentStatus ? { status: currentStatus } : {}),
+    status: _currentInvoiceWorkQueue,
     ...(currentSearch ? { search: currentSearch } : {}),
   };
 
-  let items = FinanceState.invoices || [];
+  const all = FinanceState.invoices || [];
+  _updateInvoiceCounts(all);
+
+  let items = all;
+  if (_currentInvoiceWorkQueue !== "all") {
+    items = items.filter((inv) => FinanceFormat.getDerivedInvoiceStatus(inv) === _currentInvoiceWorkQueue);
+  }
+  if (_invoiceOverdueOnly) {
+    items = items.filter((inv) => inv.is_overdue);
+  }
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
     items = items.filter(
@@ -116,25 +127,6 @@ function applyAndRenderInvoices() {
     applyAndRenderInvoices();
   }, { sortBy: state.sortBy, sortDir: state.sortDir });
 
-  FinanceTable.renderFilterChips(
-    "financeInvoiceFilterChips",
-    state.filters,
-    (removedKey) => {
-      if (removedKey === "status" && statusFilter) {
-        statusFilter.value = "";
-        loadFinanceInvoices();
-      } else if (removedKey === "search" && searchInput) {
-        searchInput.value = "";
-        applyAndRenderInvoices();
-      }
-    },
-    () => {
-      if (statusFilter) statusFilter.value = "";
-      if (searchInput) searchInput.value = "";
-      loadFinanceInvoices();
-    }
-  );
-
   FinanceTable.renderPagination(
     "financeInvoicesPagination",
     meta,
@@ -150,6 +142,20 @@ function applyAndRenderInvoices() {
       applyAndRenderInvoices();
     }
   );
+
+  // Outstanding balance of the listed invoices, one figure per currency (never summed across currencies).
+  const summary = document.querySelector("#financeInvoicesPagination .pagination-summary");
+  if (summary) {
+    const open = items.filter((inv) => ["sent", "partially_paid"].includes(FinanceFormat.getDerivedInvoiceStatus(inv)));
+    const byCur = {};
+    open.forEach((inv) => {
+      const cur = inv.currency || "USD";
+      const bal = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - (inv.amount_paid || 0));
+      byCur[cur] = (byCur[cur] || 0) + Number(bal || 0);
+    });
+    const parts = Object.entries(byCur).map(([cur, v]) => `<span class="fv-foot__total">${FinanceUI.moneyHtml(v, cur)}</span>`);
+    if (parts.length) summary.insertAdjacentHTML("beforeend", ` &middot; ${parts.join(" + ")} outstanding`);
+  }
 
   FinanceTable.initAllTablesDensity();
 }
@@ -184,59 +190,61 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
   }
   if (empty) empty.style.display = "none";
 
+  const esc = FinanceUI.esc;
   tbody.innerHTML = items
-    .map(
-      (inv) => {
-        const routeParts = [];
-        if (inv.expected_bank_account_name) {
-          routeParts.push(`<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.82rem;"><i class="fa-solid fa-building-columns" style="opacity:0.6; font-size:0.75rem;"></i> ${inv.expected_bank_account_name}</span>`);
-        }
-        if (inv.revenue_channel) {
-          routeParts.push(`<span class="badge badge-grey" style="font-size:0.72rem;">${_revenueChannelLabel(inv.revenue_channel)}</span>`);
-        }
-        const routeDisplay = routeParts.length ? routeParts.join("<br>") : `<span style="opacity:0.4;">—</span>`;
-        const discrepancyBadge = inv.has_bank_discrepancy
-          ? `<span class="badge" style="background: rgba(234, 179, 8, 0.18); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.72rem; margin-left: 6px;" title="Payment received in different account than expected"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancy</span>`
-          : "";
+    .map((inv) => {
+      const cur = inv.currency || "USD";
+      const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
+      const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0);
+      const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
+      const daysOverdue = inv.days_overdue || 0;
+      const lateNote = inv.is_overdue && daysOverdue > 0 ? `${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} late` : "";
+      const paidPct = inv.total > 0 && derivedStatus !== "draft" && derivedStatus !== "void" ? (Number(amountPaid) / Number(inv.total)) * 100 : null;
+      const customer = inv.customer_name || "—";
 
-        const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
-        const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0);
-        const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
-        const isOverdue = !!inv.is_overdue;
-        const daysOverdue = inv.days_overdue || 0;
-        const overdueBadge = isOverdue && daysOverdue > 0
-          ? `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:4px;" title="${daysOverdue} days overdue">${daysOverdue}d overdue</span>`
-          : "";
-        const dueDateDisplay = `${FinanceFormat.formatFinanceDate(inv.due_date)}${overdueBadge}`;
-        const nextActionDisplay = inv.next_action
-          ? `<span class="finance-next-action-hint" style="font-size:0.78rem; color:var(--text2); display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-arrow-right-long" style="opacity:0.6; font-size:0.7rem;"></i> ${FinanceFormat.escapeHtml(inv.next_action)}</span>`
-          : `<span style="opacity:0.4;">—</span>`;
+      const route = (inv.revenue_channel || inv.expected_bank_account_name)
+        ? `<div class="fv-date"><span>${esc(_revenueChannelLabel(inv.revenue_channel) || "–")}</span>${inv.expected_bank_account_name ? `<span class="fv-sub">${esc(inv.expected_bank_account_name)}</span>` : ""}</div>`
+        : "–";
+      const discrepancy = inv.has_bank_discrepancy
+        ? `<span class="fv-note fv-note--warn" title="Payment received in different account than expected">Discrepancy</span>`
+        : "";
 
-        return `
-    <tr data-record-id="${inv.id}">
-      <td><strong>${inv.invoice_number}</strong>${discrepancyBadge}</td>
-      <td>${inv.customer_name || "—"}</td>
-      <td>${routeDisplay}</td>
-      <td>${FinanceFormat.formatFinanceDate(inv.issue_date)}</td>
-      <td>${dueDateDisplay}</td>
-      <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")}</strong></td>
-      <td class="cell-money">${FinanceFormat.renderMoneyHtml(amountPaid, inv.currency || "USD")}</td>
-      <td class="cell-money" style="${balance > 0 ? 'font-weight:700; color:var(--text);' : 'opacity:0.6;'}">${FinanceFormat.renderMoneyHtml(balance, inv.currency || "USD")}</td>
-      <td>${FinanceFormat.formatStatusBadge("invoice", derivedStatus)}</td>
-      <td>${nextActionDisplay}</td>
-      <td style="display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
-        ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve and issue invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
-        ${(derivedStatus === "sent" || derivedStatus === "partially_paid") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
-        ${((derivedStatus === "sent" || derivedStatus === "partially_paid") && balance > 0) ? `<button class="btn btn-sm btn-outline" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${((inv.status === "draft" || inv.status === "sent") && !(amountPaid > 0)) ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
-      </td>
+      // Actions: one text button, then up to three icons (the view action is the customer name / row click)
+      let primary = null;
+      if (inv.status === "draft") {
+        primary = { label: "Send", kind: "fill", className: "btn-send-invoice", onclick: `sendInvoiceAction(${inv.id})`, attrs: `title="Approve and issue invoice" aria-label="Send Invoice ${esc(inv.invoice_number)}"` };
+      } else if ((derivedStatus === "sent" || derivedStatus === "partially_paid") && balance > 0) {
+        primary = { label: "Record receipt", kind: "fill", className: "btn-record-receipt", onclick: `openPaymentModal(${inv.id})`, attrs: 'title="Record Payment"' };
+      }
+      const icons = [];
+      if (inv.status !== "void") icons.push({ icon: "fa-pen", label: "Edit Invoice", ariaLabel: `Edit Invoice ${inv.invoice_number}`, onclick: `openEditInvoiceModal(${inv.id})` });
+      if (derivedStatus === "sent" || derivedStatus === "partially_paid") icons.push({ icon: "fa-bell", label: "Send Reminder", ariaLabel: `Send reminder for invoice ${inv.invoice_number}`, className: "btn-send-reminder", onclick: `sendInvoiceReminderAction(${inv.id})` });
+      if ((inv.status === "draft" || inv.status === "sent") && !(amountPaid > 0)) icons.push({ icon: "fa-ban", label: "Void Invoice", className: "fv-icon-btn--danger", onclick: `confirmVoidInvoice(${inv.id})` });
+
+      return `
+    <tr data-record-id="${inv.id}" class="is-clickable" title="${esc(inv.next_action || "")}">
+      <td><div class="fv-cell-main">${FinanceUI.avatar(customer, FinanceUI.hueForId(inv.customer_id))}<div class="fv-cell-main__text"><button type="button" class="fv-name-btn btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${esc(inv.invoice_number)} details">${esc(customer)}</button><span class="fv-link">${esc(inv.invoice_number)}</span>${discrepancy}</div></div></td>
+      <td>${esc(FinanceUI.formatDate(inv.issue_date))}</td>
+      <td>${FinanceUI.dateCell(inv.due_date, lateNote, "late", { title: lateNote })}</td>
+      <td>${route}</td>
+      <td>${FinanceUI.statusPill(FinanceUI.statusGroup(derivedStatus), (FinanceFormat.STATUS_MAP.invoice[derivedStatus] || {}).label || derivedStatus, `role="status"`, "status-badge-wrap")}</td>
+      <td class="cell-money fv-num">${FinanceUI.amountCell(balance, cur, `of ${FinanceFormat.formatMoney(inv.total, cur)}`, paidPct)}</td>
+      <td>${FinanceUI.rowActions({ primary, icons })}</td>
     </tr>
   `;
-      }
-    )
+    })
     .join("");
+
+  if (!tbody.dataset.rowClickBound) {
+    tbody.dataset.rowClickBound = "1";
+    tbody.addEventListener("click", (e) => {
+      if (e.target.closest("button, a, input, select, label")) return;
+      const tr = e.target.closest("tr[data-record-id]");
+      if (!tr) return;
+      const viewBtn = tr.querySelector(".btn-view-invoice");
+      if (window.FinanceDrawer) FinanceDrawer.open("invoice", Number(tr.dataset.recordId), viewBtn || tr);
+    });
+  }
 }
 
 function filterFinanceInvoices(query) {
@@ -898,7 +906,6 @@ function switchInvoiceSubTab(subTab) {
   const tabInv = document.getElementById("tabFinanceInvoices");
   const tabCust = document.getElementById("tabFinanceCustomers");
   const boxInv = document.getElementById("financeInvoiceSearchBox");
-  const statusFilter = document.getElementById("financeInvoiceStatusFilter");
   const boxCust = document.getElementById("financeCustomerSearchBox");
   const conInv = document.getElementById("financeInvoicesContainer");
   const conCust = document.getElementById("financeCustomersContainer");
@@ -917,7 +924,6 @@ function switchInvoiceSubTab(subTab) {
       tabCust.setAttribute("tabindex", "0");
     }
     if (boxInv) boxInv.style.display = "none";
-    if (statusFilter) statusFilter.style.display = "none";
     if (boxCust) boxCust.style.display = "block";
     if (conInv) conInv.style.display = "none";
     if (conCust) conCust.style.display = "block";
@@ -936,7 +942,6 @@ function switchInvoiceSubTab(subTab) {
       tabCust.setAttribute("tabindex", "-1");
     }
     if (boxInv) boxInv.style.display = "block";
-    if (statusFilter) statusFilter.style.display = "block";
     if (boxCust) boxCust.style.display = "none";
     if (conInv) conInv.style.display = "block";
     if (conCust) conCust.style.display = "none";
@@ -952,7 +957,7 @@ async function loadFinanceCustomers() {
   try {
     const items = await FinanceApi.getCustomers();
     FinanceState.customers = items || [];
-    renderFinanceCustomers(FinanceState.customers);
+    applyAndRenderCustomers();
   } catch (err) {
     console.error("Failed to load finance customers:", err);
     showToast(describeLoadFailure("customers", err), "error");
@@ -961,55 +966,114 @@ async function loadFinanceCustomers() {
   }
 }
 
+let _customerStatusFilter = "all";
+
+function setCustomerStatusFilter(filter) {
+  _customerStatusFilter = filter;
+  document.querySelectorAll("#financeCustomerStatusPills .fv-pill").forEach((p) => {
+    const on = p.dataset.filter === filter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  applyAndRenderCustomers();
+}
+
+function _customerLateCount(c) {
+  return Array.isArray(c.receivables) ? c.receivables.reduce((n, r) => n + Number(r.overdue_count || 0), 0) : 0;
+}
+
+// BE-2 `receivables` (one entry per currency). Until the backend ships it the column shows a dash and
+// the "With late invoices" pill stays hidden.
+function _customerOpenBalance(c) {
+  if (!Array.isArray(c.receivables)) return "–";
+  const open = c.receivables.filter((r) => Number(r.open_count) > 0);
+  if (!open.length) return `<div class="fv-amount"><span class="fv-amount__value fv-amount__value--none">–</span><span class="fv-sub">No open invoices</span></div>`;
+  return open.map((r) => {
+    const late = Number(r.overdue_count) > 0;
+    const note = late
+      ? `<span class="fv-note fv-note--late">${r.overdue_count} late${r.max_days_overdue ? `, ${r.max_days_overdue} days` : ""}</span>`
+      : `<span class="fv-sub">${r.open_count} open ${Number(r.open_count) === 1 ? "invoice" : "invoices"}</span>`;
+    return `<div class="fv-amount"><span class="fv-amount__value">${FinanceUI.moneyHtml(r.open_amount, r.currency)}</span>${note}</div>`;
+  }).join("");
+}
+
+function applyAndRenderCustomers() {
+  const all = FinanceState.customers || [];
+  const searchEl = document.getElementById("financeCustomerSearch");
+  const q = ((searchEl && searchEl.value) || "").trim().toLowerCase();
+
+  const hasReceivables = all.some((c) => Array.isArray(c.receivables));
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const activeCount = all.filter((c) => c.is_active).length;
+  setText("custPillCountAll", all.length);
+  setText("custPillCountActive", activeCount);
+  setText("custPillCountInactive", all.length - activeCount);
+  setText("custPillCountLate", all.filter((c) => _customerLateCount(c) > 0).length);
+  const latePill = document.getElementById("custPillLate");
+  if (latePill) latePill.style.display = hasReceivables ? "" : "none";
+  if (!hasReceivables && _customerStatusFilter === "late") _customerStatusFilter = "all";
+  document.querySelectorAll("#financeCustomerStatusPills .fv-pill").forEach((p) => {
+    const c = Number((p.querySelector(".fv-pill__count") || {}).textContent || 0);
+    p.classList.toggle("fv-pill--zero", !c);
+    const on = p.dataset.filter === _customerStatusFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+
+  let items = all;
+  if (_customerStatusFilter === "active") items = items.filter((c) => c.is_active);
+  else if (_customerStatusFilter === "inactive") items = items.filter((c) => !c.is_active);
+  else if (_customerStatusFilter === "late") items = items.filter((c) => _customerLateCount(c) > 0);
+  if (q) {
+    items = items.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.legal_name && c.legal_name.toLowerCase().includes(q)) ||
+        (c.contact_email && c.contact_email.toLowerCase().includes(q)) ||
+        (c.tax_id && c.tax_id.toLowerCase().includes(q))
+    );
+  }
+  renderFinanceCustomers(items);
+}
+
 function renderFinanceCustomers(items) {
   const tbody = document.getElementById("financeCustomersTableBody");
   const empty = document.getElementById("financeCustomersEmpty");
+  const footer = document.getElementById("financeCustomersFooter");
   if (!tbody) return;
 
   if (!items || items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
+  if (footer) {
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> customers</span>`;
+  }
 
+  const esc = FinanceUI.esc;
   tbody.innerHTML = items.map((c) => {
-    const termsBadge = `<span class="badge badge-grey">Net ${c.payment_terms_days !== undefined && c.payment_terms_days !== null ? c.payment_terms_days : 30}</span>`;
-    const taxHtml = c.tax_id ? `<div style="margin-top:2px;"><code style="font-size:11px;">${c.tax_id}</code></div>` : "";
-    const contactHtml = `
-      <div>${c.contact_email ? `<a href="mailto:${c.contact_email}">${c.contact_email}</a>` : "—"}</div>
-      ${c.contact_phone ? `<div style="font-size:11px; color:var(--text3);">${c.contact_phone}</div>` : ""}
-    `;
-    const receivablesSummary = `
-      <button type="button" class="btn btn-xs btn-ghost" onclick="openCustomer360Drawer(${c.id})" title="View complete 360 overview & invoices">
-        <i class="fa-solid fa-chart-pie" style="color:var(--accent-text);"></i> View 360
-      </button>
-    `;
-
+    const terms = c.payment_terms_days !== undefined && c.payment_terms_days !== null ? c.payment_terms_days : 30;
+    const contact = (c.contact_email || c.contact_phone)
+      ? `<div class="fv-date">${c.contact_email ? `<a class="fv-link" href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>` : "<span>–</span>"}${c.contact_phone ? `<span class="fv-sub">${esc(c.contact_phone)}</span>` : ""}</div>`
+      : "–";
     return `
       <tr data-customer-id="${c.id}">
-        <td>
-          <a href="javascript:void(0)" class="table-entity-link" onclick="openCustomer360Drawer(${c.id})" style="font-weight:600; text-decoration:underline;">${c.name}</a>
-          ${c.notes ? `<div style="font-size:11px;color:var(--text3); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.notes}</div>` : ""}
-        </td>
-        <td><span style="font-size:12px; color:var(--text2);">${c.legal_name || "—"}</span></td>
-        <td>${contactHtml}</td>
-        <td>${termsBadge}${taxHtml}</td>
-        <td>${receivablesSummary}</td>
-        <td>${FinanceFormat.formatStatusBadge("customer", c.is_active ? "active" : "inactive")}</td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-sm btn-icon" title="View Customer 360 Profile" onclick="openCustomer360Drawer(${c.id})" aria-label="Customer 360">
-              <i class="fa-solid fa-address-card"></i>
-            </button>
-            <button class="btn btn-sm btn-icon" title="Edit Customer" onclick="openEditCustomerModal(${c.id})" aria-label="Edit Customer">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            <button class="btn btn-sm btn-icon ${c.is_active ?"btn-danger" : ""}" title="${c.is_active ? "Deactivate" : "Activate"}" onclick="toggleCustomerActive(${c.id}, ${c.is_active})" aria-label="${c.is_active ? "Deactivate" : "Activate"}">
-              <i class="fa-solid ${c.is_active ?"fa-ban" : "fa-check"}"></i>
-            </button>
-          </div>
-        </td>
+        <td><div class="fv-cell-main">${FinanceUI.avatar(c.name, FinanceUI.hueForId(c.id))}<div class="fv-cell-main__text"><a href="javascript:void(0)" class="table-entity-link fv-name-btn" onclick="openCustomer360Drawer(${c.id})">${esc(c.name)}</a>${c.legal_name ? `<span class="fv-sub">${esc(c.legal_name)}</span>` : ""}</div></div></td>
+        <td>${contact}</td>
+        <td><div class="fv-date"><span>Net ${terms}</span>${c.tax_id ? `<span class="fv-sub">${esc(c.tax_id)}</span>` : ""}</div></td>
+        <td>${FinanceUI.statusPill(c.is_active ? "active" : "inactive", c.is_active ? "Active" : "Inactive", "", "status-badge-wrap")}</td>
+        <td class="fv-num">${_customerOpenBalance(c)}</td>
+        <td>${FinanceUI.rowActions({
+          primary: { label: "Invoices", kind: "outline", className: "btn-customer-invoices", onclick: `openCustomer360Drawer(${c.id})`, attrs: 'title="View complete 360 overview &amp; invoices"' },
+          icons: [
+            { icon: "fa-pen", label: "Edit Customer", onclick: `openEditCustomerModal(${c.id})` },
+            { icon: c.is_active ? "fa-power-off" : "fa-check", label: c.is_active ? "Deactivate" : "Activate", onclick: `toggleCustomerActive(${c.id}, ${c.is_active})` },
+          ],
+        })}</td>
       </tr>
     `;
   }).join("");
@@ -1070,17 +1134,7 @@ async function onCustomerFieldInput() {
 window.onCustomerFieldInput = onCustomerFieldInput;
 
 function filterFinanceCustomers(query) {
-  const q = (query || "").trim().toLowerCase();
-  if (!q) return renderFinanceCustomers(FinanceState.customers);
-  renderFinanceCustomers(
-    FinanceState.customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.legal_name && c.legal_name.toLowerCase().includes(q)) ||
-        (c.contact_email && c.contact_email.toLowerCase().includes(q)) ||
-        (c.tax_id && c.tax_id.toLowerCase().includes(q))
-    )
-  );
+  applyAndRenderCustomers();
 }
 
 function openAddCustomerModal() {
@@ -1231,7 +1285,8 @@ async function toggleCustomerActive(id, currentlyActive) {
 // Window exports for Sales Invoices & Customers
 window.loadFinanceInvoices = loadFinanceInvoices;
 window.setInvoiceWorkQueue = setInvoiceWorkQueue;
-window.onInvoiceStatusFilterChange = onInvoiceStatusFilterChange;
+window.onInvoiceOverdueOnlyChange = onInvoiceOverdueOnlyChange;
+window.setCustomerStatusFilter = setCustomerStatusFilter;
 window.filterFinanceInvoices = filterFinanceInvoices;
 window.openAddInvoiceModal = openAddInvoiceModal;
 window.openEditInvoiceModal = openEditInvoiceModal;

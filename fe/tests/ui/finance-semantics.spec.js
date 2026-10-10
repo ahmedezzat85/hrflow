@@ -166,10 +166,10 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
-    // Verify Total header has cell-money
+    // Verify the money header has cell-money (D-027: the Total column became the Balance column)
     const invTotalHeader = page.locator('#financeInvoicesContainer th.cell-money').first();
     await expect(invTotalHeader).toBeVisible();
-    await expect(invTotalHeader).toContainText('Total');
+    await expect(invTotalHeader).toContainText('Balance');
 
     // Verify first row has right-aligned money with currency symbol $
     const firstInvAmount = page.locator('#financeInvoicesTableBody td.cell-money').first();
@@ -179,7 +179,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     // Verify status badge has accessible icon and role="status"
     const firstInvBadge = page.locator('#financeInvoicesTableBody .status-badge-wrap').first();
     await expect(firstInvBadge).toBeVisible();
-    await expect(firstInvBadge.locator('i')).toBeVisible();
+    await expect(firstInvBadge.locator('.fv-status__dot')).toBeVisible(); // D-027: status pills use a dot, as the bills do
     await expect(firstInvBadge).toHaveAttribute('role', 'status');
 
     // 2. Vendor Bills

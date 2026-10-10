@@ -34,25 +34,26 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
     const table = page.locator('#financeInvoicesTable');
     await expect(table).toBeVisible();
 
-    const totalHeader = table.locator('th[data-sort="total"]');
+    // D-027: the Total column is gone; the Due column sorts the same way
+    const totalHeader = table.locator('th[data-sort="due_date"]');
     await expect(totalHeader).toBeVisible();
     await expect(totalHeader).toHaveAttribute('role', 'columnheader');
 
-    // Click Total header once -> ascending sort
+    // Click Due header once -> ascending sort
     await totalHeader.click();
     await expect(totalHeader).toHaveAttribute('aria-sort', 'ascending');
 
-    // First row should have lowest total ($8,400.00)
+    // First row should have the earliest due date (15 Aug 2026)
     let firstRowText = await table.locator('tbody tr:first-child').textContent();
-    expect(firstRowText).toContain('8,400.00');
+    expect(firstRowText).toContain('15 Aug 2026');
 
-    // Click Total header again -> descending sort
+    // Click Due header again -> descending sort
     await totalHeader.click();
     await expect(totalHeader).toHaveAttribute('aria-sort', 'descending');
 
-    // First row should now have highest total ($12,500.00)
+    // First row should now have the latest due date (5 Oct 2026)
     firstRowText = await table.locator('tbody tr:first-child').textContent();
-    expect(firstRowText).toContain('12,500.00');
+    expect(firstRowText).toContain('5 Oct 2026');
 
     // Test Keyboard navigation (Enter key on Customer Name header)
     const customerHeader = table.locator('th[data-sort="customer_name"]');
@@ -108,32 +109,17 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
     await expect(rows).toHaveCount(5);
   });
 
-  test('Acceptance Criteria 4: Filter chips render active filters, allow individual removal and clear all', async ({ page }) => {
-    const chipsBar = page.locator('#financeInvoiceFilterChips');
-
-    // Filter by status 'draft'
-    await page.selectOption('#financeInvoiceStatusFilter', 'draft');
-    await expect(chipsBar).toBeVisible();
-    await expect(chipsBar).toContainText('Status: draft');
-
-    // Remove status chip via its remove button
-    const removeBtn = chipsBar.locator('.filter-chip-remove');
-    await removeBtn.click();
-
-    // Status filter input should reset and chip bar hide
-    await expect(page.locator('#financeInvoiceStatusFilter')).toHaveValue('');
-    await expect(chipsBar).toBeHidden();
-
-    // Type into search
+  test('Acceptance Criteria 4: The invoice filter chip row is replaced by the status pills', async ({ page }) => {
+    // D-027: no "Filters: Status" chip row and no status select; the pills are the status filter
+    await expect(page.locator('#financeInvoiceFilterChips')).toHaveCount(0);
+    await expect(page.locator('#financeInvoiceStatusFilter')).toHaveCount(0);
+    await page.click('#tabQueueDraft');
+    await expect(page.locator('#financeInvoicesTable tbody tr')).toHaveCount(1);
+    await page.click('#tabQueueAll');
     await page.fill('#financeInvoiceSearch', 'Apex');
-    await expect(chipsBar).toBeVisible();
-    await expect(chipsBar).toContainText('Search: Apex');
-
-    // Click "Clear all"
-    const clearAllBtn = chipsBar.locator('.btn-clear-filters');
-    await clearAllBtn.click();
-    await expect(page.locator('#financeInvoiceSearch')).toHaveValue('');
-    await expect(chipsBar).toBeHidden();
+    await expect(page.locator('#financeInvoicesTable tbody tr')).toHaveCount(1);
+    await page.fill('#financeInvoiceSearch', '');
+    await expect(page.locator('#financeInvoicesTable tbody tr')).toHaveCount(6);
   });
 
   test('Acceptance Criteria 5: Table view state survives navigation to another section and back', async ({ page }) => {

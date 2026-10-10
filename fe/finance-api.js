@@ -174,6 +174,23 @@ async getFeatureFlags() {
     FinanceMockState.payments = [];
   }
 
+  // BE-2 (doc 22): open receivables per currency (sent and partially paid invoices).
+  const _withReceivables = (c) => {
+    const byCurrency = {};
+    (FinanceMockState.invoices || []).filter((i) => i.customer_id === c.id && ["sent", "partially_paid"].includes(i.status)).forEach((i) => {
+      const cur = i.currency || "USD";
+      const row = byCurrency[cur] || (byCurrency[cur] = { currency: cur, open_amount: 0, open_count: 0, overdue_count: 0, max_days_overdue: 0 });
+      const balance = i.balance !== undefined ? i.balance : Math.max(0, (i.total || 0) - (i.amount_paid || 0));
+      row.open_amount = Math.round((row.open_amount + balance) * 100) / 100;
+      row.open_count += 1;
+      if (i.is_overdue) {
+        row.overdue_count += 1;
+        row.max_days_overdue = Math.max(row.max_days_overdue, i.days_overdue || 0);
+      }
+    });
+    return { ...c, receivables: Object.values(byCurrency) };
+  };
+
   const FinanceInvoicesApi = {
 // Customers
   async getCustomers(params) {
@@ -462,7 +479,7 @@ async getFeatureFlags() {
       if (params && params.is_active !== undefined) {
         list = list.filter((c) => c.is_active === (params.is_active === "true" || params.is_active === true));
       }
-      return list;
+      return list.map(_withReceivables);
     }
     let url = "/api/finance/customers";
     if (params) {
@@ -475,7 +492,7 @@ async getFeatureFlags() {
     if (_isMock()) {
       const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
       if (!cust) throw new Error("Customer not found");
-      return cust;
+      return _withReceivables(cust);
     }
     return apiRequest("GET", `/api/finance/customers/${id}`);
   },
