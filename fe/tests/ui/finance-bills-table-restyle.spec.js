@@ -70,7 +70,7 @@ test.describe('Bills table, direction A', () => {
     await expect(paid.locator('.btn-pay-bill, .btn-approve-bill, .btn-submit-bill, .btn-schedule-bill')).toHaveCount(0);
   });
 
-  test('actions line up: the Edit icon is in the same column on every row, and columns hug their content', async ({ page }) => {
+  test('actions line up: the Edit icon is in the same column on every row, and the free space is shared by the columns', async ({ page }) => {
     const m = await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#financeBillsTableBody tr')];
       const edit = rows.map((r) => r.querySelector('button[title="Edit Bill"]')).filter(Boolean).map((b) => Math.round(b.getBoundingClientRect().left));
@@ -78,9 +78,10 @@ test.describe('Bills table, direction A', () => {
       return { edit: [...new Set(edit)], ths, table: Math.round(document.getElementById('financeBillsTable').getBoundingClientRect().width) };
     });
     expect(m.edit.length).toBe(1);
-    // every column except Bill is narrow; Bill takes the free space
-    expect(m.ths[0]).toBeGreaterThan(m.table * 0.3);
-    for (const w of m.ths.slice(1, 5)) expect(w).toBeLessThan(m.table * 0.2);
+    // Bill has a fixed share; the others split the rest, so no column swallows the free space
+    expect(m.ths[0]).toBeGreaterThan(m.table * 0.28);
+    expect(m.ths[0]).toBeLessThan(m.table * 0.4);
+    for (const w of m.ths.slice(1, 5)) expect(w).toBeLessThan(m.table * 0.22);
   });
 
   test('table card keeps its shadow', async ({ page }) => {

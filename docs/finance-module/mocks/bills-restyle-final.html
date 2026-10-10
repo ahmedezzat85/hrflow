@@ -94,7 +94,8 @@ h1, h2, h3 { margin: 0; }
 [aria-checked="true"] > .sw::after, [aria-pressed="true"] > .sw::after { transform: translateX(12px); }
 .tablecard { overflow: hidden; }
 table { width: 100%; border-collapse: collapse; table-layout: auto; }
-th.hug, td.hug { width: 1%; white-space: nowrap; }
+th:first-child { width: 32%; }
+th.hug, td.hug { white-space: nowrap; }
 th { padding: 11px 12px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--line); }
 th.r, td.r { text-align: right; }
 th:first-child, td:first-child { padding-left: 18px; }
@@ -239,7 +240,7 @@ textarea.in { height: 72px; padding-top: 9px; resize: vertical; }
     </div>
     <ul class="notes">
       <li><b>Card style from C</b> on the table card, filter panel and dialog (the summary cards are deferred to a later piece of work): 14px radius, thin border, soft shadow; the dialog is the C modal (18px radius, 40px icon tile, Sora title).</li>
-      <li><b>Page decisions kept:</b> underline Spend tabs, nine coloured status tags with counts and Overdue only (always visible, so there is no separate Filters button or panel), search, Bill date before Category, category only, icon row actions, no review state; columns hug their content with even 24px gutters, the Bill column takes the free space, and Status, Amount and the actions form one cluster on the right.</li>
+      <li><b>Page decisions kept:</b> underline Spend tabs, nine coloured status tags with counts and Overdue only (always visible, so there is no separate Filters button or panel), search, Bill date before Category, category only, icon row actions, no review state; Bill gets a fixed share and the other columns split the free space in proportion to their content, so gaps stay even; Status, Amount and the actions form one cluster on the right.</li>
       <li><b>Upload:</b> one "Upload bills" button (multi-file, each file becomes a draft, D-019). The old "Upload / Capture" button is removed; single-file capture is the attach row inside the dialog.</li>
     </ul>
   </section>

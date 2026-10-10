@@ -2099,8 +2099,10 @@
 /* Natural widths: every column but Bill hugs its content; Bill takes the free space */
 @media (min-width: 769px) {
   #financeBillsTable { table-layout: auto; }
+  /* Bill gets a fixed share; the other columns split what is left in proportion to their content */
+  #financeBillsTable th:first-child { width: 32%; }
   #financeBillsTable th:not(:first-child),
-  #financeBillsTable td:not(:first-child) { width: 1%; white-space: nowrap; }
+  #financeBillsTable td:not(:first-child) { white-space: nowrap; }
 }
 .bill-vendor { font-size: 13px; line-height: 1.2; font-weight: 600; color: var(--text); }
 .bill-cell-text { font-size: 13px; line-height: 1.2; font-weight: 400; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

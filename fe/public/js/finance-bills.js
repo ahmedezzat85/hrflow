@@ -308,7 +308,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
     return `
     <tr data-record-id="${bill.id}">
       <td><div class="bill-vendor"><button type="button" class="bill-open btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number || ""} details">${vendor}</button></div><div class="bill-cell-sub">${num}</div></td>
-      <td><div class="bill-cell-text">${_billDate(bill.issue_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="${owed ? `Due ${_billDate(bill.due_date)}` : ""}">${rel || "&nbsp;"}</div></td>
+      <td><div class="bill-cell-text">${_billDate(bill.issue_date)}</div>${rel ? `<div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="Due ${_billDate(bill.due_date)}">${rel}</div>` : ""}</td>
       <td><div class="bill-cell-text">${bill.category || "General"}</div></td>
       <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill, false)}</div></td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
