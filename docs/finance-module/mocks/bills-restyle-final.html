@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bills page, cards and Record bill dialog, final mock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+<style>
+:root {
+  --bg: #f7f8fb; --surface: #ffffff; --surface2: #fafbfd;
+  --line: #e6eaf4; --line2: #d6dcec;
+  --text: #141e30; --text2: #4d5b73; --text3: #66728a;
+  --accent: #2056e8; --accent-soft: #e8eeff; --accent-text: #1d4ed8; --on-accent: #fff;
+  --success: #067042; --success-soft: #e1f5ea;
+  --warning: #9a4d00; --warning-soft: #fdf0dc;
+  --danger: #b42222; --danger-soft: #fde8e8;
+  --info: #3253d0; --info-soft: #e9eeff;
+  --card-shadow: 0 4px 16px rgba(20, 50, 120, .08);
+  --modal-shadow: 0 20px 60px rgba(20, 50, 120, .16);
+  --scrim: rgba(20, 30, 60, .42);
+}
+[data-theme="dark"] {
+  --bg: #0f1117; --surface: #171a24; --surface2: #1d2130;
+  --line: #2a2e3d; --line2: #3a4054;
+  --text: #f1f2f6; --text2: #a9b1c4; --text3: #8f9ab1;
+  --accent: #3566ef; --accent-soft: rgba(53,102,239,.2); --accent-text: #9db8ff; --on-accent: #fff;
+  --success: #3ed08e; --success-soft: rgba(31,194,122,.16);
+  --warning: #f2a24f; --warning-soft: rgba(240,146,40,.16);
+  --danger: #f58a8a; --danger-soft: rgba(226,83,83,.17);
+  --info: #9db8ff; --info-soft: rgba(79,122,248,.18);
+  --card-shadow: 0 1px 3px rgba(0,0,0,.3);
+  --modal-shadow: 0 10px 40px rgba(0,0,0,.55);
+  --scrim: rgba(5, 7, 12, .62);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+button, input, select { font-family: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; }
+.top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.top h1 { font-size: 14px; font-weight: 600; }
+.top p { margin: 1px 0 0; font-size: 12.5px; color: var(--text2); }
+.ctl { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { height: 34px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--line2); background: var(--surface); font-size: 13px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; }
+.btn:hover { background: var(--surface2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.07); background: var(--accent); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--text2); }
+.btn.sm { height: 28px; padding: 0 11px; font-size: 12.5px; border-radius: 8px; }
+.btn.lg { height: 40px; padding: 0 16px; }
+.wrap { padding: 24px; max-width: 1360px; margin: 0 auto; display: grid; gap: 34px; }
+.cap { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); margin: 0 0 10px; }
+.notes { margin: 10px 0 0; padding-left: 18px; color: var(--text2); font-size: 13px; }
+.notes li { margin: 3px 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--card-shadow); }
+
+/* page */
+.bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; gap: 22px; }
+.tabs button { padding: 10px 2px; font-weight: 500; font-size: 14px; color: var(--text2); background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--accent-text); font-weight: 600; border-color: var(--accent); }
+.bar-r { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; flex-wrap: wrap; }
+.search { display: flex; align-items: center; gap: 8px; height: 34px; width: 210px; padding: 0 11px; border-radius: 10px; border: 1px solid var(--line2); background: var(--surface); color: var(--text3); }
+.search input { border: 0; outline: 0; background: transparent; width: 100%; font-size: 13px; color: var(--text); }
+.iconbtn { position: relative; width: 34px; height: 34px; display: inline-grid; place-items: center; border-radius: 10px; border: 1px solid var(--line2); background: var(--surface); color: var(--text2); }
+.iconbtn:hover { background: var(--surface2); color: var(--text); }
+.iconbtn[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+.fpanel { margin-top: 14px; padding: 14px 16px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.fpanel[hidden] { display: none; }
+.f label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.sel { width: 190px; height: 36px; border: 1px solid var(--line2); border-radius: 10px; padding: 0 10px; background: var(--surface); font-size: 13px; }
+.link { color: var(--accent-text); font-weight: 600; background: none; border: 0; padding: 0 4px 8px; font-size: 13px; }
+.statusrow { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; margin: 16px 0 14px; flex-wrap: wrap; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid transparent; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: var(--line); color: var(--text); }
+.tag b { font-weight: 500; opacity: .75; }
+.tag[aria-pressed="true"] { box-shadow: inset 0 0 0 2px currentColor; }
+.tag.all[aria-pressed="true"] { background: var(--text); color: var(--surface); box-shadow: none; }
+.coloured .t-pending { background: var(--info-soft); color: var(--info); }
+.coloured .t-rejected { background: var(--danger-soft); color: var(--danger); }
+.coloured .t-approved { background: var(--accent-soft); color: var(--accent-text); }
+.coloured .t-partial { background: var(--warning-soft); color: var(--warning); }
+.coloured .t-paid { background: var(--success-soft); color: var(--success); }
+.coloured .t-draft { border: 1px dashed var(--text3); }
+.neutral .tag { background: transparent; border-color: var(--line2); color: var(--text2); font-weight: 500; }
+.neutral .tag[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--text); }
+.neutral .tag.all[aria-pressed="true"] { background: var(--text); color: var(--surface); box-shadow: none; }
+.meta { display: flex; align-items: center; gap: 14px; color: var(--text2); font-size: 12.5px; }
+.tog { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; font-size: 12.5px; color: var(--text2); padding: 0; }
+.sw { width: 30px; height: 18px; border-radius: 999px; background: var(--line2); position: relative; flex: none; transition: background .15s; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+[aria-checked="true"] > .sw, [aria-pressed="true"] > .sw { background: var(--accent); }
+[aria-checked="true"] > .sw::after, [aria-pressed="true"] > .sw::after { transform: translateX(12px); }
+.tablecard { overflow: hidden; }
+table { width: 100%; border-collapse: collapse; table-layout: auto; }
+th:first-child { width: 32%; }
+th.hug, td.hug { white-space: nowrap; }
+th { padding: 11px 12px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--line); }
+th.r, td.r { text-align: right; }
+th:first-child, td:first-child { padding-left: 18px; }
+th:last-child, td:last-child { padding-right: 14px; }
+td { padding: 13px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr { cursor: pointer; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--surface2); }
+.v { font-weight: 600; }
+.s { font-size: 12.5px; color: var(--text3); margin-top: 1px; }
+.s.late { color: var(--danger); }
+.amt { font-variant-numeric: tabular-nums; font-weight: 500; }
+.cur { color: var(--text3); font-size: 12px; margin-right: 4px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.p-draft { color: var(--text2); border: 1px dashed var(--line2); }
+.p-pending { color: var(--info); background: var(--info-soft); }
+.p-rejected { color: var(--danger); background: var(--danger-soft); }
+.p-approved { color: var(--accent-text); background: var(--accent-soft); }
+.p-scheduled, .p-void { color: var(--text2); background: var(--line); }
+.p-partial { color: var(--warning); background: var(--warning-soft); }
+.p-paid { color: var(--success); background: var(--success-soft); }
+.flag { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--warning); }
+.flag.d { color: var(--danger); }
+.acts { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.acts .btn { margin-right: 6px; min-width: 76px; justify-content: center; }
+.ic { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--text3); }
+.ic:hover { background: var(--line); color: var(--text); }
+.ic.ph { visibility: hidden; }
+.foot { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; color: var(--text3); font-size: 12.5px; background: var(--surface2); border-top: 1px solid var(--line); }
+.empty { padding: 28px; text-align: center; color: var(--text3); }
+
+/* C summary cards */
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.sc { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--card-shadow); color: inherit; text-align: left; }
+.sc:hover { border-color: var(--line2); }
+.sc .h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sc .lab { font-size: 12.5px; font-weight: 600; color: var(--text2); }
+.chip { width: 30px; height: 30px; flex: none; border-radius: 9px; display: inline-grid; place-items: center; }
+.sc .num { font-family: Sora, Inter, sans-serif; font-weight: 700; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sc .f2 { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--text2); }
+.sc .go { color: var(--accent-text); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+
+/* dialog (from C) */
+.scrim { position: fixed; inset: 0; z-index: 50; background: var(--scrim); display: grid; place-items: center; padding: 20px; overflow: auto; }
+.scrim[hidden] { display: none; }
+.dlg { width: 720px; max-width: 100%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--surface); border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--modal-shadow); overflow: hidden; }
+.dh { display: flex; align-items: center; gap: 14px; padding: 18px 22px; }
+.dh .tile { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; flex: none; }
+.dh .t { flex: 1; }
+.dh h2 { font-family: Sora, Inter, sans-serif; font-size: 18px; font-weight: 700; }
+.dh .t div { font-size: 13px; color: var(--text2); }
+.db { padding: 2px 22px 18px; display: flex; flex-direction: column; gap: 18px; overflow: auto; }
+.attach { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px dashed var(--line2); border-radius: 12px; background: var(--surface2); color: var(--text2); font-size: 13px; text-align: left; width: 100%; }
+.attach strong { color: var(--text); }
+.attach .b { color: var(--accent-text); font-weight: 600; }
+.db h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.fld > span { font-size: 12.5px; font-weight: 600; color: var(--text2); }
+.in { height: 40px; padding: 0 12px; border: 1px solid var(--line2); border-radius: 10px; font-size: 14px; background: var(--surface); color: var(--text); width: 100%; }
+select.in, select.sel { appearance: none; -webkit-appearance: none; padding-right: 34px; font-weight: 500; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; }
+select.in:hover { border-color: var(--text3); }
+.amtrow select { padding-right: 28px; background-position: right 10px center; }
+.in::placeholder { color: var(--text3); }
+textarea.in { height: 72px; padding-top: 9px; resize: vertical; }
+.amtrow { display: flex; }
+.amtrow select { width: 84px; flex: none; border-radius: 10px 0 0 10px; border-right: 0; background-color: var(--surface2); }
+.amtrow input { min-width: 0; text-align: right; border-radius: 0 10px 10px 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 10px; background: var(--line); }
+.seg button { height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--text2); font-size: 13px; font-weight: 600; }
+.seg button[aria-checked="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(20,50,120,.12); }
+.hint { font-size: 12.5px; color: var(--text3); margin-top: 8px; }
+.payrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface2); }
+.payrow .l b { display: block; font-size: 13.5px; font-weight: 600; }
+.payrow .l span { font-size: 12.5px; color: var(--text2); }
+.switch { width: 44px; height: 26px; border-radius: 999px; border: 0; background: var(--line2); position: relative; flex: none; transition: background .15s; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); }
+.paypanel { margin-top: 12px; padding: 14px; border-radius: 14px; background: var(--surface2); border: 1px solid var(--line); }
+.paypanel[hidden] { display: none; }
+.saves { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 14px; border-radius: 12px; background: var(--info-soft); font-size: 13px; }
+.saves svg { color: var(--info); }
+.morebtn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: transparent; font-size: 13.5px; font-weight: 600; color: var(--text2); }
+.morebtn .chev { transition: transform .15s; }
+.morebtn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.more { display: grid; gap: 14px; margin-top: 12px; }
+.more[hidden] { display: none; }
+.litable { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.litable .h { display: grid; grid-template-columns: 1fr 70px 100px 100px; gap: 8px; padding: 9px 14px; font-size: 12px; font-weight: 600; color: var(--text3); background: var(--surface2); }
+.litable .e { padding: 14px; text-align: center; color: var(--text3); font-size: 13px; }
+.df { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.df .l, .df .r { display: flex; align-items: center; gap: 12px; }
+.mini { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
+.mini input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 80; background: var(--text); color: var(--surface); padding: 10px 16px; border-radius: 10px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.toast[hidden] { display: none; }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>Bills restyle, final mock (for review, not code)</h1>
+    <p>Open this file in a normal browser tab for full interaction. Every button is clickable; use the Dark theme button to compare.</p>
+  </div>
+  <div class="ctl">
+    <button class="btn" id="openDlg" type="button">Open Record bill</button>
+    <button class="btn" id="tagBtn" type="button">Status tags: coloured</button>
+    <button class="btn" id="themeBtn" type="button" aria-pressed="false">Dark theme</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <section>
+    <p class="cap">1 · Vendor bills page</p>
+    <div class="bar">
+      <nav class="tabs" aria-label="Spend sections" id="spendTabs"></nav>
+      <div class="bar-r">
+        <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Search bills" aria-label="Search bills"></label>
+        <button class="btn" id="addVendor" type="button">Add vendor</button>
+        <button class="btn" id="uploadHdr" type="button">Upload bills</button>
+        <button class="btn primary" id="recordBtn" type="button">Record bill</button>
+      </div>
+    </div>
+
+    <div class="statusrow">
+      <div class="tags coloured" id="tags" role="group" aria-label="Filter by status"></div>
+      <div class="meta"><span id="shown"></span><button class="tog" id="ovd" type="button" aria-pressed="false"><span class="sw" aria-hidden="true"></span>Overdue only <b id="ovdN" style="color:var(--danger);font-weight:600"></b></button></div>
+    </div>
+
+    <div class="card tablecard">
+      <table>
+        <thead><tr><th>Bill</th><th class="hug">Bill date</th><th class="hug">Category</th><th class="hug">Status</th><th class="hug r">Amount</th><th class="hug"><span style="position:absolute;left:-9999px">Actions</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>No bills match these filters.</div>
+      <div class="foot"><span id="footN"></span><span>10 / page</span></div>
+    </div>
+    <ul class="notes">
+      <li><b>Card style from C</b> on the table card, filter panel and dialog (the summary cards are deferred to a later piece of work): 14px radius, thin border, soft shadow; the dialog is the C modal (18px radius, 40px icon tile, Sora title).</li>
+      <li><b>Page decisions kept:</b> underline Spend tabs, nine coloured status tags with counts and Overdue only (always visible, so there is no separate Filters button or panel), search, Bill date before Category, category only, icon row actions, no review state; Bill gets a fixed share and the other columns split the free space in proportion to their content, so gaps stay even; Status, Amount and the actions form one cluster on the right.</li>
+      <li><b>Upload:</b> one "Upload bills" button (multi-file, each file becomes a draft, D-019). The old "Upload / Capture" button is removed; single-file capture is the attach row inside the dialog.</li>
+    </ul>
+  </section>
+
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dTitle" id="dlg">
+    <div class="dh">
+      <span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M12 12v5M9.5 14.5h5"/></svg></span>
+      <div class="t"><h2 id="dTitle">New bill</h2><div>Record a bill received from a vendor.</div></div>
+      <button class="ic" id="dClose" type="button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="db">
+      <button class="attach" id="attach" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5 12.6 20.9a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></svg><span style="flex:1"><strong>Attach bill PDF or photo</strong> · optional, fills the fields for you</span><span class="b">Browse</span></button>
+      <div>
+        <h3>Bill details</h3>
+        <div class="grid">
+          <label class="fld"><span>Vendor</span><select class="in" id="fVendor"><option>Select vendor</option><option>Carrefour</option><option>Amazon Web Services</option><option>Slack Technologies</option></select></label>
+          <label class="fld"><span>Bill number</span><input class="in" placeholder="Leave blank to auto-number"></label>
+          <label class="fld"><span>Category</span><select class="in"><option>Select category</option><option>Kitchen supplies</option><option>Infrastructure</option><option>SaaS</option></select></label>
+          <label class="fld"><span>Bill date</span><input class="in" type="date" value="2026-10-10"></label>
+          <label class="fld"><span>Amount</span><span class="amtrow"><select class="in" id="cur" aria-label="Currency"><option>EGP</option><option>USD</option></select><input class="in" id="amt" value="4,315.00" aria-label="Amount"></span></label>
+          <label class="fld"><span>Due date</span><input class="in" type="date" value="2026-11-09"></label>
+        </div>
+      </div>
+      <div>
+        <h3>Payment</h3>
+        <div class="seg" id="paySeg" role="radiogroup" aria-label="Payment">
+          <button type="button" role="radio" aria-checked="true" data-v="no">Not paid yet</button>
+          <button type="button" role="radio" aria-checked="false" data-v="yes">Already paid</button>
+        </div>
+        <div class="hint">Already paid posts the payment out of an account when you save.</div>
+        <div class="paypanel" id="payPanel" hidden>
+          <div class="grid">
+            <label class="fld"><span>Paid from</span><select class="in"><option>CASH - EGP · 58,720.00</option><option>CIB EGP Operating · 450,000.00</option></select></label>
+            <label class="fld"><span>Payment type</span><select class="in"><option>Cash payment</option><option>Bank transfer</option><option>Cheque</option></select></label>
+            <label class="fld"><span>Reference no.</span><input class="in" placeholder="Receipt, transfer or cheque no."></label>
+            <label class="fld"><span>Details</span><input class="in" value="Carrefour"></label>
+          </div>
+        </div>
+      </div>
+      <div class="saves" id="saves" aria-live="polite"></div>
+      <div>
+        <button class="morebtn" id="moreBtn" type="button" aria-expanded="false" aria-controls="more"><span>More details <span style="font-weight:400">(optional)</span></span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="more" id="more" hidden>
+          <div class="grid">
+            <label class="fld"><span>Legal entity</span><select class="in"><option>Voyance Health</option></select></label>
+            <label class="fld"><span>Department / Cost center</span><select class="in"><option>Select department</option><option>Operations</option><option>Engineering</option></select></label>
+          </div>
+          <label class="fld"><span>Notes</span><textarea class="in" placeholder="Optional notes, PO reference or internal comments"></textarea></label>
+          <div><span style="font-size:12.5px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Line items</span><div class="litable"><div class="h"><span>Description</span><span>Qty</span><span>Unit price</span><span>Total</span></div><div class="e">No line items yet <button class="btn sm" id="addLine" type="button" style="margin-left:8px">Add line</button></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="df">
+      <div class="l"><button class="btn lg" id="saveDraft" type="button">Save as draft</button><label class="mini"><input type="checkbox" id="another">Add another after saving</label></div>
+      <div class="r"><button class="btn lg ghost" id="cancel" type="button">Cancel</button><button class="btn lg primary" id="save" type="button"></button></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var root = document.documentElement;
+  var ICON = {
+    eye: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    clip: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-9.2 9.2a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7L9.5 18a1.7 1.7 0 0 1-2.4-2.4l8.5-8.5"/></svg>'
+  };
+  var STATUS = { draft: 'Draft', pending: 'Pending approval', rejected: 'Rejected', approved: 'Approved', scheduled: 'Scheduled', partial: 'Partially paid', paid: 'Paid', void: 'Void' };
+  var BILLS = [
+    { v: 'Amazon Web Services', no: 'BILL-2026-001', date: '1 Sep 2026', cat: 'Infrastructure', cur: 'USD', amt: '4,200.00', s: 'approved', late: 9, att: false, act: 'Pay' },
+    { v: 'Slack Technologies', no: 'BILL-2026-002', date: '3 Sep 2026', cat: 'SaaS', cur: 'USD', amt: '320.00', s: 'paid', att: true },
+    { v: 'Amazon Web Services', no: 'BILL-2026-003', date: '8 Sep 2026', cat: 'General', cur: 'USD', amt: '1,850.00', s: 'draft', att: true, act: 'Submit', flags: [['Vendor to confirm', '']] },
+    { v: 'Slack Technologies', no: 'BILL-2026-004', date: '5 Sep 2026', cat: 'SaaS', cur: 'USD', amt: '750.00', s: 'draft', att: false, act: 'Submit' },
+    { v: 'Amazon Web Services', no: 'BILL-2026-005', date: '9 Sep 2026', cat: 'Infrastructure', cur: 'USD', amt: '8,900.00', s: 'pending', att: false, act: 'Approve' },
+    { v: 'Slack Technologies', no: 'BILL-2026-006', date: '3 Sep 2026', cat: 'SaaS', cur: 'USD', amt: '320.00', s: 'rejected', att: false, act: 'Edit & resubmit' },
+    { v: 'Carrefour Egypt CFC', no: 'BILL-006', date: '14 Jan 2026', cat: 'Kitchen supplies', cur: 'EGP', amt: '34,877.00', s: 'scheduled', due: 'Due in 42 days', att: false, act: 'Pay' },
+    { v: 'WE Data', no: 'BILL-002', date: '1 Jan 2026', cat: 'Internet', cur: 'EGP', amt: '4,315.00', s: 'void', att: false }
+  ];
+  var state = { s: 'all', overdue: false, q: '' };
+
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.h); toast.h = setTimeout(function () { t.hidden = true; }, 1800);
+  }
+
+  /* tabs */
+  var TABS = ['Vendor bills', 'Vendors', 'Subscriptions', 'Statutory'];
+  function drawTabs(active) {
+    $('spendTabs').innerHTML = TABS.map(function (t) { return '<button type="button" class="' + (t === active ? 'on' : '') + '" aria-current="' + (t === active) + '">' + t + '</button>'; }).join('');
+    Array.prototype.forEach.call($('spendTabs').children, function (b) { b.addEventListener('click', function () { drawTabs(b.textContent); if (b.textContent !== 'Vendor bills') toast(b.textContent + ' page (not part of this mock)'); }); });
+  }
+  drawTabs('Vendor bills');
+
+  /* status tags and filter select */
+  function counts() { var c = { all: BILLS.length }; Object.keys(STATUS).forEach(function (k) { c[k] = BILLS.filter(function (b) { return b.s === k; }).length; }); return c; }
+  var C = counts();
+  function drawTags() {
+    var keys = ['all'].concat(Object.keys(STATUS));
+    $('tags').innerHTML = keys.map(function (k) {
+      return '<button type="button" class="tag ' + (k === 'all' ? 'all' : 't-' + k) + '" data-k="' + k + '" aria-pressed="' + (state.s === k) + '">' + (k === 'all' ? 'All' : STATUS[k]) + ' <b>' + C[k] + '</b></button>';
+    }).join('');
+    Array.prototype.forEach.call($('tags').children, function (b) { b.addEventListener('click', function () { state.s = b.dataset.k; render(); }); });
+  }
+
+  /* rows */
+  function render() {
+    var q = state.q.toLowerCase();
+    var list = BILLS.filter(function (b) {
+      if (state.s !== 'all' && b.s !== state.s) return false;
+      if (state.overdue && !b.late) return false;
+      if (q && (b.v + ' ' + b.no + ' ' + b.cat).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    drawTags();
+    $('ovdN').textContent = BILLS.filter(function (b) { return b.late; }).length;
+    $('ovd').setAttribute('aria-pressed', state.overdue);
+    $('shown').textContent = 'Showing ' + list.length + ' of ' + BILLS.length + ' bills';
+    $('footN').textContent = 'Showing 1–' + list.length + ' of ' + list.length + ' records';
+    $('empty').hidden = list.length > 0;
+    $('rows').innerHTML = list.map(function (b, i) {
+      var note = b.late ? '<div class="s late" title="Overdue">' + b.late + ' days late</div>' : (b.due ? '<div class="s">' + b.due + '</div>' : '');
+      var flags = (b.flags || []).map(function (f) { return '<span class="flag ' + f[1] + '">' + f[0] + '</span>'; }).join('');
+      var primary = b.act ? '<button type="button" class="btn sm ' + (b.act === 'Edit & resubmit' ? '' : 'primary') + '" data-a="' + b.act + '">' + b.act + '</button>' : '';
+      return '<tr data-i="' + i + '"><td><div class="v">' + b.v + '</div><div class="s">' + b.no + '</div></td>' +
+        '<td class="hug">' + b.date + note + '</td><td class="hug">' + b.cat + '</td>' +
+        '<td class="hug"><span class="pill p-' + b.s + '">' + STATUS[b.s] + '</span>' + flags + '</td>' +
+        '<td class="hug r amt"><span class="cur">' + b.cur + '</span>' + b.amt + '</td>' +
+        '<td class="hug"><div class="acts">' + primary +
+        (b.s !== 'void' ? '<button class="ic" type="button" data-a="Edit" aria-label="Edit bill" title="Edit">' + ICON.edit + '</button>' : '<button class="ic ph" type="button" tabindex="-1" aria-hidden="true"></button>') +
+        (b.att ? '<button class="ic" type="button" data-a="Attachment" aria-label="View attachment" title="Attachment">' + ICON.clip + '</button>' : '<button class="ic ph" type="button" tabindex="-1" aria-hidden="true"></button>') +
+        '</div></td></tr>';
+    }).join('');
+    Array.prototype.forEach.call($('rows').querySelectorAll('tr'), function (tr) {
+      var b = list[+tr.dataset.i];
+      tr.addEventListener('click', function (e) {
+        var a = e.target.closest('[data-a]');
+        if (a) { var n = a.dataset.a; toast(n === 'Pay' ? 'Record payment dialog for ' + b.no : n === 'Edit' || n === 'Edit & resubmit' ? 'Opens the bill form for ' + b.no : n === 'Attachment' ? 'Opens the attached document' : n + ': ' + b.no); }
+        else toast('Opens bill details for ' + b.no);
+      });
+    });
+  }
+
+  $('ovd').addEventListener('click', function () { state.overdue = !state.overdue; render(); });
+  $('q').addEventListener('input', function (e) { state.q = e.target.value; render(); });
+  $('addVendor').addEventListener('click', function () { toast('Add vendor dialog'); });
+  $('uploadHdr').addEventListener('click', function () { toast('Upload bills: pick several PDFs, each becomes a draft'); });
+
+  /* top controls */
+  $('themeBtn').addEventListener('click', function () {
+    var d = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', d ? 'light' : 'dark');
+    $('themeBtn').textContent = d ? 'Dark theme' : 'Light theme';
+    $('themeBtn').setAttribute('aria-pressed', !d);
+  });
+  $('tagBtn').addEventListener('click', function () {
+    var c = $('tags').classList.contains('coloured');
+    $('tags').classList.toggle('coloured', !c); $('tags').classList.toggle('neutral', c);
+    $('tagBtn').textContent = 'Status tags: ' + (c ? 'neutral' : 'coloured');
+  });
+  /* dialog */
+  var lastFocus = null;
+  function paid() { return $('paySeg').querySelector('[data-v=yes]').getAttribute('aria-checked') === 'true'; }
+  function syncDialog() {
+    var p = paid(), cur = $('cur').value, amt = $('amt').value || '0.00';
+    $('payPanel').hidden = !p;
+    $('save').textContent = p ? 'Save & record payment' : 'Save bill';
+    $('saves').innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/></svg>Saves as <span class="pill ' + (p ? 'p-paid' : 'p-approved') + '">' + (p ? 'Paid' : 'Approved') + '</span>' + (p ? ' and posts ' + cur + ' ' + amt + ' out of CASH - EGP.' : ' and waits for payment.');
+  }
+  function openDlg() { lastFocus = document.activeElement; $('scrim').hidden = false; syncDialog(); $('fVendor').focus(); }
+  function closeDlg() { $('scrim').hidden = true; if (lastFocus) lastFocus.focus(); }
+  $('openDlg').addEventListener('click', openDlg);
+  $('recordBtn').addEventListener('click', openDlg);
+  $('dClose').addEventListener('click', closeDlg);
+  $('cancel').addEventListener('click', closeDlg);
+  $('scrim').addEventListener('click', function (e) { if (e.target === $('scrim')) closeDlg(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('scrim').hidden) closeDlg(); });
+  Array.prototype.forEach.call($('paySeg').children, function (b) {
+    b.addEventListener('click', function () { setPay(b.dataset.v); });
+    b.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var n = b.dataset.v === 'no' ? 'yes' : 'no'; setPay(n); $('paySeg').querySelector('[data-v=' + n + ']').focus(); } });
+  });
+  function setPay(v) { Array.prototype.forEach.call($('paySeg').children, function (x) { x.setAttribute('aria-checked', x.dataset.v === v); x.tabIndex = x.dataset.v === v ? 0 : -1; }); syncDialog(); }
+  $('cur').addEventListener('change', syncDialog);
+  $('amt').addEventListener('input', syncDialog);
+  $('moreBtn').addEventListener('click', function () { var o = $('more').hidden; $('more').hidden = !o; $('moreBtn').setAttribute('aria-expanded', o); });
+  $('attach').addEventListener('click', function () { toast('File picker opens; the PDF fills the fields'); });
+  $('addLine').addEventListener('click', function () { toast('Adds a line item row'); });
+  $('save').addEventListener('click', function () { var again = $('another').checked; toast(paid() ? 'Bill saved and payment recorded' : 'Bill saved'); if (!again) closeDlg(); });
+  $('saveDraft').addEventListener('click', function () { toast('Saved as draft'); closeDlg(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

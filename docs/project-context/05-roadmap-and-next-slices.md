@@ -167,13 +167,29 @@ Prerequisite before B3 reaches production: run the cashbook 2026 import so accou
 
 ---
 
+## 3C. Finance Review Round 2 (accepted October 10, 2026)
+
+Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-finance-review-round-2.md). Decisions D-022 to D-026. Not started.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| F1 | Sales invoice statuses, locks, void rule, same-currency receipts (D-022) | M | — |
+| F2 | VAT on sales invoices, on-demand monthly VAT estimate (D-023) | M | F1 |
+| F3 | Customer withholding tax at invoice preparation (D-024) | S | F2 |
+| F4 | Statutory: EGP default, same-currency payments (D-022) | S | — |
+| F5 | Payroll paid = net only; payroll posting fixes (D-025, resolves Q-001) | M | — |
+| F6 | Cash-basis P&L fixed; per-currency columns; accrual labelled partial (D-026) | M | F1, F5 |
+| Later | Complete accrual P&L; VAT on bills | — | F6 |
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
 
 | Open Question | Gated Architecture & Implementation Work | Status & Prerequisite |
 | :--- | :--- | :--- |
-| **Q-001** (Payroll Paid Funding Scope) | Redesigning `mark_paid()` accounting entries; bank balance deduction scope (net pay vs full employer cost); ledger accruals. | **Blocked** pending owner choice between Option A (net pay only) and Option B (full employer cost). |
+| **Q-001** (Payroll Paid Funding Scope) | Redesigning `mark_paid()` accounting entries; bank balance deduction scope (net pay vs full employer cost); ledger accruals. | **Resolved** by D-025 (October 10, 2026): net pay only; delivered in slice F5 (section 3C). |
 | **Q-002** (Non-Payroll Statutory Creation) | Automated scheduling for recurring VAT and corporate tax obligations; background queue implementation. | **Blocked** pending owner choice between Option A (scheduled recurring) and Option B (manual entry). |
 | **Q-003** (Production Document Storage) | S3-compatible storage adapter development; migration of Google Drive archives; storage credential redesign. | **Blocked** pending owner choice between Google Drive, S3-compatible storage, or dual driver. |
 | **Q-004** (Automated FX-Rate Source) | External exchange-rate API integration; automated currency conversion pipelines in transfers and ledger. | **Blocked** pending owner choice between manual rate entry and automated market feeds. |

@@ -22,7 +22,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 ## Questions
 
 ### Q-001 — Payroll Paid-State Funding Scope
-- **Status:** Open — blocks financial-reporting certainty  
+- **Status:** Resolved — D-025 (October 10, 2026): Option A, net pay only; employer tax and social insurance are paid as statutory obligations.  
 - **Question:**  
   When a payroll run is marked `Paid`, should company bank balances and payment settlement records reflect:  
   A. Net employee pay only, with employer tax and social-insurance obligations settled separately; or  
@@ -40,7 +40,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-001`, `D-002`)  
 
 ### Q-002 — Creation Model for Non-Payroll Statutory Obligations
-- **Status:** Open — affects statutory workflow design  
+- **Status:** Partly resolved — D-023 (October 10, 2026): VAT estimates are created on demand by the user from invoices (no scheduler). Annual corporate income tax remains open.  
 - **Question:**  
   For VAT and annual corporate income-tax obligations, should HRFlow:  
   A. Create recurring obligation records automatically on a defined schedule; or  
