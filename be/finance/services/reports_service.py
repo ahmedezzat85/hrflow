@@ -12,6 +12,7 @@ from sqlalchemy import func, and_, or_
 from fastapi import HTTPException, status
 
 from finance.bill_status import OPEN_STATUSES, SPEND_STATUSES
+from finance import invoice_status as inv_status
 from finance.models import (
     FinanceBankAccountDB,
     LedgerTransactionDB,
@@ -19,6 +20,7 @@ from finance.models import (
     PaymentTypeDB,
     FinanceChequeDB,
     SalesInvoiceDB,
+    PaymentDB,
     BillDB,
     SubscriptionDB,
     FinanceSavedReportViewDB,
@@ -847,6 +849,18 @@ class ReportsService:
                 "badge": "Spend",
             },
             {
+                "key": "withholding-credits",
+                "title": "Withholding Tax Credits",
+                "category": "Receivables",
+                "business_question": "How much tax have customers withheld from our payments, for offsetting against income tax?",
+                "description": "Tax withheld by customers on invoice receipts, by customer and month. No bank movement is involved.",
+                "icon": "fa-solid fa-hand-holding-dollar",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.report.read",
+                "badge": "Compliance",
+            },
+            {
                 "key": "statutory-remitted",
                 "title": "Statutory Obligations Remitted Report",
                 "category": "Payroll",
@@ -1367,7 +1381,7 @@ class ReportsService:
             ar_q = ar_q.filter(SalesInvoiceDB.currency == curr_norm)
         total_ar = 0.0
         for inv in ar_q.all():
-            paid_sum = sum(float(p.amount or 0.0) for p in getattr(inv, "payments", []) if getattr(p, "status", "") != "reversed")
+            paid_sum = inv_status.settled_amount(getattr(inv, "payments", []))
             rem = max(0.0, float(inv.total or 0.0) - paid_sum)
             if rem > 0:
                 total_ar += rem
@@ -1494,7 +1508,7 @@ class ReportsService:
             ar_q = ar_q.filter(SalesInvoiceDB.currency == curr_norm)
         total_ar = 0.0
         for inv in ar_q.all():
-            paid_sum = sum(float(p.amount or 0.0) for p in getattr(inv, "payments", []) if getattr(p, "status", "") != "reversed")
+            paid_sum = inv_status.settled_amount(getattr(inv, "payments", []))
             rem = max(0.0, float(inv.total or 0.0) - paid_sum)
             total_ar += rem
         if total_ar > 0:
@@ -1642,7 +1656,7 @@ class ReportsService:
         total_open = 0
 
         for inv in invoices:
-            paid_sum = sum(float(p.amount or 0.0) for p in getattr(inv, "payments", []) if getattr(p, "status", "") != "reversed")
+            paid_sum = inv_status.settled_amount(getattr(inv, "payments", []))
             bal = max(0.0, float(inv.total or 0.0) - paid_sum)
             if bal <= 0.01:
                 continue
@@ -2286,6 +2300,61 @@ class ReportsService:
             "total_headcount": len(emp_map),
             "payroll_runs_count": len(run_ids),
             "employees": employees_list,
+        }
+
+    def get_withholding_credits_report(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        currency: str = "USD",
+    ) -> Dict[str, Any]:
+        """
+        D-024: tax withheld by customers (recorded on invoice receipts, no bank movement), by
+        customer and month of the receipt, for offsetting against income tax. Reversed receipts excluded.
+        """
+        q = (
+            self.db.query(PaymentDB)
+            .filter(
+                PaymentDB.related_invoice_id.isnot(None),
+                PaymentDB.direction == "incoming",
+                PaymentDB.is_reversed == False,  # noqa: E712
+                PaymentDB.withheld_amount > 0,
+            )
+        )
+        if start_date:
+            q = q.filter(PaymentDB.payment_date >= start_date)
+        if end_date:
+            q = q.filter(PaymentDB.payment_date <= end_date)
+        if currency and currency.upper() != "ALL":
+            q = q.filter(PaymentDB.currency == currency.upper())
+
+        groups: Dict[Any, Dict[str, Any]] = {}
+        for p in q.order_by(PaymentDB.payment_date.asc(), PaymentDB.id.asc()).all():
+            inv = p.sales_invoice
+            cust = inv.customer if inv else None
+            month = str(p.payment_date)[:7]
+            key = (cust.id if cust else None, month, p.currency)
+            g = groups.setdefault(key, {
+                "customer_id": cust.id if cust else None,
+                "customer_name": (cust.name if cust else None) or "Unknown customer",
+                "month": month,
+                "currency": p.currency,
+                "withheld_amount": 0.0,
+                "receipts": 0,
+                "invoice_numbers": [],
+            })
+            g["withheld_amount"] = round(g["withheld_amount"] + float(p.withheld_amount or 0.0), 2)
+            g["receipts"] += 1
+            if inv and inv.invoice_number not in g["invoice_numbers"]:
+                g["invoice_numbers"].append(inv.invoice_number)
+
+        items = sorted(groups.values(), key=lambda g: (g["month"], g["customer_name"]))
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "currency": currency or "USD",
+            "total_withheld": round(sum(g["withheld_amount"] for g in items), 2),
+            "items": items,
         }
 
     def get_statutory_remitted_report(

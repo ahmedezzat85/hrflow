@@ -393,6 +393,17 @@
             badge: "Spend",
           },
           {
+            key: "withholding-credits",
+            title: "Withholding Tax Credits",
+            category: "Receivables",
+            business_question: "How much tax have customers withheld from our payments, for offsetting against income tax?",
+            description: "Tax withheld by customers on invoice receipts, by customer and month. No bank movement is involved.",
+            icon: "fa-solid fa-hand-holding-dollar",
+            supported_basis: ["cash"],
+            supported_formats: ["json"],
+            badge: "Compliance",
+          },
+          {
             key: "statutory-remitted",
             title: "Statutory Obligations Remitted Report",
             category: "Payroll",
@@ -984,6 +995,30 @@
     }
     const qs = new URLSearchParams(params).toString();
     return apiRequest("GET", `/api/finance/reports/compensation/company${qs ? "?" + qs : ""}`);
+  },
+
+  async getWithholdingCreditsReport(params = {}) {
+    if (_isMock()) {
+      const groups = {};
+      const invoices = (root.FinanceMockState && root.FinanceMockState.invoices) || [];
+      ((root.FinanceMockState && root.FinanceMockState.payments) || [])
+        .filter((p) => p.related_invoice_id && !p.is_reversed && (p.withheld_amount || 0) > 0)
+        .filter((p) => (!params.currency || params.currency === "ALL" || p.currency === params.currency))
+        .filter((p) => (!params.start_date || p.payment_date >= params.start_date) && (!params.end_date || p.payment_date <= params.end_date))
+        .forEach((p) => {
+          const inv = invoices.find((i) => i.id === p.related_invoice_id) || {};
+          const month = String(p.payment_date).slice(0, 7);
+          const key = `${inv.customer_id}|${month}|${p.currency}`;
+          const g = groups[key] || (groups[key] = { customer_id: inv.customer_id || null, customer_name: inv.customer_name || "Unknown customer", month, currency: p.currency, withheld_amount: 0, receipts: 0, invoice_numbers: [] });
+          g.withheld_amount = round(g.withheld_amount + p.withheld_amount, 2);
+          g.receipts += 1;
+          if (inv.invoice_number && !g.invoice_numbers.includes(inv.invoice_number)) g.invoice_numbers.push(inv.invoice_number);
+        });
+      const items = Object.values(groups).sort((a, b) => a.month.localeCompare(b.month) || a.customer_name.localeCompare(b.customer_name));
+      return { start_date: params.start_date || null, end_date: params.end_date || null, currency: params.currency || "USD", total_withheld: round(items.reduce((s, g) => s + g.withheld_amount, 0), 2), items };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/withholding-credits${qs ? "?" + qs : ""}`);
   },
 
   async getStatutoryRemittedReport(params = {}) {

@@ -366,6 +366,8 @@ async function openAddInvoiceModal() {
   document.getElementById("invoiceStatus").value = "draft";
   document.getElementById("invoiceCurrency").value = "USD";
   if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = "0";
+  window._invoiceCustomerHasWht = false;
+  if (document.getElementById("invoiceWhtRate")) document.getElementById("invoiceWhtRate").value = "0";
   if (document.getElementById("invoiceExpectedBankAccount")) document.getElementById("invoiceExpectedBankAccount").value = "";
   if (document.getElementById("invoiceRevenueChannel")) document.getElementById("invoiceRevenueChannel").value = "";
   document.getElementById("invoiceNotes").value = "";
@@ -414,6 +416,8 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceStatus").value = inv.status === "draft" ? "draft" : "sent";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
     if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = inv.vat_rate !== undefined ? inv.vat_rate : 0;
+    window._invoiceCustomerHasWht = false;
+    if (document.getElementById("invoiceWhtRate")) document.getElementById("invoiceWhtRate").value = inv.withholding_tax_rate || 0;
     if (document.getElementById("invoiceExpectedBankAccount")) {
       document.getElementById("invoiceExpectedBankAccount").value = inv.expected_bank_account_id ? String(inv.expected_bank_account_id) : "";
     }
@@ -434,7 +438,7 @@ async function openEditInvoiceModal(invoiceId) {
 // D-022: once an invoice is issued its customer, currency, number, issue date and lines are locked
 // (void and reissue to correct). The backend enforces this; the form only reflects it.
 function _setInvoiceLocked(locked) {
-  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency", "invoiceVatRate"].forEach((id) => {
+  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency", "invoiceVatRate", "invoiceWhtRate"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.disabled = !!locked;
   });
@@ -492,6 +496,29 @@ function _updateInvoiceTotals() {
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
   if (vatEl) vatEl.textContent = vat.toFixed(2);
   if (totalEl) totalEl.textContent = (subtotal + vat).toFixed(2);
+  // D-024: withholding tax stays invisible unless a rate is set; it is taken on the net subtotal
+  const whtRate = parseFloat(document.getElementById("invoiceWhtRate")?.value) || 0;
+  const whtField = document.getElementById("invoiceWhtField");
+  const expWrap = document.getElementById("invoiceExpectedWrap");
+  const expEl = document.getElementById("invoiceExpectedDisplay");
+  const show = whtRate > 0 || window._invoiceCustomerHasWht === true;
+  if (whtField) whtField.style.display = show ? "" : "none";
+  if (expWrap) expWrap.style.display = whtRate > 0 ? "" : "none";
+  if (expEl) expEl.textContent = (subtotal + vat - Math.round(subtotal * whtRate) / 100).toFixed(2);
+}
+
+// D-024: a draft invoice takes the customer's default withholding rate (normally 0)
+async function _applyCustomerWithholding(customerId) {
+  const rateEl = document.getElementById("invoiceWhtRate");
+  if (!rateEl || rateEl.disabled) return;
+  let rate = 0;
+  try {
+    const cust = (FinanceState.customers || []).find((c) => String(c.id) === String(customerId)) || (customerId ? await FinanceApi.getCustomer(customerId) : null);
+    rate = (cust && cust.withholding_tax_rate) || 0;
+  } catch (_) {}
+  window._invoiceCustomerHasWht = rate > 0;
+  rateEl.value = rate;
+  _updateInvoiceTotals();
 }
 
 // D-023: a new invoice starts at 14% VAT for EGP and 0% for other currencies; the rate stays editable while Draft
@@ -558,6 +585,7 @@ async function saveInvoiceModal(targetStatus) {
     due_date: dueDate,
     currency: document.getElementById("invoiceCurrency").value,
     vat_rate: parseFloat(document.getElementById("invoiceVatRate")?.value) || 0,
+    withholding_tax_rate: parseFloat(document.getElementById("invoiceWhtRate")?.value) || 0,
     expected_bank_account_id: expBankEl && expBankEl.value ? parseInt(expBankEl.value, 10) : null,
     revenue_channel: revChanEl && revChanEl.value ? revChanEl.value : null,
     notes: document.getElementById("invoiceNotes").value.trim(),
@@ -671,9 +699,16 @@ async function openPaymentModal(invoiceId) {
   if (infoEl && inv) {
     infoEl.innerHTML = `Invoice <strong>${inv.invoice_number}</strong> &middot; Total: ${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")} &middot; Remaining Balance: <strong id="paymentRemainingBalanceDisplay">${FinanceFormat.renderMoneyHtml(balance, inv.currency || "USD")}</strong>`;
   }
+  // D-024: with withholding, the expected receipt is the balance minus the tax still to be withheld
+  const whtLeft = inv ? Math.max(0, (inv.withholding_amount || 0) - (inv.withheld_total || 0)) : 0;
+  const whtField = document.getElementById("paymentWithheldField");
+  const whtInput = document.getElementById("paymentWithheldAmount");
+  if (whtField) whtField.style.display = whtLeft > 0 ? "" : "none";
+  if (whtInput) whtInput.value = whtLeft > 0 ? Math.min(whtLeft, balance).toFixed(2) : "0";
+  const defaultReceipt = Math.max(0, balance - (whtLeft > 0 ? Math.min(whtLeft, balance) : 0));
   const amtInput = document.getElementById("paymentAmount");
   if (amtInput) {
-    amtInput.value = balance > 0 ? balance.toFixed(2) : "";
+    amtInput.value = defaultReceipt > 0 ? defaultReceipt.toFixed(2) : "";
     amtInput.max = balance > 0 ? String(balance) : "";
   }
   document.getElementById("paymentDate").value = new Date().toISOString().split("T")[0];
@@ -755,7 +790,8 @@ async function _saveInvoicePaymentImpl() {
     const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
     const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0);
     const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
-    if (amount > balance + 0.001) {
+    const withheldEntered = parseFloat(document.getElementById("paymentWithheldAmount")?.value) || 0;
+    if (amount + withheldEntered > balance + 0.001) {
       FinanceForm.showFieldError("paymentAmount", `Payment amount cannot exceed remaining balance (${balance.toFixed(2)})`);
       showToast(`Payment amount exceeds remaining balance (${balance.toFixed(2)})`, "error");
       return;
@@ -773,6 +809,8 @@ async function _saveInvoicePaymentImpl() {
   };
   const paymentTypeId = document.getElementById("paymentTypeId")?.value;
   if (paymentTypeId) payload.payment_type_id = parseInt(paymentTypeId, 10);
+  const withheldAmount = parseFloat(document.getElementById("paymentWithheldAmount")?.value) || 0;
+  if (withheldAmount > 0) payload.withheld_amount = withheldAmount;
 
   try {
     const res = await FinanceApi.recordInvoicePayment(invoiceId, payload);
@@ -1054,6 +1092,7 @@ function openAddCustomerModal() {
   document.getElementById("fCustomerPhone").value = "";
   document.getElementById("fCustomerTaxId").value = "";
   if (document.getElementById("fCustomerTerms")) document.getElementById("fCustomerTerms").value = "30";
+  if (document.getElementById("fCustomerWithholding")) document.getElementById("fCustomerWithholding").value = "0";
   if (document.getElementById("fCustomerCurrency")) document.getElementById("fCustomerCurrency").value = "USD";
   if (document.getElementById("fCustomerCountry")) document.getElementById("fCustomerCountry").value = "Egypt";
   if (document.getElementById("fCustomerOwner")) document.getElementById("fCustomerOwner").value = "";
@@ -1081,6 +1120,7 @@ function openEditCustomerModal(id) {
   document.getElementById("fCustomerPhone").value = c.contact_phone || "";
   document.getElementById("fCustomerTaxId").value = c.tax_id || "";
   if (document.getElementById("fCustomerTerms")) document.getElementById("fCustomerTerms").value = c.payment_terms_days !== undefined && c.payment_terms_days !== null ? c.payment_terms_days : 30;
+  if (document.getElementById("fCustomerWithholding")) document.getElementById("fCustomerWithholding").value = c.withholding_tax_rate || 0;
   if (document.getElementById("fCustomerCurrency")) document.getElementById("fCustomerCurrency").value = c.default_currency || "USD";
   if (document.getElementById("fCustomerCountry")) document.getElementById("fCustomerCountry").value = c.country || "Egypt";
   if (document.getElementById("fCustomerOwner")) document.getElementById("fCustomerOwner").value = c.owner || "";
@@ -1123,6 +1163,7 @@ async function saveCustomer() {
     contact_phone: contact_phone || null,
     tax_id: tax_id || null,
     payment_terms_days: terms ? parseInt(terms, 10) : 30,
+    withholding_tax_rate: parseFloat(document.getElementById("fCustomerWithholding")?.value) || 0,
     default_currency: currency || "USD",
     country: country || "Egypt",
     owner: owner || null,

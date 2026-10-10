@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. F1 and F2 implemented on `feature/fin-f1-invoice-rules`; F3 to F6 not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 to F3 implemented on `feature/fin-f1-invoice-rules`; F4 to F6 not implemented.
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -45,9 +45,9 @@ Acceptance:
 5. Rarely used today (owner, October 10, 2026); the default 0 keeps it invisible unless set.
 
 Acceptance:
-- [ ] With 0 rate, receipts behave exactly as in F1.
-- [ ] With 1% on a 100,000 net invoice, a receipt of the total minus 1,000 plus 1,000 withheld closes it as Paid; only the received amount moves the bank balance.
-- [ ] The credits report lists the 1,000.
+- [x] With 0 rate, receipts behave exactly as in F1.
+- [x] With 1% on a 100,000 net invoice, a receipt of the total minus 1,000 plus 1,000 withheld closes it as Paid; only the received amount moves the bank balance. (Withheld tax above the invoice's expected withholding is refused: 400 `withheld_exceeds_expected`.)
+- [x] The credits report lists the 1,000 (`GET /api/finance/reports/withholding-credits`, "Withholding Credits" tab; migration `0033_customer_withholding_tax`).
 
 ## Slice F4: Statutory obligations fixes (D-025 context, D-022 rules)
 

@@ -91,8 +91,14 @@ class InvoicesService:
             if (p.amount or 0) > 0 and (p.direction == "incoming" or not p.direction):
                 paid_sum += p.amount
         paid_sum = round(paid_sum, 2)
+        withheld_total = round(sum(
+            float(getattr(p, "withheld_amount", 0.0) or 0.0)
+            for p in (invoice.payments or [])
+            if not getattr(p, "is_reversed", False) and (p.direction == "incoming" or not p.direction)
+        ), 2)
         total = round(invoice.total or 0.0, 2)
-        balance = max(0.0, round(total - paid_sum, 2))
+        balance = max(0.0, round(total - paid_sum - withheld_total, 2))
+        wht_amount = inv_status.withholding_amount(invoice.subtotal, invoice.withholding_tax_rate)
 
         # Overdue is a flag (D-022): due date passed while the invoice is Sent or Partially paid
         is_overdue = inv_status.is_overdue(invoice.status, invoice.due_date)
@@ -138,9 +144,13 @@ class InvoicesService:
             has_bank_discrepancy=has_discrepancy,
             subtotal=invoice.subtotal,
             vat_rate=invoice.vat_rate or 0.0,
+            withholding_tax_rate=invoice.withholding_tax_rate or 0.0,
             tax_amount=invoice.tax_amount,
             total=invoice.total,
             amount_paid=paid_sum,
+            withheld_total=withheld_total,
+            withholding_amount=wht_amount,
+            expected_to_receive=round(total - wht_amount, 2),
             balance=balance,
             is_overdue=is_overdue,
             days_overdue=days_overdue,
@@ -173,6 +183,7 @@ class InvoicesService:
             related_invoice_id=payment.related_invoice_id,
             related_bill_id=payment.related_bill_id,
             amount=payment.amount,
+            withheld_amount=payment.withheld_amount or 0.0,
             currency=payment.currency,
             payment_date=payment.payment_date,
             bank_account_id=payment.bank_account_id,
@@ -320,6 +331,8 @@ class InvoicesService:
                 changed.append("issue_date")
             if payload.vat_rate is not None and round(float(payload.vat_rate), 4) != round(float(invoice.vat_rate or 0.0), 4):
                 changed.append("vat_rate")
+            if payload.withholding_tax_rate is not None and round(float(payload.withholding_tax_rate), 4) != round(float(invoice.withholding_tax_rate or 0.0), 4):
+                changed.append("withholding_tax_rate")
             if lines_data is not None and self._lines_changed(invoice, lines_data):
                 changed.append("lines")
             if changed:
@@ -343,7 +356,7 @@ class InvoicesService:
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
         if invoice.status != inv_status.DRAFT:
             # Locked fields were verified unchanged above; do not rewrite them (or the lines)
-            for key in ("customer_id", "currency", "invoice_number", "issue_date", "vat_rate"):
+            for key in ("customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "withholding_tax_rate"):
                 data.pop(key, None)
             lines_data = None
 

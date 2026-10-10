@@ -15,6 +15,7 @@ from auth import get_current_user
 from core.permissions import get_current_user_permissions
 from repositories.deps import get_audit_repo
 from repositories.interfaces import AuditRepository
+from finance import invoice_status as inv_status
 from finance.models import (
     SalesInvoiceDB,
     BillDB,
@@ -129,7 +130,7 @@ def get_entity_activity(
         cust_name = inv.customer.name if inv.customer else "—"
         cust_tax_id = inv.customer.tax_id if inv.customer else ""
 
-        paid_sum = sum(p.amount for p in (inv.payments or []) if p.amount and (p.direction == "incoming" or not p.direction))
+        paid_sum = inv_status.settled_amount(inv.payments)
         paid_sum = round(paid_sum, 2)
         balance = max(0.0, round(inv.total - paid_sum, 2))
         today = datetime.utcnow().date()
@@ -686,7 +687,7 @@ def get_entity_activity(
         for inv in (cust.invoices or []):
             is_void = (inv.status or "").lower() == "void"
             valid_payments = [p for p in (inv.payments or []) if not getattr(p, "is_reversed", False)]
-            inv_paid = sum(p.amount for p in valid_payments)
+            inv_paid = inv_status.settled_amount(valid_payments)
             inv_balance = max(0.0, float(inv.total) - inv_paid) if not is_void else 0.0
 
             due_dt = None

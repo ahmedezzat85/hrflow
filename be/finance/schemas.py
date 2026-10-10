@@ -305,6 +305,7 @@ class CustomerBase(BaseModel):
     country: Optional[str] = Field("Egypt", max_length=100)
     default_currency: Optional[str] = Field("USD", max_length=10)
     payment_terms_days: Optional[int] = Field(30, ge=0)
+    withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0, description="Default withholding tax percent copied to new invoices (normally 0)")
     owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
 
@@ -314,6 +315,7 @@ class CustomerCreate(CustomerBase):
 
 
 class CustomerUpdate(BaseModel):
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -555,6 +557,7 @@ class SalesInvoiceBase(BaseModel):
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
     currency: str = Field("USD", min_length=3, max_length=10)
     vat_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="VAT percent; default 14 for EGP invoices, 0 otherwise (editable while Draft)")
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="Customer withholding percent on the net subtotal; defaults from the customer (editable while Draft)")
     expected_bank_account_id: Optional[int] = Field(None, description="Expected destination bank or cash account")
     revenue_channel: Optional[str] = Field(None, description="Revenue channel: local_egp|overseas_usd|cash|intercompany_transfer_us|other")
     notes: Optional[str] = None
@@ -590,6 +593,7 @@ class SalesInvoiceUpdate(BaseModel):
     due_date: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     vat_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     expected_bank_account_id: Optional[int] = None
     revenue_channel: Optional[str] = None
     notes: Optional[str] = None
@@ -605,7 +609,10 @@ class SalesInvoiceResponse(SalesInvoiceBase):
     subtotal: float
     tax_amount: float
     total: float
-    amount_paid: float = 0.0
+    amount_paid: float = 0.0  # received into accounts
+    withheld_total: float = 0.0  # tax withheld by the customer on unreversed receipts (D-024)
+    withholding_amount: float = 0.0  # expected withholding on the net subtotal
+    expected_to_receive: float = 0.0  # total minus withholding
     balance: float = 0.0
     is_overdue: bool = False
     days_overdue: int = 0
@@ -928,10 +935,12 @@ class PaymentCreate(PaymentBase):
     related_invoice_id: Optional[int] = None
     related_bill_id: Optional[int] = None
     payment_type_id: Optional[int] = Field(None, description="Incoming payment type for an invoice receipt (defaults by account kind)")
+    withheld_amount: float = Field(0.0, ge=0.0, description="Tax the customer withheld on this receipt; settles the invoice without a bank movement (D-024)")
 
 
 class PaymentResponse(PaymentBase):
     id: int
+    withheld_amount: float = 0.0
     related_invoice_id: Optional[int] = None
     related_bill_id: Optional[int] = None
     created_at: Optional[datetime] = None
@@ -2607,6 +2616,24 @@ class StatutoryRemittedReportResponse(BaseModel):
     by_period: Dict[str, float] = {}
     items: List[StatutoryRemittedItem] = []
     obligations_count: int = 0
+
+
+class WithholdingCreditItem(BaseModel):
+    customer_id: Optional[int] = None
+    customer_name: str
+    month: str  # YYYY-MM of the receipt date
+    currency: str = "USD"
+    withheld_amount: float = 0.0
+    receipts: int = 0
+    invoice_numbers: List[str] = []
+
+
+class WithholdingCreditsReportResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    total_withheld: float = 0.0
+    items: List[WithholdingCreditItem] = []
 
 
 class MoneyFlowStatusItem(BaseModel):

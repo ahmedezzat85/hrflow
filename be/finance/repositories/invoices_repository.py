@@ -37,6 +37,13 @@ class InvoicesRepository:
         """Returns (subtotal, tax_amount, total). Subtotal (net) = sum of line_totals; VAT = subtotal x rate (D-023)."""
         return inv_status.compute_totals(sum(ln.line_total for ln in lines), vat_rate)
 
+    def _initial_withholding_rate(self, data: dict) -> float:
+        """D-024: the invoice's withholding rate defaults from the customer (normally 0)."""
+        if data.get("withholding_tax_rate") is not None:
+            return float(data["withholding_tax_rate"])
+        customer = self.db.query(CustomerDB).filter(CustomerDB.id == data["customer_id"]).first()
+        return float((customer.withholding_tax_rate if customer else 0.0) or 0.0)
+
     def _load_invoice_full(self, invoice_id: int) -> Optional[SalesInvoiceDB]:
         return (
             self.db.query(SalesInvoiceDB)
@@ -158,6 +165,7 @@ class InvoicesRepository:
                 float(data["vat_rate"]) if data.get("vat_rate") is not None
                 else inv_status.default_vat_rate(data.get("currency", "USD"))
             ),
+            withholding_tax_rate=self._initial_withholding_rate(data),
             expected_bank_account_id=data.get("expected_bank_account_id"),
             revenue_channel=data.get("revenue_channel"),
             notes=data.get("notes", ""),
@@ -203,6 +211,8 @@ class InvoicesRepository:
             invoice.due_date = data["due_date"]
         if "currency" in data and data["currency"] is not None:
             invoice.currency = data["currency"]
+        if "withholding_tax_rate" in data and data["withholding_tax_rate"] is not None:
+            invoice.withholding_tax_rate = float(data["withholding_tax_rate"])
         vat_changed = False
         if "vat_rate" in data and data["vat_rate"] is not None:
             vat_changed = float(data["vat_rate"]) != float(invoice.vat_rate or 0.0)
@@ -301,6 +311,7 @@ class InvoicesRepository:
             bank_account_id=data["bank_account_id"],
             payment_type_id=data.get("payment_type_id"),
             reference=ref,
+            withheld_amount=float(data.get("withheld_amount") or 0.0),
         )
         self.db.flush()
 
@@ -395,10 +406,7 @@ class InvoicesRepository:
         LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
         if invoice.status != inv_status.VOID:
-            remaining = sum(
-                float(p.amount) for p in self.list_payments(invoice_id)
-                if not p.is_reversed and p.id != payment.id and p.direction == "incoming"
-            )
+            remaining = inv_status.settled_amount([p for p in self.list_payments(invoice_id) if p.id != payment.id])
             invoice.status = inv_status.derive_payment_status(invoice.total, remaining)
 
         self.db.commit()

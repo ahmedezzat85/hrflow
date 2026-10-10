@@ -33,6 +33,7 @@ from finance.schemas import (
     EmployeeCompensationReportResponse,
     CompanyCompensationReportResponse,
     StatutoryRemittedReportResponse,
+    WithholdingCreditsReportResponse,
     PayableStatusReportResponse,
 )
 from finance.services.excel_exporter import (
@@ -657,6 +658,18 @@ def get_company_compensation_report(
         currency=currency,
         breakdown_employees=breakdown_employees,
     )
+
+
+@router.get("/withholding-credits", response_model=WithholdingCreditsReportResponse)
+def get_withholding_credits_report(
+    start_date: Optional[str] = Query(None, description="Receipt date from (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Receipt date to (YYYY-MM-DD)"),
+    currency: str = Query("USD", description="Currency filter"),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Tax withheld by customers on invoice receipts, by customer and month (D-024)."""
+    return service.get_withholding_credits_report(start_date=start_date, end_date=end_date, currency=currency)
 
 
 @router.get("/statutory/remitted", response_model=StatutoryRemittedReportResponse)

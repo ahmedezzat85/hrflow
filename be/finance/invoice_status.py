@@ -25,7 +25,7 @@ LIST_FILTERS = VALID_INVOICE_STATUSES | {"open", "overdue", "awaiting_payment", 
 
 # Fields that cannot change once the invoice has left Draft (void and reissue to correct).
 # VAT and withholding rate join this tuple when slices F2/F3 add them.
-LOCKED_FIELDS = ("customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "lines")
+LOCKED_FIELDS = ("customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "withholding_tax_rate", "lines")
 
 INVOICE_SERVER_OWNED_FIELDS = ("status", "void_reason", "voided_by", "voided_at")
 
@@ -50,6 +50,23 @@ def compute_totals(subtotal: float, vat_rate: Optional[float]):
     subtotal = round(float(subtotal or 0.0), 4)
     tax = round(subtotal * float(vat_rate or 0.0) / 100.0, 2)
     return subtotal, tax, round(subtotal + tax, 4)
+
+
+def withholding_amount(subtotal: float, rate: Optional[float]) -> float:
+    """Customer withholding (D-024) is computed on the net subtotal."""
+    return round(float(subtotal or 0.0) * float(rate or 0.0) / 100.0, 2)
+
+
+def settled_amount(payments) -> float:
+    """Unreversed incoming receipts plus the tax the customer withheld: what counts toward settling an invoice."""
+    total = 0.0
+    for p in payments or []:
+        if getattr(p, "is_reversed", False):
+            continue
+        if getattr(p, "direction", None) not in (None, "", "incoming"):
+            continue
+        total += float(p.amount or 0.0) + float(getattr(p, "withheld_amount", 0.0) or 0.0)
+    return round(total, 2)
 
 
 def allowed_actions(status: str) -> List[str]:

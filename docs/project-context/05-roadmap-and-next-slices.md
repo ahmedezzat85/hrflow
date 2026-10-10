@@ -169,13 +169,13 @@ Prerequisite before B3 reaches production: run the cashbook 2026 import so accou
 
 ## 3C. Finance Review Round 2 (accepted October 10, 2026)
 
-Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-finance-review-round-2.md). Decisions D-022 to D-026. **F1 and F2 implemented** (`feature/fin-f1-invoice-rules`); F3 to F6 not started.
+Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-finance-review-round-2.md). Decisions D-022 to D-026. **F1 to F3 implemented** (`feature/fin-f1-invoice-rules`); F4 to F6 not started.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
 | F1 | Sales invoice statuses, locks, void rule, same-currency receipts (D-022). **Done, in review** | M | — |
 | F2 | VAT on sales invoices, on-demand monthly VAT estimate (D-023). **Done** | M | F1 |
-| F3 | Customer withholding tax at invoice preparation (D-024) | S | F2 |
+| F3 | Customer withholding tax at invoice preparation (D-024). **Done** | S | F2 |
 | F4 | Statutory: EGP default, same-currency payments (D-022) | S | — |
 | F5 | Payroll paid = net only; payroll posting fixes (D-025, resolves Q-001) | M | — |
 | F6 | Cash-basis P&L fixed; per-currency columns; accrual labelled partial (D-026) | M | F1, F5 |

@@ -380,7 +380,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-024 — Customer Withholding Tax at Invoice Preparation
 
-- **Status:** Accepted by owner, October 10, 2026 (owner delegated the design). Not implemented; slice F3.
+- **Status:** Accepted by owner, October 10, 2026 (owner delegated the design). Implemented on `feature/fin-f1-invoice-rules` (slice F3, migration `0033_customer_withholding_tax`). Withheld tax on a receipt cannot exceed the invoice's expected withholding.
 - **Decision:** Optional withholding rate per customer (default 0) copied to the invoice and editable while Draft. The invoice shows the amount expected to be received; a receipt plus the withheld amount settles it. Withheld amounts are recorded on the payment without a bank movement and listed in a withholding-credits report.
 - **Rationale:** Customers withheld tax last year but not currently; the feature must stay invisible at rate 0.
 

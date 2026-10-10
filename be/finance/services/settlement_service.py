@@ -173,6 +173,7 @@ class SettlementService:
         reference: str = "",
         method: Optional[str] = None,
         currency: Optional[str] = None,
+        withheld_amount: float = 0.0,
     ) -> Tuple[SalesInvoiceDB, PaymentDB]:
         """
         Record a receipt against a customer sales invoice: the single path for every route that
@@ -181,8 +182,10 @@ class SettlementService:
         Refuses with ReceiptError (code):
           currency_mismatch        - account currency differs from the invoice currency (no exchange rate)
           payment_type_not_allowed - type not an incoming type that fits the account kind
+          withheld_exceeds_expected - withheld tax above what the invoice's withholding rate expects
         InvalidInvoiceTransition when the invoice is not Sent / Partially paid, and a plain ValueError
-        for a non-positive amount or an overpayment.
+        for a non-positive amount or an overpayment. Received plus withheld settles the invoice (D-024);
+        only the received amount moves the bank balance.
         Creates the PaymentDB (in the invoice's currency) and sets the status; the caller owns the
         ledger row and the balance recalculation. `currency` is accepted for compatibility and ignored.
         """
@@ -221,23 +224,36 @@ class SettlementService:
                 f"Payment type '{pt.name}' cannot be used to receive money into a {account_type} account.",
             )
 
+        withheld = round(float(withheld_amount or 0.0), 2)
+        if withheld < 0:
+            raise ValueError("Withheld amount cannot be negative")
+
         existing_payments = (
             self.db.query(PaymentDB)
             .filter(PaymentDB.related_invoice_id == invoice.id, PaymentDB.is_reversed == False)  # noqa: E712
             .all()
         )
-        paid_so_far = sum(float(p.amount) for p in existing_payments)
+        paid_so_far = inv_status.settled_amount(existing_payments)
         remaining = max(0.0, round(invoice.total - paid_so_far, 2))
-        if payment_amount > remaining + 0.001:
+        if payment_amount + withheld > remaining + 0.001:
             raise ValueError(
-                f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
+                f"Payment amount (${payment_amount + withheld:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
             )
+        if withheld > 0:
+            expected = inv_status.withholding_amount(invoice.subtotal, invoice.withholding_tax_rate)
+            withheld_so_far = sum(float(p.withheld_amount or 0.0) for p in existing_payments)
+            if withheld_so_far + withheld > expected + 0.01:
+                raise inv_status.ReceiptError(
+                    "withheld_exceeds_expected",
+                    f"Withheld tax ({withheld_so_far + withheld:,.2f}) exceeds the withholding expected on this invoice ({expected:,.2f}).",
+                )
 
         payment = PaymentDB(
             direction="incoming",
             related_invoice_id=invoice.id,
             related_bill_id=None,
             amount=payment_amount,
+            withheld_amount=withheld,
             currency=invoice.currency,
             payment_date=payment_date,
             bank_account_id=account.id,
@@ -246,7 +262,7 @@ class SettlementService:
             is_reversed=False,
         )
         self.db.add(payment)
-        invoice.status = inv_status.derive_payment_status(invoice.total, paid_so_far + payment_amount)
+        invoice.status = inv_status.derive_payment_status(invoice.total, paid_so_far + payment_amount + withheld)
         return invoice, payment
 
     def settle_statutory_obligation(

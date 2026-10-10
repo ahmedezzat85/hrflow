@@ -202,6 +202,7 @@
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="cheques" onclick="switchFinanceReportsTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="compensation-summary" onclick="switchFinanceReportsTab('compensation-summary', this)"><i class="fa-solid fa-money-bill-wave"></i> Compensation Spend</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="statutory-remitted" onclick="switchFinanceReportsTab('statutory-remitted', this)"><i class="fa-solid fa-landmark"></i> Statutory Remitted</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="withholding-credits" onclick="switchFinanceReportsTab('withholding-credits', this)"><i class="fa-solid fa-hand-holding-dollar"></i> Withholding Credits</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="payable-status" onclick="switchFinanceReportsTab('payable-status', this)"><i class="fa-solid fa-money-bill-transfer"></i> Payable Status</button>
               </div>
             </div>
@@ -980,6 +981,36 @@
                 <div class="empty-state fr-u136" id="reportStatutoryRemittedEmpty">
                   <i class="fa-solid fa-receipt fr-u137"></i>
                   <p class="fr-u27">No settled or remitted statutory obligations in this period.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANE: Withholding Tax Credits (D-024) -->
+            <div class="fr-u8" id="reportPaneWithholdingCredits">
+              <div class="fr-u47">
+                <div class="card fr-u124">
+                  <div class="fr-u68">Total Withheld by Customers</div>
+                  <div class="fr-u125" id="reportWhtTotal">$0.00</div>
+                  <div class="fr-u141">Credit to offset against income tax</div>
+                </div>
+              </div>
+              <div class="card">
+                <table class="responsive-card-table" id="reportWhtTable">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Customer</th>
+                      <th>Invoices</th>
+                      <th class="fr-u140">Receipts</th>
+                      <th class="fr-u54">Withheld</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportWhtTableBody"></tbody>
+                  <tfoot class="fr-u62" id="reportWhtTableFoot"></tfoot>
+                </table>
+                <div class="empty-state fr-u136" id="reportWhtEmpty">
+                  <i class="fa-solid fa-receipt fr-u137"></i>
+                  <p class="fr-u27">No tax withheld by customers in this period.</p>
                 </div>
               </div>
             </div>

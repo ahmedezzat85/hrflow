@@ -156,6 +156,7 @@ async function openReportFromLibrary(reportKey) {
     "compensation-summary",
     "statutory-remitted",
     "payable-status",
+    "withholding-credits",
   ];
   const subnav = document.getElementById("financeReportsSubNav");
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -183,6 +184,7 @@ async function openReportFromLibrary(reportKey) {
           "compensation-summary": "reportPaneCompensationSummary",
           "statutory-remitted": "reportPaneStatutoryRemitted",
           "payable-status": "reportPanePayableStatus",
+          "withholding-credits": "reportPaneWithholdingCredits",
         }[t]
       );
       if (pane) pane.style.display = "none";
@@ -240,6 +242,7 @@ function switchFinanceReportsTab(tabName, btn) {
     "compensation-summary": "reportPaneCompensationSummary",
     "statutory-remitted": "reportPaneStatutoryRemitted",
     "payable-status": "reportPanePayableStatus",
+    "withholding-credits": "reportPaneWithholdingCredits",
   };
 
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -297,6 +300,8 @@ function switchFinanceReportsTab(tabName, btn) {
     loadCompensationSummaryReport();
   } else if (tabName === "statutory-remitted") {
     loadStatutoryRemittedReport();
+  } else if (tabName === "withholding-credits") {
+    loadWithholdingCreditsReport();
   } else if (tabName === "payable-status") {
     loadPayableStatusReport();
   }
@@ -452,6 +457,8 @@ function refreshActiveReport() {
     loadCompensationSummaryReport();
   } else if (_currentReportsTab === "statutory-remitted") {
     loadStatutoryRemittedReport();
+  } else if (_currentReportsTab === "withholding-credits") {
+    loadWithholdingCreditsReport();
   } else if (_currentReportsTab === "payable-status") {
     loadPayableStatusReport();
   }
@@ -2322,6 +2329,48 @@ async function loadStatutoryRemittedReport() {
     console.error("Failed to load statutory remitted report:", err);
   }
 }
+
+// D-024: tax withheld by customers on invoice receipts, by customer and month
+async function loadWithholdingCreditsReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  try {
+    const data = await FinanceApi.getWithholdingCreditsReport({
+      start_date: dFrom || undefined,
+      end_date: dTo || undefined,
+      currency: currency || undefined,
+    });
+    const totEl = document.getElementById("reportWhtTotal");
+    if (totEl) totEl.textContent = formatCurrency(data.total_withheld);
+    const tbody = document.getElementById("reportWhtTableBody");
+    const tfoot = document.getElementById("reportWhtTableFoot");
+    const emptyState = document.getElementById("reportWhtEmpty");
+    if (!tbody) return;
+    const items = data.items || [];
+    if (!items.length) {
+      tbody.innerHTML = "";
+      if (tfoot) tfoot.innerHTML = "";
+      if (emptyState) emptyState.style.display = "block";
+      return;
+    }
+    if (emptyState) emptyState.style.display = "none";
+    tbody.innerHTML = items.map((it) => `
+      <tr>
+        <td><strong>${it.month}</strong></td>
+        <td>${FinanceFormat.escapeHtml(it.customer_name)}</td>
+        <td>${(it.invoice_numbers || []).map((n) => FinanceFormat.escapeHtml(n)).join(", ")}</td>
+        <td style="text-align:center;">${it.receipts}</td>
+        <td style="text-align:right; font-weight:700;">${formatCurrency(it.withheld_amount)}</td>
+      </tr>`).join("");
+    if (tfoot) {
+      tfoot.innerHTML = `<tr><td colspan="4">Total withheld (credit against income tax)</td><td style="text-align:right; font-weight:700;">${formatCurrency(data.total_withheld)}</td></tr>`;
+    }
+  } catch (err) {
+    console.error("Failed to load withholding credits report:", err);
+  }
+}
+window.loadWithholdingCreditsReport = loadWithholdingCreditsReport;
 
 let _selectedPayableEmployeeId = "";
 

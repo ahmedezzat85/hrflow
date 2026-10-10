@@ -15,6 +15,7 @@ from finance.schemas import (
     CustomerDuplicateCandidate,
     Customer360Summary,
 )
+from finance import invoice_status as inv_status
 from finance.models import CustomerDB
 
 
@@ -34,6 +35,7 @@ class CustomersService:
             country=customer.country or "Egypt",
             default_currency=customer.default_currency or "USD",
             payment_terms_days=customer.payment_terms_days if customer.payment_terms_days is not None else 30,
+            withholding_tax_rate=customer.withholding_tax_rate or 0.0,
             owner=customer.owner,
             notes=customer.notes,
             is_active=customer.is_active,
@@ -147,7 +149,7 @@ class CustomersService:
         for inv in sorted_invoices:
             is_void = (inv.status or "").lower() == "void"
             valid_payments = [p for p in (inv.payments or []) if not getattr(p, "is_reversed", False)]
-            inv_paid = sum(p.amount for p in valid_payments)
+            inv_paid = inv_status.settled_amount(valid_payments)
             inv_balance = max(0.0, float(inv.total) - inv_paid) if not is_void else 0.0
 
             due_dt = _to_date(inv.due_date)

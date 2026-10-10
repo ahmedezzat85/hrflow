@@ -14,6 +14,23 @@
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
 
+  // D-024: withholding is on the net subtotal; received plus withheld settles the invoice
+  const _refreshWithholding = (inv) => {
+    inv.withholding_tax_rate = Number(inv.withholding_tax_rate || 0);
+    inv.withholding_amount = round((inv.subtotal || 0) * inv.withholding_tax_rate / 100, 2);
+    inv.expected_to_receive = round((inv.total || 0) - inv.withholding_amount, 2);
+  };
+  const _liveReceipts = (invId) => FinanceMockState.payments.filter((p) => p.related_invoice_id === invId && !p.is_reversed);
+  const _refreshSettlement = (inv) => {
+    const live = _liveReceipts(inv.id);
+    const cash = live.reduce((s, p) => s + (p.amount || 0), 0);
+    const withheld = live.reduce((s, p) => s + (p.withheld_amount || 0), 0);
+    inv.amount_paid = round(cash, 2);
+    inv.withheld_total = round(withheld, 2);
+    inv.balance = Math.max(0, round((inv.total || 0) - cash - withheld, 2));
+    return { cash, withheld, settled: cash + withheld };
+  };
+
   if (!FinanceMockState.customers) {
     FinanceMockState.customers = [
     { id: 1, name: "Apex Health Partners", legal_name: "Apex Healthcare Systems LLC", contact_email: "billing@apexhealth.com", contact_phone: "+1 555-0120", tax_id: "US-88992211", billing_address: "100 Medical Center Blvd", country: "United States", default_currency: "USD", payment_terms_days: 30, owner: "Sarah Connor", notes: "Enterprise client", is_active: true },
@@ -123,10 +140,14 @@
         expected_bank_account_name: bank ? bank.account_name : null,
         has_bank_discrepancy: false,
         subtotal, vat_rate: vatRate, tax_amount: taxAmount, total: round(subtotal + taxAmount, 4),
-        balance: round(subtotal + taxAmount, 4),
+        balance: round(subtotal + taxAmount, 4), withheld_total: 0,
+        withholding_tax_rate: payload.withholding_tax_rate !== undefined && payload.withholding_tax_rate !== null
+          ? Number(payload.withholding_tax_rate)
+          : Number((cust && cust.withholding_tax_rate) || 0),
         created_at: new Date().toISOString(),
         lines,
       };
+      _refreshWithholding(newInv);
       FinanceMockState.invoices.push(newInv);
       return newInv;
     }
@@ -146,13 +167,14 @@
         if (payload.invoice_number !== undefined && payload.invoice_number !== inv.invoice_number) changed.push("invoice_number");
         if (payload.issue_date !== undefined && payload.issue_date !== inv.issue_date) changed.push("issue_date");
         if (payload.vat_rate !== undefined && Number(payload.vat_rate) !== Number(inv.vat_rate || 0)) changed.push("vat_rate");
+        if (payload.withholding_tax_rate !== undefined && Number(payload.withholding_tax_rate) !== Number(inv.withholding_tax_rate || 0)) changed.push("withholding_tax_rate");
         if (payload.lines) {
           const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price)]).sort());
           if (norm(payload.lines) !== norm(inv.lines)) changed.push("lines");
         }
         if (changed.length) throw new Error(`invoice_locked: ${changed.join(", ")} cannot be changed once an invoice is issued. Void and reissue to correct.`);
         payload = { ...payload };
-        ["customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "lines"].forEach((k) => delete payload[k]);
+        ["customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "withholding_tax_rate", "lines"].forEach((k) => delete payload[k]);
       }
       Object.assign(inv, payload);
       if (payload.expected_bank_account_id !== undefined) {
@@ -165,6 +187,7 @@
         inv.total = round(inv.subtotal + inv.tax_amount, 4);
         inv.balance = inv.total;
       }
+      _refreshWithholding(inv);
       return inv;
     }
     return apiRequest("PUT", `/api/finance/invoices/${id}`, payload);
@@ -227,14 +250,17 @@
         if (dup) throw new Error(`Duplicate payment reference '${refTrim}' detected. Please review.`);
       }
 
-      // Overpayment check
+      // Overpayment check: received plus withheld may not exceed the open balance
+      const withheldNow = Number(payload.withheld_amount || 0);
       if (inv) {
-        const currentPaid = FinanceMockState.payments
-          .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
-          .reduce((s, p) => s + (p.amount || 0), 0);
-        const remaining = Math.max(0, (inv.total || 0) - currentPaid);
-        if (payload.amount > remaining + 0.001) {
-          throw new Error(`Payment amount (${payload.amount}) exceeds remaining balance (${remaining}). Overpayment is prevented.`);
+        _refreshWithholding(inv);
+        const { withheld: withheldSoFar, settled } = _refreshSettlement(inv);
+        const remaining = Math.max(0, (inv.total || 0) - settled);
+        if (payload.amount + withheldNow > remaining + 0.001) {
+          throw new Error(`Payment amount (${payload.amount + withheldNow}) exceeds remaining balance (${remaining}). Overpayment is prevented.`);
+        }
+        if (withheldNow > 0 && withheldSoFar + withheldNow > inv.withholding_amount + 0.01) {
+          throw new Error(`withheld_exceeds_expected: Withheld tax (${withheldSoFar + withheldNow}) exceeds the withholding expected on this invoice (${inv.withholding_amount}).`);
         }
       }
 
@@ -250,6 +276,7 @@
       const newPayment = {
         id: FinanceMockState.payments.length + 1,
         ...payload,
+        withheld_amount: withheldNow,
         bank_account_id: bankId,
         bank_account_name: bank ? bank.account_name : null,
         account_discrepancy,
@@ -261,11 +288,7 @@
       };
       FinanceMockState.payments.push(newPayment);
       if (inv) {
-        const totalPaid = FinanceMockState.payments
-          .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
-          .reduce((s, p) => s + (p.amount || 0), 0);
-        inv.amount_paid = totalPaid;
-        inv.balance = Math.max(0, inv.total - totalPaid);
+        const { settled: totalPaid } = _refreshSettlement(inv);
         inv.status = totalPaid >= inv.total - 0.001 ? "paid" : "partially_paid";
         inv.is_overdue = inv.status === "partially_paid" && !!inv.due_date && inv.due_date < new Date().toISOString().slice(0, 10);
       }
@@ -283,11 +306,7 @@
       payment.reversal_reason = reason || null;
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
       if (inv) {
-        const totalPaid = FinanceMockState.payments
-          .filter((p) => p.related_invoice_id === inv.id && !p.is_reversed)
-          .reduce((s, p) => s + (p.amount || 0), 0);
-        inv.amount_paid = totalPaid;
-        inv.balance = Math.max(0, inv.total - totalPaid);
+        const { settled: totalPaid } = _refreshSettlement(inv);
         if (inv.status !== "void") {
           inv.status = totalPaid >= inv.total - 0.001 ? "paid" : (totalPaid > 0.001 ? "partially_paid" : "sent");
           inv.is_overdue = (inv.status === "sent" || inv.status === "partially_paid") && !!inv.due_date && inv.due_date < new Date().toISOString().slice(0, 10);
