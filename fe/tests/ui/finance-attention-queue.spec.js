@@ -19,7 +19,7 @@ test.describe('Story 2.2 — Finance Needs-Attention Queue', () => {
     // Check count badges
     const totalBadge = page.locator('#badgeAttentionTotalCount');
     await expect(totalBadge).toBeVisible();
-    await expect(totalBadge).toContainText('items');
+    await expect(totalBadge).toContainText('All'); // D-027: the total is the "All N" severity pill
 
     const urgentBadge = page.locator('#badgeAttentionUrgentCount');
     await expect(urgentBadge).toBeVisible();

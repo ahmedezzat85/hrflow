@@ -1,188 +1,118 @@
-        <section class="page-section" id="a-finance-dashboard">
-          <div class="toolbar fd-u1">
-            <div class="section-title-group">
-              <div class="fd-u2">
-                <h2 class="section-title fd-u3"><i class="fa-solid fa-chart-line"></i> Finance Overview</h2>
-                <span class="finance-meta-badge" id="financeDashboardScopeBadge"><i class="fa-solid fa-building-columns"></i> Scope: All entities</span>
-                <span class="finance-meta-badge" id="financeDashboardPeriodBadge"><i class="fa-solid fa-calendar"></i> Period: MTD</span>
-                <span class="finance-meta-badge" id="financeDashboardBasisBadge"><i class="fa-solid fa-scale-balanced"></i> Basis: Cash</span>
-                <span class="finance-meta-badge" id="financeDashboardCurrencyBadge"><i class="fa-solid fa-coins"></i> Currency: USD</span>
-                <span class="badge badge-warning fd-u4" id="financeDashboardStaleBadge" title="Data could not be updated"><i class="fa-solid fa-clock-rotate-left"></i> Stale Data</span>
-              </div>
-              <p class="section-subtitle">
-                Executive summary of company cash flow, revenue, and operating expenses.
-                <span class="fd-u5" id="financeDashboardLastUpdatedWrap">
-                  <i class="fa-solid fa-clock"></i> <span id="financeDashboardLastUpdated">Last updated: —</span>
-                </span>
-              </p>
+        <section class="page-section fv" id="a-finance-dashboard">
+          <!-- Greeting line on the left, context selects and Refresh on the right -->
+          <div class="fv-greeting" id="financeContextBar">
+            <div class="fv-greeting__text">
+              <span id="financeDashboardGreeting">Good day. Here is <b class="fv-brand-text" id="financeDashboardPeriodWord">this month</b> so far</span>
+              <span> &middot; </span>
+              <span id="financeDashboardLastUpdatedWrap"><span id="financeDashboardLastUpdated">Last updated: —</span></span>
+              <span class="fv-status fv-status--waiting" id="financeDashboardStaleBadge" title="Data could not be updated" style="display:none;"><span class="fv-status__dot" aria-hidden="true"></span>Stale Data</span>
+              <!-- the scope, period, basis and currency now live in the selects; the elements stay for the existing handlers -->
+              <span id="financeDashboardScopeBadge" hidden>Scope: All entities</span>
+              <span id="financeDashboardPeriodBadge" hidden>Period: MTD</span>
+              <span id="financeDashboardBasisBadge" hidden>Basis: Cash</span>
+              <span id="financeDashboardCurrencyBadge" hidden>Currency: USD</span>
             </div>
-            <button class="btn btn-outline" id="btnRefreshFinanceDashboard" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
-          </div>
-
-          <!-- Story 2.1 Finance Context Bar -->
-          <div class="card finance-context-bar fd-u6" id="financeContextBar">
-            <div class="fd-u7">
-              <div class="fd-u8">
-                <div class="fd-u9">
-                  <label class="fd-u10" for="financeContextEntity">Entity</label>
-                  <select id="financeContextEntity" class="form-input form-input-sm fd-u11" onchange="onFinanceContextChanged()">
-                    <option value="all" selected>All Entities</option>
-                    <option value="Voyance Health">Voyance Health</option>
-                    <option value="Voyance US">Voyance US</option>
-                    <option value="Voyance Egypt">Voyance Egypt</option>
-                  </select>
-                </div>
-
-                <div class="fd-u9">
-                  <label class="fd-u10" for="financeContextPeriod">Period</label>
-                  <select id="financeContextPeriod" class="form-input form-input-sm fd-u12" onchange="onFinanceContextChanged()">
-                    <option value="MTD" selected>Month to Date (MTD)</option>
-                    <option value="QTD">Quarter to Date (QTD)</option>
-                    <option value="YTD">Year to Date (YTD)</option>
-                    <option value="all">All Time</option>
-                  </select>
-                </div>
-
-                <div class="fd-u9">
-                  <label class="fd-u10" for="financeContextBasis">Basis</label>
-                  <select id="financeContextBasis" class="form-input form-input-sm fd-u13" onchange="onFinanceContextChanged()">
-                    <option value="cash" selected>Cash Basis</option>
-                    <option value="accrual">Accrual Basis</option>
-                  </select>
-                </div>
-
-                <div class="fd-u9">
-                  <label class="fd-u10" for="financeContextCurrency">Currency</label>
-                  <select id="financeContextCurrency" class="form-input form-input-sm fd-u14" onchange="onFinanceContextChanged()">
-                    <option value="USD" selected>USD ($)</option>
-                    <option value="EGP">EGP</option>
-                    <option value="all">All (Multi)</option>
-                  </select>
-                </div>
-              </div>
-
-              <button class="btn btn-sm btn-quiet" id="btnResetFinanceContext" onclick="resetFinanceContext()" title="Reset to standard defaults">
-                <i class="fa-solid fa-arrow-rotate-left"></i> Reset Defaults
-              </button>
+            <div class="fv-greeting__actions">
+              <select id="financeContextEntity" class="fv-select" aria-label="Entity" onchange="onFinanceContextChanged()">
+                <option value="all" selected>All Entities</option>
+                <option value="Voyance Health">Voyance Health</option>
+                <option value="Voyance US">Voyance US</option>
+                <option value="Voyance Egypt">Voyance Egypt</option>
+              </select>
+              <select id="financeContextPeriod" class="fv-select" aria-label="Period" onchange="onFinanceContextChanged()">
+                <option value="MTD" selected>Month to Date (MTD)</option>
+                <option value="QTD">Quarter to Date (QTD)</option>
+                <option value="YTD">Year to Date (YTD)</option>
+                <option value="all">All Time</option>
+              </select>
+              <select id="financeContextBasis" class="fv-select" aria-label="Basis" onchange="onFinanceContextChanged()">
+                <option value="cash" selected>Cash Basis</option>
+                <option value="accrual">Accrual Basis</option>
+              </select>
+              <select id="financeContextCurrency" class="fv-select" aria-label="Currency" onchange="onFinanceContextChanged()">
+                <option value="USD" selected>USD ($)</option>
+                <option value="EGP">EGP</option>
+                <option value="all">All (Multi)</option>
+              </select>
+              <button class="btn btn-outline" id="btnRefreshFinanceDashboard" onclick="refreshFinanceDashboard()">Refresh</button>
+              <button class="btn btn-quiet" id="btnResetFinanceContext" onclick="resetFinanceContext()" title="Reset to standard defaults">Reset defaults</button>
             </div>
-
             <!-- Conversion policy notice when Multi-currency is selected -->
-            <div class="fd-u15" id="financeContextPolicyNotice">
-              <i class="fa-solid fa-circle-info"></i> <span id="financeContextPolicyText">Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation.</span>
+            <div class="fv-callout fv-greeting__notice" id="financeContextPolicyNotice" style="display:none;">
+              <span id="financeContextPolicyText">Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation.</span>
             </div>
           </div>
 
           <!-- Reusable Inline Error & Retry Banner -->
-          <div id="financeDashboardErrorState" class="finance-inline-error card fd-u16">
-            <div class="fd-u7">
-              <div class="fd-u17">
-                <div class="fd-u18">
-                  <i class="fa-solid fa-triangle-exclamation"></i>
-                </div>
-                <div>
-                  <strong class="fd-u19" id="financeDashboardErrorMessage">Unable to load finance overview</strong>
-                  <span class="fd-u20">You can retry without reloading the application. Previous data remains visible below if available.</span>
-                </div>
-              </div>
-              <button class="btn btn-sm btn-outline" id="financeDashboardRetryBtn" onclick="refreshFinanceDashboard()"><i class="fa-solid fa-rotate-right"></i> Retry</button>
+          <div id="financeDashboardErrorState" class="fv-callout fv-callout--danger fv-callout--row finance-inline-error" style="display:none;">
+            <div>
+              <strong id="financeDashboardErrorMessage">Unable to load finance overview</strong>
+              <div class="fv-sub">You can retry without reloading the application. Previous data remains visible below if available.</div>
             </div>
+            <button class="btn btn-sm btn-outline" id="financeDashboardRetryBtn" onclick="refreshFinanceDashboard()">Retry</button>
           </div>
 
-          <div class="grid g4 fd-u21">
-            <!-- Card 1: Total Cash Balance -->
-            <div class="card stat-card" id="cardKpiCashBalance">
-              <div class="stat-top">
-                <div class="stat-label">
-                  <span id="labelKpiBalance">Cash balance</span>
-                  <button type="button" class="btn-icon-xs fd-u22" title="Consolidated book cash balance across all active company bank and cash accounts." onclick="showKpiDefinition('total_cash')"><i class="fa-solid fa-circle-info"></i></button>
-                </div>
-                <div class="stat-icon fd-u23"><i class="fa-solid fa-vault"></i></div>
+          <!-- Four summary cards: the first is the single gradient card of the page -->
+          <div class="fv-cards fv-cards--spaced">
+            <div class="fv-card fv-card--hero" id="cardKpiCashBalance">
+              <div class="fv-card__top">
+                <span class="stat-label"><span id="labelKpiBalance">Cash balance</span> <button type="button" class="fv-info-btn" title="Consolidated book cash balance across all active company bank and cash accounts." aria-label="Cash balance definition" onclick="showKpiDefinition('total_cash')"><i class="fa-solid fa-circle-info"></i></button></span>
+                <span class="fv-tile" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span>
               </div>
-              <div class="stat-val" id="statFinanceBalance"><span class="finance-skeleton">—</span></div>
-              <div class="stat-subtext fd-u24">
-                <span class="stat-trend fd-u23" id="statFinanceBalanceSubtext"><i class="fa-solid fa-building-columns"></i> Active Accounts</span>
-                <a href="#accounts" class="kpi-drilldown-link fd-u25" id="drilldownKpiCash" onclick="drilldownFinanceKPI('total_cash'); return false;">View Accounts <i class="fa-solid fa-arrow-right"></i></a>
+              <div class="fv-card__value" id="statFinanceBalance"><span class="finance-skeleton">—</span></div>
+              <div class="fv-card__foot">
+                <span id="statFinanceBalanceSubtext">Active accounts</span>
+                <a href="#accounts" class="fv-card__link" id="drilldownKpiCash" onclick="drilldownFinanceKPI('total_cash'); return false;">Accounts &rsaquo;</a>
               </div>
             </div>
 
-            <!-- Card 2: Revenue -->
-            <div class="card stat-card" id="cardKpiRevenue">
-              <div class="stat-top">
-                <div class="stat-label">
-                  <span id="labelKpiRevenue">Revenue, month to date</span>
-                  <button type="button" class="btn-icon-xs fd-u22" title="Actual cash inflows or recognized sales invoices according to basis." onclick="showKpiDefinition('revenue')"><i class="fa-solid fa-circle-info"></i></button>
-                </div>
-                <div class="stat-icon fd-u26"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="fv-card" id="cardKpiRevenue">
+              <div class="fv-card__top">
+                <span class="stat-label"><span id="labelKpiRevenue">Revenue, month to date</span> <button type="button" class="fv-info-btn" title="Actual cash inflows or recognized sales invoices according to basis." aria-label="Revenue definition" onclick="showKpiDefinition('revenue')"><i class="fa-solid fa-circle-info"></i></button></span>
+                <span class="fv-tile fv-hue-teal" aria-hidden="true"><i class="fa-solid fa-arrow-down"></i></span>
               </div>
-              <div class="stat-val" id="statFinanceRevenue"><span class="finance-skeleton">—</span></div>
-              <div class="stat-subtext fd-u24">
-                <span class="stat-trend fd-u26" id="statFinanceRevenueSubtext"><i class="fa-solid fa-chart-line"></i> Cash Inflows</span>
-                <a href="#revenue" class="kpi-drilldown-link fd-u25" id="drilldownKpiRevenue" onclick="drilldownFinanceKPI('revenue'); return false;">View Records <i class="fa-solid fa-arrow-right"></i></a>
+              <div class="fv-card__value" id="statFinanceRevenue"><span class="finance-skeleton">—</span></div>
+              <div class="fv-card__foot">
+                <span id="statFinanceRevenueSubtext">Cash inflows</span>
+                <a href="#revenue" class="fv-card__link" id="drilldownKpiRevenue" onclick="drilldownFinanceKPI('revenue'); return false;">Transactions &rsaquo;</a>
               </div>
             </div>
 
-            <!-- Card 3: Operating Expenses -->
-            <div class="card stat-card" id="cardKpiCost">
-              <div class="stat-top">
-                <div class="stat-label">
-                  <span id="labelKpiCost">Operating expenses, month to date</span>
-                  <button type="button" class="btn-icon-xs fd-u22" title="Actual cash outflows or recognized vendor bills according to basis." onclick="showKpiDefinition('operating_spend')"><i class="fa-solid fa-circle-info"></i></button>
-                </div>
-                <div class="stat-icon fd-u27"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="fv-card" id="cardKpiCost">
+              <div class="fv-card__top">
+                <span class="stat-label"><span id="labelKpiCost">Operating expenses, month to date</span> <button type="button" class="fv-info-btn" title="Actual cash outflows or recognized vendor bills according to basis." aria-label="Operating expenses definition" onclick="showKpiDefinition('operating_spend')"><i class="fa-solid fa-circle-info"></i></button></span>
+                <span class="fv-tile fv-hue-orange" aria-hidden="true"><i class="fa-solid fa-arrow-up"></i></span>
               </div>
-              <div class="stat-val" id="statFinanceCost"><span class="finance-skeleton">—</span></div>
-              <div class="stat-subtext fd-u24">
-                <span class="stat-trend fd-u27" id="statFinanceCostSubtext"><i class="fa-solid fa-arrow-trend-down"></i> Cash Outflows</span>
-                <a href="#costs" class="kpi-drilldown-link fd-u25" id="drilldownKpiCost" onclick="drilldownFinanceKPI('operating_spend'); return false;">View Records <i class="fa-solid fa-arrow-right"></i></a>
+              <div class="fv-card__value" id="statFinanceCost"><span class="finance-skeleton">—</span></div>
+              <div class="fv-card__foot">
+                <span id="statFinanceCostSubtext">Cash outflows</span>
+                <a href="#costs" class="fv-card__link" id="drilldownKpiCost" onclick="drilldownFinanceKPI('operating_spend'); return false;">Transactions &rsaquo;</a>
               </div>
             </div>
 
-            <!-- Card 4: Net Operating Result & Margin -->
-            <div class="card stat-card" id="cardKpiNet">
-              <div class="stat-top">
-                <div class="stat-label">
-                  <span id="labelKpiNet">Net operating result, month to date</span>
-                  <button type="button" class="btn-icon-xs fd-u22" title="Net operating difference between Revenue and Operating Expenses." onclick="showKpiDefinition('net_result')"><i class="fa-solid fa-circle-info"></i></button>
-                </div>
-                <div class="stat-icon fd-u28"><i class="fa-solid fa-scale-balanced"></i></div>
+            <div class="fv-card" id="cardKpiNet">
+              <div class="fv-card__top">
+                <span class="stat-label"><span id="labelKpiNet">Net operating result, month to date</span> <button type="button" class="fv-info-btn" title="Net operating difference between Revenue and Operating Expenses." aria-label="Net operating result definition" onclick="showKpiDefinition('net_result')"><i class="fa-solid fa-circle-info"></i></button></span>
+                <span class="fv-tile fv-hue-violet" aria-hidden="true"><i class="fa-solid fa-chart-column"></i></span>
               </div>
-              <div class="fd-u29">
-                <div class="stat-val" id="statFinanceNet"><span class="finance-skeleton">—</span></div>
-                <span class="badge fd-u30" id="statFinanceMarginBadge" title="Operating Margin: (Net Result / Revenue) * 100">Margin: —</span>
-              </div>
-              <div class="stat-subtext fd-u24">
-                <span class="stat-trend fd-u28" id="statFinanceNetSubtext"><i class="fa-solid fa-circle-check"></i> Revenue minus expenses</span>
-                <a href="#reports" class="kpi-drilldown-link fd-u25" id="drilldownKpiNet" onclick="drilldownFinanceKPI('net_result'); return false;">View Reports <i class="fa-solid fa-arrow-right"></i></a>
+              <div class="fv-card__value" id="statFinanceNet"><span class="finance-skeleton">—</span></div>
+              <div class="fv-card__foot">
+                <span><span id="statFinanceMarginBadge" title="Operating Margin: (Net Result / Revenue) * 100">Margin: —</span><span id="statFinanceNetSubtext" hidden>Revenue minus expenses</span></span>
+                <a href="#reports" class="fv-card__link" id="drilldownKpiNet" onclick="drilldownFinanceKPI('net_result'); return false;">Reports &rsaquo;</a>
               </div>
             </div>
           </div>
 
-          <!-- Story 2.2: Needs-Attention Queue -->
-          <div class="card fd-u31" id="financeAttentionQueueCard">
-            <div class="card-head fd-u32">
-              <div class="fd-u33">
-                <h3 class="fd-u34">
-                  <i class="fa-solid fa-list-check fd-u35"></i> Needs Attention
-                </h3>
-                <span class="badge fd-u36" id="badgeAttentionTotalCount">0 items</span>
-                <span class="badge badge-danger fd-u37" id="badgeAttentionUrgentCount" aria-label="Urgent items count">
-                  <i class="fa-solid fa-circle-exclamation"></i> <span id="textAttentionUrgentCount">0 Urgent</span>
-                </span>
-                <span class="badge badge-warning fd-u37" id="badgeAttentionWarningCount" aria-label="Warning items count">
-                  <i class="fa-solid fa-triangle-exclamation"></i> <span id="textAttentionWarningCount">0 Warning</span>
-                </span>
-              </div>
-
-              <!-- Controls: Severity, Type, Search, Refresh -->
-              <div class="fd-u33">
-                <select id="filterAttentionSeverity" class="form-input form-input-sm fd-u38" onchange="onAttentionFilterChanged()" aria-label="Filter by severity">
-                  <option value="all" selected>All Severities</option>
-                  <option value="urgent">Urgent only</option>
-                  <option value="warning">Warning only</option>
-                  <option value="info">Info only</option>
-                </select>
-
-                <select id="filterAttentionType" class="form-input form-input-sm fd-u39" onchange="onAttentionFilterChanged()" aria-label="Filter by item type">
+          <!-- Needs attention -->
+          <div class="fv-table-card fv-section" id="financeAttentionQueueCard">
+            <div class="fv-section__head">
+              <h3 class="fv-section__title">Needs attention</h3>
+              <div class="fv-section__tools">
+                <div class="fv-search fv-search--sm">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="inputAttentionSearch" placeholder="Search exceptions..." oninput="onAttentionSearchInput(event)" aria-label="Search exceptions">
+                </div>
+                <select id="filterAttentionType" class="fv-select" onchange="onAttentionFilterChanged()" aria-label="Filter by item type">
                   <option value="all" selected>All Categories</option>
                   <option value="overdue_receivable">Overdue Invoices</option>
                   <option value="bill_due">Bills Due & Overdue</option>
@@ -191,209 +121,126 @@
                   <option value="unreconciled_statement">Unreconciled Statements</option>
                   <option value="bounced_cheque">Bounced Cheques</option>
                 </select>
-
-                <div class="fd-u40">
-                  <input type="text" id="inputAttentionSearch" class="form-input form-input-sm fd-u41" placeholder="Search exceptions..." oninput="onAttentionSearchInput(event)" aria-label="Search exceptions">
-                  <i class="fa-solid fa-magnifying-glass fd-u42"></i>
+                <!-- severity: pills over the same select values -->
+                <select id="filterAttentionSeverity" class="fv-sr-only" onchange="onAttentionFilterChanged()" aria-label="Filter by severity">
+                  <option value="all" selected>All Severities</option>
+                  <option value="urgent">Urgent only</option>
+                  <option value="warning">Warning only</option>
+                  <option value="info">Info only</option>
+                </select>
+                <div class="fv-pills" id="attentionSeverityPills" role="group" aria-label="Severity">
+                  <button type="button" class="fv-pill active" id="badgeAttentionTotalCount" data-severity="all" aria-pressed="true" onclick="setAttentionSeverity('all')">All 0</button>
+                  <button type="button" class="fv-pill fv-pill--problem" id="badgeAttentionUrgentCount" data-severity="urgent" aria-pressed="false" aria-label="Urgent items count" onclick="setAttentionSeverity('urgent')"><span id="textAttentionUrgentCount">Urgent 0</span></button>
+                  <button type="button" class="fv-pill fv-pill--waiting" id="badgeAttentionWarningCount" data-severity="warning" aria-pressed="false" aria-label="Warning items count" onclick="setAttentionSeverity('warning')"><span id="textAttentionWarningCount">Warning 0</span></button>
                 </div>
-
-                <button class="btn btn-sm btn-outline" id="btnRefreshAttentionQueue" onclick="loadFinanceAttentionQueue()" title="Refresh attention queue">
-                  <i class="fa-solid fa-arrows-rotate"></i>
-                </button>
+                <button class="fv-icon-btn" id="btnRefreshAttentionQueue" onclick="loadFinanceAttentionQueue()" title="Refresh attention queue" aria-label="Refresh attention queue"><i class="fa-solid fa-arrows-rotate"></i></button>
               </div>
             </div>
 
-            <!-- Queue Items List Container -->
-            <div class="fd-u43" id="financeAttentionQueueBody">
-              <!-- Loading Skeleton -->
-              <div class="fd-u44" id="financeAttentionQueueSkeleton">
-                <div class="finance-skeleton fd-u45"></div>
-                <div class="finance-skeleton fd-u45"></div>
-                <div class="finance-skeleton fd-u46"></div>
+            <div id="financeAttentionQueueBody">
+              <div class="fv-skeleton-block" id="financeAttentionQueueSkeleton">
+                <div class="finance-skeleton fv-skeleton-line"></div>
+                <div class="finance-skeleton fv-skeleton-line"></div>
+                <div class="finance-skeleton fv-skeleton-line"></div>
               </div>
-
-              <!-- List of Items -->
               <div id="financeAttentionQueueList" class="finance-attention-list"></div>
-
-              <!-- Empty State -->
-              <div id="financeAttentionQueueEmpty" class="empty-state fd-u47">
-                <div class="fd-u48">
-                  <i class="fa-solid fa-check-double"></i>
-                </div>
-                <h4 class="fd-u49">No Attention Required</h4>
-                <p class="fd-u50">All invoices, bills, accounts, and bank reconciliations are currently up to date.</p>
+              <div id="financeAttentionQueueEmpty" class="empty-state fv-empty">
+                <h4>No Attention Required</h4>
+                <p>All invoices, bills, accounts, and bank reconciliations are currently up to date.</p>
               </div>
             </div>
           </div>
 
-          <!-- Story 2.3: Cash Position and Forecast -->
-          <div class="card fd-u31" id="financeCashForecastCard">
-            <div class="card-head fd-u32">
-              <div class="fd-u33">
-                <h3 class="fd-u34">
-                  <i class="fa-solid fa-money-bill-trend-up fd-u51"></i> Cash Position & Liquidity Forecast
-                </h3>
-                <span class="badge fd-u36" id="badgeForecastAsOf">As of Today</span>
-              </div>
-
-              <!-- Horizon and Option Controls -->
-              <div class="fd-u52">
-                <div class="btn-group fd-u53" id="forecastHorizonSelector">
-                  <button type="button" class="btn btn-sm fd-u54 btn-selected" id="btnForecastHorizon30" onclick="setForecastHorizon(30)">30 Days</button>
-                  <button type="button" class="btn btn-sm btn-outline fd-u55" id="btnForecastHorizon60" onclick="setForecastHorizon(60)">60 Days</button>
-                  <button type="button" class="btn btn-sm btn-outline fd-u54" id="btnForecastHorizon90" onclick="setForecastHorizon(90)">90 Days</button>
+          <!-- Cash forecast -->
+          <div class="fv-table-card fv-section" id="financeCashForecastCard">
+            <div class="fv-section__head">
+              <h3 class="fv-section__title">Cash forecast <span class="fv-sub fv-sub--inline" id="badgeForecastAsOf">As of Today</span></h3>
+              <div class="fv-section__tools">
+                <div class="fv-pills" id="forecastHorizonSelector" role="group" aria-label="Forecast horizon">
+                  <button type="button" class="fv-pill active" id="btnForecastHorizon30" aria-pressed="true" onclick="setForecastHorizon(30)">30 Days</button>
+                  <button type="button" class="fv-pill" id="btnForecastHorizon60" aria-pressed="false" onclick="setForecastHorizon(60)">60 Days</button>
+                  <button type="button" class="fv-pill" id="btnForecastHorizon90" aria-pressed="false" onclick="setForecastHorizon(90)">90 Days</button>
                 </div>
-
-                <label class="fd-u56">
-                  <input class="fd-u57" type="checkbox" id="chkForecastIncludeExpected" checked onchange="toggleForecastExpected(this.checked)"> Include Subscriptions
+                <label class="fv-check">
+                  <input type="checkbox" id="chkForecastIncludeExpected" checked onchange="toggleForecastExpected(this.checked)"> Include subscriptions
                 </label>
-
-                <button class="btn btn-sm btn-outline" id="btnRefreshCashForecast" onclick="loadFinanceCashForecast()" title="Refresh cash forecast">
-                  <i class="fa-solid fa-arrows-rotate"></i>
-                </button>
+                <button class="fv-icon-btn" id="btnRefreshCashForecast" onclick="loadFinanceCashForecast()" title="Refresh cash forecast" aria-label="Refresh cash forecast"><i class="fa-solid fa-arrows-rotate"></i></button>
               </div>
             </div>
 
             <!-- Multi-Currency / FX Notice Banner -->
-            <div class="fd-u58" id="financeForecastFxWarning">
-              <i class="fa-solid fa-triangle-exclamation"></i> <span id="textForecastFxWarning">Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.</span>
+            <div class="fv-callout fv-callout--warn fv-section__notice" id="financeForecastFxWarning" style="display:none;">
+              <span id="textForecastFxWarning">Multi-currency forecast aggregates values within native currencies. Cross-currency conversions are not fabricated without verified live exchange rates.</span>
             </div>
 
             <!-- Loading Skeleton -->
-            <div class="fd-u44" id="financeCashForecastSkeleton">
-              <div class="grid g3 fd-u21">
-                <div class="finance-skeleton fd-u59"></div>
-                <div class="finance-skeleton fd-u59"></div>
-                <div class="finance-skeleton fd-u59"></div>
-              </div>
-              <div class="finance-skeleton fd-u60"></div>
-              <div class="finance-skeleton fd-u61"></div>
+            <div class="fv-skeleton-block" id="financeCashForecastSkeleton">
+              <div class="finance-skeleton fv-skeleton-line"></div>
+              <div class="finance-skeleton fv-skeleton-line"></div>
+              <div class="finance-skeleton fv-skeleton-line"></div>
             </div>
 
-            <!-- Main Forecast Content -->
-            <div class="fd-u62" id="financeCashForecastContent">
-              <!-- 3 Horizon Cards -->
-              <div class="grid g3 fd-u63" id="forecastHorizonGrid">
-                <!-- 30 Days -->
-                <div class="card stat-card fd-u64" id="cardHorizon30">
-                  <div class="fd-u65">
-                    <strong class="fd-u66">Next 30 Days</strong>
-                    <span class="badge badge-success fd-u67" id="badgeConfidence30">High Confidence</span>
-                  </div>
-                  <div class="fd-u68" id="valProjectedCash30">—</div>
-                  <div class="fd-u69">
-                    <div class="fd-u70">
-                      <span>Total Inflows:</span>
-                      <strong class="fd-u51" id="valInflows30">+0.00</strong>
-                    </div>
-                    <div class="fd-u71">
-                      <span>Confirmed vs Expected:</span>
-                      <span id="valInflowsSplit30">0.00 / 0.00</span>
-                    </div>
-                    <div class="fd-u70">
-                      <span>Total Outflows:</span>
-                      <strong class="fd-u72" id="valOutflows30">-0.00</strong>
-                    </div>
-                    <div class="fd-u71">
-                      <span>Confirmed vs Expected:</span>
-                      <span id="valOutflowsSplit30">0.00 / 0.00</span>
-                    </div>
-                    <div class="fd-u73">
-                      <span>Net Cash Flow:</span>
-                      <strong id="valNetFlow30">0.00</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 60 Days -->
-                <div class="card stat-card fd-u64" id="cardHorizon60">
-                  <div class="fd-u65">
-                    <strong class="fd-u66">31 - 60 Days</strong>
-                    <span class="badge badge-info fd-u67" id="badgeConfidence60">Medium Confidence</span>
-                  </div>
-                  <div class="fd-u68" id="valProjectedCash60">—</div>
-                  <div class="fd-u69">
-                    <div class="fd-u70">
-                      <span>Total Inflows:</span>
-                      <strong class="fd-u51" id="valInflows60">+0.00</strong>
-                    </div>
-                    <div class="fd-u71">
-                      <span>Confirmed vs Expected:</span>
-                      <span id="valInflowsSplit60">0.00 / 0.00</span>
-                    </div>
-                    <div class="fd-u70">
-                      <span>Total Outflows:</span>
-                      <strong class="fd-u72" id="valOutflows60">-0.00</strong>
-                    </div>
-                    <div class="fd-u71">
-                      <span>Confirmed vs Expected:</span>
-                      <span id="valOutflowsSplit60">0.00 / 0.00</span>
-                    </div>
-                    <div class="fd-u73">
-                      <span>Net Cash Flow:</span>
-                      <strong id="valNetFlow60">0.00</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 90 Days -->
-                <div class="card stat-card fd-u64" id="cardHorizon90">
-                  <div class="fd-u65">
-                    <strong class="fd-u66">61 - 90 Days</strong>
-                    <span class="badge badge-warning fd-u67" id="badgeConfidence90">Low Confidence</span>
-                  </div>
-                  <div class="fd-u68" id="valProjectedCash90">—</div>
-                  <div class="fd-u69">
-                    <div class="fd-u70">
-                      <span>Total Inflows:</span>
-                      <strong class="fd-u51" id="valInflows90">+0.00</strong>
-                    </div>
-                    <div class="fd-u71">
-                      <span>Confirmed vs Expected:</span>
-                      <span id="valInflowsSplit90">0.00 / 0.00</span>
-                    </div>
-                    <div class="fd-u70">
-                      <span>Total Outflows:</span>
-                      <strong class="fd-u72" id="valOutflows90">-0.00</strong>
-                    </div>
-                    <div class="fd-u71">
-                      <span>Confirmed vs Expected:</span>
-                      <span id="valOutflowsSplit90">0.00 / 0.00</span>
-                    </div>
-                    <div class="fd-u73">
-                      <span>Net Cash Flow:</span>
-                      <strong id="valNetFlow90">0.00</strong>
-                    </div>
-                  </div>
-                </div>
+            <div id="financeCashForecastContent">
+              <div class="fv-table-scroll table-wrap" id="forecastHorizonGrid">
+                <table class="fv-table fv-table--forecast">
+                  <thead>
+                    <tr>
+                      <th>Window</th>
+                      <th class="fv-num">In</th>
+                      <th class="fv-num">Out</th>
+                      <th class="fv-num">Ending cash</th>
+                      <th>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <tr id="cardHorizon30">
+                    <td><strong class="fv-strong-ink">Next 30 days</strong></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value fv-flow fv-flow--in" id="valInflows30">+0.00</span><span class="fv-sub" id="valInflowsSplit30">0.00 / 0.00</span></div></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value fv-flow fv-flow--out" id="valOutflows30">-0.00</span><span class="fv-sub" id="valOutflowsSplit30">0.00 / 0.00</span></div></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value" id="valProjectedCash30">—</span><span class="fv-sub">Net <span id="valNetFlow30">0.00</span></span></div></td>
+                    <td><span class="fv-status" id="badgeConfidence30">High</span></td>
+                  </tr>
+                  <tr id="cardHorizon60">
+                    <td><strong class="fv-strong-ink">31–60 days</strong></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value fv-flow fv-flow--in" id="valInflows60">+0.00</span><span class="fv-sub" id="valInflowsSplit60">0.00 / 0.00</span></div></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value fv-flow fv-flow--out" id="valOutflows60">-0.00</span><span class="fv-sub" id="valOutflowsSplit60">0.00 / 0.00</span></div></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value" id="valProjectedCash60">—</span><span class="fv-sub">Net <span id="valNetFlow60">0.00</span></span></div></td>
+                    <td><span class="fv-status" id="badgeConfidence60">Medium</span></td>
+                  </tr>
+                  <tr id="cardHorizon90">
+                    <td><strong class="fv-strong-ink">61–90 days</strong></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value fv-flow fv-flow--in" id="valInflows90">+0.00</span><span class="fv-sub" id="valInflowsSplit90">0.00 / 0.00</span></div></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value fv-flow fv-flow--out" id="valOutflows90">-0.00</span><span class="fv-sub" id="valOutflowsSplit90">0.00 / 0.00</span></div></td>
+                    <td class="fv-num"><div class="fv-amount"><span class="fv-amount__value" id="valProjectedCash90">—</span><span class="fv-sub">Net <span id="valNetFlow90">0.00</span></span></div></td>
+                    <td><span class="fv-status" id="badgeConfidence90">Low</span></td>
+                  </tr>
+                  </tbody>
+                </table>
               </div>
 
               <!-- Multi-Account Cash Visibility (Bank vs Book) -->
-              <div class="fd-u74">
-                <div class="fd-u75">
-                  <h4 class="fd-u76">
-                    <i class="fa-solid fa-building-columns fd-u35"></i> Bank vs. Book Balances by Account
-                  </h4>
-                  <span class="fd-u77">Available = Book Balance − Uncleared Cheques − Pending Transfers</span>
+              <div class="fv-section__sub">
+                <div class="fv-section__head fv-section__head--sub">
+                  <h4 class="fv-section__title">Bank vs book</h4>
+                  <span class="fv-sub">Available = Book Balance − Uncleared Cheques − Pending Transfers</span>
                 </div>
-
-                <div class="table-container fd-u78">
-                  <table class="table fd-u79" id="tableCashAccounts">
+                <div class="fv-table-scroll table-wrap">
+                  <table class="fv-table fv-table--bankbook" id="tableCashAccounts">
                     <thead>
-                      <tr class="fd-u80">
-                        <th class="fd-u81">Account</th>
-                        <th class="fd-u81">Bank</th>
-                        <th class="fd-u82">Curr</th>
-                        <th class="fd-u83" title="General ledger book balance">Book Balance</th>
-                        <th class="fd-u83" title="Issued cheques awaiting bank clearance">Uncleared Cheques</th>
-                        <th class="fd-u83" title="In-flight transfer legs not fully confirmed">Pending Transfers</th>
-                        <th class="fd-u84" title="Book balance minus uncleared cheques and pending transfers">Available Balance</th>
-                        <th class="fd-u83" title="Latest reconciled statement closing balance">Reconciled Balance</th>
+                      <tr>
+                        <th>Account</th>
+                        <th>Bank</th>
+                        <th>Curr</th>
+                        <th class="fv-num" title="General ledger book balance">Book Balance</th>
+                        <th class="fv-num" title="Issued cheques awaiting bank clearance">Uncleared Cheques</th>
+                        <th class="fv-num" title="In-flight transfer legs not fully confirmed">Pending Transfers</th>
+                        <th class="fv-num" title="Book balance minus uncleared cheques and pending transfers">Available Balance</th>
+                        <th class="fv-num" title="Latest reconciled statement closing balance">Reconciled Balance</th>
                       </tr>
                     </thead>
                     <tbody id="tbodyCashAccounts">
                       <tr>
-                        <td class="fd-u85" colspan="8">Loading accounts...</td>
+                        <td colspan="8" class="fv-empty-cell">Loading accounts...</td>
                       </tr>
                     </tbody>
                   </table>
@@ -401,39 +248,32 @@
               </div>
 
               <!-- Upcoming Material Inflows & Outflows -->
-              <div class="fd-u21">
-                <div class="fd-u75">
-                  <div class="fd-u86">
-                    <h4 class="fd-u76">
-                      <i class="fa-solid fa-calendar-check fd-u87"></i> Material Inflows & Outflows
-                    </h4>
-                    <span class="badge badge-grey fd-u88">Drafts Excluded</span>
-                  </div>
-
-                  <div class="fd-u9">
-                    <button type="button" class="btn btn-xs active btn-selected" id="btnObligationsFilterAll" onclick="filterObligationsTable('all')">All (<span id="countObligationsAll">0</span>)</button>
-                    <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterInflows" onclick="filterObligationsTable('inflow')">Inflows (<span id="countObligationsInflows">0</span>)</button>
-                    <button type="button" class="btn btn-xs btn-outline" id="btnObligationsFilterOutflows" onclick="filterObligationsTable('outflow')">Outflows (<span id="countObligationsOutflows">0</span>)</button>
+              <div class="fv-section__sub">
+                <div class="fv-section__head fv-section__head--sub">
+                  <h4 class="fv-section__title">Material inflows &amp; outflows <span class="fv-sub fv-sub--inline">Drafts excluded</span></h4>
+                  <div class="fv-pills" role="group" aria-label="Flow">
+                    <button type="button" class="fv-pill active" id="btnObligationsFilterAll" aria-pressed="true" onclick="filterObligationsTable('all')">All <span class="fv-pill__count" id="countObligationsAll">0</span></button>
+                    <button type="button" class="fv-pill" id="btnObligationsFilterInflows" aria-pressed="false" onclick="filterObligationsTable('inflow')">Inflows <span class="fv-pill__count" id="countObligationsInflows">0</span></button>
+                    <button type="button" class="fv-pill" id="btnObligationsFilterOutflows" aria-pressed="false" onclick="filterObligationsTable('outflow')">Outflows <span class="fv-pill__count" id="countObligationsOutflows">0</span></button>
                   </div>
                 </div>
-
-                <div class="table-container fd-u78">
-                  <table class="table fd-u79" id="tableForecastObligations">
+                <div class="fv-table-scroll table-wrap">
+                  <table class="fv-table fv-table--obligations" id="tableForecastObligations">
                     <thead>
-                      <tr class="fd-u80">
-                        <th class="fd-u81">Due Date</th>
-                        <th class="fd-u82">Flow</th>
-                        <th class="fd-u81">Reference</th>
-                        <th class="fd-u81">Counterparty</th>
-                        <th class="fd-u82">Certainty</th>
-                        <th class="fd-u82">Status</th>
-                        <th class="fd-u83">Amount</th>
-                        <th class="fd-u82">Action</th>
+                      <tr>
+                        <th>Due Date</th>
+                        <th>Flow</th>
+                        <th>Reference</th>
+                        <th>Counterparty</th>
+                        <th>Certainty</th>
+                        <th>Status</th>
+                        <th class="fv-num">Amount</th>
+                        <th class="col-actions"><span class="fv-sr-only">Action</span></th>
                       </tr>
                     </thead>
                     <tbody id="tbodyForecastObligations">
                       <tr>
-                        <td class="fd-u85" colspan="8">No obligations projected for this horizon.</td>
+                        <td colspan="8" class="fv-empty-cell">No obligations projected for this horizon.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -441,11 +281,9 @@
               </div>
 
               <!-- Forecast Assumptions and Safeguards -->
-              <div class="fd-u89" id="forecastAssumptionsBox">
-                <div class="fd-u90">
-                  <i class="fa-solid fa-circle-check fd-u35"></i> Cash Forecast Assumptions & Safeguards
-                </div>
-                <ul class="fd-u91" id="listForecastAssumptions">
+              <div class="fv-callout fv-section__notice" id="forecastAssumptionsBox">
+                <div class="fv-callout__title fv-callout__title--ink">Cash Forecast Assumptions &amp; Safeguards</div>
+                <ul class="fv-list" id="listForecastAssumptions">
                   <li>Draft sales invoices and unapproved vendor bills are strictly excluded from cash projections.</li>
                   <li>Contractual obligations with past-due dates are placed in the immediate 0-30 day horizon with an overdue status indicator.</li>
                   <li>Active monthly subscriptions repeat every 30 days as estimated expected outflows.</li>

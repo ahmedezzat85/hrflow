@@ -95,7 +95,7 @@ async function loadFinanceDashboard(options = {}) {
   FinanceDashboardState.status = "loading";
   if (refreshBtn) {
     refreshBtn.disabled = true;
-    refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing...';
+    refreshBtn.textContent = "Refreshing...";
   }
 
   try {
@@ -150,7 +150,7 @@ async function loadFinanceDashboard(options = {}) {
   } finally {
     if (refreshBtn) {
       refreshBtn.disabled = false;
-      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+      refreshBtn.textContent = "Refresh";
     }
   }
 }
@@ -167,16 +167,16 @@ function renderFinanceDashboard(summary, ctx = {}) {
 
   if (currency === "ALL") {
     // D-026: currencies are never added together; show one figure per currency side by side
-    const perCurrency = (key) => (summary.by_currency || []).map((c) => FinanceFormat.formatMoney(c[key], c.currency)).join(" · ") || "—";
-    if (balanceEl) balanceEl.textContent = perCurrency("balance");
-    if (revEl) revEl.textContent = perCurrency("revenue");
-    if (costEl) costEl.textContent = perCurrency("cost");
-    if (netEl) netEl.textContent = perCurrency("net");
+    const perCurrency = (key) => (summary.by_currency || []).map((c) => FinanceUI.moneyHtml(c[key], c.currency)).join(" &middot; ") || "—";
+    if (balanceEl) balanceEl.innerHTML = perCurrency("balance");
+    if (revEl) revEl.innerHTML = perCurrency("revenue");
+    if (costEl) costEl.innerHTML = perCurrency("cost");
+    if (netEl) netEl.innerHTML = perCurrency("net");
   } else {
-    if (balanceEl) balanceEl.textContent = fmt(summary.balance);
-    if (revEl) revEl.textContent = fmt(summary.revenue_mtd);
-    if (costEl) costEl.textContent = fmt(summary.cost_mtd);
-    if (netEl) netEl.textContent = fmt(summary.net_mtd);
+    if (balanceEl) balanceEl.innerHTML = FinanceUI.moneyHtml(summary.balance, currency);
+    if (revEl) revEl.innerHTML = FinanceUI.moneyHtml(summary.revenue_mtd, currency);
+    if (costEl) costEl.innerHTML = FinanceUI.moneyHtml(summary.cost_mtd, currency);
+    if (netEl) netEl.innerHTML = FinanceUI.moneyHtml(summary.net_mtd, currency);
   }
 
   // Labels & Subtexts
@@ -198,51 +198,59 @@ function renderFinanceDashboard(summary, ctx = {}) {
 
   const revSub = document.getElementById("statFinanceRevenueSubtext");
   if (revSub) {
-    revSub.innerHTML = summary.basis === "accrual"
-      ? '<i class="fa-solid fa-file-invoice"></i> Recognized Invoices'
-      : '<i class="fa-solid fa-chart-line"></i> Cash Inflows';
+    revSub.textContent = summary.basis === "accrual" ? "Recognized Invoices" : "Cash Inflows";
   }
 
   const costSub = document.getElementById("statFinanceCostSubtext");
   if (costSub) {
-    costSub.innerHTML = summary.basis === "accrual"
-      ? '<i class="fa-solid fa-receipt"></i> Recognized Bills'
-      : '<i class="fa-solid fa-arrow-trend-down"></i> Cash Outflows';
+    costSub.textContent = summary.basis === "accrual" ? "Recognized Bills" : "Cash Outflows";
   }
 
-  // Margin Badge
+  // Margin sits in the net card's note line
   const marginBadge = document.getElementById("statFinanceMarginBadge");
   if (marginBadge) {
     if (summary.margin_valid && summary.margin_pct !== null && summary.margin_pct !== undefined) {
-      marginBadge.style.display = "inline-flex";
-      const isPos = summary.margin_pct >= 0;
-      marginBadge.className = isPos ? "badge badge-success" : "badge badge-danger";
-      marginBadge.innerHTML = `<i class="fa-solid fa-percent"></i> Margin: ${summary.margin_pct}%`;
+      marginBadge.textContent = `Margin: ${summary.margin_pct}%`;
       marginBadge.title = `Operating Margin: ${summary.margin_pct}% (Net Result / Revenue)`;
     } else {
-      marginBadge.style.display = "inline-flex";
-      marginBadge.className = "badge badge-grey";
-      marginBadge.innerHTML = `<i class="fa-solid fa-circle-minus"></i> Margin: N/A`;
+      marginBadge.textContent = "Margin: N/A";
       marginBadge.title = "Margin undefined when revenue is zero or negative";
+    }
+  }
+
+  // Greeting line: the period in words, in brand blue
+  const word = document.getElementById("financeDashboardPeriodWord");
+  const greet = document.getElementById("financeDashboardGreeting");
+  if (word) {
+    const now = new Date();
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const p = summary.period || "MTD";
+    word.textContent = p === "MTD" ? `${months[now.getMonth()]} ${now.getFullYear()}`
+      : p === "QTD" ? `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`
+      : p === "YTD" ? String(now.getFullYear()) : "all time";
+    if (greet) {
+      const h = now.getHours();
+      const hello = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
+      greet.innerHTML = `${hello}. Here is <b class="fv-brand-text" id="financeDashboardPeriodWord">${FinanceUI.esc(word.textContent)}</b>${p === "all" ? "" : " so far"}`;
     }
   }
 
   // Top header badges
   const currBadge = document.getElementById("financeDashboardCurrencyBadge");
-  if (currBadge) currBadge.innerHTML = `<i class="fa-solid fa-coins"></i> Currency: ${currency}`;
+  if (currBadge) currBadge.textContent = `Currency: ${currency}`;
 
   const periodBadge = document.getElementById("financeDashboardPeriodBadge");
-  if (periodBadge && summary.period) periodBadge.innerHTML = `<i class="fa-solid fa-calendar"></i> Period: ${summary.period}`;
+  if (periodBadge && summary.period) periodBadge.textContent = `Period: ${summary.period}`;
 
   const basisBadge = document.getElementById("financeDashboardBasisBadge");
   if (basisBadge && summary.basis) {
-    basisBadge.innerHTML = `<i class="fa-solid fa-scale-balanced"></i> Basis: ${summary.basis === "accrual" ? "Accrual" : "Cash"}${summary.basis_note ? ` (${FinanceFormat.escapeHtml(summary.basis_note)})` : ""}`;
+    basisBadge.textContent = `Basis: ${summary.basis === "accrual" ? "Accrual" : "Cash"}${summary.basis_note ? ` (${summary.basis_note})` : ""}`;
   }
 
   const scopeBadge = document.getElementById("financeDashboardScopeBadge");
   if (scopeBadge) {
     const ent = summary.entity && summary.entity !== "all" ? summary.entity : "All entities";
-    scopeBadge.innerHTML = `<i class="fa-solid fa-building-columns"></i> Scope: ${ent}`;
+    scopeBadge.textContent = `Scope: ${ent}`;
   }
 
   // Multi-currency conversion policy notice
@@ -260,11 +268,11 @@ function renderFinanceDashboard(summary, ctx = {}) {
   // Update drilldown links text/direction
   const drillRev = document.getElementById("drilldownKpiRevenue");
   if (drillRev) {
-    drillRev.innerHTML = summary.basis === "accrual" ? 'View Invoices <i class="fa-solid fa-arrow-right"></i>' : 'View Transactions <i class="fa-solid fa-arrow-right"></i>';
+    drillRev.innerHTML = summary.basis === "accrual" ? "Invoices &rsaquo;" : "Transactions &rsaquo;";
   }
   const drillCost = document.getElementById("drilldownKpiCost");
   if (drillCost) {
-    drillCost.innerHTML = summary.basis === "accrual" ? 'View Bills <i class="fa-solid fa-arrow-right"></i>' : 'View Transactions <i class="fa-solid fa-arrow-right"></i>';
+    drillCost.innerHTML = summary.basis === "accrual" ? "Bills &rsaquo;" : "Transactions &rsaquo;";
   }
 }
 
@@ -335,7 +343,7 @@ async function loadFinanceAttentionQueue() {
   if (skelEl) skelEl.style.display = "block";
   if (listEl) listEl.style.display = "none";
   if (emptyEl) emptyEl.style.display = "none";
-  if (btnRefresh) btnRefresh.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  if (btnRefresh) btnRefresh.classList.add("is-busy");
 
   try {
     const data = await FinanceApi.getAttentionQueue({ severity, item_type, search });
@@ -345,16 +353,16 @@ async function loadFinanceAttentionQueue() {
     console.error("Failed to load attention queue:", err);
     if (listEl) {
       listEl.innerHTML = `
-        <div style="padding: 20px; text-align: center; color: var(--danger, #ef4444);">
-          <i class="fa-solid fa-triangle-exclamation"></i> Unable to load attention items.
-          <button class="btn btn-sm btn-outline" onclick="loadFinanceAttentionQueue()" style="margin-left: 8px;">Retry</button>
+        <div class="fv-callout fv-callout--danger fv-callout--row">
+          <span>Unable to load attention items.</span>
+          <button class="btn btn-sm btn-outline" onclick="loadFinanceAttentionQueue()">Retry</button>
         </div>
       `;
       listEl.style.display = "block";
     }
   } finally {
     if (skelEl) skelEl.style.display = "none";
-    if (btnRefresh) btnRefresh.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
+    if (btnRefresh) btnRefresh.classList.remove("is-busy");
   }
 }
 
@@ -366,6 +374,23 @@ function _escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// The severity pills drive the existing severity select (same ID, values and change handler).
+function setAttentionSeverity(severity) {
+  const sel = document.getElementById("filterAttentionSeverity");
+  if (sel) sel.value = severity;
+  onAttentionFilterChanged();
+}
+
+// Area of a queue item from its target route (doc 21 section 3.3): Sales teal, Spend orange, Banking sky, Reports violet.
+function _attentionArea(it) {
+  const route = String(it.target_route || "");
+  if (/invoice|customer|sales/.test(route)) return "sales";
+  if (/bill|vendor|subscription|statutory|spend/.test(route)) return "spend";
+  if (/report/.test(route)) return "reports";
+  if (/setting/.test(route)) return "settings";
+  return "banking";
 }
 
 function renderFinanceAttentionQueue(data) {
@@ -382,14 +407,21 @@ function renderFinanceAttentionQueue(data) {
   const urgentCount = data?.urgent_count || 0;
   const warningCount = data?.warning_count || 0;
 
-  if (totalBadge) totalBadge.textContent = `${totalCount} ${totalCount === 1 ? 'item' : 'items'}`;
+  if (totalBadge) totalBadge.innerHTML = `All <span class="fv-pill__count">${totalCount}</span>`;
+  const sevSel = document.getElementById("filterAttentionSeverity");
+  const activeSev = sevSel ? sevSel.value : "all";
+  document.querySelectorAll("#attentionSeverityPills .fv-pill").forEach((pill) => {
+    const on = pill.dataset.severity === activeSev;
+    pill.classList.toggle("active", on);
+    pill.setAttribute("aria-pressed", on ? "true" : "false");
+  });
   if (urgentBadge) {
-    urgentBadge.style.display = urgentCount > 0 ? "inline-flex" : "none";
-    if (urgentText) urgentText.textContent = `${urgentCount} Urgent`;
+    urgentBadge.style.display = urgentCount > 0 || activeSev === "urgent" ? "inline-flex" : "none";
+    if (urgentText) urgentText.innerHTML = `Urgent <span class="fv-pill__count">${urgentCount}</span>`;
   }
   if (warningBadge) {
-    warningBadge.style.display = warningCount > 0 ? "inline-flex" : "none";
-    if (warningText) warningText.textContent = `${warningCount} Warning`;
+    warningBadge.style.display = warningCount > 0 || activeSev === "warning" ? "inline-flex" : "none";
+    if (warningText) warningText.innerHTML = `Warning <span class="fv-pill__count">${warningCount}</span>`;
   }
 
   const items = data?.items || [];
@@ -403,55 +435,32 @@ function renderFinanceAttentionQueue(data) {
   if (listEl) {
     listEl.style.display = "flex";
     listEl.innerHTML = items.map((it) => {
-      const sevClass = it.severity === "urgent" ? "badge-danger" : (it.severity === "warning" ? "badge-warning" : "badge-info");
-      const sevIcon = it.severity === "urgent" ? "fa-circle-exclamation" : (it.severity === "warning" ? "fa-triangle-exclamation" : "fa-circle-info");
-      const dueChipClass = it.due_state || "due_soon";
-      let dueIcon = "fa-clock";
-      if (it.due_state === "overdue") dueIcon = "fa-calendar-xmark";
-      else if (it.due_state === "due_today") dueIcon = "fa-calendar-day";
-      else if (it.due_state === "immediate") dueIcon = "fa-triangle-exclamation";
-      else if (it.due_state === "pending_review") dueIcon = "fa-hourglass-half";
-      else if (it.due_state === "needs_reconciliation") dueIcon = "fa-code-compare";
-
+      const group = it.severity === "urgent" ? "problem" : (it.severity === "warning" ? "waiting" : "open");
+      const area = _attentionArea(it);
+      const areaMeta = FinanceUI.AREAS[area] || FinanceUI.AREAS.banking;
       const amountFormatted = it.amount !== null && it.amount !== undefined
-        ? (typeof FinanceFormat !== "undefined" ? FinanceFormat.formatMoney(it.amount, it.currency || "USD") : `$${Number(it.amount).toFixed(2)}`)
-        : null;
+        ? FinanceUI.moneyHtml(it.amount, it.currency || "USD")
+        : "";
       const targetFilterStr = it.target_filter ? encodeURIComponent(JSON.stringify(it.target_filter)) : "";
+      const icon = { sales: "fa-arrow-down", spend: "fa-arrow-up", banking: "fa-building-columns", reports: "fa-chart-column", settings: "fa-sliders" }[area] || "fa-building-columns";
 
       return `
-        <div class="finance-attention-row ${it.is_reviewed ? 'reviewed' : ''}" data-key="${_escapeHtml(it.deduplication_key)}" data-id="${_escapeHtml(it.id)}" data-type="${_escapeHtml(it.type)}" data-severity="${_escapeHtml(it.severity)}">
-          <div class="finance-attention-main">
-            <div class="finance-attention-badge-col">
-              <span class="badge ${sevClass}" aria-label="Severity: ${_escapeHtml(it.severity_label)}">
-                <i class="fa-solid ${sevIcon}"></i> ${_escapeHtml(it.severity_label)}
-              </span>
+        <div class="finance-attention-row fv-attn ${it.is_reviewed ? 'reviewed' : ''}" data-key="${_escapeHtml(it.deduplication_key)}" data-id="${_escapeHtml(it.id)}" data-type="${_escapeHtml(it.type)}" data-severity="${_escapeHtml(it.severity)}">
+          <span class="fv-tile fv-hue-${areaMeta.hue}" aria-hidden="true"><i class="fa-solid ${icon}"></i></span>
+          <div class="fv-attn__main">
+            <div class="fv-attn__title">
+              <strong>${_escapeHtml(it.title)}</strong>
+              ${FinanceUI.statusPill(group, it.severity_label, `aria-label="Severity: ${_escapeHtml(it.severity_label)}"`, "badge")}
             </div>
-            <div class="finance-attention-info">
-              <div class="finance-attention-title">
-                <strong>${_escapeHtml(it.title)}</strong>
-                ${it.counterparty ? `<span class="badge" style="font-size:11px;background:var(--surface2);color:var(--text2);">${_escapeHtml(it.counterparty)}</span>` : ""}
-              </div>
-              <div class="finance-attention-desc">${_escapeHtml(it.description)}</div>
-              <div class="finance-attention-meta">
-                <span class="due-chip ${dueChipClass}" aria-label="Due status: ${_escapeHtml(it.due_state_label)}">
-                  <i class="fa-solid ${dueIcon}"></i> ${_escapeHtml(it.due_state_label)}
-                </span>
-                ${amountFormatted ? `
-                  <span class="amount-chip">
-                    <i class="fa-solid fa-coins"></i> ${amountFormatted}
-                  </span>
-                ` : ""}
-                ${it.due_date ? `<span style="color:var(--text3);"><i class="fa-regular fa-calendar"></i> ${_escapeHtml(it.due_date)}</span>` : ""}
-              </div>
-            </div>
+            <div class="fv-sub">${_escapeHtml(it.description)}
+              <span class="due-chip fv-note ${it.due_state === "overdue" ? "fv-note--late" : "fv-note--info"}" aria-label="Due status: ${_escapeHtml(it.due_state_label)}">${_escapeHtml(it.due_state_label)}</span>
+              &middot; <b class="fv-sub__area">${_escapeHtml(areaMeta.name)}</b></div>
           </div>
-          <div class="finance-attention-actions">
-            <button type="button" class="btn btn-sm btn-attention-resolve btn-outline" onclick="openAttentionItem('${_escapeHtml(it.target_route)}', ${it.target_id || 'null'}, '${targetFilterStr}')">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i> Resolve
-            </button>
-            <button type="button" class="btn btn-sm btn-outline btn-attention-review" onclick="markAttentionItemReviewed('${_escapeHtml(it.deduplication_key)}')" title="Mark as reviewed">
-              <i class="fa-solid fa-check"></i> Reviewed
-            </button>
+          <div class="fv-attn__amount fv-amount__value">${amountFormatted}</div>
+          <div class="fv-attn__date">${it.due_date ? _escapeHtml(FinanceUI.formatDate(it.due_date)) : ""}</div>
+          <div class="finance-attention-actions fv-row-actions">
+            <button type="button" class="btn btn-sm btn-attention-resolve btn-outline" onclick="openAttentionItem('${_escapeHtml(it.target_route)}', ${it.target_id || 'null'}, '${targetFilterStr}')">Resolve</button>
+            <button type="button" class="fv-icon-btn btn-attention-review" onclick="markAttentionItemReviewed('${_escapeHtml(it.deduplication_key)}')" title="Mark as reviewed" aria-label="Mark as reviewed"><i class="fa-solid fa-check"></i></button>
           </div>
         </div>
       `;
@@ -595,8 +604,8 @@ async function loadFinanceCashForecast() {
     console.error("Failed to load cash forecast:", err);
     if (contentEl) {
       contentEl.innerHTML = `
-        <div class="alert alert-danger" style="margin: 16px; padding: 12px 16px; border-radius: 6px;">
-          <i class="fa-solid fa-triangle-exclamation"></i> Unable to load cash forecast: ${_escapeHtml(err.message || "Unknown error")}
+        <div class="fv-callout fv-callout--danger fv-section__notice">
+          Unable to load cash forecast: ${_escapeHtml(err.message || "Unknown error")}
         </div>
       `;
     }
@@ -609,28 +618,13 @@ async function loadFinanceCashForecast() {
 
 function setForecastHorizon(days) {
   CashForecastState.horizon = days;
-  const b30 = document.getElementById("btnForecastHorizon30");
-  const b60 = document.getElementById("btnForecastHorizon60");
-  const b90 = document.getElementById("btnForecastHorizon90");
-
-  [b30, b60, b90].forEach((btn) => {
+  const active = days === 30 ? "btnForecastHorizon30" : (days === 60 ? "btnForecastHorizon60" : "btnForecastHorizon90");
+  ["btnForecastHorizon30", "btnForecastHorizon60", "btnForecastHorizon90"].forEach((id) => {
+    const btn = document.getElementById(id);
     if (!btn) return;
-    btn.classList.remove("btn-selected", "btn-outline", "active");
+    btn.classList.toggle("active", id === active);
+    btn.setAttribute("aria-pressed", id === active ? "true" : "false");
   });
-
-  if (days === 30 && b30) {
-    b30.classList.add("btn-selected", "active");
-    if (b60) b60.classList.add("btn-outline");
-    if (b90) b90.classList.add("btn-outline");
-  } else if (days === 60 && b60) {
-    b60.classList.add("btn-selected", "active");
-    if (b30) b30.classList.add("btn-outline");
-    if (b90) b90.classList.add("btn-outline");
-  } else if (b90) {
-    b90.classList.add("btn-selected", "active");
-    if (b30) b30.classList.add("btn-outline");
-    if (b60) b60.classList.add("btn-outline");
-  }
 
   loadFinanceCashForecast();
 }
@@ -663,33 +657,24 @@ function renderCashForecast(data) {
     const badgeEl = document.getElementById(m.badge);
 
     if (cashEl) cashEl.textContent = _formatAmount(h.projected_ending_cash, curr);
-    if (inEl) inEl.textContent = `+${_formatAmount(h.total_inflows, curr)}`;
+    if (inEl) inEl.textContent = _formatAmount(h.total_inflows, curr);
     if (inSplitEl) {
       inSplitEl.textContent = `${_formatAmount(h.confirmed_inflows, curr)} conf / ${_formatAmount(h.expected_inflows, curr)} exp`;
     }
-    if (outEl) outEl.textContent = `-${_formatAmount(h.total_outflows, curr)}`;
+    if (outEl) outEl.textContent = _formatAmount(h.total_outflows, curr);
     if (outSplitEl) {
       outSplitEl.textContent = `${_formatAmount(h.confirmed_outflows, curr)} conf / ${_formatAmount(h.expected_outflows, curr)} exp`;
     }
     if (netEl) {
       const netVal = h.net_cash_flow || 0;
       netEl.textContent = `${netVal >= 0 ? "+" : ""}${_formatAmount(netVal, curr)}`;
-      netEl.style.color = netVal >= 0 ? "var(--success, #16a34a)" : "var(--danger, #ef4444)";
     }
 
     if (badgeEl) {
       const conf = (h.confidence || "high").toLowerCase();
-      badgeEl.className = "badge";
-      if (conf === "high") {
-        badgeEl.classList.add("badge-success");
-        badgeEl.textContent = "High Confidence";
-      } else if (conf === "medium") {
-        badgeEl.classList.add("badge-info");
-        badgeEl.textContent = "Medium Confidence";
-      } else {
-        badgeEl.classList.add("badge-warning");
-        badgeEl.textContent = "Low Confidence";
-      }
+      const group = conf === "high" ? "settled" : (conf === "medium" ? "open" : "waiting");
+      badgeEl.className = `fv-status fv-status--${group}`;
+      badgeEl.innerHTML = `<span class="fv-status__dot" aria-hidden="true"></span>${conf === "high" ? "High" : (conf === "medium" ? "Medium" : "Low")}`;
     }
   });
 
@@ -713,7 +698,7 @@ function renderCashAccountsTable(accounts) {
   if (!accounts || accounts.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align: center; padding: 24px; color: var(--text3, #64748b);">
+        <td colspan="8" class="fv-empty-cell">
           No active bank or cash accounts found for this currency scope.
         </td>
       </tr>
@@ -722,41 +707,25 @@ function renderCashAccountsTable(accounts) {
   }
 
   tbody.innerHTML = accounts
-    .map((acc) => {
+    .map((acc, i) => {
       const book = acc.book_balance || 0;
       const uncleared = acc.uncleared_cheques_amount || 0;
       const pending = acc.pending_transfers_amount || 0;
       const available = acc.available_balance || 0;
       const reconciled = acc.reconciled_balance;
       const curr = acc.currency || "USD";
-
-      const availColor = available < 0 ? "color: var(--danger, #ef4444); font-weight: 700;" : "color: var(--text, #1e293b); font-weight: 700;";
+      const hue = FinanceUI.hueForId(acc.account_id || acc.id || i + 1);
 
       return `
-        <tr style="border-bottom: 1px solid var(--border, #f1f5f9);">
-          <td style="padding: 10px 14px;">
-            <div style="font-weight: 600; color: var(--text, #1e293b);">${_escapeHtml(acc.account_name || "Account")}</div>
-            <div style="font-size: 11px; color: var(--text3, #64748b); text-transform: capitalize;">${_escapeHtml(acc.account_type || "bank")}</div>
-          </td>
-          <td style="padding: 10px 14px; color: var(--text2, #475569);">${_escapeHtml(acc.bank_name || "—")}</td>
-          <td style="padding: 10px 14px; text-align: center;">
-            <span class="badge" style="background: var(--surface2, #f1f5f9); font-size: 10.5px; font-weight: 600;">${_escapeHtml(curr)}</span>
-          </td>
-          <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums;">
-            ${_formatAmount(book, curr)}
-          </td>
-          <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums; color: ${uncleared > 0 ? "var(--warning-dark, #b45309)" : "var(--text3, #94a3b8)"};">
-            ${uncleared > 0 ? `-${_formatAmount(uncleared, curr)}` : "—"}
-          </td>
-          <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums; color: ${pending > 0 ? "var(--info, #3b82f6)" : "var(--text3, #94a3b8)"};">
-            ${pending > 0 ? `-${_formatAmount(pending, curr)}` : "—"}
-          </td>
-          <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums; ${availColor}">
-            ${_formatAmount(available, curr)}
-          </td>
-          <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text2, #475569);">
-            ${reconciled !== null && reconciled !== undefined ? _formatAmount(reconciled, curr) : '<span style="color: var(--text3, #94a3b8);">Pending stmt</span>'}
-          </td>
+        <tr>
+          <td><div class="fv-cell-main">${FinanceUI.avatar(acc.account_name || "Account", hue)}<div class="fv-cell-main__text"><span class="fv-cell-main__name">${_escapeHtml(acc.account_name || "Account")}</span><span class="fv-sub">${_escapeHtml(acc.account_type || "bank")}</span></div></div></td>
+          <td>${_escapeHtml(acc.bank_name || "—")}</td>
+          <td>${_escapeHtml(curr)}</td>
+          <td class="fv-num">${_formatAmount(book, curr)}</td>
+          <td class="fv-num ${uncleared > 0 ? "" : "fv-muted"}">${uncleared > 0 ? `-${_formatAmount(uncleared, curr)}` : "–"}</td>
+          <td class="fv-num ${pending > 0 ? "" : "fv-muted"}">${pending > 0 ? `-${_formatAmount(pending, curr)}` : "–"}</td>
+          <td class="fv-num"><span class="fv-amount__value">${_formatAmount(available, curr)}</span></td>
+          <td class="fv-num ${reconciled !== null && reconciled !== undefined ? "" : "fv-muted"}">${reconciled !== null && reconciled !== undefined ? _formatAmount(reconciled, curr) : "Pending stmt"}</td>
         </tr>
       `;
     })
@@ -765,28 +734,13 @@ function renderCashAccountsTable(accounts) {
 
 function filterObligationsTable(filterType) {
   CashForecastState.obligationsFilter = filterType;
-  const bAll = document.getElementById("btnObligationsFilterAll");
-  const bIn = document.getElementById("btnObligationsFilterInflows");
-  const bOut = document.getElementById("btnObligationsFilterOutflows");
-
-  [bAll, bIn, bOut].forEach((b) => {
+  const active = filterType === "inflow" ? "btnObligationsFilterInflows" : (filterType === "outflow" ? "btnObligationsFilterOutflows" : "btnObligationsFilterAll");
+  ["btnObligationsFilterAll", "btnObligationsFilterInflows", "btnObligationsFilterOutflows"].forEach((id) => {
+    const b = document.getElementById(id);
     if (!b) return;
-    b.classList.remove("btn-selected", "btn-outline", "active");
+    b.classList.toggle("active", id === active);
+    b.setAttribute("aria-pressed", id === active ? "true" : "false");
   });
-
-  if (filterType === "inflow" && bIn) {
-    bIn.classList.add("btn-selected", "active");
-    if (bAll) bAll.classList.add("btn-outline");
-    if (bOut) bOut.classList.add("btn-outline");
-  } else if (filterType === "outflow" && bOut) {
-    bOut.classList.add("btn-selected", "active");
-    if (bAll) bAll.classList.add("btn-outline");
-    if (bIn) bIn.classList.add("btn-outline");
-  } else if (bAll) {
-    bAll.classList.add("btn-selected", "active");
-    if (bIn) bIn.classList.add("btn-outline");
-    if (bOut) bOut.classList.add("btn-outline");
-  }
 
   if (CashForecastState.data) {
     renderObligationsTable(CashForecastState.data.material_obligations || []);
@@ -819,7 +773,7 @@ function renderObligationsTable(obligations) {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align: center; padding: 24px; color: var(--text3, #64748b);">
+        <td colspan="8" class="fv-empty-cell">
           No obligations found matching the current filter.
         </td>
       </tr>
@@ -830,48 +784,27 @@ function renderObligationsTable(obligations) {
   tbody.innerHTML = filtered
     .map((ob) => {
       const isInflow = ob.type === "inflow";
-      const flowBadge = isInflow
-        ? '<span class="badge badge-success" style="font-size: 11px;"><i class="fa-solid fa-arrow-down-left"></i> Inflow</span>'
-        : '<span class="badge badge-danger" style="font-size: 11px;"><i class="fa-solid fa-arrow-up-right"></i> Outflow</span>';
+      const flowBadge = `<span class="fv-flow fv-flow--${isInflow ? "in" : "out"}">${isInflow ? "Inflow" : "Outflow"}</span>`;
 
       const cert = (ob.certainty || "contractual").toLowerCase();
-      let certBadge = '<span class="badge" style="background: var(--surface2, #f1f5f9); font-size: 10.5px;">Contractual</span>';
-      if (cert === "overdue") {
-        certBadge = '<span class="badge badge-danger" style="font-size: 10.5px;"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>';
-      } else if (cert === "estimated") {
-        certBadge = '<span class="badge badge-warning" style="font-size: 10.5px;">Estimated</span>';
-      }
+      const certBadge = cert === "overdue" ? FinanceUI.statusPill("problem", "Overdue")
+        : (cert === "estimated" ? FinanceUI.statusPill("waiting", "Estimated") : FinanceUI.statusPill("closed", "Contractual"));
 
       const isConfirmed = (ob.status || "").toLowerCase() === "confirmed";
-      const statusBadge = isConfirmed
-        ? '<span class="badge" style="background: var(--success-soft, rgba(34, 197, 94, 0.1)); color: var(--success, #16a34a); font-size: 10.5px;">Confirmed</span>'
-        : '<span class="badge" style="background: var(--info-soft, rgba(59, 130, 246, 0.1)); color: var(--info, #3b82f6); font-size: 10.5px;">Expected</span>';
-
-      const amtColor = isInflow ? "color: var(--success, #16a34a);" : "color: var(--danger, #ef4444);";
+      const statusBadge = isConfirmed ? FinanceUI.statusPill("settled", "Confirmed") : FinanceUI.statusPill("open", "Expected");
       const sign = isInflow ? "+" : "-";
+      const route = _escapeHtml(ob.target_route || "a-finance-invoices");
 
       return `
-        <tr style="border-bottom: 1px solid var(--border, #f1f5f9);">
-          <td style="padding: 10px 14px; font-variant-numeric: tabular-nums;">
-            ${_escapeHtml(ob.due_date || "—")}
-          </td>
-          <td style="padding: 10px 14px; text-align: center;">${flowBadge}</td>
-          <td style="padding: 10px 14px;">
-            <a href="javascript:void(0)" onclick="openAttentionItem('${_escapeHtml(ob.target_route || 'a-finance-invoices')}', ${ob.entity_id || 0})" style="font-weight: 600; text-decoration: none; color: var(--accent-text);">
-              ${_escapeHtml(ob.reference || "Obligation")}
-            </a>
-          </td>
-          <td style="padding: 10px 14px; color: var(--text2, #475569);">${_escapeHtml(ob.counterparty || "—")}</td>
-          <td style="padding: 10px 14px; text-align: center;">${certBadge}</td>
-          <td style="padding: 10px 14px; text-align: center;">${statusBadge}</td>
-          <td style="padding: 10px 14px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; ${amtColor}">
-            ${sign}${_formatAmount(ob.amount, ob.currency)}
-          </td>
-          <td style="padding: 10px 14px; text-align: center;">
-            <button class="btn btn-xs btn-outline" onclick="openAttentionItem('${_escapeHtml(ob.target_route || 'a-finance-invoices')}', ${ob.entity_id || 0})" title="Inspect source record">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            </button>
-          </td>
+        <tr>
+          <td>${_escapeHtml(ob.due_date ? FinanceUI.formatDate(ob.due_date) : "—")}</td>
+          <td>${flowBadge}</td>
+          <td><a href="javascript:void(0)" class="fv-link" onclick="openAttentionItem('${route}', ${ob.entity_id || 0})">${_escapeHtml(ob.reference || "Obligation")}</a></td>
+          <td>${_escapeHtml(ob.counterparty || "—")}</td>
+          <td>${certBadge}</td>
+          <td>${statusBadge}</td>
+          <td class="fv-num"><span class="fv-amount__value">${sign}${_formatAmount(ob.amount, ob.currency)}</span></td>
+          <td class="col-actions">${FinanceUI.rowActions({ icons: [{ icon: "fa-arrow-up-right-from-square", label: "Inspect source record", onclick: `openAttentionItem('${route}', ${ob.entity_id || 0})` }] })}</td>
         </tr>
       `;
     })
@@ -889,6 +822,7 @@ window.showKpiDefinition = showKpiDefinition;
 window.loadFinanceAttentionQueue = loadFinanceAttentionQueue;
 window.renderFinanceAttentionQueue = renderFinanceAttentionQueue;
 window.onAttentionFilterChanged = onAttentionFilterChanged;
+window.setAttentionSeverity = setAttentionSeverity;
 window.onAttentionSearchInput = onAttentionSearchInput;
 window.openAttentionItem = openAttentionItem;
 window.markAttentionItemReviewed = markAttentionItemReviewed;

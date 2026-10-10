@@ -456,3 +456,41 @@ test.describe('Finance restyle v2: Banking II (S6)', () => {
     await expect(page.locator('#financeTransfersEmpty')).toBeVisible();
   });
 });
+
+// ---------- S7: Overview ----------
+test.describe('Finance restyle v2: Overview (S7)', () => {
+  for (const theme of ['light', 'dark']) {
+    test(`Overview chrome in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await openAdminPage(page, 'a-finance-dashboard');
+      await expect(page.locator('#statFinanceBalance')).not.toContainText('—', { timeout: 15000 });
+      await expect(page.locator('.finance-attention-row').first()).toBeVisible();
+      // greeting line with the period in brand blue, no title block and no chips
+      await expect(page.locator('#financeDashboardGreeting')).toContainText('so far');
+      expect(await css(page, '#financeDashboardPeriodWord', 'color')).toBe(await rgb(page, 'var(--brand-text)'));
+      await expect(page.locator('#a-finance-dashboard .section-title')).toHaveCount(0);
+      for (const id of ['Scope', 'Period', 'Basis', 'Currency']) await expect(page.locator(`#financeDashboard${id}Badge`)).toBeHidden();
+      // four soft cards; only the first has the gradient
+      await expect(page.locator('#a-finance-dashboard .fv-cards .fv-card')).toHaveCount(4);
+      expect(await css(page, '#cardKpiCashBalance', 'backgroundImage')).toContain('gradient');
+      for (const id of ['cardKpiRevenue', 'cardKpiCost', 'cardKpiNet']) expect(await css(page, `#${id}`, 'backgroundImage')).toBe('none');
+      expect(await css(page, '#statFinanceRevenue', 'color')).toBe(await rgb(page, 'var(--ink-strong)'));
+      // needs attention: severity pills over the same select, area tile, one outline action and one icon
+      await page.click('#badgeAttentionUrgentCount');
+      await expect(page.locator('#filterAttentionSeverity')).toHaveValue('urgent');
+      await expect(page.locator('.finance-attention-row[data-severity="warning"]')).toHaveCount(0);
+      await page.click('#badgeAttentionTotalCount');
+      const row = page.locator('.finance-attention-row').first();
+      await expect(row.locator('.fv-tile')).toBeVisible();
+      expect(await css(page, '.finance-attention-row .btn-attention-resolve', 'height')).toBe('28px');
+      await expect(row.locator('.btn-attention-review')).toHaveClass(/fv-icon-btn/);
+      // cash forecast is a table with a white header row; confidence is a pill
+      expect(await css(page, '.fv-table--forecast thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+      await expect(page.locator('#cardHorizon30')).toBeVisible();
+      await expect(page.locator('#badgeConfidence30')).toHaveText('High');
+      expect(await css(page, '#valInflows30', 'color')).toBe(await rgb(page, 'var(--ink-strong)'));
+      await expect(page.locator('#tableCashAccounts .fv-avatar').first()).toBeVisible();
+      await expect(page.locator('#a-finance-dashboard .stat-card')).toHaveCount(0);
+    });
+  }
+});

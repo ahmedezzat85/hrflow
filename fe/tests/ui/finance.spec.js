@@ -11,24 +11,23 @@ test.describe('Finance Module UI Testing', () => {
     await openAdminPage(page, 'a-finance-dashboard');
     await expect(page.locator('#a-finance-dashboard')).toBeVisible();
 
-    const statsGrid = page.locator('#a-finance-dashboard .grid.g4');
+    // D-027: the soft summary cards (.fv-card) in one grid, and the section titles use .fv-section__title
+    const statsGrid = page.locator('#a-finance-dashboard .fv-cards').first();
     await expect(statsGrid).toBeVisible();
 
-    const statCards = statsGrid.locator('.stat-card');
+    const statCards = statsGrid.locator('.fv-card');
     await expect(statCards).toHaveCount(4);
 
-    // Verify typography and section header classes exist
-    await expect(page.locator('#a-finance-dashboard .section-title')).toBeVisible();
+    await expect(page.locator('#a-finance-dashboard .fv-section__title').first()).toBeVisible();
   });
 
   test('Sales Invoices: toolbar, filter-select dropdown, and modal', async ({ page }) => {
     await openAdminPage(page, 'a-finance-invoices');
     await expect(page.locator('#a-finance-invoices')).toBeVisible();
 
-    // Verify filter dropdown has theme class and is visible
-    const filterSelect = page.locator('#financeInvoiceStatusFilter');
-    await expect(filterSelect).toBeVisible();
-    await expect(filterSelect).toHaveClass(/filter-select/);
+    // D-027: the status select became the pill row (All, Draft, Sent, Partially paid, Paid, Void)
+    await expect(page.locator('#financeInvoiceStatusFilter')).toHaveCount(0);
+    await expect(page.locator('#financeInvoiceWorkQueueTabs')).toBeVisible();
 
     // Open New Sales Invoice modal and verify backdrop & background
     const newInvoiceBtn = page.locator('#financeNewInvoiceBtn');
