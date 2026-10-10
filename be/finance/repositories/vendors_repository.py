@@ -324,3 +324,55 @@ class VendorsRepository:
             "active_subscriptions_count": active_subs,
         }
 
+    def get_open_payables_for_vendors(self, vendor_ids: List[int]) -> dict:
+        """
+        Batch-fetches open payables for a list of vendor IDs in a single query.
+        Returns a dict mapping vendor_id -> list of VendorPayableItem dicts.
+        """
+        if not vendor_ids:
+            return {}
+
+        from datetime import date
+        from finance.bill_status import OPEN_STATUSES, is_overdue
+
+        today = date.today()
+
+        open_bills = (
+            self.db.query(BillDB)
+            .filter(
+                BillDB.vendor_id.in_(vendor_ids),
+                BillDB.status.in_(OPEN_STATUSES),
+            )
+            .all()
+        )
+
+        grouped = {}
+        for b in open_bills:
+            rem_balance = max(0.0, float(b.total or 0.0) - float(b.amount_paid or 0.0))
+            curr = (b.currency or "EGP").upper()
+            key = (b.vendor_id, curr)
+            if key not in grouped:
+                grouped[key] = {
+                    "currency": curr,
+                    "open_amount": 0.0,
+                    "open_count": 0,
+                    "overdue_count": 0,
+                }
+
+            entry = grouped[key]
+            entry["open_amount"] += rem_balance
+            entry["open_count"] += 1
+            if is_overdue(b.status, b.due_date, today):
+                entry["overdue_count"] += 1
+
+        result = {vid: [] for vid in vendor_ids}
+        for (vid, curr), data in grouped.items():
+            data["open_amount"] = round(data["open_amount"], 2)
+            result[vid].append(data)
+
+        for vid in result:
+            result[vid].sort(key=lambda x: x["currency"])
+
+        return result
+
+

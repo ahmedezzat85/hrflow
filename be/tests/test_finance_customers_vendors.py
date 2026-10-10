@@ -412,3 +412,107 @@ def test_customer_receivables_on_list_and_detail(app_client, admin_cookies):
     assert rec[0]["open_amount"] == 25000.0
 
 
+def test_vendor_payables_on_list_and_detail(app_client, admin_cookies):
+    """
+    BE-3 Acceptance:
+    - GET /api/finance/vendors adds payables per currency to each vendor (empty list when none open).
+    - GET /api/finance/vendors/{id} also returns payables.
+    - Open = bill status in OPEN_STATUSES (approved, scheduled, partially_paid); draft, pending_approval, rejected, paid, void not counted.
+    - Overdue = due_date before today and open.
+    - Multi-currency vendors return one entry per currency.
+    - Values match get_vendor_metrics for the same vendor.
+    - Miscellaneous vendor returns its payables like any other vendor.
+    """
+    from bill_test_helpers import create_approved, create_draft, make_maker
+
+    # 1. Create a normal vendor
+    v_resp = app_client.post(
+        "/api/finance/vendors",
+        json={"name": "Acme Equipment Supplies", "default_currency": "USD", "category": "Operations"},
+        cookies=admin_cookies,
+    )
+    assert v_resp.status_code == 201
+    v_id = v_resp.json()["id"]
+
+    # Initially empty payables
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    assert get_v.status_code == 200
+    assert get_v.json()["payables"] == []
+
+    # 2. Draft bill by maker (not approved) -> not counted
+    maker_cookies = make_maker("maker_payables@hrflow.test")
+    draft_bill = create_draft(app_client, maker_cookies, v_id, f"BILL-DRAFT-{v_id}", 3000.0)
+    assert draft_bill["status"] == "draft"
+
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    assert get_v.json()["payables"] == []
+
+    # 3. Create approved USD bill with past due date (overdue)
+    bill1 = create_approved(
+        app_client, admin_cookies, v_id, f"BILL-USD-01-{v_id}", 13740.0,
+        currency="USD", due_date="2026-08-01",
+    )
+    assert bill1["status"] == "approved"
+
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    payables = get_v.json()["payables"]
+    assert len(payables) == 1
+    assert payables[0]["currency"] == "USD"
+    assert payables[0]["open_amount"] == 13740.0
+    assert payables[0]["open_count"] == 1
+    assert payables[0]["overdue_count"] == 1
+
+    # Check match with get_vendor_metrics (via 360 view)
+    v360 = app_client.get(f"/api/finance/vendors/{v_id}/360", cookies=admin_cookies).json()
+    assert v360["metrics"]["open_bills_total"] == payables[0]["open_amount"]
+    assert v360["metrics"]["open_bills_count"] == payables[0]["open_count"]
+
+    # 4. Multi-currency: add an approved EGP bill (future due date -> not overdue)
+    bill2 = create_approved(
+        app_client, admin_cookies, v_id, f"BILL-EGP-01-{v_id}", 25000.0,
+        currency="EGP", due_date="2026-12-31",
+    )
+    assert bill2["status"] == "approved"
+
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    payables_map = {p["currency"]: p for p in get_v.json()["payables"]}
+    assert len(payables_map) == 2
+    assert payables_map["USD"]["open_amount"] == 13740.0
+    assert payables_map["USD"]["open_count"] == 1
+    assert payables_map["USD"]["overdue_count"] == 1
+    assert payables_map["EGP"]["open_amount"] == 25000.0
+    assert payables_map["EGP"]["open_count"] == 1
+    assert payables_map["EGP"]["overdue_count"] == 0
+
+    # Also verify list endpoint
+    v_list = app_client.get(f"/api/finance/vendors?search=Acme Equipment Supplies", cookies=admin_cookies).json()
+    matched = [v for v in v_list if v["id"] == v_id][0]
+    matched_map = {p["currency"]: p for p in matched["payables"]}
+    assert matched_map == payables_map
+
+    # 5. Check Miscellaneous vendor (D-020)
+    misc_list = app_client.get("/api/finance/vendors?search=Miscellaneous", cookies=admin_cookies).json()
+    if misc_list:
+        misc_id = misc_list[0]["id"]
+    else:
+        misc_resp = app_client.post(
+            "/api/finance/vendors",
+            json={"name": "Miscellaneous", "default_currency": "EGP", "category": "Operations"},
+            cookies=admin_cookies,
+        )
+        misc_id = misc_resp.json()["id"]
+
+    misc_bill = create_approved(
+        app_client, admin_cookies, misc_id, f"EXP-MISC-{misc_id}", 750.0,
+        currency="EGP", due_date="2026-11-01",
+    )
+    assert misc_bill["status"] == "approved"
+
+    misc_get = app_client.get(f"/api/finance/vendors/{misc_id}", cookies=admin_cookies).json()
+    assert len(misc_get["payables"]) >= 1
+    egp_misc = [p for p in misc_get["payables"] if p["currency"] == "EGP"][0]
+    assert egp_misc["open_amount"] >= 750.0
+    assert egp_misc["open_count"] >= 1
+
+
+

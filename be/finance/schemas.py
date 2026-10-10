@@ -449,11 +449,19 @@ class VendorUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class VendorPayableItem(BaseModel):
+    currency: str
+    open_amount: float
+    open_count: int
+    overdue_count: int
+
+
 class VendorResponse(VendorBase):
     id: int
     is_active: bool
     created_at: Optional[datetime] = None
     default_category_name: Optional[str] = None
+    payables: List[VendorPayableItem] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
