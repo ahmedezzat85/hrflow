@@ -202,7 +202,7 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
         const derivedStatus = FinanceFormat.getDerivedInvoiceStatus(inv);
         const amountPaid = inv.amount_paid !== undefined ? inv.amount_paid : (inv.total && derivedStatus === "paid" ? inv.total : 0.0);
         const balance = inv.balance !== undefined ? inv.balance : Math.max(0, (inv.total || 0) - amountPaid);
-        const isOverdue = inv.is_overdue || derivedStatus === "overdue";
+        const isOverdue = !!inv.is_overdue;
         const daysOverdue = inv.days_overdue || 0;
         const overdueBadge = isOverdue && daysOverdue > 0
           ? `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:4px;" title="${daysOverdue} days overdue">${daysOverdue}d overdue</span>`
@@ -228,9 +228,9 @@ function renderFinanceInvoices(items, totalFiltered = items ? items.length : 0) 
         <button class="btn btn-sm btn-outline btn-view-invoice" onclick="FinanceDrawer.open('invoice', ${inv.id}, this)" title="View Details & Timeline" aria-label="View Invoice ${inv.invoice_number} details"><i class="fa-solid fa-eye"></i></button>
         ${inv.status !== "void" ? `<button class="btn btn-sm" onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice"><i class="fa-solid fa-pen"></i></button>` : ""}
         ${inv.status === "draft" ? `<button class="btn btn-sm btn-outline" onclick="sendInvoiceAction(${inv.id})" title="Approve and issue invoice" aria-label="Send Invoice ${inv.invoice_number}"><i class="fa-solid fa-paper-plane"></i></button>` : ""}
-        ${(derivedStatus === "overdue" || derivedStatus === "sent") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
-        ${(derivedStatus === "sent" || derivedStatus === "overdue" || (balance > 0 && inv.status !== "draft" && inv.status !== "void")) ? `<button class="btn btn-sm btn-outline" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
-        ${(inv.status === "draft" || inv.status === "sent") ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
+        ${(derivedStatus === "sent" || derivedStatus === "partially_paid") ? `<button class="btn btn-sm btn-outline btn-send-reminder" onclick="sendInvoiceReminderAction(${inv.id})" title="Send Reminder" aria-label="Send reminder for invoice ${inv.invoice_number}"><i class="fa-solid fa-bell"></i></button>` : ""}
+        ${((derivedStatus === "sent" || derivedStatus === "partially_paid") && balance > 0) ? `<button class="btn btn-sm btn-outline" onclick="openPaymentModal(${inv.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>` : ""}
+        ${((inv.status === "draft" || inv.status === "sent") && !(amountPaid > 0)) ? `<button class="btn btn-sm btn-danger" onclick="confirmVoidInvoice(${inv.id})" title="Void Invoice"><i class="fa-solid fa-ban"></i></button>` : ""}
       </td>
     </tr>
   `;
@@ -349,6 +349,7 @@ async function openAddInvoiceModal() {
 
   document.getElementById("invoiceModalTitleText").textContent = "New Sales Invoice";
   document.getElementById("invoiceModalId").value = "";
+  _setInvoiceLocked(false);
 
   const invNumEl = document.getElementById("invoiceNumber");
   if (invNumEl) {
@@ -396,7 +397,7 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceModalTitleText").textContent = `Edit Invoice ${inv.invoice_number}`;
     document.getElementById("invoiceModalId").value = inv.id;
 
-    const isIssued = inv.status === "sent" || inv.status === "paid";
+    const isIssued = inv.status !== "draft";
     const invNumEl = document.getElementById("invoiceNumber");
     if (invNumEl) {
       invNumEl.value = inv.invoice_number;
@@ -421,10 +422,33 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceLinesBody").innerHTML = "";
     (inv.lines || []).forEach((ln) => addInvoiceLine(ln));
     _updateInvoiceTotals();
+    _setInvoiceLocked(isIssued);
     openModal("invoiceModal");
   } catch (err) {
     showToast("Failed to load invoice: " + (err.message || err), "error");
   }
+}
+
+// D-022: once an invoice is issued its customer, currency, number, issue date and lines are locked
+// (void and reissue to correct). The backend enforces this; the form only reflects it.
+function _setInvoiceLocked(locked) {
+  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!locked;
+  });
+  const body = document.getElementById("invoiceLinesBody");
+  if (body) {
+    body.querySelectorAll("input, button").forEach((el) => { el.disabled = !!locked; });
+    body.dataset.locked = locked ? "1" : "";
+  }
+  const addLine = document.querySelector("#invoiceModal button[onclick='addInvoiceLine()']");
+  if (addLine) addLine.disabled = !!locked;
+  const statusEl = document.getElementById("invoiceStatus");
+  if (statusEl) statusEl.disabled = !!locked;
+  const draftBtn = document.getElementById("invoiceSaveDraftBtn");
+  if (draftBtn) draftBtn.style.display = locked ? "none" : "";
+  const note = document.getElementById("invoiceLockedNote");
+  if (note) note.style.display = locked ? "block" : "none";
 }
 
 function closeInvoiceModal() {
@@ -511,12 +535,13 @@ async function saveInvoiceModal(targetStatus) {
   const expBankEl = document.getElementById("invoiceExpectedBankAccount");
   const revChanEl = document.getElementById("invoiceRevenueChannel");
 
+  // The status select is only the user's intent (save as draft / save and send); status itself is server-owned
+  const sendAfterSave = document.getElementById("invoiceStatus").value === "sent";
   const payload = {
     customer_id: parseInt(customerId, 10),
     invoice_number: invoiceNumber,
     issue_date: issueDate,
     due_date: dueDate,
-    status: document.getElementById("invoiceStatus").value,
     currency: document.getElementById("invoiceCurrency").value,
     expected_bank_account_id: expBankEl && expBankEl.value ? parseInt(expBankEl.value, 10) : null,
     revenue_channel: revChanEl && revChanEl.value ? revChanEl.value : null,
@@ -531,11 +556,26 @@ async function saveInvoiceModal(targetStatus) {
 
   try {
     if (invoiceId) {
-      await FinanceApi.updateInvoice(invoiceId, payload);
-      showToast("Invoice updated", "success");
+      const updated = await FinanceApi.updateInvoice(invoiceId, payload);
+      if (sendAfterSave && updated && updated.status === "draft") {
+        await FinanceApi.sendInvoice(invoiceId);
+        showToast("Invoice updated and issued", "success");
+      } else {
+        showToast("Invoice updated", "success");
+      }
     } else {
-      await FinanceApi.createInvoice(payload);
-      showToast(payload.status === "sent" ? "Invoice created and issued" : "Invoice draft saved", "success");
+      const created = await FinanceApi.createInvoice(payload);
+      if (sendAfterSave) {
+        try {
+          await FinanceApi.sendInvoice(created.id);
+        } catch (sendErr) {
+          showToast("Invoice saved as draft but could not be issued: " + (sendErr.message || sendErr), "error");
+          closeInvoiceModal();
+          loadFinanceInvoices();
+          return;
+        }
+      }
+      showToast(sendAfterSave ? "Invoice created and issued" : "Invoice draft saved", "success");
       try { localStorage.removeItem("hrflow_invoice_draft"); } catch (_) {}
     }
     closeInvoiceModal();
@@ -622,22 +662,55 @@ async function openPaymentModal(invoiceId) {
     amtInput.max = balance > 0 ? String(balance) : "";
   }
   document.getElementById("paymentDate").value = new Date().toISOString().split("T")[0];
-  document.getElementById("paymentMethod").value = "bank_transfer";
   document.getElementById("paymentReference").value = "";
 
   const accSel = document.getElementById("paymentBankAccountId");
   if (accSel) {
     try {
-      const accounts = await FinanceApi.getAccounts({ is_active: true });
+      // D-022: a receipt goes into an account in the invoice's currency (no exchange rate); the server enforces it
+      const allAccounts = await FinanceApi.getAccounts({ is_active: true });
+      const accounts = (allAccounts || []).filter((a) => !inv || (a.currency || "").toUpperCase() === (inv.currency || "").toUpperCase());
       accSel.innerHTML = `<option value="">— Select account —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
-      if (expBankId) {
+      if (expBankId && accounts.some((a) => String(a.id) === String(expBankId))) {
         accSel.value = String(expBankId);
       }
     } catch (_) { accSel.innerHTML = "<option value=''>— No accounts available —</option>"; }
   }
+  window._invoiceReceiptAccounts = accSel ? Array.from(accSel.options).filter((o) => o.value).map((o) => o.value) : [];
+  await _refreshReceiptPaymentTypes();
 
   _checkPaymentBankDiscrepancy();
   openModal("invoicePaymentModal");
+}
+
+// Incoming payment types that fit the chosen account kind (mirrors be/finance/invoice_status.py)
+const _RECEIPT_TYPE_CODES = { cash: ["CASH"], bank: ["INBOUND_TRANS"] };
+
+async function _refreshReceiptPaymentTypes() {
+  const typeSel = document.getElementById("paymentTypeId");
+  if (!typeSel) return;
+  const accId = document.getElementById("paymentBankAccountId")?.value;
+  let kind = "bank";
+  if (accId) {
+    try {
+      const accounts = await FinanceApi.getAccounts({ is_active: true });
+      const acc = (accounts || []).find((a) => String(a.id) === String(accId));
+      kind = ((acc && acc.account_type) || "bank").toLowerCase();
+    } catch (_) {}
+  }
+  try {
+    const types = await FinanceApi.getPaymentTypes({ is_active: true });
+    const allowed = _RECEIPT_TYPE_CODES[kind] || [];
+    const list = (types || []).filter((t) => allowed.includes(t.code));
+    typeSel.innerHTML = list.map((t) => `<option value="${t.id}" data-code="${t.code}">${FinanceFormat.escapeHtml(t.name)}</option>`).join("");
+  } catch (_) {
+    typeSel.innerHTML = "";
+  }
+}
+
+function onReceiptAccountChange() {
+  _checkPaymentBankDiscrepancy();
+  _refreshReceiptPaymentTypes();
 }
 
 function closeInvoicePaymentModal() {
@@ -680,9 +753,11 @@ async function _saveInvoicePaymentImpl() {
     currency: (inv && inv.currency) || "USD",
     payment_date: paymentDate,
     bank_account_id: parseInt(bankAccountId, 10),
-    method: document.getElementById("paymentMethod").value,
+    method: (document.getElementById("paymentTypeId")?.selectedOptions[0]?.dataset.code === "CASH") ? "cash" : "bank_transfer",
     reference: document.getElementById("paymentReference").value.trim(),
   };
+  const paymentTypeId = document.getElementById("paymentTypeId")?.value;
+  if (paymentTypeId) payload.payment_type_id = parseInt(paymentTypeId, 10);
 
   try {
     const res = await FinanceApi.recordInvoicePayment(invoiceId, payload);

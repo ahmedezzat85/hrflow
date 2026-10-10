@@ -120,15 +120,15 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     });
 
     await page.evaluate(async (custId) => {
-      await window.FinanceApi.createInvoice({
+      const created = await window.FinanceApi.createInvoice({
         customer_id: custId,
         invoice_number: 'INV-NO-EMAIL-001',
         issue_date: '2026-09-01',
         due_date: '2026-09-05',
-        status: 'sent',
         currency: 'USD',
         lines: [{ description: 'Testing Service', quantity: 1, unit_price: 500 }],
       });
+      await window.FinanceApi.sendInvoice(created.id);
       await window.loadFinanceInvoices();
     }, noEmailCustomer.id);
 

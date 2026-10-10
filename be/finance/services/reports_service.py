@@ -186,7 +186,7 @@ class ReportsService:
             margin_pct = None
             margin_valid = False
 
-        open_inv_count = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.status.in_(["sent", "draft", "overdue", "partially_paid"])).count()
+        open_inv_count = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.status.in_(["sent", "draft", "partially_paid"])).count()
         unpaid_bills_count = self.db.query(BillDB).filter(BillDB.status.in_(OPEN_STATUSES)).count()
         active_sub_count = self.db.query(SubscriptionDB).filter(SubscriptionDB.is_active == True).count()
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from finance import bill_status as bs
 from finance import bill_payment_rules as rules
+from finance import invoice_status as inv_status
 
 from finance.models import (
     BillDB,
@@ -168,30 +169,65 @@ class SettlementService:
         amount: float,
         payment_date: str,
         bank_account_id: int,
-        currency: str = "USD",
+        payment_type_id: Optional[int] = None,
         reference: str = "",
-        method: str = "bank_transfer",
+        method: Optional[str] = None,
+        currency: Optional[str] = None,
     ) -> Tuple[SalesInvoiceDB, PaymentDB]:
         """
-        Record a settlement against a customer sales invoice.
-        Enforces remaining balance checks, transitions invoice status, and creates PaymentDB.
+        Record a receipt against a customer sales invoice: the single path for every route that
+        receives money for an invoice (receipt dialog and manual transactions linked to an invoice).
+
+        Refuses with ReceiptError (code):
+          currency_mismatch        - account currency differs from the invoice currency (no exchange rate)
+          payment_type_not_allowed - type not an incoming type that fits the account kind
+        InvalidInvoiceTransition when the invoice is not Sent / Partially paid, and a plain ValueError
+        for a non-positive amount or an overpayment.
+        Creates the PaymentDB (in the invoice's currency) and sets the status; the caller owns the
+        ledger row and the balance recalculation. `currency` is accepted for compatibility and ignored.
         """
         invoice = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.id == invoice_id).first()
         if not invoice:
             raise ValueError(f"Invoice #{invoice_id} not found")
 
-        if invoice.status in ("void",):
-            raise ValueError("Cannot record payment against a voided invoice")
+        inv_status.next_status("receive", invoice.status)
+
+        account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
+        if not account:
+            raise ValueError(f"Bank account {bank_account_id} not found")
+
+        payment_amount = float(amount)
+        if payment_amount <= 0:
+            raise ValueError("Payment amount must be greater than 0")
+
+        if (account.currency or "").upper() != (invoice.currency or "").upper():
+            raise inv_status.ReceiptError(
+                "currency_mismatch",
+                f"Account currency ({account.currency}) differs from the invoice currency ({invoice.currency}). Receive into a {invoice.currency} account.",
+            )
+
+        account_type = (account.account_type or "bank").lower()
+        allowed_codes = inv_status.RECEIPT_TYPE_CODES_BY_ACCOUNT_TYPE.get(account_type, frozenset())
+        if payment_type_id is None:
+            default_code = inv_status.DEFAULT_RECEIPT_TYPE_CODE_BY_ACCOUNT_TYPE.get(account_type)
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == default_code).first() if default_code else None
+        else:
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == payment_type_id).first()
+        if pt is None:
+            raise inv_status.ReceiptError("payment_type_not_allowed", "Payment type not found")
+        if not pt.is_active or pt.code not in allowed_codes:
+            raise inv_status.ReceiptError(
+                "payment_type_not_allowed",
+                f"Payment type '{pt.name}' cannot be used to receive money into a {account_type} account.",
+            )
 
         existing_payments = (
             self.db.query(PaymentDB)
-            .filter(PaymentDB.related_invoice_id == invoice.id, PaymentDB.is_reversed == False)
+            .filter(PaymentDB.related_invoice_id == invoice.id, PaymentDB.is_reversed == False)  # noqa: E712
             .all()
         )
         paid_so_far = sum(float(p.amount) for p in existing_payments)
         remaining = max(0.0, round(invoice.total - paid_so_far, 2))
-        payment_amount = float(amount)
-
         if payment_amount > remaining + 0.001:
             raise ValueError(
                 f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
@@ -202,21 +238,15 @@ class SettlementService:
             related_invoice_id=invoice.id,
             related_bill_id=None,
             amount=payment_amount,
-            currency=currency,
+            currency=invoice.currency,
             payment_date=payment_date,
-            bank_account_id=bank_account_id,
-            method=method or "bank_transfer",
-            reference=reference or invoice.invoice_number,
+            bank_account_id=account.id,
+            method=method or inv_status.METHOD_BY_RECEIPT_TYPE_CODE.get(pt.code, "other"),
+            reference=reference or "",
             is_reversed=False,
         )
         self.db.add(payment)
-
-        # Update invoice status
-        if paid_so_far + payment_amount >= invoice.total - 0.001:
-            invoice.status = "paid"
-        elif invoice.status in ("sent", "overdue", "partially_paid", "awaiting_payment"):
-            invoice.status = "partially_paid"
-
+        invoice.status = inv_status.derive_payment_status(invoice.total, paid_so_far + payment_amount)
         return invoice, payment
 
     def settle_statutory_obligation(
@@ -403,7 +433,7 @@ class SettlementService:
                 self.db.query(SalesInvoiceDB)
                 .filter(
                     SalesInvoiceDB.customer_id == payee_id,
-                    SalesInvoiceDB.status.in_(["sent", "overdue", "partially_paid", "awaiting_payment"]),
+                    SalesInvoiceDB.status.in_(inv_status.OPEN_STATUSES),
                 )
                 .all()
             )

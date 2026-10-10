@@ -25,7 +25,6 @@ def test_finance_stubs_admin_authorized(app_client, admin_cookies):
             "invoice_number": "STUB-INV-001",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "draft",
             "lines": [],
         },
         cookies=admin_cookies,

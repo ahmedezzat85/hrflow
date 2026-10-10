@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. Not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 implemented on `feature/fin-f1-invoice-rules` (draft PR into `main`); F2 to F6 not implemented.
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -16,11 +16,11 @@ Six slices, F1 to F6, each on its own branch with one PR, in the owner's current
 5. Receipts go through `settlement_service.settle_invoice`, which must refuse an account whose currency differs from the invoice's (`currency_mismatch`), post the ledger row with the chosen payment type, reference and customer as payee, and update balances with `recalculate_account_running_balances`. No exchange rate on receipts.
 
 Acceptance:
-- [ ] Migration maps every stored invoice status; `status` in requests is refused.
-- [ ] A sent invoice's lines, amounts, currency and customer cannot be edited.
-- [ ] A partly paid invoice cannot be voided.
-- [ ] A USD invoice cannot be received into an EGP account.
-- [ ] Tests: `test_finance_invoices.py` updated; new status and receipt tests.
+- [x] Migration maps every stored invoice status; `status` in requests is refused.
+- [x] A sent invoice's lines, amounts, currency and customer cannot be edited. (Owner decision, October 10, 2026: issue date is locked too; notes, due date, expected account and revenue channel stay editable.)
+- [x] A partly paid invoice cannot be voided.
+- [x] A USD invoice cannot be received into an EGP account.
+- [x] Tests: `test_finance_invoices.py` updated; new `test_finance_invoice_rules.py` (status, locks, void, receipts, migration 0031) and `fe/tests/ui/finance-invoice-rules.spec.js`.
 
 ## Slice F2: VAT on sales invoices (D-023)
 

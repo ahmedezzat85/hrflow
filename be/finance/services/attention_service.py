@@ -168,7 +168,7 @@ class AttentionQueueService:
                 if balance <= 0:
                     continue
 
-                is_overdue = inv.status == "overdue"
+                is_overdue = False
                 days_overdue = 0
                 if inv.due_date:
                     try:

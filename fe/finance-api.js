@@ -147,7 +147,7 @@ async getFeatureFlags() {
     { id: 1, customer_id: 1, customer_name: "Apex Health Partners", invoice_number: "INV-2026-001", issue_date: "2026-09-01", due_date: "2026-09-30", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 12500.0, tax_amount: 0.0, total: 12500.0, amount_paid: 0.0, balance: 12500.0, is_overdue: false, days_overdue: 0, next_action: "Awaiting Due Date / Payment", notes: "Q3 PACS Integration Services", created_at: "2026-09-01T08:00:00", lines: [{ id: 1, invoice_id: 1, description: "PACS Integration", quantity: 1, unit_price: 12500.0, line_total: 12500.0 }] },
     { id: 2, customer_id: 2, customer_name: "BioCare Diagnostics", invoice_number: "INV-2026-002", issue_date: "2026-09-05", due_date: "2026-10-05", status: "draft", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 8400.0, tax_amount: 0.0, total: 8400.0, amount_paid: 0.0, balance: 8400.0, is_overdue: false, days_overdue: 0, next_action: "Review & Send to Customer", notes: "Monthly DICOM utility SaaS", created_at: "2026-09-05T09:00:00", lines: [{ id: 2, invoice_id: 2, description: "DICOM SaaS", quantity: 6, unit_price: 1400.0, line_total: 8400.0 }] },
     { id: 3, customer_id: 3, customer_name: "CareFirst Health", invoice_number: "INV-2026-003", issue_date: "2026-08-01", due_date: "2026-08-15", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 10000.0, tax_amount: 0.0, total: 10000.0, amount_paid: 0.0, balance: 10000.0, is_overdue: true, days_overdue: 29, next_action: "Send Payment Reminder (29d overdue)", notes: "Prior cycle maintenance", created_at: "2026-08-01T08:00:00", lines: [{ id: 3, invoice_id: 3, description: "System Maintenance", quantity: 1, unit_price: 10000.0, line_total: 10000.0 }] },
-    { id: 4, customer_id: 4, customer_name: "Delta Medical", invoice_number: "INV-2026-004", issue_date: "2026-09-02", due_date: "2026-09-25", status: "sent", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 11000.0, tax_amount: 0.0, total: 11000.0, amount_paid: 4000.0, balance: 7000.0, is_overdue: false, days_overdue: 0, next_action: "Collect Remaining Balance", notes: "Consulting Retainer Q3", created_at: "2026-09-02T09:00:00", lines: [{ id: 4, invoice_id: 4, description: "Consulting Hours", quantity: 10, unit_price: 1100.0, line_total: 11000.0 }] },
+    { id: 4, customer_id: 4, customer_name: "Delta Medical", invoice_number: "INV-2026-004", issue_date: "2026-09-02", due_date: "2026-09-25", status: "partially_paid", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "intercompany_transfer_us", has_bank_discrepancy: false, subtotal: 11000.0, tax_amount: 0.0, total: 11000.0, amount_paid: 4000.0, balance: 7000.0, is_overdue: false, days_overdue: 0, next_action: "Collect Remaining Balance", notes: "Consulting Retainer Q3", created_at: "2026-09-02T09:00:00", lines: [{ id: 4, invoice_id: 4, description: "Consulting Hours", quantity: 10, unit_price: 1100.0, line_total: 11000.0 }] },
     { id: 5, customer_id: 5, customer_name: "Echo Clinics", invoice_number: "INV-2026-005", issue_date: "2026-08-10", due_date: "2026-09-10", status: "paid", currency: "USD", expected_bank_account_id: 1, expected_bank_account_name: "Voyance Operating USD", revenue_channel: "overseas_usd", has_bank_discrepancy: false, subtotal: 20000.0, tax_amount: 0.0, total: 20000.0, amount_paid: 20000.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Completed (Paid in Full)", notes: "Setup & Onboarding", created_at: "2026-08-10T10:00:00", lines: [{ id: 5, invoice_id: 5, description: "Setup Fee", quantity: 1, unit_price: 20000.0, line_total: 20000.0 }] },
     { id: 6, customer_id: 6, customer_name: "Frontier Labs", invoice_number: "INV-2026-006", issue_date: "2026-08-20", due_date: "2026-09-20", status: "void", currency: "USD", expected_bank_account_id: 2, expected_bank_account_name: "Voyance Treasury Reserve", revenue_channel: "other", has_bank_discrepancy: false, subtotal: 25000.0, tax_amount: 0.0, total: 25000.0, amount_paid: 0.0, balance: 0.0, is_overdue: false, days_overdue: 0, next_action: "Archived (Voided)", notes: "Canceled service request", created_at: "2026-08-20T11:00:00", lines: [{ id: 6, invoice_id: 6, description: "Canceled item", quantity: 1, unit_price: 25000.0, line_total: 25000.0 }] },
   ];
@@ -188,9 +188,9 @@ async getFeatureFlags() {
         if (st === "open") {
           list = list.filter((i) => i.status !== "paid" && i.status !== "void");
         } else if (st === "awaiting_payment") {
-          list = list.filter((i) => (i.status === "sent" || i.status === "awaiting_payment") && !i.is_overdue && (i.balance === undefined || i.balance > 0));
+          list = list.filter((i) => (i.status === "sent" || i.status === "partially_paid") && !i.is_overdue);
         } else if (st === "overdue") {
-          list = list.filter((i) => i.status === "overdue" || i.is_overdue);
+          list = list.filter((i) => (i.status === "sent" || i.status === "partially_paid") && i.is_overdue);
         } else if (st !== "all") {
           list = list.filter((i) => i.status === st);
         }
@@ -219,6 +219,7 @@ async getFeatureFlags() {
   },
   async createInvoice(payload) {
     if (_isMock()) {
+      if (payload && "status" in payload) throw new Error("status cannot be set by the client; set by the server through invoice actions");
       const customers = FinanceMockState.customers;
       const cust = customers.find((c) => c.id === parseInt(payload.customer_id, 10));
       const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
@@ -230,6 +231,9 @@ async getFeatureFlags() {
       const newInv = {
         id: FinanceMockState.invoices.length + 1,
         ...payload,
+        status: "draft",
+        amount_paid: 0, balance: subtotal, is_overdue: false, days_overdue: 0,
+        next_action: "Review & Send to Customer",
         customer_name: cust ? cust.name : null,
         expected_bank_account_name: bank ? bank.account_name : null,
         has_bank_discrepancy: false,
@@ -246,6 +250,23 @@ async getFeatureFlags() {
     if (_isMock()) {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
       if (!inv) throw new Error("Invoice not found");
+      if (payload && "status" in payload) throw new Error("status cannot be set by the client; set by the server through invoice actions");
+      if (inv.status === "void") throw new Error("invoice_void: Cannot update a voided invoice");
+      if (inv.status !== "draft") {
+        // D-022: customer, currency, lines and number are locked once issued; unchanged values may be resent
+        const changed = [];
+        if (payload.customer_id !== undefined && parseInt(payload.customer_id, 10) !== inv.customer_id) changed.push("customer_id");
+        if (payload.currency !== undefined && payload.currency !== inv.currency) changed.push("currency");
+        if (payload.invoice_number !== undefined && payload.invoice_number !== inv.invoice_number) changed.push("invoice_number");
+        if (payload.issue_date !== undefined && payload.issue_date !== inv.issue_date) changed.push("issue_date");
+        if (payload.lines) {
+          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price)]).sort());
+          if (norm(payload.lines) !== norm(inv.lines)) changed.push("lines");
+        }
+        if (changed.length) throw new Error(`invoice_locked: ${changed.join(", ")} cannot be changed once an invoice is issued. Void and reissue to correct.`);
+        payload = { ...payload };
+        ["customer_id", "currency", "invoice_number", "issue_date", "lines"].forEach((k) => delete payload[k]);
+      }
       Object.assign(inv, payload);
       if (payload.expected_bank_account_id !== undefined) {
         const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
@@ -254,6 +275,7 @@ async getFeatureFlags() {
       if (payload.lines) {
         inv.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
         inv.total = inv.subtotal;
+        inv.balance = inv.total;
       }
       return inv;
     }
@@ -263,7 +285,9 @@ async getFeatureFlags() {
     if (_isMock()) {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
       if (!inv) throw new Error("Invoice not found");
+      if (inv.status !== "draft") throw new Error(`invalid_transition: Cannot send an invoice in '${inv.status}' status`);
       inv.status = "sent";
+      inv.next_action = "Awaiting Due Date / Payment";
       return inv;
     }
     return apiRequest("POST", `/api/finance/invoices/${id}/send`);
@@ -272,8 +296,17 @@ async getFeatureFlags() {
     if (_isMock()) {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(id, 10));
       if (!inv) throw new Error("Invoice not found");
+      const live = FinanceMockState.payments.filter((p) => p.related_invoice_id === inv.id && !p.is_reversed);
+      if (live.length > 0 || inv.status === "paid" || inv.status === "partially_paid") {
+        throw new Error("has_unreversed_receipts: Cannot void an invoice that has unreversed receipts. Reverse the receipts first.");
+      }
+      if (inv.status === "void") throw new Error("invalid_transition: Cannot void an invoice in 'void' status");
       inv.status = "void";
-      if (reason) inv.notes = `${inv.notes || ""}\n[Void reason: ${reason}]`.trim();
+      inv.void_reason = reason || null;
+      inv.voided_by = "admin@voyancemed.com";
+      inv.voided_at = new Date().toISOString();
+      inv.is_overdue = false;
+      inv.next_action = "Archived (Voided)";
       return inv;
     }
     const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
@@ -290,6 +323,14 @@ async getFeatureFlags() {
       let exp_id = null;
       let exp_name = null;
       const bankId = parseInt(payload.bank_account_id, 10);
+
+      if (inv && inv.status !== "sent" && inv.status !== "partially_paid") {
+        throw new Error(`invalid_transition: Cannot receive an invoice in '${inv.status}' status`);
+      }
+      const recvAccount = (FinanceMockState.accounts || []).find((b) => b.id === bankId);
+      if (inv && recvAccount && (recvAccount.currency || "").toUpperCase() !== (inv.currency || "").toUpperCase()) {
+        throw new Error(`currency_mismatch: Account currency (${recvAccount.currency}) differs from the invoice currency (${inv.currency}). Receive into a ${inv.currency} account.`);
+      }
 
       // Duplicate reference check
       if (payload.reference && payload.reference.trim()) {
@@ -337,9 +378,8 @@ async getFeatureFlags() {
           .reduce((s, p) => s + (p.amount || 0), 0);
         inv.amount_paid = totalPaid;
         inv.balance = Math.max(0, inv.total - totalPaid);
-        if (totalPaid >= inv.total) {
-          inv.status = "paid";
-        }
+        inv.status = totalPaid >= inv.total - 0.001 ? "paid" : "partially_paid";
+        inv.is_overdue = inv.status === "partially_paid" && !!inv.due_date && inv.due_date < new Date().toISOString().slice(0, 10);
       }
       return newPayment;
     }
@@ -351,6 +391,8 @@ async getFeatureFlags() {
       if (!payment) throw new Error("Payment not found");
       if (payment.is_reversed) throw new Error("Payment already reversed");
       payment.is_reversed = true;
+      payment.reversed_at = new Date().toISOString();
+      payment.reversal_reason = reason || null;
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
       if (inv) {
         const totalPaid = FinanceMockState.payments
@@ -358,8 +400,9 @@ async getFeatureFlags() {
           .reduce((s, p) => s + (p.amount || 0), 0);
         inv.amount_paid = totalPaid;
         inv.balance = Math.max(0, inv.total - totalPaid);
-        if (inv.status === "paid" && totalPaid < inv.total) {
-          inv.status = "sent";
+        if (inv.status !== "void") {
+          inv.status = totalPaid >= inv.total - 0.001 ? "paid" : (totalPaid > 0.001 ? "partially_paid" : "sent");
+          inv.is_overdue = (inv.status === "sent" || inv.status === "partially_paid") && !!inv.due_date && inv.due_date < new Date().toISOString().slice(0, 10);
         }
       }
       return payment;
@@ -370,7 +413,7 @@ async getFeatureFlags() {
     if (_isMock()) {
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
       if (!inv) throw new Error("Invoice not found");
-      if (inv.status === "paid" || inv.status === "void") {
+      if (inv.status !== "sent" && inv.status !== "partially_paid") {
         throw new Error(`Cannot send reminder for an invoice in '${inv.status}' status`);
       }
       const cust = (FinanceMockState.customers || []).find((c) => c.id === inv.customer_id);
@@ -531,7 +574,7 @@ async getFeatureFlags() {
           }
         }
 
-        const derivedStatus = isVoid ? "void" : (bal <= 0.001 && inv.total > 0 ? "paid" : (isOverdue ? "overdue" : (inv.status || "sent")));
+        const derivedStatus = isVoid ? "void" : (bal <= 0.001 && inv.total > 0 ? "paid" : (inv.status || "sent"));
         invList.push({
           id: inv.id,
           invoice_number: inv.invoice_number,

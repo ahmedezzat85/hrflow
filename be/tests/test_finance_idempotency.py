@@ -122,7 +122,6 @@ def test_invoice_creation_idempotency(client, db_session):
         "issue_date": "2026-09-13",
         "due_date": "2026-10-13",
         "currency": "USD",
-        "status": "draft",
         "lines": [
             {"description": "Consulting", "quantity": 10.0, "unit_price": 150.0, "line_total": 1500.0}
         ],
@@ -155,7 +154,6 @@ def test_invoice_void_reason(client, db_session):
         "issue_date": "2026-09-13",
         "due_date": "2026-10-13",
         "currency": "USD",
-        "status": "draft",
         "lines": [],
     }
     resp = client.post("/api/finance/invoices", json=payload)
@@ -167,7 +165,8 @@ def test_invoice_void_reason(client, db_session):
     assert void_resp.status_code == 200
     inv = db_session.query(SalesInvoiceDB).filter_by(id=inv_id).first()
     assert inv.status == "void"
-    assert "Duplicate billing mistake" in inv.notes
+    assert inv.void_reason == "Duplicate billing mistake"
+    assert "Duplicate billing mistake" not in (inv.notes or "")
 
 
 def test_bill_void_reason(client, db_session):

@@ -23,9 +23,13 @@ from finance.services.idempotency import IdempotencyService
 router = APIRouter(prefix="/api/finance/invoices", tags=["Finance - Sales Invoices"])
 
 
+def _actor_email(current_user: dict) -> str:
+    return current_user.get("email") or current_user.get("sub") or "user"
+
+
 @router.get("", response_model=List[SalesInvoiceResponse])
 def list_sales_invoices(
-    status: Optional[str] = Query(None, description="Filter by status: open|draft|sent|awaiting_payment|paid|overdue|void|all"),
+    status: Optional[str] = Query(None, description="Filter: draft|sent|partially_paid|paid|void, or the list filters open|awaiting_payment|overdue|all"),
     customer_id: Optional[int] = Query(None, description="Filter by customer ID"),
     search: Optional[str] = Query(None, description="Search by invoice number or customer name"),
     currency: Optional[str] = Query(None, description="Filter by currency: USD, EGP, all"),
@@ -113,8 +117,8 @@ def void_sales_invoice(
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
 ):
-    """Void an invoice (irreversible soft-delete via status change)."""
-    return service.void_invoice(invoice_id, reason=reason)
+    """Void an invoice (final). Refused while it has unreversed receipts."""
+    return service.void_invoice(invoice_id, reason=reason, actor=_actor_email(current_user))
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────
@@ -145,14 +149,14 @@ def record_invoice_payment(
     """
     Record an incoming payment against a sales invoice.
     Automatically adjusts the bank account balance and marks the invoice
-    as 'paid' once total payments >= invoice total.
+    as Partially paid or Paid from the receipts; the account must be in the invoice currency.
     """
     user_email = current_user.get("email") or current_user.get("sub") or "user"
     return idempotency.execute_idempotent(
         idempotency_key=idempotency_key,
         user_email=user_email,
         endpoint_path=f"/api/finance/invoices:{invoice_id}:payments",
-        operation_fn=lambda: service.record_payment(invoice_id, payload),
+        operation_fn=lambda: service.record_payment(invoice_id, payload, actor=user_email),
     )
 
 
@@ -165,7 +169,7 @@ def reverse_invoice_payment(
     service: InvoicesService = Depends(get_invoices_service),
 ):
     """Reverse a previously recorded payment against an invoice."""
-    return service.reverse_payment(invoice_id, payment_id, reason=reason)
+    return service.reverse_payment(invoice_id, payment_id, reason=reason, actor=_actor_email(current_user))
 
 
 @router.post("/{invoice_id}/remind")

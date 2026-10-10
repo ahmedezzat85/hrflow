@@ -155,7 +155,7 @@ class CustomersService:
             if not is_void and inv_balance > 0.001 and due_dt and due_dt < today:
                 is_overdue = True
 
-            derived_status = "void" if is_void else ("paid" if inv_balance <= 0.001 and float(inv.total) > 0 else ("overdue" if is_overdue else (inv.status or "sent")))
+            derived_status = "void" if is_void else ("paid" if inv_balance <= 0.001 and float(inv.total) > 0 else (inv.status or "sent"))
 
             if not is_void:
                 total_invoiced += float(inv.total)

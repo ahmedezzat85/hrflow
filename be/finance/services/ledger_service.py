@@ -348,6 +348,7 @@ class LedgerService:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         elif data.get("linked_invoice_id"):
             from finance.services.settlement_service import SettlementService
+            from finance.invoice_status import InvalidInvoiceTransition, ReceiptError
             settlement_svc = SettlementService(self.repo.db)
             try:
                 settlement_svc.settle_invoice(
@@ -355,11 +356,18 @@ class LedgerService:
                     amount=data["amount"],
                     payment_date=data["date"],
                     bank_account_id=account_id,
-                    currency=data.get("currency", account.currency if account else "USD"),
+                    payment_type_id=data.get("payment_type_id"),
                     reference=data.get("reference", ""),
                 )
                 data["source"] = "invoice_payment"
+            except InvalidInvoiceTransition as e:
+                self.repo.db.rollback()
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail())
+            except ReceiptError as e:
+                self.repo.db.rollback()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.detail())
             except ValueError as e:
+                self.repo.db.rollback()
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
         try:

@@ -105,7 +105,7 @@ class SalesInvoiceDB(Base):
     invoice_number = Column(String(50), unique=True, nullable=False, index=True)
     issue_date = Column(String(20), nullable=False)
     due_date = Column(String(20), nullable=False)
-    status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/paid/overdue/void
+    status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/partially_paid/paid/void (D-022); overdue is a flag
     currency = Column(String(10), default="USD", nullable=False)
     subtotal = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
@@ -113,6 +113,9 @@ class SalesInvoiceDB(Base):
     expected_bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     revenue_channel = Column(String(50), nullable=True, index=True)  # local_egp | overseas_usd | cash | intercompany_transfer_us | other
     notes = Column(Text, nullable=True)
+    void_reason = Column(Text, nullable=True)
+    voided_by = Column(String(255), nullable=True)
+    voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     customer = relationship("CustomerDB", back_populates="invoices")

@@ -13,6 +13,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
+from finance import invoice_status as inv_status
 from finance.models import (
     SalesInvoiceDB,
     SalesInvoiceLineDB,
@@ -80,18 +81,18 @@ class InvoicesRepository:
         )
         if status:
             st = status.lower().strip()
+            today_str = datetime.utcnow().strftime("%Y-%m-%d")
             if st == "open":
-                query = query.filter(~SalesInvoiceDB.status.in_(["paid", "void"]))
+                query = query.filter(SalesInvoiceDB.status.in_([inv_status.DRAFT, *inv_status.OPEN_STATUSES]))
             elif st == "awaiting_payment":
-                query = query.filter(SalesInvoiceDB.status == "sent")
-            elif st == "overdue":
-                today_str = datetime.utcnow().strftime("%Y-%m-%d")
                 query = query.filter(
-                    ~SalesInvoiceDB.status.in_(["paid", "void"]),
-                    or_(
-                        SalesInvoiceDB.status == "overdue",
-                        SalesInvoiceDB.due_date < today_str,
-                    ),
+                    SalesInvoiceDB.status.in_(inv_status.OPEN_STATUSES),
+                    SalesInvoiceDB.due_date >= today_str,
+                )
+            elif st == "overdue":
+                query = query.filter(
+                    SalesInvoiceDB.status.in_(inv_status.OPEN_STATUSES),
+                    SalesInvoiceDB.due_date < today_str,
                 )
             elif st != "all":
                 query = query.filter(SalesInvoiceDB.status == st)
@@ -154,7 +155,7 @@ class InvoicesRepository:
             invoice_number=data["invoice_number"].strip(),
             issue_date=data["issue_date"],
             due_date=data["due_date"],
-            status=data.get("status", "draft"),
+            status=inv_status.DRAFT,
             currency=data.get("currency", "USD"),
             expected_bank_account_id=data.get("expected_bank_account_id"),
             revenue_channel=data.get("revenue_channel"),
@@ -199,8 +200,6 @@ class InvoicesRepository:
             invoice.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:
             invoice.due_date = data["due_date"]
-        if "status" in data and data["status"] is not None:
-            invoice.status = data["status"]
         if "currency" in data and data["currency"] is not None:
             invoice.currency = data["currency"]
         if "expected_bank_account_id" in data:
@@ -234,102 +233,123 @@ class InvoicesRepository:
         self.db.commit()
         return self._load_invoice_full(invoice_id)
 
-    def void_invoice(self, invoice_id: int) -> Optional[SalesInvoiceDB]:
-        """Void an invoice (soft-delete via status change)."""
-        return self.update(invoice_id, {"status": "void"})
+    def set_status(self, invoice_id: int, new_status: str, extra: Optional[dict] = None) -> Optional[SalesInvoiceDB]:
+        """Apply an action's target status (and any server-owned fields). Only services call this."""
+        invoice = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.id == invoice_id).first()
+        if not invoice:
+            return None
+        invoice.status = new_status
+        for key, value in (extra or {}).items():
+            setattr(invoice, key, value)
+        self.db.commit()
+        return self._load_invoice_full(invoice_id)
+
+    def count_unreversed_receipts(self, invoice_id: int) -> int:
+        return (
+            self.db.query(PaymentDB)
+            .filter(
+                PaymentDB.related_invoice_id == invoice_id,
+                PaymentDB.direction == "incoming",
+                PaymentDB.is_reversed == False,  # noqa: E712
+            )
+            .count()
+        )
 
     # ------------------------------------------------------------------
     # Writes: Payment
     # ------------------------------------------------------------------
     def record_payment(self, data: dict) -> PaymentDB:
         """
-        Record an incoming payment against an invoice.
-        Adjusts the bank account's current_balance atomically (+amount for incoming).
-        After a full payment, marks the invoice as 'paid' if the payment covers it.
+        Record an incoming receipt against an invoice through the settlement service (status,
+        currency and payment-type checks), then write the ledger row and recompute the account
+        balance with recalculate_account_running_balances. Settlement, ledger row and balance
+        commit together or not at all.
         """
-        bank_account = (
-            self.db.query(FinanceBankAccountDB)
-            .filter(FinanceBankAccountDB.id == data["bank_account_id"])
-            .first()
-        )
-        if not bank_account:
-            raise ValueError(f"Bank account {data['bank_account_id']} not found")
+        from finance.services.settlement_service import SettlementService
+        from finance.repositories.ledger_repository import LedgerRepository
+
+        invoice_id = data.get("related_invoice_id")
+        if not invoice_id:
+            raise ValueError("An invoice receipt must reference an invoice")
 
         ref = (data.get("reference") or "").strip()
         if ref:
             dup = (
                 self.db.query(PaymentDB)
-                .filter(PaymentDB.reference == ref, PaymentDB.is_reversed == False)
+                .filter(PaymentDB.reference == ref, PaymentDB.is_reversed == False)  # noqa: E712
                 .first()
             )
             if dup:
                 raise ValueError(f"Duplicate payment reference '{ref}' detected. Please review.")
 
-        invoice = None
-        if data.get("related_invoice_id"):
-            from finance.services.settlement_service import SettlementService
-            settlement_svc = SettlementService(self.db)
-            invoice, payment = settlement_svc.settle_invoice(
-                invoice_id=data["related_invoice_id"],
-                amount=data["amount"],
-                payment_date=data["payment_date"],
-                bank_account_id=bank_account.id,
-                currency=data.get("currency", "USD"),
-                reference=ref,
-                method=data.get("method", "bank_transfer"),
-            )
-        else:
-            payment = PaymentDB(
-                direction=data.get("direction", "incoming"),
-                related_invoice_id=data.get("related_invoice_id"),
-                related_bill_id=data.get("related_bill_id"),
-                amount=data["amount"],
-                currency=data.get("currency", "USD"),
-                payment_date=data["payment_date"],
-                bank_account_id=data["bank_account_id"],
-                method=data.get("method", "bank_transfer"),
-                reference=ref,
-                is_reversed=False,
-            )
-            self.db.add(payment)
+        invoice, payment = SettlementService(self.db).settle_invoice(
+            invoice_id=invoice_id,
+            amount=data["amount"],
+            payment_date=data["payment_date"],
+            bank_account_id=data["bank_account_id"],
+            payment_type_id=data.get("payment_type_id"),
+            reference=ref,
+        )
+        self.db.flush()
 
-        # Adjust balance: incoming → credit, outgoing → debit
-        if payment.direction == "incoming":
-            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
+        account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == payment.bank_account_id).first()
+        if data.get("payment_type_id"):
+            payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == data["payment_type_id"]).first()
         else:
-            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
-
-        # Record corresponding ledger transaction for single source of truth
+            code = inv_status.DEFAULT_RECEIPT_TYPE_CODE_BY_ACCOUNT_TYPE.get((account.account_type or "bank").lower())
+            payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == code).first() if code else None
         rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
-        inbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "INBOUND_TRANS").first()
+        customer = self.db.query(CustomerDB).filter(CustomerDB.id == invoice.customer_id).first()
 
         ledger_tx = LedgerTransactionDB(
-            account_id=bank_account.id,
+            account_id=account.id,
             date=payment.payment_date,
             amount=payment.amount,
-            direction="in" if payment.direction == "incoming" else "out",
+            direction="in",
             currency=payment.currency,
             category_id=rev_cat.id if rev_cat else None,
-            payment_type_id=inbound_pt.id if inbound_pt else None,
-            reference=invoice.invoice_number if invoice else (payment.reference or ""),
-            description=f"Payment for invoice #{invoice.invoice_number}" if invoice else (payment.reference or f"Incoming payment #{payment.id}"),
+            payment_type_id=payment_type.id if payment_type else None,
+            reference=ref,
+            description=(data.get("details") or "").strip() or (customer.name if customer else f"Invoice {invoice.invoice_number}"),
+            payee_type="customer" if customer else "none",
+            payee_id=customer.id if customer else None,
+            payee_name=customer.name if customer else None,
             source="invoice_payment",
-            linked_invoice_id=payment.related_invoice_id,
-            running_balance=bank_account.current_balance,
-            created_at=payment.created_at,
+            linked_invoice_id=invoice.id,
+            running_balance=0.0,
+            created_by=data.get("created_by"),
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        LedgerRepository(self.db).recalculate_account_running_balances(account.id, commit=False)
 
         self.db.commit()
         self.db.refresh(payment)
         return payment
 
-    def reverse_payment(self, payment_id: int, reason: Optional[str] = None) -> PaymentDB:
-        payment = self.db.query(PaymentDB).filter(PaymentDB.id == payment_id).first()
+    def reverse_payment(
+        self, invoice_id: int, payment_id: int, reason: Optional[str] = None, reversed_by: Optional[str] = None
+    ) -> PaymentDB:
+        """
+        Atomically reverse a receipt: mark it reversed, post a reversing ledger row (never deleted),
+        recompute the account balance from the ledger, and derive the invoice status from the
+        receipts that remain.
+        """
+        from finance.repositories.ledger_repository import LedgerRepository
+
+        payment = (
+            self.db.query(PaymentDB)
+            .filter(PaymentDB.id == payment_id, PaymentDB.related_invoice_id == invoice_id)
+            .first()
+        )
         if not payment:
-            raise ValueError(f"Payment {payment_id} not found")
+            raise LookupError(f"Payment {payment_id} not found for invoice {invoice_id}")
         if payment.is_reversed:
             raise ValueError(f"Payment {payment_id} has already been reversed")
+
+        invoice = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.id == invoice_id).first()
+        if invoice.status != inv_status.VOID:
+            inv_status.next_status("reverse_receipt", invoice.status)
 
         bank_account = (
             self.db.query(FinanceBankAccountDB)
@@ -340,43 +360,34 @@ class InvoicesRepository:
             raise ValueError(f"Bank account {payment.bank_account_id} not found")
 
         payment.is_reversed = True
+        payment.reversed_at = datetime.utcnow()
+        payment.reversed_by = reversed_by
+        payment.reversal_reason = (reason or "").strip() or None
 
-        # Reverse bank balance: incoming was credited, so now debit
-        if payment.direction == "incoming":
-            bank_account.current_balance = round(bank_account.current_balance - payment.amount, 4)
-        else:
-            bank_account.current_balance = round(bank_account.current_balance + payment.amount, 4)
-
-        # If related to an invoice, restore invoice status if unpaid balance exists
-        if payment.related_invoice_id:
-            invoice = (
-                self.db.query(SalesInvoiceDB)
-                .filter(SalesInvoiceDB.id == payment.related_invoice_id)
-                .first()
-            )
-            if invoice and invoice.status != "void":
-                existing_payments = self.list_payments(invoice.id)
-                active_paid = sum(p.amount for p in existing_payments if not p.is_reversed)
-                if active_paid < invoice.total:
-                    invoice.status = "sent"
-
-        # Create reversing ledger transaction
         rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
-        ledger_tx = LedgerTransactionDB(
+        self.db.add(LedgerTransactionDB(
             account_id=bank_account.id,
             date=datetime.utcnow().strftime("%Y-%m-%d"),
             amount=payment.amount,
-            direction="out" if payment.direction == "incoming" else "in",
+            direction="out",
             currency=payment.currency,
             category_id=rev_cat.id if rev_cat else None,
             reference=f"REV-{payment.reference or payment.id}",
-            description=f"Reversal of payment #{payment.id}" + (f": {reason.strip()}" if reason else ""),
+            description=f"Reversal of payment #{payment.id}" + (f": {reason.strip()}" if reason and reason.strip() else ""),
             source="payment_reversal",
-            linked_invoice_id=payment.related_invoice_id,
-            running_balance=bank_account.current_balance,
-            created_at=datetime.utcnow(),
-        )
-        self.db.add(ledger_tx)
+            linked_invoice_id=invoice_id,
+            running_balance=0.0,
+            created_by=reversed_by,
+        ))
+        self.db.flush()
+        LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
+
+        if invoice.status != inv_status.VOID:
+            remaining = sum(
+                float(p.amount) for p in self.list_payments(invoice_id)
+                if not p.is_reversed and p.id != payment.id and p.direction == "incoming"
+            )
+            invoice.status = inv_status.derive_payment_status(invoice.total, remaining)
 
         self.db.commit()
         self.db.refresh(payment)

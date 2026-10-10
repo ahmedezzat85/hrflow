@@ -67,7 +67,6 @@ def core_reports_env(app_client, admin_cookies):
             "invoice_number": f"INV-TEST-1-{int(datetime.utcnow().timestamp())}",
             "issue_date": (today - timedelta(days=45)).strftime("%Y-%m-%d"),
             "due_date": (today - timedelta(days=15)).strftime("%Y-%m-%d"),
-            "status": "sent",
             "currency": "USD",
             "lines": [
                 {"description": "Diagnostic Scanning Services", "quantity": 1.0, "unit_price": 12000.0, "line_total": 12000.0}
@@ -76,6 +75,7 @@ def core_reports_env(app_client, admin_cookies):
         cookies=admin_cookies,
     )
     assert inv1_res.status_code in (status.HTTP_200_OK, status.HTTP_201_CREATED)
+    assert app_client.post(f"/api/finance/invoices/{inv1_res.json()['id']}/send", cookies=admin_cookies).status_code == 200
 
     inv2_res = app_client.post(
         "/api/finance/invoices",
@@ -84,7 +84,6 @@ def core_reports_env(app_client, admin_cookies):
             "invoice_number": f"INV-TEST-2-{int(datetime.utcnow().timestamp())}",
             "issue_date": (today - timedelta(days=10)).strftime("%Y-%m-%d"),
             "due_date": (today + timedelta(days=20)).strftime("%Y-%m-%d"),
-            "status": "sent",
             "currency": "USD",
             "lines": [
                 {"description": "Maintenance Support", "quantity": 1.0, "unit_price": 8000.0, "line_total": 8000.0}
@@ -93,6 +92,7 @@ def core_reports_env(app_client, admin_cookies):
         cookies=admin_cookies,
     )
     assert inv2_res.status_code in (status.HTTP_200_OK, status.HTTP_201_CREATED)
+    assert app_client.post(f"/api/finance/invoices/{inv2_res.json()['id']}/send", cookies=admin_cookies).status_code == 200
 
     # 5. Bill (AP)
     bill_res = app_client.post(

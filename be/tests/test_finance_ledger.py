@@ -256,6 +256,10 @@ def test_invoice_and_bill_payments_auto_post_to_ledger(db_session):
         },
         [{"description": "AI PACS integration", "quantity": 1, "unit_price": 5000.0}],
     )
+    inv_repo.set_status(inv.id, "sent")
+    from finance.models import PaymentTypeDB
+    db_session.add(PaymentTypeDB(name="Incoming Transfer", code="INBOUND_TRANS"))
+    db_session.flush()
 
     # Record invoice payment of 5000 USD
     inv_pmt = inv_repo.record_payment({
@@ -303,7 +307,6 @@ def test_invoice_and_bill_payments_auto_post_to_ledger(db_session):
     )
 
     # Record bill payment of 1200 USD through the settlement service (Outgoing transfer, bank account)
-    from finance.models import PaymentTypeDB
     outgoing = PaymentTypeDB(name="Outgoing Transfer", code="OUTBOUND_TRANS")
     db_session.add(outgoing)
     db_session.flush()

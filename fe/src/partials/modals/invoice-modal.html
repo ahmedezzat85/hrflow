@@ -45,7 +45,8 @@
               <option value="draft">Draft</option>
               <option value="sent">Sent / Issued</option>
             </select>
-            <span style="font-size: 11px; color: var(--text3); margin-top: 2px; display: block;">Paid &amp; Overdue are derived automatically.</span>
+            <span style="font-size: 11px; color: var(--text3); margin-top: 2px; display: block;">Choose what happens when you save. Paid, Partially paid and Overdue follow receipts and the due date.</span>
+            <span id="invoiceLockedNote" style="display:none; font-size: 11px; color: var(--text3); margin-top: 2px;">Customer, currency, number, issue date and lines are locked once issued. Void and reissue to correct them.</span>
           </div>
           <div class="form-field">
             <label for="invoiceIssueDate">Issue Date <span class="req">*</span></label>
@@ -159,18 +160,13 @@
         </div>
         <div class="form-field full">
           <label for="paymentBankAccountId">Receiving company bank account <span class="req">*</span></label>
-          <select id="paymentBankAccountId" onchange="_checkPaymentBankDiscrepancy()" required>
+          <select id="paymentBankAccountId" onchange="onReceiptAccountChange()" required>
             <option value="">— Select account —</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="paymentMethod">Method</label>
-          <select id="paymentMethod">
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="other">Other</option>
-          </select>
+          <label for="paymentTypeId">Payment type</label>
+          <select id="paymentTypeId"></select>
         </div>
         <div class="form-field">
           <label for="paymentReference">Reference</label>

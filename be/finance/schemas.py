@@ -8,6 +8,8 @@ import json
 from typing import Optional, List, Dict, Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator, field_validator
 
+from finance.invoice_status import INVOICE_SERVER_OWNED_FIELDS
+
 
 # ==========================================
 # Bank Account Schemas
@@ -551,23 +553,40 @@ class SalesInvoiceBase(BaseModel):
     invoice_number: str = Field(..., min_length=1, max_length=50, description="Unique invoice reference number")
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    status: str = Field("draft", description="draft|sent|paid|overdue|void")
     currency: str = Field("USD", min_length=3, max_length=10)
     expected_bank_account_id: Optional[int] = Field(None, description="Expected destination bank or cash account")
     revenue_channel: Optional[str] = Field(None, description="Revenue channel: local_egp|overseas_usd|cash|intercompany_transfer_us|other")
     notes: Optional[str] = None
 
 
+def _reject_invoice_server_fields(data):
+    """Invoice status and void fields are set only by server actions (D-022); a client-supplied value is refused."""
+    if isinstance(data, dict):
+        sent = [k for k in INVOICE_SERVER_OWNED_FIELDS if k in data]
+        if sent:
+            raise ValueError(f"{', '.join(sent)} cannot be set by the client; set by the server through invoice actions")
+    return data
+
+
 class SalesInvoiceCreate(SalesInvoiceBase):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_invoice_server_fields(data)
+
     lines: List[SalesInvoiceLineCreate] = Field(default_factory=list)
 
 
 class SalesInvoiceUpdate(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_invoice_server_fields(data)
+
     customer_id: Optional[int] = None
     invoice_number: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
-    status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     expected_bank_account_id: Optional[int] = None
     revenue_channel: Optional[str] = None
@@ -577,6 +596,10 @@ class SalesInvoiceUpdate(BaseModel):
 
 class SalesInvoiceResponse(SalesInvoiceBase):
     id: int
+    status: str = "draft"  # draft|sent|partially_paid|paid|void; overdue is the is_overdue flag
+    void_reason: Optional[str] = None
+    voided_by: Optional[str] = None
+    voided_at: Optional[datetime] = None
     subtotal: float
     tax_amount: float
     total: float
@@ -902,6 +925,7 @@ class PaymentBase(BaseModel):
 class PaymentCreate(PaymentBase):
     related_invoice_id: Optional[int] = None
     related_bill_id: Optional[int] = None
+    payment_type_id: Optional[int] = Field(None, description="Incoming payment type for an invoice receipt (defaults by account kind)")
 
 
 class PaymentResponse(PaymentBase):
