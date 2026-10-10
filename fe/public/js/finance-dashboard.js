@@ -165,10 +165,19 @@ function renderFinanceDashboard(summary, ctx = {}) {
   const currency = summary.currency || summary.base_currency || "USD";
   const fmt = (n) => FinanceFormat.formatMoney(n, currency);
 
-  if (balanceEl) balanceEl.textContent = fmt(summary.balance);
-  if (revEl) revEl.textContent = fmt(summary.revenue_mtd);
-  if (costEl) costEl.textContent = fmt(summary.cost_mtd);
-  if (netEl) netEl.textContent = fmt(summary.net_mtd);
+  if (currency === "ALL") {
+    // D-026: currencies are never added together; show one figure per currency side by side
+    const perCurrency = (key) => (summary.by_currency || []).map((c) => FinanceFormat.formatMoney(c[key], c.currency)).join(" · ") || "—";
+    if (balanceEl) balanceEl.textContent = perCurrency("balance");
+    if (revEl) revEl.textContent = perCurrency("revenue");
+    if (costEl) costEl.textContent = perCurrency("cost");
+    if (netEl) netEl.textContent = perCurrency("net");
+  } else {
+    if (balanceEl) balanceEl.textContent = fmt(summary.balance);
+    if (revEl) revEl.textContent = fmt(summary.revenue_mtd);
+    if (costEl) costEl.textContent = fmt(summary.cost_mtd);
+    if (netEl) netEl.textContent = fmt(summary.net_mtd);
+  }
 
   // Labels & Subtexts
   // Sentence-case labels. The cash card names the accounts its figure covers, so a USD total is never
@@ -227,7 +236,7 @@ function renderFinanceDashboard(summary, ctx = {}) {
 
   const basisBadge = document.getElementById("financeDashboardBasisBadge");
   if (basisBadge && summary.basis) {
-    basisBadge.innerHTML = `<i class="fa-solid fa-scale-balanced"></i> Basis: ${summary.basis === "accrual" ? "Accrual" : "Cash"}`;
+    basisBadge.innerHTML = `<i class="fa-solid fa-scale-balanced"></i> Basis: ${summary.basis === "accrual" ? "Accrual" : "Cash"}${summary.basis_note ? ` (${FinanceFormat.escapeHtml(summary.basis_note)})` : ""}`;
   }
 
   const scopeBadge = document.getElementById("financeDashboardScopeBadge");

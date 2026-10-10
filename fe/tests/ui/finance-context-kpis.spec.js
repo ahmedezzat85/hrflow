@@ -74,7 +74,7 @@ test.describe('Story 2.1 — Finance Context Bar and Trustworthy KPIs', () => {
     // Select Multi-currency
     await page.selectOption('#financeContextCurrency', 'all');
     await expect(policyNotice).toBeVisible();
-    await expect(policyNotice).toContainText('without conversion');
+    await expect(policyNotice).toContainText('never added together');
 
     // Select specific USD currency
     await page.selectOption('#financeContextCurrency', 'USD');

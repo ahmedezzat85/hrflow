@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. F1 to F5 implemented on `feature/fin-f1-invoice-rules`; F6 not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 to F6 implemented on `feature/fin-f1-invoice-rules` (no migration for F4 or F6).
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -83,10 +83,10 @@ Acceptance:
 6. The accrual view is labelled "Partial: excludes payroll, statutory and bank fees" until a later slice completes it.
 
 Acceptance:
-- [ ] Reversing a 1,000 bill payment leaves revenue unchanged and reduces spend by 1,000.
-- [ ] A 5,000 teller withdrawal changes neither revenue nor spend.
-- [ ] Payroll net pay appears in spend.
-- [ ] "All currencies" shows separate USD and EGP figures.
+- [x] Reversing a 1,000 bill payment leaves revenue unchanged and reduces spend by 1,000. (Shared classifier `be/finance/cash_basis.py` drives the summary KPIs and the cash P&L statement; an invoice-receipt reversal reduces revenue.)
+- [x] A 5,000 teller withdrawal changes neither revenue nor spend (also cash-withdrawal cheques and FX exchange).
+- [x] Payroll net pay appears in spend (statutory remittances too).
+- [x] "All currencies" shows separate USD and EGP figures (`by_currency` on the summary and the P&L; dashboard and P&L report render one figure per currency; no converted total).
 
 ## Order and delivery
 

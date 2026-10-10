@@ -395,7 +395,7 @@
           {
             key: "withholding-credits",
             title: "Withholding Tax Credits",
-            category: "Receivables",
+            category: "Sales & Receivables",
             business_question: "How much tax have customers withheld from our payments, for offsetting against income tax?",
             description: "Tax withheld by customers on invoice receipts, by customer and month. No bank movement is involved.",
             icon: "fa-solid fa-hand-holding-dollar",
@@ -613,7 +613,24 @@
   async getProfitAndLossReport(params = {}) {
     if (_isMock()) {
       const basis = params.basis || "cash";
+      const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
+      if (String(params.currency || "").toUpperCase() === "ALL") {
+        // D-026: one statement per currency, never added together
+        const usd = await FinanceReportsApi.getProfitAndLossReport({ ...params, currency: "USD" });
+        const egp = {
+          ...usd, currency: "EGP", revenue_items: [{ category_name: "Local EGP sales", amount: 400000.0, percentage: 100.0 }],
+          total_revenue: 400000.0, expense_items: [{ category_name: "Office rent", amount: 150000.0, percentage: 100.0 }],
+          total_expenses: 150000.0, net_income: 250000.0, net_margin_pct: 62.5, prior_revenue: null, prior_expenses: null, prior_net_income: null,
+        };
+        return {
+          report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis, currency: "ALL",
+          period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30", comparison_type: params.comparison || "none",
+          revenue_items: [], total_revenue: 0, expense_items: [], total_expenses: 0, net_income: 0, net_margin_pct: 0,
+          by_currency: [egp, usd], basis_note: note,
+        };
+      }
       return {
+        basis_note: note,
         report_title: "Profit & Loss Statement",
         entity: params.entity || "Voyance Health (Consolidated)",
         basis,

@@ -4427,7 +4427,7 @@ async getFeatureFlags() {
           {
             key: "withholding-credits",
             title: "Withholding Tax Credits",
-            category: "Receivables",
+            category: "Sales & Receivables",
             business_question: "How much tax have customers withheld from our payments, for offsetting against income tax?",
             description: "Tax withheld by customers on invoice receipts, by customer and month. No bank movement is involved.",
             icon: "fa-solid fa-hand-holding-dollar",
@@ -4645,7 +4645,24 @@ async getFeatureFlags() {
   async getProfitAndLossReport(params = {}) {
     if (_isMock()) {
       const basis = params.basis || "cash";
+      const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
+      if (String(params.currency || "").toUpperCase() === "ALL") {
+        // D-026: one statement per currency, never added together
+        const usd = await FinanceReportsApi.getProfitAndLossReport({ ...params, currency: "USD" });
+        const egp = {
+          ...usd, currency: "EGP", revenue_items: [{ category_name: "Local EGP sales", amount: 400000.0, percentage: 100.0 }],
+          total_revenue: 400000.0, expense_items: [{ category_name: "Office rent", amount: 150000.0, percentage: 100.0 }],
+          total_expenses: 150000.0, net_income: 250000.0, net_margin_pct: 62.5, prior_revenue: null, prior_expenses: null, prior_net_income: null,
+        };
+        return {
+          report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis, currency: "ALL",
+          period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30", comparison_type: params.comparison || "none",
+          revenue_items: [], total_revenue: 0, expense_items: [], total_expenses: 0, net_income: 0, net_margin_pct: 0,
+          by_currency: [egp, usd], basis_note: note,
+        };
+      }
       return {
+        basis_note: note,
         report_title: "Profit & Loss Statement",
         entity: params.entity || "Voyance Health (Consolidated)",
         basis,
@@ -5168,7 +5185,7 @@ async getFinanceSummary(params = {}) {
       if (basis === "accrual") {
         let invs = [...(FinanceMockState.invoices || [])].filter((i) => i.status !== "void" && i.status !== "draft");
         if (currency !== "ALL") invs = invs.filter((i) => (i.currency || "USD").toUpperCase() === currency);
-        revenue = invs.reduce((acc, i) => acc + (i.total || 0), 0) || 30000.0;
+        revenue = invs.reduce((acc, i) => acc + (i.subtotal || i.total || 0), 0) || 30000.0;
 
         let bills = [...(FinanceMockState.bills || [])].filter((b) => b.status !== "void");
         if (currency !== "ALL") bills = bills.filter((b) => (b.currency || "USD").toUpperCase() === currency);
@@ -5186,22 +5203,31 @@ async getFinanceSummary(params = {}) {
       const net = Math.round((revenue - cost) * 100) / 100;
       const marginValid = revenue > 0;
       const marginPct = marginValid ? Math.round((net / revenue) * 1000) / 10 : null;
-      const displayCurrency = currency !== "ALL" ? currency : "USD";
+      const displayCurrency = currency;
+      const isAll = currency === "ALL";
+      const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
+      // D-026: "All currencies" shows one figure per currency and no converted total
+      const byCurrency = isAll ? [
+        { currency: "EGP", balance: 470000.0, revenue: 0.0, cost: 0.0, net: 0.0, margin_pct: null, margin_valid: false },
+        { currency: "USD", balance: 245000.0, revenue, cost, net, margin_pct: marginPct, margin_valid: marginValid },
+      ] : [];
 
       return {
-        balance: balance || 245000.0,
-        revenue_mtd: revenue,
-        cost_mtd: cost,
-        net_mtd: net,
-        margin_pct: marginPct,
-        margin_valid: marginValid,
+        balance: isAll ? null : (balance || 245000.0),
+        revenue_mtd: isAll ? null : revenue,
+        cost_mtd: isAll ? null : cost,
+        net_mtd: isAll ? null : net,
+        margin_pct: isAll ? null : marginPct,
+        margin_valid: isAll ? false : marginValid,
+        by_currency: byCurrency,
+        basis_note: note,
         currency: displayCurrency,
         base_currency: displayCurrency,
         period: period,
         basis: basis,
         entity: entity,
         conversion_policy: currency === "ALL"
-          ? "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
+          ? "One column per currency, side by side. Currencies are never added together and no converted total is shown."
           : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
         data_scope: `${entity}_${currency.toLowerCase()}`,
         open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,

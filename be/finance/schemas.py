@@ -1821,6 +1821,8 @@ class ProfitAndLossResponse(BaseModel):
     net_income: float
     prior_net_income: Optional[float] = None
     net_margin_pct: float = 0.0
+    basis_note: Optional[str] = None  # accrual view is labelled partial until payroll, statutory and bank fees are included
+    by_currency: List[Dict[str, Any]] = []  # currency "ALL": one statement per currency, never added together
 
 
 class BalanceSheetSectionItem(BaseModel):

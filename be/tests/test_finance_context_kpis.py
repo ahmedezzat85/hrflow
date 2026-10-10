@@ -193,4 +193,5 @@ def test_multi_currency_policy_disclosure(app_client, admin_cookies):
     )
     assert res.status_code == 200
     data = res.json()
-    assert "without conversion" in data["conversion_policy"]
+    assert "never added together" in data["conversion_policy"]
+    assert data["currency"] == "ALL" and data["revenue_mtd"] is None and isinstance(data["by_currency"], list)

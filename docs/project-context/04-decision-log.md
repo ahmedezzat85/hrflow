@@ -392,7 +392,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-026 — Cash Basis Is the Main P&L View
 
-- **Status:** Accepted by owner, October 10, 2026. Not implemented; slice F6.
+- **Status:** Accepted by owner, October 10, 2026. Implemented on `feature/fin-f1-invoice-rules` (slice F6, no migration). Scope: the cash/accrual summary KPIs and the cash/accrual P&L statement; other cash-basis reports (cash flow, category rollups) keep their own logic.
 - **Decision:** The cash-basis P&L is the primary view. Reversals reduce the side they reverse; movements between own accounts (transfers, exchange, withdrawals) are excluded; payroll and statutory payments count as spend. "All currencies" shows one column per currency with no converted total. The accrual view is labelled partial until completed later.
 - **Rationale:** The owner runs the business on a cashbook; the review found reversals counted as revenue, withdrawals counted on both sides, and USD and EGP summed under a USD label.
 

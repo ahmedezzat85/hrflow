@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 
 from finance.bill_status import OPEN_STATUSES, SPEND_STATUSES
 from finance import invoice_status as inv_status
+from finance import cash_basis
 from finance.models import (
     FinanceBankAccountDB,
     LedgerTransactionDB,
@@ -44,6 +45,9 @@ from finance.services.excel_exporter import (
     export_aging_xlsx,
     export_report_csv,
 )
+
+
+ACCRUAL_PARTIAL_NOTE = "Partial: excludes payroll, statutory and bank fees"
 
 
 class ReportsService:
@@ -95,8 +99,17 @@ class ReportsService:
             )
         accounts = acc_q.all()
         total_cash = round(sum(float(a.current_balance or 0.0) for a in accounts), 2)
+        balance_by_cur: Dict[str, float] = {}
+        for a in accounts:
+            cur = (a.currency or "USD").upper()
+            balance_by_cur[cur] = round(balance_by_cur.get(cur, 0.0) + float(a.current_balance or 0.0), 2)
 
-        # 2. Revenue & Operating Spend
+        # 2. Revenue & Operating Spend, kept per currency: currencies are never added together (D-026)
+        per_cur: Dict[str, Dict[str, float]] = {}
+
+        def _bucket(cur: Optional[str]) -> Dict[str, float]:
+            return per_cur.setdefault((cur or "USD").upper(), {"revenue": 0.0, "spend": 0.0})
+
         if basis_norm == "accrual":
             inv_q = self.db.query(SalesInvoiceDB).filter(
                 SalesInvoiceDB.status != "void",
@@ -108,8 +121,8 @@ class ReportsService:
                 inv_q = inv_q.filter(SalesInvoiceDB.issue_date <= end_date)
             if curr_norm != "ALL":
                 inv_q = inv_q.filter(SalesInvoiceDB.currency == curr_norm)
-            invoices = inv_q.all()
-            revenue = round(sum(float(i.subtotal or 0.0) for i in invoices), 2)  # net of VAT (D-023)
+            for i in inv_q.all():
+                _bucket(i.currency)["revenue"] += float(i.subtotal or 0.0)  # net of VAT (D-023)
 
             bill_q = self.db.query(BillDB).filter(BillDB.status.in_(SPEND_STATUSES))
             if start_date:
@@ -118,12 +131,12 @@ class ReportsService:
                 bill_q = bill_q.filter(BillDB.issue_date <= end_date)
             if curr_norm != "ALL":
                 bill_q = bill_q.filter(BillDB.currency == curr_norm)
-            bills = bill_q.all()
-            operating_spend = round(sum(float(b.total or 0.0) for b in bills), 2)
+            for b in bill_q.all():
+                _bucket(b.currency)["spend"] += float(b.total or 0.0)
         else:
-            # Cash basis: ledger transactions
+            # Cash basis: ledger transactions, classified by finance.cash_basis (D-026)
             tx_q = (
-                self.db.query(LedgerTransactionDB)
+                self.db.query(LedgerTransactionDB, TransactionCategoryDB.kind)
                 .join(FinanceBankAccountDB, LedgerTransactionDB.account_id == FinanceBankAccountDB.id)
                 .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
             )
@@ -142,51 +155,48 @@ class ReportsService:
                         FinanceBankAccountDB.bank_name.ilike(pat),
                     )
                 )
+            for t, kind in tx_q.all():
+                cls = cash_basis.classify(t, kind, has_category=t.category_id is not None)
+                if cls:
+                    side, signed = cls
+                    _bucket(t.currency)[side] += signed
 
-            # Exclude internal transfers
-            tx_q = tx_q.filter(
-                LedgerTransactionDB.source != "transfer",
-                or_(TransactionCategoryDB.kind == None, TransactionCategoryDB.kind != "transfer"),
-            )
-            all_txs = tx_q.all()
+        def _rounded(cur: str, key: str) -> float:
+            return round(per_cur.get(cur, {}).get(key, 0.0), 2)
 
-            revenue = round(
-                sum(
-                    float(t.amount or 0.0)
-                    for t in all_txs
-                    if t.direction == "in"
-                    and (
-                        (t.category and t.category.kind == "revenue")
-                        or t.linked_invoice_id
-                        or not t.category
-                        or t.category.kind != "cost"
-                    )
-                ),
-                2,
-            )
-            operating_spend = round(
-                sum(
-                    float(t.amount or 0.0)
-                    for t in all_txs
-                    if t.direction == "out"
-                    and (
-                        (t.category and t.category.kind == "cost")
-                        or t.linked_bill_id
-                        or t.source in ("bill_payment", "subscription_charge", "cheque")
-                        or not t.category
-                        or t.category.kind != "revenue"
-                    )
-                ),
-                2,
-            )
-
-        net_result = round(revenue - operating_spend, 2)
-        if revenue > 0:
-            margin_pct = round((net_result / revenue) * 100, 1)
-            margin_valid = True
+        by_currency = []
+        if curr_norm == "ALL":
+            for cur in sorted(set(per_cur) | set(balance_by_cur)):
+                rev_c, spend_c = _rounded(cur, "revenue"), _rounded(cur, "spend")
+                net_c = round(rev_c - spend_c, 2)
+                by_currency.append({
+                    "currency": cur,
+                    "balance": balance_by_cur.get(cur, 0.0),
+                    "revenue": rev_c,
+                    "cost": spend_c,
+                    "net": net_c,
+                    "margin_pct": round((net_c / rev_c) * 100, 1) if rev_c > 0 else None,
+                    "margin_valid": rev_c > 0,
+                })
+            revenue = operating_spend = None
         else:
+            revenue = _rounded(curr_norm, "revenue")
+            operating_spend = _rounded(curr_norm, "spend")
+
+        if curr_norm == "ALL":
+            # No converted total: the figures live in by_currency, one entry per currency
+            net_result = None
             margin_pct = None
             margin_valid = False
+            total_cash = None
+        else:
+            net_result = round(revenue - operating_spend, 2)
+            if revenue > 0:
+                margin_pct = round((net_result / revenue) * 100, 1)
+                margin_valid = True
+            else:
+                margin_pct = None
+                margin_valid = False
 
         open_inv_count = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.status.in_(["sent", "draft", "partially_paid"])).count()
         unpaid_bills_count = self.db.query(BillDB).filter(BillDB.status.in_(OPEN_STATUSES)).count()
@@ -194,12 +204,13 @@ class ReportsService:
 
         now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         conversion_policy = (
-            "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
+            "One column per currency, side by side. Currencies are never added together and no converted total is shown."
             if curr_norm == "ALL"
             else f"Filtered strictly to {curr_norm} accounts and transactions (1:1 single currency)."
         )
 
-        display_currency = curr_norm if curr_norm != "ALL" else "USD"
+        display_currency = curr_norm if curr_norm != "ALL" else "ALL"
+        basis_note = ACCRUAL_PARTIAL_NOTE if basis_norm == "accrual" else None
 
         kpis = {
             "total_cash": {
@@ -221,9 +232,9 @@ class ReportsService:
                 "label": f"Revenue ({period_norm})",
                 "period": period_norm,
                 "definition": (
-                    "Actual cash inflows received and categorized as revenue"
+                    "Cash inflows received, net of reversals; transfers, exchange and cash withdrawals between own accounts are excluded"
                     if basis_norm == "cash"
-                    else "Recognized revenue from all non-void sales invoices issued in period"
+                    else f"Recognized net revenue (excluding VAT) from all non-void sales invoices issued in period. {ACCRUAL_PARTIAL_NOTE}"
                 ),
                 "formula": (
                     "SUM(ledger_inflows WHERE source!='transfer' AND kind!='transfer')"
@@ -241,9 +252,9 @@ class ReportsService:
                 "label": f"Operating Expenses ({period_norm})",
                 "period": period_norm,
                 "definition": (
-                    "Actual cash outflows paid for expenses, bills, and charges"
+                    "Cash outflows for expenses, bills, payroll and statutory payments, net of reversals; own-account movements are excluded"
                     if basis_norm == "cash"
-                    else "Recognized costs from all non-void vendor bills issued in period"
+                    else f"Recognized costs from all non-void vendor bills issued in period. {ACCRUAL_PARTIAL_NOTE}"
                 ),
                 "formula": (
                     "SUM(ledger_outflows WHERE source!='transfer' AND kind!='transfer')"
@@ -294,8 +305,10 @@ class ReportsService:
             "margin_valid": margin_valid,
             "currency": display_currency,
             "base_currency": display_currency,
+            "by_currency": by_currency,
             "period": period_norm,
             "basis": basis_norm,
+            "basis_note": basis_note,
             "entity": entity_norm,
             "conversion_policy": conversion_policy,
             "data_scope": f"{entity_norm}_{curr_norm.lower()}",
@@ -851,7 +864,7 @@ class ReportsService:
             {
                 "key": "withholding-credits",
                 "title": "Withholding Tax Credits",
-                "category": "Receivables",
+                "category": "Sales & Receivables",
                 "business_question": "How much tax have customers withheld from our payments, for offsetting against income tax?",
                 "description": "Tax withheld by customers on invoice receipts, by customer and month. No bank movement is involved.",
                 "icon": "fa-solid fa-hand-holding-dollar",
@@ -1202,6 +1215,36 @@ class ReportsService:
         basis_norm = (basis or "cash").lower()
         entity_norm = (entity or "all").strip().lower()
 
+        if curr_norm == "ALL":
+            # D-026: one statement per currency, side by side; currencies are never added together
+            currencies = sorted({
+                (c or "USD").upper()
+                for (c,) in self.db.query(FinanceBankAccountDB.currency).filter(FinanceBankAccountDB.is_active == True).distinct()  # noqa: E712
+            } | {
+                (c or "USD").upper() for (c,) in self.db.query(SalesInvoiceDB.currency).distinct()
+            })
+            columns = [
+                self.get_profit_and_loss(entity=entity, date_from=date_from, date_to=date_to, basis=basis, currency=c, comparison=comparison)
+                for c in currencies
+            ]
+            return {
+                "report_title": "Profit & Loss Statement",
+                "entity": entity_norm if entity_norm != "all" else "Voyance Health (Consolidated)",
+                "basis": basis_norm,
+                "currency": "ALL",
+                "period_start": d_from,
+                "period_end": d_to,
+                "comparison_type": comparison,
+                "revenue_items": [],
+                "total_revenue": 0.0,
+                "expense_items": [],
+                "total_expenses": 0.0,
+                "net_income": 0.0,
+                "net_margin_pct": 0.0,
+                "by_currency": columns,
+                "basis_note": ACCRUAL_PARTIAL_NOTE if basis_norm == "accrual" else None,
+            }
+
         def compute_pnl_range(start_d: str, end_d: str):
             rev_items = []
             exp_items = []
@@ -1271,12 +1314,17 @@ class ReportsService:
                 cat_rev = {}
                 cat_exp = {}
                 for t, cname, ckind in txs:
-                    cat_display = cname or ("Sales Revenue" if t.direction == "in" else "Uncategorized Expense")
-                    amt = float(t.amount or 0.0)
-                    if t.direction == "in":
+                    # D-026: own-account movements count nowhere, reversals reduce the side they reverse
+                    cls = cash_basis.classify(t, ckind, has_category=t.category_id is not None)
+                    if not cls:
+                        continue
+                    side, amt = cls
+                    if side == cash_basis.REVENUE:
+                        cat_display = cname or "Sales Revenue"
                         cat_rev[cat_display] = cat_rev.get(cat_display, 0.0) + amt
                         total_rev += amt
                     else:
+                        cat_display = cname or "Uncategorized Expense"
                         cat_exp[cat_display] = cat_exp.get(cat_display, 0.0) + amt
                         total_exp += amt
 
@@ -1341,6 +1389,7 @@ class ReportsService:
             "net_income": net_inc,
             "prior_net_income": prior_net,
             "net_margin_pct": margin,
+            "basis_note": ACCRUAL_PARTIAL_NOTE if basis_norm == "accrual" else None,
         }
 
     def get_balance_sheet(
