@@ -262,6 +262,8 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: none;
+  transition: background-color .15s, color .15s, border-color .15s;
 }
 
 .fv .fv-pill__dot {
@@ -288,8 +290,8 @@
 
 .fv .fv-pill--waiting { background: var(--warning-soft); border-color: transparent; color: var(--warning); }
 .fv .fv-pill--open { background: var(--brand-tint); border-color: transparent; color: var(--brand-ink); }
-.fv .fv-pill--planned { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); border-color: transparent; color: var(--id-violet-ink); }
-.fv .fv-pill--part { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); border-color: transparent; color: var(--id-teal-ink); }
+.fv .fv-pill--planned { background: color-mix(in srgb, var(--id-violet) var(--fv-status-tint-pct), transparent); border-color: transparent; color: var(--id-violet-ink); }
+.fv .fv-pill--part { background: color-mix(in srgb, var(--id-teal) var(--fv-status-tint-pct), transparent); border-color: transparent; color: var(--fv-part-ink); }
 .fv .fv-pill--settled { background: var(--success-soft); border-color: transparent; color: var(--success); }
 .fv .fv-pill--problem { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
 .fv .fv-pill--closed { background: var(--fv-closed-bg); border-color: transparent; color: var(--ink-label); }
@@ -697,8 +699,8 @@
 .fv .fv-status--draft .fv-status__dot { background: var(--ink-faint); }
 .fv .fv-status--waiting { background: var(--warning-soft); color: var(--warning); }
 .fv .fv-status--open { background: var(--brand-tint); color: var(--brand-ink); }
-.fv .fv-status--planned { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
-.fv .fv-status--part { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+.fv .fv-status--planned { background: color-mix(in srgb, var(--id-violet) var(--fv-status-tint-pct), transparent); color: var(--id-violet-ink); }
+.fv .fv-status--part { background: color-mix(in srgb, var(--id-teal) var(--fv-status-tint-pct), transparent); color: var(--fv-part-ink); }
 .fv .fv-status--settled { background: var(--success-soft); color: var(--success); }
 .fv .fv-status--problem { background: var(--danger-soft); color: var(--danger); }
 .fv .fv-status--closed { background: var(--fv-closed-bg); color: var(--ink-label); }
@@ -727,6 +729,7 @@
   background: transparent;
   color: var(--ink-muted);
   font-size: 15px;
+  flex: none;
   cursor: pointer;
 }
 
@@ -851,6 +854,8 @@
 .fv .modal-body input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .fv .modal-body select {
   height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
   border-radius: 9px;
   border: 1px solid var(--fv-input-border);
   background: var(--fv-surface);
@@ -963,4 +968,391 @@
 
 .fv .fv-outcome--teal {
   background: color-mix(in srgb, var(--id-teal) 10%, transparent);
+}
+
+/* ---------- Shared bits used by the tables ---------- */
+.fv .fv-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+
+.fv .fv-pills-row .fv-pills {
+  flex: 1 1 auto;
+}
+
+.fv .fv-name-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink-strong);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.fv .fv-name-btn:hover {
+  color: var(--brand-text);
+}
+
+.fv .fv-name-btn:focus-visible,
+.fv .fv-icon-btn:focus-visible,
+.fv .fv-pill:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.fv .fv-icon-slot {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+
+.fv .fv-row-actions .fv-row-btn {
+  flex: none;
+}
+
+.fv .fv-flags {
+  display: flex;
+  flex-direction: column;
+}
+
+.fv .fv-status--inline {
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 11.5px;
+  vertical-align: middle;
+}
+
+.fv .fv-amount__value--none {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
+.fv .fv-table th[data-sort] {
+  cursor: pointer;
+}
+
+.fv .fv-table th[data-sort] .sort-icon {
+  display: none;
+  margin-left: 4px;
+  font-size: 11px;
+}
+
+.fv .fv-table th[data-sort][aria-sort="ascending"],
+.fv .fv-table th[data-sort][aria-sort="descending"] {
+  color: var(--brand-text);
+}
+
+.fv .fv-table th[data-sort][aria-sort="ascending"] .sort-icon,
+.fv .fv-table th[data-sort][aria-sort="descending"] .sort-icon {
+  display: inline-block;
+}
+
+.fv .fv-table--bills,
+.fv .fv-table--vendors {
+  table-layout: fixed;
+}
+
+.fv .fv-table--bills th:nth-child(1) { width: 29%; }
+.fv .fv-table--bills th:nth-child(2) { width: 12.5%; }
+.fv .fv-table--bills th:nth-child(3) { width: 13.5%; }
+.fv .fv-table--bills th:nth-child(4) { width: 14%; }
+.fv .fv-table--bills th:nth-child(5) { width: 10.5%; }
+
+.fv .fv-table--vendors th:nth-child(1) { width: 27%; }
+.fv .fv-table--vendors th:nth-child(2) { width: 14%; }
+.fv .fv-table--vendors th:nth-child(3) { width: 21%; }
+.fv .fv-table--vendors th:nth-child(4) { width: 12%; }
+.fv .fv-table--vendors th:nth-child(5) { width: 12%; }
+
+.fv .fv-table td.col-actions,
+.fv .fv-table th.col-actions,
+.fv .fv-table--bills td:last-child,
+.fv .fv-table--vendors td:last-child {
+  text-align: right;
+}
+
+/* Footer: the shared pagination bar styled as the table footer */
+.fv .fv-table-card .pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--fv-line-row);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.fv .fv-table-card .pagination-summary strong {
+  font-weight: 700;
+  color: var(--brand-text);
+}
+
+.fv .fv-table-card .pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fv .fv-table-card .pagination-size-select {
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--fv-input-border);
+  background: var(--fv-surface);
+  color: var(--ink-label);
+  font-size: 12.5px;
+}
+
+.fv .fv-table-card .pagination-btn {
+  height: 28px;
+  min-width: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--fv-input-border);
+  background: var(--fv-surface);
+  color: var(--ink-label);
+}
+
+.fv .fv-table-card .pagination-controls span {
+  font-size: 12.5px !important;
+  font-weight: 400 !important;
+  color: var(--ink-muted);
+}
+
+/* Switch toggle (Overdue only): same checkbox, ID and handler */
+.fv .fv-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  flex: none;
+  border-radius: 999px;
+  background: var(--fv-input-border);
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.fv .fv-toggle input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fv-on-brand);
+  transition: transform .15s;
+}
+
+.fv .fv-toggle input[type="checkbox"]:checked {
+  background: var(--brand);
+}
+
+.fv .fv-toggle input[type="checkbox"]:checked::after {
+  transform: translateX(12px);
+}
+
+.fv .fv-toggle input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ---------- Dialog extras ---------- */
+.fv-area-blue { --fv-a: var(--id-blue); --fv-a-ink: var(--id-blue-ink); }
+.fv-area-orange { --fv-a: var(--id-orange); --fv-a-ink: var(--id-orange-ink); }
+.fv-area-teal { --fv-a: var(--id-teal); --fv-a-ink: var(--id-teal-ink); }
+.fv-area-sky { --fv-a: var(--id-sky); --fv-a-ink: var(--id-sky-ink); }
+.fv-area-violet { --fv-a: var(--id-violet); --fv-a-ink: var(--id-violet-ink); }
+.fv-area-slate { --fv-a: var(--ink-label); --fv-a-ink: var(--ink-label); }
+
+.fv-dialog .modal-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 11px;
+  font-size: 18px;
+  background: color-mix(in srgb, var(--fv-a, var(--id-blue)) var(--fv-tint-pct), transparent);
+  color: var(--fv-a-ink, var(--id-blue-ink));
+}
+
+.fv-dialog--danger .modal-head-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.fv-dialog .modal-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.fv-dialog .modal-head-text h3 {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.fv-dialog .modal-head-text p {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-top: 1px;
+}
+
+.fv-dialog .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fv-dialog .form-field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+  margin-bottom: 5px;
+}
+
+.fv-dialog .form-field textarea {
+  border-radius: 9px;
+  border: 1px solid var(--fv-input-border);
+  color: var(--ink-strong);
+}
+
+.fv-dialog .modal-foot {
+  align-items: center;
+}
+
+/* Cancel is a text button in every dialog footer */
+.fv-dialog .modal-foot > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline),
+.fv-dialog .modal-foot .fv-foot-right > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-label);
+}
+
+.fv-dialog .btn-danger,
+.fv-dialog .btn-fill.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--fv-on-brand);
+}
+
+.fv .fv-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 3px;
+}
+
+.fv .fv-hint--danger {
+  color: var(--danger);
+}
+
+.fv .fv-strong {
+  font-weight: 700;
+}
+
+.fv .fv-callout {
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 13px;
+  color: var(--ink-body);
+  background: var(--brand-wash);
+}
+
+.fv .fv-callout--danger {
+  background: var(--danger-soft);
+}
+
+.fv .fv-callout__title {
+  font-weight: 700;
+  color: var(--danger);
+  margin-bottom: 2px;
+}
+
+.fv .fv-summary--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.fv .fv-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fv .fv-summary__side {
+  text-align: right;
+}
+
+.fv .fv-summary__name {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.fv .fv-summary__meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--fv-line);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.fv .fv-summary__meta strong {
+  color: var(--ink-strong);
+}
+
+.fv .fv-choice__btn--danger[aria-pressed="true"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Dialog sections and footer buttons: no icons in text buttons, plain section titles */
+.fv-dialog .modal-foot .btn > i {
+  display: none;
+}
+
+.fv-dialog .form-section-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-strong);
+}
+
+.fv-dialog .form-section-label .line,
+.fv-dialog .form-section-label i {
+  display: none;
+}
+
+.fv .fv-outcome .fv-status {
+  vertical-align: middle;
+}
+
+.fv .fv-note {
+  white-space: nowrap;
 }

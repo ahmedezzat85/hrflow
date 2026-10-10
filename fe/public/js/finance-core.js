@@ -330,9 +330,36 @@ const FinanceUI = {
     return this.STATUS_GROUPS[key] || "closed";
   },
 
-  statusPill(group, label, attrs) {
+  // attrs: raw, caller-escaped attribute string (for example role/aria-label); extraClass: legacy hook classes.
+  statusPill(group, label, attrs, extraClass) {
     const g = this.STATUS_GROUPS[group] ? this.STATUS_GROUPS[group] : group;
-    return `<span class="fv-status fv-status--${this.esc(g)}"${attrs ? " " + attrs : ""}><span class="fv-status__dot" aria-hidden="true"></span>${this.esc(label)}</span>`;
+    return `<span class="fv-status fv-status--${this.esc(g)}${extraClass ? " " + this.esc(extraClass) : ""}"${attrs ? " " + attrs : ""}><span class="fv-status__dot" aria-hidden="true"></span>${this.esc(label)}</span>`;
+  },
+
+  // Category colours: list loaded once by the page that shows categories (sorted like the category dropdowns).
+  _categories: [],
+  setCategories(list) {
+    this._categories = (Array.isArray(list) ? list : []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || String(a.name || "").localeCompare(String(b.name || "")));
+  },
+  categoryHueByName(name) {
+    const key = String(name || "").trim().toLowerCase();
+    const cat = this._categories.find((c) => String(c.name || "").trim().toLowerCase() === key);
+    if (!cat) return "faint";
+    return this.hueForCategory(cat, this._categories);
+  },
+  _categoriesLoadedAt: 0,
+  async loadCategories() {
+    if (this._categories.length && Date.now() - this._categoriesLoadedAt < 60000) return;
+    try {
+      this._categoriesLoadedAt = Date.now();
+      if (typeof FinanceApi !== "undefined" && typeof FinanceApi.getCategories === "function") {
+        this.setCategories(await FinanceApi.getCategories());
+      }
+    } catch (_) { /* dots fall back to the neutral colour */ }
+  },
+  categoryCell(name) {
+    const label = name || "General";
+    return `<span class="fv-with-dot">${this.dot(this.categoryHueByName(label))}<span>${this.esc(label)}</span></span>`;
   },
 
   // Area tile: overview/sales/spend/banking/reports/settings.
@@ -364,10 +391,11 @@ const FinanceUI = {
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   },
 
-  // tone: "late" | "warn" | "info"
-  dateCell(date, note, tone) {
-    const n = note ? `<span class="fv-note fv-note--${this.esc(tone || "info")}">${this.esc(note)}</span>` : "";
-    return `<div class="fv-date"><span>${this.esc(this.formatDate(date))}</span>${n}</div>`;
+  // tone: "late" | "warn" | "info"; opts: { title (tooltip for the note), extraHtml (more note lines) }
+  dateCell(date, note, tone, opts) {
+    const o = opts || {};
+    const n = note ? `<span class="fv-note fv-note--${this.esc(tone || "info")}"${o.title ? ` title="${this.esc(o.title)}"` : ""}>${this.esc(note)}</span>` : "";
+    return `<div class="fv-date"><span>${this.esc(this.formatDate(date))}</span>${n}${o.extraHtml || ""}</div>`;
   },
 
   // Navy amount, optional second line and part-paid progress bar (pct 0..100).
@@ -403,8 +431,10 @@ const FinanceUI = {
       html += `<button type="button" class="${this.esc(cls)}"${p.id ? ` id="${this.esc(p.id)}"` : ""}${p.onclick ? ` onclick="${p.onclick}"` : ""}${p.disabled ? " disabled" : ""}${p.attrs ? " " + p.attrs : ""}>${this.esc(p.label)}</button>`;
     }
     (s.icons || []).slice(0, 3).forEach((ic) => {
+      // slot: keeps icon columns aligned across rows when an action does not apply.
+      if (!ic || ic.slot) { html += '<span class="fv-icon-slot" aria-hidden="true"></span>'; return; }
       const cls = `fv-icon-btn ${ic.className || ""}`.trim();
-      html += `<button type="button" class="${this.esc(cls)}"${ic.id ? ` id="${this.esc(ic.id)}"` : ""} title="${this.esc(ic.label)}" aria-label="${this.esc(ic.label)}"${ic.onclick ? ` onclick="${ic.onclick}"` : ""}${ic.disabled ? " disabled" : ""}${ic.attrs ? " " + ic.attrs : ""}><i class="fa-solid ${this.esc(ic.icon)}" aria-hidden="true"></i></button>`;
+      html += `<button type="button" class="${this.esc(cls)}"${ic.id ? ` id="${this.esc(ic.id)}"` : ""} title="${this.esc(ic.label)}" aria-label="${this.esc(ic.ariaLabel || ic.label)}"${ic.onclick ? ` onclick="${ic.onclick}"` : ""}${ic.disabled ? " disabled" : ""}${ic.attrs ? " " + ic.attrs : ""}><i class="fa-solid ${this.esc(ic.icon)}" aria-hidden="true"></i></button>`;
     });
     return `<div class="fv-row-actions">${html}</div>`;
   },

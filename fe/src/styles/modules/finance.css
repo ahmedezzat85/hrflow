@@ -1,7 +1,6 @@
 /* Finance pages: styles extracted from inline style attributes (U2).
    Each class is scoped to its page section so it keeps the priority the inline style had. */
 
-
 /* finance-dashboard */
 #a-finance-statutory .stat-summary-grid {
   margin-bottom: 20px;
@@ -1851,153 +1850,6 @@
   gap: 12px;
 }
 
-/* ── Finance UI restyle, direction A (D-021): Bills status pills and flags ──
-   Colour classes (.badge-*) still come from components.css so D-016 meanings are unchanged. */
-.bill-status-cell {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-}
-.bill-flags {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.bill-pill {
-  gap: 6px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.bill-pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: none;
-}
-.bill-pill--draft {
-  background: transparent;
-  border: 1px dashed var(--border2);
-  color: var(--text2);
-}
-.bill-pill--void {
-  background: var(--surface2);
-  color: var(--text2);
-  font-weight: 500;
-}
-.bill-flag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-.bill-flag--overdue { color: var(--danger); }
-.bill-flag--confirm { color: var(--warning); }
-
-/* ── Direction A, Slice 2: flat Bills table ──
-   Row height comes from the unchanged FUX-415 density classes; cells only set their own text metrics. */
-#financeBillsTable th,
-#financeBillsTable td {
-  vertical-align: middle;
-  border-left: 0;
-  border-right: 0;
-}
-#financeBillsTable td {
-  border-bottom: 1px solid var(--border);
-}
-#financeBillsTable tbody tr:last-child td { border-bottom: 0; }
-.bill-cell-main {
-  font-size: 13px;
-  line-height: 1.2;
-  font-weight: 600;
-  color: var(--text);
-}
-.bill-cell-main,
-.bill-cell-sub {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.bill-cell-sub {
-  font-size: 11.5px;
-  line-height: 1.15;
-  color: var(--text2);
-}
-.bill-cell-sub--late { color: var(--danger); font-weight: 600; }
-#financeBillsTable td.cell-money { white-space: nowrap; }
-#financeBillsTable .bill-status-cell { flex-wrap: nowrap; }
-.bill-row-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  white-space: nowrap;
-}
-.bill-row-actions .btn { white-space: nowrap; }
-.bill-row-actions .btn { min-height: 28px; height: 28px; padding: 0 10px; font-size: 12.5px; }
-.bill-row-actions .btn-bill-more { width: 28px; padding: 0; justify-content: center; }
-
-/* ── Direction A, Slice 3: always-visible status row (supersedes FUX-414) ── */
-.bill-status-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin: 6px 0 10px;
-}
-.bill-status-row-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--text2);
-  white-space: nowrap;
-}
-.bill-overdue-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  cursor: pointer;
-}
-/* Wraps to a second line when narrow; also overrides the mobile horizontal-scroll rule for .filter-tabs */
-#a-finance-bills .filter-tabs.bill-status-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  overflow: visible;
-  width: auto;
-  max-width: 100%;
-  background: transparent;
-  padding: 0;
-  border: 0;
-  box-shadow: none;
-  gap: 6px;
-}
-.bill-status-tabs .filter-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 11px;
-  border: 1px solid var(--border2);
-  border-radius: var(--radius-full);
-  background: var(--surface);
-  color: var(--text2);
-  font-size: 12.5px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.bill-status-tabs .filter-tab:hover { background: var(--surface2); }
-.bill-status-tabs .filter-tab .badge { font-size: 11px; padding: 0 6px; }
-
 /* ── Direction A, Slice 4: Bills header and toolbar ──
    Underline sub-nav on all three Spend pages (owner decision, one shared SpendTabs bar). */
 .filter-tabs.spend-subnav {
@@ -2025,10 +1877,7 @@
   border: 0;
   border-bottom: 2px solid var(--accent);
 }
-#a-finance-bills > .toolbar { row-gap: 10px; }
 
-
-/* ── Restyle follow-up (owner decisions 2026-10-09): clean table chrome, coloured status tags ── */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2037,145 +1886,30 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.clean-table-card {
-  padding: 0;
-  box-shadow: none;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.clean-table-card thead th {
-  background: var(--surface2);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text2);
-}
-.clean-table-card th[data-sort] .sort-icon { display: none; }
-.clean-table-card th[data-sort][aria-sort="ascending"] .sort-icon,
-.clean-table-card th[data-sort][aria-sort="descending"] .sort-icon { display: inline-block; }
-.clean-table-card th[data-sort]:hover { background: var(--surface2); color: var(--text); }
-.clean-table-card .empty-state,
-.clean-table-card [id$="Pagination"] { padding: 12px 16px; }
-#financeBillsTable td.cell-money .money,
-#financeBillsTable td.cell-money strong { color: var(--text); font-weight: 600; }
-
-/* Status filter tags carry their status colour (same palette as the pills) */
-.bill-status-tabs .filter-tab .badge {
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  font-weight: 500;
-  opacity: .85;
-}
-.bill-status-tabs .filter-tab {
-  border-color: transparent;
-  background: var(--border2);
-  color: var(--text);
-}
-.bill-status-tabs .filter-tab:hover { filter: brightness(.96); background: var(--border2); }
-#tabBillQueueDraft { border: 1px dashed var(--text3); }
-#tabBillQueuePendingApproval { background: var(--info-soft); color: var(--info); }
-#tabBillQueueRejected { background: var(--danger-soft); color: var(--danger); }
-#tabBillQueueApproved { background: var(--accent-soft); color: var(--accent-text); }
-#tabBillQueuePartiallyPaid { background: var(--warning-soft); color: var(--warning); }
-#tabBillQueuePaid { background: var(--success-soft); color: var(--success); }
-#tabBillQueueAll { color: var(--text); }
-/* Selected: ring and bold, so selection never relies on colour alone */
-.bill-status-tabs .filter-tab.active,
-.bill-status-tabs .filter-tab[aria-selected="true"] {
-  box-shadow: inset 0 0 0 2px currentColor;
-  font-weight: 700;
-}
-#tabBillQueueAll.active { background: var(--text); color: var(--surface); box-shadow: none; }
-.card.clean-table-card > table.sticky-actions thead th:last-child { background: var(--surface2); }
 
 /* ── Implementation of the agreed final mock (docs/finance-module/mocks/bills-restyle-final.html) ── */
-.clean-table-card {
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-}
-/* Natural widths: every column but Bill hugs its content; Bill takes the free space */
 @media (min-width: 769px) {
-  #financeBillsTable { table-layout: auto; }
   /* Bill gets a fixed share; the other columns split what is left in proportion to their content */
-  #financeBillsTable th:first-child { width: 32%; }
-  #financeBillsTable th:not(:first-child),
-  #financeBillsTable td:not(:first-child) { white-space: nowrap; }
 }
-.bill-vendor { font-size: 13px; line-height: 1.2; font-weight: 600; color: var(--text); }
-.bill-cell-text { font-size: 13px; line-height: 1.2; font-weight: 400; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#financeBillsTable tbody tr[data-record-id] { cursor: pointer; }
-.bill-icon-btn,
-.bill-icon-slot {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-}
-.bill-icon-btn {
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text3);
-  cursor: pointer;
-  font-size: 14px;
-}
-.bill-icon-btn:hover { background: var(--border2); color: var(--text); }
-.bill-row-actions { gap: 2px; }
-.bill-row-actions .btn { margin-right: 6px; }
 
-/* Overdue only: a small switch (same checkbox, ID and handler) */
-.bill-overdue-toggle input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  position: relative;
-  width: 30px;
-  height: 18px;
-  margin: 0;
-  flex: none;
-  border-radius: 999px;
-  background: var(--border2);
-  cursor: pointer;
-  transition: background .15s;
-}
-.bill-overdue-toggle input[type="checkbox"]::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
-  transition: transform .15s;
-}
-.bill-overdue-toggle input[type="checkbox"]:checked { background: var(--accent); }
-.bill-overdue-toggle input[type="checkbox"]:checked::after { transform: translateX(12px); }
-.bill-overdue-toggle input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* ── Record / Edit bill dialog: C modal from the agreed final mock (scoped to #billModal) ── */
-#billModal .modal { max-width: 720px !important; border-radius: 18px; box-shadow: 0 20px 60px rgba(20, 50, 120, .16); }
-[data-theme="dark"] #billModal .modal { box-shadow: 0 10px 40px rgba(0, 0, 0, .55); }
-#billModal .modal-head { padding: 18px 22px; border-bottom: 0; gap: 14px; }
-#billModal .modal-head-icon { width: 40px; height: 40px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); font-size: 18px; }
-#billModal .modal-head-text h3 { font-family: var(--font-head, inherit); font-size: 18px; font-weight: 700; }
-#billModal .modal-head-text p { font-size: 13px; color: var(--text2); margin-top: 1px; }
+/* ── Record / Edit bill dialog (D-021 C modal, colours and sizes from D-027; scoped to #billModal) ── */
+#billModal .modal { max-width: 700px !important; }
+#billModal .modal-head { gap: 14px; }
+#billModal .modal-head-icon { width: 36px; height: 36px; border: 0; border-radius: 11px; font-size: 18px; }
+#billModal .modal-head-text h3 { font-family: var(--font-head, inherit); font-size: 17px; font-weight: 700; color: var(--ink-strong); }
+#billModal .modal-head-text p { font-size: 12.5px; color: var(--ink-muted); margin-top: 1px; }
 .bill-head-status { flex: none; }
 .bill-head-status .badge { font-size: 12px; padding: 3px 11px; }
-#billModal .modal-body { padding: 2px 22px 18px; display: flex; flex-direction: column; gap: 18px; }
+#billModal .modal-body { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
 #billModal .form-section { margin: 0; }
-#billModal .form-section-label { margin-bottom: 10px; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); }
+#billModal .form-section-label { margin-bottom: 8px; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink-strong); }
 #billModal .form-section-label .line,
 #billModal .form-section-label i { display: none; }
-#billModal .form-grid { grid-template-columns: 1fr 1fr; gap: 14px 16px; }
-#billModal .form-field label { font-size: 12.5px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+#billModal .form-grid { grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+#billModal .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); margin-bottom: 5px; }
 #billModal .form-field input:not([type="checkbox"]):not([type="radio"]),
-#billModal .form-field select { border-width: 1px; border-color: var(--border2); border-radius: 10px; }
-.bill-hint { margin-top: 6px; font-size: 12px; color: var(--text3); }
+#billModal .form-field select { height: 36px; padding-top: 0; padding-bottom: 0; border-width: 1px; border-color: var(--fv-input-border); border-radius: 9px; color: var(--ink-strong); }
+.bill-hint { margin-top: 6px; font-size: 12px; color: var(--ink-muted); }
 
 /* slim attach row (same dropzone, same IDs and handlers) */
 #billCaptureSection { margin: 0 !important; }
@@ -2186,53 +1920,52 @@
   gap: 4px 12px;
   padding: 10px 14px !important;
   text-align: left !important;
-  border: 1px dashed var(--border2) !important;
-  border-radius: 12px !important;
-  background: var(--surface2) !important;
+  border: 1px dashed var(--fv-outline) !important;
+  border-radius: 11px !important;
+  background: var(--brand-wash) !important;
 }
 #billModal #billDropzone > div:nth-of-type(1),
 #billModal #billDropzone > div:nth-of-type(3) { display: none !important; }
-#billModal #billDropzone > div:nth-of-type(2) { font-size: 13px !important; font-weight: 600 !important; margin: 0; }
+#billModal #billDropzone > div:nth-of-type(2) { font-size: 13px !important; font-weight: 600 !important; margin: 0; color: var(--ink-strong); }
 #billModal #billDropzone .mobile-camera-capture-wrap { margin: 0 0 0 auto !important; }
 #billModal #billFileAttachedInfo { flex-basis: 100%; margin-top: 4px !important; }
 
 /* amount with its currency */
 .bill-amount-group { display: flex; }
-.bill-amount-group select { width: 84px; flex: none; border-radius: 10px 0 0 10px !important; border-right: 0 !important; background-color: var(--surface2); }
-.bill-amount-group input { min-width: 0; text-align: right; border-radius: 0 10px 10px 0 !important; }
+.bill-amount-group select { width: 78px; flex: none; border-radius: 9px 0 0 9px !important; border-right: 0 !important; background-color: var(--fv-surface-soft); }
+.bill-amount-group input { min-width: 0; text-align: right; font-weight: 600; border-radius: 0 9px 9px 0 !important; }
 
-/* payment choice: a two-option bar over the same radio inputs */
-.bill-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 10px; background: var(--border2); }
-.bill-seg-opt { position: relative; display: flex; align-items: center; justify-content: center; height: 34px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+/* payment choice bar over the same radio inputs */
+.bill-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0; border-radius: 0; background: none; }
+.bill-seg-opt { position: relative; display: flex; align-items: center; justify-content: center; height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); background: var(--fv-surface); font-size: 13px; font-weight: 600; color: var(--ink-label); cursor: pointer; }
 .bill-seg-opt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.bill-seg-opt:has(input:checked) { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(20, 50, 120, .12); }
-.bill-seg-opt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.bill-seg-opt:has(input:checked) { border: 1.5px solid var(--brand); background: var(--brand-tint); color: var(--brand-ink); }
+.bill-seg-opt:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 1px; }
 #billModal #billPaidNowSection {
   margin-top: 12px !important;
   padding: 14px !important;
-  border: 1px solid var(--border) !important;
+  border: 1px solid var(--fv-line) !important;
   border-radius: 14px;
-  background: var(--surface2);
+  background: var(--fv-surface-soft);
 }
-.bill-saves-as { padding: 11px 14px; border-radius: 12px; background: var(--info-soft); color: var(--text); font-size: 13px; }
+.bill-saves-as { padding: 9px 12px; border-radius: 11px; background: var(--brand-wash); color: var(--ink-strong); font-size: 13px; }
 .bill-saves-as:empty { display: none; }
 
 /* More details (optional) */
 .bill-more-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8px;
   width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  padding: 0;
+  border: 0;
   background: transparent;
-  color: var(--text2);
-  font-size: 13.5px;
+  color: var(--brand-text);
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.bill-more-toggle:hover { background: var(--surface2); }
 .bill-more-toggle i { transition: transform .15s; font-size: 12px; }
 .bill-more-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
 .bill-more-opt { font-weight: 400; }
@@ -2240,12 +1973,11 @@
 .bill-more[hidden] { display: none; }
 
 /* footer: draft and add-another on the left, cancel and the primary action on the right */
-#billModal .bill-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border); background: transparent; flex-wrap: wrap; }
+#billModal .bill-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .bill-foot-left, .bill-foot-right { display: flex; align-items: center; gap: 12px; }
-.bill-add-another { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); cursor: pointer; }
-#billModal .bill-foot .btn { height: 40px; padding: 0 16px; border-radius: 10px; }
-.bill-foot-right .btn:not(.btn-fill) { border-color: transparent; background: transparent; color: var(--text2); }
-#billModal .bill-amount-group select { width: 84px !important; flex: none; }
+.bill-add-another { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-label); cursor: pointer; }
+.bill-foot-right .btn:not(.btn-fill) { border-color: transparent; background: transparent; color: var(--ink-label); }
+#billModal .bill-amount-group select { width: 78px !important; flex: none; }
 #billModal .bill-amount-group input { flex: 1; width: auto !important; }
 #billModal #billMissingFieldsAlert {
   margin: 0 !important;
@@ -2255,25 +1987,6 @@
   background: var(--warning-soft) !important;
 }
 #billModal #billMissingFieldsAlert i { color: var(--warning) !important; }
-#financeBillsTable .bill-status-cell { flex-wrap: wrap; row-gap: 2px; }
-#billModal #billPaidNowSection .form-grid { gap: 14px 16px !important; }
+#billModal #billPaidNowSection .form-grid { gap: 12px 16px !important; }
 #billModal #billPaidNowSection > div:first-child { margin-bottom: 12px !important; }
 
-/* ── Round 2: row opens the details (no eye icon), aligned action column ── */
-.bill-open {
-  display: inline;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 600;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.bill-open:hover { text-decoration: underline; }
-.bill-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
-.bill-row-actions .btn { min-width: 76px; justify-content: center; text-align: center; padding: 0 10px; }
-#financeBillsTable th.col-actions, #financeBillsTable td:last-child { text-align: right; }
-.toolbar .bill-search-right { margin-left: auto; }
-#a-finance-bills > .toolbar > div:last-child { align-items: center; flex-wrap: wrap; justify-content: flex-end; }

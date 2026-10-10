@@ -98,3 +98,99 @@ test.describe('Finance restyle v2: foundations (S1)', () => {
     expect(await css(page, '#adminPageTitle', 'fontSize')).not.toBe('16px');
   });
 });
+
+// ---------- S2: Spend I (Bills, Vendors, bill dialogs) ----------
+test.describe('Finance restyle v2: Bills and Vendors (S2)', () => {
+  for (const theme of ['light', 'dark']) {
+    test(`Bills table chrome in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await openAdminPage(page, 'a-finance-bills');
+      await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
+      const surface = await rgb(page, 'var(--fv-surface)');
+      const ink = await rgb(page, 'var(--ink-strong)');
+      const brand = await rgb(page, 'var(--brand)');
+
+      // white header row, sentence case, sorted column is brand text
+      expect(await css(page, '#financeBillsTable thead th', 'backgroundColor')).toBe(surface);
+      expect(await css(page, '#financeBillsTable thead th', 'textTransform')).toBe('none');
+      expect(await css(page, '#financeBillsTable thead th', 'letterSpacing')).toMatch(/^(normal|0px)$/);
+
+      // buttons: page 32, row 28
+      expect(await css(page, '#financeRecordBillBtn', 'height')).toBe('32px');
+      expect(await css(page, '#financeBillsTableBody .btn-pay-bill', 'height')).toBe('28px');
+      expect(await css(page, '#financeBillsTableBody .fv-icon-btn', 'height')).toBe('30px');
+
+      // amounts navy, never green or red
+      expect(await css(page, '#financeBillsTableBody .fv-amount__value', 'color')).toBe(ink);
+
+      // selected status pill is brand filled; the row of pills has dots
+      expect(await css(page, '#tabBillQueueAll', 'backgroundColor')).toBe(brand);
+      expect(await css(page, '#tabBillQueueAll', 'height')).toBe('28px');
+      expect(await css(page, '#tabBillQueueAll', 'borderRadius')).not.toBe('0px');
+
+      // no icons in the sub-nav, the pills or any text button of the header
+      await expect(page.locator('#financeBillSubNav .fa-solid')).toHaveCount(0);
+      await expect(page.locator('#financeBillWorkQueueTabs .fa-solid')).toHaveCount(0);
+      for (const id of ['financeAddVendorBtn', 'financeUploadDraftsBtn', 'financeRecordBillBtn']) {
+        await expect(page.locator(`#${id} .fa-solid`)).toHaveCount(0);
+      }
+      // sub-nav: active tab 2px brand underline
+      const active = page.locator('#tabFinanceBills');
+      expect(await active.evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe('2px');
+      expect(await active.evaluate((el) => getComputedStyle(el).borderBottomColor)).toBe(brand);
+
+      // no "more" menu and no duplicate record count above the table
+      await expect(page.locator('#financeBillsTable .fa-ellipsis, #financeBillsTable .fa-ellipsis-vertical')).toHaveCount(0);
+      await expect(page.locator('#financeBillViewResultCount')).toHaveCount(0);
+
+      // vendor avatar and category dot are class based (no inline colour)
+      await expect(page.locator('#financeBillsTableBody tr').first().locator('.fv-avatar')).toHaveCount(1);
+      expect(await page.locator('#financeBillsTableBody').evaluate((el) => /style="[^"]*(color|background)/i.test(el.innerHTML))).toBe(false);
+    });
+  }
+
+  test('Vendors view: Add vendor is the primary, Bills is an outline row action, open bills come from payables', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabFinanceVendors');
+    await expect(page.locator('#financeVendorsTableBody tr').first()).toBeVisible();
+    const brandRgb = await rgb(page, 'var(--brand)');
+    await expect.poll(() => css(page, '#financeAddVendorBtn', 'backgroundColor')).toBe(brandRgb);
+    expect(await css(page, '#financeVendorsTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    const aws = page.locator('#financeVendorsTableBody tr:has-text("Amazon Web Services")');
+    await expect(aws.locator('.fv-amount__value')).toContainText('$13,740.00');
+    await expect(aws).toContainText('3 open bills');
+    await expect(aws.locator('.btn-vendor-bills')).toHaveText('Bills');
+    // "Bills" opens the bills list narrowed to that vendor through the existing search
+    await aws.locator('.btn-vendor-bills').click();
+    await expect(page.locator('#financeBillSearch')).toHaveValue('Amazon Web Services');
+    await expect(page.locator('#financeBillsTableBody tr:has-text("Slack")')).toHaveCount(0);
+  });
+
+  test('bill dialogs: scoped, field height 36, footer buttons 34, no icons in footer buttons', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-bills');
+    await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
+    await page.evaluate(() => openAddBillModal());
+    await expect(page.locator('#billModal')).toBeVisible();
+    await expect(page.locator('#billModal.fv.fv-dialog')).toHaveCount(1);
+    expect(await css(page, '#billNumber', 'height')).toBe('36px');
+    expect(await css(page, '#billModalSaveBtn', 'height')).toBe('34px');
+    expect(await css(page, '#billSaveDraftBtn', 'height')).toBe('34px');
+    await expect(page.locator('#billModal .modal-foot .fa-solid')).toHaveCount(0);
+    expect(await css(page, '#billModal .modal-head-icon', 'width')).toBe('36px');
+    await page.evaluate(() => closeBillModal());
+
+    // approval: decision bar drives the existing select and the primary label follows it
+    await page.evaluate(() => { FinanceState.bills = FinanceState.bills || []; });
+    await page.click('#tabBillQueuePendingApproval');
+    await page.locator('#financeBillsTableBody .btn-approve-bill').first().click();
+    await expect(page.locator('#billApprovalModal')).toBeVisible();
+    await expect(page.locator('#billApprovalSubmitBtn')).toHaveText('Approve bill');
+    await page.click('#billApprovalDecisionBar [data-decision="reject"]');
+    await expect(page.locator('#billApprovalDecision')).toHaveValue('reject');
+    await expect(page.locator('#billApprovalSubmitBtn')).toHaveText('Reject bill');
+    await expect(page.locator('#billApprovalDecisionBar [data-decision="reject"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.click('#billApprovalModal .modal-close');
+  });
+});

@@ -123,6 +123,8 @@
   --fv-on-brand-wash: rgba(255, 255, 255, .22);
   --fv-hero-tile: rgba(255, 255, 255, .18);
   --fv-tint-pct: 14%;
+  --fv-part-ink: #0a6e62; /* teal status text a step darker than --id-teal-ink: 4.5:1 on the page canvas */
+  --fv-status-tint-pct: 10%; /* lighter tint keeps the teal/violet status text at 4.5:1 */
   --fv-slate-tint: rgba(75, 92, 146, .12);
   --fv-closed-bg: #eef1f8;
   --id-blue: #2056e8;   --id-blue-ink: #1a46bd;
@@ -197,6 +199,8 @@
   --fv-shadow-hero: none;
   --brand-gradient: linear-gradient(155deg, #1f48c4 0%, #1a38a0 38%, #101b5c 100%);
   --fv-tint-pct: 18%;
+  --fv-part-ink: #5fd0c0;
+  --fv-status-tint-pct: 18%;
   --fv-slate-tint: rgba(160, 176, 198, .15);
   --fv-closed-bg: rgba(160, 176, 198, .15);
   --id-blue: #4f80f2;   --id-blue-ink: #9db8ff;

@@ -32,7 +32,9 @@ test.describe('Bills status row (D-021, supersedes FUX-414)', () => {
 
     const allCount = parseInt(await page.locator('#badgeBillQueueAll').innerText(), 10);
     expect(allCount).toBeGreaterThan(0);
-    await expect(page.locator('#financeBillViewResultCount')).toContainText(`Showing ${allCount} of ${allCount} bills`);
+    // D-027: the duplicate count above the table is gone; the footer count (pagination summary) is the only one.
+    await expect(page.locator('#financeBillViewResultCount')).toHaveCount(0);
+    await expect(page.locator('#financeBillsPagination .pagination-summary')).toContainText(`Showing 1–${allCount} of ${allCount}`);
     await expect(page.locator('#financeBillOverdueOnly')).toBeVisible();
 
     for (const gone of ['#financeBillStatusToggleBar', '#financeBillActiveStatusPill', '#financeBillChangeViewBtn', '#financeBillStatusPanel']) {
@@ -51,7 +53,7 @@ test.describe('Bills status row (D-021, supersedes FUX-414)', () => {
     await expect(page.locator('#tabBillQueuePendingApproval')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#tabBillQueuePendingApproval')).toHaveClass(/active/);
     await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'false');
-    await expect(page.locator('#financeBillViewResultCount')).toContainText(`Showing ${expectedApprovalCount} of`);
+    await expect(page.locator('#financeBillsPagination .pagination-summary')).toContainText(`of ${expectedApprovalCount}`);
     await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toHaveCount(0);
 

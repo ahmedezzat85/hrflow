@@ -187,7 +187,8 @@ test.describe('R3 one button set', () => {
 
   test('R3-1: no button has a box-shadow at rest', async ({ page }) => {
     const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app button')]
-      .filter((b) => b.offsetParent !== null && getComputedStyle(b).boxShadow !== 'none')
+      // Finance restyle v2 (D-027, doc 21 section 3.4): the selected filter pill carries a soft brand shadow.
+      .filter((b) => b.offsetParent !== null && !b.matches('.fv-pill[aria-selected="true"]') && getComputedStyle(b).boxShadow !== 'none')
       .map((b) => `${b.id || b.className}`.slice(0, 60)));
     for (const [id, shadowed] of Object.entries(res)) expect(shadowed, id).toEqual([]);
   });

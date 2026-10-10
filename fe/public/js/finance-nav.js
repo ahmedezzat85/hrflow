@@ -245,7 +245,7 @@ const SpendTabs = {
     this.BARS.forEach((bar) => {
       const el = document.getElementById(bar.container);
       if (!el) return;
-      el.classList.add('spend-subnav');
+      el.classList.add('spend-subnav', 'fv-subnav');
       el.innerHTML = this.TABS.map((t) => {
         const active = t.key === bar.active;
         let action = '';

@@ -1,16 +1,14 @@
-        <section class="page-section" id="a-finance-bills">
-          <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Spend sub navigation">
+        <section class="page-section fv" id="a-finance-bills">
+          <div class="fv-head">
+            <div class="filter-tabs fv-subnav" id="financeBillSubNav" role="tablist" aria-label="Spend sub navigation">
               <!-- rendered by SpendTabs (finance-nav.js) -->
             </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <div class="search-box" id="financeBillSearchBox">
+            <div class="fv-head-actions">
+              <div class="fv-search" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeBillSearch" placeholder="Search bills..." aria-label="Search bills" oninput="filterFinanceBills(this.value)">
               </div>
-              <div class="search-box" id="financeVendorSearchBox" style="display: none;">
+              <div class="fv-search" id="financeVendorSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeVendorSearch" placeholder="Search vendors..." aria-label="Search vendors" oninput="filterFinanceVendors(this.value)">
               </div>
@@ -21,70 +19,68 @@
             </div>
           </div>
 
-          <!-- Direction A (D-021): always-visible status row; replaces the FUX-414 pill + Change view panel -->
-          <div id="financeBillStatusRow" class="bill-status-row">
-            <div class="filter-tabs bill-status-tabs" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues">
-              <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">All <span class="badge badge-grey" id="badgeBillQueueAll">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')">Draft <span class="badge badge-grey" id="badgeBillQueueDraft">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')">Pending Approval <span class="badge badge-grey" id="badgeBillQueuePendingApproval">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')">Rejected <span class="badge badge-grey" id="badgeBillQueueRejected">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')">Approved <span class="badge badge-grey" id="badgeBillQueueApproved">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')">Partially Paid <span class="badge badge-grey" id="badgeBillQueuePartiallyPaid">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span></button>
-              <button type="button" class="filter-tab" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')">Void <span class="badge badge-grey" id="badgeBillQueueVoid">0</span></button>
+          <!-- Always-visible status pills (D-021, restyled by D-027) -->
+          <div id="financeBillStatusRow" class="fv-pills-row">
+            <div class="fv-pills" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues">
+              <button type="button" class="filter-tab fv-pill active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">All <span class="fv-pill__count" id="badgeBillQueueAll">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--draft" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')"><span class="fv-pill__dot" aria-hidden="true"></span>Draft <span class="fv-pill__count" id="badgeBillQueueDraft">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--waiting" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')"><span class="fv-pill__dot" aria-hidden="true"></span>Pending Approval <span class="fv-pill__count" id="badgeBillQueuePendingApproval">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--problem" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')"><span class="fv-pill__dot" aria-hidden="true"></span>Rejected <span class="fv-pill__count" id="badgeBillQueueRejected">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--open" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')"><span class="fv-pill__dot" aria-hidden="true"></span>Approved <span class="fv-pill__count" id="badgeBillQueueApproved">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--planned" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')"><span class="fv-pill__dot" aria-hidden="true"></span>Scheduled <span class="fv-pill__count" id="badgeBillQueueScheduled">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--part" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')"><span class="fv-pill__dot" aria-hidden="true"></span>Partially Paid <span class="fv-pill__count" id="badgeBillQueuePartiallyPaid">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--settled" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')"><span class="fv-pill__dot" aria-hidden="true"></span>Paid <span class="fv-pill__count" id="badgeBillQueuePaid">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--closed" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')"><span class="fv-pill__dot" aria-hidden="true"></span>Void <span class="fv-pill__count" id="badgeBillQueueVoid">0</span></button>
             </div>
-            <div class="bill-status-row-meta">
-              <span id="financeBillViewResultCount">Showing 0 of 0 bills</span>
-              <label for="financeBillOverdueOnly" class="bill-overdue-toggle">
-                <input type="checkbox" id="financeBillOverdueOnly" onchange="onBillOverdueOnlyChange()"> Overdue only <span class="badge badge-grey" id="financeBillOverdueCount">0</span>
-              </label>
-            </div>
+            <label for="financeBillOverdueOnly" class="fv-toggle">
+              <input type="checkbox" id="financeBillOverdueOnly" onchange="onBillOverdueOnlyChange()"> Overdue only <span class="fv-toggle__count" id="financeBillOverdueCount">0</span>
+            </label>
           </div>
 
           <!-- 1. Bills Sub-View -->
-          <div class="card clean-table-card" id="financeBillsContainer">
+          <div class="fv-table-card" id="financeBillsContainer">
             <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
-            <table class="responsive-card-table sticky-actions" id="financeBillsTable">
-              <thead>
-                <tr>
-                  <th data-sort="vendor_name">Bill</th>
-                  <th data-sort="issue_date">Bill date</th>
-                  <th data-sort="category">Category</th>
-                  <th data-sort="status">Status</th>
-                  <th class="cell-money" data-sort="total">Amount</th>
-                  <th class="col-actions"><span class="sr-only">Actions</span></th>
-                </tr>
-              </thead>
-              <tbody id="financeBillsTableBody"></tbody>
-            </table>
-            <div class="empty-state" id="financeBillsEmpty" style="display: none;">
-              <i class="fa-solid fa-receipt"></i>
+            <div class="fv-table-scroll">
+              <table class="fv-table fv-table--bills responsive-card-table sticky-actions" id="financeBillsTable">
+                <thead>
+                  <tr>
+                    <th data-sort="vendor_name">Bill</th>
+                    <th data-sort="issue_date">Bill date</th>
+                    <th data-sort="category">Category</th>
+                    <th data-sort="status">Status</th>
+                    <th class="cell-money fv-num" data-sort="total">Amount</th>
+                    <th class="col-actions"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="financeBillsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state fv-empty" id="financeBillsEmpty" style="display: none;">
               <p>No vendor bills recorded yet.</p>
             </div>
             <div id="financeBillsPagination" class="pagination-bar" style="display: none;"></div>
           </div>
 
           <!-- 2. Vendors Sub-View -->
-          <div class="card clean-table-card" id="financeVendorsContainer" style="display: none;">
+          <div class="fv-table-card" id="financeVendorsContainer" style="display: none;">
             <div class="section-loading-bar" id="financeVendorsLoadingBar"><span></span></div>
             <div id="financeVendorFilterChips" style="display: none;"></div>
-            <table class="responsive-card-table" id="financeVendorsTable">
-              <thead>
-                <tr>
-                  <th data-sort="name">Vendor / Supplier Name</th>
-                  <th data-sort="category">Category</th>
-                  <th data-sort="email">Billing Email</th>
-                  <th data-sort="phone">Phone</th>
-                  <th data-sort="tax_id">Tax ID</th>
-                  <th data-sort="status">Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="financeVendorsTableBody"></tbody>
-            </table>
-            <div class="empty-state" id="financeVendorsEmpty" style="display: none;">
-              <i class="fa-solid fa-truck-field"></i>
+            <div class="fv-table-scroll">
+              <table class="fv-table fv-table--vendors responsive-card-table" id="financeVendorsTable">
+                <thead>
+                  <tr>
+                    <th data-sort="name">Vendor</th>
+                    <th data-sort="category">Category</th>
+                    <th>Contact</th>
+                    <th data-sort="tax_id">Tax ID</th>
+                    <th class="fv-num">Open bills</th>
+                    <th class="col-actions"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="financeVendorsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state fv-empty" id="financeVendorsEmpty" style="display: none;">
               <p>No vendors registered yet. Click "Add Vendor" to register suppliers.</p>
             </div>
             <div id="financeVendorsPagination" class="pagination-bar" style="display: none;"></div>

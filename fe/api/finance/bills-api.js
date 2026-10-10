@@ -792,7 +792,19 @@
       if (params && params.is_active !== undefined) {
         list = list.filter((v) => v.is_active === (params.is_active === "true" || params.is_active === true));
       }
-      return list;
+      // BE-3 (doc 22): open payables per currency (pending_approval, approved, scheduled, partially_paid).
+      const OPEN = ["pending_approval", "approved", "scheduled", "partially_paid"];
+      return list.map((v) => {
+        const byCurrency = {};
+        FinanceMockState.bills.filter((b) => b.vendor_id === v.id && OPEN.includes(b.status)).forEach((b) => {
+          const cur = b.currency || "USD";
+          const row = byCurrency[cur] || (byCurrency[cur] = { currency: cur, open_amount: 0, open_count: 0, overdue_count: 0 });
+          row.open_amount = round(row.open_amount + (b.total - (b.amount_paid || 0)), 2);
+          row.open_count += 1;
+          if (_billIsOverdue(b)) row.overdue_count += 1;
+        });
+        return { ...v, payables: Object.values(byCurrency) };
+      });
     }
     let url = "/api/finance/vendors";
     if (params) {

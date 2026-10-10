@@ -196,7 +196,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     const firstBillBadge = page.locator('#financeBillsTableBody .status-badge-wrap').first();
     await expect(firstBillBadge).toBeVisible();
     // Direction A (D-021): bill status pills use a dot, not an icon; role and label contract unchanged
-    await expect(firstBillBadge.locator('.bill-pill-dot')).toBeVisible();
+    await expect(firstBillBadge.locator('.fv-status__dot')).toBeVisible();
     await expect(firstBillBadge).toHaveAttribute('role', 'status');
 
     // 3. Bank Accounts
