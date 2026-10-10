@@ -16,7 +16,7 @@
 
   if (!FinanceMockState.accounts) {
     FinanceMockState.accounts = [
-    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 150000.0, is_active: true },
+    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 145800.0, is_active: true },
     { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
     { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
     { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
@@ -118,7 +118,7 @@
           bank_balance: Math.round((book + uncleared) * 100) / 100,
           available_balance: available,
           reconciled_balance: book,
-          unreconciled_count: 0,
+          unreconciled_count: a.id === 1 ? 2 : 0,
           last_reconciled_date: "2026-09-01",
           last_import_date: "2026-09-05",
           has_postings: hasPostings,

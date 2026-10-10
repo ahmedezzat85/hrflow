@@ -1,4 +1,4 @@
-  <div class="modal-overlay" id="financeTransactionModal">
+  <div class="modal-overlay fv fv-dialog fv-area-sky" id="financeTransactionModal">
     <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeTransactionModalTitle" style="max-width: 680px;">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
@@ -25,33 +25,24 @@
         </div>
 
         <!-- Active Account Context Banner -->
-        <div id="fFinanceTxAccountContext" style="margin-bottom: 14px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div id="fFinanceTxAccountContext" class="fv-summary fv-summary--between">
           <div>
-            <i class="fa-solid fa-building-columns" style="color: var(--accent-text); margin-right: 6px;"></i>
             <strong id="fFinanceTxAccountName">Active Account</strong>
-            <span id="fFinanceTxAccountMeta" style="color: var(--text3); margin-left: 6px;">(USD)</span>
+            <span id="fFinanceTxAccountMeta" class="fv-sub fv-sub--inline">(USD)</span>
           </div>
-          <div style="font-size: 12px; color: var(--text2);">
-            Current Book Balance: <strong id="fFinanceTxAccountBookBalance" style="color: var(--text);">$0.00</strong>
+          <div class="fv-sub">
+            Current Book Balance: <strong id="fFinanceTxAccountBookBalance" class="fv-strong">$0.00</strong>
           </div>
         </div>
 
-        <!-- Transaction Type Segmented Selector -->
-        <div class="form-field full" style="margin-bottom: 14px;">
-          <label style="margin-bottom: 6px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3);" for="fFinanceTxDate">Transaction Type</label>
-          <div class="filter-tabs" id="fFinanceTxTypeSelector" role="tablist" style="display: flex; gap: 6px; width: 100%;">
-            <button type="button" class="filter-tab active" id="fFinanceTxTypeMoneyOut" data-tx-type="money_out" onclick="setTransactionEntryType('money_out', this)" style="flex: 1; text-align: center; justify-content: center;">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i> Money Out
-            </button>
-            <button type="button" class="filter-tab" id="fFinanceTxTypeMoneyIn" data-tx-type="money_in" onclick="setTransactionEntryType('money_in', this)" style="flex: 1; text-align: center; justify-content: center;">
-              <i class="fa-solid fa-arrow-down-left-and-up-to-right"></i> Money In
-            </button>
-            <button type="button" class="filter-tab" id="fFinanceTxTypeBankFee" data-tx-type="bank_fee" onclick="setTransactionEntryType('bank_fee', this)" style="flex: 1; text-align: center; justify-content: center;">
-              <i class="fa-solid fa-receipt"></i> Bank Fee
-            </button>
-            <button type="button" class="filter-tab" id="fFinanceTxTypeAdjustment" data-tx-type="adjustment" onclick="setTransactionEntryType('adjustment', this)" style="flex: 1; text-align: center; justify-content: center;">
-              <i class="fa-solid fa-scale-balanced"></i> Adjustment
-            </button>
+        <!-- Transaction type: choice bar over the same entry-type input -->
+        <div class="form-field full">
+          <label for="fFinanceTxDate">Direction</label>
+          <div class="fv-choice" id="fFinanceTxTypeSelector" role="group" aria-label="Transaction type">
+            <button type="button" class="fv-choice__btn fv-choice__btn--out active" id="fFinanceTxTypeMoneyOut" data-tx-type="money_out" onclick="setTransactionEntryType('money_out', this)">Money Out</button>
+            <button type="button" class="fv-choice__btn" id="fFinanceTxTypeMoneyIn" data-tx-type="money_in" onclick="setTransactionEntryType('money_in', this)">Money In</button>
+            <button type="button" class="fv-choice__btn" id="fFinanceTxTypeBankFee" data-tx-type="bank_fee" onclick="setTransactionEntryType('bank_fee', this)">Bank Fee</button>
+            <button type="button" class="fv-choice__btn" id="fFinanceTxTypeAdjustment" data-tx-type="adjustment" onclick="setTransactionEntryType('adjustment', this)">Adjustment</button>
           </div>
         </div>
 
@@ -90,24 +81,18 @@
 
             <!-- Currency Mismatch Warning Alert -->
             <div class="form-field full" id="fFinanceTxCurrencyWarning" style="display: none;">
-              <div class="alert alert-warning" style="display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 10px 14px; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); border-radius: 6px; font-size: 12.5px;">
-                <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); margin-top: 2px;"></i>
-                <div>
-                  <strong>Currency Mismatch:</strong> Transaction currency differs from account currency. An explicit FX rate is required to convert to account book balance.
-                </div>
+              <div class="fv-callout fv-callout--warn">
+                <strong>Currency Mismatch:</strong> Transaction currency differs from account currency. An explicit FX rate is required to convert to account book balance.
               </div>
             </div>
 
             <!-- Duplicate Settlement Candidate Warning Banner -->
-            <div class="form-field full" id="fFinanceTxDuplicateWarning" style="display: none; margin-bottom: 8px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; font-size: 12px; color: var(--text);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b; font-size: 14px;"></i>
-                  <span id="fFinanceTxDuplicateWarningText">Matching open document found.</span>
-                </div>
-                <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                  <button type="button" class="btn btn-xs btn-fill" id="fFinanceTxDuplicateActionBtn" onclick="linkDuplicateCandidate()">Link to Bill</button>
-                  <button type="button" class="btn btn-xs" onclick="dismissDuplicateWarning()">Dismiss</button>
+            <div class="form-field full" id="fFinanceTxDuplicateWarning" style="display: none;">
+              <div class="fv-callout fv-callout--warn fv-callout--row">
+                <span id="fFinanceTxDuplicateWarningText">Matching open document found.</span>
+                <div class="fv-callout__actions">
+                  <button type="button" class="btn btn-sm btn-fill" id="fFinanceTxDuplicateActionBtn" onclick="linkDuplicateCandidate()">Link to Bill</button>
+                  <button type="button" class="btn btn-sm" onclick="dismissDuplicateWarning()">Dismiss</button>
                 </div>
               </div>
             </div>
@@ -126,8 +111,14 @@
               <i class="fa-solid fa-circle-info"></i> A payment to a vendor is recorded as a bill. Use New bill (Already paid), or link this payment to the vendor's bill below.
             </div>
             <div class="form-field" id="fFinanceTxPayeeTypeGroup">
-              <label for="fFinanceTxPayeeType">Payee Type</label>
-              <select id="fFinanceTxPayeeType" onchange="onTxPayeeTypeChanged()">
+              <label for="fFinanceTxPayeeType">Paid to</label>
+              <div class="fv-pills" id="fFinanceTxPayeePills" role="group" aria-label="Paid to">
+                <button type="button" class="fv-pill" data-payee="none" aria-pressed="true" onclick="setTxPayeeType('none')">Nobody specific</button>
+                <button type="button" class="fv-pill" data-payee="vendor" aria-pressed="false" onclick="setTxPayeeType('vendor')">Vendor</button>
+                <button type="button" class="fv-pill" data-payee="employee" aria-pressed="false" onclick="setTxPayeeType('employee')">Employee</button>
+                <button type="button" class="fv-pill" data-payee="customer" aria-pressed="false" onclick="setTxPayeeType('customer')">Customer</button>
+              </div>
+              <select id="fFinanceTxPayeeType" class="fv-sr-only" onchange="onTxPayeeTypeChanged()">
                 <option value="none" selected>None / Ad-hoc</option>
                 <option value="vendor">Vendor</option>
                 <option value="employee">Employee</option>
@@ -233,26 +224,24 @@
         </div>
 
         <!-- Live Financial Impact Preview Box -->
-        <div class="card" id="fFinanceTxPreviewCard" style="margin-top: 14px; padding: 12px 16px; background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-text);">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> Financial Impact Preview
-            </span>
-            <span id="fFinanceTxProjectedBadge" class="badge badge-info" style="font-size: 11px;">Projected Balance: —</span>
+        <div class="fv-impact-box" id="fFinanceTxPreviewCard">
+          <div class="fv-impact-box__head">
+            <span class="fv-section-title">Financial Impact Preview</span>
+            <span id="fFinanceTxProjectedBadge" class="fv-status fv-status--open">Projected Balance: —</span>
           </div>
-          <p id="fFinanceTxPlainDesc" style="margin: 0; font-size: 12.5px; color: var(--text2);">
+          <p id="fFinanceTxPlainDesc" class="fv-sub">
             Enter an amount to see projected balance and ledger impact.
           </p>
 
           <!-- Journal Preview Table (for adjustments and multi-line impact) -->
-          <div id="fFinanceTxJournalWrapper" style="display: none; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px;">
-            <div style="font-size: 11.5px; font-weight: 600; color: var(--text3); margin-bottom: 4px;">Journal Entry Preview:</div>
-            <table class="responsive-card-table" style="font-size: 12px; width: 100%;">
+          <div id="fFinanceTxJournalWrapper" class="fv-impact-box__journal" style="display: none;">
+            <div class="fv-sub">Journal Entry Preview:</div>
+            <table class="fv-lines__table">
               <thead>
                 <tr>
-                  <th style="padding: 4px 6px;">Account / Item</th>
-                  <th style="padding: 4px 6px; text-align: right;">Debit</th>
-                  <th style="padding: 4px 6px; text-align: right;">Credit</th>
+                  <th>Account / Item</th>
+                  <th class="fv-num">Debit</th>
+                  <th class="fv-num">Credit</th>
                 </tr>
               </thead>
               <tbody id="fFinanceTxJournalTbody"></tbody>
@@ -260,15 +249,11 @@
           </div>
         </div>
       </div>
-      <div class="modal-foot" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <button class="btn" onclick="closeModal('financeTransactionModal')">Cancel</button>
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="btn btn-outline" id="financeTxSaveAndNewBtn" onclick="saveFinanceTransaction(true)" title="Save and immediately enter another transaction with the same account and date">
-            <i class="fa-solid fa-plus"></i> Save &amp; Add Another
-          </button>
-          <button type="button" class="btn btn-fill" id="financeTxSaveBtn" onclick="saveFinanceTransaction(false)">
-            <i class="fa-solid fa-floppy-disk"></i> Save Transaction
-          </button>
+      <div class="modal-foot fv-foot-split">
+        <button type="button" class="btn btn-outline" id="financeTxSaveAndNewBtn" onclick="saveFinanceTransaction(true)" title="Save and immediately enter another transaction with the same account and type">Save &amp; Add Another</button>
+        <div class="fv-foot-right">
+          <button class="btn" onclick="closeModal('financeTransactionModal')">Cancel</button>
+          <button type="button" class="btn btn-fill" id="financeTxSaveBtn" onclick="saveFinanceTransaction(false)">Save Transaction</button>
         </div>
       </div>
     </div>

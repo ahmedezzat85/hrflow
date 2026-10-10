@@ -107,6 +107,9 @@ test.describe('Story 5.2: Guided Transaction Entry', () => {
     await expect(page.locator('.toast')).toContainText('Adjustment reason is required');
     await expect(page.locator('#financeTransactionModal')).toBeVisible();
 
+    // The error toast sits over the footer button in a short viewport (the D-027 footer is 34 px); dismiss it first
+    await page.evaluate(() => clearErrorToasts());
+
     // Provide mandatory reason and save
     await page.fill('#fFinanceTxReason', 'Opening balance calibration per audited financials');
     await page.click('#financeTxSaveBtn');

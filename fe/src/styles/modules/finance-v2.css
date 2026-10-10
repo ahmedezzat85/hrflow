@@ -1629,3 +1629,120 @@
   text-transform: none;
   letter-spacing: 0;
 }
+
+/* ---------- S5: Banking I (Accounts, Ledger) ---------- */
+.fv .fv-cards--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 860px;
+}
+
+@media (max-width: 760px) {
+  .fv .fv-cards--3 { grid-template-columns: minmax(0, 1fr); }
+}
+
+.fv .fv-tile--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.fv .fv-select--account {
+  min-width: 240px;
+  color: var(--brand-ink);
+}
+
+.fv .fv-toggle--inline {
+  margin-left: 0;
+}
+
+.fv .fv-pill__arrow {
+  font-weight: 700;
+}
+
+.fv .fv-pill--in { background: color-mix(in srgb, var(--id-teal) var(--fv-status-tint-pct), transparent); border-color: transparent; color: var(--fv-part-ink); }
+.fv .fv-pill--out { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); border-color: transparent; color: var(--id-orange-ink); }
+
+.fv .fv-table--accounts,
+.fv .fv-table--ledger { table-layout: fixed; }
+
+.fv .fv-table--accounts th:nth-child(1) { width: 29%; }
+.fv .fv-table--accounts th:nth-child(2) { width: 17%; }
+.fv .fv-table--accounts th:nth-child(3) { width: 16%; }
+.fv .fv-table--accounts th:nth-child(4) { width: 16%; }
+
+.fv .fv-table--ledger th:nth-child(1) { width: 11%; }
+.fv .fv-table--ledger th:nth-child(2) { width: 30%; }
+.fv .fv-table--ledger th:nth-child(3) { width: 16%; }
+.fv .fv-table--ledger th:nth-child(4) { width: 14%; }
+.fv .fv-table--ledger th:nth-child(5) { width: 11%; }
+.fv .fv-table--ledger th:nth-child(6) { width: 10%; }
+
+.fv .fv-table--accounts td:last-child,
+.fv .fv-table--ledger td:last-child {
+  text-align: right;
+}
+
+.fv .fv-table--accounts tbody td:not(:first-child),
+.fv .fv-table--ledger tbody td:not(:nth-child(2)) {
+  white-space: nowrap;
+}
+
+.fv .fv-table-card .account-inactive td {
+  opacity: .65;
+}
+
+/* ---------- Transaction dialog ---------- */
+.fv .fv-choice__btn.active {
+  border: 1.5px solid var(--brand);
+  background: var(--brand-tint);
+  color: var(--brand-ink);
+}
+
+.fv .fv-choice__btn--out.active {
+  border-color: var(--id-orange);
+  background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent);
+  color: var(--id-orange-ink);
+}
+
+.fv .fv-summary--between {
+  justify-content: space-between;
+}
+
+.fv .fv-sub--inline {
+  display: inline;
+  margin-left: 6px;
+}
+
+.fv .fv-impact-box {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--fv-surface-soft);
+  border: 1px solid var(--fv-line);
+}
+
+.fv .fv-impact-box__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.fv .fv-impact-box__head .fv-section-title {
+  margin: 0;
+}
+
+.fv .fv-impact-box__journal {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--fv-line);
+}
+
+.fv-dialog .form-field label .opt,
+.fv-dialog .form-group label .opt {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  color: var(--ink-muted);
+}

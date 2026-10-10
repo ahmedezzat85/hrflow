@@ -208,7 +208,7 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
 
     const firstAccBalance = page.locator('#financeAccountsTableBody td.cell-money').first();
     await expect(firstAccBalance).toBeVisible();
-    await expect(firstAccBalance).toContainText('$150,000.00');
+    await expect(firstAccBalance).toContainText('USD 145,800.00'); // D-027: the account balance carries a currency prefix
 
     // Verify EGP bank account renders EGP
     const egpAccRow = page.locator('#financeAccountsTableBody tr:has-text("CIB EGP Operating")');

@@ -1,58 +1,62 @@
-        <section class="page-section" id="a-finance-accounts">
-          <!-- Sub Navigation for Bank Accounts & Lookups -->
-          <div class="fa-u1">
-            <div class="filter-tabs fa-u2" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation">
-              <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)"><i class="fa-solid fa-building-columns"></i> Company bank &amp; cash accounts</button>
-              <button class="filter-tab" id="subtabFinanceLedger" role="tab" aria-selected="false" tabindex="-1" data-account-tab="ledger" onclick="switchFinanceAccountsSubTab('ledger', this)"><i class="fa-solid fa-book-journal-whills"></i> Continuous Ledger</button>
-              <button class="filter-tab" id="subtabFinanceStatements" role="tab" aria-selected="false" tabindex="-1" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements &amp; Reconciliation</button>
-              <button class="filter-tab" id="subtabFinanceCheques" role="tab" aria-selected="false" tabindex="-1" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)"><i class="fa-solid fa-money-check"></i> Cheque Register</button>
-              <button class="filter-tab" id="subtabFinanceTransfers" role="tab" aria-selected="false" tabindex="-1" data-account-tab="transfers" onclick="switchFinanceAccountsSubTab('transfers', this)"><i class="fa-solid fa-arrow-right-arrow-left"></i> Account Transfers</button>
+        <section class="page-section fv" id="a-finance-accounts">
+          <!-- Banking sub navigation: one tab bar for Accounts, Ledger, Statements, Cheques and Transfers -->
+          <div class="fv-head" id="financeAccountsHead">
+            <div class="filter-tabs fv-subnav" id="financeAccountsSubNav" role="tablist" aria-label="Company bank accounts sub navigation">
+              <button class="filter-tab active" id="subtabFinanceAccounts" role="tab" aria-selected="true" tabindex="0" data-account-tab="accounts" onclick="switchFinanceAccountsSubTab('accounts', this)">Accounts</button>
+              <button class="filter-tab" id="subtabFinanceLedger" role="tab" aria-selected="false" tabindex="-1" data-account-tab="ledger" onclick="switchFinanceAccountsSubTab('ledger', this)">Ledger</button>
+              <button class="filter-tab" id="subtabFinanceStatements" role="tab" aria-selected="false" tabindex="-1" data-account-tab="statements" onclick="switchFinanceAccountsSubTab('statements', this)">Statements</button>
+              <button class="filter-tab" id="subtabFinanceCheques" role="tab" aria-selected="false" tabindex="-1" data-account-tab="cheques" onclick="switchFinanceAccountsSubTab('cheques', this)">Cheques</button>
+              <button class="filter-tab" id="subtabFinanceTransfers" role="tab" aria-selected="false" tabindex="-1" data-account-tab="transfers" onclick="switchFinanceAccountsSubTab('transfers', this)">Transfers</button>
+            </div>
+            <!-- Header actions follow the active tab -->
+            <div class="fv-head-actions" id="financeHeadActionsAccounts" data-head-for="accounts">
+              <button class="btn btn-outline" onclick="openRecordFinanceTransferModal()">Transfer</button>
+              <button class="btn btn-outline" onclick="openWithdrawCashModal()">Withdraw cash</button>
+              <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()">Add account</button>
+            </div>
+            <div class="fv-head-actions" id="financeHeadActionsLedger" data-head-for="ledger" style="display:none;">
+              <select id="financeLedgerAccountSelect" class="fv-select fv-select--account" aria-label="Ledger account" onchange="onLedgerAccountSelectChange(this.value)"></select>
+              <button class="btn btn-fill" id="financeLedgerRecordBtn" onclick="openAddFinanceTransactionModal()">Record transaction</button>
             </div>
           </div>
 
           <!-- PANE 1: Bank & Cash Accounts -->
           <div class="fa-u3" id="financeSubPaneAccounts">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-building-columns"></i> Company bank &amp; cash accounts</h2>
-                <p class="section-subtitle">Accounts used for receiving customer payments, disbursements, and cash custody.</p>
+            <div class="fv-cards fv-cards--spaced" id="financeAccountsCards"></div>
+
+            <div class="fv-pills-row">
+              <div class="fv-pills" role="group" aria-label="Company bank account status filter" id="financeAccountStatusPills">
+                <button class="filter-tab fv-pill active" aria-pressed="true" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All <span class="fv-pill__count" id="accPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--settled" aria-pressed="false" data-filter="active" onclick="filterCompanyBankAccounts('active', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Active <span class="fv-pill__count" id="accPillCountActive">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="accPillCountInactive">0</span></button>
               </div>
-              <div class="fa-u4">
-                <div class="filter-tabs" role="tablist" aria-label="Company bank account status filter">
-                  <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-filter="all" onclick="filterCompanyBankAccounts('all', this)">All</button>
-                  <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="active" onclick="filterCompanyBankAccounts('active', this)">Active</button>
-                  <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)">Inactive</button>
-                </div>
-                <button class="btn btn-outline" onclick="openUploadStatementModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Statement</button>
-                <button class="btn btn-outline" onclick="openWithdrawCashModal()"><i class="fa-solid fa-hand-holding-dollar"></i> Withdraw Cash</button>
-                <button class="btn btn-outline" onclick="openRecordFinanceTransferModal()"><i class="fa-solid fa-arrow-right-arrow-left"></i> Record Transfer</button>
-                <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()"><i class="fa-solid fa-plus"></i> Add Account</button>
+              <div class="fv-pills-selects">
+                <select id="financeAccountCurrencyFilter" class="fv-select" aria-label="Currency" onchange="onAccountCurrencyFilterChange(this.value)">
+                  <option value="">All currencies</option>
+                </select>
               </div>
             </div>
-            <div class="card fa-u5">
+
+            <div class="fv-table-card">
               <div class="section-loading-bar" id="financeAccountsLoadingBar"><span></span></div>
-              <div class="table-wrap">
-                <table class="responsive-card-table sticky-actions">
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--accounts responsive-card-table sticky-actions" id="financeAccountsTable">
                   <thead>
                     <tr>
-                      <th>Account / Institution</th>
-                      <th>Type &amp; Identifier</th>
-                      <th>Currency</th>
-                      <th class="cell-money">Book Balance</th>
-                      <th class="cell-money">Available</th>
-                      <th class="cell-money">Reconciled</th>
-                      <th>Last import / Reconciled</th>
-                      <th class="fa-u6">Status</th>
-                      <th class="fa-u7">Actions</th>
+                      <th>Account</th>
+                      <th>Type</th>
+                      <th>Last statement</th>
+                      <th class="cell-money fv-num">Balance</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody id="financeAccountsTableBody"></tbody>
                 </table>
               </div>
-              <div class="empty-state fa-u8" id="financeAccountsEmpty">
-                <i class="fa-solid fa-building-columns"></i>
+              <div class="empty-state fa-u8 fv-empty" id="financeAccountsEmpty">
                 <p>No company bank or cash accounts configured yet.</p>
               </div>
+              <div class="fv-foot" id="financeAccountsFooter"></div>
             </div>
           </div>
 
@@ -94,103 +98,77 @@
               </div>
 
               <!-- 4 Separated Balance Cards with Definitions & As-Of -->
-              <div class="fa-u18">
-                <!-- Book Balance -->
-                <div class="kpi-mini-card fa-u19" title="Current posted ledger balance reflecting all recorded journal inflows and outflows.">
-                  <div class="fa-u20">
-                    <span class="fa-u21">Book Balance</span>
-                    <i class="fa-solid fa-circle-info fa-u22" title="Current posted ledger balance reflecting all recorded accounting inflows and outflows."></i>
-                  </div>
-                  <div class="fa-u23" id="workspaceBookBalance">$0.00</div>
-                  <div class="fa-u24" id="workspaceBookBalanceAsOf">As of: Today</div>
+              <div class="fv-cards fv-cards--spaced">
+                <div class="fv-card" title="Current posted ledger balance reflecting all recorded journal inflows and outflows.">
+                  <div class="fv-card__top"><span>Book Balance</span><span class="fv-tile fv-hue-sky" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span></div>
+                  <div class="fv-card__value" id="workspaceBookBalance">$0.00</div>
+                  <div class="fv-card__foot"><span id="workspaceBookBalanceAsOf">As of: Today</span></div>
                 </div>
-
-                <!-- Available Balance -->
-                <div class="kpi-mini-card fa-u19" title="Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).">
-                  <div class="fa-u20">
-                    <span class="fa-u21">Available Balance</span>
-                    <i class="fa-solid fa-circle-info fa-u22" title="Liquid balance immediately available for disbursement."></i>
-                  </div>
-                  <div class="fa-u25" id="workspaceAvailableBalance">$0.00</div>
-                  <div class="fa-u24" id="workspaceAvailableBalanceSub">Liquid after uncleared cheques</div>
+                <div class="fv-card" title="Liquid balance immediately available for disbursement (Book balance minus uncleared issued cheques).">
+                  <div class="fv-card__top"><span>Available Balance</span><span class="fv-tile fv-hue-teal" aria-hidden="true"><i class="fa-solid fa-arrow-down"></i></span></div>
+                  <div class="fv-card__value" id="workspaceAvailableBalance">$0.00</div>
+                  <div class="fv-card__foot"><span id="workspaceAvailableBalanceSub">Liquid after uncleared cheques</span></div>
                 </div>
-
-                <!-- Bank Statement Balance -->
-                <div class="kpi-mini-card fa-u19" title="Reported bank statement balance as of the latest statement upload or sync.">
-                  <div class="fa-u20">
-                    <span class="fa-u21">Bank Balance</span>
-                    <i class="fa-solid fa-circle-info fa-u22" title="Reported bank statement balance as of the latest statement upload or sync."></i>
-                  </div>
-                  <div class="fa-u23" id="workspaceBankBalance">$0.00</div>
-                  <div class="fa-u24" id="workspaceLastImportStatus">Last feed: None</div>
+                <div class="fv-card" title="Reported bank statement balance as of the latest statement upload or sync.">
+                  <div class="fv-card__top"><span>Bank Balance</span><span class="fv-tile fv-hue-violet" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span></div>
+                  <div class="fv-card__value" id="workspaceBankBalance">$0.00</div>
+                  <div class="fv-card__foot"><span id="workspaceLastImportStatus">Last feed: None</span></div>
                 </div>
-
-                <!-- Reconciled Balance -->
-                <div class="kpi-mini-card fa-u19" title="Portion of the ledger verified and reconciled against official bank statements.">
-                  <div class="fa-u20">
-                    <span class="fa-u21">Reconciled Balance</span>
-                    <i class="fa-solid fa-circle-info fa-u22" title="Portion of the ledger verified and reconciled against official bank statements."></i>
-                  </div>
-                  <div class="fa-u26" id="workspaceReconciledBalance">$0.00</div>
-                  <div class="fa-u24" id="workspaceLastReconciledStatus">Last reconciled: Never</div>
+                <div class="fv-card" title="Portion of the ledger verified and reconciled against official bank statements.">
+                  <div class="fv-card__top"><span>Reconciled Balance</span><span class="fv-tile fv-tile--success" aria-hidden="true"><i class="fa-solid fa-check"></i></span></div>
+                  <div class="fv-card__value" id="workspaceReconciledBalance">$0.00</div>
+                  <div class="fv-card__foot"><span id="workspaceLastReconciledStatus">Last reconciled: Never</span></div>
                 </div>
               </div>
 
               <!-- Workspace Navigation Tabs -->
-              <div class="filter-tabs fa-u27" role="tablist" aria-label="Account workspace tabs">
-                <button class="filter-tab active" id="tabWsActivity" onclick="switchWorkspaceTab('activity', this)"><i class="fa-solid fa-list-check"></i> Activity</button>
-                <button class="filter-tab" id="tabWsReconcile" onclick="switchWorkspaceTab('reconcile', this)"><i class="fa-solid fa-scale-balanced"></i> Reconcile</button>
-                <button class="filter-tab" id="tabWsStatements" onclick="switchWorkspaceTab('statements', this)"><i class="fa-solid fa-file-invoice"></i> Statements</button>
-                <button class="filter-tab" id="tabWsDetails" onclick="switchWorkspaceTab('details', this)"><i class="fa-solid fa-gear"></i> Details &amp; Settings</button>
+              <div class="filter-tabs fv-subnav" role="tablist" aria-label="Account workspace tabs">
+                <button class="filter-tab active" id="tabWsActivity" onclick="switchWorkspaceTab('activity', this)">Activity</button>
+                <button class="filter-tab" id="tabWsReconcile" onclick="switchWorkspaceTab('reconcile', this)">Reconcile</button>
+                <button class="filter-tab" id="tabWsStatements" onclick="switchWorkspaceTab('statements', this)">Statements</button>
+                <button class="filter-tab" id="tabWsDetails" onclick="switchWorkspaceTab('details', this)">Details &amp; Settings</button>
               </div>
             </div>
 
             <!-- Workspace Tab 1: Activity (Continuous Ledger) -->
             <div id="workspacePaneActivity">
-              <div class="card fa-u28">
-                <div class="fa-u29">
-                  <div class="fa-u17">
-                    <input type="date" id="workspaceLedgerDateFrom" class="form-control fa-u30" onchange="filterWorkspaceLedger()" title="From Date">
-                    <span class="fa-u31">to</span>
-                    <input type="date" id="workspaceLedgerDateTo" class="form-control fa-u30" onchange="filterWorkspaceLedger()" title="To Date">
-                    <select id="workspaceLedgerCategoryFilter" class="form-control fa-u32" onchange="filterWorkspaceLedger()">
-                      <option value="">All Categories</option>
-                    </select>
-                    <select id="workspaceLedgerPaymentTypeFilter" class="form-control fa-u32" onchange="filterWorkspaceLedger()">
-                      <option value="">All Payment Types</option>
-                    </select>
-                  </div>
-                  <div class="filter-tabs">
-                    <button class="filter-tab active" data-direction="all" onclick="filterWorkspaceLedgerDirection('all', this)">All</button>
-                    <button class="filter-tab" data-direction="in" onclick="filterWorkspaceLedgerDirection('in', this)">In (+)</button>
-                    <button class="filter-tab" data-direction="out" onclick="filterWorkspaceLedgerDirection('out', this)">Out (-)</button>
-                  </div>
+              <div class="fv-pills-row">
+                <div class="fv-pills" role="group" aria-label="Direction">
+                  <button class="filter-tab fv-pill active" data-direction="all" aria-pressed="true" onclick="filterWorkspaceLedgerDirection('all', this)">All</button>
+                  <button class="filter-tab fv-pill" data-direction="in" aria-pressed="false" onclick="filterWorkspaceLedgerDirection('in', this)">In</button>
+                  <button class="filter-tab fv-pill" data-direction="out" aria-pressed="false" onclick="filterWorkspaceLedgerDirection('out', this)">Out</button>
+                </div>
+                <div class="fv-pills-selects">
+                  <input type="date" id="workspaceLedgerDateFrom" class="fv-select" onchange="filterWorkspaceLedger()" title="From Date">
+                  <input type="date" id="workspaceLedgerDateTo" class="fv-select" onchange="filterWorkspaceLedger()" title="To Date">
+                  <select id="workspaceLedgerCategoryFilter" class="fv-select" onchange="filterWorkspaceLedger()">
+                    <option value="">All Categories</option>
+                  </select>
+                  <select id="workspaceLedgerPaymentTypeFilter" class="fv-select" onchange="filterWorkspaceLedger()">
+                    <option value="">All Payment Types</option>
+                  </select>
                 </div>
               </div>
 
-              <div class="card fa-u5">
+              <div class="fv-table-card">
                 <div class="section-loading-bar" id="workspaceLedgerLoadingBar"><span></span></div>
-                <div class="table-wrap">
-                  <table class="responsive-card-table">
+                <div class="fv-table-scroll">
+                  <table class="fv-table fv-table--ledger responsive-card-table">
                     <thead>
                       <tr>
-                        <th class="fa-u33">Date</th>
+                        <th>Date</th>
+                        <th>Details</th>
                         <th>Category</th>
-                        <th>Payment Method</th>
-                        <th>Reference</th>
-                        <th>Description</th>
-                        <th class="fa-u7">In (+)</th>
-                        <th class="fa-u7">Out (-)</th>
-                        <th class="fa-u7">Rate / Equiv</th>
-                        <th class="fa-u7">Running Balance</th>
-                        <th class="fa-u34">Actions</th>
+                        <th>Payment type</th>
+                        <th class="cell-money fv-num">Amount</th>
+                        <th class="cell-money fv-num">Balance</th>
+                        <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
                       </tr>
                     </thead>
                     <tbody id="workspaceLedgerTableBody"></tbody>
                   </table>
                 </div>
-                <div class="empty-state fa-u8" id="workspaceLedgerEmpty">
-                  <i class="fa-solid fa-money-bill-transfer"></i>
+                <div class="empty-state fa-u8 fv-empty" id="workspaceLedgerEmpty">
                   <p>No activity transactions found for this account.</p>
                 </div>
               </div>
@@ -314,100 +292,93 @@
 
           <!-- PANE 4: Continuous Ledger & Petty View (Phase 2) -->
           <div class="fa-u8" id="financeSubPaneLedger">
-            <!-- Header bar with back button and account details -->
-            <div class="fa-u61">
-              <div class="fa-u62">
-                <button class="btn btn-sm" onclick="closeAccountLedger()"><i class="fa-solid fa-arrow-left"></i> Back to Accounts</button>
-                <div>
-                  <h3 class="fa-u63" id="financeLedgerAccountName">Account Ledger</h3>
-                  <span class="fa-u64" id="financeLedgerAccountMeta">Continuous transaction register</span>
-                </div>
+            <!-- The Back button stays in the DOM for the existing handler; the Accounts tab replaces it -->
+            <button class="btn btn-sm" id="btnLedgerBackToAccounts" onclick="closeAccountLedger()" style="display:none;">Back to Accounts</button>
+            <span id="financeLedgerAccountName" class="fv-sr-only">Account Ledger</span>
+
+            <div class="fv-cards fv-cards--spaced fv-cards--3">
+              <div class="fv-card">
+                <div class="fv-card__top"><span>Balance</span><span class="fv-tile fv-hue-sky" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span></div>
+                <div class="fv-card__value" id="financeLedgerCurrentBalance">$0.00</div>
+                <div class="fv-card__foot"><span id="financeLedgerAccountMeta">Continuous transaction register</span></div>
               </div>
-              <div class="fa-u56">
-                <div class="fa-u65">
-                  <span class="fa-u64">Balance:</span>
-                  <strong class="fa-u66" id="financeLedgerCurrentBalance">$0.00</strong>
-                </div>
-                <button class="btn btn-fill" onclick="openAddFinanceTransactionModal()"><i class="fa-solid fa-plus"></i> Record Transaction</button>
+              <div class="fv-card">
+                <div class="fv-card__top"><span id="financeLedgerInLabel">In</span><span class="fv-tile fv-hue-teal" aria-hidden="true"><i class="fa-solid fa-arrow-down"></i></span></div>
+                <div class="fv-card__value" id="financeLedgerTotalIn">$0.00</div>
+                <div class="fv-card__foot"><span id="financeLedgerInCount">0 transactions</span></div>
+              </div>
+              <div class="fv-card">
+                <div class="fv-card__top"><span id="financeLedgerOutLabel">Out</span><span class="fv-tile fv-hue-orange" aria-hidden="true"><i class="fa-solid fa-arrow-up"></i></span></div>
+                <div class="fv-card__value" id="financeLedgerTotalOut">$0.00</div>
+                <div class="fv-card__foot"><span id="financeLedgerOutCount">0 transactions</span></div>
               </div>
             </div>
 
             <!-- Petty / Recurring spend alert banner (shown when petty filter active) -->
             <div class="fa-u67" id="financeLedgerPettyBanner">
-              <div class="fa-u68">
-                <div class="fa-u56">
-                  <i class="fa-solid fa-receipt fa-u69"></i>
-                  <div>
-                    <strong class="fa-u59">Petty / Recurring Spend Rollup</strong>
-                    <div class="fa-u70" id="financeLedgerPettyBreakdown">Loading summary...</div>
-                  </div>
+              <div class="fv-callout fv-callout--row">
+                <div>
+                  <strong>Petty / Recurring Spend Rollup</strong>
+                  <div class="fv-sub" id="financeLedgerPettyBreakdown">Loading summary...</div>
                 </div>
-                <div class="fa-u71">
-                  <div>
-                    <span class="fa-u72">Total Spend</span>
-                    <strong class="fa-u73" id="financeLedgerPettyTotalOut">$0.00</strong>
-                  </div>
-                  <div>
-                    <span class="fa-u72">Entries</span>
-                    <strong class="fa-u59" id="financeLedgerPettyCount">0</strong>
-                  </div>
+                <div class="fv-lines__totals">
+                  <span>Total Spend <strong id="financeLedgerPettyTotalOut">$0.00</strong></span>
+                  <span>Entries <strong id="financeLedgerPettyCount">0</strong></span>
                 </div>
               </div>
             </div>
 
-            <!-- Filters Toolbar -->
-            <div class="card fa-u28">
-              <div class="fa-u29">
-                <div class="fa-u17">
-                  <input type="date" id="financeLedgerDateFrom" class="form-control fa-u30" onchange="filterAccountLedger()" title="From Date">
-                  <span class="fa-u31">to</span>
-                  <input type="date" id="financeLedgerDateTo" class="form-control fa-u30" onchange="filterAccountLedger()" title="To Date">
-                  <select id="financeLedgerCategoryFilter" class="form-control fa-u32" onchange="filterAccountLedger()">
-                    <option value="">All Categories</option>
-                  </select>
-                  <select id="financeLedgerPaymentTypeFilter" class="form-control fa-u32" onchange="filterAccountLedger()">
-                    <option value="">All Payment Types</option>
-                  </select>
-                </div>
-                <div class="fa-u17">
-                  <div class="filter-tabs">
-                    <button class="filter-tab active" data-direction="all" onclick="filterAccountLedgerDirection('all', this)">All</button>
-                    <button class="filter-tab" data-direction="in" onclick="filterAccountLedgerDirection('in', this)">In (+)</button>
-                    <button class="filter-tab" data-direction="out" onclick="filterAccountLedgerDirection('out', this)">Out (-)</button>
-                  </div>
-                  <button class="btn btn-sm fa-u74" id="btnTogglePettyLedger" onclick="togglePettyLedgerView()">
-                    <i class="fa-solid fa-receipt"></i> Petty Spend Only
-                  </button>
-                </div>
+            <div class="fv-pills-row">
+              <div class="fv-pills" role="group" aria-label="Direction" id="financeLedgerDirectionPills">
+                <button class="filter-tab fv-pill active" data-direction="all" aria-pressed="true" onclick="filterAccountLedgerDirection('all', this)">All <span class="fv-pill__count" id="ledgerPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--in" data-direction="in" aria-pressed="false" onclick="filterAccountLedgerDirection('in', this)"><span class="fv-pill__arrow" aria-hidden="true">&darr;</span>In <span class="fv-pill__count" id="ledgerPillCountIn">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--out" data-direction="out" aria-pressed="false" onclick="filterAccountLedgerDirection('out', this)"><span class="fv-pill__arrow" aria-hidden="true">&uarr;</span>Out <span class="fv-pill__count" id="ledgerPillCountOut">0</span></button>
+              </div>
+              <label for="btnTogglePettyLedger" class="fv-toggle fv-toggle--inline">
+                <input type="checkbox" id="btnTogglePettyLedger" onchange="togglePettyLedgerView()"> Petty spend only
+              </label>
+              <div class="fv-pills-selects">
+                <select id="financeLedgerPeriod" class="fv-select" aria-label="Period" onchange="onLedgerPeriodChange(this.value)">
+                  <option value="all">All time</option>
+                  <option value="this_month">This month</option>
+                  <option value="last_month">Last month</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+                <span id="financeLedgerCustomRange" style="display:none;" class="fv-pills-selects">
+                  <input type="date" id="financeLedgerDateFrom" class="fv-select" onchange="filterAccountLedger()" title="From Date">
+                  <input type="date" id="financeLedgerDateTo" class="fv-select" onchange="filterAccountLedger()" title="To Date">
+                </span>
+                <select id="financeLedgerCategoryFilter" class="fv-select" onchange="filterAccountLedger()">
+                  <option value="">All Categories</option>
+                </select>
+                <select id="financeLedgerPaymentTypeFilter" class="fv-select" onchange="filterAccountLedger()">
+                  <option value="">All Payment Types</option>
+                </select>
               </div>
             </div>
 
-            <!-- Table Card -->
-            <div class="card fa-u5">
+            <div class="fv-table-card">
               <div class="section-loading-bar" id="financeLedgerLoadingBar"><span></span></div>
-              <div class="table-wrap">
-                <table class="responsive-card-table">
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--ledger responsive-card-table" id="financeLedgerTable">
                   <thead>
                     <tr>
-                      <th class="fa-u33">Date</th>
+                      <th>Date</th>
+                      <th>Details</th>
                       <th>Category</th>
-                      <th>Payment Method</th>
-                      <th>Reference</th>
-                      <th>Description</th>
-                      <th class="fa-u7">In (+)</th>
-                      <th class="fa-u7">Out (-)</th>
-                      <th class="fa-u7">Rate / Equiv</th>
-                      <th class="fa-u7">Running Balance</th>
-                      <th class="fa-u34">Actions</th>
+                      <th>Payment type</th>
+                      <th class="cell-money fv-num">Amount</th>
+                      <th class="cell-money fv-num">Balance</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody id="financeLedgerTableBody"></tbody>
                 </table>
               </div>
-              <div class="empty-state fa-u8" id="financeLedgerEmpty">
-                <i class="fa-solid fa-money-bill-transfer"></i>
+              <div class="empty-state fa-u8 fv-empty" id="financeLedgerEmpty">
                 <p>No transactions found for this account.</p>
               </div>
+              <div class="fv-foot" id="financeLedgerFooter"></div>
             </div>
           </div>
 

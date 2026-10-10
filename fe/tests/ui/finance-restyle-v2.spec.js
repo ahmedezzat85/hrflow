@@ -314,3 +314,79 @@ test.describe('Finance restyle v2: Sales (S4)', () => {
     expect(await css(page, '#paymentAmount', 'height')).toBe('36px');
   });
 });
+
+// ---------- S5: Banking I (Accounts, Ledger, transaction dialog) ----------
+test.describe('Finance restyle v2: Banking I (S5)', () => {
+  for (const theme of ['light', 'dark']) {
+    test(`Accounts page chrome in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await openAdminPage(page, 'a-finance-accounts');
+      await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible();
+      expect(await css(page, '#financeAccountsTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+      expect(await css(page, '#financeAccountsTable thead th', 'textTransform')).toBe('none');
+      // Banking tabs are the shortened underline tabs without icons
+      await expect(page.locator('#financeAccountsSubNav .filter-tab')).toHaveText(['Accounts', 'Ledger', 'Statements', 'Cheques', 'Transfers']);
+      await expect(page.locator('#financeAccountsSubNav .fa-solid')).toHaveCount(0);
+      // header: Transfer and Withdraw cash outline, Add account primary; Upload statement moved out
+      const head = page.locator('#financeHeadActionsAccounts');
+      await expect(head.locator('button')).toHaveText(['Transfer', 'Withdraw cash', 'Add account']);
+      expect(await css(page, '#financeHeadActionsAccounts .btn-fill', 'height')).toBe('32px');
+      // cards: one per currency (never mixed), uncleared cheques, statement lines
+      await expect(page.locator('#financeAccountsCards .fv-card')).toHaveCount(4);
+      await expect(page.locator('#financeAccountsCards')).toContainText('USD accounts');
+      await expect(page.locator('#financeAccountsCards')).toContainText('EGP accounts');
+      await expect(page.locator('#financeAccountsCards')).toContainText('Uncleared cheques');
+      await expect(page.locator('#financeAccountsCards')).toContainText('Statement lines to match');
+      // one Balance column; the ledger and mock balances agree
+      await expect(page.locator('#financeAccountsTable thead th')).toHaveText(['Account', 'Type', 'Last statement', 'Balance', 'Actions']);
+      await expect(page.locator('#financeAccountsTableBody tr').first()).toContainText('145,800.00');
+      // currency filter narrows the list
+      await page.selectOption('#financeAccountCurrencyFilter', 'EGP');
+      await expect(page.locator('#financeAccountsTableBody tr')).toHaveCount(2);
+    });
+  }
+
+  test('Ledger tab: account select, period, cards, signed navy amounts, no Rate / Equiv column', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-accounts');
+    await page.click('#subtabFinanceLedger');
+    await expect(page.locator('#financeLedgerTableBody tr').first()).toBeVisible();
+    await expect(page.locator('#financeAccountsSubNav')).toBeVisible();
+    await expect(page.locator('#financeLedgerAccountSelect')).toBeVisible();
+    expect(await css(page, '#financeLedgerRecordBtn', 'height')).toBe('32px');
+    await expect(page.locator('#financeLedgerTable thead th')).toHaveText(['Date', 'Details', 'Category', 'Payment type', 'Amount', 'Balance', 'Actions']);
+    await expect(page.locator('#financeLedgerTable')).not.toContainText('Rate / Equiv');
+    await expect(page.locator('#financeLedgerTotalOut')).toContainText('4,200.00');
+    await expect(page.locator('#financeLedgerCurrentBalance')).toContainText('145,800.00');
+    const amount = page.locator('#financeLedgerTableBody .fv-amount__value').first();
+    await expect(amount).toHaveText('−4,200.00');
+    expect(await amount.evaluate((el) => getComputedStyle(el).color)).toBe(await rgb(page, 'var(--ink-strong)'));
+    // the direction pills filter the rows but not the period cards
+    await page.click('#financeLedgerDirectionPills [data-direction="in"]');
+    await expect(page.locator('#financeLedgerTableBody tr')).toHaveCount(0);
+    await expect(page.locator('#financeLedgerTotalOut')).toContainText('4,200.00');
+    await page.click('#financeLedgerDirectionPills [data-direction="all"]');
+    await expect(page.locator('#financeLedgerTableBody tr')).toHaveCount(1);
+    // period "This month" has no data in the mock; the footer and empty state follow
+    await page.selectOption('#financeLedgerPeriod', 'custom');
+    await expect(page.locator('#financeLedgerDateFrom')).toBeVisible();
+  });
+
+  test('Transaction dialog: scoped, sky tile, choice bar, Paid-to pills drive the payee select', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-accounts');
+    await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible();
+    await page.locator('.btn-open-workspace').first().click();
+    await page.click('#btnWorkspaceNewTx');
+    await expect(page.locator('#financeTransactionModal.fv-dialog')).toBeVisible();
+    expect(await css(page, '#fFinanceTxAmount', 'height')).toBe('36px');
+    expect(await css(page, '#financeTxSaveBtn', 'height')).toBe('34px');
+    await expect(page.locator('#financeTransactionModal .modal-foot .fa-solid')).toHaveCount(0);
+    await expect(page.locator('#fFinanceTxTypeMoneyOut')).toHaveClass(/active/);
+    await page.click('#fFinanceTxTypeMoneyIn');
+    await expect(page.locator('#fFinanceTxEntryType')).toHaveValue('money_in');
+    await page.click('#fFinanceTxPayeePills [data-payee="vendor"]');
+    await expect(page.locator('#fFinanceTxPayeeType')).toHaveValue('vendor');
+    await expect(page.locator('#fFinanceTxPayeePills [data-payee="vendor"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+});

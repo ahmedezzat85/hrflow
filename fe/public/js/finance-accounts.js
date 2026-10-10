@@ -45,6 +45,11 @@ function switchFinanceAccountsSubTab(tabName, btn) {
   if (paneLedger) paneLedger.style.display = tabName === "ledger" ? "block" : "none";
   if (paneWorkspace) paneWorkspace.style.display = "none";
 
+  // The header actions belong to the active tab (Accounts and Ledger so far)
+  document.querySelectorAll("#financeAccountsHead [data-head-for]").forEach((el) => {
+    el.style.display = el.dataset.headFor === tabName ? "" : "none";
+  });
+
   if (tabName === "accounts") {
     loadFinanceAccounts();
   } else if (tabName === "statements") {
@@ -68,12 +73,12 @@ async function loadFinanceAccounts() {
   if (bar) bar.style.display = "block";
 
   try {
-    let params = null;
-    if (_currentBankAccountFilter === "active") params = { is_active: true };
-    else if (_currentBankAccountFilter === "inactive") params = { is_active: false };
-
-    const items = await FinanceApi.getAccounts(params);
+    // The whole list is loaded: the status pills, counts and the currency filter work on the client.
+    const items = await FinanceApi.getAccounts();
     FinanceState.accounts = items;
+    let cheques = [];
+    try { cheques = (await FinanceApi.getCheques()) || []; } catch (_) { /* the cheque card shows zero */ }
+    FinanceState.chequesForCards = cheques;
     renderFinanceAccounts(items);
   } catch (err) {
     console.error("Failed to load company accounts:", err);
@@ -83,88 +88,149 @@ async function loadFinanceAccounts() {
   }
 }
 
+let _accountCurrencyFilter = "";
+
 function filterCompanyBankAccounts(filterType, btn) {
   _currentBankAccountFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSubPaneAccounts .filter-tabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) btn.classList.add("active");
-  loadFinanceAccounts();
+  document.querySelectorAll("#financeAccountStatusPills .fv-pill").forEach((p) => {
+    const on = p.dataset.filter === filterType;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  renderFinanceAccounts(FinanceState.accounts || []);
 }
 
-function renderFinanceAccounts(items) {
+function onAccountCurrencyFilterChange(cur) {
+  _accountCurrencyFilter = cur || "";
+  renderFinanceAccounts(FinanceState.accounts || []);
+}
+
+// Summary cards (doc 21 section 6.8): one per currency present (never mixed), uncleared cheques, statement lines to match.
+function _renderAccountCards(all) {
+  const host = document.getElementById("financeAccountsCards");
+  if (!host) return;
+  const cards = [];
+  const byCur = {};
+  all.filter((a) => a.is_active).forEach((a) => {
+    const c = (a.currency || "USD").toUpperCase();
+    const row = byCur[c] || (byCur[c] = { total: 0, bank: 0, cash: 0 });
+    row.total += Number(a.book_balance !== undefined ? a.book_balance : a.current_balance || 0);
+    if (a.account_type === "cash") row.cash += 1; else row.bank += 1;
+  });
+  const hues = ["sky", "teal", "violet", "green"];
+  Object.entries(byCur).forEach(([cur, row], i) => {
+    const parts = [];
+    if (row.bank) parts.push(`${row.bank} bank ${row.bank === 1 ? "account" : "accounts"}`);
+    if (row.cash) parts.push(`${row.cash} cash ${row.cash === 1 ? "drawer" : "drawers"}`);
+    cards.push(`
+      <a class="fv-card" href="javascript:void(0)" onclick="document.getElementById('financeAccountCurrencyFilter').value='${cur}'; onAccountCurrencyFilterChange('${cur}')">
+        <div class="fv-card__top"><span>${FinanceUI.esc(cur)} accounts</span><span class="fv-tile fv-hue-${hues[i % hues.length]}" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span></div>
+        <div class="fv-card__value">${FinanceUI.moneyHtml(row.total, cur)}</div>
+        <div class="fv-card__foot"><span>${parts.join(", ")}</span><span class="fv-card__link">Filter &rsaquo;</span></div>
+      </a>`);
+  });
+
+  const unc = (FinanceState.chequesForCards || []).filter((c) => c.status === "issued" || c.status === "outstanding");
+  const uncBy = {};
+  unc.forEach((c) => { const k = (c.currency || "USD").toUpperCase(); uncBy[k] = (uncBy[k] || 0) + Number(c.amount || 0); });
+  const uncHtml = Object.keys(uncBy).length
+    ? Object.entries(uncBy).map(([cur, v]) => FinanceUI.moneyHtml(v, cur)).join(" + ")
+    : FinanceUI.moneyHtml(0, Object.keys(byCur)[0] || "USD");
+  cards.push(`
+      <a class="fv-card" href="javascript:void(0)" onclick="switchFinanceAccountsSubTab('cheques')">
+        <div class="fv-card__top"><span>Uncleared cheques</span><span class="fv-tile fv-tile--warning" aria-hidden="true"><i class="fa-solid fa-clock"></i></span></div>
+        <div class="fv-card__value">${uncHtml}</div>
+        <div class="fv-card__foot"><span>${unc.length} ${unc.length === 1 ? "cheque" : "cheques"} issued</span><span class="fv-card__link">Cheques &rsaquo;</span></div>
+      </a>`);
+
+  const withLines = all.filter((a) => Number(a.unreconciled_count) > 0);
+  const lines = withLines.reduce((n, a) => n + Number(a.unreconciled_count), 0);
+  cards.push(`
+      <a class="fv-card" href="javascript:void(0)" onclick="switchFinanceAccountsSubTab('statements')">
+        <div class="fv-card__top"><span>Statement lines to match</span><span class="fv-tile fv-hue-violet" aria-hidden="true"><i class="fa-solid fa-square-check"></i></span></div>
+        <div class="fv-card__value">${lines}</div>
+        <div class="fv-card__foot"><span>${withLines.length ? FinanceUI.esc(withLines[0].bank_name || withLines[0].account_name) : "Nothing to reconcile"}</span><span class="fv-card__link">Reconcile &rsaquo;</span></div>
+      </a>`);
+
+  // a grid of four reads best; with more currencies the extra cards wrap
+  host.innerHTML = cards.join("");
+}
+
+function renderFinanceAccounts(allItems) {
   const tbody = document.getElementById("financeAccountsTableBody");
   const empty = document.getElementById("financeAccountsEmpty");
+  const footer = document.getElementById("financeAccountsFooter");
   if (!tbody) return;
 
-  if (!items || items.length === 0) {
+  const all = allItems || [];
+  _renderAccountCards(all);
+
+  // pill counts and the currency list come from the whole list
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const activeCount = all.filter((a) => a.is_active).length;
+  setText("accPillCountAll", all.length);
+  setText("accPillCountActive", activeCount);
+  setText("accPillCountInactive", all.length - activeCount);
+  document.querySelectorAll("#financeAccountStatusPills .fv-pill").forEach((p) => {
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+    const on = p.dataset.filter === _currentBankAccountFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  const curSel = document.getElementById("financeAccountCurrencyFilter");
+  if (curSel) {
+    const currencies = [...new Set(all.map((a) => (a.currency || "USD").toUpperCase()))].sort();
+    curSel.innerHTML = `<option value="">All currencies</option>` + currencies.map((c) => `<option value="${c}">${c}</option>`).join("");
+    curSel.value = currencies.includes(_accountCurrencyFilter) ? _accountCurrencyFilter : "";
+    if (curSel.value === "") _accountCurrencyFilter = "";
+  }
+
+  let items = all;
+  if (_currentBankAccountFilter === "active") items = items.filter((a) => a.is_active);
+  else if (_currentBankAccountFilter === "inactive") items = items.filter((a) => !a.is_active);
+  if (_accountCurrencyFilter) items = items.filter((a) => (a.currency || "USD").toUpperCase() === _accountCurrencyFilter);
+
+  if (items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
+  if (footer) {
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> accounts &middot; totals are per currency, never mixed</span>`;
+  }
 
+  const esc = FinanceUI.esc;
   tbody.innerHTML = items
     .map((acc) => {
-      const typeLabel = (acc.account_type || "bank").toUpperCase();
+      const cur = (acc.currency || "USD").toUpperCase();
       const isCash = acc.account_type === "cash";
       const bookBal = acc.book_balance !== undefined ? acc.book_balance : acc.current_balance;
       const availBal = acc.available_balance !== undefined ? acc.available_balance : acc.current_balance;
-      const recBal = acc.reconciled_balance !== undefined ? acc.reconciled_balance : 0;
-      const feedText = acc.last_import_date ? `Last import: ${acc.last_import_date}` : "No imports yet";
-      const recText = acc.last_reconciled_date
-        ? `Reconciled: ${acc.last_reconciled_date}`
-        : (acc.unreconciled_count ? `Unreconciled (${acc.unreconciled_count})` : "Unreconciled");
+      const sub = (acc.bank_name && !isCash ? acc.bank_name : "") + (acc.country ? (acc.bank_name && !isCash ? " · " : "") + acc.country : "");
+      const masked = FinanceFormat.formatMaskedAccountNumber(acc.account_number, isCash);
+      const typeText = `${isCash ? "Cash" : "Bank"} · ${masked}`;
+      const lines = Number(acc.unreconciled_count || 0);
+      const lastStatement = (acc.last_reconciled_date || lines)
+        ? `<div class="fv-date"><span>${acc.last_reconciled_date ? esc(FinanceUI.formatDate(acc.last_reconciled_date)) : "–"}</span>${lines ? `<span class="fv-note fv-note--warn">${lines} lines to match</span>` : ""}</div>`
+        : "–";
+      const availSub = Number(availBal) !== Number(bookBal) ? `Available ${FinanceUI.plainNumber(availBal, cur)}` : "";
 
       return `
-    <tr class="${acc.is_active ?"" : "account-inactive"}">
-      <td data-label="Account">
-        <div style="font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;word-break:break-word;">
-          <i class="fa-solid ${isCash ?"fa-wallet" : "fa-building-columns"}" style="color:var(--text3);flex-shrink:0;"></i>
-          <a href="javascript:void(0)" onclick="openAccountWorkspace(${acc.id})" style="font-weight:600;color:var(--accent-text);text-decoration:none;word-break:break-word;">
-            ${acc.account_name}
-          </a>
-        </div>
-        ${acc.bank_name && !isCash ? `<div style="font-size:12px;color:var(--text3);">${acc.bank_name}${acc.country ? ' · ' + acc.country : ''}</div>` : (acc.country ? `<div style="font-size:12px;color:var(--text3);">${acc.country}</div>` : '')}
-      </td>
-      <td data-label="Type & ID">
-        <span class="badge ${isCash ?"badge-info" : "badge-neutral"}">
-          ${typeLabel}
-        </span>
-        <code style="margin-left:4px;font-size:11.5px;">${FinanceFormat.formatMaskedAccountNumber(acc.account_number, isCash)}</code>
-      </td>
-      <td data-label="Currency"><strong>${acc.currency || "USD"}</strong></td>
-      <td data-label="Book Balance" class="cell-money" style="text-align:right;font-weight:700;">
-        ${FinanceFormat.renderMoneyHtml(bookBal, acc.currency)}
-      </td>
-      <td data-label="Available" class="cell-money" style="text-align:right;font-weight:700;color:var(--accent-text);">
-        ${FinanceFormat.renderMoneyHtml(availBal, acc.currency)}
-      </td>
-      <td data-label="Reconciled" class="cell-money" style="text-align:right;font-weight:700;color:var(--success, #10b981);">
-        ${FinanceFormat.renderMoneyHtml(recBal, acc.currency)}
-      </td>
-      <td data-label="Feed / Rec" style="font-size:11.5px;color:var(--text3);">
-        <div><i class="fa-solid fa-cloud-arrow-up" style="font-size:10px;"></i> ${feedText}</div>
-        <div style="margin-top:2px;"><i class="fa-solid fa-scale-balanced" style="font-size:10px;"></i> ${recText}</div>
-      </td>
-      <td data-label="Status" style="text-align:center;">
-        <span class="status-led-badge ${acc.is_active ?"status-led-active" : "status-led-inactive"}" title="${acc.is_active ? "Active" : "Inactive"}">
-          <span class="led-dot"></span>
-          ${acc.is_active ? "Active" : "Inactive"}
-        </span>
-      </td>
-      <td data-label="Actions" class="col-actions">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;justify-content:flex-end;">
-          <button class="btn btn-sm btn-outline btn-open-workspace" onclick="openAccountWorkspace(${acc.id})" title="Open Account Workspace" aria-label="Open Account Workspace" style="padding:6px 10px;">
-            <i class="fa-solid fa-folder-open"></i>
-          </button>
-          <button class="btn btn-sm btn-outline" onclick="openEditCompanyBankAccountModal(${acc.id})" title="Edit Account" aria-label="Edit Account" style="padding:6px 10px;">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button class="btn btn-sm ${acc.is_active ?"btn-danger" : "btn-outline"}" onclick="toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})" title="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" aria-label="${acc.is_active ? "Deactivate Account" : "Reactivate Account"}" style="padding:6px 10px;">
-            <i class="fa-solid ${acc.is_active ?"fa-power-off" : "fa-check"}"></i>
-          </button>
-        </div>
-      </td>
+    <tr class="${acc.is_active ? "" : "account-inactive"}">
+      <td data-label="Account"><div class="fv-cell-main">${FinanceUI.avatar(acc.account_name, FinanceUI.hueForId(acc.id))}<div class="fv-cell-main__text"><a href="javascript:void(0)" class="fv-name-btn" onclick="openAccountWorkspace(${acc.id})">${esc(acc.account_name)}</a>${sub ? `<span class="fv-sub">${esc(sub)}</span>` : ""}</div></div></td>
+      <td data-label="Type">${esc(typeText)}</td>
+      <td data-label="Last statement">${lastStatement}</td>
+      <td data-label="Balance" class="cell-money fv-num"><div class="fv-amount"><span class="fv-amount__value"><span class="fv-cur">${esc(cur)}</span> ${esc(FinanceUI.plainNumber(bookBal, cur))}</span>${availSub ? `<span class="fv-sub">${esc(availSub)}</span>` : ""}</div></td>
+      <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({
+        primary: { label: "Open ledger", kind: "outline", className: "btn-open-workspace", onclick: `openAccountWorkspace(${acc.id})`, attrs: 'title="Open Account Workspace" aria-label="Open Account Workspace"' },
+        icons: [
+          { icon: "fa-pen", label: "Edit Account", onclick: `openEditCompanyBankAccountModal(${acc.id})` },
+          { icon: acc.is_active ? "fa-power-off" : "fa-check", label: acc.is_active ? "Deactivate Account" : "Reactivate Account", className: acc.is_active ? "fv-icon-btn--danger" : "", onclick: `toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})` },
+        ],
+      })}</td>
     </tr>
   `;
     })
@@ -365,7 +431,7 @@ async function openAccountWorkspace(accountId, initialTab = "activity") {
   const panePaymentTypes = document.getElementById("financeSubPanePaymentTypes");
   const paneLedger = document.getElementById("financeSubPaneLedger");
   const paneWorkspace = document.getElementById("financeSubPaneWorkspace");
-  const subNav = document.getElementById("financeAccountsSubNav");
+  const subNav = document.getElementById("financeAccountsHead");
 
   if (paneAccounts) paneAccounts.style.display = "none";
   if (paneStatements) paneStatements.style.display = "none";
@@ -399,11 +465,11 @@ function closeAccountWorkspace() {
 
   const paneWorkspace = document.getElementById("financeSubPaneWorkspace");
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
-  const subNav = document.getElementById("financeAccountsSubNav");
+  const subNav = document.getElementById("financeAccountsHead");
 
   if (paneWorkspace) paneWorkspace.style.display = "none";
   if (paneAccounts) paneAccounts.style.display = "block";
-  if (subNav) subNav.style.display = "flex";
+  if (subNav) subNav.style.display = "";
 
   loadFinanceAccounts();
 }
@@ -676,10 +742,41 @@ function filterWorkspaceLedger() {
 
 function filterWorkspaceLedgerDirection(direction, btn) {
   _workspaceLedgerDirectionFilter = direction;
-  const tabs = document.querySelectorAll("#workspacePaneActivity .filter-tabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) btn.classList.add("active");
+  document.querySelectorAll("#workspacePaneActivity .fv-pill").forEach((p) => {
+    const on = p.dataset.direction === direction;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
   loadWorkspaceActivity();
+}
+
+// One ledger row for the Ledger tab and the account workspace (doc 21 section 6.9):
+// direction tile, description with the reference as a link, category dot, payment type, signed amount, balance.
+function _ledgerRowHtml(tx, currency) {
+  const esc = FinanceUI.esc;
+  const isIn = tx.direction === "in";
+  const cur = (currency || tx.currency || "USD").toUpperCase();
+  const tile = `<span class="fv-tile fv-tile--sm fv-hue-${isIn ? "teal" : "orange"}" aria-hidden="true"><i class="fa-solid ${isIn ? "fa-arrow-down" : "fa-arrow-up"}"></i></span>`;
+  const sign = isIn ? "" : "\u2212";
+  const isManual = tx.source === "manual";
+  const source = isManual ? "" : `<span class="fv-sub" title="System-generated from ${esc(tx.source)}">Posted by ${esc(String(tx.source || "").replace(/_/g, " "))}</span>`;
+  const actions = isManual
+    ? FinanceUI.rowActions({ icons: [
+        { icon: "fa-pen", label: "Edit Transaction", onclick: `openEditFinanceTransactionModal(${tx.id})` },
+        { icon: "fa-trash", label: "Void / Delete Transaction", className: "fv-icon-btn--danger", onclick: `confirmDeleteFinanceTransaction(${tx.id})` },
+      ] })
+    : "";
+  return `
+        <tr>
+          <td data-label="Date">${esc(FinanceUI.formatDate(tx.date))}</td>
+          <td data-label="Details"><div class="fv-cell-main">${tile}<div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(tx.description || tx.reference || "—")}</span>${tx.reference ? `<span class="fv-link">${esc(tx.reference)}</span>` : ""}${source}</div></div></td>
+          <td data-label="Category">${FinanceUI.categoryCell(tx.category_name || "Uncategorized")}</td>
+          <td data-label="Payment type">${esc(_paymentTypeLabel(tx))}</td>
+          <td data-label="Amount" class="cell-money fv-num"><span class="fv-amount__value">${sign}${esc(FinanceUI.plainNumber(tx.amount, cur))}</span></td>
+          <td data-label="Balance" class="cell-money fv-num fv-muted">${esc(FinanceUI.plainNumber(tx.running_balance || 0, cur))}</td>
+          <td data-label="Actions" class="col-actions">${actions}</td>
+        </tr>
+      `;
 }
 
 function renderWorkspaceLedger(items) {
@@ -695,46 +792,7 @@ function renderWorkspaceLedger(items) {
   if (empty) empty.style.display = "none";
 
   const acc = _activeWorkspaceAccount;
-  const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
-
-  tbody.innerHTML = items
-    .map((tx) => {
-      const isIn = tx.direction === "in";
-      const inDisplay = isIn ? `<strong style="color:var(--success);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
-      const outDisplay = !isIn ? `<strong style="color:var(--danger);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
-
-      let fxDisplay = "—";
-      if (tx.fx_rate) {
-        const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
-        const eqSym = eqCurr === "EGP" ? "EGP " : "$";
-        const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
-        fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
-      }
-
-      const isManual = tx.source === "manual";
-      const actionsHtml = isManual
-        ? `<div style="display:flex;gap:4px;justify-content:center;">
-             <button class="btn btn-sm" onclick="openEditFinanceTransactionModal(${tx.id})" title="Edit Transaction"><i class="fa-solid fa-pen"></i></button>
-             <button class="btn btn-sm btn-danger" onclick="confirmDeleteFinanceTransaction(${tx.id})" title="Void / Delete Transaction"><i class="fa-solid fa-trash"></i></button>
-           </div>`
-        : `<span class="badge badge-info" title="System-generated from ${tx.source}"><i class="fa-solid fa-lock"></i> ${(tx.source || '').replace('_', ' ').toUpperCase()}</span>`;
-
-      return `
-        <tr>
-          <td data-label="Date"><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
-          <td data-label="Category"><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td data-label="Payment Type"><span class="badge badge-pending">${escapeHtml(_paymentTypeLabel(tx))}</span></td>
-          <td data-label="Reference"><span style="font-size:12px;">${tx.reference || "—"}</span></td>
-          <td data-label="Description"><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
-          <td data-label="In (+)" class="cell-money" style="text-align:right;">${inDisplay}</td>
-          <td data-label="Out (-)" class="cell-money" style="text-align:right;">${outDisplay}</td>
-          <td data-label="Rate / Equiv" style="text-align:right;">${fxDisplay}</td>
-          <td data-label="Balance" class="cell-money" style="text-align:right;"><strong>${symbol}${Number(tx.running_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-          <td data-label="Actions" class="col-actions" style="text-align:center;">${actionsHtml}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  tbody.innerHTML = items.map((tx) => _ledgerRowHtml(tx, acc && acc.currency)).join("");
 }
 
 async function loadWorkspaceStatements() {
@@ -1234,13 +1292,56 @@ let _currentLedgerAccountId = null;
 let _currentLedgerDirectionFilter = "all";
 let _isPettyLedgerOnly = false;
 
+function _ledgerPeriodRange(period) {
+  const now = new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (period === "this_month") return [iso(new Date(now.getFullYear(), now.getMonth(), 1)), iso(new Date(now.getFullYear(), now.getMonth() + 1, 0))];
+  if (period === "last_month") return [iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)), iso(new Date(now.getFullYear(), now.getMonth(), 0))];
+  return ["", ""];
+}
+
+function _ledgerPeriodLabel() {
+  const sel = document.getElementById("financeLedgerPeriod");
+  const v = sel ? sel.value : "all";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const now = new Date();
+  if (v === "this_month") return `${months[now.getMonth()]} ${now.getFullYear()}`;
+  if (v === "last_month") { const d = new Date(now.getFullYear(), now.getMonth() - 1, 1); return `${months[d.getMonth()]} ${d.getFullYear()}`; }
+  if (v === "custom") return "custom range";
+  return "All time";
+}
+
+function onLedgerPeriodChange(period) {
+  const custom = document.getElementById("financeLedgerCustomRange");
+  const from = document.getElementById("financeLedgerDateFrom");
+  const to = document.getElementById("financeLedgerDateTo");
+  if (custom) custom.style.display = period === "custom" ? "" : "none";
+  if (period !== "custom") {
+    const [f, e] = _ledgerPeriodRange(period);
+    if (from) from.value = f;
+    if (to) to.value = e;
+  }
+  loadAccountTransactions();
+}
+
+function onLedgerAccountSelectChange(value) {
+  const id = parseInt(value, 10);
+  if (id) viewAccountLedger(id);
+}
+
+function _populateLedgerAccountSelect(selectedId) {
+  const sel = document.getElementById("financeLedgerAccountSelect");
+  if (!sel) return;
+  sel.innerHTML = (FinanceState.accounts || [])
+    .map((a) => `<option value="${a.id}">${FinanceUI.esc(a.account_name)} &middot; ${FinanceUI.esc(FinanceFormat.formatMaskedAccountNumber(a.account_number, a.account_type === "cash").replace(/^•+\s*/, "••"))}</option>`)
+    .join("");
+  if (selectedId) sel.value = String(selectedId);
+}
+
 async function viewAccountLedger(accountId) {
   _currentLedgerAccountId = accountId;
   _currentLedgerDirectionFilter = "all";
   _isPettyLedgerOnly = false;
-
-  const subNav = document.getElementById("financeAccountsSubNav");
-  if (subNav) subNav.style.display = "none";
 
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
   const paneCategories = document.getElementById("financeSubPaneCategories");
@@ -1252,23 +1353,18 @@ async function viewAccountLedger(accountId) {
   if (panePaymentTypes) panePaymentTypes.style.display = "none";
   if (paneLedger) paneLedger.style.display = "block";
 
+  if (!FinanceState.accounts || !FinanceState.accounts.length) {
+    try { FinanceState.accounts = await FinanceApi.getAccounts(); } catch (_) { /* header stays generic */ }
+  }
+  _populateLedgerAccountSelect(accountId);
+
   // Populate account header details
   const acc = (FinanceState.accounts || []).find((a) => a.id === accountId);
   if (acc) {
     const nameEl = document.getElementById("financeLedgerAccountName");
     const metaEl = document.getElementById("financeLedgerAccountMeta");
-    const balEl = document.getElementById("financeLedgerCurrentBalance");
     if (nameEl) nameEl.textContent = `${acc.account_name} — Ledger`;
-    if (metaEl) {
-      const typeLabel = (acc.account_type || "bank").toUpperCase();
-      const institution = acc.bank_name || "Cash Custody";
-      const maskedNum = FinanceFormat.formatMaskedAccountNumber(acc.account_number, acc.account_type === "cash");
-  metaEl.textContent = `${typeLabel} · ${institution} · ${acc.currency} · ${maskedNum}`;
-    }
-    if (balEl) {
-      const symbol = acc.currency === "EGP" ? "EGP " : "$";
-      balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-    }
+    if (metaEl) metaEl.textContent = `${acc.bank_name || "Cash custody"} · ${acc.currency}`;
   }
 
   // Populate categories and payment types dropdowns in filter
@@ -1279,36 +1375,34 @@ async function viewAccountLedger(accountId) {
   const dateTo = document.getElementById("financeLedgerDateTo");
   const catFilter = document.getElementById("financeLedgerCategoryFilter");
   const ptFilter = document.getElementById("financeLedgerPaymentTypeFilter");
+  const period = document.getElementById("financeLedgerPeriod");
+  const custom = document.getElementById("financeLedgerCustomRange");
   if (dateFrom) dateFrom.value = "";
   if (dateTo) dateTo.value = "";
   if (catFilter) catFilter.value = "";
   if (ptFilter) ptFilter.value = "";
+  if (period) period.value = "all";
+  if (custom) custom.style.display = "none";
 
-  const dirTabs = document.querySelectorAll("#financeSubPaneLedger .filter-tabs .filter-tab");
-  dirTabs.forEach((t) => t.classList.remove("active"));
-  const allDirBtn = document.querySelector('#financeSubPaneLedger .filter-tabs .filter-tab[data-direction="all"]');
-  if (allDirBtn) allDirBtn.classList.add("active");
+  document.querySelectorAll("#financeLedgerDirectionPills .fv-pill").forEach((p) => {
+    const on = p.dataset.direction === "all";
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
 
   const pettyBtn = document.getElementById("btnTogglePettyLedger");
-  if (pettyBtn) {
-    pettyBtn.classList.remove("btn-fill");
-    pettyBtn.classList.add("btn-sm");
-  }
+  if (pettyBtn) pettyBtn.checked = false;
 
   await loadAccountTransactions();
 }
 
 function closeAccountLedger() {
   _currentLedgerAccountId = null;
-  const subNav = document.getElementById("financeAccountsSubNav");
-  if (subNav) subNav.style.display = "flex";
-
   const paneLedger = document.getElementById("financeSubPaneLedger");
   const paneAccounts = document.getElementById("financeSubPaneAccounts");
   if (paneLedger) paneLedger.style.display = "none";
   if (paneAccounts) paneAccounts.style.display = "block";
-
-  loadFinanceAccounts();
+  switchFinanceAccountsSubTab("accounts");
 }
 
 async function _populateLedgerFilterDropdowns() {
@@ -1355,16 +1449,15 @@ async function loadAccountTransactions() {
     if (dateTo) params.date_to = dateTo;
     if (catId) params.category_id = catId;
     if (ptId) params.payment_type_id = ptId;
-    if (_currentLedgerDirectionFilter && _currentLedgerDirectionFilter !== "all") {
-      params.direction = _currentLedgerDirectionFilter;
-    }
     if (_isPettyLedgerOnly) {
       params.is_petty = true;
     }
 
-    const items = await FinanceApi.getAccountTransactions(_currentLedgerAccountId, params);
-    FinanceState.ledgerTransactions = items;
-    renderAccountTransactions(items);
+    // The direction pills filter on the client so the In and Out cards and counts always cover the period.
+    const all = (await FinanceApi.getAccountTransactions(_currentLedgerAccountId, params)) || [];
+    const shown = _currentLedgerDirectionFilter === "all" ? all : all.filter((tx) => tx.direction === _currentLedgerDirectionFilter);
+    FinanceState.ledgerTransactions = shown;
+    renderAccountTransactions(shown, all);
 
     // If petty rollup active, load petty summary banner
     const banner = document.getElementById("financeLedgerPettyBanner");
@@ -1379,26 +1472,23 @@ async function loadAccountTransactions() {
       const breakdownEl = document.getElementById("financeLedgerPettyBreakdown");
 
       const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
-      const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
+      const cur = (acc && acc.currency) || "USD";
 
-      if (totalOutEl) totalOutEl.textContent = `${symbol}${Number(summary.total_out || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+      if (totalOutEl) totalOutEl.innerHTML = FinanceUI.moneyHtml(summary.total_out || 0, cur);
       if (countEl) countEl.textContent = summary.transactions ? summary.transactions.length : 0;
       if (breakdownEl) {
-        const parts = (summary.by_category || []).map((b) => `${b.category_name}: ${symbol}${Number(b.total_out).toLocaleString("en-US", { minimumFractionDigits: 2 })} (${b.count})`);
+        const parts = (summary.by_category || []).map((b) => `${b.category_name}: ${FinanceFormat.formatMoney(b.total_out, cur)} (${b.count})`);
         breakdownEl.textContent = parts.length ? parts.join("  |  ") : "No recurring expenses in selected period.";
       }
     } else {
       if (banner) banner.style.display = "none";
     }
 
-    // Update current balance in header from account fresh state
+    // Balance card from the account's fresh state
     const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
     if (acc) {
       const balEl = document.getElementById("financeLedgerCurrentBalance");
-      if (balEl) {
-        const symbol = acc.currency === "EGP" ? "EGP " : "$";
-        balEl.textContent = `${symbol}${Number(acc.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-      }
+      if (balEl) balEl.innerHTML = FinanceUI.moneyHtml(acc.current_balance || 0, acc.currency);
     }
   } catch (err) {
     console.error("Failed to load transactions:", err);
@@ -1414,80 +1504,63 @@ function filterAccountLedger() {
 
 function filterAccountLedgerDirection(direction, btn) {
   _currentLedgerDirectionFilter = direction;
-  const tabs = document.querySelectorAll("#financeSubPaneLedger .filter-tabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) btn.classList.add("active");
+  document.querySelectorAll("#financeLedgerDirectionPills .fv-pill").forEach((p) => {
+    const on = p.dataset.direction === direction;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
   loadAccountTransactions();
 }
 
 function togglePettyLedgerView() {
-  _isPettyLedgerOnly = !_isPettyLedgerOnly;
-  const btn = document.getElementById("btnTogglePettyLedger");
-  if (btn) {
-    if (_isPettyLedgerOnly) {
-      btn.classList.remove("btn-sm");
-      btn.classList.add("btn-fill");
-    } else {
-      btn.classList.remove("btn-fill");
-      btn.classList.add("btn-sm");
-    }
-  }
+  const box = document.getElementById("btnTogglePettyLedger");
+  _isPettyLedgerOnly = box && box.type === "checkbox" ? box.checked : !_isPettyLedgerOnly;
   loadAccountTransactions();
 }
 
-function renderAccountTransactions(items) {
+function renderAccountTransactions(items, all) {
   const tbody = document.getElementById("financeLedgerTableBody");
   const empty = document.getElementById("financeLedgerEmpty");
+  const footer = document.getElementById("financeLedgerFooter");
   if (!tbody) return;
+
+  const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
+  const cur = ((acc && acc.currency) || "USD").toUpperCase();
+  const pool = all || items || [];
+
+  // cards and pill counts cover the period (before the direction pills)
+  const ins = pool.filter((tx) => tx.direction === "in");
+  const outs = pool.filter((tx) => tx.direction !== "in");
+  const sum = (list) => list.reduce((n, tx) => n + Number(tx.amount || 0), 0);
+  const setHtml = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const label = _ledgerPeriodLabel();
+  setText("financeLedgerInLabel", `In \u00b7 ${label}`);
+  setText("financeLedgerOutLabel", `Out \u00b7 ${label}`);
+  setHtml("financeLedgerTotalIn", FinanceUI.moneyHtml(sum(ins), cur));
+  setHtml("financeLedgerTotalOut", FinanceUI.moneyHtml(sum(outs), cur));
+  setText("financeLedgerInCount", `${ins.length} ${ins.length === 1 ? "transaction" : "transactions"}`);
+  setText("financeLedgerOutCount", `${outs.length} ${outs.length === 1 ? "transaction" : "transactions"}`);
+  setText("ledgerPillCountAll", pool.length);
+  setText("ledgerPillCountIn", ins.length);
+  setText("ledgerPillCountOut", outs.length);
+  document.querySelectorAll("#financeLedgerDirectionPills .fv-pill").forEach((p) => {
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+  });
 
   if (!items || items.length === 0) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
+  if (footer) {
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> ${items.length === 1 ? "transaction" : "transactions"} &middot; amounts in ${FinanceUI.esc(cur)}</span>`;
+  }
 
-  const acc = (FinanceState.accounts || []).find((a) => a.id === _currentLedgerAccountId);
-  const symbol = acc && acc.currency === "EGP" ? "EGP " : "$";
-
-  tbody.innerHTML = items
-    .map((tx) => {
-      const isIn = tx.direction === "in";
-      const inDisplay = isIn ? `<strong style="color:var(--success);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
-      const outDisplay = !isIn ? `<strong style="color:var(--danger);">${symbol}${Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>` : "—";
-
-      let fxDisplay = "—";
-      if (tx.fx_rate) {
-        const eqCurr = tx.currency === "USD" ? "EGP" : "USD";
-        const eqSym = eqCurr === "EGP" ? "EGP " : "$";
-        const eqVal = tx.fx_equivalent ? `${eqSym}${Number(tx.fx_equivalent).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
-        fxDisplay = `<span style="font-size:11px;color:var(--text3);" title="Exchange Rate applied">@ ${tx.fx_rate} <br><strong>${eqVal}</strong></span>`;
-      }
-
-      const isManual = tx.source === "manual";
-      const actionsHtml = isManual
-        ? `<div style="display:flex;gap:4px;justify-content:center;">
-             <button class="btn btn-sm" onclick="openEditFinanceTransactionModal(${tx.id})" title="Edit Transaction"><i class="fa-solid fa-pen"></i></button>
-             <button class="btn btn-sm btn-danger" onclick="confirmDeleteFinanceTransaction(${tx.id})" title="Void / Delete Transaction"><i class="fa-solid fa-trash"></i></button>
-           </div>`
-        : `<span class="badge badge-info" title="System-generated from ${tx.source}"><i class="fa-solid fa-lock"></i> ${tx.source.replace('_', ' ').toUpperCase()}</span>`;
-
-      return `
-        <tr>
-          <td><span style="font-family:monospace;font-size:12px;">${tx.date}</span></td>
-          <td><span class="badge ${_categoryKindBadge(tx.category_name ? 'cost' : 'other')}">${tx.category_name || "Uncategorized"}</span></td>
-          <td><span class="badge badge-pending">${escapeHtml(_paymentTypeLabel(tx))}</span></td>
-          <td><span style="font-size:12px;">${tx.reference || "—"}</span></td>
-          <td><span style="font-size:12px;color:var(--text2);">${tx.description || "—"}</span></td>
-          <td style="text-align:right;">${inDisplay}</td>
-          <td style="text-align:right;">${outDisplay}</td>
-          <td style="text-align:right;">${fxDisplay}</td>
-          <td style="text-align:right;"><strong>${symbol}${Number(tx.running_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong></td>
-          <td style="text-align:center;">${actionsHtml}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  tbody.innerHTML = items.map((tx) => _ledgerRowHtml(tx, cur)).join("");
 }
 
 async function _populateTransactionModalDropdowns() {
@@ -1585,7 +1658,23 @@ let _dupSettlementCheckTimer = null;
 let _currentOpenBills = [];
 let _currentOpenInvoices = [];
 
+// The "Paid to" pills drive the existing payee-type select (same ID and change handler).
+function setTxPayeeType(value) {
+  const sel = document.getElementById("fFinanceTxPayeeType");
+  if (!sel) return;
+  sel.value = value;
+  onTxPayeeTypeChanged();
+}
+
+function _syncTxPayeePills() {
+  const sel = document.getElementById("fFinanceTxPayeeType");
+  document.querySelectorAll("#fFinanceTxPayeePills .fv-pill").forEach((p) => {
+    p.setAttribute("aria-pressed", sel && p.dataset.payee === sel.value ? "true" : "false");
+  });
+}
+
 function onTxPayeeTypeChanged() {
+  _syncTxPayeePills();
   const payeeType = document.getElementById("fFinanceTxPayeeType")?.value || "none";
   const vendorGroup = document.getElementById("fFinanceTxVendorGroup");
   const empGroup = document.getElementById("fFinanceTxEmployeeGroup");
@@ -3051,6 +3140,10 @@ window.viewAccountLedger = viewAccountLedger;
 window.closeAccountLedger = closeAccountLedger;
 window.loadAccountTransactions = loadAccountTransactions;
 window.filterAccountLedger = filterAccountLedger;
+window.setTxPayeeType = setTxPayeeType;
+window.onLedgerPeriodChange = onLedgerPeriodChange;
+window.onLedgerAccountSelectChange = onLedgerAccountSelectChange;
+window.onAccountCurrencyFilterChange = onAccountCurrencyFilterChange;
 window.filterAccountLedgerDirection = filterAccountLedgerDirection;
 window.togglePettyLedgerView = togglePettyLedgerView;
 window.openAddFinanceTransactionModal = openAddFinanceTransactionModal;
