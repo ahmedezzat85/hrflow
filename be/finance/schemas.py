@@ -350,10 +350,19 @@ class CustomerUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class CustomerReceivableItem(BaseModel):
+    currency: str
+    open_amount: float
+    open_count: int
+    overdue_count: int
+    max_days_overdue: int
+
+
 class CustomerResponse(CustomerBase):
     id: int
     is_active: bool
     created_at: Optional[datetime] = None
+    receivables: List[CustomerReceivableItem] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

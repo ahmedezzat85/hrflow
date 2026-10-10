@@ -23,7 +23,7 @@ class CustomersService:
     def __init__(self, repo: CustomersRepository):
         self.repo = repo
 
-    def to_response(self, customer: CustomerDB) -> CustomerResponse:
+    def to_response(self, customer: CustomerDB, receivables: Optional[List[dict]] = None) -> CustomerResponse:
         return CustomerResponse(
             id=customer.id,
             name=customer.name,
@@ -39,6 +39,7 @@ class CustomersService:
             owner=customer.owner,
             notes=customer.notes,
             is_active=customer.is_active,
+            receivables=receivables or [],
             created_at=customer.created_at,
         )
 
@@ -50,7 +51,9 @@ class CustomersService:
         offset: int = 0,
     ) -> List[CustomerResponse]:
         customers = self.repo.list_all(is_active=is_active, search=search, limit=limit, offset=offset)
-        return [self.to_response(c) for c in customers]
+        customer_ids = [c.id for c in customers]
+        receivables_map = self.repo.get_open_receivables_for_customers(customer_ids)
+        return [self.to_response(c, receivables=receivables_map.get(c.id, [])) for c in customers]
 
     def get_customer(self, customer_id: int) -> CustomerResponse:
         customer = self.repo.get_by_id(customer_id)
@@ -59,7 +62,8 @@ class CustomersService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Customer with ID {customer_id} not found",
             )
-        return self.to_response(customer)
+        receivables_map = self.repo.get_open_receivables_for_customers([customer_id])
+        return self.to_response(customer, receivables=receivables_map.get(customer_id, []))
 
     def create_customer(self, payload: CustomerCreate) -> CustomerResponse:
         existing = self.repo.get_by_name(payload.name)
