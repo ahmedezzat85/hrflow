@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 
 from finance.repositories.categories_repository import CategoriesRepository
-from finance.schemas import CategoryCreate, CategoryUpdate, CategoryResponse
+from finance.schemas import CategoryCreate, CategoryUpdate, CategoryResponse, CATEGORY_PALETTE
 from finance.models import TransactionCategoryDB
 
 
@@ -22,6 +22,7 @@ class CategoriesService:
             is_active=cat.is_active,
             sort_order=cat.sort_order,
             is_petty=cat.is_petty,
+            color=cat.color,
             created_at=cat.created_at,
         )
 
@@ -50,6 +51,9 @@ class CategoriesService:
                 detail=f"A category with name '{payload.name}' already exists",
             )
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        if not data.get("color"):
+            palette_idx = self.repo.count_all() % len(CATEGORY_PALETTE)
+            data["color"] = CATEGORY_PALETTE[palette_idx]
         cat = self.repo.create(data)
         return self.to_response(cat)
 
@@ -68,6 +72,8 @@ class CategoriesService:
                     detail=f"A category with name '{payload.name}' already exists",
                 )
         data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
+        if "color" in data and data["color"] is None:
+            data.pop("color")
         updated = self.repo.update(category_id, data)
         return self.to_response(updated)
 

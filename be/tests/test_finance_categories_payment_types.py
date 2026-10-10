@@ -34,6 +34,7 @@ from finance.schemas import (
     PaymentTypeCreate,
     PaymentTypeUpdate,
     LedgerTransactionCreate,
+    CATEGORY_PALETTE,
 )
 
 
@@ -250,3 +251,143 @@ def test_categories_and_payment_types_api_endpoints(app_client, admin_cookies, e
     # 5. Unauthenticated rejected (401)
     unauth_res = app_client.get("/api/finance/categories")
     assert unauth_res.status_code == 401
+
+
+def test_category_color_lifecycle_and_validation(app_client, admin_cookies):
+    """
+    BE-1 Acceptance:
+    - Every category returned in GET /api/finance/categories has a non-null color from CATEGORY_PALETTE.
+    - Category can be created with explicit color and without color (auto-assigned mod 8).
+    - Invalid color on create or update returns 422.
+    - Updating with color=None preserves current color (no reset).
+    """
+    # 1. Listing categories: all have non-null color from allowed palette
+    res = app_client.get("/api/finance/categories", cookies=admin_cookies)
+    assert res.status_code == 200
+    cats = res.json()
+    assert len(cats) > 0
+    for c in cats:
+        assert c.get("color") in CATEGORY_PALETTE
+
+    initial_count = len(cats)
+
+    # 2. Create with explicit valid color
+    create_res = app_client.post(
+        "/api/finance/categories",
+        json={"name": "Color Test Explicit", "kind": "cost", "color": "teal"},
+        cookies=admin_cookies,
+    )
+    assert create_res.status_code == 201
+    explicit_cat = create_res.json()
+    assert explicit_cat["color"] == "teal"
+    cat_id = explicit_cat["id"]
+
+    # 3. Create without color: assigns palette slot (count mod 8)
+    expected_slot_color = CATEGORY_PALETTE[(initial_count + 1) % len(CATEGORY_PALETTE)]
+    create_no_color = app_client.post(
+        "/api/finance/categories",
+        json={"name": "Color Test Auto", "kind": "cost"},
+        cookies=admin_cookies,
+    )
+    assert create_no_color.status_code == 201
+    assert create_no_color.json()["color"] == expected_slot_color
+
+    # 4. Create with invalid color returns 422
+    invalid_create = app_client.post(
+        "/api/finance/categories",
+        json={"name": "Color Test Invalid", "kind": "cost", "color": "chartreuse"},
+        cookies=admin_cookies,
+    )
+    assert invalid_create.status_code == 422
+
+    # 5. Update with new valid color
+    patch_res = app_client.patch(
+        f"/api/finance/categories/{cat_id}",
+        json={"color": "ochre"},
+        cookies=admin_cookies,
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json()["color"] == "ochre"
+
+    # 6. Update with invalid color returns 422
+    patch_invalid = app_client.patch(
+        f"/api/finance/categories/{cat_id}",
+        json={"color": "magenta"},
+        cookies=admin_cookies,
+    )
+    assert patch_invalid.status_code == 422
+
+    # 7. Update with color=None preserves current color (no reset)
+    patch_null = app_client.patch(
+        f"/api/finance/categories/{cat_id}",
+        json={"name": "Color Test Explicit Renamed", "color": None},
+        cookies=admin_cookies,
+    )
+    assert patch_null.status_code == 200
+    assert patch_null.json()["name"] == "Color Test Explicit Renamed"
+    assert patch_null.json()["color"] == "ochre"
+
+
+def test_migration_0035_category_color_up_and_down(tmp_path):
+    """Verifies Alembic migration 0035_category_color upgrade and downgrade on an isolated SQLite database."""
+    import importlib.util
+    import os
+    import sqlalchemy as sa
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    be_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(be_dir, "migrations", "versions", "0035_category_color.py")
+    spec = importlib.util.spec_from_file_location("mig_0035", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'test_mig.db'}")
+    with engine.begin() as conn:
+        conn.execute(sa.text(
+            "CREATE TABLE finance_transaction_categories ("
+            "id INTEGER PRIMARY KEY, "
+            "name VARCHAR(100), "
+            "kind VARCHAR(20), "
+            "is_active BOOLEAN, "
+            "sort_order INTEGER, "
+            "is_petty BOOLEAN, "
+            "created_at TIMESTAMP)"
+        ))
+        conn.execute(sa.text(
+            "INSERT INTO finance_transaction_categories (id, name, kind, is_active, sort_order, is_petty) VALUES "
+            "(1, 'Cat A', 'cost', 1, 10, 0), "
+            "(2, 'Cat B', 'cost', 1, 5, 0), "
+            "(3, 'Cat C', 'cost', 1, 20, 0), "
+            "(4, 'Cat D', 'cost', 1, 1, 0)"
+        ))
+
+    # Run upgrade
+    with engine.begin() as conn:
+        with Operations.context(MigrationContext.configure(conn)):
+            mod.upgrade()
+
+    with engine.connect() as conn:
+        insp = sa.inspect(conn)
+        cols = {c["name"] for c in insp.get_columns("finance_transaction_categories")}
+        assert "color" in cols
+
+        # Check color ordering: sort_order ASC, id ASC -> id 4 (sort_order 1), id 2 (sort_order 5), id 1 (sort_order 10), id 3 (sort_order 20)
+        rows = conn.execute(sa.text(
+            "SELECT id, color FROM finance_transaction_categories ORDER BY sort_order ASC, id ASC"
+        )).fetchall()
+        assert rows[0] == (4, CATEGORY_PALETTE[0])
+        assert rows[1] == (2, CATEGORY_PALETTE[1])
+        assert rows[2] == (1, CATEGORY_PALETTE[2])
+        assert rows[3] == (3, CATEGORY_PALETTE[3])
+
+    # Run downgrade
+    with engine.begin() as conn:
+        with Operations.context(MigrationContext.configure(conn)):
+            mod.downgrade()
+
+    with engine.connect() as conn:
+        insp = sa.inspect(conn)
+        cols = {c["name"] for c in insp.get_columns("finance_transaction_categories")}
+        assert "color" not in cols
+
