@@ -434,7 +434,6 @@ function _billFlags(bill) {
   if (bill.extraction_confidence != null && Math.round(bill.extraction_confidence * 100) < 80) {
     flags.push(tag("confirm", `Low confidence ${Math.round(bill.extraction_confidence * 100)}%`, "Extraction confidence is below 80%"));
   }
-  if (!bill.is_reviewed) flags.push(tag("confirm", "Unreviewed", "Review Required"));
   return flags.length ? `<span class="bill-flags">${flags.join("")}</span>` : "";
 }
 
@@ -458,59 +457,6 @@ function _billDueNote(dueDate) {
   if (days < 0) return `${n} ${unit} late`;
   return days === 0 ? "Due today" : `Due in ${n} ${unit}`;
 }
-
-// Row "more" menu: position:fixed so the table card's overflow cannot clip it.
-function closeBillRowMenus(returnFocus) {
-  document.querySelectorAll("#financeBillsTableBody .bill-row-menu:not([hidden])").forEach((menu) => {
-    menu.hidden = true;
-    const cell = menu.closest("td");
-    if (cell) cell.classList.remove("bill-menu-open");
-    const btn = menu.parentElement.querySelector(".btn-bill-more");
-    if (btn) {
-      btn.setAttribute("aria-expanded", "false");
-      if (returnFocus) btn.focus();
-    }
-  });
-}
-
-function _placeBillRowMenu(btn, menu) {
-  const r = btn.getBoundingClientRect();
-  const h = menu.offsetHeight;
-  menu.style.left = `${Math.max(8, r.right - menu.offsetWidth)}px`;
-  menu.style.top = `${r.bottom + h + 8 > window.innerHeight ? Math.max(8, r.top - h - 4) : r.bottom + 4}px`;
-}
-
-function toggleBillRowMenu(btn, event) {
-  if (event) event.stopPropagation();
-  const menu = btn.parentElement.querySelector(".bill-row-menu");
-  const wasOpen = !menu.hidden;
-  closeBillRowMenus();
-  if (wasOpen) return;
-  menu.hidden = false;
-  const cell = btn.closest("td");
-  if (cell) cell.classList.add("bill-menu-open"); // lifts the sticky actions cell above later rows
-  btn.setAttribute("aria-expanded", "true");
-  _placeBillRowMenu(btn, menu);
-  const first = menu.querySelector("[role=menuitem]");
-  if (first) first.focus();
-}
-
-document.addEventListener("click", () => closeBillRowMenus());
-window.addEventListener("scroll", () => {
-  const menu = document.querySelector("#financeBillsTableBody .bill-row-menu:not([hidden])");
-  if (menu) _placeBillRowMenu(menu.parentElement.querySelector(".btn-bill-more"), menu);
-}, true);
-document.addEventListener("keydown", (e) => {
-  const menu = e.target && e.target.closest && e.target.closest(".bill-row-menu");
-  if (e.key === "Escape" && document.querySelector("#financeBillsTableBody .bill-row-menu:not([hidden])")) {
-    closeBillRowMenus(true);
-  } else if (menu && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-    e.preventDefault();
-    const items = Array.from(menu.querySelectorAll("[role=menuitem]"));
-    const i = items.indexOf(document.activeElement);
-    items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
-  }
-});
 
 function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
   const tbody = document.getElementById("financeBillsTableBody");
@@ -537,27 +483,33 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
     return `
     <tr data-record-id="${bill.id}">
-      <td><div class="bill-cell-main">${vendor}</div><div class="bill-cell-sub">${num}</div></td>
-      <td><div class="bill-cell-main">${bill.category || "General"}</div><div class="bill-cell-sub">${bill.department || "&nbsp;"}</div></td>
-      <td><div class="bill-cell-main">${_billDate(bill.issue_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="${owed ? `Due ${_billDate(bill.due_date)}` : ""}">${rel || "&nbsp;"}</div></td>
+      <td><div class="bill-vendor">${vendor}</div><div class="bill-cell-sub">${num}</div></td>
+      <td><div class="bill-cell-text">${_billDate(bill.issue_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="${owed ? `Due ${_billDate(bill.due_date)}` : ""}">${rel || "&nbsp;"}</div></td>
+      <td><div class="bill-cell-text">${bill.category || "General"}</div></td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
       <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill)}</div></td>
       <td>
         <div class="bill-row-actions">
-          ${_billPrimaryActionHtml(bill, derivedStatus) || `<button type="button" class="btn btn-sm btn-outline btn-view-primary" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" aria-label="View Bill ${bill.bill_number || ""}">View</button>`}
-          <div class="bill-row-menu-wrap">
-            <button type="button" class="btn btn-sm btn-outline btn-bill-more" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Bill ${bill.bill_number || ""}" title="More actions" onclick="toggleBillRowMenu(this, event)"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>
-            <div class="bill-row-menu" role="menu" hidden>
-              <button type="button" role="menuitem" class="bill-row-menu-item btn-view-bill" onclick="closeBillRowMenus(); FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details">View details</button>
-              ${bill.status !== "void" ? `<button type="button" role="menuitem" class="bill-row-menu-item" onclick="closeBillRowMenus(); openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}">Edit bill</button>` : ""}
-              ${(bill.attachment_name || bill.attachment_url) ? `<button type="button" role="menuitem" class="bill-row-menu-item btn-bill-attachment" onclick="closeBillRowMenus(); previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}">View attachment</button>` : ""}
-            </div>
-          </div>
+          ${_billPrimaryActionHtml(bill, derivedStatus)}
+          <button type="button" class="bill-icon-btn btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+          ${bill.status !== "void" ? `<button type="button" class="bill-icon-btn" onclick="openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>` : '<span class="bill-icon-slot" aria-hidden="true"></span>'}
+          ${(bill.attachment_name || bill.attachment_url) ? `<button type="button" class="bill-icon-btn btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip" aria-hidden="true"></i></button>` : '<span class="bill-icon-slot" aria-hidden="true"></span>'}
         </div>
       </td>
     </tr>
   `;
   }).join("");
+
+  if (!tbody.dataset.rowClickBound) {
+    tbody.dataset.rowClickBound = "1";
+    tbody.addEventListener("click", (e) => {
+      if (e.target.closest("button, a, input, select, label")) return;
+      const tr = e.target.closest("tr[data-record-id]");
+      if (!tr) return;
+      const viewBtn = tr.querySelector(".btn-view-bill");
+      if (window.FinanceDrawer) FinanceDrawer.open("bill", Number(tr.dataset.recordId), viewBtn || tr);
+    });
+  }
 }
 
 async function submitBillForApproval(id) {

@@ -1889,9 +1889,8 @@
 .bill-flag {
   display: inline-flex;
   align-items: center;
-  padding: 1px 7px;
-  border: 1px solid currentColor;
-  border-radius: var(--radius-full);
+  padding: 0;
+  border: 0;
   background: transparent;
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -1941,36 +1940,9 @@
   gap: 6px;
   white-space: nowrap;
 }
-.bill-row-menu-wrap { position: relative; }
-.bill-row-menu {
-  position: fixed;
-  z-index: 1040;
-  min-width: 160px;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: var(--radius-sm, 6px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
-}
-.bill-row-menu[hidden] { display: none; }
-.bill-row-menu-item {
-  display: block;
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-.bill-row-menu-item:hover,
-.bill-row-menu-item:focus-visible { background: var(--surface2); }
 .bill-row-actions .btn { white-space: nowrap; }
 .bill-row-actions .btn { min-height: 28px; height: 28px; padding: 0 10px; font-size: 12.5px; }
 .bill-row-actions .btn-bill-more { width: 28px; padding: 0; justify-content: center; }
-#financeBillsTable td.bill-menu-open { z-index: 60 !important; }
 
 /* ── Direction A, Slice 3: always-visible status row (supersedes FUX-414) ── */
 .bill-status-row {
@@ -2146,3 +2118,41 @@
 }
 #tabBillQueueAll.active { background: var(--text); color: var(--surface); box-shadow: none; }
 .card.clean-table-card > table.sticky-actions thead th:last-child { background: var(--surface2); }
+
+/* ── Implementation of the agreed final mock (docs/finance-module/mocks/bills-restyle-final.html) ── */
+.clean-table-card {
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
+}
+[data-theme="dark"] .clean-table-card { box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+@media (min-width: 769px) {
+  #financeBillsTable { table-layout: fixed; }
+  #financeBillsTable th:nth-child(1) { width: 24%; }
+  #financeBillsTable th:nth-child(2) { width: 13%; }
+  #financeBillsTable th:nth-child(3) { width: 16%; }
+  #financeBillsTable th:nth-child(4) { width: 13%; }
+  #financeBillsTable th:nth-child(5) { width: 16%; }
+  #financeBillsTable th:nth-child(6) { width: 18%; }
+}
+.bill-vendor { font-size: 13px; line-height: 1.2; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bill-cell-text { font-size: 13px; line-height: 1.2; font-weight: 400; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#financeBillsTable tbody tr[data-record-id] { cursor: pointer; }
+.bill-icon-btn,
+.bill-icon-slot {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+}
+.bill-icon-btn {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 14px;
+}
+.bill-icon-btn:hover { background: var(--border2); color: var(--text); }
+.bill-row-actions { gap: 2px; }
+.bill-row-actions .btn { margin-right: 6px; }

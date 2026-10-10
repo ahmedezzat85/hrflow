@@ -72,8 +72,8 @@ for (const theme of ['light', 'dark']) {
 
     expect(Object.keys(results).length).toBeGreaterThan(20);
     expect(Object.keys(results).filter((k) => k.startsWith('pill ')).length).toBe(STATUSES.length);
-    expect(Object.keys(results).filter((k) => k.startsWith('flags #')).length).toBe(3);
-    expect(Object.keys(results).filter((k) => k.startsWith('all flags #')).length).toBe(4);
+    expect(Object.keys(results).filter((k) => k.startsWith('flags #')).length).toBe(2);
+    expect(Object.keys(results).filter((k) => k.startsWith('all flags #')).length).toBe(3);
     const failing = Object.entries(results).filter(([, v]) => v < 4.5).map(([k, v]) => `${k}: ${v.toFixed(2)}`);
     expect(failing, `Below 4.5:1 in ${theme}`).toEqual([]);
   });

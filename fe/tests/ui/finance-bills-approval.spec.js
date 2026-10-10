@@ -97,7 +97,6 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
 
     // The approved bill's primary action is Pay; Schedule lives in the bill detail
     await expect(approvedRow.locator('button.btn-pay-bill')).toBeVisible();
-    await approvedRow.locator('.btn-bill-more').click();
     await approvedRow.locator('button.btn-view-bill').click();
     await expect(page.locator('button.btn-drawer-schedule')).toBeVisible();
     await page.click('#financeDetailDrawerCloseBtn');
@@ -152,7 +151,6 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")');
     await expect(billRow).toBeVisible();
 
-    await billRow.locator('.btn-bill-more').click();
 
     await billRow.locator('button.btn-view-bill').click();
     await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
@@ -169,7 +167,6 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     // BILL-2026-002 has a recorded payment
     const billSlack = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-002")');
     await expect(billSlack).toBeVisible();
-    await billSlack.locator('.btn-bill-more').click();
     await billSlack.locator('button.btn-view-bill').click();
 
     await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();

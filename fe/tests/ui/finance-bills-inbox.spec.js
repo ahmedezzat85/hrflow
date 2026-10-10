@@ -54,8 +54,8 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     // Verify bill appears in table with Reviewed status badge
     const createdRow = page.locator('#financeBillsTableBody tr:has-text("BILL-CAPTURE-001")');
     await expect(createdRow).toBeVisible();
-    // is_reviewed is server-owned: an uploaded capture stays unreviewed
-    expect(await createdRow.innerText()).toContain('Unreviewed');
+    // Bills have no review state any more (D-016)
+    expect(await createdRow.innerText()).not.toContain('Unreviewed');
     expect(await createdRow.innerText()).toContain('Approved');
   });
 
