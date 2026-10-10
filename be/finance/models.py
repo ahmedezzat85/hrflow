@@ -38,6 +38,7 @@ class CustomerDB(Base):
     owner = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     invoices = relationship("SalesInvoiceDB", back_populates="customer")
@@ -105,14 +106,19 @@ class SalesInvoiceDB(Base):
     invoice_number = Column(String(50), unique=True, nullable=False, index=True)
     issue_date = Column(String(20), nullable=False)
     due_date = Column(String(20), nullable=False)
-    status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/paid/overdue/void
+    status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/partially_paid/paid/void (D-022); overdue is a flag
     currency = Column(String(10), default="USD", nullable=False)
     subtotal = Column(Float, default=0.0)
+    vat_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent (D-023); tax_amount = subtotal * rate / 100
+    withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent of the net subtotal (D-024)
     tax_amount = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     expected_bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     revenue_channel = Column(String(50), nullable=True, index=True)  # local_egp | overseas_usd | cash | intercompany_transfer_us | other
     notes = Column(Text, nullable=True)
+    void_reason = Column(Text, nullable=True)
+    voided_by = Column(String(255), nullable=True)
+    voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     customer = relationship("CustomerDB", back_populates="invoices")
@@ -366,6 +372,7 @@ class PaymentDB(Base):
     related_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
     related_statutory_obligation_id = Column(Integer, ForeignKey("finance_statutory_obligations.id", ondelete="SET NULL"), nullable=True, index=True)
     amount = Column(Float, nullable=False)
+    withheld_amount = Column(Float, default=0.0, nullable=False, server_default="0")  # customer-withheld tax settled with this receipt; no bank movement (D-024)
     currency = Column(String(10), default="USD", nullable=False)
     payment_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
@@ -819,7 +826,7 @@ class StatutoryObligationDB(Base):
     amount_remitted = Column(Float, default=0.0, nullable=False)
     variance_amount = Column(Float, default=0.0, nullable=False)
     variance_note = Column(Text, nullable=True)
-    currency = Column(String(10), default="USD", nullable=False)
+    currency = Column(String(10), default="EGP", nullable=False)  # statutory obligations are EGP by default (D-025 context, F4)
     status = Column(String(30), default="estimated", nullable=False, index=True)
     # estimated | accrued | partially_remitted | remitted
     due_date = Column(String(20), nullable=True, index=True)  # YYYY-MM-DD

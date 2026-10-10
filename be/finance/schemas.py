@@ -8,6 +8,8 @@ import json
 from typing import Optional, List, Dict, Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator, field_validator
 
+from finance.invoice_status import INVOICE_SERVER_OWNED_FIELDS
+
 
 # ==========================================
 # Bank Account Schemas
@@ -303,6 +305,7 @@ class CustomerBase(BaseModel):
     country: Optional[str] = Field("Egypt", max_length=100)
     default_currency: Optional[str] = Field("USD", max_length=10)
     payment_terms_days: Optional[int] = Field(30, ge=0)
+    withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0, description="Default withholding tax percent copied to new invoices (normally 0)")
     owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
 
@@ -312,6 +315,7 @@ class CustomerCreate(CustomerBase):
 
 
 class CustomerUpdate(BaseModel):
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -551,24 +555,45 @@ class SalesInvoiceBase(BaseModel):
     invoice_number: str = Field(..., min_length=1, max_length=50, description="Unique invoice reference number")
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
-    status: str = Field("draft", description="draft|sent|paid|overdue|void")
     currency: str = Field("USD", min_length=3, max_length=10)
+    vat_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="VAT percent; default 14 for EGP invoices, 0 otherwise (editable while Draft)")
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="Customer withholding percent on the net subtotal; defaults from the customer (editable while Draft)")
     expected_bank_account_id: Optional[int] = Field(None, description="Expected destination bank or cash account")
     revenue_channel: Optional[str] = Field(None, description="Revenue channel: local_egp|overseas_usd|cash|intercompany_transfer_us|other")
     notes: Optional[str] = None
 
 
+def _reject_invoice_server_fields(data):
+    """Invoice status and void fields are set only by server actions (D-022); a client-supplied value is refused."""
+    if isinstance(data, dict):
+        sent = [k for k in INVOICE_SERVER_OWNED_FIELDS if k in data]
+        if sent:
+            raise ValueError(f"{', '.join(sent)} cannot be set by the client; set by the server through invoice actions")
+    return data
+
+
 class SalesInvoiceCreate(SalesInvoiceBase):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_invoice_server_fields(data)
+
     lines: List[SalesInvoiceLineCreate] = Field(default_factory=list)
 
 
 class SalesInvoiceUpdate(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _no_status(cls, data):
+        return _reject_invoice_server_fields(data)
+
     customer_id: Optional[int] = None
     invoice_number: Optional[str] = None
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
-    status: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    vat_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
+    withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     expected_bank_account_id: Optional[int] = None
     revenue_channel: Optional[str] = None
     notes: Optional[str] = None
@@ -577,10 +602,17 @@ class SalesInvoiceUpdate(BaseModel):
 
 class SalesInvoiceResponse(SalesInvoiceBase):
     id: int
+    status: str = "draft"  # draft|sent|partially_paid|paid|void; overdue is the is_overdue flag
+    void_reason: Optional[str] = None
+    voided_by: Optional[str] = None
+    voided_at: Optional[datetime] = None
     subtotal: float
     tax_amount: float
     total: float
-    amount_paid: float = 0.0
+    amount_paid: float = 0.0  # received into accounts
+    withheld_total: float = 0.0  # tax withheld by the customer on unreversed receipts (D-024)
+    withholding_amount: float = 0.0  # expected withholding on the net subtotal
+    expected_to_receive: float = 0.0  # total minus withholding
     balance: float = 0.0
     is_overdue: bool = False
     days_overdue: int = 0
@@ -902,10 +934,13 @@ class PaymentBase(BaseModel):
 class PaymentCreate(PaymentBase):
     related_invoice_id: Optional[int] = None
     related_bill_id: Optional[int] = None
+    payment_type_id: Optional[int] = Field(None, description="Incoming payment type for an invoice receipt (defaults by account kind)")
+    withheld_amount: float = Field(0.0, ge=0.0, description="Tax the customer withheld on this receipt; settles the invoice without a bank movement (D-024)")
 
 
 class PaymentResponse(PaymentBase):
     id: int
+    withheld_amount: float = 0.0
     related_invoice_id: Optional[int] = None
     related_bill_id: Optional[int] = None
     created_at: Optional[datetime] = None
@@ -1786,6 +1821,8 @@ class ProfitAndLossResponse(BaseModel):
     net_income: float
     prior_net_income: Optional[float] = None
     net_margin_pct: float = 0.0
+    basis_note: Optional[str] = None  # accrual view is labelled partial until payroll, statutory and bank fees are included
+    by_currency: List[Dict[str, Any]] = []  # currency "ALL": one statement per currency, never added together
 
 
 class BalanceSheetSectionItem(BaseModel):
@@ -2405,7 +2442,7 @@ class StatutoryObligationCreate(BaseModel):
     period: str
     amount_accrued: float
     due_date: Optional[str] = None
-    currency: str = "USD"
+    currency: str = "EGP"
     notes: str = ""
 
 
@@ -2418,9 +2455,14 @@ class StatutoryObligationSettle(BaseModel):
     amount: float
     payment_date: str
     bank_account_id: int
-    currency: str = "USD"
+    currency: str = "EGP"  # accepted for compatibility; the obligation's currency is used
     reference: str = ""
-    method: str = "bank_transfer"
+    method: Optional[str] = None
+    payment_type_id: Optional[int] = Field(None, description="Outgoing payment type fitting the paying account kind (defaults by kind)")
+
+
+class VatEstimateRequest(BaseModel):
+    period: str = Field(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Month, YYYY-MM")
 
 
 class StatutoryObligationUpdate(BaseModel):
@@ -2440,7 +2482,7 @@ class StatutoryObligationResponse(BaseModel):
     remaining_balance: float = 0.0
     variance_amount: float = 0.0
     variance_note: Optional[str] = None
-    currency: str = "USD"
+    currency: str = "EGP"
     status: str
     due_date: Optional[str] = None
     source_type: str = "manual"
@@ -2577,6 +2619,24 @@ class StatutoryRemittedReportResponse(BaseModel):
     by_period: Dict[str, float] = {}
     items: List[StatutoryRemittedItem] = []
     obligations_count: int = 0
+
+
+class WithholdingCreditItem(BaseModel):
+    customer_id: Optional[int] = None
+    customer_name: str
+    month: str  # YYYY-MM of the receipt date
+    currency: str = "USD"
+    withheld_amount: float = 0.0
+    receipts: int = 0
+    invoice_numbers: List[str] = []
+
+
+class WithholdingCreditsReportResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    currency: str = "USD"
+    total_withheld: float = 0.0
+    items: List[WithholdingCreditItem] = []
 
 
 class MoneyFlowStatusItem(BaseModel):

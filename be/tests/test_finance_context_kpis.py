@@ -101,13 +101,13 @@ def test_cash_vs_accrual_basis_calculation(app_client, admin_cookies):
             "invoice_number": f"INV-KPI-{datetime.utcnow().strftime('%H%M%S')}",
             "issue_date": today_str,
             "due_date": today_str,
-            "status": "sent",
             "currency": "USD",
             "lines": [{"description": "Enterprise Licensing", "quantity": 1, "unit_price": 30000.0}],
         },
         cookies=admin_cookies,
     )
     assert inv_res.status_code == 201
+    assert app_client.post(f"/api/finance/invoices/{inv_res.json()['id']}/send", cookies=admin_cookies).status_code == 200
 
     # 5. Create Vendor and Bill (Accrual spend)
     vend_res = app_client.post(
@@ -193,4 +193,5 @@ def test_multi_currency_policy_disclosure(app_client, admin_cookies):
     )
     assert res.status_code == 200
     data = res.json()
-    assert "without conversion" in data["conversion_policy"]
+    assert "never added together" in data["conversion_policy"]
+    assert data["currency"] == "ALL" and data["revenue_mtd"] is None and isinstance(data["by_currency"], list)

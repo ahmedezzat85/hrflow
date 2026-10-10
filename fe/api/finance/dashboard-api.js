@@ -44,7 +44,7 @@ async getFinanceSummary(params = {}) {
       if (basis === "accrual") {
         let invs = [...(FinanceMockState.invoices || [])].filter((i) => i.status !== "void" && i.status !== "draft");
         if (currency !== "ALL") invs = invs.filter((i) => (i.currency || "USD").toUpperCase() === currency);
-        revenue = invs.reduce((acc, i) => acc + (i.total || 0), 0) || 30000.0;
+        revenue = invs.reduce((acc, i) => acc + (i.subtotal || i.total || 0), 0) || 30000.0;
 
         let bills = [...(FinanceMockState.bills || [])].filter((b) => b.status !== "void");
         if (currency !== "ALL") bills = bills.filter((b) => (b.currency || "USD").toUpperCase() === currency);
@@ -62,22 +62,31 @@ async getFinanceSummary(params = {}) {
       const net = Math.round((revenue - cost) * 100) / 100;
       const marginValid = revenue > 0;
       const marginPct = marginValid ? Math.round((net / revenue) * 1000) / 10 : null;
-      const displayCurrency = currency !== "ALL" ? currency : "USD";
+      const displayCurrency = currency;
+      const isAll = currency === "ALL";
+      const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
+      // D-026: "All currencies" shows one figure per currency and no converted total
+      const byCurrency = isAll ? [
+        { currency: "EGP", balance: 470000.0, revenue: 0.0, cost: 0.0, net: 0.0, margin_pct: null, margin_valid: false },
+        { currency: "USD", balance: 245000.0, revenue, cost, net, margin_pct: marginPct, margin_valid: marginValid },
+      ] : [];
 
       return {
-        balance: balance || 245000.0,
-        revenue_mtd: revenue,
-        cost_mtd: cost,
-        net_mtd: net,
-        margin_pct: marginPct,
-        margin_valid: marginValid,
+        balance: isAll ? null : (balance || 245000.0),
+        revenue_mtd: isAll ? null : revenue,
+        cost_mtd: isAll ? null : cost,
+        net_mtd: isAll ? null : net,
+        margin_pct: isAll ? null : marginPct,
+        margin_valid: isAll ? false : marginValid,
+        by_currency: byCurrency,
+        basis_note: note,
         currency: displayCurrency,
         base_currency: displayCurrency,
         period: period,
         basis: basis,
         entity: entity,
         conversion_policy: currency === "ALL"
-          ? "Consolidated totals across currencies without conversion; select a specific currency for single-currency ledger reconciliation."
+          ? "One column per currency, side by side. Currencies are never added together and no converted total is shown."
           : `Filtered strictly to ${currency} accounts and transactions (1:1 single currency).`,
         data_scope: `${entity}_${currency.toLowerCase()}`,
         open_invoices_count: (FinanceMockState.invoices || []).filter((i) => i.status === "sent" || i.status === "draft").length,

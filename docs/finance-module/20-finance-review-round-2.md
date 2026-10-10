@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. Not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 to F6 implemented on `feature/fin-f1-invoice-rules` (no migration for F4 or F6).
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -16,11 +16,11 @@ Six slices, F1 to F6, each on its own branch with one PR, in the owner's current
 5. Receipts go through `settlement_service.settle_invoice`, which must refuse an account whose currency differs from the invoice's (`currency_mismatch`), post the ledger row with the chosen payment type, reference and customer as payee, and update balances with `recalculate_account_running_balances`. No exchange rate on receipts.
 
 Acceptance:
-- [ ] Migration maps every stored invoice status; `status` in requests is refused.
-- [ ] A sent invoice's lines, amounts, currency and customer cannot be edited.
-- [ ] A partly paid invoice cannot be voided.
-- [ ] A USD invoice cannot be received into an EGP account.
-- [ ] Tests: `test_finance_invoices.py` updated; new status and receipt tests.
+- [x] Migration maps every stored invoice status; `status` in requests is refused.
+- [x] A sent invoice's lines, amounts, currency and customer cannot be edited. (Owner decision, October 10, 2026: issue date is locked too; notes, due date, expected account and revenue channel stay editable.)
+- [x] A partly paid invoice cannot be voided.
+- [x] A USD invoice cannot be received into an EGP account.
+- [x] Tests: `test_finance_invoices.py` updated; new `test_finance_invoice_rules.py` (status, locks, void, receipts, migration 0031) and `fe/tests/ui/finance-invoice-rules.spec.js`.
 
 ## Slice F2: VAT on sales invoices (D-023)
 
@@ -31,10 +31,10 @@ Acceptance:
 5. Migration adds `vat_rate`; existing invoices get 0 so their totals do not change.
 
 Acceptance:
-- [ ] An EGP invoice of 105,000 net at 14% shows VAT 14,700 and total 119,700.
-- [ ] Revenue reports show 105,000 for it.
-- [ ] Generating the VAT estimate for a month twice updates one obligation, not two.
-- [ ] Existing invoices keep their totals after migration.
+- [x] An EGP invoice of 105,000 net at 14% shows VAT 14,700 and total 119,700.
+- [x] Revenue reports show 105,000 for it. (Accrual summary and revenue-by-customer use the net subtotal; the cash-basis view is F6.)
+- [x] Generating the VAT estimate for a month twice updates one obligation, not two. (Once the obligation is confirmed against the portal, regenerating is refused with 409 `obligation_confirmed`.)
+- [x] Existing invoices keep their totals after migration (`0032_invoice_vat_rate`).
 
 ## Slice F3: Customer withholding tax (D-024)
 
@@ -45,9 +45,9 @@ Acceptance:
 5. Rarely used today (owner, October 10, 2026); the default 0 keeps it invisible unless set.
 
 Acceptance:
-- [ ] With 0 rate, receipts behave exactly as in F1.
-- [ ] With 1% on a 100,000 net invoice, a receipt of the total minus 1,000 plus 1,000 withheld closes it as Paid; only the received amount moves the bank balance.
-- [ ] The credits report lists the 1,000.
+- [x] With 0 rate, receipts behave exactly as in F1.
+- [x] With 1% on a 100,000 net invoice, a receipt of the total minus 1,000 plus 1,000 withheld closes it as Paid; only the received amount moves the bank balance. (Withheld tax above the invoice's expected withholding is refused: 400 `withheld_exceeds_expected`.)
+- [x] The credits report lists the 1,000 (`GET /api/finance/reports/withholding-credits`, "Withholding Credits" tab; migration `0033_customer_withholding_tax`).
 
 ## Slice F4: Statutory obligations fixes (D-025 context, D-022 rules)
 
@@ -56,8 +56,8 @@ Acceptance:
 3. The existing estimated / accrued / remitted / variance model stays unchanged.
 
 Acceptance:
-- [ ] A new obligation without a currency is EGP.
-- [ ] An EGP obligation cannot be paid from a USD account.
+- [x] A new obligation without a currency is EGP.
+- [x] An EGP obligation cannot be paid from a USD account (400 `currency_mismatch`; payment type by account kind: cash -> Cash payment, bank -> Outgoing transfer or Debit card; no migration needed).
 
 ## Slice F5: Payroll funding posting fixes (D-025)
 
@@ -68,10 +68,10 @@ Acceptance:
 5. Data migration: existing payroll ledger rows (reference `PAYROLL-...`) change source from `manual` to `payroll`; then recalculate the affected accounts.
 
 Acceptance:
-- [ ] After marking a run paid, the funding account balance drops by the net pay immediately.
-- [ ] Payroll ledger rows cannot be edited or deleted from the ledger screen.
-- [ ] Posting without funding accounts is refused, never posted to account 1.
-- [ ] A USD run cannot post to an EGP funding account.
+- [x] After marking a run paid, the funding account balance drops by the net pay immediately. (`execute_payment` posts the ledger rows when the run becomes fully paid, in the same transaction; `post-journal` stays and is idempotent. A partially paid run posts nothing until it is fully paid.)
+- [x] Payroll ledger rows cannot be edited or deleted from the ledger screen (`source="payroll"`; migration `0034_payroll_ledger_source`).
+- [x] Posting without funding accounts is refused, never posted to account 1 (400 `funding_account_required`; the run stays unpaid).
+- [x] A USD run cannot post to an EGP funding account (400 `currency_mismatch`).
 
 ## Slice F6: Cash-basis reports fixed; accrual marked partial (D-026)
 
@@ -83,10 +83,10 @@ Acceptance:
 6. The accrual view is labelled "Partial: excludes payroll, statutory and bank fees" until a later slice completes it.
 
 Acceptance:
-- [ ] Reversing a 1,000 bill payment leaves revenue unchanged and reduces spend by 1,000.
-- [ ] A 5,000 teller withdrawal changes neither revenue nor spend.
-- [ ] Payroll net pay appears in spend.
-- [ ] "All currencies" shows separate USD and EGP figures.
+- [x] Reversing a 1,000 bill payment leaves revenue unchanged and reduces spend by 1,000. (Shared classifier `be/finance/cash_basis.py` drives the summary KPIs and the cash P&L statement; an invoice-receipt reversal reduces revenue.)
+- [x] A 5,000 teller withdrawal changes neither revenue nor spend (also cash-withdrawal cheques and FX exchange).
+- [x] Payroll net pay appears in spend (statutory remittances too).
+- [x] "All currencies" shows separate USD and EGP figures (`by_currency` on the summary and the P&L; dashboard and P&L report render one figure per currency; no converted total).
 
 ## Order and delivery
 

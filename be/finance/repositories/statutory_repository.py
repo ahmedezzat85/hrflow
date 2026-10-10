@@ -65,7 +65,7 @@ class StatutoryObligationsRepository:
             amount_remitted=float(data.get("amount_remitted", 0.0)),
             variance_amount=variance_amount,
             variance_note=data.get("variance_note"),
-            currency=data.get("currency", "USD"),
+            currency=data.get("currency") or "EGP",
             status=status,
             due_date=data.get("due_date"),
             source_type=data.get("source_type", "manual"),

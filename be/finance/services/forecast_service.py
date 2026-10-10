@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from finance.bill_status import OPEN_STATUSES
+from finance import invoice_status as inv_status
 from finance.models import (
     FinanceBankAccountDB,
     SalesInvoiceDB,
@@ -133,7 +134,7 @@ class CashForecastService:
         invoices = inv_query.all()
 
         for inv in invoices:
-            paid_sum = sum((p.amount or 0.0) for p in (inv.payments or []))
+            paid_sum = inv_status.settled_amount(inv.payments)
             balance = round((inv.total or 0.0) - paid_sum, 2)
             if balance <= 0:
                 continue

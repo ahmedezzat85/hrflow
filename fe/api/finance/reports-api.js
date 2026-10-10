@@ -393,6 +393,17 @@
             badge: "Spend",
           },
           {
+            key: "withholding-credits",
+            title: "Withholding Tax Credits",
+            category: "Sales & Receivables",
+            business_question: "How much tax have customers withheld from our payments, for offsetting against income tax?",
+            description: "Tax withheld by customers on invoice receipts, by customer and month. No bank movement is involved.",
+            icon: "fa-solid fa-hand-holding-dollar",
+            supported_basis: ["cash"],
+            supported_formats: ["json"],
+            badge: "Compliance",
+          },
+          {
             key: "statutory-remitted",
             title: "Statutory Obligations Remitted Report",
             category: "Payroll",
@@ -602,7 +613,24 @@
   async getProfitAndLossReport(params = {}) {
     if (_isMock()) {
       const basis = params.basis || "cash";
+      const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
+      if (String(params.currency || "").toUpperCase() === "ALL") {
+        // D-026: one statement per currency, never added together
+        const usd = await FinanceReportsApi.getProfitAndLossReport({ ...params, currency: "USD" });
+        const egp = {
+          ...usd, currency: "EGP", revenue_items: [{ category_name: "Local EGP sales", amount: 400000.0, percentage: 100.0 }],
+          total_revenue: 400000.0, expense_items: [{ category_name: "Office rent", amount: 150000.0, percentage: 100.0 }],
+          total_expenses: 150000.0, net_income: 250000.0, net_margin_pct: 62.5, prior_revenue: null, prior_expenses: null, prior_net_income: null,
+        };
+        return {
+          report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis, currency: "ALL",
+          period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30", comparison_type: params.comparison || "none",
+          revenue_items: [], total_revenue: 0, expense_items: [], total_expenses: 0, net_income: 0, net_margin_pct: 0,
+          by_currency: [egp, usd], basis_note: note,
+        };
+      }
       return {
+        basis_note: note,
         report_title: "Profit & Loss Statement",
         entity: params.entity || "Voyance Health (Consolidated)",
         basis,
@@ -984,6 +1012,30 @@
     }
     const qs = new URLSearchParams(params).toString();
     return apiRequest("GET", `/api/finance/reports/compensation/company${qs ? "?" + qs : ""}`);
+  },
+
+  async getWithholdingCreditsReport(params = {}) {
+    if (_isMock()) {
+      const groups = {};
+      const invoices = (root.FinanceMockState && root.FinanceMockState.invoices) || [];
+      ((root.FinanceMockState && root.FinanceMockState.payments) || [])
+        .filter((p) => p.related_invoice_id && !p.is_reversed && (p.withheld_amount || 0) > 0)
+        .filter((p) => (!params.currency || params.currency === "ALL" || p.currency === params.currency))
+        .filter((p) => (!params.start_date || p.payment_date >= params.start_date) && (!params.end_date || p.payment_date <= params.end_date))
+        .forEach((p) => {
+          const inv = invoices.find((i) => i.id === p.related_invoice_id) || {};
+          const month = String(p.payment_date).slice(0, 7);
+          const key = `${inv.customer_id}|${month}|${p.currency}`;
+          const g = groups[key] || (groups[key] = { customer_id: inv.customer_id || null, customer_name: inv.customer_name || "Unknown customer", month, currency: p.currency, withheld_amount: 0, receipts: 0, invoice_numbers: [] });
+          g.withheld_amount = round(g.withheld_amount + p.withheld_amount, 2);
+          g.receipts += 1;
+          if (inv.invoice_number && !g.invoice_numbers.includes(inv.invoice_number)) g.invoice_numbers.push(inv.invoice_number);
+        });
+      const items = Object.values(groups).sort((a, b) => a.month.localeCompare(b.month) || a.customer_name.localeCompare(b.customer_name));
+      return { start_date: params.start_date || null, end_date: params.end_date || null, currency: params.currency || "USD", total_withheld: round(items.reduce((s, g) => s + g.withheld_amount, 0), 2), items };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/withholding-credits${qs ? "?" + qs : ""}`);
   },
 
   async getStatutoryRemittedReport(params = {}) {

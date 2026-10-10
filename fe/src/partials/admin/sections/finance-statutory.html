@@ -32,6 +32,8 @@
                 <button class="filter-tab" data-filter="accrued" onclick="filterFinanceStatutoryStatus('accrued', this)">Accrued</button>
                 <button class="filter-tab" data-filter="remitted" onclick="filterFinanceStatutoryStatus('remitted', this)">Remitted</button>
               </div>
+              <input type="month" id="financeVatEstimateMonth" aria-label="VAT estimate month" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); font-size: 13px;">
+              <button class="btn btn-outline" id="financeGenerateVatEstimateBtn" onclick="generateVatEstimateAction()"><i class="fa-solid fa-calculator"></i> Generate VAT estimate</button>
               <button class="btn btn-fill" id="financeAddStatutoryBtn" onclick="openRecordStatutoryModal()"><i class="fa-solid fa-plus"></i> Record Obligation</button>
             </div>
           </div>
@@ -154,18 +156,13 @@
                   </div>
                   <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="statSettleBankAccount">Paying company bank account *</label>
-                    <select id="statSettleBankAccount" required>
+                    <select id="statSettleBankAccount" required onchange="refreshStatutoryPaymentTypes()">
                       <!-- Dynamically populated with active bank accounts -->
                     </select>
                   </div>
                   <div class="form-group">
-                    <label for="statSettleMethod">Payment Method *</label>
-                    <select id="statSettleMethod">
-                      <option value="bank_transfer">Bank Transfer / ACH Wire</option>
-                      <option value="debit_card">Debit Card</option>
-                      <option value="cheque">Check</option>
-                      <option value="cash">Cash</option>
-                    </select>
+                    <label for="statSettlePaymentType">Payment type *</label>
+                    <select id="statSettlePaymentType"></select>
                   </div>
                   <div class="form-group">
                     <label for="statSettleReference">Government / Payment Ref</label>

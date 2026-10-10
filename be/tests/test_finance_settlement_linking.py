@@ -186,6 +186,7 @@ def test_invoice_settlement_linking_via_transaction(app_client, admin_cookies):
     )
     assert inv_res.status_code == 201
     invoice_id = inv_res.json()["id"]
+    assert app_client.post(f"/api/finance/invoices/{invoice_id}/send", cookies=admin_cookies).status_code == 200
 
     # 4. Settle invoice partially via incoming transaction
     tx_res = app_client.post(

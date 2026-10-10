@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from finance import bill_status as bs
 from finance import bill_payment_rules as rules
+from finance import invoice_status as inv_status
 
 from finance.models import (
     BillDB,
@@ -21,6 +22,26 @@ from finance.models import (
     TransactionCategoryDB,
     PaymentTypeDB,
 )
+
+
+# Outgoing payment types a statutory remittance may use, per paying account kind (F4, D-022 rules)
+STATUTORY_PAYMENT_TYPE_CODES_BY_ACCOUNT_TYPE = {
+    "cash": frozenset({"CASH"}),
+    "bank": frozenset({"OUTBOUND_TRANS", "DEBIT_CARD"}),
+}
+DEFAULT_STATUTORY_PAYMENT_TYPE_CODE = {"cash": "CASH", "bank": "OUTBOUND_TRANS"}
+
+
+class StatutoryPaymentError(ValueError):
+    """A statutory remittance refused by a rule. `code` is the machine-readable reason."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+    def detail(self) -> dict:
+        return {"code": self.code, "message": self.message}
 
 
 class SettlementService:
@@ -168,55 +189,100 @@ class SettlementService:
         amount: float,
         payment_date: str,
         bank_account_id: int,
-        currency: str = "USD",
+        payment_type_id: Optional[int] = None,
         reference: str = "",
-        method: str = "bank_transfer",
+        method: Optional[str] = None,
+        currency: Optional[str] = None,
+        withheld_amount: float = 0.0,
     ) -> Tuple[SalesInvoiceDB, PaymentDB]:
         """
-        Record a settlement against a customer sales invoice.
-        Enforces remaining balance checks, transitions invoice status, and creates PaymentDB.
+        Record a receipt against a customer sales invoice: the single path for every route that
+        receives money for an invoice (receipt dialog and manual transactions linked to an invoice).
+
+        Refuses with ReceiptError (code):
+          currency_mismatch        - account currency differs from the invoice currency (no exchange rate)
+          payment_type_not_allowed - type not an incoming type that fits the account kind
+          withheld_exceeds_expected - withheld tax above what the invoice's withholding rate expects
+        InvalidInvoiceTransition when the invoice is not Sent / Partially paid, and a plain ValueError
+        for a non-positive amount or an overpayment. Received plus withheld settles the invoice (D-024);
+        only the received amount moves the bank balance.
+        Creates the PaymentDB (in the invoice's currency) and sets the status; the caller owns the
+        ledger row and the balance recalculation. `currency` is accepted for compatibility and ignored.
         """
         invoice = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.id == invoice_id).first()
         if not invoice:
             raise ValueError(f"Invoice #{invoice_id} not found")
 
-        if invoice.status in ("void",):
-            raise ValueError("Cannot record payment against a voided invoice")
+        inv_status.next_status("receive", invoice.status)
+
+        account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
+        if not account:
+            raise ValueError(f"Bank account {bank_account_id} not found")
+
+        payment_amount = float(amount)
+        if payment_amount <= 0:
+            raise ValueError("Payment amount must be greater than 0")
+
+        if (account.currency or "").upper() != (invoice.currency or "").upper():
+            raise inv_status.ReceiptError(
+                "currency_mismatch",
+                f"Account currency ({account.currency}) differs from the invoice currency ({invoice.currency}). Receive into a {invoice.currency} account.",
+            )
+
+        account_type = (account.account_type or "bank").lower()
+        allowed_codes = inv_status.RECEIPT_TYPE_CODES_BY_ACCOUNT_TYPE.get(account_type, frozenset())
+        if payment_type_id is None:
+            default_code = inv_status.DEFAULT_RECEIPT_TYPE_CODE_BY_ACCOUNT_TYPE.get(account_type)
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == default_code).first() if default_code else None
+        else:
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == payment_type_id).first()
+        if pt is None:
+            raise inv_status.ReceiptError("payment_type_not_allowed", "Payment type not found")
+        if not pt.is_active or pt.code not in allowed_codes:
+            raise inv_status.ReceiptError(
+                "payment_type_not_allowed",
+                f"Payment type '{pt.name}' cannot be used to receive money into a {account_type} account.",
+            )
+
+        withheld = round(float(withheld_amount or 0.0), 2)
+        if withheld < 0:
+            raise ValueError("Withheld amount cannot be negative")
 
         existing_payments = (
             self.db.query(PaymentDB)
-            .filter(PaymentDB.related_invoice_id == invoice.id, PaymentDB.is_reversed == False)
+            .filter(PaymentDB.related_invoice_id == invoice.id, PaymentDB.is_reversed == False)  # noqa: E712
             .all()
         )
-        paid_so_far = sum(float(p.amount) for p in existing_payments)
+        paid_so_far = inv_status.settled_amount(existing_payments)
         remaining = max(0.0, round(invoice.total - paid_so_far, 2))
-        payment_amount = float(amount)
-
-        if payment_amount > remaining + 0.001:
+        if payment_amount + withheld > remaining + 0.001:
             raise ValueError(
-                f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
+                f"Payment amount (${payment_amount + withheld:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
             )
+        if withheld > 0:
+            expected = inv_status.withholding_amount(invoice.subtotal, invoice.withholding_tax_rate)
+            withheld_so_far = sum(float(p.withheld_amount or 0.0) for p in existing_payments)
+            if withheld_so_far + withheld > expected + 0.01:
+                raise inv_status.ReceiptError(
+                    "withheld_exceeds_expected",
+                    f"Withheld tax ({withheld_so_far + withheld:,.2f}) exceeds the withholding expected on this invoice ({expected:,.2f}).",
+                )
 
         payment = PaymentDB(
             direction="incoming",
             related_invoice_id=invoice.id,
             related_bill_id=None,
             amount=payment_amount,
-            currency=currency,
+            withheld_amount=withheld,
+            currency=invoice.currency,
             payment_date=payment_date,
-            bank_account_id=bank_account_id,
-            method=method or "bank_transfer",
-            reference=reference or invoice.invoice_number,
+            bank_account_id=account.id,
+            method=method or inv_status.METHOD_BY_RECEIPT_TYPE_CODE.get(pt.code, "other"),
+            reference=reference or "",
             is_reversed=False,
         )
         self.db.add(payment)
-
-        # Update invoice status
-        if paid_so_far + payment_amount >= invoice.total - 0.001:
-            invoice.status = "paid"
-        elif invoice.status in ("sent", "overdue", "partially_paid", "awaiting_payment"):
-            invoice.status = "partially_paid"
-
+        invoice.status = inv_status.derive_payment_status(invoice.total, paid_so_far + payment_amount + withheld)
         return invoice, payment
 
     def settle_statutory_obligation(
@@ -225,16 +291,22 @@ class SettlementService:
         amount: float,
         payment_date: str,
         bank_account_id: int,
-        currency: str = "USD",
+        payment_type_id: Optional[int] = None,
         reference: str = "",
-        method: str = "bank_transfer",
+        method: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> Tuple[StatutoryObligationDB, PaymentDB, LedgerTransactionDB]:
         """
         Record a settlement against a statutory obligation.
         Enforces status integrity (must be accrued or partially_remitted),
         checks remaining balance, prevents overpayment, updates obligation amount_remitted,
-        transitions status to remitted or partially_remitted, adjusts bank account balance,
-        and creates linked PaymentDB and LedgerTransactionDB records atomically.
+        transitions status to remitted or partially_remitted, and creates the linked PaymentDB
+        and LedgerTransactionDB records; the account balance comes from
+        recalculate_account_running_balances. All of it commits together.
+
+        Refuses with StatutoryPaymentError (code):
+          currency_mismatch        - paying account currency differs from the obligation currency
+          payment_type_not_allowed - type is not an outgoing type that fits the paying account kind
         """
         obligation = self.db.query(StatutoryObligationDB).filter(StatutoryObligationDB.id == obligation_id).first()
         if not obligation:
@@ -266,6 +338,26 @@ class SettlementService:
         if payment_amount <= 0:
             raise ValueError("Payment amount must be greater than 0")
 
+        # Same currency: no exchange rate on statutory payments
+        if (bank_account.currency or "").upper() != (obligation.currency or "").upper():
+            raise StatutoryPaymentError(
+                "currency_mismatch",
+                f"Account currency ({bank_account.currency}) differs from the obligation currency ({obligation.currency}). Pay from a {obligation.currency} account.",
+            )
+
+        account_type = (bank_account.account_type or "bank").lower()
+        allowed_codes = STATUTORY_PAYMENT_TYPE_CODES_BY_ACCOUNT_TYPE.get(account_type, frozenset())
+        if payment_type_id is None:
+            default_code = DEFAULT_STATUTORY_PAYMENT_TYPE_CODE.get(account_type)
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == default_code).first() if default_code else None
+        else:
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == payment_type_id).first()
+            if pt is None or not pt.is_active or pt.code not in allowed_codes:
+                raise StatutoryPaymentError(
+                    "payment_type_not_allowed",
+                    f"Payment type '{pt.name if pt else payment_type_id}' cannot be used to pay a statutory obligation from a {account_type} account.",
+                )
+
         if payment_amount > remaining + 0.001:
             raise ValueError(
                 f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
@@ -278,10 +370,10 @@ class SettlementService:
             related_invoice_id=None,
             related_statutory_obligation_id=obligation.id,
             amount=payment_amount,
-            currency=currency or obligation.currency,
+            currency=obligation.currency,
             payment_date=payment_date,
             bank_account_id=bank_account.id,
-            method=method or "bank_transfer",
+            method=method or rules.METHOD_BY_PAYMENT_TYPE_CODE.get(pt.code if pt else "", "bank_transfer"),
             reference=ref_str,
             is_reversed=False,
         )
@@ -295,9 +387,6 @@ class SettlementService:
         else:
             obligation.status = "partially_remitted"
 
-        # Balance deduction: outgoing remittance debit
-        bank_account.current_balance = round(bank_account.current_balance - payment_amount, 4)
-
         # Find category & payment type
         tax_cat = (
             self.db.query(TransactionCategoryDB)
@@ -307,8 +396,6 @@ class SettlementService:
         if not tax_cat:
             tax_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Other").first()
 
-        outbound_pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == "OUTBOUND_TRANS").first()
-
         ledger_tx = LedgerTransactionDB(
             account_id=bank_account.id,
             date=payment.payment_date,
@@ -316,15 +403,18 @@ class SettlementService:
             direction="out",
             currency=payment.currency,
             category_id=tax_cat.id if tax_cat else None,
-            payment_type_id=outbound_pt.id if outbound_pt else None,
+            payment_type_id=pt.id if pt else None,
             reference=ref_str,
             description=f"Statutory remittance: {obligation.obligation_type.replace('_', ' ').title()} for period {obligation.period}",
             source="statutory_remittance",
             linked_statutory_obligation_id=obligation.id,
-            running_balance=bank_account.current_balance,
-            created_at=payment.created_at,
+            running_balance=0.0,
+            created_by=created_by,
         )
         self.db.add(ledger_tx)
+        self.db.flush()
+        from finance.repositories.ledger_repository import LedgerRepository
+        LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
         self.db.commit()
         self.db.refresh(obligation)
@@ -403,7 +493,7 @@ class SettlementService:
                 self.db.query(SalesInvoiceDB)
                 .filter(
                     SalesInvoiceDB.customer_id == payee_id,
-                    SalesInvoiceDB.status.in_(["sent", "overdue", "partially_paid", "awaiting_payment"]),
+                    SalesInvoiceDB.status.in_(inv_status.OPEN_STATUSES),
                 )
                 .all()
             )

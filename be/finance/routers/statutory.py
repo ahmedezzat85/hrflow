@@ -19,6 +19,7 @@ from finance.schemas import (
     StatutoryObligationSettle,
     StatutoryObligationUpdate,
     StatutoryObligationResponse,
+    VatEstimateRequest,
 )
 from finance.services.statutory_service import StatutoryObligationsService
 from finance.deps import get_statutory_service
@@ -71,6 +72,19 @@ def create_statutory_obligation(
     return service.create_obligation(payload.dict())
 
 
+@router.post("/vat-estimate", response_model=StatutoryObligationResponse)
+def generate_vat_estimate(
+    payload: VatEstimateRequest,
+    current_user: dict = Depends(require_permission("finance.statutory.write")),
+    service: StatutoryObligationsService = Depends(get_statutory_service),
+):
+    """
+    Generate (or refresh) the estimated sales-tax obligation for a month from the VAT on EGP
+    invoices issued in it. Run on demand; the portal-confirmed amount is entered later via confirm.
+    """
+    return service.generate_vat_estimate(payload.period)
+
+
 @router.post("/{obligation_id}/confirm", response_model=StatutoryObligationResponse)
 def confirm_or_adjust_statutory_obligation(
     obligation_id: int,
@@ -96,7 +110,7 @@ def settle_statutory_obligation(
     Record a remittance payment against an accrued or partially remitted statutory obligation.
     Atomically updates obligation status, creates linked ledger transaction, and updates bank account balance.
     """
-    return service.settle_obligation(obligation_id, payload.dict())
+    return service.settle_obligation(obligation_id, payload.dict(), user_email=current_user.get("email") or current_user.get("sub"))
 
 
 @router.patch("/{obligation_id}", response_model=StatutoryObligationResponse)

@@ -24,7 +24,6 @@ def test_invoice_activity_timeline_admin(app_client, admin_cookies):
             "invoice_number": "INV-TL-001",
             "issue_date": "2026-09-01",
             "due_date": "2026-09-30",
-            "status": "draft",
             "currency": "USD",
             "lines": [{"description": "Medical Consultation", "quantity": 1, "unit_price": 5000.0}],
         },
@@ -85,7 +84,6 @@ def test_invoice_activity_sensitive_masking_non_admin(app_client, admin_cookies,
             "invoice_number": "INV-MASK-002",
             "issue_date": "2026-09-02",
             "due_date": "2026-10-02",
-            "status": "sent",
             "currency": "USD",
             "lines": [{"description": "Diagnostics", "quantity": 2, "unit_price": 1000.0}],
         },
@@ -93,6 +91,7 @@ def test_invoice_activity_sensitive_masking_non_admin(app_client, admin_cookies,
     )
     assert inv_res.status_code == 201
     inv_id = inv_res.json()["id"]
+    assert app_client.post(f"/api/finance/invoices/{inv_id}/send", cookies=admin_cookies).status_code == 200
 
     # Grant non-admin employee finance.invoice.read so they pass entity read guard while remaining non-admin
     from db import get_db_context

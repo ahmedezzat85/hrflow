@@ -156,6 +156,7 @@ async function openReportFromLibrary(reportKey) {
     "compensation-summary",
     "statutory-remitted",
     "payable-status",
+    "withholding-credits",
   ];
   const subnav = document.getElementById("financeReportsSubNav");
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -183,6 +184,7 @@ async function openReportFromLibrary(reportKey) {
           "compensation-summary": "reportPaneCompensationSummary",
           "statutory-remitted": "reportPaneStatutoryRemitted",
           "payable-status": "reportPanePayableStatus",
+          "withholding-credits": "reportPaneWithholdingCredits",
         }[t]
       );
       if (pane) pane.style.display = "none";
@@ -240,6 +242,7 @@ function switchFinanceReportsTab(tabName, btn) {
     "compensation-summary": "reportPaneCompensationSummary",
     "statutory-remitted": "reportPaneStatutoryRemitted",
     "payable-status": "reportPanePayableStatus",
+    "withholding-credits": "reportPaneWithholdingCredits",
   };
 
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -297,6 +300,8 @@ function switchFinanceReportsTab(tabName, btn) {
     loadCompensationSummaryReport();
   } else if (tabName === "statutory-remitted") {
     loadStatutoryRemittedReport();
+  } else if (tabName === "withholding-credits") {
+    loadWithholdingCreditsReport();
   } else if (tabName === "payable-status") {
     loadPayableStatusReport();
   }
@@ -452,6 +457,8 @@ function refreshActiveReport() {
     loadCompensationSummaryReport();
   } else if (_currentReportsTab === "statutory-remitted") {
     loadStatutoryRemittedReport();
+  } else if (_currentReportsTab === "withholding-credits") {
+    loadWithholdingCreditsReport();
   } else if (_currentReportsTab === "payable-status") {
     loadPayableStatusReport();
   }
@@ -1490,7 +1497,9 @@ async function loadReportProfitAndLoss() {
   const dateFrom = document.getElementById("reportShellDateFrom")?.value || "";
   const dateTo = document.getElementById("reportShellDateTo")?.value || "";
   const basis = document.getElementById("reportShellBasis")?.value || "cash";
-  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  // D-026: "All Currencies" shows one statement per currency, never a sum
+  const currencyEl = document.getElementById("reportShellCurrency");
+  const currency = currencyEl ? (currencyEl.value || "ALL") : "USD";
   const comparison = document.getElementById("reportShellComparison")?.value || "none";
   const entity = document.getElementById("reportShellEntity")?.value || "all";
 
@@ -1504,13 +1513,35 @@ async function loadReportProfitAndLoss() {
       entity,
     });
 
-    const curr = data.currency || currency || "USD";
-    const revEl = document.getElementById("reportPnlTotalRevenue");
-    const expEl = document.getElementById("reportPnlTotalExpenses");
-    const netEl = document.getElementById("reportPnlNetIncome");
-    const marEl = document.getElementById("reportPnlNetMargin");
-    const revSubEl = document.getElementById("reportPnlRevenueSubtotalBadge");
-    const expSubEl = document.getElementById("reportPnlExpenseSubtotalBadge");
+    const noteEl = document.getElementById("reportPnlBasisNote");
+    if (noteEl) {
+      noteEl.textContent = data.basis_note || "";
+      noteEl.style.display = data.basis_note ? "inline-block" : "none";
+    }
+    const columns = data.by_currency || [];
+    if (data.currency === "ALL" && columns.length) {
+      // One column per currency side by side; the KPI cards list each currency and nothing is converted
+      const join = (key) => columns.map((c) => FinanceFormat.formatMoney(c[key] || 0, c.currency)).join(" · ");
+      const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+      setText("reportPnlTotalRevenue", join("total_revenue"));
+      setText("reportPnlTotalExpenses", join("total_expenses"));
+      setText("reportPnlNetIncome", join("net_income"));
+      setText("reportPnlNetMargin", columns.map((c) => `${c.currency} ${(c.net_margin_pct || 0).toFixed(1)}%`).join(" · "));
+      setText("reportPnlRevenueSubtotalBadge", join("total_revenue"));
+      setText("reportPnlExpenseSubtotalBadge", join("total_expenses"));
+      const flatten = (key) => columns.flatMap((c) => (c[key] || []).map((it) => ({ ...it, category_name: `${it.category_name} (${c.currency})`, currency: c.currency })));
+      data.revenue_items = flatten("revenue_items");
+      data.expense_items = flatten("expense_items");
+    }
+
+    const curr = data.currency === "ALL" ? "USD" : (data.currency || currency || "USD");
+    const revEl = data.currency === "ALL" && columns.length ? null : document.getElementById("reportPnlTotalRevenue");
+    const isAllCols = data.currency === "ALL" && columns.length > 0;
+    const expEl = isAllCols ? null : document.getElementById("reportPnlTotalExpenses");
+    const netEl = isAllCols ? null : document.getElementById("reportPnlNetIncome");
+    const marEl = isAllCols ? null : document.getElementById("reportPnlNetMargin");
+    const revSubEl = isAllCols ? null : document.getElementById("reportPnlRevenueSubtotalBadge");
+    const expSubEl = isAllCols ? null : document.getElementById("reportPnlExpenseSubtotalBadge");
 
     if (revEl) revEl.textContent = FinanceFormat.formatMoney(data.total_revenue || 0, curr);
     if (expEl) expEl.textContent = FinanceFormat.formatMoney(data.total_expenses || 0, curr);
@@ -1531,7 +1562,7 @@ async function loadReportProfitAndLoss() {
         revTbody.innerHTML = data.revenue_items.map((it) => `
           <tr>
             <td style="font-weight:600;"><i class="fa-solid fa-layer-group" style="color:#10B981; margin-right:6px;"></i> ${_esc(it.category_name)}</td>
-            <td class="cell-money" style="text-align:right; font-weight:700; color:#10B981;">${FinanceFormat.formatMoney(it.amount, curr)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:#10B981;">${FinanceFormat.formatMoney(it.amount, it.currency || curr)}</td>
             <td>
               <div style="display:flex; align-items:center; gap:8px;">
                 <div style="flex:1; height:6px; border-radius:3px; background:#E2E8F0; overflow:hidden;">
@@ -1559,7 +1590,7 @@ async function loadReportProfitAndLoss() {
         expTbody.innerHTML = data.expense_items.map((it) => `
           <tr>
             <td style="font-weight:600;"><i class="fa-solid fa-tag" style="color:#EF4444; margin-right:6px;"></i> ${_esc(it.category_name)}</td>
-            <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(it.amount, curr)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(it.amount, it.currency || curr)}</td>
             <td>
               <div style="display:flex; align-items:center; gap:8px;">
                 <div style="flex:1; height:6px; border-radius:3px; background:#E2E8F0; overflow:hidden;">
@@ -2322,6 +2353,48 @@ async function loadStatutoryRemittedReport() {
     console.error("Failed to load statutory remitted report:", err);
   }
 }
+
+// D-024: tax withheld by customers on invoice receipts, by customer and month
+async function loadWithholdingCreditsReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "USD";
+  try {
+    const data = await FinanceApi.getWithholdingCreditsReport({
+      start_date: dFrom || undefined,
+      end_date: dTo || undefined,
+      currency: currency || undefined,
+    });
+    const totEl = document.getElementById("reportWhtTotal");
+    if (totEl) totEl.textContent = formatCurrency(data.total_withheld);
+    const tbody = document.getElementById("reportWhtTableBody");
+    const tfoot = document.getElementById("reportWhtTableFoot");
+    const emptyState = document.getElementById("reportWhtEmpty");
+    if (!tbody) return;
+    const items = data.items || [];
+    if (!items.length) {
+      tbody.innerHTML = "";
+      if (tfoot) tfoot.innerHTML = "";
+      if (emptyState) emptyState.style.display = "block";
+      return;
+    }
+    if (emptyState) emptyState.style.display = "none";
+    tbody.innerHTML = items.map((it) => `
+      <tr>
+        <td><strong>${it.month}</strong></td>
+        <td>${FinanceFormat.escapeHtml(it.customer_name)}</td>
+        <td>${(it.invoice_numbers || []).map((n) => FinanceFormat.escapeHtml(n)).join(", ")}</td>
+        <td style="text-align:center;">${it.receipts}</td>
+        <td style="text-align:right; font-weight:700;">${formatCurrency(it.withheld_amount)}</td>
+      </tr>`).join("");
+    if (tfoot) {
+      tfoot.innerHTML = `<tr><td colspan="4">Total withheld (credit against income tax)</td><td style="text-align:right; font-weight:700;">${formatCurrency(data.total_withheld)}</td></tr>`;
+    }
+  } catch (err) {
+    console.error("Failed to load withholding credits report:", err);
+  }
+}
+window.loadWithholdingCreditsReport = loadWithholdingCreditsReport;
 
 let _selectedPayableEmployeeId = "";
 

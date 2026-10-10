@@ -777,6 +777,26 @@
         if (hasFailed) {
           run.status = "partially_paid";
         } else if (!hasPending) {
+          // D-025: marking a run paid moves net pay at once, to the funding accounts, same currency; refused otherwise
+          if (!run.journal_transaction_id) {
+            const nets = { ext: 0, int: 0 };
+            lines.forEach((l) => { nets[l.compensation_type === "external_usd" ? "ext" : "int"] += Number(l.net_pay || 0); });
+            const legs = [["ext", run.external_funding_account_id || run.bank_account_id], ["int", run.internal_funding_account_id || run.bank_account_id]];
+            const accounts = FinanceMockState.accounts || [];
+            for (const [key, accId] of legs) {
+              if (nets[key] <= 0) continue;
+              const acc = accounts.find((a) => a.id === accId);
+              if (!accId || !acc) throw new Error("funding_account_required: Set the payroll funding account before marking the run paid.");
+              if ((acc.currency || "").toUpperCase() !== (run.currency || "USD").toUpperCase()) {
+                throw new Error(`currency_mismatch: Payroll run currency (${run.currency || "USD"}) differs from the funding account '${acc.account_name}' currency (${acc.currency}).`);
+              }
+            }
+            legs.forEach(([key, accId]) => {
+              const acc = accounts.find((a) => a.id === accId);
+              if (nets[key] > 0 && acc) acc.current_balance = Math.round((acc.current_balance - nets[key]) * 100) / 100;
+            });
+            run.journal_transaction_id = 999;
+          }
           run.status = "paid";
           run.paid_at = now;
         }
@@ -793,6 +813,7 @@
       if (_isMock()) {
         const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
         if (!run) throw new Error(`Payroll run #${runId} not found`);
+        const alreadyPosted = !!run.journal_transaction_id;
         run.journal_transaction_id = 999;
         return {
           success: true,
@@ -800,7 +821,7 @@
           reference: `PAYROLL-${run.period_label}`,
           amount: run.total_net,
           date: new Date().toISOString().slice(0, 10),
-          is_already_posted: false,
+          is_already_posted: alreadyPosted,
         };
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/post-journal`);

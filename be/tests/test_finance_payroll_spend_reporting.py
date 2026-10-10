@@ -224,6 +224,18 @@ def test_statutory_remitted_report_and_payable_status(app_client, admin_cookies)
     _cleanup()
     emp1_id = _setup_employee("Alice Spend", "alice.spend@hrflow.test", ext_amount=2000.0, int_amount=1000.0)
 
+    # A run can only be paid from a funding account (D-025: no hard-coded fallback account)
+    from finance.models import FinanceBankAccountDB
+    with get_db_context() as db:
+        funding = FinanceBankAccountDB(
+            account_name="Payroll Funding", account_type="bank", currency="USD", bank_name="Test Bank",
+            account_number="PAYROLL-FUND-1", is_active=True, opening_balance=50000.0, current_balance=50000.0,
+        )
+        db.add(funding)
+        db.commit()
+        db.refresh(funding)
+        funding_id = funding.id
+
     # 1. Generate & finalize run for 2026-09
     resp_gen = app_client.post(
         "/api/finance/payroll/runs/generate",
@@ -233,6 +245,7 @@ def test_statutory_remitted_report_and_payable_status(app_client, admin_cookies)
             "period_end": "2026-09-30",
             "fx_rate_source": "first_of_month",
             "fx_rate_value": 50.0,
+            "bank_account_id": funding_id,
         },
         cookies=admin_cookies,
     )
@@ -336,7 +349,7 @@ def test_statutory_remitted_report_and_payable_status(app_client, admin_cookies)
         json={},
         cookies=admin_cookies,
     )
-    assert resp_pay_run.status_code == 200
+    assert resp_pay_run.status_code == 200, resp_pay_run.text
 
     # 4. Check Payable Status again
     resp_pay_final = app_client.get(

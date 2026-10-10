@@ -167,14 +167,7 @@ const FinanceFormat = {
     if (!inv) return "draft";
     const rawStatus = (inv.status || "draft").toLowerCase().trim();
     if (rawStatus === "void" || rawStatus === "cancelled") return "void";
-    if (rawStatus === "paid") return "paid";
-
-    if (inv.due_date) {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      if (inv.due_date < todayStr) {
-        return "overdue";
-      }
-    }
+    // Server-owned status (D-022). Overdue is a separate flag (inv.is_overdue), not a status.
     return rawStatus;
   },
 

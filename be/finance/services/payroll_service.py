@@ -1785,14 +1785,118 @@ class PayrollService:
         if bank_account_id:
             run.bank_account_id = bank_account_id
 
+        # D-025: marking a run paid moves net pay at once. The ledger rows and balances are posted in the
+        # same transaction; a refusal (missing funding account, currency mismatch) leaves the run unpaid.
+        if run.status == "paid" and not run.journal_transaction_id:
+            try:
+                self._post_run_ledger(run, user_email)
+            except HTTPException:
+                self.db.rollback()
+                raise
+
         self.db.commit()
         self.db.refresh(run)
         return self._format_run_detail(run)
 
+    def _post_run_ledger(self, run: PayrollRunDB, user_email: Optional[str] = None) -> List[LedgerTransactionDB]:
+        """
+        Post the run's net pay to the ledger (D-025): net pay only, one row per funding leg.
+
+        Rows are source="payroll" (not editable or deletable as hand entries), use the payment type
+        that fits the funding account kind (cash account: Cash payment; bank: Outgoing transfer), and
+        balances come from recalculate_account_running_balances. Refused with a clear message when a
+        leg has no funding account or when the leg currency differs from its account's currency.
+        Flushes but does not commit; the caller owns the transaction.
+        """
+        from finance.repositories.ledger_repository import LedgerRepository
+
+        run_currency = (run.currency or "USD").upper()
+        lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
+        ext_net = round(sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type == "external_usd"), 2)
+        int_net = round(sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type != "external_usd"), 2)
+
+        legs = []  # (suffix, label, amount, account_id, counterparty)
+        if ext_net > 0:
+            legs.append(("-EXT", "External Bank Wire", ext_net, run.external_funding_account_id or run.bank_account_id,
+                         f"Voyance Staff Payroll - External USD ({run.headcount} employees)"))
+        if int_net > 0:
+            legs.append(("-INT", "Internal Cash/Commissions", int_net, run.internal_funding_account_id or run.bank_account_id,
+                         f"Voyance Staff Payroll - Internal Cash ({run.headcount} employees)"))
+        if not legs:
+            legs.append(("", "", round(float(run.total_net or 0.0), 2), run.bank_account_id,
+                         f"Voyance Staff Payroll ({run.headcount} employees)"))
+
+        # Validate every leg before writing anything
+        resolved = []
+        for suffix, label, amount, account_id, counterparty in legs:
+            if not account_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "funding_account_required",
+                        "message": f"Payroll run #{run.id} has no funding account for the {label or 'net pay'} leg. Set the funding account before posting.",
+                    },
+                )
+            account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == account_id).first()
+            if not account:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "funding_account_required", "message": f"Funding account #{account_id} was not found."},
+                )
+            if (account.currency or "").upper() != run_currency:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "currency_mismatch",
+                        "message": f"Payroll run currency ({run_currency}) differs from the funding account '{account.account_name}' currency ({account.currency}). Use a {run_currency} funding account.",
+                    },
+                )
+            resolved.append((suffix, label, amount, account, counterparty))
+
+        cat = (
+            self.db.query(TransactionCategoryDB)
+            .filter(TransactionCategoryDB.name.ilike("%salaries%"))
+            .first()
+        )
+        date_str = run.paid_at.strftime("%Y-%m-%d") if run.paid_at else datetime.utcnow().strftime("%Y-%m-%d")
+
+        created_txs = []
+        for suffix, label, amount, account, counterparty in resolved:
+            pt_code = "CASH" if (account.account_type or "bank").lower() == "cash" else "OUTBOUND_TRANS"
+            pt = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.code == pt_code).first()
+            tx = LedgerTransactionDB(
+                account_id=account.id,
+                date=date_str,
+                amount=amount,
+                direction="out",
+                currency=account.currency,
+                category_id=cat.id if cat else None,
+                payment_type_id=pt.id if pt else None,
+                reference=f"PAYROLL-{run.period_label}{suffix}",
+                description=f"Payroll Net Disbursement{f' ({label})' if label else ''} for {run.period_label} (Net: {amount:,.2f} {account.currency})",
+                entry_type="money_out",
+                counterparty=counterparty,
+                source="payroll",
+                running_balance=0.0,
+                created_at=datetime.utcnow(),
+                created_by=user_email or "system",
+            )
+            self.db.add(tx)
+            created_txs.append(tx)
+
+        self.db.flush()
+        ledger_repo = LedgerRepository(self.db)
+        for account_id in sorted({tx.account_id for tx in created_txs}):
+            ledger_repo.recalculate_account_running_balances(account_id, commit=False)
+
+        run.journal_transaction_id = created_txs[0].id
+        return created_txs
+
     def post_journal(self, run_id: int, user_email: Optional[str] = None) -> Dict[str, Any]:
         """
         Generates and links balanced General Ledger transactions for actual net payroll disbursements.
-        Never generates deduction, tax, employer-cost, or liability journal lines.
+        Never generates deduction, tax, employer-cost, or liability journal lines (D-025): employer tax
+        and social insurance are paid separately as statutory obligations.
         """
         run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
         if not run:
@@ -1807,105 +1911,29 @@ class PayrollService:
         if run.journal_transaction_id:
             tx = self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.id == run.journal_transaction_id).first()
             if tx:
+                refs = [f"PAYROLL-{run.period_label}", f"PAYROLL-{run.period_label}-EXT", f"PAYROLL-{run.period_label}-INT"]
+                posted = (
+                    self.db.query(LedgerTransactionDB)
+                    .filter(LedgerTransactionDB.reference.in_(refs), LedgerTransactionDB.source.in_(["payroll", "manual"]))
+                    .all()
+                )
                 return {
                     "success": True,
                     "journal_transaction_id": tx.id,
                     "reference": tx.reference,
-                    "amount": tx.amount,
+                    "amount": sum(t.amount for t in posted) if posted else tx.amount,
                     "date": tx.date,
                     "is_already_posted": True,
                 }
 
-        cat = (
-            self.db.query(TransactionCategoryDB)
-            .filter(TransactionCategoryDB.name.ilike("%salaries%"))
-            .first()
-        )
-        cat_id = cat.id if cat else 2
-
-        pt = (
-            self.db.query(PaymentTypeDB)
-            .filter(PaymentTypeDB.code.in_(["OUTBOUND_TRANS", "INTERNAL_TRANS"]))
-            .first()
-        )
-        pt_id = pt.id if pt else 5
-
-        lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
-        ext_net = round(sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type == "external_usd"), 2)
-        int_net = round(sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type != "external_usd"), 2)
-
-        date_str = run.paid_at.strftime("%Y-%m-%d") if run.paid_at else datetime.utcnow().strftime("%Y-%m-%d")
-        ext_account_id = run.external_funding_account_id or run.bank_account_id or 1
-        int_account_id = run.internal_funding_account_id or run.bank_account_id or 1
-
-        created_txs = []
-
-        if ext_net > 0:
-            tx_ext = LedgerTransactionDB(
-                account_id=ext_account_id,
-                date=date_str,
-                amount=ext_net,
-                direction="out",
-                currency=run.currency or "USD",
-                category_id=cat_id,
-                payment_type_id=pt_id,
-                reference=f"PAYROLL-{run.period_label}-EXT",
-                description=f"Payroll Net Disbursement (External Bank Wire) for {run.period_label} (Net: ${ext_net:,.2f})",
-                entry_type="money_out",
-                counterparty=f"Voyance Staff Payroll - External USD ({run.headcount} employees)",
-                source="manual",
-                created_at=datetime.utcnow(),
-                created_by=user_email or "system",
-            )
-            self.db.add(tx_ext)
-            created_txs.append(tx_ext)
-
-        if int_net > 0:
-            tx_int = LedgerTransactionDB(
-                account_id=int_account_id,
-                date=date_str,
-                amount=int_net,
-                direction="out",
-                currency=run.currency or "USD",
-                category_id=cat_id,
-                payment_type_id=pt_id,
-                reference=f"PAYROLL-{run.period_label}-INT",
-                description=f"Payroll Net Disbursement (Internal Cash/Commissions) for {run.period_label} (Net: ${int_net:,.2f})",
-                entry_type="money_out",
-                counterparty=f"Voyance Staff Payroll - Internal Cash ({run.headcount} employees)",
-                source="manual",
-                created_at=datetime.utcnow(),
-                created_by=user_email or "system",
-            )
-            self.db.add(tx_int)
-            created_txs.append(tx_int)
-
-        if not created_txs:
-            tx_fallback = LedgerTransactionDB(
-                account_id=run.bank_account_id or 1,
-                date=date_str,
-                amount=run.total_net,
-                direction="out",
-                currency=run.currency or "USD",
-                category_id=cat_id,
-                payment_type_id=pt_id,
-                reference=f"PAYROLL-{run.period_label}",
-                description=f"Payroll Net Disbursement for {run.period_label} (Net: ${run.total_net:,.2f})",
-                entry_type="money_out",
-                counterparty=f"Voyance Staff Payroll ({run.headcount} employees)",
-                source="manual",
-                created_at=datetime.utcnow(),
-                created_by=user_email or "system",
-            )
-            self.db.add(tx_fallback)
-            created_txs.append(tx_fallback)
-
-        self.db.flush()
+        try:
+            created_txs = self._post_run_ledger(run, user_email)
+            self.db.commit()
+        except HTTPException:
+            self.db.rollback()
+            raise
 
         primary_tx = created_txs[0]
-        run.journal_transaction_id = primary_tx.id
-        self.db.commit()
-
         return {
             "success": True,
             "journal_transaction_id": primary_tx.id,

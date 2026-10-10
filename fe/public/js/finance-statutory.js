@@ -325,7 +325,9 @@ async function openStatutorySettleModal(id) {
   if (bankEl) {
     bankEl.innerHTML = "";
     try {
-      const accounts = await FinanceApi.getAccounts({ is_active: true });
+      // F4: a remittance is paid from an account in the obligation's currency (no exchange rate); the server enforces it
+      const allAccounts = await FinanceApi.getAccounts({ is_active: true });
+      const accounts = (allAccounts || []).filter((a) => (a.currency || "").toUpperCase() === (obl.currency || "EGP").toUpperCase());
       for (const acc of accounts) {
         const opt = document.createElement("option");
         opt.value = acc.id;
@@ -337,15 +339,37 @@ async function openStatutorySettleModal(id) {
     }
   }
 
+  await refreshStatutoryPaymentTypes();
   if (typeof openModal === "function") openModal("statutorySettleModal");
 }
+
+// Outgoing payment types that fit the paying account kind (mirrors be/finance/services/settlement_service.py)
+const _STATUTORY_TYPE_CODES = { cash: ["CASH"], bank: ["OUTBOUND_TRANS", "DEBIT_CARD"] };
+
+async function refreshStatutoryPaymentTypes() {
+  const typeEl = document.getElementById("statSettlePaymentType");
+  const bankEl = document.getElementById("statSettleBankAccount");
+  if (!typeEl) return;
+  let kind = "bank";
+  try {
+    const accounts = await FinanceApi.getAccounts({ is_active: true });
+    const acc = (accounts || []).find((a) => String(a.id) === String(bankEl ? bankEl.value : ""));
+    kind = ((acc && acc.account_type) || "bank").toLowerCase();
+    const types = await FinanceApi.getPaymentTypes({ is_active: true });
+    const allowed = _STATUTORY_TYPE_CODES[kind] || [];
+    typeEl.innerHTML = (types || []).filter((t) => allowed.includes(t.code)).map((t) => `<option value="${t.id}">${FinanceFormat.escapeHtml(t.name)}</option>`).join("");
+  } catch (_) {
+    typeEl.innerHTML = "";
+  }
+}
+window.refreshStatutoryPaymentTypes = refreshStatutoryPaymentTypes;
 
 async function submitStatutorySettlement() {
   const idEl = document.getElementById("statSettleId");
   const amtEl = document.getElementById("statSettleAmount");
   const dateEl = document.getElementById("statSettleDate");
   const bankEl = document.getElementById("statSettleBankAccount");
-  const methodEl = document.getElementById("statSettleMethod");
+  const typeEl = document.getElementById("statSettlePaymentType");
   const refEl = document.getElementById("statSettleReference");
   const btn = document.getElementById("statSettleSaveBtn");
 
@@ -354,7 +378,7 @@ async function submitStatutorySettlement() {
   const amount = parseFloat(amtEl.value);
   const bank_account_id = Number(bankEl.value);
   const payment_date = dateEl ? dateEl.value : new Date().toISOString().slice(0, 10);
-  const method = methodEl ? methodEl.value : "bank_transfer";
+  const payment_type_id = typeEl && typeEl.value ? Number(typeEl.value) : undefined;
   const reference = refEl ? refEl.value.trim() : "";
 
   if (isNaN(amount) || amount <= 0) {
@@ -372,9 +396,9 @@ async function submitStatutorySettlement() {
       amount: amount,
       payment_date: payment_date,
       bank_account_id: bank_account_id,
-      currency: "USD",
+      currency: (_statutoryActiveObligation && _statutoryActiveObligation.currency) || "EGP",
       reference: reference,
-      method: method,
+      payment_type_id: payment_type_id,
     });
     if (typeof showToast === "function") showToast("Statutory remittance recorded successfully", "success");
     if (typeof closeModal === "function") closeModal("statutorySettleModal");
@@ -390,6 +414,25 @@ async function submitStatutorySettlement() {
 // -------------------------------------------------------------
 // Manual Record Modal Flow
 // -------------------------------------------------------------
+// D-023: on-demand monthly VAT estimate from the VAT on EGP invoices issued that month (no scheduler)
+async function generateVatEstimateAction() {
+  const monthEl = document.getElementById("financeVatEstimateMonth");
+  if (monthEl && !monthEl.value) {
+    const now = new Date();
+    monthEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
+  const period = monthEl ? monthEl.value : "";
+  if (!period) return;
+  try {
+    const obl = await FinanceApi.generateVatEstimate(period);
+    showToast(`VAT estimate for ${period}: ${FinanceFormat.formatMoney ? FinanceFormat.formatMoney(obl.amount_estimated, "EGP") : obl.amount_estimated}`, "success");
+    if (typeof loadFinanceStatutory === "function") loadFinanceStatutory();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+window.generateVatEstimateAction = generateVatEstimateAction;
+
 function openRecordStatutoryModal() {
   const typeEl = document.getElementById("statRecordType");
   const periodEl = document.getElementById("statRecordPeriod");

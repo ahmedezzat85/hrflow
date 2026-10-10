@@ -28,7 +28,7 @@
         <div class="form-grid">
           <div class="form-field full">
             <label for="invoiceCustomerId">Customer <span class="req">*</span></label>
-            <select id="invoiceCustomerId" required>
+            <select id="invoiceCustomerId" onchange="_applyCustomerWithholding(this.value)" required>
               <option value="">— Select customer —</option>
             </select>
           </div>
@@ -45,7 +45,8 @@
               <option value="draft">Draft</option>
               <option value="sent">Sent / Issued</option>
             </select>
-            <span style="font-size: 11px; color: var(--text3); margin-top: 2px; display: block;">Paid &amp; Overdue are derived automatically.</span>
+            <span style="font-size: 11px; color: var(--text3); margin-top: 2px; display: block;">Choose what happens when you save. Paid, Partially paid and Overdue follow receipts and the due date.</span>
+            <span id="invoiceLockedNote" style="display:none; font-size: 11px; color: var(--text3); margin-top: 2px;">Customer, currency, number, issue date and lines are locked once issued. Void and reissue to correct them.</span>
           </div>
           <div class="form-field">
             <label for="invoiceIssueDate">Issue Date <span class="req">*</span></label>
@@ -57,7 +58,7 @@
           </div>
           <div class="form-field">
             <label for="invoiceCurrency">Currency</label>
-            <select id="invoiceCurrency">
+            <select id="invoiceCurrency" onchange="_applyDefaultInvoiceVat()">
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
               <option value="GBP">GBP — British Pound</option>
@@ -65,6 +66,14 @@
               <option value="SAR">SAR — Saudi Riyal</option>
               <option value="AED">AED — UAE Dirham</option>
             </select>
+          </div>
+          <div class="form-field">
+            <label for="invoiceVatRate">VAT rate (%)</label>
+            <input type="number" id="invoiceVatRate" min="0" max="100" step="0.01" value="0" oninput="_updateInvoiceTotals()">
+          </div>
+          <div class="form-field" id="invoiceWhtField" style="display:none;">
+            <label for="invoiceWhtRate">Customer withholding (%)</label>
+            <input type="number" id="invoiceWhtRate" min="0" max="100" step="0.01" value="0" oninput="_updateInvoiceTotals()">
           </div>
           <div class="form-field">
             <label for="invoiceExpectedBankAccount">Expected Receiving Account</label>
@@ -111,7 +120,9 @@
         </table>
         <div style="text-align:right; margin-top: 10px; font-size: 13.5px;">
           Subtotal: <strong id="invoiceSubtotalDisplay">0.00</strong>
+          &nbsp;&nbsp; VAT: <strong id="invoiceVatDisplay">0.00</strong>
           &nbsp;&nbsp; Total: <strong id="invoiceTotalDisplay">0.00</strong>
+          <span id="invoiceExpectedWrap" style="display:none;">&nbsp;&nbsp; Expected to receive: <strong id="invoiceExpectedDisplay">0.00</strong></span>
         </div>
       </div>
     </div>
@@ -159,18 +170,17 @@
         </div>
         <div class="form-field full">
           <label for="paymentBankAccountId">Receiving company bank account <span class="req">*</span></label>
-          <select id="paymentBankAccountId" onchange="_checkPaymentBankDiscrepancy()" required>
+          <select id="paymentBankAccountId" onchange="onReceiptAccountChange()" required>
             <option value="">— Select account —</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="paymentMethod">Method</label>
-          <select id="paymentMethod">
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="other">Other</option>
-          </select>
+          <label for="paymentTypeId">Payment type</label>
+          <select id="paymentTypeId"></select>
+        </div>
+        <div class="form-field" id="paymentWithheldField" style="display:none;">
+          <label for="paymentWithheldAmount">Tax withheld by customer</label>
+          <input type="number" id="paymentWithheldAmount" placeholder="0.00" min="0" step="0.01" value="0">
         </div>
         <div class="form-field">
           <label for="paymentReference">Reference</label>
