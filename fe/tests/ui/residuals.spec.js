@@ -74,7 +74,7 @@ test.describe('R7 residuals', () => {
     await boot(page);
     await page.evaluate(() => showSection('a-finance-statutory', 'admin'));
     await page.waitForTimeout(500);
-    const tops = await page.locator('#a-finance-statutory .stat-summary-grid > .card').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    const tops = await page.locator('#a-finance-statutory .fv-cards > .fv-card').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     expect(tops).toHaveLength(4);
     expect(new Set(tops).size).toBe(1);
   });

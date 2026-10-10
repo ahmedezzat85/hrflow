@@ -1,95 +1,94 @@
-        <section class="page-section" id="a-finance-statutory">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-            <div class="filter-tabs" id="financeSpendSubNavStatutory" role="tablist" aria-label="Spend sub navigation">
+        <section class="page-section fv" id="a-finance-statutory">
+          <div class="fv-head">
+            <div class="filter-tabs fv-subnav" id="financeSpendSubNavStatutory" role="tablist" aria-label="Spend sub navigation">
               <!-- rendered by SpendTabs (finance-nav.js) -->
             </div>
-          </div>
-          <div class="toolbar">
-            <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-landmark"></i> Statutory Obligations</h2>
-              <p class="section-subtitle">Track, confirm, and remit government tax and social insurance liabilities.</p>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <div class="search-box">
+            <div class="fv-head-actions">
+              <div class="fv-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="financeStatutorySearch" placeholder="Search obligations..." oninput="filterFinanceStatutorySearch(this.value)">
+                <input id="financeStatutorySearch" placeholder="Search obligations..." aria-label="Search obligations" oninput="filterFinanceStatutorySearch(this.value)">
               </div>
-              <div class="filter-group">
-                <select id="financeStatutoryTypeFilter" class="filter-select" onchange="filterFinanceStatutoryType(this.value)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); font-size: 13px;">
-                  <option value="all">All Types</option>
-                  <option value="sales_tax">Sales Tax / VAT</option>
-                  <option value="withholding_tax">Withholding Tax (WHT)</option>
-                  <option value="income_tax">Salary/Income Tax Withheld</option>
-                  <option value="social_insurance_employee">Social Insurance (Employee)</option>
-                  <option value="social_insurance_employer">Social Insurance (Employer)</option>
-                  <option value="health_insurance">Health Insurance</option>
-                  <option value="other_statutory">Other Statutory</option>
-                </select>
-              </div>
-              <div class="filter-tabs" id="financeStatutoryFilterTabs">
-                <button class="filter-tab active" data-filter="all" onclick="filterFinanceStatutoryStatus('all', this)">All</button>
-                <button class="filter-tab" data-filter="estimated" onclick="filterFinanceStatutoryStatus('estimated', this)">Estimated</button>
-                <button class="filter-tab" data-filter="accrued" onclick="filterFinanceStatutoryStatus('accrued', this)">Accrued</button>
-                <button class="filter-tab" data-filter="remitted" onclick="filterFinanceStatutoryStatus('remitted', this)">Remitted</button>
-              </div>
-              <input type="month" id="financeVatEstimateMonth" aria-label="VAT estimate month" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); font-size: 13px;">
-              <button class="btn btn-outline" id="financeGenerateVatEstimateBtn" onclick="generateVatEstimateAction()"><i class="fa-solid fa-calculator"></i> Generate VAT estimate</button>
-              <button class="btn btn-fill" id="financeAddStatutoryBtn" onclick="openRecordStatutoryModal()"><i class="fa-solid fa-plus"></i> Record Obligation</button>
+              <button class="btn btn-outline" id="financeGenerateVatEstimateBtn" onclick="generateVatEstimateAction()">Generate VAT estimate</button>
+              <button class="btn btn-fill" id="financeAddStatutoryBtn" onclick="openRecordStatutoryModal()">Record Obligation</button>
             </div>
           </div>
 
-          <!-- Summary Metric Cards -->
-          <div class="grid g4 stat-summary-grid">
-            <div class="card stat-card">
-              <div class="stat-label"><i class="fa-solid fa-hourglass-half" style="color:#d97706;"></i> Unconfirmed (Estimated)</div>
-              <div class="stat-val" id="statutorySummaryEstimated" style="color:#d97706;">$0.00</div>
-              <div class="stat-sub">Payroll draft figures awaiting portal confirmation</div>
+          <!-- Summary cards -->
+          <div class="fv-cards fv-cards--spaced">
+            <a class="fv-card" href="javascript:void(0)" onclick="filterFinanceStatutoryStatus('estimated', document.querySelector('#financeStatutoryFilterTabs [data-filter=estimated]'))">
+              <div class="fv-card__top"><span>Unconfirmed (Estimated)</span><span class="fv-tile fv-tile--warning" aria-hidden="true"><i class="fa-solid fa-clock"></i></span></div>
+              <div class="fv-card__value" id="statutorySummaryEstimated">$0.00</div>
+              <div class="fv-card__foot"><span>Payroll draft figures awaiting portal confirmation</span><span class="fv-card__link">Confirm &rsaquo;</span></div>
+            </a>
+            <a class="fv-card" href="javascript:void(0)" onclick="filterFinanceStatutoryStatus('accrued', document.querySelector('#financeStatutoryFilterTabs [data-filter=accrued]'))">
+              <div class="fv-card__top"><span>Accrued (Payable)</span><span class="fv-tile fv-tile--open" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span></div>
+              <div class="fv-card__value" id="statutorySummaryAccrued">$0.00</div>
+              <div class="fv-card__foot"><span>Confirmed obligations ready for remittance</span><span class="fv-card__link">Remit &rsaquo;</span></div>
+            </a>
+            <a class="fv-card" href="javascript:void(0)" onclick="filterFinanceStatutoryStatus('remitted', document.querySelector('#financeStatutoryFilterTabs [data-filter=remitted]'))">
+              <div class="fv-card__top"><span>Remitted (Paid)</span><span class="fv-tile fv-tile--success" aria-hidden="true"><i class="fa-solid fa-check"></i></span></div>
+              <div class="fv-card__value" id="statutorySummaryRemitted">$0.00</div>
+              <div class="fv-card__foot"><span>Total government remittances completed</span><span class="fv-card__link">View &rsaquo;</span></div>
+            </a>
+            <div class="fv-card">
+              <div class="fv-card__top"><span>Total Variance</span><span class="fv-tile fv-hue-slate" aria-hidden="true"><i class="fa-solid fa-plus-minus"></i></span></div>
+              <div class="fv-card__value" id="statutorySummaryVariance">$0.00</div>
+              <div class="fv-card__foot"><span>Government portal true-up differences &amp; fees</span></div>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label"><i class="fa-solid fa-calculator" style="color:#2563eb;"></i> Accrued (Payable)</div>
-              <div class="stat-val" id="statutorySummaryAccrued" style="color:#2563eb;">$0.00</div>
-              <div class="stat-sub">Confirmed obligations ready for remittance</div>
+          </div>
+
+          <div class="fv-pills-row">
+            <div class="fv-pills" id="financeStatutoryFilterTabs" role="group" aria-label="Obligation status">
+              <button type="button" class="filter-tab fv-pill active" data-filter="all" aria-pressed="true" onclick="filterFinanceStatutoryStatus('all', this)">All <span class="fv-pill__count" id="statPillCountAll">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--waiting" data-filter="estimated" aria-pressed="false" onclick="filterFinanceStatutoryStatus('estimated', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Estimated <span class="fv-pill__count" id="statPillCountEstimated">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--open" data-filter="accrued" aria-pressed="false" onclick="filterFinanceStatutoryStatus('accrued', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Accrued <span class="fv-pill__count" id="statPillCountAccrued">0</span></button>
+              <button type="button" class="filter-tab fv-pill fv-pill--settled" data-filter="remitted" aria-pressed="false" onclick="filterFinanceStatutoryStatus('remitted', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Remitted <span class="fv-pill__count" id="statPillCountRemitted">0</span></button>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label"><i class="fa-solid fa-circle-check" style="color:#16a34a;"></i> Remitted (Paid)</div>
-              <div class="stat-val" id="statutorySummaryRemitted" style="color:#16a34a;">$0.00</div>
-              <div class="stat-sub">Total government remittances completed</div>
-            </div>
-            <div class="card stat-card">
-              <div class="stat-label"><i class="fa-solid fa-scale-balanced" style="color:#64748b;"></i> Total Variance</div>
-              <div class="stat-val" id="statutorySummaryVariance" style="color:#64748b;">$0.00</div>
-              <div class="stat-sub">Government portal true-up differences &amp; fees</div>
+            <div class="fv-pills-selects">
+              <select id="financeStatutoryTypeFilter" class="fv-select" aria-label="Obligation type" onchange="filterFinanceStatutoryType(this.value)">
+                <option value="all">All Types</option>
+                <option value="sales_tax">Sales Tax / VAT</option>
+                <option value="withholding_tax">Withholding Tax (WHT)</option>
+                <option value="income_tax">Salary/Income Tax Withheld</option>
+                <option value="social_insurance_employee">Social Insurance (Employee)</option>
+                <option value="social_insurance_employer">Social Insurance (Employer)</option>
+                <option value="health_insurance">Health Insurance</option>
+                <option value="other_statutory">Other Statutory</option>
+              </select>
+              <select id="financeVatEstimateMonth" class="fv-select" aria-label="Period" onchange="filterFinanceStatutoryPeriod(this.value)">
+                <option value="">All periods</option>
+              </select>
             </div>
           </div>
 
           <!-- Obligations Table -->
-          <div class="card">
+          <div class="fv-table-card">
             <div class="section-loading-bar" id="financeStatutoryLoadingBar"><span></span></div>
-            <table class="responsive-card-table" id="financeStatutoryTable">
-              <thead>
-                <tr>
-                  <th>Obligation Type</th>
-                  <th>Period</th>
-                  <th class="cell-money">Estimated</th>
-                  <th class="cell-money">Accrued</th>
-                  <th class="cell-money">Remitted</th>
-                  <th class="cell-money">Remaining</th>
-                  <th class="cell-money">Variance</th>
-                  <th>Due Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="financeStatutoryTableBody"></tbody>
-            </table>
-            <div class="empty-state" id="financeStatutoryEmpty" style="display: none;">
-              <i class="fa-solid fa-landmark"></i>
+            <div class="fv-table-scroll">
+              <table class="fv-table fv-table--statutory responsive-card-table" id="financeStatutoryTable">
+                <thead>
+                  <tr>
+                    <th>Obligation</th>
+                    <th>Due</th>
+                    <th class="cell-money fv-num">Estimated</th>
+                    <th class="cell-money fv-num">Accrued</th>
+                    <th class="cell-money fv-num">Remitted</th>
+                    <th class="cell-money fv-num">Remaining</th>
+                    <th>Status</th>
+                    <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="financeStatutoryTableBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state fv-empty" id="financeStatutoryEmpty" style="display: none;">
               <p>No statutory obligations found matching criteria.</p>
             </div>
+            <div class="fv-foot" id="financeStatutoryFooter"></div>
           </div>
 
           <!-- Confirm / Adjust Modal -->
-          <div id="statutoryConfirmModal" class="modal-overlay">
+          <div id="statutoryConfirmModal" class="modal-overlay fv fv-dialog fv-area-orange">
             <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="statConfirmModalTitle" style="max-width: 540px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-sliders"></i></div>
@@ -101,9 +100,11 @@
               </div>
               <div class="modal-body">
                 <input type="hidden" id="statConfirmId">
-                <div style="background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:8px; padding:12px 16px; margin-bottom:16px;">
-                  <div style="font-size:12px; color:var(--text-muted, #64748b);">Original Payroll Estimate:</div>
-                  <div id="statConfirmEstimateDisplay" style="font-size:18px; font-weight:700; color:var(--text-primary, #0f172a);">$0.00</div>
+                <div class="fv-summary">
+                  <div class="fv-summary__main">
+                    <div class="fv-sub">Original Payroll Estimate:</div>
+                    <div id="statConfirmEstimateDisplay" class="fv-summary__amount">$0.00</div>
+                  </div>
                 </div>
                 <div class="form-grid" style="grid-template-columns:1fr; gap:14px;">
                   <div class="form-group">
@@ -111,9 +112,9 @@
                     <input type="number" id="statConfirmAccruedAmount" step="0.01" min="0" placeholder="0.00" oninput="calculateStatutoryConfirmVariance()" required>
                     <span class="help-text">The authoritative figure computed by the government portal.</span>
                   </div>
-                  <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:8px 12px; border-radius:6px;">
-                    <span style="font-size:12px; font-weight:600; color:#475569;">Resulting Variance:</span>
-                    <span id="statConfirmVarianceDisplay" style="font-size:14px; font-weight:700; color:#0f172a;">$0.00</span>
+                  <div class="fv-outcome fv-outcome--row">
+                    <span>Resulting Variance:</span>
+                    <strong id="statConfirmVarianceDisplay">$0.00</strong>
                   </div>
                   <div class="form-group">
                     <label for="statConfirmVarianceNote">Variance Explanation / Note</label>
@@ -123,14 +124,14 @@
                 </div>
               </div>
               <div class="modal-foot">
-                <button type="button" class="btn btn-outline" onclick="closeModal('statutoryConfirmModal')">Cancel</button>
+                <button type="button" class="btn" onclick="closeModal(\'statutoryConfirmModal\')">Cancel</button>
                 <button type="button" class="btn btn-fill" id="statConfirmSaveBtn" onclick="submitStatutoryConfirmAdjust()">Confirm Accrual</button>
               </div>
             </div>
           </div>
 
           <!-- Settle / Remittance Modal -->
-          <div id="statutorySettleModal" class="modal-overlay">
+          <div id="statutorySettleModal" class="modal-overlay fv fv-dialog fv-area-orange">
             <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="statSettleModalTitle" style="max-width: 560px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
@@ -142,7 +143,7 @@
               </div>
               <div class="modal-body">
                 <input type="hidden" id="statSettleId">
-                <div id="statSettleObligationInfo" style="background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+                <div id="statSettleObligationInfo" class="fv-summary fv-summary--stack">
                   <!-- Dynamically populated -->
                 </div>
                 <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
@@ -171,14 +172,14 @@
                 </div>
               </div>
               <div class="modal-foot">
-                <button type="button" class="btn btn-outline" onclick="closeModal('statutorySettleModal')">Cancel</button>
+                <button type="button" class="btn" onclick="closeModal(\'statutorySettleModal\')">Cancel</button>
                 <button type="button" class="btn btn-fill" id="statSettleSaveBtn" onclick="submitStatutorySettlement()">Record Remittance</button>
               </div>
             </div>
           </div>
 
           <!-- Manual Record Modal -->
-          <div id="statutoryRecordModal" class="modal-overlay">
+          <div id="statutoryRecordModal" class="modal-overlay fv fv-dialog fv-area-orange">
             <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="statRecordModalTitle" style="max-width: 540px;">
               <div class="modal-head">
                 <div class="modal-head-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
@@ -229,7 +230,7 @@
                 </div>
               </div>
               <div class="modal-foot">
-                <button type="button" class="btn btn-outline" onclick="closeModal('statutoryRecordModal')">Cancel</button>
+                <button type="button" class="btn" onclick="closeModal(\'statutoryRecordModal\')">Cancel</button>
                 <button type="button" class="btn btn-fill" id="statRecordSaveBtn" onclick="submitRecordStatutoryModal()">Save Obligation</button>
               </div>
             </div>

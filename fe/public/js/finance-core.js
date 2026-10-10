@@ -419,6 +419,23 @@ const FinanceUI = {
     return `<div class="fv-amount"><span class="fv-amount__value">${body}</span>${sub}${bar}</div>`;
   },
 
+  // Money with a muted currency prefix, as text (card values and footers). USD keeps the symbol.
+  moneyHtml(amount, currency) {
+    const curr = String(currency || "USD").toUpperCase().trim();
+    const full = FinanceFormat.formatMoney(amount, curr);
+    if (curr === "USD" || !full.includes(curr + " ")) return this.esc(full);
+    const neg = full.startsWith("-") ? "-" : "";
+    const rest = full.slice(full.indexOf(curr + " ") + curr.length + 1);
+    return `<span class="fv-cur">${this.esc(curr)}</span> ${neg}${this.esc(rest)}`;
+  },
+
+  // The plain number of a money value, for tables that state the currency once in the footer.
+  plainNumber(amount, currency) {
+    const curr = String(currency || "USD").toUpperCase().trim();
+    const full = FinanceFormat.formatMoney(amount, curr);
+    return full.replace(curr + " ", "").replace(/^(-?)\$/, "$1");
+  },
+
   // Row actions: one text button plus up to three icon buttons (doc 21 section 3.5).
   // primary: { label, onclick, kind: "fill"|"outline", id, className, attrs, disabled }
   // icons:   [{ icon, label, onclick, id, className, attrs, disabled }] (max 3)

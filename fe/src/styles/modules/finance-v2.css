@@ -297,6 +297,7 @@
 .fv .fv-pill--closed { background: var(--fv-closed-bg); border-color: transparent; color: var(--ink-label); }
 
 .fv .fv-pill.is-selected,
+.fv .fv-pill.active,
 .fv .fv-pill[aria-selected="true"],
 .fv .fv-pill[aria-pressed="true"] {
   background: var(--brand);
@@ -306,6 +307,7 @@
 }
 
 .fv .fv-pill.is-selected .fv-pill__count,
+.fv .fv-pill.active .fv-pill__count,
 .fv .fv-pill[aria-selected="true"] .fv-pill__count,
 .fv .fv-pill[aria-pressed="true"] .fv-pill__count {
   background: var(--fv-on-brand-wash);
@@ -1355,4 +1357,127 @@
 
 .fv .fv-note {
   white-space: nowrap;
+}
+
+/* ---------- S3: Subscriptions and Statutory ---------- */
+.fv .fv-tile--warning { background: var(--warning-soft); color: var(--warning); }
+.fv .fv-tile--open { background: var(--brand-tint); color: var(--brand-ink); }
+.fv .fv-tile--success { background: var(--success-soft); color: var(--success); }
+
+.fv a.fv-card {
+  cursor: pointer;
+}
+
+.fv a.fv-card:hover {
+  border-color: var(--fv-outline);
+}
+
+.fv .fv-cards--spaced {
+  margin: 14px 0;
+}
+
+.fv .fv-pills-selects {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.fv .fv-muted {
+  color: var(--ink-muted);
+}
+
+.fv .fv-foot__total {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.fv .fv-outcome--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fv .fv-table--subs { table-layout: fixed; }
+.fv .fv-table--subs th:nth-child(1) { width: 22%; }
+.fv .fv-table--subs th:nth-child(2) { width: 12%; }
+.fv .fv-table--subs th:nth-child(3) { width: 13%; }
+.fv .fv-table--subs th:nth-child(4) { width: 15%; }
+.fv .fv-table--subs th:nth-child(5) { width: 9%; }
+.fv .fv-table--subs th:nth-child(6) { width: 10%; }
+
+.fv .fv-table--statutory { table-layout: fixed; }
+.fv .fv-table--statutory th:nth-child(1) { width: 25%; }
+.fv .fv-table--statutory th:nth-child(2) { width: 9%; }
+.fv .fv-table--statutory th:nth-child(3) { width: 9%; }
+.fv .fv-table--statutory th:nth-child(4) { width: 9%; }
+.fv .fv-table--statutory th:nth-child(5) { width: 9%; }
+.fv .fv-table--statutory th:nth-child(6) { width: 10%; }
+.fv .fv-table--statutory th:nth-child(7) { width: 11%; }
+
+.fv .fv-table--subs td:last-child,
+.fv .fv-table--statutory td:last-child {
+  text-align: right;
+}
+
+.fv .fv-table--statutory td.fv-num,
+.fv .fv-table--statutory .fv-amount {
+  white-space: nowrap;
+}
+
+.fv .fv-table--statutory tbody td:not(:first-child) {
+  white-space: nowrap;
+}
+
+/* Dialog fields: .form-group and .form-field share one look */
+.fv-dialog .form-group label,
+.fv-dialog .form-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+  margin-bottom: 5px;
+}
+
+.fv-dialog .form-group input:not([type="checkbox"]):not([type="radio"]),
+.fv-dialog .form-group select,
+.fv-dialog .form-group textarea,
+.fv-dialog .form-field input:not([type="checkbox"]):not([type="radio"]),
+.fv-dialog .form-field select,
+.fv-dialog .form-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fv-dialog .form-group textarea {
+  border-radius: 9px;
+  border: 1px solid var(--fv-input-border);
+  color: var(--ink-strong);
+}
+
+.fv-dialog .help-text {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 3px;
+}
+
+/* Finance dialog fields beat the shared .modal-v2 field rules (36 px high, radius 9) */
+.fv-dialog .modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.fv-dialog .modal-v2 .form-field select,
+.fv-dialog .modal-v2 .form-group input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.fv-dialog .modal-v2 .form-group select {
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid var(--fv-input-border);
+  color: var(--ink-strong);
+  font-size: 14px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.fv-dialog .modal-v2 .form-field textarea {
+  border-radius: 9px;
+  border: 1px solid var(--fv-input-border);
 }

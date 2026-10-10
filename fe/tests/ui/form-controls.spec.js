@@ -70,11 +70,14 @@ for (const theme of THEMES) {
       };
       for (const [id, expected] of Object.entries(pairs)) {
         const got = await look(page.locator(`#${id}`));
-        for (const key of ['height', 'font', 'radius']) expect(got[key], `${id} ${key}`).toBe(expected[key]);
+        // Finance restyle v2 (D-027, doc 21 section 3.6): Finance dialog fields are 36 px high with radius 9; the font stays shared with HR.
+        expect(got.font, `${id} font`).toBe(expected.font);
+        expect(got.height, `${id} height`).toBe('36px');
+        expect(got.radius, `${id} radius`).toBe('9px');
       }
       const notes = await look(page.locator('#statRecordNotes'));
       expect(notes.font).toBe(emp.input.font);
-      expect(notes.radius).toBe(emp.input.radius);
+      expect(notes.radius).toBe('9px');
       await page.evaluate(() => closeModal('statutoryRecordModal'));
     });
 

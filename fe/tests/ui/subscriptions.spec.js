@@ -11,7 +11,8 @@ test.describe('Story 4.4: Recurring Spend and Subscriptions', () => {
 
   test('AC 4: Subscriptions Table renders owner, department, monthly equivalent, and auto-bill badges', async ({ page }) => {
     // Toolbar elements
-    await expect(page.locator('#a-finance-subscriptions .section-title')).toContainText('Recurring Subscriptions');
+    // D-027: the in-page title block is gone; the top bar carries the page title.
+    await expect(page.locator('#adminPageTitle')).toContainText('Recurring Subscriptions');
     const addSubBtn = page.locator('#financeAddSubscriptionBtn');
     await expect(addSubBtn).toBeVisible();
 

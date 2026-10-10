@@ -11,7 +11,8 @@ test.describe('FUX-410: Statutory Obligations Tracker', () => {
 
   test('AC 1 & AC 8: Renders Statutory Obligations view, summary metrics, and table', async ({ page }) => {
     // Check header
-    await expect(page.locator('#a-finance-statutory .section-title')).toContainText('Statutory Obligations');
+    // D-027: the in-page title block is gone; the top bar carries the page title.
+    await expect(page.locator('#adminPageTitle')).toContainText('Statutory Obligations');
     await expect(page.locator('#financeAddStatutoryBtn')).toBeVisible();
 
     // Check summary metric cards

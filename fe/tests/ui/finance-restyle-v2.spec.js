@@ -194,3 +194,49 @@ test.describe('Finance restyle v2: Bills and Vendors (S2)', () => {
     await page.click('#billApprovalModal .modal-close');
   });
 });
+
+// ---------- S3: Subscriptions and Statutory ----------
+test.describe('Finance restyle v2: Subscriptions and Statutory (S3)', () => {
+  test('Subscriptions: white header, pills with counts, Notice due only, row actions, run rate', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-subscriptions');
+    await expect(page.locator('#financeSubscriptionsTableBody tr').first()).toBeVisible();
+    expect(await css(page, '#financeSubscriptionsTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    expect(await css(page, '#financeSubscriptionsTable thead th', 'textTransform')).toBe('none');
+    expect(await css(page, '#financeAddSubscriptionBtn', 'height')).toBe('32px');
+    expect(await css(page, '#financeSubscriptionsTableBody .btn-log-charge', 'height')).toBe('28px');
+    await expect(page.locator('#financeAddSubscriptionBtn .fa-solid')).toHaveCount(0);
+    await expect(page.locator('#financeSpendSubNavSubscriptions .fa-solid')).toHaveCount(0);
+    expect(await css(page, '#financeSubscriptionStatusPills .active', 'backgroundColor')).toBe(await rgb(page, 'var(--brand)'));
+    await expect(page.locator('#subPillCountAll')).toHaveText('2');
+    await expect(page.locator('#financeSubscriptionsFooter')).toContainText('monthly run rate');
+    // History is an icon, not a text button; no uppercase cycle chips
+    await expect(page.locator('#financeSubscriptionsTableBody .btn-sub-history').first()).toHaveClass(/fv-icon-btn/);
+    await expect(page.locator('#financeSubscriptionsTableBody .badge')).toHaveCount(0);
+    // Notice due only narrows the list
+    const noticeCount = Number(await page.locator('#financeSubNoticeCount').innerText());
+    await page.locator('#financeSubNoticeOnly').check();
+    await expect(page.locator('#financeSubscriptionsTableBody tr')).toHaveCount(noticeCount);
+  });
+
+  test('Statutory: cards with currency prefix, period select, no variance currency bug, nowrap amounts', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-statutory');
+    await expect(page.locator('#financeStatutoryTableBody tr').first()).toBeVisible();
+    expect(await css(page, '#financeStatutoryTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    await expect(page.locator('#statutorySummaryEstimated .fv-cur')).toHaveText('EGP');
+    expect(await page.locator('#financeVatEstimateMonth').evaluate((el) => el.tagName)).toBe('SELECT');
+    await expect(page.locator('#financeStatutoryTable')).not.toContainText('$0.00');
+    expect(await css(page, '#financeStatutoryTableBody .fv-amount__value', 'whiteSpace')).toBe('nowrap');
+    await expect(page.locator('#financeStatutoryFooter')).toContainText('Amounts in EGP');
+    // period filter narrows to that month
+    await page.selectOption('#financeVatEstimateMonth', '2026-08');
+    await expect(page.locator('#financeStatutoryFooter')).toContainText('Variance for Aug 2026');
+    expect(await css(page, '#financeGenerateVatEstimateBtn', 'height')).toBe('32px');
+    await expect(page.locator('#financeStatutoryTableBody .btn-stat-confirm').first()).toHaveClass(/btn-fill/);
+    await page.locator('#financeStatutoryTableBody .btn-stat-remit').first().click();
+    await expect(page.locator('#statutorySettleModal.fv-dialog')).toBeVisible();
+    expect(await css(page, '#statSettleAmount', 'height')).toBe('36px');
+    expect(await css(page, '#statSettleSaveBtn', 'height')).toBe('34px');
+  });
+});
