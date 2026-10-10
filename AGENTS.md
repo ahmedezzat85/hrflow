@@ -100,6 +100,7 @@ Use for finance (e.g., FUX stories in `docs/finance-module/`), payroll, permissi
 - For features supported in mock mode, update `FinanceMockState` and `FinanceApi` in `fe/finance-api.js` so mock mode reproduces the user-visible states, transitions, validations, and error scenarios needed for deterministic UI testing (`?mock=admin` or `?mock=employee`).
 - Do not claim mock mode validates backend-only behavior such as real authorization, Google Drive streaming, persistence, concurrency, or server-side data integrity; cover those with backend/integration tests.
 - Preserve element IDs, layout structures, and semantic CSS tokens.
+- **Finance styling (D-027):** Finance pages and dialogs style through the `.fv` scope in `fe/src/styles/modules/finance-v2.css` with tokens from `tokens.css` and the `FinanceUI` helpers in `finance-core.js`. No colour literals in Finance JS, partials or `finance-v2.css` (run `npm run lint:finance-tokens` in `fe/`); do not restyle the global `.btn`, `.badge`, `.card` or `.filter-tab`. Playwright runs against the built `fe/dist`, so run `npm run build` before any UI spec.
 
 ## Playwright UI Testing Instructions
 

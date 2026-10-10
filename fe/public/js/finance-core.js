@@ -737,9 +737,8 @@ const FinanceCommand = {
       const iconEl = document.getElementById("financeConfirmIcon");
       if (iconEl) {
         const iconClass = options.icon || (options.severity === "warning" ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-exclamation");
-        const iconColor = options.severity === "warning" ? "var(--warning, #f59e0b)" : "var(--danger, #ef4444)";
+        iconEl.className = `fv-tile fv-tile--lg ${options.severity === "warning" ? "fv-tile--warning" : "fv-tile--danger"}`;
         iconEl.innerHTML = `<i class="${iconClass}"></i>`;
-        iconEl.style.color = iconColor;
       }
 
       const summaryEl = document.getElementById("financeConfirmTargetSummary");
@@ -1516,7 +1515,10 @@ const FinanceDrawer = {
 
     const statusEl = document.getElementById("financeDetailDrawerStatusBadge");
     if (statusEl) {
-      statusEl.innerHTML = FinanceFormat.formatStatusBadge(data.entity_type, data.status);
+      const rawStatus = String(data.status || "").toLowerCase();
+      const known = ((FinanceFormat.STATUS_MAP || {})[data.entity_type] || {})[rawStatus];
+      const label = (known && known.label) || String(data.status || "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+      statusEl.innerHTML = rawStatus ? FinanceUI.statusPill(FinanceUI.statusGroup(rawStatus), label, 'role="status"', "status-badge-wrap") : "";
     }
 
     const maskedEl = document.getElementById("financeDetailDrawerMaskedBadge");

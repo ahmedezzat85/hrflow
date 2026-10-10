@@ -1,6 +1,6 @@
 # 21. Finance UI restyle v2: colour direction on every Finance page (UI only)
 
-Status: **APPROVED by the owner on 10 Oct 2026 (D-027). Not implemented.**
+Status: **IMPLEMENTED on branch `feature/finance-ui-restyle-v2` (slices S1 to S9, not merged). Approved by the owner on 10 Oct 2026 (D-027).** Deviations from the plan are listed in the implementation notes at the end of this document.
 Work type: frontend only (`fe/`). No API, schema, migration, permission or workflow change in this plan.
 Companion backend plan (runs in parallel on its own branch): [22-finance-restyle-v2-backend.md](22-finance-restyle-v2-backend.md).
 Builds on: [19-finance-ui-restyle-direction-a.md](19-finance-ui-restyle-direction-a.md) (Bills direction A, implemented) and [20-finance-review-round-2.md](20-finance-review-round-2.md) (F1 to F6, implemented).
@@ -430,3 +430,21 @@ The UI agent adds these fields to the mock API (`fe/api/finance/*.js`) so mock m
 3. Tests run with exact results against the S0 baseline.
 4. The §0.4 checklist per page with any remaining difference and its reason.
 5. Mappings used (§0.2) and anything reported for the owner.
+
+---
+
+## 12. Implementation notes (branch `feature/finance-ui-restyle-v2`)
+
+Frontend only; no `be/` file changed. Everything new lives under `.fv` in `fe/src/styles/modules/finance-v2.css`, tokens in `tokens.css`, helpers in `FinanceUI` (`finance-core.js`). Tests: `fe/tests/ui/finance-restyle-v2.spec.js` (structure, per page), `finance-restyle-v2-contrast.spec.js` (text contrast on every page and dialog, light and dark), `npm run lint:finance-tokens`.
+
+Deliberate differences from the plan or the reference, and why:
+
+- **Contrast beats the reference** (doc 21 section 3.2 requires 4.5:1): the selected-pill count capsule is a darker translucent navy (`--fv-on-brand-wash`) instead of white at 22%; counts inside pills are full strength instead of 75% opacity; identity inks used for small text (avatar initials, hue pills, the orange "Money out" choice) are darkened in light theme (`--fv-ink-keep`); the teal "part-settled" status text uses `--fv-part-ink`; status tints for violet and teal use 10% (`--fv-status-tint-pct`).
+- **No control was invented.** Where a reference shows a control with no behaviour today it is omitted and listed here: Transfers "Confirm leg", the eye icon on Accounts, Customers, Vendors, Invoices (the customer or vendor name, the record number and the row open the details instead), the "PROTECTED" vendor flag (no such field in the API), Statutory eye and edit icons, the Customers and Subscriptions "Report" and "Create bill" labels (existing actions and labels are kept).
+- **Row actions:** at most one text button and three icons. Not reachable from the row any more: cheque "Mark outstanding" and "Replace" on an issued cheque (Replace stays on stopped and bounced cheques).
+- **Statutory:** the Variance column became a note under Remaining; the period input became a Period select (value `YYYY-MM`, "All periods" does not filter) and its footer shows the period variance. Variance and settle figures use the obligation's own currency (the hard-coded `$0.00` and EGP are gone).
+- **Overview:** bank vs book keeps all eight columns (data kept) and sits full width under the forecast table; the material inflows and outflows table, the assumptions box and the forecast horizon buttons are kept and restyled. The net result value stays navy (doc 21 section 3.4).
+- **Invoices:** Open, Awaiting payment and Overdue are no longer tabs; All, Draft, Sent, Partially paid, Paid, Void plus "Overdue only". The list is filtered on the client from the whole list.
+- **Reports:** the library is one table; the basis label is the API `supported_basis` (cash first). Report pages keep their layout and get the shared table, card and field styling through scoped rules.
+- **Mock API:** category `color`, customer `receivables`, vendor `payables`; the Voyance Operating USD balance is now 145,800.00 to match its ledger; statutory seed obligations are EGP.
+- **Specs updated** (legitimate selector or text changes): finance-bill-status-tab-bar, finance-bills-contrast, finance-bills-table-restyle, finance-semantics, shell-foundations (radius and shadow exemptions for `.fv`), finance-collections-payments, finance-invoice-editor, finance-invoice-rules, finance-invoices-work-queue, finance-table, finance-accounts-workspace, finance-guided-transactions, finance-transfer-composer, statements, subscriptions, finance-statutory-obligations, finance-invoice-vat, form-controls, residuals, finance-cash-forecast, finance-attention-queue, finance-loading-states, finance-overview-layout, finance, frontend-consistency-phase-c, finance-mobile-workflows, finance-payroll-spend-reporting.

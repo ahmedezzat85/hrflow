@@ -38,7 +38,7 @@ async function loadFinanceStatements() {
           accounts = FinanceState.accounts;
         }
         const currentVal = accFilter.value;
-        accFilter.innerHTML = '<option value="">All bank accounts</option>';
+        accFilter.innerHTML = '<option value="">All company bank accounts</option>';
         accounts.forEach((a) => {
           if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
             const opt = document.createElement("option");

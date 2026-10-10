@@ -1,6 +1,6 @@
 <!-- fe/src/partials/modals/finance-report-modals.html -->
 <!-- Report Drilldown Modal -->
-<div class="modal-overlay" id="reportDrilldownModal" style="display:none; z-index:1000;">
+<div class="modal-overlay fv fv-dialog fv-area-violet" id="reportDrilldownModal" style="display:none; z-index:1000;">
   <div class="modal modal-lg" style="max-width:960px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg);">
     <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
       <div>
@@ -53,7 +53,7 @@
 </div>
 
 <!-- Save Report View Modal -->
-<div class="modal-overlay" id="saveReportViewModal" style="display:none; z-index:1000;">
+<div class="modal-overlay fv fv-dialog fv-area-violet" id="saveReportViewModal" style="display:none; z-index:1000;">
   <div class="modal modal-md" style="max-width:480px; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden;">
     <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
       <h3 class="modal-title" style="margin:0; font-size:1.15rem;"><i class="fa-solid fa-bookmark"></i> Save Custom Report View</h3>
@@ -73,14 +73,14 @@
       </div>
     </div>
     <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
-      <button class="btn btn-secondary" onclick="closeSaveReportViewModal()">Cancel</button>
+      <button class="btn" onclick="closeSaveReportViewModal()">Cancel</button>
       <button class="btn btn-fill" id="saveReportViewSubmitBtn" onclick="submitSaveReportView()"><i class="fa-solid fa-check"></i> Save View</button>
     </div>
   </div>
 </div>
 
 <!-- Schedule Report Export Modal -->
-<div class="modal-overlay" id="scheduleReportExportModal" style="display:none; z-index:1000;">
+<div class="modal-overlay fv fv-dialog fv-area-violet" id="scheduleReportExportModal" style="display:none; z-index:1000;">
   <div class="modal modal-md" style="max-width:520px; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden;">
     <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
       <h3 class="modal-title" style="margin:0; font-size:1.15rem;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-text);"></i> Schedule report delivery (not yet available)</h3>
@@ -123,14 +123,14 @@
       </div>
     </div>
     <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--border-color, #E2E8F0); background:var(--bg-secondary, #F8FAFC);">
-      <button class="btn btn-secondary" onclick="closeScheduleReportModal()">Cancel</button>
+      <button class="btn" onclick="closeScheduleReportModal()">Cancel</button>
       <button class="btn btn-fill" id="submitScheduleReportBtn" onclick="submitScheduleReport()"><i class="fa-solid fa-paper-plane"></i> Save Schedule</button>
     </div>
   </div>
 </div>
 
 <!-- Scheduled Deliveries & Controlled Export Audits Modal -->
-<div class="modal-overlay" id="reportDeliveriesAndAuditsModal" style="display:none; z-index:1000;">
+<div class="modal-overlay fv fv-dialog fv-area-violet" id="reportDeliveriesAndAuditsModal" style="display:none; z-index:1000;">
   <div class="modal modal-lg" style="max-width:960px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; background:var(--surface, #ffffff); border-radius:16px; box-shadow:var(--shadow-lg);">
     <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color, #E2E8F0);">
       <div>

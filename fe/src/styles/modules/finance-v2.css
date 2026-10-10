@@ -205,7 +205,8 @@
   height: 32px;
   padding: 0 10px;
   background: var(--fv-surface);
-  border: 1px solid var(--fv-input-border);
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--fv-input-border);
   border-radius: 8px;
   color: var(--ink-muted);
 }
@@ -218,11 +219,13 @@
   border: 0;
   outline: 0;
   background: transparent;
-  height: 30px;
+  height: 32px;
   min-width: 140px;
   font-size: 13px;
   color: var(--ink-strong);
   padding: 0;
+  font-family: inherit;
+  border-radius: 8px;
 }
 
 .fv .fv-search input::placeholder {
@@ -237,7 +240,8 @@
   color: var(--ink-label);
   font-size: 13px;
   font-weight: 600;
-  padding: 0 28px 0 10px;
+  font-family: inherit;
+  padding: 0 34px 0 13px;
 }
 
 /* ---------- Filter pills and toggles ---------- */
@@ -275,8 +279,7 @@
 }
 
 .fv .fv-pill__count {
-  font-weight: 500;
-  opacity: .75;
+  font-weight: 500; /* full strength: the 75% opacity of the reference would drop the count below 4.5:1 */
 }
 
 .fv .fv-pill--zero {
@@ -314,6 +317,7 @@
   border-radius: 999px;
   padding: 0 6px;
   opacity: 1;
+  color: var(--fv-on-brand);
 }
 
 .fv .fv-toggle {
@@ -477,7 +481,7 @@
   font-size: 12px;
   font-weight: 700;
   background: color-mix(in srgb, var(--fv-h) var(--fv-tint-pct), transparent);
-  color: var(--fv-h-ink);
+  color: color-mix(in srgb, var(--fv-h-ink) var(--fv-ink-keep), black);
 }
 
 .fv .fv-avatar--lg {
@@ -951,6 +955,7 @@
 
 .fv .fv-impact__tile--dir {
   background: color-mix(in srgb, var(--fv-h, var(--brand)) var(--fv-tint-pct), transparent);
+  color: var(--ink-label);
 }
 
 .fv .fv-impact__value {
@@ -1661,7 +1666,7 @@
 }
 
 .fv .fv-pill--in { background: color-mix(in srgb, var(--id-teal) var(--fv-status-tint-pct), transparent); border-color: transparent; color: var(--fv-part-ink); }
-.fv .fv-pill--out { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); border-color: transparent; color: var(--id-orange-ink); }
+.fv .fv-pill--out { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); border-color: transparent; color: color-mix(in srgb, var(--id-orange-ink) var(--fv-ink-keep), black); }
 
 .fv .fv-table--accounts,
 .fv .fv-table--ledger { table-layout: fixed; }
@@ -1702,7 +1707,7 @@
 .fv .fv-choice__btn--out.active {
   border-color: var(--id-orange);
   background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent);
-  color: var(--id-orange-ink);
+  color: color-mix(in srgb, var(--id-orange-ink) var(--fv-ink-keep), black);
 }
 
 .fv .fv-summary--between {
@@ -2149,7 +2154,7 @@
 .fv .fv-pill--hue {
   background: color-mix(in srgb, var(--fv-h) var(--fv-tint-pct), transparent);
   border-color: transparent;
-  color: var(--fv-h-ink);
+  color: color-mix(in srgb, var(--fv-h-ink) var(--fv-ink-keep), black);
 }
 
 .fv .fv-pill--hue .fv-pill__dot {
@@ -2279,4 +2284,176 @@
   border: 1px solid var(--fv-input-border);
   background: var(--fv-surface);
   color: var(--ink-strong);
+}
+
+/* ---------- S9: detail drawer (same head as a dialog, summary cards and soft tiles) ---------- */
+.fv.finance-drawer-overlay {
+  background: var(--fv-scrim);
+}
+
+.fv .finance-drawer {
+  background: var(--fv-surface);
+  border-left: 0;
+  border-radius: 18px 0 0 18px;
+  box-shadow: var(--fv-shadow-dialog);
+}
+
+.fv .finance-drawer-head {
+  padding: 16px 22px;
+  background: var(--fv-surface);
+  border-bottom: 1px solid var(--fv-line);
+}
+
+.fv .fv-drawer-head__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fv .fv-drawer-head__badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fv .fv-drawer-kind {
+  background: var(--brand-tint);
+  color: var(--brand-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.fv .fv-drawer-title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fv .fv-drawer-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fv .fv-drawer-head__buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.fv .finance-drawer-nav {
+  padding: 0 22px;
+  background: var(--fv-surface);
+  border-bottom: 0;
+}
+
+.fv .finance-drawer-nav .fv-subnav {
+  margin-bottom: 0;
+}
+
+.fv .finance-drawer-body {
+  padding: 16px 22px;
+  background: var(--fv-canvas);
+}
+
+.fv .fv-drawer-summary {
+  margin-bottom: 14px;
+}
+
+.fv .fv-drawer-summary .money {
+  color: inherit;
+}
+
+.fv .fv-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin: 0 0 8px;
+}
+
+.fv .drawer-attributes-grid {
+  gap: 10px;
+}
+
+.fv .drawer-attr-item {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.fv .drawer-attr-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-label);
+}
+
+.fv .drawer-attr-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.fv .fv-drawer-notes {
+  padding: 10px 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ink-body);
+  white-space: pre-wrap;
+}
+
+.fv .related-record-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: 12px;
+  color: var(--ink-body);
+}
+
+.fv .related-record-card:hover,
+.fv .related-record-card:focus-visible {
+  background: var(--fv-surface-soft);
+  border-color: var(--fv-outline);
+}
+
+.fv .timeline-text,
+.fv .timeline-actor {
+  color: var(--ink-body);
+}
+
+.fv .timeline-time {
+  color: var(--ink-muted);
+}
+
+.fv-dialog .fv-confirm {
+  max-width: 520px;
+}
+
+.fv .fv-confirm__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-body);
+  line-height: 1.5;
+}
+
+.fv-dialog .field-error-message {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* Radio-group choice labels keep readable helper text on the selected tint */
+.fv-dialog [role="radiogroup"] small {
+  color: inherit !important;
+  opacity: .85;
 }

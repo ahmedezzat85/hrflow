@@ -71,7 +71,7 @@
                   <!-- Entity -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellEntity">Entity:</label>
-                    <select id="reportShellEntity" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
+                    <select id="reportShellEntity" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellFilterChanged()">
                       <option value="all">All Entities</option>
                       <option value="voyance_main" selected>Voyance Health (HQ)</option>
                     </select>
@@ -80,7 +80,7 @@
                   <!-- Period Preset -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellPeriodPreset">Period:</label>
-                    <select id="reportShellPeriodPreset" class="form-input filter-select fr-u25" onchange="onReportShellPeriodPresetChanged(this.value)">
+                    <select id="reportShellPeriodPreset" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellPeriodPresetChanged(this.value)">
                       <option value="this_month">This Month</option>
                       <option value="last_month">Last Month</option>
                       <option value="this_quarter">This Quarter</option>
@@ -92,15 +92,15 @@
 
                   <!-- Date Range -->
                   <div class="fr-u26">
-                    <input type="date" id="reportShellDateFrom" class="form-input fr-u25" onchange="onReportShellFilterChanged()" />
+                    <input type="date" id="reportShellDateFrom" class="form-input fr-u25 fv-select" onchange="onReportShellFilterChanged()" />
                     <span class="fr-u27">to</span>
-                    <input type="date" id="reportShellDateTo" class="form-input fr-u25" onchange="onReportShellFilterChanged()" />
+                    <input type="date" id="reportShellDateTo" class="form-input fr-u25 fv-select" onchange="onReportShellFilterChanged()" />
                   </div>
 
                   <!-- Accounting Basis -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellBasis">Basis:</label>
-                    <select id="reportShellBasis" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
+                    <select id="reportShellBasis" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellFilterChanged()">
                       <option value="cash" selected>Cash Basis</option>
                       <option value="accrual">Accrual Basis</option>
                     </select>
@@ -109,7 +109,7 @@
                   <!-- Currency -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellCurrency">Currency:</label>
-                    <select id="reportShellCurrency" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
+                    <select id="reportShellCurrency" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellFilterChanged()">
                       <option value="">All Currencies</option>
                       <option value="USD">USD</option>
                       <option value="EGP">EGP</option>

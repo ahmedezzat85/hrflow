@@ -34,7 +34,7 @@ for (const theme of THEMES) {
       const referenceDate = await look(page.locator('#reportShellDateFrom'));
 
       await openAdminPage(page, 'a-finance-dashboard');
-      for (const id of ['financeContextEntity', 'financeContextPeriod', 'financeContextBasis', 'financeContextCurrency', 'filterAttentionSeverity', 'filterAttentionType']) {
+      for (const id of ['financeContextEntity', 'financeContextPeriod', 'financeContextBasis', 'financeContextCurrency', 'filterAttentionType'] /* D-027: severity is a pill group over a visually hidden select */) {
         expect(await look(page.locator(`#${id}`)), id).toEqual(reference);
       }
       // The search input shares height, font and radius (its padding differs: it carries a search icon, not a chevron).

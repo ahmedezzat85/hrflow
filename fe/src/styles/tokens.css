@@ -120,7 +120,8 @@
   --fv-shadow-hero: 0 8px 22px -10px rgba(32, 86, 232, .65);
   --brand-gradient: linear-gradient(155deg, #2a5df0 0%, #2056e8 38%, #1a2f9c 100%);
   --fv-on-brand: #ffffff;
-  --fv-on-brand-wash: rgba(255, 255, 255, .22);
+  --fv-on-brand-wash: rgba(8, 22, 78, .32); /* darker capsule keeps white counts at 4.5:1 on the brand fill */
+  --fv-ink-keep: 78%; /* share of the identity ink kept in small text (the rest is darkened for 4.5:1) */
   --fv-hero-tile: rgba(255, 255, 255, .18);
   --fv-tint-pct: 14%;
   --fv-part-ink: #0a6e62; /* teal status text a step darker than --id-teal-ink: 4.5:1 on the page canvas */
@@ -200,6 +201,7 @@
   --brand-gradient: linear-gradient(155deg, #1f48c4 0%, #1a38a0 38%, #101b5c 100%);
   --fv-tint-pct: 18%;
   --fv-part-ink: #5fd0c0;
+  --fv-ink-keep: 100%;
   --fv-status-tint-pct: 18%;
   --fv-slate-tint: rgba(160, 176, 198, .15);
   --fv-closed-bg: rgba(160, 176, 198, .15);
