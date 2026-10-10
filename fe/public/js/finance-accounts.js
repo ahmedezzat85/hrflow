@@ -985,7 +985,7 @@ function renderFinanceCategories(all) {
   const kindText = (kind) => {
     if (kind === "revenue") return `<span class="fv-flow fv-flow--in">Revenue</span>`;
     if (kind === "cost") return `<span class="fv-flow fv-flow--out">Cost</span>`;
-    if (kind === "transfer") return `<span>&#8644; Transfer</span>`;
+    if (kind === "transfer") return `<span>&#x21C4; Transfer</span>`;
     return `<span class="fv-muted">&middot;</span> <span>Other</span>`;
   };
 
