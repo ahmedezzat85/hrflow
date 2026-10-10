@@ -245,10 +245,11 @@ function _billDaysLate(dueDate) {
   return Math.max(0, Math.round((today - due) / 86400000));
 }
 
-function _billFlags(bill) {
+// The list shows lateness under the bill date, so it passes withOverdue = false; the details drawer keeps the Overdue flag.
+function _billFlags(bill, withOverdue = true) {
   const flags = [];
   const tag = (cls, text, title) => `<span class="bill-flag bill-flag--${cls}" title="${title}">${text}</span>`;
-  if (bill.is_overdue) {
+  if (withOverdue && bill.is_overdue) {
     const d = _billDaysLate(bill.due_date);
     flags.push(tag("overdue", d > 0 ? `${d} ${d === 1 ? "day" : "days"} late` : "Overdue", "Overdue: the due date has passed"));
   }
@@ -310,7 +311,7 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       <td><div class="bill-cell-text">${_billDate(bill.issue_date)}</div><div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="${owed ? `Due ${_billDate(bill.due_date)}` : ""}">${rel || "&nbsp;"}</div></td>
       <td><div class="bill-cell-text">${bill.category || "General"}</div></td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
-      <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill)}</div></td>
+      <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill, false)}</div></td>
       <td>
         <div class="bill-row-actions">
           ${_billPrimaryActionHtml(bill, derivedStatus)}

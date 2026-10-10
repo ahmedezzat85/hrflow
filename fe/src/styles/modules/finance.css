@@ -2257,3 +2257,6 @@
   background: var(--warning-soft) !important;
 }
 #billModal #billMissingFieldsAlert i { color: var(--warning) !important; }
+#financeBillsTable .bill-status-cell { flex-wrap: wrap; row-gap: 2px; }
+#billModal #billPaidNowSection .form-grid { gap: 14px 16px !important; }
+#billModal #billPaidNowSection > div:first-child { margin-bottom: 12px !important; }
