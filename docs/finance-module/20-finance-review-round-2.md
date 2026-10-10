@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. F1 to F4 implemented on `feature/fin-f1-invoice-rules`; F5 and F6 not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 to F5 implemented on `feature/fin-f1-invoice-rules`; F6 not implemented.
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -68,10 +68,10 @@ Acceptance:
 5. Data migration: existing payroll ledger rows (reference `PAYROLL-...`) change source from `manual` to `payroll`; then recalculate the affected accounts.
 
 Acceptance:
-- [ ] After marking a run paid, the funding account balance drops by the net pay immediately.
-- [ ] Payroll ledger rows cannot be edited or deleted from the ledger screen.
-- [ ] Posting without funding accounts is refused, never posted to account 1.
-- [ ] A USD run cannot post to an EGP funding account.
+- [x] After marking a run paid, the funding account balance drops by the net pay immediately. (`execute_payment` posts the ledger rows when the run becomes fully paid, in the same transaction; `post-journal` stays and is idempotent. A partially paid run posts nothing until it is fully paid.)
+- [x] Payroll ledger rows cannot be edited or deleted from the ledger screen (`source="payroll"`; migration `0034_payroll_ledger_source`).
+- [x] Posting without funding accounts is refused, never posted to account 1 (400 `funding_account_required`; the run stays unpaid).
+- [x] A USD run cannot post to an EGP funding account (400 `currency_mismatch`).
 
 ## Slice F6: Cash-basis reports fixed; accrual marked partial (D-026)
 

@@ -386,7 +386,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-025 — Payroll Paid Moves Net Pay Only; Payroll Posting Fixes
 
-- **Status:** Accepted by owner, October 10, 2026. Resolves Q-001 (Option A). Not implemented; slice F5.
+- **Status:** Accepted by owner, October 10, 2026. Resolves Q-001 (Option A). Implemented on `feature/fin-f1-invoice-rules` (slice F5, migration `0034_payroll_ledger_source`). Marking a run fully paid posts the net-pay rows immediately; the migration recalculates affected account balances, which lowers them by the historical net pay that was never deducted.
 - **Decision:** Marking a payroll run paid moves net pay only; employer tax and social insurance are paid as statutory obligations. Payroll ledger rows are `source="payroll"` (not editable as manual entries), follow the funding account's currency and kind, update balances immediately, and are refused when funding accounts are missing (no hard-coded fallback IDs).
 - **Rationale:** Matches current behaviour and the cashbook; the review found payroll rows saved as manual, balances not recalculated and fallbacks to account 1.
 
