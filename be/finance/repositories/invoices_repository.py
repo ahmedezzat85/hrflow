@@ -33,12 +33,9 @@ class InvoicesRepository:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _compute_totals(self, lines: List[SalesInvoiceLineDB]) -> tuple[float, float, float]:
-        """Returns (subtotal, tax_amount, total). Tax is stored separately; subtotal = sum of line_totals."""
-        subtotal = sum(ln.line_total for ln in lines)
-        tax_amount = 0.0  # Tax handled separately in a future phase; field reserved.
-        total = subtotal + tax_amount
-        return round(subtotal, 4), round(tax_amount, 4), round(total, 4)
+    def _compute_totals(self, lines: List[SalesInvoiceLineDB], vat_rate: float = 0.0) -> tuple[float, float, float]:
+        """Returns (subtotal, tax_amount, total). Subtotal (net) = sum of line_totals; VAT = subtotal x rate (D-023)."""
+        return inv_status.compute_totals(sum(ln.line_total for ln in lines), vat_rate)
 
     def _load_invoice_full(self, invoice_id: int) -> Optional[SalesInvoiceDB]:
         return (
@@ -157,6 +154,10 @@ class InvoicesRepository:
             due_date=data["due_date"],
             status=inv_status.DRAFT,
             currency=data.get("currency", "USD"),
+            vat_rate=(
+                float(data["vat_rate"]) if data.get("vat_rate") is not None
+                else inv_status.default_vat_rate(data.get("currency", "USD"))
+            ),
             expected_bank_account_id=data.get("expected_bank_account_id"),
             revenue_channel=data.get("revenue_channel"),
             notes=data.get("notes", ""),
@@ -178,7 +179,7 @@ class InvoicesRepository:
             db_lines.append(db_line)
 
         self.db.flush()
-        subtotal, tax_amount, total = self._compute_totals(db_lines)
+        subtotal, tax_amount, total = self._compute_totals(db_lines, invoice.vat_rate)
         invoice.subtotal = subtotal
         invoice.tax_amount = tax_amount
         invoice.total = total
@@ -202,6 +203,10 @@ class InvoicesRepository:
             invoice.due_date = data["due_date"]
         if "currency" in data and data["currency"] is not None:
             invoice.currency = data["currency"]
+        vat_changed = False
+        if "vat_rate" in data and data["vat_rate"] is not None:
+            vat_changed = float(data["vat_rate"]) != float(invoice.vat_rate or 0.0)
+            invoice.vat_rate = float(data["vat_rate"])
         if "expected_bank_account_id" in data:
             invoice.expected_bank_account_id = data["expected_bank_account_id"]
         if "revenue_channel" in data:
@@ -225,7 +230,14 @@ class InvoicesRepository:
                 self.db.add(db_line)
                 db_lines.append(db_line)
             self.db.flush()
-            subtotal, tax_amount, total = self._compute_totals(db_lines)
+            subtotal, tax_amount, total = self._compute_totals(db_lines, invoice.vat_rate)
+            invoice.subtotal = subtotal
+            invoice.tax_amount = tax_amount
+            invoice.total = total
+        elif vat_changed:
+            self.db.flush()
+            self.db.refresh(invoice)
+            subtotal, tax_amount, total = self._compute_totals(invoice.lines or [], invoice.vat_rate)
             invoice.subtotal = subtotal
             invoice.tax_amount = tax_amount
             invoice.total = total

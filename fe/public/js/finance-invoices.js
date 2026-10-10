@@ -365,6 +365,7 @@ async function openAddInvoiceModal() {
   document.getElementById("invoiceDueDate").value = "";
   document.getElementById("invoiceStatus").value = "draft";
   document.getElementById("invoiceCurrency").value = "USD";
+  if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = "0";
   if (document.getElementById("invoiceExpectedBankAccount")) document.getElementById("invoiceExpectedBankAccount").value = "";
   if (document.getElementById("invoiceRevenueChannel")) document.getElementById("invoiceRevenueChannel").value = "";
   document.getElementById("invoiceNotes").value = "";
@@ -412,6 +413,7 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceDueDate").value = inv.due_date || "";
     document.getElementById("invoiceStatus").value = inv.status === "draft" ? "draft" : "sent";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
+    if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = inv.vat_rate !== undefined ? inv.vat_rate : 0;
     if (document.getElementById("invoiceExpectedBankAccount")) {
       document.getElementById("invoiceExpectedBankAccount").value = inv.expected_bank_account_id ? String(inv.expected_bank_account_id) : "";
     }
@@ -432,7 +434,7 @@ async function openEditInvoiceModal(invoiceId) {
 // D-022: once an invoice is issued its customer, currency, number, issue date and lines are locked
 // (void and reissue to correct). The backend enforces this; the form only reflects it.
 function _setInvoiceLocked(locked) {
-  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency"].forEach((id) => {
+  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency", "invoiceVatRate"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.disabled = !!locked;
   });
@@ -483,9 +485,21 @@ function _updateInvoiceTotals() {
     subtotal += parseFloat(r.querySelector(".inv-total")?.value || 0);
   });
   const subtotalEl = document.getElementById("invoiceSubtotalDisplay");
+  const vatEl = document.getElementById("invoiceVatDisplay");
   const totalEl = document.getElementById("invoiceTotalDisplay");
+  const rate = parseFloat(document.getElementById("invoiceVatRate")?.value) || 0;
+  const vat = Math.round(subtotal * rate) / 100; // D-023: VAT on the net subtotal
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
-  if (totalEl) totalEl.textContent = subtotal.toFixed(2);
+  if (vatEl) vatEl.textContent = vat.toFixed(2);
+  if (totalEl) totalEl.textContent = (subtotal + vat).toFixed(2);
+}
+
+// D-023: a new invoice starts at 14% VAT for EGP and 0% for other currencies; the rate stays editable while Draft
+function _applyDefaultInvoiceVat() {
+  const rateEl = document.getElementById("invoiceVatRate");
+  const cur = document.getElementById("invoiceCurrency")?.value;
+  if (rateEl && !rateEl.disabled) rateEl.value = cur === "EGP" ? "14" : "0";
+  _updateInvoiceTotals();
 }
 
 async function _populateInvoiceCustomerDropdown() {
@@ -543,6 +557,7 @@ async function saveInvoiceModal(targetStatus) {
     issue_date: issueDate,
     due_date: dueDate,
     currency: document.getElementById("invoiceCurrency").value,
+    vat_rate: parseFloat(document.getElementById("invoiceVatRate")?.value) || 0,
     expected_bank_account_id: expBankEl && expBankEl.value ? parseInt(expBankEl.value, 10) : null,
     revenue_channel: revChanEl && revChanEl.value ? revChanEl.value : null,
     notes: document.getElementById("invoiceNotes").value.trim(),

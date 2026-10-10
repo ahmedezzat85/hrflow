@@ -137,6 +137,7 @@ class InvoicesService:
             revenue_channel=invoice.revenue_channel,
             has_bank_discrepancy=has_discrepancy,
             subtotal=invoice.subtotal,
+            vat_rate=invoice.vat_rate or 0.0,
             tax_amount=invoice.tax_amount,
             total=invoice.total,
             amount_paid=paid_sum,
@@ -317,6 +318,8 @@ class InvoicesService:
                 changed.append("invoice_number")
             if payload.issue_date is not None and payload.issue_date != invoice.issue_date:
                 changed.append("issue_date")
+            if payload.vat_rate is not None and round(float(payload.vat_rate), 4) != round(float(invoice.vat_rate or 0.0), 4):
+                changed.append("vat_rate")
             if lines_data is not None and self._lines_changed(invoice, lines_data):
                 changed.append("lines")
             if changed:
@@ -340,7 +343,7 @@ class InvoicesService:
         data = payload.model_dump(exclude_unset=True, exclude={"lines"}) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True, exclude={"lines"})
         if invoice.status != inv_status.DRAFT:
             # Locked fields were verified unchanged above; do not rewrite them (or the lines)
-            for key in ("customer_id", "currency", "invoice_number", "issue_date"):
+            for key in ("customer_id", "currency", "invoice_number", "issue_date", "vat_rate"):
                 data.pop(key, None)
             lines_data = None
 

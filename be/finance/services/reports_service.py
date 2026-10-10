@@ -107,7 +107,7 @@ class ReportsService:
             if curr_norm != "ALL":
                 inv_q = inv_q.filter(SalesInvoiceDB.currency == curr_norm)
             invoices = inv_q.all()
-            revenue = round(sum(float(i.total or 0.0) for i in invoices), 2)
+            revenue = round(sum(float(i.subtotal or 0.0) for i in invoices), 2)  # net of VAT (D-023)
 
             bill_q = self.db.query(BillDB).filter(BillDB.status.in_(SPEND_STATUSES))
             if start_date:
@@ -226,7 +226,7 @@ class ReportsService:
                 "formula": (
                     "SUM(ledger_inflows WHERE source!='transfer' AND kind!='transfer')"
                     if basis_norm == "cash"
-                    else "SUM(sales_invoices.total WHERE status NOT IN ('void', 'draft'))"
+                    else "SUM(sales_invoices.subtotal WHERE status NOT IN ('void', 'draft'))  -- net of VAT"
                 ),
                 "source_coverage": "Bank & cash ledger transactions" if basis_norm == "cash" else "Sales invoices register",
                 "drilldown_section": "finance-transactions" if basis_norm == "cash" else "finance-invoices",
@@ -1206,7 +1206,7 @@ class ReportsService:
                 cust_rev = {}
                 for inv in invoices:
                     cname = (inv.customer.name if inv.customer else None) or f"Customer #{inv.customer_id}"
-                    amt = float(inv.total or 0.0)
+                    amt = float(inv.subtotal or 0.0)  # net of VAT (D-023)
                     cust_rev[cname] = cust_rev.get(cname, 0.0) + amt
                     total_rev += amt
 

@@ -108,6 +108,7 @@ class SalesInvoiceDB(Base):
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/partially_paid/paid/void (D-022); overdue is a flag
     currency = Column(String(10), default="USD", nullable=False)
     subtotal = Column(Float, default=0.0)
+    vat_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent (D-023); tax_amount = subtotal * rate / 100
     tax_amount = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     expected_bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)

@@ -192,6 +192,34 @@
     return apiRequest("POST", "/api/finance/statutory-obligations", data);
   },
 
+  async generateVatEstimate(period) {
+    if (_isMock()) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ""))) throw new Error("period must be YYYY-MM");
+      const estimate = round(
+        (FinanceMockState.invoices || [])
+          .filter((i) => i.currency === "EGP" && ["sent", "partially_paid", "paid"].includes(i.status) && String(i.issue_date || "").slice(0, 7) === period)
+          .reduce((s, i) => s + (i.tax_amount || 0), 0), 2);
+      const existing = (FinanceMockState.statutoryObligations || []).find((o) => o.obligation_type === "sales_tax" && o.period === period && o.source_type === "invoice_tax_line");
+      if (existing) {
+        if (existing.status !== "estimated") throw new Error(`obligation_confirmed: The ${period} sales tax obligation is already ${existing.status}; its estimate can no longer be regenerated.`);
+        existing.amount_estimated = estimate;
+        existing.amount_accrued = estimate;
+        existing.remaining_balance = estimate;
+        return existing;
+      }
+      const newId = Math.max(0, ...(FinanceMockState.statutoryObligations || []).map((o) => o.id)) + 1;
+      const obl = {
+        id: newId, obligation_type: "sales_tax", period, amount_estimated: estimate, amount_accrued: estimate, amount_remitted: 0.0,
+        remaining_balance: estimate, variance_amount: 0.0, variance_note: null, currency: "EGP", status: "estimated", due_date: null,
+        source_type: "invoice_tax_line", source_id: null, notes: `VAT estimate for ${period}`,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      };
+      FinanceMockState.statutoryObligations.push(obl);
+      return obl;
+    }
+    return apiRequest("POST", "/api/finance/statutory-obligations/vat-estimate", { period });
+  },
+
   async confirmOrAdjustStatutoryObligation(id, data) {
     if (_isMock()) {
       const obl = (FinanceMockState.statutoryObligations || []).find((o) => o.id === Number(id));

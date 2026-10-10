@@ -116,6 +116,65 @@ class StatutoryObligationsService:
         obl = self.repo.create_obligation(create_payload)
         return self._to_response(obl)
 
+    def generate_vat_estimate(self, period: str) -> Dict[str, Any]:
+        """
+        D-023: user-triggered "Generate VAT estimate" for one month. Creates or updates the single
+        sales_tax obligation (estimated, EGP) for the period from the VAT on EGP invoices issued
+        that month (sent, partially paid or paid; drafts and void excluded). There is no scheduler.
+        An obligation the user has already confirmed against the portal is never overwritten.
+        """
+        from finance.models import SalesInvoiceDB
+
+        invoices = (
+            self.db.query(SalesInvoiceDB)
+            .filter(
+                SalesInvoiceDB.currency == "EGP",
+                SalesInvoiceDB.status.in_(["sent", "partially_paid", "paid"]),
+                SalesInvoiceDB.issue_date >= f"{period}-01",
+                SalesInvoiceDB.issue_date <= f"{period}-31",
+            )
+            .all()
+        )
+        estimate = round(sum(float(i.tax_amount or 0.0) for i in invoices), 2)
+        note = f"VAT estimate from {len(invoices)} EGP invoice(s) issued in {period}"
+
+        existing = (
+            self.db.query(StatutoryObligationDB)
+            .filter(
+                StatutoryObligationDB.obligation_type == "sales_tax",
+                StatutoryObligationDB.period == period,
+                StatutoryObligationDB.source_type == "invoice_tax_line",
+            )
+            .first()
+        )
+        if existing:
+            if existing.status != "estimated":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "obligation_confirmed",
+                        "message": f"The {period} sales tax obligation is already {existing.status}; its estimate can no longer be regenerated.",
+                    },
+                )
+            existing.amount_estimated = estimate
+            existing.amount_accrued = estimate
+            existing.notes = note
+            self.db.commit()
+            self.db.refresh(existing)
+            return self._to_response(existing)
+
+        obl = self.repo.create_obligation({
+            "obligation_type": "sales_tax",
+            "period": period,
+            "amount_estimated": estimate,
+            "amount_accrued": estimate,
+            "status": "estimated",
+            "currency": "EGP",
+            "source_type": "invoice_tax_line",
+            "notes": note,
+        })
+        return self._to_response(obl)
+
     def confirm_or_adjust(self, obligation_id: int, data: dict) -> Dict[str, Any]:
         """
         Explicit confirm/adjust action moving an obligation from 'estimated' to 'accrued'.

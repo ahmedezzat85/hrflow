@@ -32,6 +32,8 @@
                 <button class="filter-tab" data-filter="accrued" onclick="filterFinanceStatutoryStatus('accrued', this)">Accrued</button>
                 <button class="filter-tab" data-filter="remitted" onclick="filterFinanceStatutoryStatus('remitted', this)">Remitted</button>
               </div>
+              <input type="month" id="financeVatEstimateMonth" aria-label="VAT estimate month" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); font-size: 13px;">
+              <button class="btn btn-outline" id="financeGenerateVatEstimateBtn" onclick="generateVatEstimateAction()"><i class="fa-solid fa-calculator"></i> Generate VAT estimate</button>
               <button class="btn btn-fill" id="financeAddStatutoryBtn" onclick="openRecordStatutoryModal()"><i class="fa-solid fa-plus"></i> Record Obligation</button>
             </div>
           </div>

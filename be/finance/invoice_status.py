@@ -25,7 +25,7 @@ LIST_FILTERS = VALID_INVOICE_STATUSES | {"open", "overdue", "awaiting_payment", 
 
 # Fields that cannot change once the invoice has left Draft (void and reissue to correct).
 # VAT and withholding rate join this tuple when slices F2/F3 add them.
-LOCKED_FIELDS = ("customer_id", "currency", "invoice_number", "issue_date", "lines")
+LOCKED_FIELDS = ("customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "lines")
 
 INVOICE_SERVER_OWNED_FIELDS = ("status", "void_reason", "voided_by", "voided_at")
 
@@ -35,6 +35,21 @@ INVOICE_TRANSITIONS: Dict[str, Dict[str, str]] = {
     "reverse_receipt": {PAID: PARTIALLY_PAID, PARTIALLY_PAID: PARTIALLY_PAID},
     "void": {DRAFT: VOID, SENT: VOID},
 }
+
+
+# Default VAT rate (percent) for a new invoice (D-023): 14 for EGP invoices, 0 for other currencies.
+DEFAULT_EGP_VAT_RATE = 14.0
+
+
+def default_vat_rate(currency: Optional[str]) -> float:
+    return DEFAULT_EGP_VAT_RATE if (currency or "").upper() == "EGP" else 0.0
+
+
+def compute_totals(subtotal: float, vat_rate: Optional[float]):
+    """(subtotal, tax_amount, total): VAT is on the net subtotal; revenue reports use the net subtotal."""
+    subtotal = round(float(subtotal or 0.0), 4)
+    tax = round(subtotal * float(vat_rate or 0.0) / 100.0, 2)
+    return subtotal, tax, round(subtotal + tax, 4)
 
 
 def allowed_actions(status: str) -> List[str]:

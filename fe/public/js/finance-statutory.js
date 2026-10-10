@@ -390,6 +390,25 @@ async function submitStatutorySettlement() {
 // -------------------------------------------------------------
 // Manual Record Modal Flow
 // -------------------------------------------------------------
+// D-023: on-demand monthly VAT estimate from the VAT on EGP invoices issued that month (no scheduler)
+async function generateVatEstimateAction() {
+  const monthEl = document.getElementById("financeVatEstimateMonth");
+  if (monthEl && !monthEl.value) {
+    const now = new Date();
+    monthEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
+  const period = monthEl ? monthEl.value : "";
+  if (!period) return;
+  try {
+    const obl = await FinanceApi.generateVatEstimate(period);
+    showToast(`VAT estimate for ${period}: ${FinanceFormat.formatMoney ? FinanceFormat.formatMoney(obl.amount_estimated, "EGP") : obl.amount_estimated}`, "success");
+    if (typeof loadFinanceStatutory === "function") loadFinanceStatutory();
+  } catch (err) {
+    showToast("Error: " + (err.message || JSON.stringify(err)), "error");
+  }
+}
+window.generateVatEstimateAction = generateVatEstimateAction;
+
 function openRecordStatutoryModal() {
   const typeEl = document.getElementById("statRecordType");
   const periodEl = document.getElementById("statRecordPeriod");

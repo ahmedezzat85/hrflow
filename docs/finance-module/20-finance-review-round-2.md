@@ -1,6 +1,6 @@
 # 20. Finance Review Round 2: Sales Invoices, VAT, Withholding, Statutory, Payroll Funding, Cash Reports
 
-**Status:** Approved by owner, October 10, 2026. F1 implemented on `feature/fin-f1-invoice-rules` (draft PR into `main`); F2 to F6 not implemented.
+**Status:** Approved by owner, October 10, 2026. F1 and F2 implemented on `feature/fin-f1-invoice-rules`; F3 to F6 not implemented.
 **Baseline:** `main` @ `2a3681f` (bill workflow B1 to B6 merged).
 **Decisions:** D-022 to D-026 in [../project-context/04-decision-log.md](../project-context/04-decision-log.md). Q-001 resolved by D-025.
 **Depends on:** D-016 to D-020 (bill and banking rules), which these slices mirror for receivables, statutory and payroll.
@@ -31,10 +31,10 @@ Acceptance:
 5. Migration adds `vat_rate`; existing invoices get 0 so their totals do not change.
 
 Acceptance:
-- [ ] An EGP invoice of 105,000 net at 14% shows VAT 14,700 and total 119,700.
-- [ ] Revenue reports show 105,000 for it.
-- [ ] Generating the VAT estimate for a month twice updates one obligation, not two.
-- [ ] Existing invoices keep their totals after migration.
+- [x] An EGP invoice of 105,000 net at 14% shows VAT 14,700 and total 119,700.
+- [x] Revenue reports show 105,000 for it. (Accrual summary and revenue-by-customer use the net subtotal; the cash-basis view is F6.)
+- [x] Generating the VAT estimate for a month twice updates one obligation, not two. (Once the obligation is confirmed against the portal, regenerating is refused with 409 `obligation_confirmed`.)
+- [x] Existing invoices keep their totals after migration (`0032_invoice_vat_rate`).
 
 ## Slice F3: Customer withholding tax (D-024)
 

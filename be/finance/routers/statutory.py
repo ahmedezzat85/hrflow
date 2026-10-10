@@ -19,6 +19,7 @@ from finance.schemas import (
     StatutoryObligationSettle,
     StatutoryObligationUpdate,
     StatutoryObligationResponse,
+    VatEstimateRequest,
 )
 from finance.services.statutory_service import StatutoryObligationsService
 from finance.deps import get_statutory_service
@@ -69,6 +70,19 @@ def create_statutory_obligation(
     Obligation is created directly in 'accrued' status (bypassing the estimate step).
     """
     return service.create_obligation(payload.dict())
+
+
+@router.post("/vat-estimate", response_model=StatutoryObligationResponse)
+def generate_vat_estimate(
+    payload: VatEstimateRequest,
+    current_user: dict = Depends(require_permission("finance.statutory.write")),
+    service: StatutoryObligationsService = Depends(get_statutory_service),
+):
+    """
+    Generate (or refresh) the estimated sales-tax obligation for a month from the VAT on EGP
+    invoices issued in it. Run on demand; the portal-confirmed amount is entered later via confirm.
+    """
+    return service.generate_vat_estimate(payload.period)
 
 
 @router.post("/{obligation_id}/confirm", response_model=StatutoryObligationResponse)

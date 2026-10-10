@@ -554,6 +554,7 @@ class SalesInvoiceBase(BaseModel):
     issue_date: str = Field(..., description="Date issued (YYYY-MM-DD)")
     due_date: str = Field(..., description="Payment due date (YYYY-MM-DD)")
     currency: str = Field("USD", min_length=3, max_length=10)
+    vat_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="VAT percent; default 14 for EGP invoices, 0 otherwise (editable while Draft)")
     expected_bank_account_id: Optional[int] = Field(None, description="Expected destination bank or cash account")
     revenue_channel: Optional[str] = Field(None, description="Revenue channel: local_egp|overseas_usd|cash|intercompany_transfer_us|other")
     notes: Optional[str] = None
@@ -588,6 +589,7 @@ class SalesInvoiceUpdate(BaseModel):
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    vat_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     expected_bank_account_id: Optional[int] = None
     revenue_channel: Optional[str] = None
     notes: Optional[str] = None
@@ -2445,6 +2447,10 @@ class StatutoryObligationSettle(BaseModel):
     currency: str = "USD"
     reference: str = ""
     method: str = "bank_transfer"
+
+
+class VatEstimateRequest(BaseModel):
+    period: str = Field(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Month, YYYY-MM")
 
 
 class StatutoryObligationUpdate(BaseModel):

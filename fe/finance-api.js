@@ -228,6 +228,8 @@ async getFeatureFlags() {
         ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+      const vatRate = payload.vat_rate !== undefined && payload.vat_rate !== null ? Number(payload.vat_rate) : (String(payload.currency || "USD").toUpperCase() === "EGP" ? 14 : 0);
+      const taxAmount = round(subtotal * vatRate / 100, 2);
       const newInv = {
         id: FinanceMockState.invoices.length + 1,
         ...payload,
@@ -237,7 +239,8 @@ async getFeatureFlags() {
         customer_name: cust ? cust.name : null,
         expected_bank_account_name: bank ? bank.account_name : null,
         has_bank_discrepancy: false,
-        subtotal, tax_amount: 0, total: subtotal,
+        subtotal, vat_rate: vatRate, tax_amount: taxAmount, total: round(subtotal + taxAmount, 4),
+        balance: round(subtotal + taxAmount, 4),
         created_at: new Date().toISOString(),
         lines,
       };
@@ -259,22 +262,24 @@ async getFeatureFlags() {
         if (payload.currency !== undefined && payload.currency !== inv.currency) changed.push("currency");
         if (payload.invoice_number !== undefined && payload.invoice_number !== inv.invoice_number) changed.push("invoice_number");
         if (payload.issue_date !== undefined && payload.issue_date !== inv.issue_date) changed.push("issue_date");
+        if (payload.vat_rate !== undefined && Number(payload.vat_rate) !== Number(inv.vat_rate || 0)) changed.push("vat_rate");
         if (payload.lines) {
           const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price)]).sort());
           if (norm(payload.lines) !== norm(inv.lines)) changed.push("lines");
         }
         if (changed.length) throw new Error(`invoice_locked: ${changed.join(", ")} cannot be changed once an invoice is issued. Void and reissue to correct.`);
         payload = { ...payload };
-        ["customer_id", "currency", "invoice_number", "issue_date", "lines"].forEach((k) => delete payload[k]);
+        ["customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "lines"].forEach((k) => delete payload[k]);
       }
       Object.assign(inv, payload);
       if (payload.expected_bank_account_id !== undefined) {
         const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
         inv.expected_bank_account_name = bank ? bank.account_name : null;
       }
-      if (payload.lines) {
-        inv.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
-        inv.total = inv.subtotal;
+      if (payload.lines || payload.vat_rate !== undefined) {
+        if (payload.lines) inv.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
+        inv.tax_amount = round(inv.subtotal * Number(inv.vat_rate || 0) / 100, 2);
+        inv.total = round(inv.subtotal + inv.tax_amount, 4);
         inv.balance = inv.total;
       }
       return inv;
@@ -7456,6 +7461,34 @@ async getEntityActivity(entityType, entityId) {
       return obl;
     }
     return apiRequest("POST", "/api/finance/statutory-obligations", data);
+  },
+
+  async generateVatEstimate(period) {
+    if (_isMock()) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ""))) throw new Error("period must be YYYY-MM");
+      const estimate = round(
+        (FinanceMockState.invoices || [])
+          .filter((i) => i.currency === "EGP" && ["sent", "partially_paid", "paid"].includes(i.status) && String(i.issue_date || "").slice(0, 7) === period)
+          .reduce((s, i) => s + (i.tax_amount || 0), 0), 2);
+      const existing = (FinanceMockState.statutoryObligations || []).find((o) => o.obligation_type === "sales_tax" && o.period === period && o.source_type === "invoice_tax_line");
+      if (existing) {
+        if (existing.status !== "estimated") throw new Error(`obligation_confirmed: The ${period} sales tax obligation is already ${existing.status}; its estimate can no longer be regenerated.`);
+        existing.amount_estimated = estimate;
+        existing.amount_accrued = estimate;
+        existing.remaining_balance = estimate;
+        return existing;
+      }
+      const newId = Math.max(0, ...(FinanceMockState.statutoryObligations || []).map((o) => o.id)) + 1;
+      const obl = {
+        id: newId, obligation_type: "sales_tax", period, amount_estimated: estimate, amount_accrued: estimate, amount_remitted: 0.0,
+        remaining_balance: estimate, variance_amount: 0.0, variance_note: null, currency: "EGP", status: "estimated", due_date: null,
+        source_type: "invoice_tax_line", source_id: null, notes: `VAT estimate for ${period}`,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      };
+      FinanceMockState.statutoryObligations.push(obl);
+      return obl;
+    }
+    return apiRequest("POST", "/api/finance/statutory-obligations/vat-estimate", { period });
   },
 
   async confirmOrAdjustStatutoryObligation(id, data) {

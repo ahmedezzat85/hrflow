@@ -374,7 +374,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-023 — VAT on Sales Invoices
 
-- **Status:** Accepted by owner, October 10, 2026. Not implemented; slice F2.
+- **Status:** Accepted by owner, October 10, 2026. Implemented on `feature/fin-f1-invoice-rules` (slice F2, migration `0032_invoice_vat_rate`). A confirmed or remitted monthly obligation is never overwritten by regenerating the estimate (409 `obligation_confirmed`).
 - **Decision:** Each invoice carries a VAT rate (default 14% for EGP, 0% otherwise). Revenue is the net amount. A user-triggered "Generate VAT estimate" creates or updates one monthly sales-tax obligation (estimated, EGP) from invoices issued that month; the portal-confirmed figure is entered through the existing confirm/adjust step (D-001, D-002). No scheduler.
 - **Rationale:** The owner's EGP invoices include 14% VAT (cashbook REVENUE sheet), while HRFlow hard-codes invoice tax to 0 and reports VAT-inclusive totals as revenue.
 
