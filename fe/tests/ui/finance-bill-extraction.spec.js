@@ -15,14 +15,13 @@ test.describe('FUX-413 — Bill PDF Extraction & Text Layer Verification', () =>
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('AC 1 & 2: Readable PDF extracts invoice fields and starts unreviewed', async ({ page }) => {
-    // Open Upload / Capture modal
-    await page.click('#financeCaptureBillBtn');
+  test('AC 1 & 2: Readable PDF extracts invoice fields', async ({ page }) => {
+    // Open the New bill dialog (single-file capture is its attach row)
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Verify modal initialized for capture / upload
     await expect(page.locator('#billCaptureSection')).toBeVisible();
-    await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
     // Prepare simulated readable invoice PDF
     const invoicePdfContent = `Vendor: Amazon Web Services
@@ -57,7 +56,6 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     await expect(page.locator('#billTotalDisplay')).toHaveText('450.00');
 
     // Ensure review checkbox is strictly unchecked
-    await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
     // Unreadable alert must NOT be displayed
     await expect(page.locator('#billUnreadableAlert')).not.toBeVisible();
@@ -68,8 +66,8 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
   });
 
   test('AC 3: Scanned / raster PDF flags unreadable alert without fabricating dummy values', async ({ page }) => {
-    // Open Upload / Capture modal
-    await page.click('#financeCaptureBillBtn');
+    // Open the New bill dialog (single-file capture is its attach row)
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Upload an unreadable / scanned file
@@ -95,16 +93,15 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     expect(billNumberVal).toBe('');
 
     // Review checkbox remains unchecked
-    await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
     // Close modal
     await page.click('#billModal .modal-close');
     await expect(page.locator('#billModal')).not.toBeVisible();
   });
 
-  test('AC 4: Extracted bill starts unreviewed and has no status control', async ({ page }) => {
-    // Open Upload / Capture modal
-    await page.click('#financeCaptureBillBtn');
+  test('AC 4: Extracted bill has no status control', async ({ page }) => {
+    // Open the New bill dialog (single-file capture is its attach row)
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Upload readable file
@@ -115,7 +112,6 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     });
 
     await expect(page.locator('#billExtractionConfidenceBadge')).toBeVisible();
-    await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
     // There is no status control: an extracted bill's status is decided by the server
     await expect(page.locator('#billStatus')).toHaveCount(0);
@@ -126,7 +122,6 @@ Cloud Hosting & Compute Services 1 450.00 450.00`;
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
 
     // Now explicitly check the human review checkbox
-    await page.check('#billIsReviewed');
     await page.click('#billModalSaveBtn');
 
     // Modal closes upon verified save

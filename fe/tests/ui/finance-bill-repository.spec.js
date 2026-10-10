@@ -110,36 +110,6 @@ test.describe('FUX-407 — Bill document storage and repository view', () => {
     await expect(page.locator('#billModal')).not.toBeVisible();
   });
 
-  test('4. Repository toolbar filter "Has Attachment" / "No Attachment" toggles table rows correctly', async ({ page }) => {
-    const toggleBtn = page.locator('#financeBillFilterToggleBtn');
-    if (await toggleBtn.isVisible()) {
-      if (await toggleBtn.getAttribute('aria-expanded') !== 'true') {
-        await toggleBtn.click();
-      }
-    }
-    const filterSelect = page.locator('#financeBillAttachmentFilter');
-    await expect(filterSelect).toBeVisible();
-
-    // Filter by "Has Attachment"
-    await filterSelect.selectOption('with_attachment');
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")')).toBeVisible();
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-006")')).toBeVisible();
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toHaveCount(0);
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-002")')).toHaveCount(0);
-
-    // Filter by "No Attachment"
-    await filterSelect.selectOption('no_attachment');
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toBeVisible();
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-002")')).toBeVisible();
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")')).toHaveCount(0);
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-006")')).toHaveCount(0);
-
-    // Reset to "All Documents"
-    await filterSelect.selectOption('');
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")')).toBeVisible();
-    await expect(page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")')).toBeVisible();
-  });
-
   test('5. Plain search matches vendor, bill number, and category without switching queue tabs', async ({ page }) => {
     const searchInput = page.locator('#financeBillSearch');
 

@@ -16,7 +16,7 @@ test.describe('Story FUX-411 — Bill category dropdown and default category per
   });
 
   test('AC 1: Bill modal displays category dropdown populated from categories', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Verify #billCategoryId select exists and has options
@@ -34,7 +34,7 @@ test.describe('Story FUX-411 — Bill category dropdown and default category per
   });
 
   test('AC 2: Selecting a vendor with default category auto-prefills category dropdown', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     const catSelect = page.locator('#billCategoryId');
@@ -62,7 +62,7 @@ test.describe('Story FUX-411 — Bill category dropdown and default category per
   });
 
   test('AC 3: Selecting a vendor without default category leaves category dropdown empty', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     const catSelect = page.locator('#billCategoryId');

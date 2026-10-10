@@ -50,7 +50,7 @@ test.describe('Story 8.2: Mobile Priority Workflows', () => {
     expect(billsHorizontalScroll).toBe(false);
 
     // 4. Open Bill Upload / Capture modal
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     const billModal = page.locator('#billModal');
     await expect(billModal).toBeVisible();
 

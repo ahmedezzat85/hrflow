@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { openAdminPage } from './helpers/admin-nav.js';
 
+
+// The dialog keeps Department, Notes and Line items under "More details (optional)".
+async function openBillMore(page) {
+  if ((await page.getAttribute('#billMoreToggle', 'aria-expanded')) !== 'true') await page.click('#billMoreToggle');
+}
+
 test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
@@ -16,23 +22,24 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 1: An approver uploaded bill is saved as Approved (auto) with no client-set status', async ({ page }) => {
-    // Open Upload / Capture modal
-    await page.click('#financeCaptureBillBtn');
+    // Open the New bill dialog (single-file capture is its attach row)
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     // Verify modal initialized for capture / upload
     await expect(page.locator('#billCaptureSection')).toBeVisible();
-    await expect(page.locator('#billIsReviewed')).not.toBeChecked();
 
     // Fill bill details
     await page.selectOption('#billVendorId', { index: 1 });
     await page.fill('#billNumber', 'BILL-CAPTURE-001');
+    await openBillMore(page);
     await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billIssueDate', '2026-03-01');
     await page.fill('#billDueDate', '2026-03-31');
 
     // Add a line item so bill has an amount
+    await openBillMore(page);
     await page.click('#billModal button:has-text("Add Line")');
     const firstLineDesc = page.locator('#billLinesBody tr input[type="text"]').first();
     await firstLineDesc.fill('Cloud Server Hosting');
@@ -44,23 +51,22 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     await expect(page.locator('#billStatus')).toHaveCount(0);
     await expect(page.locator('#billStatusReadOnlyBadge')).toHaveText('Approved');
 
-    // Now check "Mark verified and reviewed" and save
-    await page.check('#billIsReviewed');
+    // Save
     await page.click('#billModalSaveBtn');
 
     // Modal closes upon successful save
     await expect(page.locator('#billModal')).not.toBeVisible();
 
-    // Verify bill appears in table with Reviewed status badge
+    // Verify the bill appears in the table
     const createdRow = page.locator('#financeBillsTableBody tr:has-text("BILL-CAPTURE-001")');
     await expect(createdRow).toBeVisible();
-    // is_reviewed is server-owned: an uploaded capture stays unreviewed
-    expect(await createdRow.innerText()).toContain('Unreviewed');
+    // Bills have no review state any more (D-016)
+    expect(await createdRow.innerText()).not.toContain('Unreviewed');
     expect(await createdRow.innerText()).toContain('Approved');
   });
 
   test('AC 2: Low-confidence / missing fields are clearly identified', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     const missingAlert = page.locator('#billMissingFieldsAlert');
@@ -70,6 +76,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     expect(await missingAlert.innerText()).toContain('Missing required coding');
 
     // Populate Department, alert should still flag Category
+    await openBillMore(page);
     await page.selectOption('#billDepartment', 'Operations');
     await page.dispatchEvent('#billDepartment', 'change');
     await expect(missingAlert).toBeVisible();
@@ -85,7 +92,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 3: Likely duplicates are blocked or require authorized override with reason', async ({ page }) => {
-    await page.click('#financeCaptureBillBtn');
+    await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
     const dupBanner = page.locator('#billDuplicateBanner');
@@ -104,10 +111,10 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     expect(await page.locator('#billDuplicateText').innerText()).toContain('Matches existing bill');
 
     // Try to save without override -> should be blocked
+    await openBillMore(page);
     await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billAmount', '1500');
-    await page.check('#billIsReviewed');
     await page.click('#billModalSaveBtn');
     await expect(page.locator('#billModal')).toBeVisible();
 
@@ -130,10 +137,6 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   });
 
   test('AC 4: Queue counts and statuses update after each transition', async ({ page }) => {
-    // Open status panel via Change view button
-    await page.click('#financeBillChangeViewBtn');
-    await expect(page.locator('#financeBillStatusPanel')).toBeVisible();
-
     // Verify AP Inbox Work Queue tabs are present
     await expect(page.locator('#financeBillWorkQueueTabs')).toBeVisible();
     await expect(page.locator('#tabBillQueueAll')).toBeVisible();
@@ -147,17 +150,14 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     const allCount = parseInt(await allBadge.innerText(), 10);
     expect(allCount).toBeGreaterThan(0);
 
-    // Filter by "Draft" queue tab (clicks and auto-collapses panel)
+    // Filter by "Draft" queue tab (status row stays visible, selection is reflected via aria-selected)
     await page.click('#tabBillQueueDraft');
-    await expect(page.locator('#financeBillStatusPanel')).not.toBeVisible();
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('Draft');
+    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'false');
 
-    // Switch to "All" queue tab by reopening panel
-    await page.click('#financeBillChangeViewBtn');
-    await expect(page.locator('#financeBillStatusPanel')).toBeVisible();
+    // Switch back to "All"
     await page.click('#tabBillQueueAll');
-    await expect(page.locator('#financeBillStatusPanel')).not.toBeVisible();
-    await expect(page.locator('#financeBillActiveStatusLabel')).toHaveText('All');
+    await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 });

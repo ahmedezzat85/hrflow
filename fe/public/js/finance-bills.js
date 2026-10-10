@@ -38,44 +38,6 @@ function _canBill(key) {
   return typeof SessionInfo === "undefined" || typeof SessionInfo.hasPermission !== "function" || SessionInfo.hasPermission(key);
 }
 
-function isBillStatusPanelExpanded() {
-  const panel = document.getElementById("financeBillStatusPanel");
-  return panel ? panel.style.display !== "none" : false;
-}
-
-function setBillStatusPanelExpanded(expanded) {
-  const panel = document.getElementById("financeBillStatusPanel");
-  const btn = document.getElementById("financeBillChangeViewBtn");
-  const icon = document.getElementById("financeBillChangeViewIcon");
-  if (panel) {
-    panel.style.display = expanded ? "block" : "none";
-  }
-  if (btn) {
-    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    btn.classList.toggle("active", !!expanded);
-  }
-  if (icon) {
-    icon.style.transform = expanded ? "rotate(180deg)" : "rotate(0deg)";
-  }
-}
-
-function toggleBillStatusPanel() {
-  const current = isBillStatusPanelExpanded();
-  setBillStatusPanelExpanded(!current);
-}
-
-function _updateBillActiveStatusPill(activeQueue) {
-  const current = activeQueue || "all";
-  const labelEl = document.getElementById("financeBillActiveStatusLabel");
-  const countEl = document.getElementById("financeBillActiveStatusCount");
-  if (labelEl) {
-    labelEl.textContent = BILL_QUEUE_LABELS[current] || "All";
-  }
-  if (countEl) {
-    countEl.textContent = _currentBillQueueCounts[current] ?? 0;
-  }
-}
-
 function _updateBillViewResultCount(filteredCount, totalCount) {
   const countTextEl = document.getElementById("financeBillViewResultCount");
   if (!countTextEl) return;
@@ -91,8 +53,6 @@ function setBillWorkQueue(queue) {
   FinanceTable.saveState("finance_bills", state);
 
   _updateBillQueueTabs(state.queue);
-  _updateBillActiveStatusPill(state.queue);
-  setBillStatusPanelExpanded(false); // auto-collapse panel on selection
   loadFinanceBills();
 }
 
@@ -116,7 +76,6 @@ function _updateBillQueueTabs(activeQueue) {
     tabEl.classList.toggle("active", isActive);
     tabEl.setAttribute("aria-selected", isActive ? "true" : "false");
   });
-  _updateBillActiveStatusPill(current);
 }
 
 async function loadFinanceBillQueueCounts() {
@@ -153,87 +112,12 @@ async function loadFinanceBillQueueCounts() {
       if (el) el.textContent = count;
     });
     const state = FinanceTable.getState("finance_bills");
-    _updateBillActiveStatusPill(state.queue || "all");
   } catch (err) {
     console.warn("Failed to load bill queue counts:", err);
   }
 }
 
-// ── Collapsible Bill Filters (FUX-412) ──────────────────────────────────────
-
-function _getBillFilterStorageKey() {
-  const email = (typeof SessionInfo !== "undefined" && SessionInfo.getEmail && SessionInfo.getEmail()) || "default";
-  return `hrflow_bill_filters_expanded_${email}`;
-}
-
-function isBillFilterPanelExpanded() {
-  const panel = document.getElementById("financeBillFilterPanel");
-  return panel ? panel.style.display !== "none" : false;
-}
-
-function setBillFilterPanelExpanded(expanded, persist = true) {
-  const panel = document.getElementById("financeBillFilterPanel");
-  const toggleBtn = document.getElementById("financeBillFilterToggleBtn");
-  if (panel) {
-    panel.style.display = expanded ? "block" : "none";
-  }
-  if (toggleBtn) {
-    toggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    toggleBtn.classList.toggle("active", !!expanded);
-  }
-  if (persist) {
-    try {
-      localStorage.setItem(_getBillFilterStorageKey(), expanded ? "true" : "false");
-    } catch (_) {}
-  }
-}
-
-function toggleBillFilterPanel() {
-  const current = isBillFilterPanelExpanded();
-  setBillFilterPanelExpanded(!current, true);
-}
-
-function updateBillFilterBadge() {
-  const statusFilter = document.getElementById("financeBillStatusFilter");
-  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
-  const badge = document.getElementById("financeBillFilterBadge");
-  if (!badge) return 0;
-
-  let activeCount = 0;
-  if (statusFilter && statusFilter.value && statusFilter.value.trim() !== "") {
-    activeCount++;
-  }
-  if (attachmentFilter && attachmentFilter.value && attachmentFilter.value.trim() !== "") {
-    activeCount++;
-  }
-
-  if (activeCount > 0) {
-    badge.textContent = activeCount;
-    badge.style.display = "inline-block";
-    badge.setAttribute("aria-label", `${activeCount} filters applied`);
-  } else {
-    badge.style.display = "none";
-    badge.textContent = "0";
-    badge.removeAttribute("aria-label");
-  }
-  return activeCount;
-}
-
 function onBillOverdueOnlyChange() {
-  loadFinanceBills();
-}
-
-function onBillFilterChanged() {
-  updateBillFilterBadge();
-  loadFinanceBills();
-}
-
-function resetBillSecondaryFilters() {
-  const statusFilter = document.getElementById("financeBillStatusFilter");
-  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
-  if (statusFilter) statusFilter.value = "";
-  if (attachmentFilter) attachmentFilter.value = "";
-  updateBillFilterBadge();
   loadFinanceBills();
 }
 
@@ -243,93 +127,33 @@ async function loadFinanceBills(incomingParams) {
 
   try {
     const cachedState = FinanceTable.getState("finance_bills");
-    const statusFilter = document.getElementById("financeBillStatusFilter");
     const searchInput = document.getElementById("financeBillSearch");
-    const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
 
-    // Read incoming URL query params
+    // Deep links: the status tabs are the only status filter, so a "status" link selects its tab.
     const urlParams = (typeof window !== "undefined" && window.location) ? new URLSearchParams(window.location.search) : null;
-    const urlStatus = urlParams ? urlParams.get("status") : null;
-    const urlAttachment = urlParams ? urlParams.get("attachment") : null;
-    const urlQueue = urlParams ? urlParams.get("queue") : null;
-    const urlSearch = urlParams ? urlParams.get("search") : null;
+    const wantedQueue = (incomingParams && (incomingParams.queue || incomingParams.status))
+      || (!_billTableInitialized && urlParams && (urlParams.get("queue") || urlParams.get("status")))
+      || null;
+    const wantedSearch = (incomingParams && incomingParams.search)
+      || (!_billTableInitialized && !incomingParams && urlParams && urlParams.get("search"))
+      || null;
 
-    let hasDeepLinkFilter = false;
-
-    if (incomingParams) {
-      if (incomingParams.status && statusFilter) {
-        statusFilter.value = incomingParams.status;
-        hasDeepLinkFilter = true;
-      }
-      if (incomingParams.attachment && attachmentFilter) {
-        attachmentFilter.value = incomingParams.attachment;
-        hasDeepLinkFilter = true;
-      }
-      if (incomingParams.queue) {
-        cachedState.queue = incomingParams.queue;
-        if (incomingParams.queue !== "all") hasDeepLinkFilter = true;
-      }
-      if (incomingParams.search && searchInput) {
-        searchInput.value = incomingParams.search;
-      }
-      if (incomingParams.vendor_id || incomingParams.bill_id) {
-        hasDeepLinkFilter = true;
-      }
-    } else if (!_billTableInitialized) {
-      if (urlStatus && statusFilter) {
-        statusFilter.value = urlStatus;
-        hasDeepLinkFilter = true;
-      }
-      if (urlAttachment && attachmentFilter) {
-        attachmentFilter.value = urlAttachment;
-        hasDeepLinkFilter = true;
-      }
-      if (urlQueue) {
-        cachedState.queue = urlQueue;
-        if (urlQueue !== "all") hasDeepLinkFilter = true;
-      }
-      if (urlSearch && searchInput) {
-        searchInput.value = urlSearch;
-      }
-    }
+    if (wantedQueue) cachedState.queue = wantedQueue;
+    if (wantedSearch && searchInput) searchInput.value = wantedSearch;
 
     if (!_billTableInitialized) {
-      if (!incomingParams && !urlStatus && cachedState.filters?.status && statusFilter) {
-        statusFilter.value = cachedState.filters.status;
-      }
-      if (!incomingParams && !urlSearch && cachedState.filters?.search && searchInput) {
+      if (!incomingParams && !wantedSearch && cachedState.filters?.search && searchInput) {
         searchInput.value = cachedState.filters.search;
       }
-      if (!incomingParams && !urlAttachment && cachedState.filters?.attachment && attachmentFilter) {
-        attachmentFilter.value = cachedState.filters.attachment;
-      }
-
-      // Initialize filter panel expanded/collapsed state:
-      // If a non-default filter is pre-applied (deep-link / query param), force-expand.
-      // Otherwise restore user's stored preference (default: collapsed/false).
-      const activeCount = updateBillFilterBadge();
-      const nonDefaultFilterPresent = hasDeepLinkFilter || activeCount > 0;
-      if (nonDefaultFilterPresent) {
-        setBillFilterPanelExpanded(true, false);
-      } else {
-        const savedPref = localStorage.getItem(_getBillFilterStorageKey());
-        setBillFilterPanelExpanded(savedPref === "true", false);
-      }
       _billTableInitialized = true;
-    } else {
-      updateBillFilterBadge();
-      if (hasDeepLinkFilter) {
-        setBillFilterPanelExpanded(true, false);
-      }
     }
     _updateBillQueueTabs(cachedState.queue || "all");
 
     const params = {};
-    if (statusFilter && statusFilter.value) params.status = statusFilter.value;
     const overdueOnly = document.getElementById("financeBillOverdueOnly");
     if (overdueOnly && overdueOnly.checked) params.overdue = true;
     if (cachedState.queue && cachedState.queue !== "all") params.queue = cachedState.queue;
-    else if (!params.status) params.queue = "all"; // "All" excludes Void, matching the tab counts
+    else params.queue = "all"; // "All" excludes Void, matching the tab counts
 
     const [items] = await Promise.all([
       FinanceApi.getBills(Object.keys(params).length ? params : undefined),
@@ -347,26 +171,12 @@ async function loadFinanceBills(incomingParams) {
 
 function applyAndRenderBills() {
   const state = FinanceTable.getState("finance_bills");
-  const statusFilter = document.getElementById("financeBillStatusFilter");
   const searchInput = document.getElementById("financeBillSearch");
-  const attachmentFilter = document.getElementById("financeBillAttachmentFilter");
-
-  const currentStatus = statusFilter ? statusFilter.value : "";
   const currentSearch = searchInput ? searchInput.value.trim() : "";
-  const currentAttachment = attachmentFilter ? attachmentFilter.value : "";
 
-  state.filters = {
-    ...(currentStatus ? { status: currentStatus } : {}),
-    ...(currentSearch ? { search: currentSearch } : {}),
-    ...(currentAttachment ? { attachment: currentAttachment } : {}),
-  };
+  state.filters = currentSearch ? { search: currentSearch } : {};
 
   let items = FinanceState.bills || [];
-  if (currentAttachment === "with_attachment") {
-    items = items.filter((b) => !!(b.attachment_name || b.attachment_url));
-  } else if (currentAttachment === "no_attachment") {
-    items = items.filter((b) => !(b.attachment_name || b.attachment_url));
-  }
 
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
@@ -396,35 +206,6 @@ function applyAndRenderBills() {
     applyAndRenderBills();
   }, { sortBy: state.sortBy, sortDir: state.sortDir });
 
-  updateBillFilterBadge();
-
-  FinanceTable.renderFilterChips(
-    "financeBillFilterChips",
-    state.filters,
-    (removedKey) => {
-      if (removedKey === "status" && statusFilter) {
-        statusFilter.value = "";
-        updateBillFilterBadge();
-        loadFinanceBills();
-      } else if (removedKey === "search" && searchInput) {
-        searchInput.value = "";
-        updateBillFilterBadge();
-        applyAndRenderBills();
-      } else if (removedKey === "attachment" && attachmentFilter) {
-        attachmentFilter.value = "";
-        updateBillFilterBadge();
-        applyAndRenderBills();
-      }
-    },
-    () => {
-      if (statusFilter) statusFilter.value = "";
-      if (searchInput) searchInput.value = "";
-      if (attachmentFilter) attachmentFilter.value = "";
-      updateBillFilterBadge();
-      loadFinanceBills();
-    }
-  );
-
   FinanceTable.renderPagination(
     "financeBillsPagination",
     meta,
@@ -442,6 +223,63 @@ function applyAndRenderBills() {
   );
 
   FinanceTable.initAllTablesDensity();
+}
+
+// ── Direction A (D-021): bill status pill and outlined flags. Presentation only. ──
+// Colour classes come from the shared STATUS_MAP so D-016 meanings are unchanged;
+// FinanceFormat.formatStatusBadge stays untouched because other pages share it.
+function _billStatusPill(status) {
+  const norm = (status || "").toLowerCase().trim();
+  const item = (FinanceFormat.STATUS_MAP.bill || {})[norm] || { label: (status || "Unknown"), badgeClass: "badge-grey" };
+  return `<span class="badge ${item.badgeClass} status-badge-wrap bill-pill bill-pill--${norm}" role="status" aria-label="Status: ${item.label}"><span class="bill-pill-dot" aria-hidden="true"></span>${item.label}</span>`;
+}
+
+// Whole days between the due date and today (local), for the "N days late" flag text only.
+// Whether a bill is overdue stays server-owned (bill.is_overdue, open statuses only).
+function _billDaysLate(dueDate) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate || ""));
+  if (!m) return 0;
+  const due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((today - due) / 86400000));
+}
+
+// The list shows lateness under the bill date, so it passes withOverdue = false; the details drawer keeps the Overdue flag.
+function _billFlags(bill, withOverdue = true) {
+  const flags = [];
+  const tag = (cls, text, title) => `<span class="bill-flag bill-flag--${cls}" title="${title}">${text}</span>`;
+  if (withOverdue && bill.is_overdue) {
+    const d = _billDaysLate(bill.due_date);
+    flags.push(tag("overdue", d > 0 ? `${d} ${d === 1 ? "day" : "days"} late` : "Overdue", "Overdue: the due date has passed"));
+  }
+  if (bill.vendor_to_confirm) flags.push(tag("confirm", "Vendor to confirm", "The vendor on the document could not be matched with confidence"));
+  if (bill.is_duplicate_override) flags.push(tag("overdue", "Duplicate override", `Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}`));
+  if (bill.extraction_confidence != null && Math.round(bill.extraction_confidence * 100) < 80) {
+    flags.push(tag("confirm", `Low confidence ${Math.round(bill.extraction_confidence * 100)}%`, "Extraction confidence is below 80%"));
+  }
+  return flags.length ? `<span class="bill-flags">${flags.join("")}</span>` : "";
+}
+
+// "30 Sep 2026" style for the Bills table. Local to Bills: FinanceFormat.formatFinanceDate (ISO) is shared.
+const _BILL_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function _billDate(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ""));
+  if (!m) return FinanceFormat.formatFinanceDate(value);
+  return `${Number(m[3])} ${_BILL_MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+}
+
+// Relative note under the due date for owed bills: "8 days late", "Due today", "Due in 5 days".
+function _billDueNote(dueDate) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate || ""));
+  if (!m) return "";
+  const due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const days = Math.round((due - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  const n = Math.abs(days);
+  const unit = n === 1 ? "day" : "days";
+  if (days < 0) return `${n} ${unit} late`;
+  return days === 0 ? "Due today" : `Due in ${n} ${unit}`;
 }
 
 function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
@@ -462,49 +300,39 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
   tbody.innerHTML = items.map((bill) => {
     const derivedStatus = FinanceFormat.getDerivedBillStatus(bill);
-    const hasConfidence = bill.extraction_confidence != null;
-    const confidencePct = hasConfidence ? Math.round(bill.extraction_confidence * 100) : null;
-    const confidenceBadgeClass = hasConfidence && confidencePct < 80 ? "badge-warning" : "badge-info";
+    const owed = ["approved", "scheduled", "partially_paid"].includes(derivedStatus);
+    const rel = owed ? _billDueNote(bill.due_date) : "";
+    const num = bill.bill_number || "(no number yet)";
+    const vendor = bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—");
 
     return `
     <tr data-record-id="${bill.id}">
-      <td><strong>${bill.bill_number || "(no number yet)"}</strong></td>
-      <td>${bill.vendor_name || (bill.suggested_vendor_name ? FinanceFormat.escapeHtml(bill.suggested_vendor_name) : "—")}${bill.vendor_to_confirm ? ' <span class="badge badge-warning" title="The vendor on the document could not be matched with confidence">Vendor to confirm</span>' : ""}</td>
-      <td>
-        <span class="badge badge-info">${bill.category || "General"}</span>
-        ${bill.department ? `<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${bill.department}</div>` : ""}
-      </td>
-      <td>${FinanceFormat.formatFinanceDate(bill.issue_date)}</td>
-      <td>${FinanceFormat.formatFinanceDate(bill.due_date)}</td>
+      <td><div class="bill-vendor"><button type="button" class="bill-open btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number || ""} details">${vendor}</button></div><div class="bill-cell-sub">${num}</div></td>
+      <td><div class="bill-cell-text">${_billDate(bill.issue_date)}</div>${rel ? `<div class="bill-cell-sub${bill.is_overdue ? " bill-cell-sub--late" : ""}" title="Due ${_billDate(bill.due_date)}">${rel}</div>` : ""}</td>
+      <td><div class="bill-cell-text">${bill.category || "General"}</div></td>
+      <td><div class="bill-status-cell">${_billStatusPill(derivedStatus)}${_billFlags(bill, false)}</div></td>
       <td class="cell-money"><strong>${FinanceFormat.renderMoneyHtml(bill.total, bill.currency || "USD")}</strong></td>
-      <td>${FinanceFormat.formatStatusBadge("bill", derivedStatus)}${bill.is_overdue ? ' <span class="badge badge-rejected" title="Due date has passed"><i class="fa-solid fa-circle-exclamation"></i> Overdue</span>' : ""}</td>
       <td>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <div style="display:flex; gap:4px; align-items:center;">
-            ${bill.capture_source === "upload"
-              ? `<span class="badge badge-secondary" title="Uploaded Scan / File"><i class="fa-solid fa-file-arrow-up"></i> Upload</span>`
-              : `<span class="badge badge-grey" title="Manual Entry"><i class="fa-solid fa-keyboard"></i> Manual</span>`}
-            ${hasConfidence ? `<span class="badge ${confidenceBadgeClass}" title="Extraction confidence: ${confidencePct}%">${confidencePct}%</span>` : ""}
-          </div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            ${bill.is_reviewed
-              ? `<span class="badge badge-approved" style="font-size:10px;"><i class="fa-solid fa-check"></i> Reviewed</span>`
-              : `<span class="badge badge-warning" style="font-size:10px;" title="Review Required"><i class="fa-solid fa-triangle-exclamation"></i> Unreviewed</span>`}
-            ${bill.is_duplicate_override
-              ? `<span class="badge badge-rejected" style="font-size:10px;" title="Duplicate Override: ${FinanceFormat.escapeHtml(bill.duplicate_override_reason || "")}"><i class="fa-solid fa-flag"></i> Dup Override</span>`
-              : ""}
-          </div>
+        <div class="bill-row-actions">
+          ${_billPrimaryActionHtml(bill, derivedStatus)}
+          ${bill.status !== "void" ? `<button type="button" class="bill-icon-btn" onclick="openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>` : '<span class="bill-icon-slot" aria-hidden="true"></span>'}
+          ${(bill.attachment_name || bill.attachment_url) ? `<button type="button" class="bill-icon-btn btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip" aria-hidden="true"></i></button>` : '<span class="bill-icon-slot" aria-hidden="true"></span>'}
         </div>
-      </td>
-      <td style="display:flex; gap:6px; flex-wrap:wrap;">
-        ${(bill.attachment_name || bill.attachment_url) ? `<button class="btn btn-sm btn-outline btn-bill-attachment" onclick="previewBillDocument(${bill.id})" title="View Attachment (${FinanceFormat.escapeHtml(bill.attachment_name || 'Document')})" aria-label="View Attachment for Bill ${bill.bill_number}"><i class="fa-solid fa-paperclip"></i></button>` : ""}
-        <button class="btn btn-sm btn-outline btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${bill.bill_number} details"><i class="fa-solid fa-eye"></i></button>
-        ${bill.status !== "void" ? `<button class="btn btn-sm" onclick="openEditBillModal(${bill.id})" title="Edit Bill" aria-label="Edit Bill ${bill.bill_number || ""}"><i class="fa-solid fa-pen"></i></button>` : ""}
-        ${_billPrimaryActionHtml(bill, derivedStatus)}
       </td>
     </tr>
   `;
   }).join("");
+
+  if (!tbody.dataset.rowClickBound) {
+    tbody.dataset.rowClickBound = "1";
+    tbody.addEventListener("click", (e) => {
+      if (e.target.closest("button, a, input, select, label")) return;
+      const tr = e.target.closest("tr[data-record-id]");
+      if (!tr) return;
+      const viewBtn = tr.querySelector(".btn-view-bill");
+      if (window.FinanceDrawer) FinanceDrawer.open("bill", Number(tr.dataset.recordId), viewBtn || tr);
+    });
+  }
 }
 
 async function submitBillForApproval(id) {
@@ -531,19 +359,19 @@ async function withdrawBillToDraft(id) {
 function _billPrimaryActionHtml(bill, status) {
   switch (status) {
     case "draft":
-      return `<button class="btn btn-sm btn-outline btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval"><i class="fa-solid fa-paper-plane"></i> Submit</button>`;
+      return `<button class="btn btn-sm btn-fill btn-submit-bill" onclick="submitBillForApproval(${bill.id})" title="Submit for approval">Submit</button>`;
     case "rejected":
-      return `<button class="btn btn-sm btn-outline btn-resubmit-bill" onclick="openEditBillModal(${bill.id})" title="Edit and resubmit"><i class="fa-solid fa-rotate-right"></i> Edit &amp; resubmit</button>`;
+      return `<button class="btn btn-sm btn-outline btn-resubmit-bill" onclick="openEditBillModal(${bill.id})" title="Edit and resubmit">Edit &amp; resubmit</button>`;
     case "pending_approval":
       return _canBill("finance.bill.approve")
-        ? `<button class="btn btn-sm btn-warning btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve"><i class="fa-solid fa-stamp"></i> Approve</button>`
+        ? `<button class="btn btn-sm btn-fill btn-approve-bill" onclick="openBillApprovalModal(${bill.id})" title="Review & Approve">Approve</button>`
         : "";
     case "approved":
     case "scheduled":
     case "partially_paid":
       return _canBill("finance.bill.pay")
-        ? `<button class="btn btn-sm btn-outline btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment"><i class="fa-solid fa-money-bill-wave"></i> Pay</button>`
-        : (status === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>` : "");
+        ? `<button class="btn btn-sm btn-fill btn-pay-bill" onclick="openBillPaymentModal(${bill.id})" title="Record Payment">Pay</button>`
+        : (status === "approved" ? `<button class="btn btn-sm btn-outline btn-schedule-bill" onclick="openScheduleBillModal(${bill.id})" title="Schedule Payment">Schedule</button>` : "");
     default:
       return "";
   }
@@ -652,7 +480,7 @@ function _checkBillMissingFields() {
   if (!catId && !cat) missing.push("Category");
 
   if (missing.length > 0) {
-    textEl.textContent = `Missing required coding: ${missing.join(", ")}. Bill cannot be marked Ready to Pay or Paid until coded.`;
+    textEl.textContent = `Missing required coding: ${missing.join(", ")}.`;
     alertEl.style.display = "block";
   } else {
     alertEl.style.display = "none";
@@ -735,9 +563,6 @@ async function handleBillFileSelected(event) {
   }
 
   // AC 1: Uploaded bills strictly start unreviewed
-  const reviewedCheckbox = document.getElementById("billIsReviewed");
-  if (reviewedCheckbox) reviewedCheckbox.checked = false;
-
   document.getElementById("billCaptureSource").value = "upload";
 
   let extraction = null;
@@ -997,9 +822,43 @@ function _resetBillStatusDisplay(bill = null) {
   }
 }
 
+// ── "More details (optional)": Legal entity, Department, Notes and Line items ──
+function setBillMoreExpanded(expanded) {
+  const section = document.getElementById("billMoreSection");
+  const toggle = document.getElementById("billMoreToggle");
+  if (section) section.hidden = !expanded;
+  if (toggle) toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
+
+function toggleBillMore() {
+  const toggle = document.getElementById("billMoreToggle");
+  setBillMoreExpanded(!(toggle && toggle.getAttribute("aria-expanded") === "true"));
+}
+
+let _billMoreObserver = null;
+function _resetBillMoreSection() {
+  setBillMoreExpanded(false);
+  // A validation message inside the section must never stay hidden.
+  const section = document.getElementById("billMoreSection");
+  if (section && !_billMoreObserver && typeof MutationObserver !== "undefined") {
+    _billMoreObserver = new MutationObserver(() => {
+      if (section.hidden && section.querySelector('[aria-invalid="true"]')) setBillMoreExpanded(true);
+    });
+    _billMoreObserver.observe(section, { attributes: true, attributeFilter: ["aria-invalid"], subtree: true });
+  }
+}
+
+function _autoExpandBillMore() {
+  const notes = (document.getElementById("billNotes")?.value || "").trim();
+  const dept = document.getElementById("billDepartment")?.value || "";
+  const entity = document.getElementById("billLegalEntity")?.value || "";
+  if (notes || dept || (entity && entity !== "Voyance Health Inc") || _billHasLineItems()) setBillMoreExpanded(true);
+}
+
 function openCaptureBillModal() {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillMoreSection();
   _resetBillPaidNowSection();
   _resetBillStatusDisplay();
   _populateBillVendorDropdown();
@@ -1024,7 +883,6 @@ function openCaptureBillModal() {
   document.getElementById("billDueDate").value = "";
   document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
-  document.getElementById("billIsReviewed").checked = false;
   document.getElementById("billLinesBody").innerHTML = "";
 
   _updateBillTotals();
@@ -1037,6 +895,7 @@ function openCaptureBillModal() {
 function openAddBillModal() {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillMoreSection();
   _resetBillPaidNowSection();
   _resetBillStatusDisplay();
   _populateBillVendorDropdown();
@@ -1062,7 +921,6 @@ function openAddBillModal() {
   document.getElementById("billDueDate").value = today;
   document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
-  document.getElementById("billIsReviewed").checked = true;
   document.getElementById("billLinesBody").innerHTML = "";
   const amountEl = document.getElementById("billAmount");
   if (amountEl) { amountEl.value = ""; amountEl.disabled = false; }
@@ -1080,6 +938,7 @@ function openAddBillModal() {
 async function openEditBillModal(billId) {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillMoreSection();
   _populateBillVendorDropdown();
   await _populateBillCategoryDropdown();
 
@@ -1118,7 +977,6 @@ async function openEditBillModal(billId) {
     document.getElementById("billDueDate").value = bill.due_date || "";
     document.getElementById("billCurrency").value = bill.currency || "USD";
     document.getElementById("billNotes").value = bill.notes || "";
-    document.getElementById("billIsReviewed").checked = !!bill.is_reviewed;
 
     if (bill.attachment_name || bill.attachment_url) {
       _currentModalAttachmentBillId = bill.id;
@@ -1154,6 +1012,7 @@ async function openEditBillModal(billId) {
     _resetBillStatusDisplay(bill);
     _checkBillMissingFields();
     _applyBillRoleView();
+    _autoExpandBillMore();
     if (bill.status === "rejected" && bill.approval_comment) {
       showToast(`Rejected: ${bill.approval_comment}`, "warning");
     }
@@ -1199,6 +1058,7 @@ function _updateBillTotals() {
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
   if (totalEl) totalEl.textContent = subtotal.toFixed(2);
 
+  if (_billHasLineItems()) setBillMoreExpanded(true);
   _syncBillAmountField();
 }
 
@@ -1925,11 +1785,7 @@ function switchBillSubTab(subTab) {
   const tabBill = document.getElementById("tabFinanceBills");
   const tabVend = document.getElementById("tabFinanceVendors");
   const boxBill = document.getElementById("financeBillSearchBox");
-  const filterToggleBtn = document.getElementById("financeBillFilterToggleBtn");
-  const filterPanel = document.getElementById("financeBillFilterPanel");
-  const workQueueTabs = document.getElementById("financeBillWorkQueueTabs");
-  const statusToggleBar = document.getElementById("financeBillStatusToggleBar");
-  const statusPanel = document.getElementById("financeBillStatusPanel");
+  const statusRow = document.getElementById("financeBillStatusRow");
   const boxVend = document.getElementById("financeVendorSearchBox");
   const conBill = document.getElementById("financeBillsContainer");
   const conVend = document.getElementById("financeVendorsContainer");
@@ -1948,11 +1804,7 @@ function switchBillSubTab(subTab) {
       tabVend.setAttribute("tabindex", "0");
     }
     if (boxBill) boxBill.style.display = "none";
-    if (filterToggleBtn) filterToggleBtn.style.display = "none";
-    if (filterPanel) filterPanel.style.display = "none";
-    if (statusToggleBar) statusToggleBar.style.display = "none";
-    if (statusPanel) statusPanel.style.display = "none";
-    if (workQueueTabs) workQueueTabs.style.display = "none";
+    if (statusRow) statusRow.style.display = "none";
     if (boxVend) boxVend.style.display = "block";
     if (conBill) conBill.style.display = "none";
     if (conVend) conVend.style.display = "block";
@@ -1971,13 +1823,7 @@ function switchBillSubTab(subTab) {
       tabVend.setAttribute("tabindex", "-1");
     }
     if (boxBill) boxBill.style.display = "block";
-    if (filterToggleBtn) filterToggleBtn.style.display = "inline-flex";
-    if (statusToggleBar) statusToggleBar.style.display = "flex";
-    if (statusPanel) statusPanel.style.display = "none";
-    setBillStatusPanelExpanded(false);
-    if (workQueueTabs) workQueueTabs.style.display = "flex";
-    const savedPref = localStorage.getItem(_getBillFilterStorageKey());
-    setBillFilterPanelExpanded(savedPref === "true", false);
+    if (statusRow) statusRow.style.display = "flex";
     if (boxVend) boxVend.style.display = "none";
     if (conBill) conBill.style.display = "block";
     if (conVend) conVend.style.display = "none";
@@ -2364,18 +2210,11 @@ async function toggleVendorActive(id, currentlyActive) {
 // Window exports for Vendor Bills & Vendors
 window.loadFinanceBills = loadFinanceBills;
 window.filterFinanceBills = filterFinanceBills;
-window.toggleBillFilterPanel = toggleBillFilterPanel;
-window.setBillFilterPanelExpanded = setBillFilterPanelExpanded;
-window.isBillFilterPanelExpanded = isBillFilterPanelExpanded;
-window.updateBillFilterBadge = updateBillFilterBadge;
-window.onBillFilterChanged = onBillFilterChanged;
-window.resetBillSecondaryFilters = resetBillSecondaryFilters;
-window.toggleBillStatusPanel = toggleBillStatusPanel;
-window.setBillStatusPanelExpanded = setBillStatusPanelExpanded;
-window.isBillStatusPanelExpanded = isBillStatusPanelExpanded;
 window.setBillWorkQueue = setBillWorkQueue;
 window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;
+window.toggleBillMore = toggleBillMore;
+window.setBillMoreExpanded = setBillMoreExpanded;
 window.handleBillFileSelected = handleBillFileSelected;
 window.onBillFieldInput = onBillFieldInput;
 window.onBillVendorChange = onBillVendorChange;
@@ -2564,9 +2403,7 @@ async function renderBillDrawerActions(data) {
 
   const statusEl = document.getElementById("financeDetailDrawerStatusBadge");
   if (statusEl) {
-    statusEl.innerHTML = FinanceFormat.formatStatusBadge("bill", bill.status)
-      + (bill.is_overdue ? ' <span class="badge badge-rejected" title="Due date has passed"><i class="fa-solid fa-circle-exclamation"></i> Overdue</span>' : "")
-      + (bill.vendor_to_confirm ? ' <span class="badge badge-warning">Vendor to confirm</span>' : "");
+    statusEl.innerHTML = _billStatusPill(FinanceFormat.getDerivedBillStatus(bill)) + _billFlags(bill);
   }
 
   const allowed = bill.allowed_actions || [];

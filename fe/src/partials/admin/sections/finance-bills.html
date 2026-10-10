@@ -4,133 +4,56 @@
               <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Spend sub navigation">
               <!-- rendered by SpendTabs (finance-nav.js) -->
             </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
               <div class="search-box" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeBillSearch" placeholder="Search bills..." aria-label="Search bills" oninput="filterFinanceBills(this.value)">
               </div>
-              <button type="button" class="btn btn-outline" id="financeBillFilterToggleBtn" aria-expanded="false" aria-controls="financeBillFilterPanel" onclick="toggleBillFilterPanel()" style="display: inline-flex; align-items: center; gap: 6px; height: 38px;">
-                <i class="fa-solid fa-filter"></i> <span id="financeBillFilterToggleText">Filters</span>
-                <span id="financeBillFilterBadge" class="badge badge-primary" style="display: none; font-size: 11px; padding: 2px 6px;">0</span>
-              </button>
               <div class="search-box" id="financeVendorSearchBox" style="display: none;">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeVendorSearch" placeholder="Search vendors..." aria-label="Search vendors" oninput="filterFinanceVendors(this.value)">
               </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()"><i class="fa-solid fa-plus"></i> Add Vendor</button>
-              <button class="btn btn-outline" id="financeCaptureBillBtn" onclick="openCaptureBillModal()"><i class="fa-solid fa-file-arrow-up"></i> Upload / Capture</button>
-              <button class="btn btn-outline" id="financeUploadDraftsBtn" onclick="document.getElementById('financeBillsUploadInput').click()" title="Upload several PDFs or photos; each becomes its own draft"><i class="fa-solid fa-files"></i> Upload drafts</button>
+              <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()">Add Vendor</button>
+              <button class="btn btn-outline" id="financeUploadDraftsBtn" onclick="document.getElementById('financeBillsUploadInput').click()" title="Upload several PDFs or photos; each becomes its own draft">Upload bills</button>
               <input type="file" id="financeBillsUploadInput" multiple accept=".pdf,image/*" style="display:none" onchange="onBillDraftFilesChosen(this)">
-              <button class="btn btn-fill" id="financeRecordBillBtn" onclick="openAddBillModal()"><i class="fa-solid fa-plus"></i> Record Bill</button>
+              <button class="btn btn-fill" id="financeRecordBillBtn" onclick="openAddBillModal()">Record Bill</button>
             </div>
           </div>
 
-          <!-- FUX-414: Status Toggle Bar (always visible, single row, ~40px tall) -->
-          <div id="financeBillStatusToggleBar" class="finance-bill-status-toggle-bar" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; margin: 6px 0 8px 0; padding: 2px 0;">
-            <!-- Left side: active status pill + result count -->
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <span id="financeBillActiveStatusPill" class="badge badge-primary" style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px; cursor: default; user-select: none;">
-                <span id="financeBillActiveStatusLabel">All</span>
-                <span id="financeBillActiveStatusCount" class="badge badge-grey" style="font-size: 11px; padding: 1px 6px; border-radius: 9999px; margin: 0;">0</span>
-              </span>
-              <span id="financeBillViewResultCount" style="font-size: 12px; color: var(--text3, #64748b);">Showing 0 of 0 bills</span>
+          <!-- Direction A (D-021): always-visible status row; replaces the FUX-414 pill + Change view panel -->
+          <div id="financeBillStatusRow" class="bill-status-row">
+            <div class="filter-tabs bill-status-tabs" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues">
+              <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">All <span class="badge badge-grey" id="badgeBillQueueAll">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')">Draft <span class="badge badge-grey" id="badgeBillQueueDraft">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')">Pending Approval <span class="badge badge-grey" id="badgeBillQueuePendingApproval">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')">Rejected <span class="badge badge-grey" id="badgeBillQueueRejected">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')">Approved <span class="badge badge-grey" id="badgeBillQueueApproved">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')">Partially Paid <span class="badge badge-grey" id="badgeBillQueuePartiallyPaid">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span></button>
+              <button type="button" class="filter-tab" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')">Void <span class="badge badge-grey" id="badgeBillQueueVoid">0</span></button>
             </div>
-
-            <!-- Right side: Overdue only toggle and Change view button with chevron -->
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <label for="financeBillOverdueOnly" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+            <div class="bill-status-row-meta">
+              <span id="financeBillViewResultCount">Showing 0 of 0 bills</span>
+              <label for="financeBillOverdueOnly" class="bill-overdue-toggle">
                 <input type="checkbox" id="financeBillOverdueOnly" onchange="onBillOverdueOnlyChange()"> Overdue only <span class="badge badge-grey" id="financeBillOverdueCount">0</span>
               </label>
-              <button type="button" class="btn btn-outline btn-sm" id="financeBillChangeViewBtn" aria-expanded="false" aria-controls="financeBillStatusPanel" onclick="toggleBillStatusPanel()" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: 12px;">
-                <span>Change view</span>
-                <i class="fa-solid fa-chevron-down" id="financeBillChangeViewIcon" style="font-size: 10px; transition: transform 0.2s ease;"></i>
-              </button>
             </div>
-          </div>
-
-          <!-- FUX-414: Status Tabs Panel (hidden by default, toggled by Change view) -->
-          <div id="financeBillStatusPanel" class="finance-bill-status-panel" style="display: none; background: var(--surface2, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;" role="region" aria-label="Status queue tabs">
-            <div class="filter-tabs" id="financeBillWorkQueueTabs" role="tablist" aria-label="AP Inbox Queues" style="margin: 0; overflow-x: auto; white-space: nowrap;">
-              <button type="button" class="filter-tab active" id="tabBillQueueAll" role="tab" aria-selected="true" onclick="setBillWorkQueue('all')">
-                <i class="fa-solid fa-list-ul"></i> All <span class="badge badge-grey" id="badgeBillQueueAll">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueDraft" role="tab" aria-selected="false" onclick="setBillWorkQueue('draft')">
-                <i class="fa-solid fa-file-pen"></i> Draft <span class="badge badge-grey" id="badgeBillQueueDraft">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueuePendingApproval" role="tab" aria-selected="false" onclick="setBillWorkQueue('pending_approval')">
-                <i class="fa-solid fa-user-check"></i> Pending Approval <span class="badge badge-grey" id="badgeBillQueuePendingApproval">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueRejected" role="tab" aria-selected="false" onclick="setBillWorkQueue('rejected')">
-                <i class="fa-solid fa-circle-xmark"></i> Rejected <span class="badge badge-grey" id="badgeBillQueueRejected">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueApproved" role="tab" aria-selected="false" onclick="setBillWorkQueue('approved')">
-                <i class="fa-solid fa-circle-check"></i> Approved <span class="badge badge-grey" id="badgeBillQueueApproved">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueScheduled" role="tab" aria-selected="false" onclick="setBillWorkQueue('scheduled')">
-                <i class="fa-solid fa-calendar-check"></i> Scheduled <span class="badge badge-grey" id="badgeBillQueueScheduled">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueuePartiallyPaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('partially_paid')">
-                <i class="fa-solid fa-circle-half-stroke"></i> Partially Paid <span class="badge badge-grey" id="badgeBillQueuePartiallyPaid">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueuePaid" role="tab" aria-selected="false" onclick="setBillWorkQueue('paid')">
-                <i class="fa-solid fa-circle-check"></i> Paid <span class="badge badge-grey" id="badgeBillQueuePaid">0</span>
-              </button>
-              <button type="button" class="filter-tab" id="tabBillQueueVoid" role="tab" aria-selected="false" onclick="setBillWorkQueue('void')">
-                <i class="fa-solid fa-ban"></i> Void <span class="badge badge-grey" id="badgeBillQueueVoid">0</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Collapsible Filter Panel -->
-          <div id="financeBillFilterPanel" class="finance-bill-filter-panel" style="display: none; background: var(--surface2, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 12px 16px; margin: 10px 0 12px 0;" role="region" aria-label="Secondary bill filters">
-            <div style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;">
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <label for="financeBillStatusFilter" style="font-size: 11.5px; font-weight: 600; color: var(--text2);">Status</label>
-                <select id="financeBillStatusFilter" class="form-control filter-select" aria-label="Filter bills by status" onchange="onBillFilterChanged()">
-                  <option value="">All Statuses</option>
-                  <option value="draft">Draft</option>
-                  <option value="pending_approval">Pending Approval</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="approved">Approved</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="partially_paid">Partially Paid</option>
-                  <option value="paid">Paid</option>
-                  <option value="void">Void</option>
-                </select>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <label for="financeBillAttachmentFilter" style="font-size: 11.5px; font-weight: 600; color: var(--text2);">Attachment</label>
-                <select id="financeBillAttachmentFilter" class="form-control filter-select" aria-label="Filter bills by attachment" onchange="onBillFilterChanged()">
-                  <option value="">All Documents</option>
-                  <option value="with_attachment">Has Attachment</option>
-                  <option value="no_attachment">No Attachment</option>
-                </select>
-              </div>
-              <div>
-                <button type="button" class="btn btn-outline btn-sm" id="financeBillResetFiltersBtn" onclick="resetBillSecondaryFilters()" style="height: 38px; display: inline-flex; align-items: center; gap: 4px;">
-                  <i class="fa-solid fa-rotate-left"></i> Reset
-                </button>
-              </div>
-            </div>
-            <div id="financeBillFilterChips" style="display: none; margin-top: 10px;"></div>
           </div>
 
           <!-- 1. Bills Sub-View -->
-          <div class="card" id="financeBillsContainer">
+          <div class="card clean-table-card" id="financeBillsContainer">
             <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
             <table class="responsive-card-table sticky-actions" id="financeBillsTable">
               <thead>
                 <tr>
-                  <th data-sort="bill_number">Bill #</th>
-                  <th data-sort="vendor_name">Vendor</th>
-                  <th data-sort="category">Category & Dept</th>
-                  <th data-sort="issue_date">Issue Date</th>
-                  <th data-sort="due_date">Due Date</th>
-                  <th class="cell-money" data-sort="total">Total</th>
-                  <th data-sort="status">Queue / Status</th>
-                  <th>Capture & Review</th>
-                  <th>Actions</th>
+                  <th data-sort="vendor_name">Bill</th>
+                  <th data-sort="issue_date">Bill date</th>
+                  <th data-sort="category">Category</th>
+                  <th data-sort="status">Status</th>
+                  <th class="cell-money" data-sort="total">Amount</th>
+                  <th class="col-actions"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody id="financeBillsTableBody"></tbody>
@@ -143,7 +66,7 @@
           </div>
 
           <!-- 2. Vendors Sub-View -->
-          <div class="card" id="financeVendorsContainer" style="display: none;">
+          <div class="card clean-table-card" id="financeVendorsContainer" style="display: none;">
             <div class="section-loading-bar" id="financeVendorsLoadingBar"><span></span></div>
             <div id="financeVendorFilterChips" style="display: none;"></div>
             <table class="responsive-card-table" id="financeVendorsTable">
