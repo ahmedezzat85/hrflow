@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner review  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 9, 2026  
+**Last updated:** October 10, 2026  
 **Branch note:** D-011 to D-013 and the D-008/D-009/D-010 amendments were added on `feature/rbac` (base `c236b00`) and accepted by the owner on October 1, 2026. They are not part of `main` until the branch is merged. The bullet tagged **[Pending owner OK]** (startup seeding) was found during the October 1, 2026 code reconciliation, after that approval, and is not yet accepted.  
 **Authority:** Owner-approved decisions, reconciled against repository context documents  
 
@@ -364,6 +364,36 @@ This document records durable product and architectural decisions approved by th
   - Table dates keep the year. Two solid blue primary buttons (top-bar "Add transaction" and the page-level "Record bill") are accepted; the top bar is not changed.
 - **Scope:** Visual only. No API, schema, permission or workflow change; D-016 to D-020 are unchanged.
 - **Rationale:** Today's bill rows are 100 to 200 px tall because text wraps; direction A reaches about 53 px at Regular with the lowest review risk of the four directions explored on the "Finance Restyle: Alternative Directions" design canvas.
+
+### D-022 — Sales Invoice Status and Safety Rules
+
+- **Status:** Accepted by owner, October 10, 2026. Not implemented; slice F1 in [../finance-module/20-finance-review-round-2.md](../finance-module/20-finance-review-round-2.md).
+- **Decision:** Invoice statuses are Draft, Sent, Partially paid, Paid, Void; overdue is a flag. Status changes only through actions. A sent invoice's customer, currency, lines, amounts, VAT and withholding rate are locked (void and reissue to correct). Void is refused while unreversed receipts exist. Receipts must use an account in the invoice's currency, with no exchange rate, and go through the settlement service. Statutory payments follow the same currency rule (F4).
+- **Rationale:** Mirrors D-016, D-018 and D-020 for receivables; the review found partly paid invoices voidable, sent invoices editable and receipts accepted in another currency.
+
+### D-023 — VAT on Sales Invoices
+
+- **Status:** Accepted by owner, October 10, 2026. Not implemented; slice F2.
+- **Decision:** Each invoice carries a VAT rate (default 14% for EGP, 0% otherwise). Revenue is the net amount. A user-triggered "Generate VAT estimate" creates or updates one monthly sales-tax obligation (estimated, EGP) from invoices issued that month; the portal-confirmed figure is entered through the existing confirm/adjust step (D-001, D-002). No scheduler.
+- **Rationale:** The owner's EGP invoices include 14% VAT (cashbook REVENUE sheet), while HRFlow hard-codes invoice tax to 0 and reports VAT-inclusive totals as revenue.
+
+### D-024 — Customer Withholding Tax at Invoice Preparation
+
+- **Status:** Accepted by owner, October 10, 2026 (owner delegated the design). Not implemented; slice F3.
+- **Decision:** Optional withholding rate per customer (default 0) copied to the invoice and editable while Draft. The invoice shows the amount expected to be received; a receipt plus the withheld amount settles it. Withheld amounts are recorded on the payment without a bank movement and listed in a withholding-credits report.
+- **Rationale:** Customers withheld tax last year but not currently; the feature must stay invisible at rate 0.
+
+### D-025 — Payroll Paid Moves Net Pay Only; Payroll Posting Fixes
+
+- **Status:** Accepted by owner, October 10, 2026. Resolves Q-001 (Option A). Not implemented; slice F5.
+- **Decision:** Marking a payroll run paid moves net pay only; employer tax and social insurance are paid as statutory obligations. Payroll ledger rows are `source="payroll"` (not editable as manual entries), follow the funding account's currency and kind, update balances immediately, and are refused when funding accounts are missing (no hard-coded fallback IDs).
+- **Rationale:** Matches current behaviour and the cashbook; the review found payroll rows saved as manual, balances not recalculated and fallbacks to account 1.
+
+### D-026 — Cash Basis Is the Main P&L View
+
+- **Status:** Accepted by owner, October 10, 2026. Not implemented; slice F6.
+- **Decision:** The cash-basis P&L is the primary view. Reversals reduce the side they reverse; movements between own accounts (transfers, exchange, withdrawals) are excluded; payroll and statutory payments count as spend. "All currencies" shows one column per currency with no converted total. The accrual view is labelled partial until completed later.
+- **Rationale:** The owner runs the business on a cashbook; the review found reversals counted as revenue, withdrawals counted on both sides, and USD and EGP summed under a USD label.
 
 ---
 
