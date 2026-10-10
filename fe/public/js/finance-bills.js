@@ -480,7 +480,7 @@ function _checkBillMissingFields() {
   if (!catId && !cat) missing.push("Category");
 
   if (missing.length > 0) {
-    textEl.textContent = `Missing required coding: ${missing.join(", ")}. Bill cannot be marked Ready to Pay or Paid until coded.`;
+    textEl.textContent = `Missing required coding: ${missing.join(", ")}.`;
     alertEl.style.display = "block";
   } else {
     alertEl.style.display = "none";
@@ -563,9 +563,6 @@ async function handleBillFileSelected(event) {
   }
 
   // AC 1: Uploaded bills strictly start unreviewed
-  const reviewedCheckbox = document.getElementById("billIsReviewed");
-  if (reviewedCheckbox) reviewedCheckbox.checked = false;
-
   document.getElementById("billCaptureSource").value = "upload";
 
   let extraction = null;
@@ -825,9 +822,43 @@ function _resetBillStatusDisplay(bill = null) {
   }
 }
 
+// ── "More details (optional)": Legal entity, Department, Notes and Line items ──
+function setBillMoreExpanded(expanded) {
+  const section = document.getElementById("billMoreSection");
+  const toggle = document.getElementById("billMoreToggle");
+  if (section) section.hidden = !expanded;
+  if (toggle) toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
+
+function toggleBillMore() {
+  const toggle = document.getElementById("billMoreToggle");
+  setBillMoreExpanded(!(toggle && toggle.getAttribute("aria-expanded") === "true"));
+}
+
+let _billMoreObserver = null;
+function _resetBillMoreSection() {
+  setBillMoreExpanded(false);
+  // A validation message inside the section must never stay hidden.
+  const section = document.getElementById("billMoreSection");
+  if (section && !_billMoreObserver && typeof MutationObserver !== "undefined") {
+    _billMoreObserver = new MutationObserver(() => {
+      if (section.hidden && section.querySelector('[aria-invalid="true"]')) setBillMoreExpanded(true);
+    });
+    _billMoreObserver.observe(section, { attributes: true, attributeFilter: ["aria-invalid"], subtree: true });
+  }
+}
+
+function _autoExpandBillMore() {
+  const notes = (document.getElementById("billNotes")?.value || "").trim();
+  const dept = document.getElementById("billDepartment")?.value || "";
+  const entity = document.getElementById("billLegalEntity")?.value || "";
+  if (notes || dept || (entity && entity !== "Voyance Health Inc") || _billHasLineItems()) setBillMoreExpanded(true);
+}
+
 function openCaptureBillModal() {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillMoreSection();
   _resetBillPaidNowSection();
   _resetBillStatusDisplay();
   _populateBillVendorDropdown();
@@ -852,7 +883,6 @@ function openCaptureBillModal() {
   document.getElementById("billDueDate").value = "";
   document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
-  document.getElementById("billIsReviewed").checked = false;
   document.getElementById("billLinesBody").innerHTML = "";
 
   _updateBillTotals();
@@ -865,6 +895,7 @@ function openCaptureBillModal() {
 function openAddBillModal() {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillMoreSection();
   _resetBillPaidNowSection();
   _resetBillStatusDisplay();
   _populateBillVendorDropdown();
@@ -890,7 +921,6 @@ function openAddBillModal() {
   document.getElementById("billDueDate").value = today;
   document.getElementById("billCurrency").value = "EGP";
   document.getElementById("billNotes").value = "";
-  document.getElementById("billIsReviewed").checked = true;
   document.getElementById("billLinesBody").innerHTML = "";
   const amountEl = document.getElementById("billAmount");
   if (amountEl) { amountEl.value = ""; amountEl.disabled = false; }
@@ -908,6 +938,7 @@ function openAddBillModal() {
 async function openEditBillModal(billId) {
   FinanceForm.clearErrors("billModal");
   _resetBillCaptureSection();
+  _resetBillMoreSection();
   _populateBillVendorDropdown();
   await _populateBillCategoryDropdown();
 
@@ -946,7 +977,6 @@ async function openEditBillModal(billId) {
     document.getElementById("billDueDate").value = bill.due_date || "";
     document.getElementById("billCurrency").value = bill.currency || "USD";
     document.getElementById("billNotes").value = bill.notes || "";
-    document.getElementById("billIsReviewed").checked = !!bill.is_reviewed;
 
     if (bill.attachment_name || bill.attachment_url) {
       _currentModalAttachmentBillId = bill.id;
@@ -982,6 +1012,7 @@ async function openEditBillModal(billId) {
     _resetBillStatusDisplay(bill);
     _checkBillMissingFields();
     _applyBillRoleView();
+    _autoExpandBillMore();
     if (bill.status === "rejected" && bill.approval_comment) {
       showToast(`Rejected: ${bill.approval_comment}`, "warning");
     }
@@ -1027,6 +1058,7 @@ function _updateBillTotals() {
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
   if (totalEl) totalEl.textContent = subtotal.toFixed(2);
 
+  if (_billHasLineItems()) setBillMoreExpanded(true);
   _syncBillAmountField();
 }
 
@@ -2181,6 +2213,8 @@ window.filterFinanceBills = filterFinanceBills;
 window.setBillWorkQueue = setBillWorkQueue;
 window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;
+window.toggleBillMore = toggleBillMore;
+window.setBillMoreExpanded = setBillMoreExpanded;
 window.handleBillFileSelected = handleBillFileSelected;
 window.onBillFieldInput = onBillFieldInput;
 window.onBillVendorChange = onBillVendorChange;

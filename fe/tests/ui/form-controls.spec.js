@@ -100,29 +100,6 @@ for (const theme of THEMES) {
   });
 }
 
-test.describe('R2 bill modal checkboxes', () => {
-  test('4. clicking the label text toggles its own checkbox', async ({ page }) => {
-    await boot(page, 'light');
-    await openAdminPage(page, 'a-finance-bills');
-    await page.evaluate(() => openCaptureBillModal());
-
-    const reviewed = page.locator('#billIsReviewed');
-    const paid = page.locator('#billIsPaidNow');
-    const reviewedBefore = await reviewed.isChecked();
-    const paidBefore = await paid.isChecked();
-
-    await page.locator('#billIsReviewedLabel').click();
-    expect(await reviewed.isChecked()).toBe(!reviewedBefore);
-    expect(await paid.isChecked()).toBe(paidBefore); // the other box is untouched
-
-    await page.locator('label:has(#billIsPaidNow) span').click();
-    expect(await paid.isChecked()).toBe(!paidBefore);
-    expect(await reviewed.isChecked()).toBe(!reviewedBefore);
-
-    await page.evaluate(() => closeModal('billModal'));
-  });
-});
-
 test('5. element ids and onchange handlers on the filters are unchanged', async ({ page }) => {
   await boot(page, 'light');
   await openAdminPage(page, 'a-finance-dashboard');

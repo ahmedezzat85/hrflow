@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { openAdminPage } from './helpers/admin-nav.js';
 
+
+// The dialog keeps Department, Notes and Line items under "More details (optional)".
+async function openBillMore(page) {
+  if ((await page.getAttribute('#billMoreToggle', 'aria-expanded')) !== 'true') await page.click('#billMoreToggle');
+}
+
 test.describe('Story 4.1 — Bill capture and AP inbox', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
@@ -26,12 +32,14 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     // Fill bill details
     await page.selectOption('#billVendorId', { index: 1 });
     await page.fill('#billNumber', 'BILL-CAPTURE-001');
+    await openBillMore(page);
     await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billIssueDate', '2026-03-01');
     await page.fill('#billDueDate', '2026-03-31');
 
     // Add a line item so bill has an amount
+    await openBillMore(page);
     await page.click('#billModal button:has-text("Add Line")');
     const firstLineDesc = page.locator('#billLinesBody tr input[type="text"]').first();
     await firstLineDesc.fill('Cloud Server Hosting');
@@ -68,6 +76,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     expect(await missingAlert.innerText()).toContain('Missing required coding');
 
     // Populate Department, alert should still flag Category
+    await openBillMore(page);
     await page.selectOption('#billDepartment', 'Operations');
     await page.dispatchEvent('#billDepartment', 'change');
     await expect(missingAlert).toBeVisible();
@@ -102,6 +111,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     expect(await page.locator('#billDuplicateText').innerText()).toContain('Matches existing bill');
 
     // Try to save without override -> should be blocked
+    await openBillMore(page);
     await page.selectOption('#billDepartment', 'Engineering');
     await page.selectOption('#billCategoryId', { label: 'Infrastructure' });
     await page.fill('#billAmount', '1500');

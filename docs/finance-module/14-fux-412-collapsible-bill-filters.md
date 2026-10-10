@@ -1,5 +1,7 @@
 # FUX-412 — Collapsible bill list filters
 
+> **Superseded (owner decision D-021, October 10, 2026):** the Filters button and collapsible panel were removed from the Bills page; see [19-finance-ui-restyle-direction-a.md](19-finance-ui-restyle-direction-a.md), decision 12. This document is kept for history.
+
 Related: `docs/finance-module/05-finance-ux-implementation-plan.md` (FUX-102 shared finance table), Finance → Spend → Bills page
 
 **User story:** As a bills user, I want the filter panel hidden by default and expandable on demand, so the Bills toolbar stays compact and I am not forced to look at a full filter bar every time I just want to scan or search the list.
