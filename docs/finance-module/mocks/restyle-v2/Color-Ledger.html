@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour: Account ledger (approved reference, restyle v2)</title>
+<!-- Approved reference for docs/finance-module/21-finance-ui-restyle-v2.md. Static export of the owner-approved canvas board. Do not edit; change the plan instead. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 660px; box-sizing: border-box; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column;">
+  <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+    <a href="Color-Overview.html" aria-label="Account ledger, back to Finance overview" style="display: flex; align-items: center; gap: 10px; text-decoration: none;"><span style="width: 30px; height: 30px; border-radius: 9px; background: rgba(27,143,208,.14); color: #146fa3; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Account ledger</span><span style="font-size: 12.5px; color: #5d6b8f;">Banking</span></a>
+    <span style="display: flex; align-items: center; gap: 12px;"><a href="Modal-Transaction.html" style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; text-decoration: none;">Add transaction</a><span style="width: 28px; height: 28px; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">SC</span></span>
+  </header>
+  <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(32,86,232,.12);">
+      <nav aria-label="Banking sections" style="display: flex; gap: 2px;">
+        <a href="Color-Accounts.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Accounts</a>
+        <a href="Color-Ledger.html" aria-current="page" style="padding: 9px 12px; font-weight: 600; color: #2056e8; text-decoration: none; border-bottom: 2px solid #2056e8; margin-bottom: -1px;">Ledger</a>
+        <a href="Color-Statements.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Statements</a>
+        <a href="Color-Cheques.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Cheques</a>
+        <a href="Color-Transfers.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Transfers</a>
+      </nav>
+      <div style="display: flex; gap: 8px; padding-bottom: 8px;">
+        <select aria-label="Account" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.22); border-radius: 8px; background: #fff; font-size: 13px; font-weight: 600; color: #1a46bd;"><option>Voyance Operating USD · ••4821</option></select>
+        <a href="Modal-Transaction.html" style="display: inline-flex; align-items: center; height: 32px; box-sizing: border-box; padding: 0 14px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none;">Record transaction</a>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+      
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(32,86,232,.08); background: #fff; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+          <span style="display: flex; align-items: center; justify-content: space-between; gap: 10px;"><span style="font-size: 12.5px; font-weight: 600; color: #4b5c92;">Balance</span><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(27,143,208,.14);color:#146fa3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg></span></span>
+          <span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 26px; line-height: 1.1; color: #16245e; font-variant-numeric: tabular-nums;">$145,800.00</span>
+          <span style="font-size: 12.5px; color: #5d6b8f;">JPMorgan Chase · USD</span>
+        </div>
+      
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(32,86,232,.08); background: #fff; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+          <span style="display: flex; align-items: center; justify-content: space-between; gap: 10px;"><span style="font-size: 12.5px; font-weight: 600; color: #4b5c92;">In · Sep 2026</span><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(15,157,140,.14);color:#0b7a6d;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v13M6.5 11.5 12 17l5.5-5.5M5 20h14"></path></svg></span></span>
+          <span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 26px; line-height: 1.1; color: #16245e; font-variant-numeric: tabular-nums;">$0.00</span>
+          <span style="font-size: 12.5px; color: #5d6b8f;">0 transactions</span>
+        </div>
+      
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(32,86,232,.08); background: #fff; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+          <span style="display: flex; align-items: center; justify-content: space-between; gap: 10px;"><span style="font-size: 12.5px; font-weight: 600; color: #4b5c92;">Out · Sep 2026</span><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(224,112,31,.14);color:#b2560f;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V7M6.5 12.5 12 7l5.5 5.5M5 4h14"></path></svg></span></span>
+          <span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 26px; line-height: 1.1; color: #16245e; font-variant-numeric: tabular-nums;">$4,200.00</span>
+          <span style="font-size: 12.5px; color: #5d6b8f;">1 transaction</span>
+        </div>
+      
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div role="group" aria-label="Filter by direction" style="display: flex; gap: 6px;">
+          <button type="button" aria-pressed="true" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #2056e8; color: #fff; border: 1px solid #2056e8; box-shadow: 0 2px 6px rgba(32,86,232,.25);">All <span style="padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.22);">1</span></button>
+          <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #e0f4f1; color: #0b7a6d; border: 1px solid transparent; opacity: .55;"><span style="font-weight: 700;">↓</span>In <span style="font-weight: 500; opacity: .75;">0</span></button>
+          <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #fcefe3; color: #b2560f; border: 1px solid transparent;"><span style="font-weight: 700;">↑</span>Out <span style="font-weight: 500; opacity: .75;">1</span></button>
+        </div>
+        <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #2b3a5c; margin-left: 8px;"><input type="checkbox" style="width: 16px; height: 16px; accent-color: #2056e8;">Petty spend only</label>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <select aria-label="Period" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>Sep 2026</option></select>
+        <select aria-label="Category" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>All categories</option></select>
+        <select aria-label="Payment type" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>All payment types</option></select>
+      </div>
+    </div>
+
+    <div style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: #2056e8; border-bottom: 1px solid rgba(32,86,232,.12);">Date ↓</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Details</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Category</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Payment type</th>
+            <th scope="col" style="text-align: right; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Amount</th>
+            <th scope="col" style="text-align: right; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Balance</th>
+            <th scope="col" style="padding: 12px 16px; border-bottom: 1px solid rgba(32,86,232,.12);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 11px 16px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">2 Sep 2026</td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width: 28px; height: 28px; flex: none; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: rgba(224,112,31,.14); color: #b2560f; font-weight: 700;">↑</span><span><span style="display: block; font-weight: 600; color: #16245e;">Payment for AWS cloud hosting</span><a href="#" style="font-size: 12px; font-weight: 600; text-decoration: none;">AWS-SEPT-01</a></span></span></td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width: 8px; height: 8px; border-radius: 3px; background: #1b8fd0;"></span>Infrastructure</span></td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07);">Outgoing transfer</td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; white-space: nowrap; font-variant-numeric: tabular-nums;">−4,200.00</td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; color: #4b5c92; white-space: nowrap; font-variant-numeric: tabular-nums;">145,800.00</td>
+            <td style="padding: 11px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" aria-label="View AWS-SEPT-01" title="View AWS-SEPT-01" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><button type="button" aria-label="Edit AWS-SEPT-01" title="Edit AWS-SEPT-01" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding: 10px 16px; font-size: 12.5px; color: #5d6b8f;">Showing <strong style="color: #2056e8;">1–1</strong> of <strong style="color: #2056e8;">1</strong> transaction · amounts in USD</div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

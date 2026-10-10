@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour: Reports (approved reference, restyle v2)</title>
+<!-- Approved reference for docs/finance-module/21-finance-ui-restyle-v2.md. Static export of the owner-approved canvas board. Do not edit; change the plan instead. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 1000px; box-sizing: border-box; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column;">
+  <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+    <a href="Color-Overview.html" aria-label="Reports and export, back to Finance overview" style="display: flex; align-items: center; gap: 10px; text-decoration: none;"><span style="width: 30px; height: 30px; border-radius: 9px; background: rgba(124,77,219,.14); color: #6236c0; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Reports and export</span><span style="font-size: 12.5px; color: #5d6b8f;">Reports</span></a>
+    <span style="display: flex; align-items: center; gap: 12px;"><a href="Modal-Transaction.html" style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; text-decoration: none;">Add transaction</a><span style="width: 28px; height: 28px; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">SC</span></span>
+  </header>
+  <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <div role="group" aria-label="Filter by domain" style="display: flex; gap: 6px; flex-wrap: wrap;">
+        
+          <button type="button" aria-pressed="true" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:#2056e8;color:#fff;border:1px solid #2056e8;box-shadow:0 2px 6px rgba(32,86,232,.25);"><span style="display:none;"></span>All <span style="padding:0 6px;border-radius:999px;background:rgba(255,255,255,.22);">15</span></button>
+        
+          <button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(32,86,232,0.1);color:#1a46bd;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#2056e8;"></span>Performance <span style="font-weight:500;opacity:.75;">2</span></button>
+        
+          <button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(27,143,208,0.1);color:#146fa3;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#1b8fd0;"></span>Cash and banking <span style="font-weight:500;opacity:.75;">3</span></button>
+        
+          <button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(15,157,140,0.1);color:#0b7a6d;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#0f9d8c;"></span>Sales <span style="font-weight:500;opacity:.75;">2</span></button>
+        
+          <button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(224,112,31,0.1);color:#b2560f;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#e0701f;"></span>Spend <span style="font-weight:500;opacity:.75;">2</span></button>
+        
+          <button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(209,77,134,0.1);color:#ad3469;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#d14d86;"></span>Payroll <span style="font-weight:500;opacity:.75;">4</span></button>
+        
+          <button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(124,77,219,0.1);color:#6236c0;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#7c4ddb;"></span>Audit and compliance <span style="font-weight:500;opacity:.75;">2</span></button>
+        
+      </div>
+      <label style="display: flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 12px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; color: #5d6b8f; font-size: 13px; width: 190px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search reports</label>
+    </div>
+
+    <div style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Report</th>
+            <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Domain</th>
+            <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Basis</th>
+            <th scope="col" style="padding: 11px 16px; border-bottom: 1px solid rgba(32,86,232,.12);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Open</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(32,86,232,0.13);color:#1a46bd;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Category spend rollup</span><span style="font-size: 12px; color: #5d6b8f;">Monthly spend by category with budget share</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#2056e8;"></span>Performance</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(32,86,232,0.13);color:#1a46bd;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Annual spend matrix</span><span style="font-size: 12px; color: #5d6b8f;">Category spend across months or quarters</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#2056e8;"></span>Performance</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(27,143,208,0.13);color:#146fa3;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Point-in-time balances</span><span style="font-size: 12px; color: #5d6b8f;">Bank and cash balances at a cutoff date</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#1b8fd0;"></span>Cash and banking</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(27,143,208,0.13);color:#146fa3;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Cash position and 30/60/90-day forecast</span><span style="font-size: 12px; color: #5d6b8f;">Projected cash from receivables, bills and subscriptions</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#1b8fd0;"></span>Cash and banking</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(27,143,208,0.13);color:#146fa3;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Bank reconciliation summary</span><span style="font-size: 12px; color: #5d6b8f;">Statement reconciliation, variances and period locks</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#1b8fd0;"></span>Cash and banking</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(15,157,140,0.13);color:#0b7a6d;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Customer receivables and sales summary</span><span style="font-size: 12px; color: #5d6b8f;">Invoice status, collections aging and revenue channels</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#0f9d8c;"></span>Sales</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(15,157,140,0.13);color:#0b7a6d;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Withholding tax credits</span><span style="font-size: 12px; color: #5d6b8f;">Tax withheld by customers, by customer and month</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#0f9d8c;"></span>Sales</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(224,112,31,0.13);color:#b2560f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Vendor payables and commitments</span><span style="font-size: 12px; color: #5d6b8f;">Bill approval queue, payment readiness and upcoming payments</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#e0701f;"></span>Spend</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(224,112,31,0.13);color:#b2560f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Recurring spend and SaaS commitments</span><span style="font-size: 12px; color: #5d6b8f;">Active subscriptions, renewals and monthly run rate</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#e0701f;"></span>Spend</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(209,77,134,0.13);color:#ad3469;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Payroll register and compensation outflows</span><span style="font-size: 12px; color: #5d6b8f;">Monthly payroll by staff and department</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#d14d86;"></span>Payroll</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(209,77,134,0.13);color:#ad3469;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Compensation spend and variance</span><span style="font-size: 12px; color: #5d6b8f;">Compensation per employee and company-wide</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#d14d86;"></span>Payroll</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash and accrual</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(209,77,134,0.13);color:#ad3469;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Statutory obligations remitted</span><span style="font-size: 12px; color: #5d6b8f;">Settled obligations by period and type</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#d14d86;"></span>Payroll</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">Cash</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(209,77,134,0.13);color:#ad3469;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Payroll and statutory settlement status</span><span style="font-size: 12px; color: #5d6b8f;">Pending vs settled payroll and statutory items</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#d14d86;"></span>Payroll</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">[CHECK]</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(124,77,219,0.13);color:#6236c0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Continuous transaction ledger</span><span style="font-size: 12px; color: #5d6b8f;">Ledger journal with running balances and references</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#7c4ddb;"></span>Audit and compliance</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">[CHECK]</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(124,77,219,0.13);color:#6236c0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span><span><span style="display: block; font-weight: 600; color: #16245e;">Cheque register and clear status</span><span style="font-size: 12px; color: #5d6b8f;">Cheques by fiscal year and account, by status</span></span></span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width:8px;height:8px;border-radius:3px;display:inline-block;background:#7c4ddb;"></span>Audit and compliance</span></td>
+              <td style="padding: 7px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap; color: #4b5c92;">[CHECK]</td>
+              <td style="padding: 7px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px;">Open</button></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

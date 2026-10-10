@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialog: Record transaction (approved reference, restyle v2)</title>
+<!-- Approved reference for docs/finance-module/21-finance-ui-restyle-v2.md. Static export of the owner-approved canvas board. Do not edit; change the plan instead. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select,textarea{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 860px; box-sizing: border-box; background: rgba(22,36,94,.42); font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; color: #2b3a5c; display: flex; align-items: center; justify-content: center;">
+  <div role="dialog" aria-labelledby="rtTitle" style="width: 700px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px rgba(16,30,80,.28); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(32,86,232,.08);">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 11px; background: rgba(27,143,208,.14); color: #146fa3; display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"></path></svg></span>
+      <div style="flex: 1;"><h2 id="rtTitle" style="margin: 0; font-family: Sora, sans-serif; font-size: 17px; font-weight: 700; color: #16245e;">Record transaction</h2><div style="font-size: 12.5px; color: #5d6b8f;">A line in one account's ledger, always in that account's currency</div></div>
+      <a href="Color-Ledger.html" aria-label="Close" style="width: 32px; height: 32px; border-radius: 9px; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
+    </div>
+    <div style="padding: 16px 22px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px;">
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Account<span style="display: flex; align-items: center; gap: 8px; height: 36px; box-sizing: border-box; padding: 0 8px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; font-weight: 400; color: #16245e;"><span style="width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; background: rgba(185,128,0,.14); color: #8a6000;">CP</span>Cairo Office Petty Cash · EGP</span></label>
+        <div style="display: flex; flex-direction: column; gap: 5px;"><span id="rtDir" style="font-size: 12.5px; font-weight: 600; color: #4b5c92;">Direction</span>
+          <div role="group" aria-labelledby="rtDir" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;">
+            <button type="button" aria-pressed="true" style="height: 36px; border-radius: 9px; border: 1.5px solid #e0701f; background: rgba(224,112,31,.10); color: #b2560f; font-size: 13px; font-weight: 600;">↑ Money out</button>
+            <button type="button" aria-pressed="false" style="height: 36px; border-radius: 9px; border: 1px solid rgba(32,86,232,.18); background: #fff; color: #4b5c92; font-size: 13px; font-weight: 600;">↓ Money in</button>
+          </div>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Amount<span style="display: flex;"><span style="display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-right: 0; border-radius: 9px 0 0 9px; background: #f7f9ff; color: #4b5c92; font-size: 13px;">EGP</span><input value="350.00" aria-label="Amount" style="height: 36px; flex: 1; min-width: 0; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 0 9px 9px 0; font-size: 14px; text-align: right; font-weight: 600; color: #16245e;"></span></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Date<input value="10 Oct 2026" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Category<span style="display: flex; align-items: center; gap: 8px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; font-weight: 400; color: #16245e;"><span style="width: 9px; height: 9px; border-radius: 3px; background: #e0701f;"></span>Kitchen Supplies · petty</span></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Payment type<select style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; background: #fff; color: #16245e;"><option>Cash payment</option></select></label>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span id="rtPayee" style="font-size: 12.5px; font-weight: 600; color: #4b5c92;">Paid to</span>
+        <div role="group" aria-labelledby="rtPayee" style="display: flex; gap: 6px;">
+          <button type="button" aria-pressed="true" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2056e8; color: #fff; font-size: 12.5px; font-weight: 600;">Nobody specific</button>
+          <button type="button" aria-pressed="false" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(32,86,232,.18); background: #fff; color: #4b5c92; font-size: 12.5px; font-weight: 600;">Vendor</button>
+          <button type="button" aria-pressed="false" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(32,86,232,.18); background: #fff; color: #4b5c92; font-size: 12.5px; font-weight: 600;">Employee</button>
+          <button type="button" aria-pressed="false" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(32,86,232,.18); background: #fff; color: #4b5c92; font-size: 12.5px; font-weight: 600;">Customer</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px;">
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Reference<input placeholder="Receipt or document no." style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px;"></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Tax / VAT amount<input placeholder="0.00" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; text-align: right;"></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92; grid-column: span 2;">Description<input value="Coffee and water for the office" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+        <div style="padding: 10px 12px; border-radius: 12px; background: #f7f9ff;"><div style="font-size: 12px; color: #5d6b8f;">Drawer now</div><div style="font-weight: 700; color: #16245e;">EGP 20,000.00</div></div>
+        <div style="padding: 10px 12px; border-radius: 12px; background: rgba(224,112,31,.08);"><div style="font-size: 12px; color: #b2560f;">This transaction</div><div style="font-weight: 700; color: #16245e;">−350.00</div></div>
+        <div style="padding: 10px 12px; border-radius: 12px; background: #f7f9ff;"><div style="font-size: 12px; color: #5d6b8f;">After</div><div style="font-weight: 700; color: #16245e;">EGP 19,650.00</div></div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 22px; border-top: 1px solid rgba(32,86,232,.08); background: #fbfcff;">
+      <a href="Color-Ledger.html" style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 9px; color: #4b5c92; font-weight: 600; font-size: 13px; text-decoration: none;">Cancel</a>
+      <a href="Color-Ledger.html" style="display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none;">Record transaction</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

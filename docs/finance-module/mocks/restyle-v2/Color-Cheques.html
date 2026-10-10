@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour: Cheques (approved reference, restyle v2)</title>
+<!-- Approved reference for docs/finance-module/21-finance-ui-restyle-v2.md. Static export of the owner-approved canvas board. Do not edit; change the plan instead. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 640px; box-sizing: border-box; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column;">
+  <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+    <a href="Color-Overview.html" aria-label="Cheque register, back to Finance overview" style="display: flex; align-items: center; gap: 10px; text-decoration: none;"><span style="width: 30px; height: 30px; border-radius: 9px; background: rgba(27,143,208,.14); color: #146fa3; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Cheque register</span><span style="font-size: 12.5px; color: #5d6b8f;">Banking</span></a>
+    <span style="display: flex; align-items: center; gap: 12px;"><a href="Modal-Transaction.html" style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; text-decoration: none;">Add transaction</a><span style="width: 28px; height: 28px; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">SC</span></span>
+  </header>
+  <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(32,86,232,.12);">
+      <nav aria-label="Banking sections" style="display: flex; gap: 2px;">
+        <a href="Color-Accounts.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Accounts</a>
+        <a href="Color-Ledger.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Ledger</a>
+        <a href="Color-Statements.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Statements</a>
+        <a href="Color-Cheques.html" aria-current="page" style="padding: 9px 12px; font-weight: 600; color: #2056e8; text-decoration: none; border-bottom: 2px solid #2056e8; margin-bottom: -1px;">Cheques</a>
+        <a href="Color-Transfers.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Transfers</a>
+      </nav>
+      <div style="display: flex; gap: 8px; padding-bottom: 8px;">
+        <label style="display: flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 12px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; color: #5d6b8f; font-size: 13px; width: 170px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search cheques</label>
+        <a href="Modal-Cheque.html" style="display: inline-flex; align-items: center; height: 32px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 13px; text-decoration: none;">Withdraw cash</a>
+        <a href="Modal-Cheque.html" style="display: inline-flex; align-items: center; height: 32px; box-sizing: border-box; padding: 0 14px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none;">Issue cheque</a>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <div role="group" aria-label="Filter by status" style="display: flex; gap: 6px;">
+        <button type="button" aria-pressed="true" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #2056e8; color: #fff; border: 1px solid #2056e8; box-shadow: 0 2px 6px rgba(32,86,232,.25);">All <span style="padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.22);">2</span></button>
+        <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #e8eeff; color: #1a46bd; border: 1px solid transparent;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1a46bd;"></span>Issued <span style="font-weight: 500; opacity: .75;">1</span></button>
+        <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #e3f5ec; color: #06703f; border: 1px solid transparent;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #06703f;"></span>Cleared <span style="font-weight: 500; opacity: .75;">1</span></button>
+        <button type="button" aria-expanded="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #fff; color: #4b5c92; border: 1px dashed #8f9cc2;">More · Draft, Outstanding, Bounced, Stopped, Voided, Replaced ▾</button>
+      </div>
+      <select aria-label="Fiscal year" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>FY 2026</option></select>
+    </div>
+
+    <div style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Payee</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #2056e8; border-bottom: 1px solid rgba(32,86,232,.12);">Issued ↓</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">From account</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Purpose</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Status</th>
+            <th scope="col" style="text-align: right; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Amount</th>
+            <th scope="col" style="padding: 12px 16px; border-bottom: 1px solid rgba(32,86,232,.12);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 10px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: rgba(224,112,31,.14); color: #b2560f;">AW</span><span><span style="display: block; font-weight: 600; color: #16245e;">Amazon Web Services</span><span style="font-size: 12px; font-weight: 600; color: #2056e8;">Cheque 001011</span></span></span></td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">2 Sep 2026</td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07);">Voyance Operating USD</td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><div>Vendor bill</div><a href="Color-Bills.html" style="font-size: 12px; font-weight: 600; text-decoration: none;">BILL-2026-001</a></td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #06703f;"></span>Cleared</span><div style="font-size: 12px; color: #5d6b8f; margin-top: 2px;">5 Sep 2026</div></td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; font-variant-numeric: tabular-nums;">$4,200.00</td>
+            <td style="padding: 10px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;"><button type="button" aria-label="View cheque 001011" title="View cheque 001011" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><button type="button" aria-label="Edit cheque 001011" title="Edit cheque 001011" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: rgba(185,128,0,.14); color: #8a6000;">CP</span><span><span style="display: block; font-weight: 600; color: #16245e;">Voyance Health (cash drawer)</span><span style="font-size: 12px; font-weight: 600; color: #2056e8;">Cheque 001012</span></span></span></td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">6 Sep 2026</td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07);">Voyance Operating USD</td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><div>Cash withdrawal</div><span style="font-size: 12px; color: #5d6b8f;">Funds the petty cash drawer</span></td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #1a46bd; background: #e8eeff;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1a46bd;"></span>Issued</span></td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; font-variant-numeric: tabular-nums;">$15,000.00</td>
+            <td style="padding: 10px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 12px; border-radius: 8px; border: 0; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Mark cleared</button><button type="button" aria-label="View cheque 001012" title="View cheque 001012" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><button type="button" aria-label="Edit cheque 001012" title="Edit cheque 001012" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding: 10px 16px; font-size: 12.5px; color: #5d6b8f;">Showing <strong style="color: #2056e8;">1–2</strong> of <strong style="color: #2056e8;">2</strong> cheques · <strong style="color: #16245e;">$15,000.00</strong> not yet cleared</div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

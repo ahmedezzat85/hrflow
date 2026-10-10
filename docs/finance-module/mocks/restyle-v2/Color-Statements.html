@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour: Statements (approved reference, restyle v2)</title>
+<!-- Approved reference for docs/finance-module/21-finance-ui-restyle-v2.md. Static export of the owner-approved canvas board. Do not edit; change the plan instead. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 580px; box-sizing: border-box; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column;">
+  <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+    <a href="Color-Overview.html" aria-label="Statements and reconciliation, back to Finance overview" style="display: flex; align-items: center; gap: 10px; text-decoration: none;"><span style="width: 30px; height: 30px; border-radius: 9px; background: rgba(27,143,208,.14); color: #146fa3; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Statements and reconciliation</span><span style="font-size: 12.5px; color: #5d6b8f;">Banking</span></a>
+    <span style="display: flex; align-items: center; gap: 12px;"><a href="Modal-Transaction.html" style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; text-decoration: none;">Add transaction</a><span style="width: 28px; height: 28px; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">SC</span></span>
+  </header>
+  <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(32,86,232,.12);">
+      <nav aria-label="Banking sections" style="display: flex; gap: 2px;">
+        <a href="Color-Accounts.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Accounts</a>
+        <a href="Color-Ledger.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Ledger</a>
+        <a href="Color-Statements.html" aria-current="page" style="padding: 9px 12px; font-weight: 600; color: #2056e8; text-decoration: none; border-bottom: 2px solid #2056e8; margin-bottom: -1px;">Statements</a>
+        <a href="Color-Cheques.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Cheques</a>
+        <a href="Color-Transfers.html" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Transfers</a>
+      </nav>
+      <div style="display: flex; gap: 8px; padding-bottom: 8px;">
+        <select aria-label="Account" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>All bank accounts</option></select>
+        <select aria-label="Period" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>All periods</option></select>
+        <button type="button" style="height: 32px; padding: 0 14px; border-radius: 8px; border: 0; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px;">Upload statement</button>
+      </div>
+    </div>
+
+    <div role="group" aria-label="Filter by status" style="display: flex; gap: 6px;">
+      <button type="button" aria-pressed="true" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #2056e8; color: #fff; border: 1px solid #2056e8; box-shadow: 0 2px 6px rgba(32,86,232,.25);">All <span style="padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.22);">1</span></button>
+      <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #fdf0e1; color: #9c5000; border: 1px solid transparent;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #9c5000;"></span>Needs review <span style="font-weight: 500; opacity: .75;">1</span></button>
+      <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #e3f5ec; color: #06703f; border: 1px solid transparent; opacity: .55;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #06703f;"></span>Reconciled <span style="font-weight: 500; opacity: .75;">0</span></button>
+      <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #eef1f8; color: #4b5c92; border: 1px solid transparent; opacity: .55;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #4b5c92;"></span>Closed <span style="font-weight: 500; opacity: .75;">0</span></button>
+    </div>
+
+    <div style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: #2056e8; border-bottom: 1px solid rgba(32,86,232,.12);">Period ↓</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">File</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Matching</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Status</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Uploaded</th>
+            <th scope="col" style="padding: 12px 16px; border-bottom: 1px solid rgba(32,86,232,.12);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 11px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: flex; align-items: center; gap: 10px;"><span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: rgba(27,143,208,.14); color: #146fa3;">VO</span><span><span style="display: block; font-weight: 600; color: #16245e;">Sep 2026</span><span style="font-size: 12px; color: #5d6b8f;">Voyance Operating USD</span></span></span></td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07);">CSV<div style="font-size: 12px; color: #5d6b8f;">3 lines</div></td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 90px; height: 6px; border-radius: 999px; background: #efe9fd; overflow: hidden; display: inline-block;"><span style="display: block; width: 33%; height: 100%; background: #7c4ddb; border-radius: 999px;"></span></span><span style="font-weight: 600; color: #16245e;">1 of 3</span></div><div style="font-size: 12px; color: #5d6b8f;">2 lines to match</div></td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #9c5000; background: #fdf0e1;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #9c5000;"></span>Needs review</span></td>
+            <td style="padding: 11px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">10 Sep 2026</td>
+            <td style="padding: 11px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><a href="Color-Ledger.html" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 12px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; vertical-align: middle; text-decoration: none;">Reconcile</a><button type="button" aria-label="View Sep 2026 statement" title="View Sep 2026 statement" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><button type="button" aria-label="Edit Sep 2026 statement" title="Edit Sep 2026 statement" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding: 10px 16px; font-size: 12.5px; color: #5d6b8f;">Showing <strong style="color: #2056e8;">1–1</strong> of <strong style="color: #2056e8;">1</strong> statement</div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

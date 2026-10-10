@@ -396,6 +396,18 @@ This document records durable product and architectural decisions approved by th
 - **Decision:** The cash-basis P&L is the primary view. Reversals reduce the side they reverse; movements between own accounts (transfers, exchange, withdrawals) are excluded; payroll and statutory payments count as spend. "All currencies" shows one column per currency with no converted total. The accrual view is labelled partial until completed later.
 - **Rationale:** The owner runs the business on a cashbook; the review found reversals counted as revenue, withdrawals counted on both sides, and USD and EGP summed under a USD label.
 
+### D-027 — Finance UI Restyle v2: Colour Direction on Every Finance Page
+
+- **Status:** Accepted by owner, October 10, 2026. Not implemented; UI plan in [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md), backend support in [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md). Approved references: `docs/finance-module/mocks/restyle-v2/`.
+- **Decision:**
+  - Every Finance page in the six Finance sidebar items (Overview, Sales, Spend, Banking, Reports & Export, Finance Settings), their dialogs and drawers move to the colour direction: navy ink instead of black, brand blue for anything clickable or identifying, eight identity colours (fixed order, colour-blind validated in light and dark) for avatars, category dots and future charts, one colour per Finance area, white table header rows, direction C soft summary cards.
+  - Bills keeps its approved UX (D-021, doc 19 §12); only colours and sizes change. Every table follows the Bills row-action pattern: at most one text button plus up to three icon buttons, no "⋯" menus.
+  - Finance buttons get smaller: page buttons 32 px, row buttons 28 px, dialog footer buttons 34 px, dialog fields 36 px. Applied inside Finance only; global button rules are unchanged.
+  - Categories get a stored colour; customers and vendors lists return open balances per currency (backend, additive).
+  - Payroll Runs and Payroll Settings are out of scope (separate plan later).
+- **Scope:** Visual and small UI-level changes (control types, client-side counts and sums, removal of obsolete columns). Three additive API fields (doc 22). No workflow, permission or calculation change; D-016 to D-026 unchanged.
+- **Rationale:** The owner wants a calmer, more colourful Finance module that uses the brand colour and stays readable; the Bills restyle proved the table pattern, and the full design was reviewed screen by screen in a clickable prototype before approval.
+
 ---
 
 ## Related but Not Decisions

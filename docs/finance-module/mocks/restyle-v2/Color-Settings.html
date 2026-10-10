@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour: Finance settings (approved reference, restyle v2)</title>
+<!-- Approved reference for docs/finance-module/21-finance-ui-restyle-v2.md. Static export of the owner-approved canvas board. Do not edit; change the plan instead. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 1000px; box-sizing: border-box; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column;">
+  <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+    <a href="Color-Overview.html" aria-label="Finance settings, back to Finance overview" style="display: flex; align-items: center; gap: 10px; text-decoration: none;"><span style="width: 30px; height: 30px; border-radius: 9px; background: rgba(75,92,146,.12); color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Finance settings</span><span style="font-size: 12.5px; color: #5d6b8f;">Settings</span></a>
+    <span style="display: flex; align-items: center; gap: 12px;"><a href="Modal-Transaction.html" style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; background: #2056e8; color: #fff; font-weight: 600; font-size: 12.5px; text-decoration: none;">Add transaction</a><span style="width: 28px; height: 28px; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">SC</span></span>
+  </header>
+  <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(32,86,232,.12);">
+      <nav aria-label="Settings sections" style="display: flex; gap: 2px;">
+        <a href="Color-Settings.html" aria-current="page" style="padding: 9px 12px; font-weight: 600; color: #2056e8; text-decoration: none; border-bottom: 2px solid #2056e8; margin-bottom: -1px;">Transaction categories</a>
+        <a href="#" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Payment types</a>
+        <a href="#" style="padding: 9px 12px; font-weight: 500; color: #4b5c92; text-decoration: none;">Display</a>
+      </nav>
+      <div style="display: flex; gap: 8px; padding-bottom: 8px;">
+        <button type="button" style="height: 32px; padding: 0 14px; border-radius: 8px; border: 0; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px;">Add category</button>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <div role="group" aria-label="Filter categories" style="display: flex; gap: 6px;">
+        <button type="button" aria-pressed="true" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #2056e8; color: #fff; border: 1px solid #2056e8; box-shadow: 0 2px 6px rgba(32,86,232,.25);">All <span style="padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.22);">14</span></button>
+        <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #e3f5ec; color: #06703f; border: 1px solid transparent;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #06703f;"></span>Active <span style="font-weight: 500; opacity: .75;">14</span></button>
+        <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #eef1f8; color: #4b5c92; border: 1px solid transparent; opacity: .55;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #4b5c92;"></span>Inactive <span style="font-weight: 500; opacity: .75;">0</span></button>
+        <button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: #fff; color: #4b5c92; border: 1px solid rgba(32,86,232,.18);">Petty spend <span style="font-weight: 500; opacity: .75;">2</span></button>
+      </div>
+      <select aria-label="Kind" style="height: 32px; padding: 0 10px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; font-size: 13px; color: #16245e;"><option>All kinds</option></select>
+    </div>
+
+    <div style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: #2056e8; border-bottom: 1px solid rgba(32,86,232,.12); width: 44px;">Code ↑</th>
+            <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Category</th>
+            <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Kind</th>
+            <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Spend type</th>
+            <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Status</th>
+            <th scope="col" style="padding: 11px 16px; border-bottom: 1px solid rgba(32,86,232,.12);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">1</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#0f9d8c;"></span>Revenue</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#0b7a6d;">↓</span> Revenue</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Revenue" title="Deactivate Revenue" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">2</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#d14d86;"></span>Salaries</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Salaries" title="Deactivate Salaries" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">3</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#3f9a3c;"></span>Medical Insurance</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Medical Insurance" title="Deactivate Medical Insurance" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">4</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#e0701f;"></span>Kitchen Supplies</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Petty / recurring</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Kitchen Supplies" title="Deactivate Kitchen Supplies" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">5</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#b98000;"></span>Transportation</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Petty / recurring</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Transportation" title="Deactivate Transportation" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">6</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#7c4ddb;"></span>Rent</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Rent" title="Deactivate Rent" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">7</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#2056e8;"></span>Bank Fees</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Bank Fees" title="Deactivate Bank Fees" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">8</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#1b8fd0;"></span>Infrastructure</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Infrastructure" title="Deactivate Infrastructure" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">9</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#7c4ddb;"></span>SaaS</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate SaaS" title="Deactivate SaaS" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">10</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#e0701f;"></span>Facilities &amp; Maintenance</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Facilities &amp; Maintenance" title="Deactivate Facilities &amp; Maintenance" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">11</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#b98000;"></span>Electricity</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Electricity" title="Deactivate Electricity" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">12</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#1b8fd0;"></span>Internet</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Internet" title="Deactivate Internet" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">13</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#2056e8;"></span>Operating Expense</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#b2560f;">↑</span> Cost</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Operating Expense" title="Deactivate Operating Expense" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+            <tr>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); color: #8f9cc2; font-variant-numeric: tabular-nums;">99</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: #16245e;"><span style="width:10px;height:10px;border-radius:3px;display:inline-block;background:#8f9cc2;"></span>Other</span></td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="font-weight:700;color:#8f9cc2;">·</span> Other</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07); color: #4b5c92;">Standard</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #06703f;"></span>Active</span></td>
+              <td style="padding: 8px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><button type="button" style="height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 12.5px; vertical-align: middle;">Edit</button><button type="button" aria-label="Deactivate Other" title="Deactivate Other" style="width:30px;height:30px;margin-left:2px;border:0;border-radius:8px;background:transparent;color:#5d6b8f;display:inline-grid;place-items:center;vertical-align:middle;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></td>
+            </tr>
+          
+        </tbody>
+      </table>
+      <div style="padding: 10px 16px; font-size: 12.5px; color: #5d6b8f;">Each category keeps its colour everywhere: table dots, bills and later the charts.</div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

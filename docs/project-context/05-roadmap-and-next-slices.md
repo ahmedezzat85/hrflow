@@ -181,6 +181,26 @@ Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-fina
 | F6 | Cash-basis P&L fixed; per-currency columns; accrual labelled partial (D-026). **Done** | M | F1, F5 |
 | Later | Complete accrual P&L; VAT on bills | — | F6 |
 
+## 3D. Finance UI Restyle v2 (accepted October 10, 2026)
+
+Plans: [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md) (UI, branch `feature/finance-ui-restyle-v2`) and [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md) (backend, branch `feature/finance-restyle-v2-backend`, separate checkout). Decision D-027. The two run in parallel; the UI feature-detects the backend fields.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| S0 | Intake, baseline, code map (UI) | S | — |
+| S1 | Tokens, `finance-v2.css`, helpers, top bar, button sizes | M | S0 |
+| S2 | Bills, Vendors, bill dialogs | M | S1 |
+| S3 | Subscriptions, Statutory, their dialogs | M | S1 |
+| S4 | Sales invoices, Customers, 360 drawer, invoice and receipt dialogs | M | S1 |
+| S5 | Accounts, Ledger, transaction and account dialogs | M | S1 |
+| S6 | Transfers, Cheques, Statements, reconciliation, their dialogs | L | S1 |
+| S7 | Overview | M | S1 |
+| S8 | Reports, Settings | M | S1 |
+| S9 | Drawers and remaining dialogs, dark pass, cleanup, docs | M | S2–S8 |
+| BE-1 | Category colour field and migration | S | — |
+| BE-2 | Customer receivables on the list | S | — |
+| BE-3 | Vendor payables on the list | S | — |
+
 ---
 
 ## 4. Deferred Until Decision
