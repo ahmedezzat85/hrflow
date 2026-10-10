@@ -1453,7 +1453,19 @@ async getFeatureFlags() {
       if (params && params.is_active !== undefined) {
         list = list.filter((v) => v.is_active === (params.is_active === "true" || params.is_active === true));
       }
-      return list;
+      // BE-3 (doc 22): open payables per currency (pending_approval, approved, scheduled, partially_paid).
+      const OPEN = ["pending_approval", "approved", "scheduled", "partially_paid"];
+      return list.map((v) => {
+        const byCurrency = {};
+        FinanceMockState.bills.filter((b) => b.vendor_id === v.id && OPEN.includes(b.status)).forEach((b) => {
+          const cur = b.currency || "USD";
+          const row = byCurrency[cur] || (byCurrency[cur] = { currency: cur, open_amount: 0, open_count: 0, overdue_count: 0 });
+          row.open_amount = round(row.open_amount + (b.total - (b.amount_paid || 0)), 2);
+          row.open_count += 1;
+          if (_billIsOverdue(b)) row.overdue_count += 1;
+        });
+        return { ...v, payables: Object.values(byCurrency) };
+      });
     }
     let url = "/api/finance/vendors";
     if (params) {
@@ -1642,19 +1654,19 @@ async getFeatureFlags() {
 
   if (!FinanceMockState.categories) {
     FinanceMockState.categories = [
-    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, is_petty: false },
-    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, is_petty: false },
-    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, is_petty: false },
-    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, is_petty: true },
-    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, is_petty: true },
-    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, is_petty: false },
-    { id: 7, name: "Bank Fees", kind: "cost", is_active: true, sort_order: 7, is_petty: false },
-    { id: 8, name: "Infrastructure", kind: "cost", is_active: true, sort_order: 8, is_petty: false },
-    { id: 9, name: "SaaS", kind: "cost", is_active: true, sort_order: 9, is_petty: false },
-    { id: 10, name: "Facilities & Maintenance", kind: "cost", is_active: true, sort_order: 10, is_petty: false },
-    { id: 11, name: "Electricity", kind: "cost", is_active: true, sort_order: 11, is_petty: false },
-    { id: 12, name: "Internet", kind: "cost", is_active: true, sort_order: 12, is_petty: false },
-    { id: 13, name: "Operating Expense", kind: "cost", is_active: true, sort_order: 13, is_petty: false },
+    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, color: "teal", is_petty: false },
+    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, color: "blue", is_petty: false },
+    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, color: "pink", is_petty: false },
+    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, color: "ochre", is_petty: true },
+    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, color: "green", is_petty: true },
+    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, color: "orange", is_petty: false },
+    { id: 7, name: "Bank Fees", kind: "cost", is_active: true, sort_order: 7, color: "violet", is_petty: false },
+    { id: 8, name: "Infrastructure", kind: "cost", is_active: true, sort_order: 8, color: "sky", is_petty: false },
+    { id: 9, name: "SaaS", kind: "cost", is_active: true, sort_order: 9, color: "violet", is_petty: false },
+    { id: 10, name: "Facilities & Maintenance", kind: "cost", is_active: true, sort_order: 10, color: "green", is_petty: false },
+    { id: 11, name: "Electricity", kind: "cost", is_active: true, sort_order: 11, color: "ochre", is_petty: false },
+    { id: 12, name: "Internet", kind: "cost", is_active: true, sort_order: 12, color: "sky", is_petty: false },
+    { id: 13, name: "Operating Expense", kind: "cost", is_active: true, sort_order: 13, color: "blue", is_petty: false },
     { id: 14, name: "Other", kind: "other", is_active: true, sort_order: 99, is_petty: false },
   ];
   }
