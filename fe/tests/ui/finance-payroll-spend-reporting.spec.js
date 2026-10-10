@@ -23,7 +23,7 @@ test.describe('FUX-419: Compensation Spend & Variance Reporting UI Suite', () =>
 
     // 2. Open Compensation Spend Report
     const compCard = page.locator('#reportLibraryGrid .report-catalog-card:has-text("Compensation Spend & Variance Report")');
-    await compCard.locator('button:has-text("Open Report")').click();
+    await compCard.locator('button:has-text("Open")').click();
 
     const pane = page.locator('#reportPaneCompensationSummary');
     await expect(pane).toBeVisible({ timeout: 5000 });

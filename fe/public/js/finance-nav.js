@@ -66,6 +66,10 @@ function switchFinanceSettingsSubTab(subTab, btn) {
   const panePaymentTypes = document.getElementById("financeSettingsPanePaymentTypes");
   const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
 
+  document.querySelectorAll("#a-finance-settings [data-head-for]").forEach((el) => {
+    el.style.display = el.dataset.headFor === subTab ? "" : "none";
+  });
+
   if (paneCategories) paneCategories.style.display = subTab === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = subTab === "payment_types" ? "block" : "none";
   if (paneDisplay) paneDisplay.style.display = subTab === "display" ? "block" : "none";

@@ -494,3 +494,89 @@ test.describe('Finance restyle v2: Overview (S7)', () => {
     });
   }
 });
+
+// ---------- S8: Reports and Settings ----------
+test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
+  test('Reports library: domain pills with counts, one table, Open outline buttons', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-reports');
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card').first()).toBeVisible();
+    await expect(page.locator('#a-finance-reports .section-title').first()).toBeHidden();
+    expect(await css(page, '.fv-table--reports thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    expect(await css(page, '#reportLibraryGrid .report-catalog-card button', 'height')).toBe('28px');
+    await expect(page.locator('#reportLibraryCategoryPills .fv-pill')).toHaveCount(7);
+    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('21');
+    // one row per report, a dot and the domain name, the real basis from the library data
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(21);
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card').first().locator('.fv-dot')).toHaveCount(1);
+    await expect(page.locator('#reportLibraryGrid')).toContainText('Cash and accrual');
+    await page.click('#reportLibraryCategoryPills [data-domain="Payroll"]');
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(4);
+    await page.fill('#reportLibrarySearch', 'matrix');
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(0);
+  });
+
+  for (const theme of ['light', 'dark']) {
+    test(`Settings categories in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await openAdminPage(page, 'a-finance-settings');
+      await expect(page.locator('#financeCategoriesTableBody tr').first()).toBeVisible();
+      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Display']);
+      expect(await css(page, '#financeCategoriesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+      expect(await css(page, '#financeAddCategoryBtn', 'height')).toBe('32px');
+      await expect(page.locator('#financeCategoryStatusPills .fv-pill')).toHaveCount(4);
+      await expect(page.locator('#catPillCountAll')).toHaveText('14');
+      await expect(page.locator('#catPillCountPetty')).toHaveText('2');
+      // kind as plain text with a direction arrow, status as a pill, Edit outline plus one icon
+      await expect(page.locator('#financeCategoriesTableBody tr').first()).toContainText('Revenue');
+      await expect(page.locator('#financeCategoriesTableBody .badge')).toHaveCount(0);
+      expect(await css(page, '#financeCategoriesTableBody .btn-category-edit', 'height')).toBe('28px');
+      await expect(page.locator('#financeCategoriesTableBody .fv-dot').first()).toBeVisible();
+      await page.click('#financeCategoryStatusPills [data-filter="petty"]');
+      await expect(page.locator('#financeCategoriesTableBody tr')).toHaveCount(2);
+      await page.selectOption('#financeCategoryKindFilter', 'revenue');
+      await expect(page.locator('#financeCategoriesTableBody tr')).toHaveCount(0);
+    });
+  }
+
+  test('Category dialog: colour swatches appear because the API returns a colour, and the value is saved', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-settings');
+    await expect(page.locator('#financeCategoriesTableBody tr').first()).toBeVisible();
+    await page.click('#financeAddCategoryBtn');
+    await expect(page.locator('#financeCategoryModal.fv-dialog')).toBeVisible();
+    await expect(page.locator('#fFinanceCategoryColorGroup')).toBeVisible();
+    await expect(page.locator('#fFinanceCategoryColorGroup .fv-swatch')).toHaveCount(8);
+    await page.fill('#fFinanceCategoryName', 'Legal and accountant');
+    await page.locator('#fFinanceCategoryColorGroup .fv-swatch.fv-hue-pink').click();
+    await page.click('#financeCategorySaveBtn');
+    await expect(page.locator('#financeCategoryModal')).not.toBeVisible();
+    const row = page.locator('#financeCategoriesTableBody tr:has-text("Legal and accountant")');
+    await expect(row).toBeVisible();
+    await expect(row.locator('.fv-dot')).toHaveClass(/fv-hue-pink/);
+  });
+
+  test('Category dialog hides the colour choice when the API sends no colour', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-settings');
+    await expect(page.locator('#financeCategoriesTableBody tr').first()).toBeVisible();
+    await page.evaluate(() => { FinanceState.categories = FinanceState.categories.map(({ color, ...c }) => c); });
+    await page.click('#financeAddCategoryBtn');
+    await expect(page.locator('#financeCategoryModal')).toBeVisible();
+    await expect(page.locator('#fFinanceCategoryColorGroup')).toBeHidden();
+  });
+
+  test('Payment types and Display tabs follow the same rules and the header action follows the tab', async ({ page }) => {
+    await openAdmin(page);
+    await openAdminPage(page, 'a-finance-settings');
+    await page.click('#subtabSettingsPaymentTypes');
+    await expect(page.locator('#financePaymentTypesTableBody tr').first()).toBeVisible();
+    await expect(page.locator('#financeAddPaymentTypeBtn')).toBeVisible();
+    await expect(page.locator('#financeAddCategoryBtn')).toBeHidden();
+    expect(await css(page, '#financePaymentTypesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
+    await expect(page.locator('#ptPillCountAll')).not.toHaveText('0');
+    await page.click('#subtabSettingsDisplay');
+    await expect(page.locator('#financeGlobalDensityControl')).toBeVisible();
+    await expect(page.locator('#financeAddPaymentTypeBtn')).toBeHidden();
+  });
+});

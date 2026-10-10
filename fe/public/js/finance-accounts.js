@@ -889,19 +889,11 @@ async function loadFinanceCategories() {
   if (errBannerAccts) errBannerAccts.style.display = "none";
 
   try {
-    let params = {};
-    if (_currentCategoryStatusFilter === "active") params.is_active = true;
-    else if (_currentCategoryStatusFilter === "inactive") params.is_active = false;
-    if (_currentCategoryKindFilter && _currentCategoryKindFilter !== "all") params.kind = _currentCategoryKindFilter;
-
-    const items = await FinanceApi.getCategories(params);
+    // The whole list is loaded: the status pills, their counts and the kind filter work on the client.
+    const items = await FinanceApi.getCategories();
     FinanceState.categories = items;
-
-    let filtered = items;
-    if (_currentCategoryStatusFilter === "petty") {
-      filtered = items.filter((c) => c.is_petty);
-    }
-    renderFinanceCategories(filtered);
+    FinanceUI.setCategories(items);
+    renderFinanceCategories(items);
   } catch (err) {
     console.error("Failed to load categories:", err);
     const errMsg = err.message || String(err);
@@ -928,15 +920,12 @@ async function loadFinanceCategories() {
 
 function filterFinanceCategories(filterType, btn) {
   _currentCategoryStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSettingsPaneCategories .filter-tabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) btn.classList.add("active");
-  loadFinanceCategories();
+  renderFinanceCategories(FinanceState.categories || []);
 }
 
 function filterFinanceCategoriesByKind(kind) {
   _currentCategoryKindFilter = kind;
-  loadFinanceCategories();
+  renderFinanceCategories(FinanceState.categories || []);
 }
 
 // Payment method shown to people: the type's name, never the raw code (OUTBOUND_TRANS).
@@ -959,11 +948,32 @@ function _categoryKindBadge(kind) {
   }
 }
 
-function renderFinanceCategories(items) {
+function renderFinanceCategories(all) {
   const tbodies = document.querySelectorAll("#financeCategoriesTableBody");
   const empties = document.querySelectorAll("#financeCategoriesEmpty");
   if (!tbodies.length) return;
 
+  const list = all || [];
+  // pill counts come from the whole list
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setText("catPillCountAll", list.length);
+  setText("catPillCountActive", list.filter((c) => c.is_active).length);
+  setText("catPillCountInactive", list.filter((c) => !c.is_active).length);
+  setText("catPillCountPetty", list.filter((c) => c.is_petty).length);
+  document.querySelectorAll("#financeCategoryStatusPills .fv-pill").forEach((p) => {
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+    const on = p.dataset.filter === _currentCategoryStatusFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+
+  let items = list;
+  if (_currentCategoryStatusFilter === "active") items = items.filter((c) => c.is_active);
+  else if (_currentCategoryStatusFilter === "inactive") items = items.filter((c) => !c.is_active);
+  else if (_currentCategoryStatusFilter === "petty") items = items.filter((c) => c.is_petty);
+  if (_currentCategoryKindFilter && _currentCategoryKindFilter !== "all") items = items.filter((c) => c.kind === _currentCategoryKindFilter);
+
+  const footer = document.getElementById("financeCategoriesFooter");
   if (!items || items.length === 0) {
     tbodies.forEach((tb) => (tb.innerHTML = ""));
     empties.forEach((em) => (em.style.display = "block"));
@@ -971,36 +981,53 @@ function renderFinanceCategories(items) {
   }
   empties.forEach((em) => (em.style.display = "none"));
 
+  const esc = FinanceUI.esc;
+  const kindText = (kind) => {
+    if (kind === "revenue") return `<span class="fv-flow fv-flow--in">Revenue</span>`;
+    if (kind === "cost") return `<span class="fv-flow fv-flow--out">Cost</span>`;
+    if (kind === "transfer") return `<span>&#8644; Transfer</span>`;
+    return `<span class="fv-muted">&middot;</span> <span>Other</span>`;
+  };
+
   const rowsHtml = items
     .map(
       (c) => `
     <tr>
-      <td><span style="color:var(--text3);font-size:12px;">${c.sort_order ?? 0}</span></td>
-      <td><strong>${c.name}</strong></td>
-      <td><span class="badge ${_categoryKindBadge(c.kind)}">${(c.kind || "other").toUpperCase()}</span></td>
-      <td>
-        ${c.is_petty
-          ? '<span class="badge badge-info"><i class="fa-solid fa-receipt"></i> Petty / Recurring</span>'
-          : '<span style="color:var(--text3);font-size:12px;">Standard</span>'
-        }
-      </td>
-      <td><span class="badge ${c.is_active ?"badge-approved" : "badge-rejected"}">${c.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
-      <td>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm" onclick="openEditFinanceCategoryModal(${c.id})" title="Edit Category">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button class="btn btn-sm ${c.is_active ?"btn-danger" : "btn-fill"}" onclick="toggleFinanceCategoryActive(${c.id}, ${c.is_active})" title="${c.is_active ? "Deactivate Category" : "Reactivate Category"}">
-            <i class="fa-solid ${c.is_active ?"fa-power-off" : "fa-check"}"></i>
-          </button>
-        </div>
-      </td>
+      <td><span class="fv-muted">${esc(c.sort_order ?? 0)}</span></td>
+      <td><span class="fv-with-dot">${FinanceUI.dot(FinanceUI.hueForCategory(c, FinanceUI._categories))}<strong class="fv-strong-ink">${esc(c.name)}</strong></span></td>
+      <td>${kindText(c.kind)}</td>
+      <td>${c.is_petty ? "Petty / recurring" : "Standard"}</td>
+      <td>${FinanceUI.statusPill(c.is_active ? "active" : "inactive", c.is_active ? "Active" : "Inactive", "", "status-badge-wrap")}</td>
+      <td class="col-actions">${FinanceUI.rowActions({
+        primary: { label: "Edit", kind: "outline", className: "btn-category-edit", onclick: `openEditFinanceCategoryModal(${c.id})`, attrs: 'title="Edit Category"' },
+        icons: [{ icon: c.is_active ? "fa-power-off" : "fa-check", label: c.is_active ? "Deactivate Category" : "Reactivate Category", className: c.is_active ? "fv-icon-btn--danger" : "", onclick: `toggleFinanceCategoryActive(${c.id}, ${c.is_active})` }],
+      })}</td>
     </tr>
   `
     )
     .join("");
 
   tbodies.forEach((tb) => (tb.innerHTML = rowsHtml));
+}
+
+// Colour choice: shown only when the API returns a `color` on categories (BE-1, doc 22); hidden otherwise.
+function _categoriesHaveColor() {
+  return (FinanceState.categories || []).some((c) => c && c.color);
+}
+
+function _syncCategoryColorChoice(color) {
+  const group = document.getElementById("fFinanceCategoryColorGroup");
+  if (!group) return;
+  group.style.display = _categoriesHaveColor() ? "" : "none";
+  const chosen = color || "";
+  group.querySelectorAll("input[name='fFinanceCategoryColor']").forEach((r) => { r.checked = r.value === chosen; });
+}
+
+function _selectedCategoryColor() {
+  const group = document.getElementById("fFinanceCategoryColorGroup");
+  if (!group || group.style.display === "none") return "";
+  const r = group.querySelector("input[name='fFinanceCategoryColor']:checked");
+  return r ? r.value : "";
 }
 
 function openAddFinanceCategoryModal() {
@@ -1011,6 +1038,7 @@ function openAddFinanceCategoryModal() {
   document.getElementById("fFinanceCategoryKind").value = "cost";
   document.getElementById("fFinanceCategorySortOrder").value = "0";
   document.getElementById("fFinanceCategoryIsPetty").checked = false;
+  _syncCategoryColorChoice(null);
   openModal("financeCategoryModal");
 }
 
@@ -1025,6 +1053,7 @@ function openEditFinanceCategoryModal(id) {
   document.getElementById("fFinanceCategoryKind").value = cat.kind || "cost";
   document.getElementById("fFinanceCategorySortOrder").value = cat.sort_order ?? 0;
   document.getElementById("fFinanceCategoryIsPetty").checked = Boolean(cat.is_petty);
+  _syncCategoryColorChoice(cat.color || null);
   openModal("financeCategoryModal");
 }
 
@@ -1034,6 +1063,7 @@ async function saveFinanceCategory() {
   const kind = document.getElementById("fFinanceCategoryKind").value;
   const sort_order = parseInt(document.getElementById("fFinanceCategorySortOrder").value, 10) || 0;
   const is_petty = document.getElementById("fFinanceCategoryIsPetty").checked;
+  const color = _selectedCategoryColor();
 
   const isValid = FinanceForm.validateRequiredFields("financeCategoryModal", [
     { id: "fFinanceCategoryName", label: "Category Name" }
@@ -1045,10 +1075,10 @@ async function saveFinanceCategory() {
 
   try {
     if (idVal) {
-      await FinanceApi.updateCategory(Number(idVal), { name, kind, sort_order, is_petty });
+      await FinanceApi.updateCategory(Number(idVal), { name, kind, sort_order, is_petty, ...(color ? { color } : {}) });
       toast("Category updated successfully", "fa-solid fa-circle-check");
     } else {
-      await FinanceApi.createCategory({ name, kind, sort_order, is_petty, is_active: true });
+      await FinanceApi.createCategory({ name, kind, sort_order, is_petty, is_active: true, ...(color ? { color } : {}) });
       toast("Category created successfully", "fa-solid fa-circle-check");
     }
     closeModal("financeCategoryModal");
@@ -1107,11 +1137,8 @@ async function loadFinancePaymentTypes() {
   if (errBannerAccts) errBannerAccts.style.display = "none";
 
   try {
-    let params = {};
-    if (_currentPaymentTypeStatusFilter === "active") params.is_active = true;
-    else if (_currentPaymentTypeStatusFilter === "inactive") params.is_active = false;
-
-    const items = await FinanceApi.getPaymentTypes(params);
+    // The whole list is loaded: the status pills and their counts work on the client.
+    const items = await FinanceApi.getPaymentTypes();
     FinanceState.paymentTypes = items;
     renderFinancePaymentTypes(items);
   } catch (err) {
@@ -1140,16 +1167,29 @@ async function loadFinancePaymentTypes() {
 
 function filterFinancePaymentTypes(filterType, btn) {
   _currentPaymentTypeStatusFilter = filterType;
-  const tabs = document.querySelectorAll("#financeSettingsPanePaymentTypes .filter-tabs .filter-tab, #financeSettingsPanePaymentTypes .filter-tabs .filter-tab");
-  tabs.forEach((t) => t.classList.remove("active"));
-  if (btn) btn.classList.add("active");
-  loadFinancePaymentTypes();
+  renderFinancePaymentTypes(FinanceState.paymentTypes || []);
 }
 
-function renderFinancePaymentTypes(items) {
+function renderFinancePaymentTypes(all) {
   const tbodies = document.querySelectorAll("#financePaymentTypesTableBody");
   const empties = document.querySelectorAll("#financePaymentTypesEmpty");
   if (!tbodies.length) return;
+
+  const list = all || [];
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setText("ptPillCountAll", list.length);
+  setText("ptPillCountActive", list.filter((p) => p.is_active).length);
+  setText("ptPillCountInactive", list.filter((p) => !p.is_active).length);
+  document.querySelectorAll("#financePaymentTypeStatusPills .fv-pill").forEach((p) => {
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+    const on = p.dataset.filter === _currentPaymentTypeStatusFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+
+  let items = list;
+  if (_currentPaymentTypeStatusFilter === "active") items = items.filter((p) => p.is_active);
+  else if (_currentPaymentTypeStatusFilter === "inactive") items = items.filter((p) => !p.is_active);
 
   if (!items || items.length === 0) {
     tbodies.forEach((tb) => (tb.innerHTML = ""));
@@ -1158,35 +1198,20 @@ function renderFinancePaymentTypes(items) {
   }
   empties.forEach((em) => (em.style.display = "none"));
 
+  const esc = FinanceUI.esc;
   const rowsHtml = items
     .map(
       (pt) => `
     <tr>
-      <td><strong>${pt.name}</strong></td>
-      <td><code>${pt.code}</code></td>
-      <td>
-        ${pt.requires_cheque_number
-          ? '<span class="badge badge-pending"><i class="fa-solid fa-money-check"></i> Cheque #</span>'
-          : '<span style="color:var(--text3);font-size:12px;">No</span>'
-        }
-      </td>
-      <td>
-        ${pt.requires_bank_fee_flag
-          ? '<span class="badge badge-pending"><i class="fa-solid fa-receipt"></i> Bank Fee</span>'
-          : '<span style="color:var(--text3);font-size:12px;">No</span>'
-        }
-      </td>
-      <td><span class="badge ${pt.is_active ?"badge-approved" : "badge-rejected"}">${pt.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
-      <td>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm" onclick="openEditFinancePaymentTypeModal(${pt.id})" title="Edit Payment Type">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button class="btn btn-sm ${pt.is_active ?"btn-danger" : "btn-fill"}" onclick="toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})" title="${pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type"}">
-            <i class="fa-solid ${pt.is_active ?"fa-power-off" : "fa-check"}"></i>
-          </button>
-        </div>
-      </td>
+      <td><strong class="fv-strong-ink">${esc(pt.name)}</strong></td>
+      <td><span class="fv-muted">${esc(pt.code)}</span></td>
+      <td>${pt.requires_cheque_number ? "Cheque #" : `<span class="fv-muted">No</span>`}</td>
+      <td>${pt.requires_bank_fee_flag ? "Bank fee" : `<span class="fv-muted">No</span>`}</td>
+      <td>${FinanceUI.statusPill(pt.is_active ? "active" : "inactive", pt.is_active ? "Active" : "Inactive", "", "status-badge-wrap")}</td>
+      <td class="col-actions">${FinanceUI.rowActions({
+        primary: { label: "Edit", kind: "outline", className: "btn-paytype-edit", onclick: `openEditFinancePaymentTypeModal(${pt.id})`, attrs: 'title="Edit Payment Type"' },
+        icons: [{ icon: pt.is_active ? "fa-power-off" : "fa-check", label: pt.is_active ? "Deactivate Payment Type" : "Reactivate Payment Type", className: pt.is_active ? "fv-icon-btn--danger" : "", onclick: `toggleFinancePaymentTypeActive(${pt.id}, ${pt.is_active})` }],
+      })}</td>
     </tr>
   `
     )
@@ -1194,6 +1219,7 @@ function renderFinancePaymentTypes(items) {
 
   tbodies.forEach((tb) => (tb.innerHTML = rowsHtml));
 }
+
 
 function openAddFinancePaymentTypeModal() {
   FinanceForm.clearErrors("financePaymentTypeModal");
