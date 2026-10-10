@@ -15,7 +15,7 @@
   --warning: #9a4d00; --warning-soft: #fdf0dc;
   --danger: #b42222; --danger-soft: #fde8e8;
   --info: #3253d0; --info-soft: #e9eeff;
-  --card-shadow: 0 1px 3px rgba(20, 50, 120, .05);
+  --card-shadow: 0 4px 16px rgba(20, 50, 120, .08);
   --modal-shadow: 0 20px 60px rgba(20, 50, 120, .16);
   --scrim: rgba(20, 30, 60, .42);
 }
@@ -371,7 +371,6 @@ textarea.in { height: 72px; padding-top: 9px; resize: vertical; }
         '<td class="r amt"><span class="cur">' + b.cur + '</span>' + b.amt + '</td>' +
         '<td><span class="pill p-' + b.s + '">' + STATUS[b.s] + '</span>' + flags + '</td>' +
         '<td><div class="acts">' + primary +
-        '<button class="ic" type="button" data-a="View" aria-label="View bill" title="View">' + ICON.eye + '</button>' +
         (b.s !== 'void' ? '<button class="ic" type="button" data-a="Edit" aria-label="Edit bill" title="Edit">' + ICON.edit + '</button>' : '<button class="ic ph" type="button" tabindex="-1" aria-hidden="true"></button>') +
         (b.att ? '<button class="ic" type="button" data-a="Attachment" aria-label="View attachment" title="Attachment">' + ICON.clip + '</button>' : '<button class="ic ph" type="button" tabindex="-1" aria-hidden="true"></button>') +
         '</div></td></tr>';

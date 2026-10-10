@@ -4,6 +4,8 @@
               <div class="filter-tabs" id="financeBillSubNav" role="tablist" aria-label="Spend sub navigation">
               <!-- rendered by SpendTabs (finance-nav.js) -->
             </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
               <div class="search-box" id="financeBillSearchBox">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeBillSearch" placeholder="Search bills..." aria-label="Search bills" oninput="filterFinanceBills(this.value)">
@@ -12,8 +14,6 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeVendorSearch" placeholder="Search vendors..." aria-label="Search vendors" oninput="filterFinanceVendors(this.value)">
               </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
               <button class="btn btn-outline" id="financeAddVendorBtn" onclick="openAddVendorModal()">Add Vendor</button>
               <button class="btn btn-outline" id="financeUploadDraftsBtn" onclick="document.getElementById('financeBillsUploadInput').click()" title="Upload several PDFs or photos; each becomes its own draft">Upload bills</button>
               <input type="file" id="financeBillsUploadInput" multiple accept=".pdf,image/*" style="display:none" onchange="onBillDraftFilesChosen(this)">

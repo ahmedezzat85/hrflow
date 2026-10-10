@@ -54,8 +54,9 @@ test.describe('Bills table, direction A', () => {
     expect(heights.regular).toBeLessThan(62);
   });
 
-  test('row actions are inline icons (view, edit, attachment), not a menu; primary button only when action is needed', async ({ page }) => {
+  test('no eye icon: the row (and the vendor name) opens the details; actions are Edit and Attachment icons plus one text button only when needed', async ({ page }) => {
     await expect(page.locator('#financeBillsTable .btn-bill-more, #financeBillsTable .bill-row-menu')).toHaveCount(0);
+    await expect(page.locator('#financeBillsTable .fa-eye')).toHaveCount(0);
 
     const draft = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-003")').first();
     await expect(draft.locator('.btn-view-bill')).toBeVisible();
@@ -66,6 +67,22 @@ test.describe('Bills table, direction A', () => {
     const paid = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-002")').first();
     await expect(paid.locator('.btn-view-bill')).toBeVisible();
     await expect(paid.locator('.btn-pay-bill, .btn-approve-bill, .btn-submit-bill, .btn-schedule-bill')).toHaveCount(0);
+  });
+
+  test('actions line up: same primary slot width and the same Edit icon column on every row', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#financeBillsTableBody tr')];
+      const edit = rows.map((r) => r.querySelector('button[title="Edit Bill"]')).filter(Boolean).map((b) => Math.round(b.getBoundingClientRect().left));
+      const prim = rows.map((r) => r.querySelector('.bill-row-actions .btn')).filter(Boolean).map((b) => Math.round(b.getBoundingClientRect().width));
+      return { edit: [...new Set(edit)], prim: [...new Set(prim)] };
+    });
+    expect(m.edit.length).toBe(1);
+    expect(m.prim.length).toBe(1);
+  });
+
+  test('table card keeps its shadow', async ({ page }) => {
+    const shadow = await page.locator('#financeBillsContainer').evaluate((el) => getComputedStyle(el).boxShadow);
+    expect(shadow).not.toBe('none');
   });
 
   test('clicking a row opens the bill details; clicking its action button does not', async ({ page }) => {

@@ -48,6 +48,15 @@ test.describe('Bills header and toolbar, direction A', () => {
     expect(await stat.locator('.filter-tab.active').evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe('2px');
   });
 
+  test('search sits in the right-hand group next to the buttons, not beside the tabs', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const r = (id) => document.getElementById(id).getBoundingClientRect();
+      return { tabsRight: r('financeBillSubNav').right, searchLeft: r('financeBillSearchBox').left, searchRight: r('financeBillSearchBox').right, addLeft: r('financeAddVendorBtn').left };
+    });
+    expect(m.searchLeft).toBeGreaterThan(m.tabsRight + 100);
+    expect(m.searchRight).toBeLessThanOrEqual(m.addLeft);
+  });
+
   test('toolbar wraps cleanly when narrow (no horizontal overflow)', async ({ page }) => {
     for (const width of [1100, 900]) {
       await page.setViewportSize({ width, height: 900 });
