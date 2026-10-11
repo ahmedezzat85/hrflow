@@ -27,8 +27,8 @@ for (const portal of PORTALS) {
         const topbar = page.locator(`${portal.app} .topbar`);
         const h = (await topbar.boundingBox()).height;
         if (vp.width >= 769) {
-          expect(h).toBeGreaterThanOrEqual(46);
-          expect(h).toBeLessThanOrEqual(50);
+          expect(h).toBeGreaterThanOrEqual(50);
+          expect(h).toBeLessThanOrEqual(54);
         }
         await expect(topbar.locator('.sub')).toHaveCount(0);
         await expect(topbar.locator('h1')).toHaveCount(1);
@@ -227,8 +227,8 @@ test('AC-13: nav labels, salary icons and active indicator inside the pill', asy
   await open(page, PORTALS[0], VIEWPORTS[0]);
   const labels = await page.locator('#adminHrNavGroup .nav-section-label').allTextContents();
   expect(labels).toEqual(['People', 'Benefits & records']);
-  await expect(page.locator('#adminHrNavGroup [data-page="a-salary"] i')).toHaveClass(/fa-arrow-trend-up/);
-  await expect(page.locator('#adminHrNavGroup [data-page="a-invoices"] i')).toHaveClass(/fa-file-lines/);
+  await expect(page.locator('#adminHrNavGroup [data-page="a-salary"] svg')).toHaveCount(1);
+  await expect(page.locator('#adminHrNavGroup [data-page="a-invoices"] svg')).toHaveCount(1);
   await expect(page.locator('#adminFinanceNavGroup [data-page="a-finance-sales"] i')).toHaveClass(/fa-file-invoice-dollar/);
 
   const bar = await page.locator('#hrRailBtn').evaluate(el => {

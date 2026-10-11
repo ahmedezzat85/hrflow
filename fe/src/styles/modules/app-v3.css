@@ -539,3 +539,7 @@
 :is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea:focus {
   border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash);
 }
+
+/* Shell icons: outline SVG set from the mocks */
+.sidebar.dual-rail .nav-item .nav-tile svg { flex: none; display: block; }
+.sidebar.dual-rail .rail-btn svg { flex: none; display: block; }

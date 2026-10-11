@@ -276,8 +276,8 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 48px;
-  min-height: 48px;
+  height: 52px;
+  min-height: 52px;
   padding: 0 24px;
   box-sizing: border-box;
 }
