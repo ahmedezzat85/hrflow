@@ -399,15 +399,69 @@ const Api = {
 
   // ---------- INVOICES (external-salary autopay / consultant fee invoices) ----------
   previewEligibleInvoices(paymentYear, paymentMonth) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve([
+        { employee_id: "EMP001", employee_name: "Sarah Connor", status: "eligible", amount: 7500 },
+        { employee_id: "EMP002", employee_name: "John Doe", status: "eligible", amount: 4500 },
+        { employee_id: "EMP003", employee_name: "Alex Rivera", status: "skipped", reason: "No external USD salary" }
+      ]);
+    }
     return apiRequest("GET", `/api/invoices/eligible?payment_year=${encodeURIComponent(paymentYear)}&payment_month=${encodeURIComponent(paymentMonth)}`);
   },
   generateInvoices(payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve({
+        summary: { generated: 2, already_exists: 0, skipped: 1, failed: 0 },
+        results: [
+          { employee_id: "EMP001", employee_name: "Sarah Connor", status: "generated", invoice_number: "INV-2026-001" },
+          { employee_id: "EMP002", employee_name: "John Doe", status: "generated", invoice_number: "INV-2026-002" }
+        ]
+      });
+    }
     return apiRequest("POST", "/api/invoices/generate", payload);
   },
   generateInvoiceForEmployee(employeeId, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve({
+        employee_id: employeeId,
+        invoice_number: `INV-2026-${String(employeeId).slice(-3)}`,
+        status: "generated"
+      });
+    }
     return apiRequest("POST", `/api/invoices/generate/${encodeURIComponent(employeeId)}`, payload);
   },
   listInvoices(params = {}) {
+    if (typeof _isMock === "function" && _isMock()) {
+      window._mockInvoices = window._mockInvoices || [
+        {
+          id: "INV-2026-001",
+          invoice_number: "INV-2026-001",
+          employee_id: "EMP001",
+          employee_name: "Sarah Connor",
+          payment_year: 2026,
+          payment_month: 10,
+          amount_usd: 7500,
+          status: "generated",
+          created_at: "2026-10-01T10:00:00Z"
+        },
+        {
+          id: "INV-2026-002",
+          invoice_number: "INV-2026-002",
+          employee_id: "EMP002",
+          employee_name: "John Doe",
+          payment_year: 2026,
+          payment_month: 9,
+          amount_usd: 4500,
+          status: "generated",
+          created_at: "2026-09-01T10:00:00Z"
+        }
+      ];
+      let res = window._mockInvoices;
+      if (params && params.employee_id) {
+        res = res.filter(inv => String(inv.employee_id) === String(params.employee_id));
+      }
+      return Promise.resolve(res);
+    }
     const q = new URLSearchParams();
     if (params && params.employee_id) q.set("employee_id", params.employee_id);
     if (params && params.payment_year) q.set("payment_year", params.payment_year);
@@ -417,12 +471,28 @@ const Api = {
     return apiRequest("GET", `/api/invoices${qs}`);
   },
   getInvoice(invoiceId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const inv = (window._mockInvoices || []).find(i => String(i.id) === String(invoiceId)) || {
+        id: invoiceId,
+        invoice_number: invoiceId,
+        amount_usd: 5000,
+        status: "generated"
+      };
+      return Promise.resolve(inv);
+    }
     return apiRequest("GET", `/api/invoices/${encodeURIComponent(invoiceId)}`);
   },
   getInvoicePreviewBlobUrl(invoiceId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const dummyPdfBlob = new Blob(["%PDF-1.4 Mock PDF content"], { type: "application/pdf" });
+      return Promise.resolve(URL.createObjectURL(dummyPdfBlob));
+    }
     return _fetchDocumentAsBlobUrl(`/api/invoices/${encodeURIComponent(invoiceId)}/stream`);
   },
   downloadInvoiceFile(invoiceId, suggestedName) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve();
+    }
     return _downloadDocumentViaFetch(`/api/invoices/${encodeURIComponent(invoiceId)}/stream?download=true`, suggestedName);
   },
 

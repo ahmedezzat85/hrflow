@@ -3,14 +3,14 @@
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-briefcase-medical"></i></div>
         <div class="modal-head-text">
-          <h3>Submit Insurance Claim on Behalf</h3>
+          <h3>Submit insurance claim on behalf</h3>
           <p>Record medical claims and calculate policy reimbursements.</p>
         </div>
         <button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim Details <span class="line"></span></div>
+          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
               <label for="bcCategory">Category <span class="req">*</span></label>
@@ -28,7 +28,7 @@
         </div>
 
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing & Attachment <span class="line"></span></div>
+          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing and attachment <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
               <label for="bcStatus">Status</label>
@@ -39,11 +39,11 @@
               </select>
             </div>
             <div class="form-field">
-              <label for="bcRecordDate">Record Date <span class="opt">Optional</span></label>
+              <label for="bcRecordDate">Record date <span class="opt">Optional</span></label>
               <input type="date" id="bcRecordDate">
             </div>
             <div class="form-field full">
-              <label for="bcDocument">Supporting Document <span class="opt">Optional</span></label>
+              <label for="bcDocument">Supporting document <span class="opt">Optional</span></label>
               <div id="bcDocDropZone" class="doc-drop-zone compact" role="button" tabindex="0" aria-label="Choose a file to upload" onclick="document.getElementById('bcDocument').click()">
                 <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
                 <div id="bcDocDropZoneEmpty" class="doc-drop-empty">
