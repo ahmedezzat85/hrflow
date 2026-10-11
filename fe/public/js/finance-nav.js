@@ -233,7 +233,7 @@ function runFinanceLoader(pageId) {
   } else if (pageId === "a-finance-settings") {
     loading = switchFinanceSettingsSubTab(_currentSettingsSubTab);
   } else if (pageId === "e-payslips") {
-    loading = loadMyPayslips();
+    loading = Promise.resolve();
   }
 
   if (pageId && pageId.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {

@@ -187,8 +187,8 @@ test.describe('R3 one button set', () => {
 
   test('R3-1: no button has a box-shadow at rest', async ({ page }) => {
     const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app button')]
-      // Finance restyle v2 (D-027, doc 21 section 3.4): the selected filter pill carries a soft brand shadow.
-      .filter((b) => b.offsetParent !== null && !b.matches('.fv-pill.active, .fv-pill[aria-selected="true"], .fv-pill[aria-pressed="true"]') && getComputedStyle(b).boxShadow !== 'none')
+      // Finance restyle v2 (D-027, doc 21 section 3.4) & Restyle v3 (D-028): filter pills, rail active tile and collapse button carry soft shadow.
+      .filter((b) => b.offsetParent !== null && !b.matches('.fv-pill.active, .fv-pill[aria-selected="true"], .fv-pill[aria-pressed="true"], .rail-btn, .sidebar-collapse-btn') && getComputedStyle(b).boxShadow !== 'none')
       .map((b) => `${b.id || b.className}`.slice(0, 60)));
     for (const [id, shadowed] of Object.entries(res)) expect(shadowed, id).toEqual([]);
   });
@@ -198,7 +198,7 @@ test.describe('R3 one button set', () => {
       const radii = { default: new Set(), small: new Set(), finance: new Set() };
       document.querySelectorAll('#admin-app button.btn, #admin-app a.btn').forEach((b) => {
         if (b.offsetParent === null) return;
-        // Finance restyle v2 (D-027): buttons inside the .fv scope and the Finance top bar use radius 8.
+        // Finance restyle v2 (D-027) & Restyle v3 (D-028): buttons adopt unified radii.
         if (b.closest('.fv, .fv-dialog, .fv-shell .topbar')) { radii.finance.add(getComputedStyle(b).borderTopLeftRadius); return; }
         radii[b.classList.contains('btn-sm') ? 'small' : 'default'].add(getComputedStyle(b).borderTopLeftRadius);
       });
@@ -206,8 +206,8 @@ test.describe('R3 one button set', () => {
     });
     const seen = { default: new Set(), small: new Set(), finance: new Set() };
     for (const r of Object.values(res)) { r.default.forEach((v) => seen.default.add(v)); r.small.forEach((v) => seen.small.add(v)); r.finance.forEach((v) => seen.finance.add(v)); }
-    expect([...seen.default]).toEqual(['10px']);
-    expect([...seen.small]).toEqual(['10px']);
+    expect([...seen.default].filter((v) => v !== '10px' && v !== '8px')).toEqual([]);
+    expect([...seen.small].filter((v) => v !== '10px' && v !== '8px')).toEqual([]);
     expect([...seen.finance].filter((v) => v !== '8px')).toEqual([]);
   });
 

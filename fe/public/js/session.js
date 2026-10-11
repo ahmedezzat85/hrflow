@@ -163,8 +163,8 @@ function initMockEmployeeData(){
   window.LOGGED_IN_EMPLOYEE_ID = currentLoggedInEmployee.id;
 
   empVacationHistory = [
-    { id: 'REQ-101', type: 'Vacation', status: 'Approved', startDate: getPastDate(0, 2), endDate: getPastDate(0, -3), days: 5 },
-    { id: 'REQ-105', type: 'Vacation', status: 'Approved', startDate: getPastDate(2, 14), endDate: getPastDate(2, 17), days: 3 }
+    { id: 'REQ-101', type: 'Vacation', status: 'Approved', startDate: getPastDate(0, 2), endDate: getPastDate(0, -3), dates: `${getPastDate(0, 2)} to ${getPastDate(0, -3)}`, days: 5 },
+    { id: 'REQ-105', type: 'Vacation', status: 'Approved', startDate: getPastDate(2, 14), endDate: getPastDate(2, 17), dates: `${getPastDate(2, 14)} to ${getPastDate(2, 17)}`, days: 3 }
   ];
 
   empInsuranceHistory = [

@@ -187,11 +187,12 @@ function renderEmployeePortal() {
   if (timeline) {
     const entries = [];
     empVacationHistory.slice(0, 3).forEach(v => {
+      const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || ''));
       entries.push({
         ic: 'fa-solid fa-umbrella-beach',
         c: 'accent',
         t: `${escapeHtml(v.type)} (${v.status})`,
-        d: `${v.dates} • ${v.days} days`
+        d: datesStr ? `${datesStr} • ${v.days} days` : `${v.days} days`
       });
     });
     empInsuranceHistory.slice(0, 2).forEach(c => {
@@ -224,7 +225,10 @@ function renderEmployeePortal() {
       return `<tr><td data-label="Effective Date">${s.date}</td><td data-label="Internal">${fmtUSD(s.newInternal)}</td><td data-label="External">${fmtUSD(s.newExternal)}</td><td data-label="Total">${fmtUSD(s.newInternal + s.newExternal)}</td><td data-label="Internal Δ">${fmtDelta(d.internalAmt, d.internalPct)}</td><td data-label="External Δ">${fmtDelta(d.externalAmt, d.externalPct)}</td><td data-label="Total Δ"><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td data-label="Reason">${escapeHtml(s.reason)}</td></tr>`;
     }).join('') || renderEmptyTableRow(8, 'No raise history yet.', 'fa-solid fa-sack-dollar');
   }
-  document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v => `<tr><td data-label="Type">${escapeHtml(v.type)}</td><td data-label="Dates">${v.dates}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation history yet.', 'fa-solid fa-umbrella-beach');
+  document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v => {
+    const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || '—'));
+    return `<tr><td data-label="Type">${escapeHtml(v.type)}</td><td data-label="Dates">${datesStr}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`;
+  }).join('') || renderEmptyTableRow(4, 'No vacation history yet.', 'fa-solid fa-umbrella-beach');
   
   // Dynamic employee vacation stat cards
   const vacEntitlement = emp.vacTotal || 21;
