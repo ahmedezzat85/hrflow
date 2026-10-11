@@ -256,45 +256,56 @@ async function viewProfile(id, section) {
   const vacRemaining = (e.vacTotal || 21) - (e.vacUsed || 0);
   const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—';
 
+  const canWriteEmp = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.employee.write') : true;
   document.getElementById('detailProfileHead').innerHTML = `
     <div class="esc-head">
       <div class="esc-avatar">${initials(e.name)}</div>
       <div class="esc-identity">
-        <h4>${escapeHtml(e.name)}</h4>
+        <div class="ed-name">
+          <h4>${escapeHtml(e.name)}</h4>
+          <span class="esc-pill ${e.status === 'Active' ? 'esc-pill-active' : 'esc-pill-neutral'}"><span class="hv-dot"></span>${e.status}</span>
+          <span class="esc-pill esc-pill-neutral">${e.employment_state || 'Full-Time'}</span>
+        </div>
         <div class="esc-meta">
           <span>${escapeHtml(e.role)}</span><span class="esc-dot"></span>
-          <span>${escapeHtml(e.dept)}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}
+          <span>${escapeHtml(e.dept)}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}${e.email ? `<span class="esc-dot"></span><span>${escapeHtml(e.email)}</span>` : ''}
         </div>
       </div>
-      <div class="esc-badges">
-        <span class="esc-pill ${e.status === 'Active' ? 'esc-pill-active' : 'esc-pill-neutral'}">
-          <i class="fa-solid fa-circle"></i> ${e.status}
-        </span>
-        <span class="esc-pill esc-pill-neutral">${e.employment_state || 'Full-Time'}</span>
+      <div class="ed-actions">
+        <button type="button" class="btn btn-sm btn-outline" id="edBehalfVacationBtn" onclick="openBehalfVacationModal()">Vacation / WFH Request</button>
+        <button type="button" class="btn btn-sm btn-outline" id="edBehalfClaimBtn" onclick="openBehalfClaimModal()">Medical Insurance Claim</button>
+        ${canWriteEmp ? `<button type="button" class="btn btn-sm btn-fill" id="edEditEmployeeBtn" onclick="openEmployeeModal('${e.id}')">Edit employee</button>` : ''}
       </div>
     </div>`;
 
+  const nextRaiseDays = (() => {
+    if (!e.nextRaise || e.nextRaise === '\u2014') return '';
+    const d = new Date(e.nextRaise); if (isNaN(d)) return '';
+    const n = Math.round((d - new Date()) / 86400000);
+    return n >= 0 ? `in ${n} days` : '';
+  })();
+  const kpi = (label, valueHtml, sub) => `<div class="ed-kpi"><div class="ed-kpi-k">${label}</div><div class="ed-kpi-v">${valueHtml}</div>${sub ? `<div class="ed-kpi-s">${sub}</div>` : ''}</div>`;
   document.getElementById('detailInfoGrid').innerHTML = `
-    <div class="esc-body">
-      <div class="esc-comp-zone" id="detailCompZone">${compZoneInnerHtml(e)}</div>
-        <div class="esc-meta-zone">
-          <div class="esc-zone-label">Employee Details</div>
-          ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
-          ${escRow('fa-umbrella-beach', 'Vacation', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21} days</span>`)}
-          ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id || '—')}
-          ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}
-        </div>
-      </div>`;
+    <div class="esc-body ed-kpis">
+      <div class="ed-kpi ed-kpi--total" id="detailCompZone">${compZoneInnerHtml(e)}</div>
+      ${canReadSalary() ? kpi('Internal USD cash', fmtUSD(Number(e.internalSalaryUsd || 0))) + kpi('External USD', fmtUSD(Number(e.externalSalaryUsd || 0))) + kpi('Next raise', escapeHtml(fmtDateShort(e.nextRaise)), nextRaiseDays) : ''}
+      ${kpi('Vacation', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21} days</span>`)}
+    </div>`;
+  document.getElementById('detailMetaBody').innerHTML = `
+    ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
+    ${e.join ? escRow('fa-calendar', 'Joined', fmtDateShort(e.join)) : ''}
+    ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id || '\u2014')}
+    ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}`;
     const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
     document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
     document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
-    showTableSkeleton('detailVacationBody', 4, 3);
-    showTableSkeleton('detailClaimsBody', 4, 3);
-    showTableSkeleton('detailDocumentsBody', 3, 2);
+    showTableSkeleton('detailVacationBody', 2, 3);
+    showTableSkeleton('detailClaimsBody', 2, 3);
+    showTableSkeleton('detailDocumentsBody', 2, 2);
     if (window.location && window.location.search && window.location.search.includes('mock=')) {
-      document.getElementById('detailVacationBody').innerHTML = renderEmptyTableRow(4, 'No vacation records in mock view.');
-      document.getElementById('detailClaimsBody').innerHTML = renderEmptyTableRow(4, 'No insurance claims in mock view.');
-      document.getElementById('detailDocumentsBody').innerHTML = renderEmptyTableRow(3, 'No employee documents in mock view.');
+      document.getElementById('detailVacationBody').innerHTML = renderEmptyTableRow(2, 'No vacation records in mock view.');
+      document.getElementById('detailClaimsBody').innerHTML = renderEmptyTableRow(2, 'No insurance claims in mock view.');
+      document.getElementById('detailDocumentsBody').innerHTML = renderEmptyTableRow(2, 'No employee documents in mock view.');
       return;
     }
     try {
@@ -327,15 +338,15 @@ async function viewProfile(id, section) {
         }
       }
 
-      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type">${escapeHtml(v.type)}</td><td data-label="Dates">${v.start_date} to ${v.end_date}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(4, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
+      document.getElementById('detailVacationBody').innerHTML = vacHistory.map(v => `<tr><td data-label="Type"><div class="ed-title">${escapeHtml(v.type)} \u00b7 ${v.days}</div><div class="ed-sub">${v.start_date} to ${v.end_date}</div></td><td data-label="Status" class="ed-status">${statusPill(v.status)}</td></tr>`).join('') || renderEmptyTableRow(2, 'No vacation records yet.', 'fa-solid fa-umbrella-beach');
       const empClaims = claims.filter(c => String(c.employee_id || c.Employee_Id || c.employeeId) === String(id) || (e.name && (c.employee_name || c.Employee_Name || '').toLowerCase() === e.name.toLowerCase()));
       document.getElementById('detailClaimsBody').innerHTML = empClaims.map(c => {
         const cat = c.category || c.Category || c.claim_category || c.type || '—';
         const amt = c.amount !== undefined ? c.amount : (c.Amount || 0);
         const dt = c.date || c.Date || '—';
         const st = c.status || c.Status || 'Pending';
-        return `<tr><td data-label="Category">${cat}</td><td data-label="Amount">${fmtMoney(amt)}</td><td data-label="Date">${dt}</td><td data-label="Status">${statusPill(st)}</td></tr>`;
-      }).join('') || renderEmptyTableRow(4, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');
+        return `<tr><td data-label="Category"><div class="ed-title">${cat} \u00b7 ${fmtMoney(amt)}</div><div class="ed-sub">${dt}</div></td><td data-label="Status" class="ed-status">${statusPill(st)}</td></tr>`;
+      }).join('') || renderEmptyTableRow(2, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');
       renderNotesList(notes);
       await loadEmployeeDocuments(id);
       await loadBankAccountStatus(id);
@@ -490,13 +501,12 @@ function renderEmployeeDocuments(docs) {
   const body = document.getElementById('detailDocumentsBody');
   if (!body) return;
   body.innerHTML = docs.length ? docs.map(d => `<tr>
-    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><span class="doc-name-text">${escapeHtml(d.name)}</span></div></td>
-    <td data-label="Uploaded">${d.uploaded_at}</td>
+    <td data-label="Document"><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type === 'image' ? 'image' : 'pdf'}">${docTypeIcon(d.file_type)}</div><div><div class="ed-title doc-name-text">${escapeHtml(d.name)}</div><div class="ed-sub">${d.uploaded_at}</div></div></div></td>
     <td data-label="Actions" class="col-actions">
-      <button class="icon-action" title="Preview" data-action="preview-employee-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name)}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
+      <button class="btn btn-sm btn-outline" title="Preview" data-action="preview-employee-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name)}" data-type="${escapeHtml(d.file_type || '')}">Preview</button>
       <button class="icon-action" title="Download" onclick="downloadEmployeeDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteEmployeeDocument(${d.id})"><i class="fa-solid fa-trash"></i></button>
-    </td></tr>`).join('') : renderEmptyTableRow(3, 'No documents uploaded yet.', 'fa-solid fa-folder-open');
+    </td></tr>`).join('') : renderEmptyTableRow(2, 'No documents uploaded yet.', 'fa-solid fa-folder-open');
 }
 
 function previewEmployeeDocument(docId, name, fileType) {

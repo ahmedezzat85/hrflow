@@ -370,3 +370,80 @@
 #a-system-roles td:nth-child(2) { color: var(--ink-body); }
 #a-system-roles td:nth-child(3) .badge { background: none !important; padding: 0; font-size: 14px; font-weight: 400; color: var(--ink-strong); }
 #a-system-roles td:nth-child(4) .badge { background: var(--brand-tint) !important; color: var(--brand-ink); border: 0; }
+
+/* =====================================================================
+   Employee detail, per mock HR-EmployeeDetail: header card + KPI strip, two-column body
+   ===================================================================== */
+#a-employee-detail .ed-back { margin-bottom: 12px; }
+#a-employee-detail .ed-head { overflow: visible; }
+#a-employee-detail .ed-head .esc-head { padding: 16px 18px; border: 0; display: flex; align-items: center; gap: 14px; flex-wrap: nowrap; }
+#a-employee-detail .ed-head .esc-identity { flex: 1; min-width: 0; }
+#a-employee-detail .ed-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#a-employee-detail .ed-name h4 { margin: 0; font-family: var(--font-head); }
+#a-employee-detail .ed-head .esc-meta { margin-top: 3px; }
+#a-employee-detail .ed-actions { display: flex; gap: 8px; flex: none; }
+#a-employee-detail .ed-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--fv-line); }
+#a-employee-detail .ed-kpi { padding: 12px 18px; border-right: 1px solid var(--fv-line); min-width: 0; }
+#a-employee-detail .ed-kpi:last-child { border-right: 0; }
+#a-employee-detail .ed-kpi-k, #a-employee-detail .ed-kpi .esc-zone-label { font-size: 12px; font-weight: 600; color: var(--ink-label); margin: 0 0 2px; }
+#a-employee-detail .ed-kpi-v, #a-employee-detail .ed-kpi .esc-comp-total { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--ink-strong); line-height: 1.3; margin: 0; }
+#a-employee-detail .ed-kpi .esc-comp-total { display: flex; align-items: baseline; gap: 6px; }
+#a-employee-detail .ed-kpi .esc-comp-total .esc-amount { font-size: 20px; color: var(--brand-text); }
+#a-employee-detail .ed-kpi .esc-comp-total .esc-unit { font-family: var(--font-body); font-size: 12px; font-weight: 400; color: var(--ink-muted); }
+#a-employee-detail .ed-kpi-s { font-size: 12px; color: var(--ink-muted); }
+#a-employee-detail .ed-kpi #compDetailsLink { display: inline-flex; height: auto; padding: 0; margin-top: 2px; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--brand-ink); }
+
+#a-employee-detail .ed-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
+#a-employee-detail .ed-main, #a-employee-detail .ed-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#a-employee-detail .ed-side .card { margin: 0; }
+#a-employee-detail .ed-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+#a-employee-detail .ed-tile {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; margin-right: 10px; vertical-align: middle;
+}
+#a-employee-detail .ed-tile i { font-size: 13px; color: inherit; }
+#a-employee-detail .ed-tile--green { background: rgba(63, 154, 60, .14); color: var(--id-green-ink); }
+#a-employee-detail .ed-tile--teal { background: rgba(15, 157, 140, .14); color: var(--id-teal-ink); }
+#a-employee-detail .ed-tile--ochre { background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
+#a-employee-detail .ed-tile--blue { background: var(--brand-tint); color: var(--brand-ink); }
+#a-employee-detail .card-head h3 i { color: inherit; }
+
+/* compensation card shows the raise history only; the metrics now live in the header strip */
+#a-employee-detail .compensation-metrics, #a-employee-detail .compensation-history-label { display: none; }
+
+/* list-style tables: two-line first cell, status on the right, no header row */
+#a-employee-detail table.ed-list thead { display: none; }
+#a-employee-detail table.ed-list td { padding: 10px 16px; vertical-align: middle; }
+#a-employee-detail table.ed-list td.ed-status { text-align: right; width: 1%; white-space: nowrap; }
+#a-employee-detail .ed-title { font-size: 14px; font-weight: 600; color: var(--ink-strong); line-height: 1.3; }
+#a-employee-detail .ed-sub { font-size: 12px; color: var(--ink-muted); margin-top: 1px; }
+#a-employee-detail .doc-name-cell { display: flex; align-items: center; gap: 10px; }
+#a-employee-detail .doc-type-icon { width: 32px; height: 32px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
+#a-employee-detail td.col-actions { text-align: right; white-space: nowrap; }
+#a-employee-detail td.col-actions .icon-action { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-faint); }
+
+/* side cards */
+#a-employee-detail .ed-details-card .card-body { padding: 4px 16px 10px; }
+#a-employee-detail .ed-details-card .esc-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--fv-line-row); }
+#a-employee-detail .ed-details-card .esc-row:last-child { border-bottom: 0; }
+#a-employee-detail .ed-details-card .esc-k { font-size: 13.5px; font-weight: 400; color: var(--ink-muted); }
+#a-employee-detail .ed-details-card .esc-k i { display: none; }
+#a-employee-detail .ed-details-card .esc-v { font-size: 13.5px; font-weight: 600; color: var(--ink-strong); text-align: right; }
+#a-employee-detail .employee-bank-card .card-head { gap: 8px; }
+#a-employee-detail .employee-bank-card .card-head h3 { flex: 1; }
+#a-employee-detail .employee-bank-card .badge-pill { margin-left: auto; }
+#a-employee-detail .employee-bank-card .action-btn { width: 28px; height: 28px; border: 0; background: none; color: var(--ink-faint); }
+#a-employee-detail .employee-bank-card .status-line { padding: 10px 16px 0; border: 0; }
+#a-employee-detail .employee-bank-card .status-line:not(:has(.btn:not([hidden]))) { display: none; }
+#a-employee-detail .employee-bank-card .card-body { padding: 4px 16px 12px; }
+#a-employee-detail .employee-bank-card .iban-row { padding: 8px 0; display: flex; justify-content: space-between; }
+#a-employee-detail .employee-bank-card .iban-row .k { font-weight: 400; color: var(--ink-muted); font-size: 13.5px; }
+#a-employee-detail .employee-bank-card .iban-row .v { font-weight: 600; color: var(--ink-strong); font-size: 13.5px; }
+@media (max-width: 1100px) {
+  #a-employee-detail .ed-grid { grid-template-columns: minmax(0, 1fr); }
+  #a-employee-detail .ed-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #a-employee-detail .ed-head .esc-head { flex-wrap: wrap; }
+}
+#a-employee-detail .ed-back { display: inline-flex; width: auto; align-self: flex-start; }
+#a-employee-detail .card { margin: 0; }
+#a-employee-detail .ed-main > .card, #a-employee-detail .ed-pair > .card { margin: 0; }
+#a-employee-detail .esc-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
