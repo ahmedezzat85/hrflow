@@ -44,7 +44,7 @@ class VendorsService:
     def __init__(self, repo: VendorsRepository):
         self.repo = repo
 
-    def to_response(self, vendor: VendorDB) -> VendorResponse:
+    def to_response(self, vendor: VendorDB, payables: Optional[List[dict]] = None) -> VendorResponse:
         return VendorResponse(
             id=vendor.id,
             name=vendor.name,
@@ -66,6 +66,7 @@ class VendorsService:
             onboarding_status=vendor.onboarding_status,
             notes=vendor.notes,
             is_active=vendor.is_active,
+            payables=payables or [],
             created_at=vendor.created_at,
         )
 
@@ -109,7 +110,9 @@ class VendorsService:
         offset: int = 0,
     ) -> List[VendorResponse]:
         vendors = self.repo.list_all(is_active=is_active, category=category, search=search, limit=limit, offset=offset)
-        return [self.to_response(v) for v in vendors]
+        vendor_ids = [v.id for v in vendors]
+        payables_map = self.repo.get_open_payables_for_vendors(vendor_ids)
+        return [self.to_response(v, payables=payables_map.get(v.id, [])) for v in vendors]
 
     def get_vendor(self, vendor_id: int) -> VendorResponse:
         vendor = self.repo.get_by_id(vendor_id)
@@ -118,7 +121,8 @@ class VendorsService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Vendor with ID {vendor_id} not found",
             )
-        return self.to_response(vendor)
+        payables_map = self.repo.get_open_payables_for_vendors([vendor_id])
+        return self.to_response(vendor, payables=payables_map.get(vendor_id, []))
 
     def create_vendor(self, payload: VendorCreate) -> VendorResponse:
         existing = self.repo.get_by_name(payload.name)

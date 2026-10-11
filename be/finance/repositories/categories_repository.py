@@ -32,6 +32,9 @@ class CategoriesRepository:
             TransactionCategoryDB.name.ilike(name.strip())
         ).first()
 
+    def count_all(self) -> int:
+        return self.db.query(TransactionCategoryDB).count()
+
     def create(self, data: dict) -> TransactionCategoryDB:
         category = TransactionCategoryDB(
             name=data["name"].strip(),
@@ -39,6 +42,7 @@ class CategoriesRepository:
             is_active=bool(data.get("is_active", True)),
             sort_order=int(data.get("sort_order", 0)),
             is_petty=bool(data.get("is_petty", False)),
+            color=data.get("color"),
         )
         self.db.add(category)
         self.db.commit()
@@ -60,6 +64,8 @@ class CategoriesRepository:
             cat.sort_order = int(data["sort_order"])
         if "is_petty" in data and data["is_petty"] is not None:
             cat.is_petty = bool(data["is_petty"])
+        if "color" in data and data["color"] is not None:
+            cat.color = data["color"]
 
         self.db.commit()
         self.db.refresh(cat)

@@ -66,12 +66,24 @@ class BankAccountResponse(BankAccountBase):
 # ==========================================
 # Category & Payment Type Schemas (Phase 0)
 # ==========================================
+CATEGORY_PALETTE = ("blue", "orange", "teal", "violet", "green", "pink", "sky", "ochre")
+ALLOWED_CATEGORY_COLORS = set(CATEGORY_PALETTE)
+
+
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Category name")
     kind: str = Field("other", description="Reporting kind: revenue | cost | transfer | other")
     is_active: bool = Field(True, description="Active status")
     sort_order: int = Field(0, description="Ordering priority")
     is_petty: bool = Field(False, description="Flag for compact recurring/petty view")
+    color: Optional[str] = Field(None, description="Category colour name from allowed palette")
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ALLOWED_CATEGORY_COLORS:
+            raise ValueError(f"Color must be one of {CATEGORY_PALETTE}, got '{v}'")
+        return v
 
 
 class CategoryCreate(CategoryBase):
@@ -84,6 +96,14 @@ class CategoryUpdate(BaseModel):
     is_active: Optional[bool] = None
     sort_order: Optional[int] = None
     is_petty: Optional[bool] = None
+    color: Optional[str] = None
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ALLOWED_CATEGORY_COLORS:
+            raise ValueError(f"Color must be one of {CATEGORY_PALETTE}, got '{v}'")
+        return v
 
 
 class CategoryResponse(CategoryBase):
@@ -330,10 +350,19 @@ class CustomerUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class CustomerReceivableItem(BaseModel):
+    currency: str
+    open_amount: float
+    open_count: int
+    overdue_count: int
+    max_days_overdue: int
+
+
 class CustomerResponse(CustomerBase):
     id: int
     is_active: bool
     created_at: Optional[datetime] = None
+    receivables: List[CustomerReceivableItem] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -420,11 +449,19 @@ class VendorUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class VendorPayableItem(BaseModel):
+    currency: str
+    open_amount: float
+    open_count: int
+    overdue_count: int
+
+
 class VendorResponse(VendorBase):
     id: int
     is_active: bool
     created_at: Optional[datetime] = None
     default_category_name: Optional[str] = None
+    payables: List[VendorPayableItem] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

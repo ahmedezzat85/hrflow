@@ -211,6 +211,7 @@ class TransactionCategoryDB(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     sort_order = Column(Integer, default=0, nullable=False)
     is_petty = Column(Boolean, default=False, nullable=False)
+    color = Column(String(16), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     transactions = relationship("LedgerTransactionDB", back_populates="category")
