@@ -86,7 +86,7 @@
 /* ---------- Select and tabs ---------- */
 .fv .hv-select {
   height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
-  background: var(--surface); font-size: 13px; color: var(--text);
+  background-color: var(--surface); font-size: 13px; color: var(--text);
 }
 .fv .hv-tab {
   padding: 9px 12px; border-radius: 0; background: none; border: none; border-bottom: 2px solid transparent;
@@ -147,3 +147,11 @@
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) * {
   text-transform: none;
 }
+
+/* ---------- System: plain role pills and status pills (rows are rendered by system-access.js with inline tones) ---------- */
+:is(#a-system-users, #a-system-roles) .badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; line-height: 1.5; box-shadow: none;
+}
+:is(#a-system-users, #a-system-roles) .badge[style*="var(--surface2)"] { background: var(--fv-canvas); color: var(--ink-body); border: 0; }
+:is(#a-system-users, #a-system-roles) td.tname { font-weight: 600; color: var(--ink-strong); }
