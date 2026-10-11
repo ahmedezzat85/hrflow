@@ -1,0 +1,169 @@
+/* Payroll restyle v3 (D-028). Overrides payroll.css with the Finance v2 look; markup and ids untouched
+   (payroll-cycle.js, finance-payroll.js and payroll-table.js build rows at runtime). Tokens only. */
+
+#a-finance-payroll { --pv-r: 14px; }
+
+/* ---------- Cards and headers ---------- */
+#a-finance-payroll .card,
+#a-finance-payroll .payroll-settings-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r);
+  box-shadow: var(--fv-shadow-card);
+}
+#a-finance-payroll .card:hover,
+#a-finance-payroll .payroll-settings-card:hover { box-shadow: var(--fv-shadow-card); transform: none; }
+#a-finance-payroll .section-title,
+#a-finance-payroll .payroll-panel-title,
+#a-finance-payroll .runtitle {
+  font-size: 16px; font-weight: 700; color: var(--ink-strong); letter-spacing: 0; text-transform: none;
+}
+#a-finance-payroll .section-title i,
+#a-finance-payroll .title-row .section-title i { color: var(--brand-text); font-size: 15px; }
+#a-finance-payroll .title-row .section-title { font-size: 15.5px; }
+#a-finance-payroll .payroll-subtitle { font-size: 12.5px; color: var(--ink-muted); }
+#a-finance-payroll .innerhead,
+#a-finance-payroll .inner .innerhead {
+  font-size: 13.5px; font-weight: 700; color: var(--ink-strong); text-transform: none; letter-spacing: 0;
+}
+#a-finance-payroll .inner { background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 12px; box-shadow: none; }
+#a-finance-payroll .fxbox { background: var(--fv-canvas); border: 1px solid var(--fv-line); border-radius: 999px; color: var(--ink-body); font-size: 12.5px; }
+
+/* ---------- Step pills ---------- */
+#a-finance-payroll .payroll-step-pill {
+  height: 30px; padding: 0 12px 0 6px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: var(--fv-surface); border: 1px solid var(--fv-line); color: var(--ink-label); box-shadow: none;
+}
+#a-finance-payroll .payroll-step-pill.active { background: var(--brand-wash); border-color: transparent; color: var(--brand-text); }
+#a-finance-payroll .payroll-step-pill.done { background: var(--success-soft); border-color: transparent; color: var(--success); }
+#a-finance-payroll .payroll-step-num { width: 20px; height: 20px; font-size: 11px; font-weight: 700; background: var(--fv-canvas); color: var(--ink-label); }
+#a-finance-payroll .payroll-step-pill.active .payroll-step-num { background: var(--brand); color: var(--fv-on-brand); }
+#a-finance-payroll .payroll-step-pill.done .payroll-step-num { background: var(--success); color: var(--fv-on-brand); }
+
+/* ---------- Banners ---------- */
+#a-finance-payroll .payroll-lock-note,
+#a-finance-payroll .payroll-action-banner,
+#a-finance-payroll .payroll-exception-alert.warning,
+#a-finance-payroll .alertbox {
+  background: var(--warning-soft); border: 0; border-radius: 10px; color: var(--warning-text, var(--warning)); font-size: 13px;
+}
+
+/* ---------- Stat tiles ---------- */
+#a-finance-payroll .payroll-stat,
+#a-finance-payroll .stat {
+  background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 12px; box-shadow: none; padding: 12px 14px;
+}
+#a-finance-payroll .payroll-stat .label,
+#a-finance-payroll .stat .lbl,
+#a-finance-payroll .stat .label {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-label); text-transform: none; letter-spacing: 0;
+}
+#a-finance-payroll .payroll-stat .value,
+#a-finance-payroll .stat .val { font-size: 22px; font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll .stat .val.val-accent,
+#a-finance-payroll .stat .val-accent { color: var(--brand-text); }
+#a-finance-payroll .payroll-stat .sub,
+#a-finance-payroll .stat .sub { font-size: 12.5px; color: var(--ink-muted); }
+
+/* ---------- Form controls ---------- */
+#a-finance-payroll label,
+#a-finance-payroll .field label,
+#a-finance-payroll .field-hint { text-transform: none; letter-spacing: 0; }
+#a-finance-payroll .field label,
+#a-finance-payroll .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+#a-finance-payroll input[type="text"],
+#a-finance-payroll input[type="number"],
+#a-finance-payroll input[type="date"],
+#a-finance-payroll input[type="month"],
+#a-finance-payroll select {
+  height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--fv-input-border);
+  background: var(--fv-surface); color: var(--ink-strong); font-size: 14px; font-family: inherit; box-sizing: border-box;
+}
+#a-finance-payroll input:focus,
+#a-finance-payroll select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-wash); }
+#a-finance-payroll .payroll-toolbar input,
+#a-finance-payroll .payroll-toolbar select { height: 32px; font-size: 13px; border-radius: 8px; }
+
+/* ---------- Buttons ---------- */
+#a-finance-payroll .btn { height: 32px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: none; }
+#a-finance-payroll .btn.sm,
+#a-finance-payroll .btn-sm { height: 28px; padding: 0 11px; font-size: 12.5px; }
+#a-finance-payroll .btn-ghost { background: var(--fv-surface); border: 1px solid var(--fv-line); color: var(--ink-body); }
+#a-finance-payroll .btn-fill { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+
+/* ---------- Tables ---------- */
+#a-finance-payroll .payroll-table-wrap { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+#a-finance-payroll table.runs-table th,
+#a-finance-payroll table.payroll-worksheet th,
+#a-finance-payroll .payroll-num-th,
+#a-finance-payroll .payroll-name-th {
+  font-size: 12px; font-weight: 600; color: var(--ink-label); text-transform: none; letter-spacing: 0;
+  background: var(--fv-surface); border-bottom: 1px solid var(--fv-line-strong); padding: 10px 14px;
+}
+#a-finance-payroll table.runs-table td,
+#a-finance-payroll table.payroll-worksheet td { font-size: 13.5px; padding: 10px 14px; border-bottom: 1px solid var(--fv-line-row); color: var(--ink-body); }
+#a-finance-payroll table.runs-table td.strong,
+#a-finance-payroll table.payroll-worksheet .strong { color: var(--ink-strong); font-weight: 700; }
+#a-finance-payroll table.payroll-worksheet tr:hover td,
+#a-finance-payroll table.runs-table tr.clickable:hover td { background: var(--fv-canvas); }
+#a-finance-payroll table.payroll-worksheet tfoot td { background: var(--fv-canvas); border-top: 1px solid var(--fv-line-strong); color: var(--ink-strong); font-weight: 700; }
+#a-finance-payroll table.payroll-worksheet tr.warnrow td { background: var(--warning-soft); }
+#a-finance-payroll .payroll-num { color: var(--ink-strong); }
+
+/* ---------- Pills and badges ---------- */
+#a-finance-payroll .p-badge,
+#a-finance-payroll .badge-pill,
+#a-finance-payroll .settings-pill,
+#a-finance-payroll .stage-badge,
+#a-finance-payroll .disburse-rail-badge {
+  text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; border-radius: 999px; box-shadow: none;
+}
+
+/* ---------- Disbursement and statutory cards (steps 5, 6) ---------- */
+#a-finance-payroll .disburse-card,
+#a-finance-payroll .stat-obl-card { background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r); box-shadow: var(--fv-shadow-card); }
+#a-finance-payroll .disburse-card.internal,
+#a-finance-payroll .disburse-card.external,
+#a-finance-payroll .stat-obl-card.si,
+#a-finance-payroll .stat-obl-card.tax { background: var(--fv-surface); }
+#a-finance-payroll .disburse-card .stripe,
+#a-finance-payroll .stat-obl-card .stripe { display: none; }
+#a-finance-payroll .disburse-title,
+#a-finance-payroll .stat-obl-title { font-size: 15.5px; font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll .disburse-amount,
+#a-finance-payroll .stat-obl-amount { font-size: 26px; font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll .disburse-card.external .disburse-amount { color: var(--success); }
+#a-finance-payroll .stat-obl-card.si .stat-obl-amount,
+#a-finance-payroll .stat-obl-card.tax .stat-obl-amount { color: var(--ink-strong); }
+#a-finance-payroll .stat-obl-row .k { flex: none; white-space: nowrap; }
+#a-finance-payroll .disburse-amount-lbl,
+#a-finance-payroll .stat-obl-amount-lbl,
+#a-finance-payroll .disburse-row .k,
+#a-finance-payroll .stat-obl-row .k {
+  text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-label);
+}
+#a-finance-payroll .disburse-row,
+#a-finance-payroll .stat-obl-row { background: var(--fv-canvas); border: 1px solid var(--fv-line); border-radius: 10px; }
+#a-finance-payroll .disburse-row .v,
+#a-finance-payroll .stat-obl-row .v { color: var(--ink-strong); font-weight: 600; }
+#a-finance-payroll .disburse-rail-badge { background: var(--fv-canvas); color: var(--ink-label); }
+#a-finance-payroll .disburse-card.internal .disburse-rail-badge { background: var(--brand-wash); color: var(--brand-text); }
+#a-finance-payroll .disburse-card.external .disburse-rail-badge { background: var(--success-soft); color: var(--success); }
+
+/* ---------- Footer / save bar ---------- */
+#a-finance-payroll .footer,
+#a-finance-payroll .payroll-footer-actions,
+#a-finance-payroll .save-bar { background: var(--fv-surface); border-top: 1px solid var(--fv-line); }
+#a-finance-payroll .left-info,
+#a-finance-payroll .save-bar-info { font-size: 12.5px; color: var(--ink-muted); }
+
+/* ---------- Settings ---------- */
+#a-finance-payroll .payroll-settings-card-header { border-bottom: 1px solid var(--fv-line); }
+#a-finance-payroll .settings-icon-chip { border-radius: 10px; background: var(--brand-wash); color: var(--brand-text); }
+#a-finance-payroll .settings-card-callout { background: var(--brand-wash); border: 0; border-radius: 10px; color: var(--brand-text); }
+#a-finance-payroll .input-affix-group .suffix,
+#a-finance-payroll .input-affix-group .prefix { background: var(--fv-canvas); color: var(--ink-label); border-color: var(--fv-input-border); }
+
+/* ---------- Dark: navy surfaces come from the tokens ---------- */
+[data-theme="dark"] #a-finance-payroll .disburse-row,
+[data-theme="dark"] #a-finance-payroll .stat-obl-row { background: var(--surface2); }
