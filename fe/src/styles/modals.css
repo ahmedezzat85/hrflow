@@ -95,12 +95,22 @@ body.modal-open {
 }
 
 .modal-foot {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border);
+  padding: 12px 22px;
+  border-top: 1px solid var(--fv-line);
+  background: var(--fv-dialog-foot, #fbfcff);
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.modal-foot .btn,
+.modal-footer .btn {
+  height: 34px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .form-grid {
@@ -289,16 +299,19 @@ body.modal-open {
 .modal-v2 .form-field input,
 .modal-v2 .form-field select,
 .modal-v2 .form-field textarea{
-  width:100%;padding:10px 13px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--border);background-color:var(--surface);
-  color:var(--text);font-size:var(--fs-base);outline:none;font-family:inherit;transition:.15s;
+  width:100%;padding:0 12px;border-radius:9px;
+  border:1px solid var(--fv-line);background-color:var(--fv-surface);
+  color:var(--ink-strong);font-size:14px;outline:none;font-family:inherit;transition:.15s;
+}
+.modal-v2 .form-field textarea {
+  padding: 8px 12px;
 }
 .modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
-.modal-v2 .form-field select{height:40px}
+.modal-v2 .form-field select{height:36px}
 .modal-v2 .form-field input:focus,
 .modal-v2 .form-field select:focus,
 .modal-v2 .form-field textarea:focus{
-  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+  border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash);
 }
 
 .modal-v2 .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}

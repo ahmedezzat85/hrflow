@@ -1,37 +1,53 @@
         <section class="page-section active" id="a-dashboard">
-          <div class="hero-banner" style="margin-bottom:20px;">
+          <div class="hero-banner" style="margin-bottom:14px;">
             <div class="hero-stats">
-              <div class="hero-stat"><b id="statEmployees">—</b><span>Active Headcount</span></div>
-              <div class="hero-stat"><b id="statPending">—</b><span>Pending Approvals</span></div>
-              <div class="hero-stat"><b id="statOnLeave">—</b><span>Currently On Leave</span></div>
-              <div class="hero-stat"><b id="statOpenClaims">—</b><span>Open Claims</span></div>
+              <div class="hero-card hero-card-accent" onclick="showSection('a-employees','admin')">
+                <span class="hero-card-label">Active headcount</span>
+                <b id="statEmployees">—</b>
+                <div class="hero-card-foot"><span>Staff members</span> <span class="hero-card-link">Employees ›</span></div>
+              </div>
+              <div class="hero-card" onclick="showSection('a-requests','admin')">
+                <div class="hero-card-head"><span class="hero-card-label">Pending approvals</span> <span class="hero-card-badge fv-badge-orange"><i class="fa-solid fa-inbox"></i></span></div>
+                <b id="statPending">—</b>
+                <div class="hero-card-foot"><span>Waiting on review</span> <span class="hero-card-link">Review ›</span></div>
+              </div>
+              <div class="hero-card" onclick="showSection('a-vacations','admin')">
+                <div class="hero-card-head"><span class="hero-card-label">On leave today</span> <span class="hero-card-badge fv-badge-teal"><i class="fa-solid fa-umbrella-beach"></i></span></div>
+                <b id="statOnLeave">—</b>
+                <div class="hero-card-foot"><span>Approved leaves</span> <span class="hero-card-link">Vacations ›</span></div>
+              </div>
+              <div class="hero-card" onclick="showSection('a-insurance','admin')">
+                <div class="hero-card-head"><span class="hero-card-label">Open claims</span> <span class="hero-card-badge fv-badge-teal"><i class="fa-solid fa-shield-heart"></i></span></div>
+                <b id="statOpenClaims">—</b>
+                <div class="hero-card-foot"><span>Medical insurance</span> <span class="hero-card-link">Insurance ›</span></div>
+              </div>
             </div>
             <span id="statClaimsTotal" style="display:none;"></span>
           </div>
-          <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="grid g-2-1" style="margin-bottom:14px;">
             <div class="card">
               <div class="card-head">
-                <h3>Requests Overview (Last 6 Months)</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
+                <h3>Requests overview (last 6 months)</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
               </div>
               <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
             </div>
             <div class="card">
               <div class="card-head">
-                <h3>Request Types</h3>
+                <h3>Request types</h3>
               </div>
               <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
             </div>
           </div>
-          <div class="grid g-1-2" style="margin-bottom:20px;">
+          <div class="grid g-1-2" style="margin-bottom:14px;">
             <div class="card">
               <div class="card-head">
-                <h3>Upcoming Annual Raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a>
+                <h3>Upcoming annual raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a>
               </div>
               <ul class="timeline" id="upcomingRaisesList"></ul>
             </div>
             <div class="card">
               <div class="card-head">
-                <h3>Pending Requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
+                <h3>Pending requests</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
               </div>
               <table class="responsive-card-table">
                 <thead>
@@ -49,7 +65,7 @@
           </div>
           <div class="card">
             <div class="card-head">
-              <h3>Medical Insurance Highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Manage
+              <h3>Medical insurance highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Manage
                 insurance</a>
             </div>
             <div class="grid g4" id="dashInsuranceCategoryChips"></div>

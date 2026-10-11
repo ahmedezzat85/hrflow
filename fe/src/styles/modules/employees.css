@@ -184,8 +184,8 @@
 }
 .employee-bank-card .iban-row .v{
   font-weight:600;
-  font-family:monospace;
-  letter-spacing:.02em;
+  font-family:inherit;
+  letter-spacing:normal;
   color:var(--text);
 }
 .employee-bank-card .helper{

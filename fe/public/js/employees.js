@@ -12,10 +12,10 @@ function renderEmployeesTable(filter = '') {
     <td data-label="Role">${escapeHtml(e.role)}</td>
     <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
-    <td data-label="Next Raise">${e.nextRaise}</td>
+    <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : 'Not scheduled'}</td>
     <td data-label="Status">${statusPill(e.status)}</td>
     <td data-label="Actions" class="col-actions">
-      <button class="icon-action" onclick="viewProfile('${e.id}')" title="View Profile"><i class="fa-solid fa-eye"></i></button>
+      <button class="btn btn-sm btn-outline icon-action" onclick="viewProfile('${e.id}')" title="View Profile">View</button>
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
       <button class="icon-action" title="Generate salary payment doc" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
       ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
