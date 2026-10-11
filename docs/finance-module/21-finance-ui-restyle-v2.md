@@ -2,7 +2,7 @@
 
 Status: **APPROVED by the owner on 10 Oct 2026 (D-027). Not implemented.**
 Work type: frontend only (`fe/`). No API, schema, migration, permission or workflow change in this plan.
-Companion backend plan (run in parallel by a separate agent): [22-finance-restyle-v2-backend.md](22-finance-restyle-v2-backend.md).
+Companion backend plan (runs in parallel on its own branch): [22-finance-restyle-v2-backend.md](22-finance-restyle-v2-backend.md).
 Builds on: [19-finance-ui-restyle-direction-a.md](19-finance-ui-restyle-direction-a.md) (Bills direction A, implemented) and [20-finance-review-round-2.md](20-finance-review-round-2.md) (F1 to F6, implemented).
 
 ---
@@ -273,7 +273,7 @@ All of them return class-based markup, escape text with `FinanceFormat.escapeHtm
 - the token lint of §0.5 (as a script or an npm task).
 Run `finance-bills-contrast.spec.js`, extended to every new page, in light and dark.
 
-**4.6 Git workflow (owner rule).** One branch for the whole plan: `feature/finance-ui-restyle-v2`, created from an up-to-date `main` **in the current working directory** (no worktrees, no second clone). Slices run back to back; after each slice: targeted specs pass, `git add` only relevant files, one commit `feat(finance-ui): S<n> <summary> (D-027)`, `git push`. Open a draft PR into `main` after the first push and keep it updated. Do not merge. Never commit screenshots, test output or `implementation_plan.md`.
+**4.6 Git workflow (owner rule).** One branch for the whole plan: `feature/finance-ui-restyle-v2`, created from an up-to-date `main` in the current working directory (no worktrees). Slices run back to back; after each slice: targeted specs pass, `git add` only relevant files, one commit `feat(finance-ui): S<n> <summary> (D-027)`, `git push`. Open a draft PR into `main` after the first push and keep it updated. Do not merge. Never commit screenshots, test output or `implementation_plan.md`.
 
 ---
 

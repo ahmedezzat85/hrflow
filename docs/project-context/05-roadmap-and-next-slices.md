@@ -183,7 +183,7 @@ Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-fina
 
 ## 3D. Finance UI Restyle v2 (accepted October 10, 2026)
 
-Plans: [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md) (UI, branch `feature/finance-ui-restyle-v2`) and [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md) (backend, branch `feature/finance-restyle-v2-backend`, separate checkout). Decision D-027. The two run in parallel; the UI feature-detects the backend fields.
+Plans: [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md) (UI, branch `feature/finance-ui-restyle-v2`) and [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md) (backend, branch `feature/finance-restyle-v2-backend`). Decision D-027. The two run in parallel; the UI feature-detects the backend fields.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
