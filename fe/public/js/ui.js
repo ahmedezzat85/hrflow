@@ -442,8 +442,9 @@ function fmtDateShort(d){
   return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 function statusPill(status){
-  const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
-  return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
+  const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger'};
+  const dotMap = {Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger'};
+  return `<span class="badge-pill ${map[status]||'pill-neutral'}"><span class="hv-dot ${dotMap[status]||'hv-dot--muted'}"></span>${status}</span>`;
 }
 /**
  * Accessible Modal Controller (Story 0.3)

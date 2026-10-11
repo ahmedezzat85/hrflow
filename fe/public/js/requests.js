@@ -54,12 +54,12 @@ function renderRequestsTable(filter) {
     const deptTag = matchedEmp && matchedEmp.dept ? `<span class="badge-pill pill-neutral" style="font-size:10.5px;padding:2px 6px;">${escapeHtml(matchedEmp.dept)}</span>` : '';
 
     return `
-      <tr>
+      <tr class="${r.status === 'Pending' ? 'hv-row-pending' : ''}">
         <td data-label="Employee" class="tname">
           <div class="avatar">${initials(r.employee_name)}</div>
           <div>
-            <div style="font-weight:600;color:var(--text);">${escapeHtml(r.employee_name)}</div>
-            ${deptTag ? `<div style="margin-top:2px;">${deptTag}</div>` : ''}
+            <div style="font-weight:600;color:var(--ink-strong);">${escapeHtml(r.employee_name)}</div>
+            ${matchedEmp && matchedEmp.dept ? `<div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(matchedEmp.dept)}</div>` : ''}
           </div>
         </td>
         <td data-label="Type">${getRequestTypeBadge(r.type)}</td>

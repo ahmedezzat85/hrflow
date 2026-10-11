@@ -44,7 +44,7 @@ function renderEmployeesTable(filter = '') {
   }
   body.innerHTML = list.map(e => `<tr>
     <td data-label="ID" class="col-id">${e.id}</td>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${escapeHtml(e.name)}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div style="font-weight:600;color:var(--ink-strong);line-height:1.2;">${escapeHtml(e.name)}</div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `EMP${String(e.id).padStart(3, '0')} · ` : ''}${escapeHtml(e.email)}</div></div></td>
     <td data-label="Role">${escapeHtml(e.role)}</td>
     <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>

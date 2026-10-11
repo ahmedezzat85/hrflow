@@ -54,7 +54,7 @@
 .fv .hv-stat-value.hv-tone-brand { color: var(--brand-text); }
 .fv .hv-card-title { margin: 0; font-family: var(--font-head); font-size: 15px; color: var(--text); }
 
-/* ---------- Tones, counts, dots ---------- */
+.fv tr.hv-row-pending { background: var(--warning-soft); }
 .fv .hv-tone-warning-soft { background: var(--warning-soft); color: var(--warning); }
 .fv .hv-tone-success-soft { background: var(--success-soft); color: var(--success); }
 .fv .hv-tone-accent-soft { background: var(--accent-soft); color: var(--accent-text); }
@@ -70,6 +70,8 @@
 .fv .hv-dot--success { background: var(--success); }
 .fv .hv-dot--muted { background: var(--ink-muted); }
 .fv .hv-dot--info { background: var(--info); }
+.fv .hv-dot--warning { background: var(--warning); }
+.fv .hv-dot--danger { background: var(--danger); }
 
 /* ---------- Text helpers ---------- */
 .fv .hv-note-sm { font-size: 12px; color: var(--text2); margin-top: 2px; }
@@ -138,11 +140,74 @@
 #a-employee-detail .form-field textarea { border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
 
 /* ---------- HR, System and portal pages: one table scale, no uppercase labels ---------- */
-:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table.density-regular th {
-  font-size: 12px; font-weight: 600; padding: 10px 14px;
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 11px 12px;
+  text-transform: none !important;
+  letter-spacing: 0;
+  color: var(--ink-label);
+  background: var(--surface);
+  border-bottom: 1px solid var(--fv-line, var(--border));
+  white-space: nowrap;
 }
-:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table.density-regular td {
-  font-size: 13.5px; padding: 10px 14px;
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th:first-child,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td:first-child {
+  padding-left: 16px;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th:last-child,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td:last-child {
+  padding-right: 16px;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td {
+  font-size: 13.5px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--fv-line-row, var(--border));
+  color: var(--ink-body, var(--text));
+  vertical-align: middle;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table tbody tr:hover {
+  background: var(--fv-row-hover, var(--surface2));
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table .avatar,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.tname .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.col-actions .btn-sm {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.col-actions .icon-action:not(.btn) {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  vertical-align: middle;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.col-actions .icon-action:not(.btn):hover {
+  background: var(--brand-wash);
+  color: var(--brand-text);
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) * {
   text-transform: none;
