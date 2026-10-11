@@ -36,8 +36,8 @@ for (const portal of PORTALS) {
           const s = getComputedStyle(el);
           return { fw: s.fontWeight, fs: s.fontSize, to: s.textOverflow, ws: s.whiteSpace };
         });
-        expect(style.fw).toBe('600');
-        expect(style.fs).toBe(vp.width >= 769 ? '17px' : '16px');
+        expect(style.fw).toBe('700');
+        expect(style.fs).toBe('16px');
         expect(style.to).toBe('ellipsis');
         expect(style.ws).toBe('nowrap');
       });
@@ -209,7 +209,7 @@ test('AC-12: employee sidebar has no user card, logout button or brand footer; c
   await open(page, PORTALS[1], VIEWPORTS[0]);
   const sidebar = page.locator('#empSidebar');
   await expect(sidebar.locator('.user-mini, .logout-btn, .sidebar-brand-footer, .sidebar-footer, img')).toHaveCount(0);
-  await expect(sidebar.locator('.sidebar-top-row .brand')).toBeVisible();
+  await expect(sidebar.locator('.brand')).toBeVisible();
   await expect(sidebar.locator('.sidebar-collapse-btn')).toBeVisible();
   await expect(page.locator('#employee-app .account-trigger')).toHaveCount(1);
 

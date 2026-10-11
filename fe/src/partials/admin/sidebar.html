@@ -1,8 +1,7 @@
     <aside class="sidebar dual-rail" id="adminSidebar">
       <!-- Slim Module Rail -->
-      <div class="rail">
-        <div class="rail-logo" title="HRFlow"><i class="fa-solid fa-heart-pulse"></i></div>
-        <div class="rail-sep"></div>
+      <nav class="rail" aria-label="Modules">
+        <span class="rail-logo" title="HRFlow"><span class="rail-logo-badge">HF</span></span>
         <button class="rail-btn on active" data-module="hr" id="hrRailBtn" aria-label="HR module" aria-current="true" title="HR">
           <i class="fa-solid fa-people-group"></i>
           <span>HR</span>
@@ -20,11 +19,11 @@
           <i class="fa-solid fa-shield-halved"></i>
           <span>System</span>
         </button>
-      </div>
+      </nav>
 
       <!-- Contextual Page Panel -->
       <div class="nav-panel" id="adminNavPanel">
-        <button class="collapse-btn" id="adminSidebarCollapseBtn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse navigation panel" aria-label="Toggle navigation panel">
+        <button class="collapse-btn sidebar-collapse-btn" id="adminSidebarCollapseBtn" onclick="toggleSidebarCollapse('adminSidebar')" title="Collapse navigation panel" aria-label="Toggle navigation panel">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
         <div class="panel-inner">
@@ -32,37 +31,42 @@
             <h2 id="adminNavPanelTitle">HR</h2>
             <small id="adminNavPanelSub">People, leave and salary documents</small>
           </div>
+          <button type="button" class="panel-search-btn" onclick="openCommandPalette()" title="Search (Ctrl+K)" aria-label="Search across workspace">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Search</span>
+            <kbd>Ctrl K</kbd>
+          </button>
           <nav class="sidebar-nav" aria-label="Admin Navigation">
             <div id="adminHrNavGroup" class="nav-group">
               <div class="nav-section-label">People</div>
-              <a class="nav-item active" href="#" data-page="a-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span class="nav-label">Dashboard</span></a>
-              <a class="nav-item" href="#" data-page="a-employees" title="Employees"><i class="fa-solid fa-users"></i> <span class="nav-label">Employees</span></a>
-              <a class="nav-item" href="#" data-page="a-requests" title="Pending Requests"><i class="fa-solid fa-inbox"></i> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
-              <a class="nav-item" href="#" data-page="a-salary" title="Salary &amp; Raises"><i class="fa-solid fa-arrow-trend-up"></i> <span class="nav-label">Salary &amp; Raises</span></a>
-              <a class="nav-item" href="#" data-page="a-invoices" title="Salary Payment Docs"><i class="fa-solid fa-file-lines"></i> <span class="nav-label">Salary Payment Docs</span></a>
+              <a class="nav-item active" href="#" data-page="a-dashboard" title="Dashboard"><span class="nav-tile fv-hue-blue"><i class="fa-solid fa-grip"></i></span> <span class="nav-label">Dashboard</span></a>
+              <a class="nav-item" href="#" data-page="a-employees" title="Employees"><span class="nav-tile fv-hue-blue"><i class="fa-solid fa-users"></i></span> <span class="nav-label">Employees</span></a>
+              <a class="nav-item" href="#" data-page="a-requests" title="Pending Requests"><span class="nav-tile fv-hue-blue"><i class="fa-solid fa-inbox"></i></span> <span class="nav-label">Pending Requests</span> <span class="badge" id="reqBadge">0</span></a>
+              <a class="nav-item" href="#" data-page="a-salary" title="Salary &amp; Raises"><span class="nav-tile fv-hue-green"><i class="fa-solid fa-arrow-trend-up"></i></span> <span class="nav-label">Salary &amp; Raises</span></a>
+              <a class="nav-item" href="#" data-page="a-invoices" title="Salary Payment Docs"><span class="nav-tile fv-hue-green"><i class="fa-solid fa-file-lines"></i></span> <span class="nav-label">Salary Payment Docs</span></a>
               <div class="nav-section-label">Benefits &amp; records</div>
-              <a class="nav-item" href="#" data-page="a-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span class="nav-label">Vacations</span></a>
-              <a class="nav-item" href="#" data-page="a-insurance" title="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
-              <a class="nav-item" href="#" data-page="a-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span class="nav-label">Document Hub</span></a>
+              <a class="nav-item" href="#" data-page="a-vacations" title="Vacations"><span class="nav-tile fv-hue-teal"><i class="fa-solid fa-umbrella-beach"></i></span> <span class="nav-label">Vacations</span></a>
+              <a class="nav-item" href="#" data-page="a-insurance" title="Medical Insurance"><span class="nav-tile fv-hue-teal"><i class="fa-solid fa-briefcase-medical"></i></span> <span class="nav-label">Medical Insurance</span></a>
+              <a class="nav-item" href="#" data-page="a-dochub" title="Document Hub"><span class="nav-tile fv-hue-ochre"><i class="fa-solid fa-folder-open"></i></span> <span class="nav-label">Document Hub</span></a>
             </div>
             <div id="adminFinanceNavGroup" class="finance-nav-group" hidden>
               <div class="nav-section-label">Finance</div>
-              <a class="nav-item" href="#" data-page="a-finance-dashboard" title="Finance Overview"><i class="fa-solid fa-chart-line"></i> <span class="nav-label">Overview</span></a>
-              <a class="nav-item" href="#" data-page="a-finance-sales" title="Sales &amp; Receivables"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="nav-label">Sales</span><span id="financeSalesBadge" class="badge" style="display:none;" role="status"></span></a>
-              <a class="nav-item" href="#" data-page="a-finance-spend" title="Spend &amp; Payables"><i class="fa-solid fa-receipt"></i> <span class="nav-label">Spend</span><span id="financeSpendBadge" class="badge" style="display:none;" role="status"></span></a>
-              <a class="nav-item" href="#" data-page="a-finance-banking" title="Banking &amp; Cash Management"><i class="fa-solid fa-building-columns"></i> <span class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
-              <a class="nav-item" href="#" data-page="a-finance-reports" title="Financial Reports &amp; Export"><i class="fa-solid fa-file-excel"></i> <span class="nav-label">Reports &amp; Export</span></a>
-              <a class="nav-item" href="#" data-page="a-finance-settings" title="Finance Settings"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Finance Settings</span></a>
+              <a class="nav-item" href="#" data-page="a-finance-dashboard" title="Finance Overview"><span class="nav-tile fv-hue-blue"><i class="fa-solid fa-chart-line"></i></span> <span class="nav-label">Overview</span></a>
+              <a class="nav-item" href="#" data-page="a-finance-sales" title="Sales &amp; Receivables"><span class="nav-tile fv-hue-teal"><i class="fa-solid fa-file-invoice-dollar"></i></span> <span class="nav-label">Sales</span><span id="financeSalesBadge" class="badge" style="display:none;" role="status"></span></a>
+              <a class="nav-item" href="#" data-page="a-finance-spend" title="Spend &amp; Payables"><span class="nav-tile fv-hue-orange"><i class="fa-solid fa-receipt"></i></span> <span class="nav-label">Spend</span><span id="financeSpendBadge" class="badge" style="display:none;" role="status"></span></a>
+              <a class="nav-item" href="#" data-page="a-finance-banking" title="Banking &amp; Cash Management"><span class="nav-tile fv-hue-sky"><i class="fa-solid fa-building-columns"></i></span> <span class="nav-label">Banking</span><span id="financeBankingBadge" class="badge" style="display:none;" role="status"></span></a>
+              <a class="nav-item" href="#" data-page="a-finance-reports" title="Financial Reports &amp; Export"><span class="nav-tile fv-hue-violet"><i class="fa-solid fa-file-excel"></i></span> <span class="nav-label">Reports &amp; Export</span></a>
+              <a class="nav-item" href="#" data-page="a-finance-settings" title="Finance Settings"><span class="nav-tile fv-hue-slate"><i class="fa-solid fa-sliders"></i></span> <span class="nav-label">Finance Settings</span></a>
             </div>
             <div id="adminPayrollNavGroup" class="payroll-nav-group" hidden>
               <div class="nav-section-label">Payroll</div>
-              <a class="nav-item" href="#" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-label">Payroll Runs</span></a>
-              <a class="nav-item" href="#" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings"><i class="fa-solid fa-sliders"></i> <span class="nav-label">Payroll Settings</span></a>
+              <a class="nav-item" href="#" id="payrollNavList" data-page="a-finance-payroll-runs" title="Payroll Runs"><span class="nav-tile fv-hue-violet"><i class="fa-solid fa-clock-rotate-left"></i></span> <span class="nav-label">Payroll Runs</span></a>
+              <a class="nav-item" href="#" id="payrollNavSettings" data-page="a-finance-payroll-settings" title="Payroll Settings"><span class="nav-tile fv-hue-slate"><i class="fa-solid fa-sliders"></i></span> <span class="nav-label">Payroll Settings</span></a>
             </div>
             <div id="adminSystemNavGroup" class="system-nav-group" hidden>
-              <div class="nav-section-label">Access &amp; Security</div>
-              <a class="nav-item" href="#" id="systemNavRoles" data-page="a-system-roles" title="Roles &amp; Permissions"><i class="fa-solid fa-user-shield"></i> <span class="nav-label">Roles &amp; Permissions</span></a>
-              <a class="nav-item" href="#" id="systemNavUsers" data-page="a-system-users" title="User Accounts"><i class="fa-solid fa-users-gear"></i> <span class="nav-label">User Accounts</span></a>
+              <div class="nav-section-label">Access and security</div>
+              <a class="nav-item" href="#" id="systemNavRoles" data-page="a-system-roles" title="Roles &amp; Permissions"><span class="nav-tile fv-hue-pink"><i class="fa-solid fa-user-shield"></i></span> <span class="nav-label">Roles &amp; Permissions</span></a>
+              <a class="nav-item" href="#" id="systemNavUsers" data-page="a-system-users" title="User Accounts"><span class="nav-tile fv-hue-pink"><i class="fa-solid fa-users-gear"></i></span> <span class="nav-label">User Accounts</span></a>
             </div>
           </nav>
         </div>

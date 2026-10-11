@@ -87,15 +87,15 @@ test.describe('Finance restyle v2: foundations (S1)', () => {
     }
   });
 
-  test('Payroll and HR pages keep the existing chrome', async ({ page }) => {
+  test('Payroll and HR pages adopt the shared app-wide shell chrome', async ({ page }) => {
     await openAdmin(page);
     await page.evaluate(() => showSection('a-finance-payroll-runs', 'admin'));
-    await expect(page.locator('#adminAreaTile')).toBeHidden();
-    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(0);
+    await expect(page.locator('#adminAreaTile')).toBeVisible();
+    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(1);
     await page.evaluate(() => showSection('a-dashboard', 'admin'));
-    await expect(page.locator('#adminAreaName')).toBeHidden();
-    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(0);
-    expect(await css(page, '#adminPageTitle', 'fontSize')).not.toBe('16px');
+    await expect(page.locator('#adminAreaName')).toBeVisible();
+    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(1);
+    expect(await css(page, '#adminPageTitle', 'fontSize')).toBe('16px');
   });
 });
 

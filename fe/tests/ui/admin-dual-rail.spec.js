@@ -219,11 +219,11 @@ test.describe('Admin Dual-Rail Navigation Shell (Slice 1)', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 
-  test('AC 10: ?mock=employee shows unchanged Employee sidebar', async ({ page }) => {
+  test('AC 10: ?mock=employee shows Employee dual-rail sidebar with Me rail button', async ({ page }) => {
     await page.goto('/?mock=employee');
     await expect(page.locator('#empSidebar')).toBeVisible();
-    await expect(page.locator('#empSidebar')).not.toHaveClass(/dual-rail/);
-    await expect(page.locator('#empSidebar .sidebar-top-row .brand')).toBeVisible();
+    await expect(page.locator('#empSidebar')).toHaveClass(/dual-rail/);
+    await expect(page.locator('#empSidebar .rail-btn[data-module="me"]')).toBeVisible();
   });
 });
 
