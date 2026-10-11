@@ -43,9 +43,8 @@ function renderEmployeesTable(filter = '') {
     list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
   }
   body.innerHTML = list.map(e => `<tr>
-    <td data-label="ID" class="col-id">${e.id}</td>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div style="font-weight:600;color:var(--ink-strong);line-height:1.2;">${escapeHtml(e.name)}</div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `EMP${String(e.id).padStart(3, '0')} · ` : ''}${escapeHtml(e.email)}</div></div></td>
-    <td data-label="Role">${escapeHtml(e.role)}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div style="font-weight:600;color:var(--ink-strong);line-height:1.2;">${escapeHtml(e.name)}</div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Role"><div class="ed-title">${escapeHtml(e.role)}</div>${e.dept ? `<div class="ed-sub">${escapeHtml(e.dept)}</div>` : ''}</td>
     <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
     <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : 'Not scheduled'}</td>
@@ -55,7 +54,8 @@ function renderEmployeesTable(filter = '') {
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
       <button class="icon-action" title="Generate salary payment doc" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
       ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
-    </td></tr>`).join('') || renderEmptyTableRow(7, 'No employees found.', 'fa-solid fa-user-slash');
+    </td></tr>`).join('') || renderEmptyTableRow(6, 'No employees found.', 'fa-solid fa-user-slash');
+  setTableFoot('employeesTableBody', list.length, 'employees');
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 

@@ -91,6 +91,7 @@ function renderRequestsTable(filter) {
       </tr>
     `;
   }).join('');
+  setTableFoot('requestsTableBody', list.length, 'requests');
 }
 
 document.querySelectorAll('[data-reqfilter]').forEach(btn => {

@@ -80,6 +80,16 @@ document.addEventListener('change', (e) => {
   if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
 });
 
+// Table card footer ("Showing 1-N of N ...") shared by the HR list tables.
+function setTableFoot(bodyId, count, noun) {
+  const body = document.getElementById(bodyId);
+  const card = body && body.closest('.card');
+  if (!card) return;
+  let f = card.querySelector(':scope > .fv-tablefoot');
+  if (!f) { f = document.createElement('div'); f.className = 'fv-tablefoot'; card.appendChild(f); }
+  f.innerHTML = `<span>Showing <b>${count ? '1\u2013' + count : '0'}</b> of <b>${count}</b> ${noun}</span><span>Page 1 of 1</span>`;
+}
+
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 

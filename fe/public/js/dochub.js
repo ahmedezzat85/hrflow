@@ -95,14 +95,15 @@ function renderCompanyDocumentsAdmin(filter=''){
   const list = companyDocuments.filter(d => (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f));
   body.innerHTML = list.map(d=>`<tr>
     <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docHubTypeIcon(d.file_type)}</div><span class="doc-name-text">${String(d.name||'').replace(/'/g,"\\'")}</span></div></td>
-    <td>${d.category||'General'}</td>
+    <td data-label="Category"><span class="hv-catdot" data-cat="${escapeHtml(d.category||'General')}">${escapeHtml(d.category||'General')}</span></td>
     <td>${d.uploaded_at||''}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
+      <button class="btn btn-sm btn-outline" title="Preview" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
       <button class="icon-action" title="Delete" onclick="deleteCompanyDocumentPrompt(${d.id})"><i class="fa-solid fa-trash"></i></button>
     </td>
   </tr>`).join('') || renderEmptyTableRow(4, 'No company documents uploaded yet.', 'fa-solid fa-folder-open');
+  setTableFoot('dochubTableBody', list.length, 'documents');
 }
 function renderCompanyDocumentsEmployee(filter=''){
   const body = document.getElementById('empDochubTableBody');
@@ -111,10 +112,10 @@ function renderCompanyDocumentsEmployee(filter=''){
   const list = companyDocuments.filter(d => (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f));
   body.innerHTML = list.map(d=>`<tr>
     <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docHubTypeIcon(d.file_type)}</div><span class="doc-name-text">${String(d.name||'').replace(/'/g,"\\'")}</span></div></td>
-    <td>${d.category||'General'}</td>
+    <td data-label="Category"><span class="hv-catdot" data-cat="${escapeHtml(d.category||'General')}">${escapeHtml(d.category||'General')}</span></td>
     <td>${d.uploaded_at||''}</td>
     <td style="display:flex;gap:6px;justify-content:flex-end;">
-      <button class="icon-action" title="Preview" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
+      <button class="btn btn-sm btn-outline" title="Preview" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}"><i class="fa-solid fa-eye"></i></button>
       <button class="icon-action" title="Download" onclick="downloadCompanyDocument(${d.id})"><i class="fa-solid fa-download"></i></button>
     </td>
   </tr>`).join('') || renderEmptyTableRow(4, 'No company documents available yet.', 'fa-solid fa-folder-open');
