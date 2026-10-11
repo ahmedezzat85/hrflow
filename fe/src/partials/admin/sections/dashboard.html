@@ -1,9 +1,9 @@
         <section class="page-section active fv" id="a-dashboard">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-            <span style="font-size:13px; color:var(--ink-muted);">Good morning. Here is <strong style="color:var(--brand);">October 2026</strong> so far</span>
-            <select aria-label="Period" style="height:32px; padding:0 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:13px; color:var(--text);"><option>Last 6 months</option></select>
+          <div class="hv-between hv-mb-14">
+            <span class="hv-muted-13">Good morning. Here is <strong class="hv-text-brand">October 2026</strong> so far</span>
+            <select class="hv-select" aria-label="Period"><option>Last 6 months</option></select>
           </div>
-          <div class="hero-banner" style="margin-bottom:14px;">
+          <div class="hero-banner hv-mb-14">
             <div class="hero-stats">
               <div class="hero-card hero-card-accent" onclick="showSection('a-employees','admin')">
                 <span class="hero-card-label">Active headcount</span>
@@ -28,7 +28,7 @@
             </div>
             <span id="statClaimsTotal" style="display:none;"></span>
           </div>
-          <div class="grid g-2-1" style="margin-bottom:14px;">
+          <div class="grid g-2-1 hv-mb-14">
             <div class="card">
               <div class="card-head">
                 <h3>Requests overview (last 6 months)</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
@@ -42,7 +42,7 @@
               <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
             </div>
           </div>
-          <div class="grid g-1-2" style="margin-bottom:14px;">
+          <div class="grid g-1-2 hv-mb-14">
             <div class="card">
               <div class="card-head">
                 <h3>Upcoming annual raises</h3><a class="link" data-goto="a-salary" data-portal="admin">View all</a>

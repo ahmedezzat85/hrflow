@@ -1,0 +1,149 @@
+/* HR, System and portal page helpers (D-028). Semantic classes that replace the inline style="" attributes
+   formerly used for layout and tone in the section partials. Values are identical to the removed inline styles.
+   Scoped under .fv (page root) so Finance and login are unaffected. */
+
+/* ---------- Spacing ---------- */
+.fv .hv-mb-0 { margin-bottom: 0; }
+.fv .hv-mb-8 { margin-bottom: 8px; }
+.fv .hv-mb-12 { margin-bottom: 12px; }
+.fv .hv-mb-14 { margin-bottom: 14px; }
+.fv .hv-mb-16 { margin-bottom: 16px; }
+.fv .hv-mb-20 { margin-bottom: 20px; }
+.fv .hv-pb-8 { padding-bottom: 8px; }
+.fv .hv-pad { padding: 14px 16px; }
+.fv .hv-right { text-align: right; }
+.fv .hv-no-border { border-bottom: 0; }
+.fv .hv-push-bottom { align-self: flex-start; margin-top: auto; }
+.fv .hv-w-full { width: 100%; }
+.fv .hv-w-200 { max-width: 200px; }
+.fv .hv-w-210 { max-width: 210px; }
+.fv .hv-w-220 { max-width: 220px; }
+.fv .hv-w-230 { max-width: 230px; }
+.fv .hv-minw-180 { min-width: 180px; }
+
+/* ---------- Layout rows ---------- */
+.fv .hv-row-8 { display: flex; gap: 8px; align-items: center; }
+.fv .hv-row-10 { display: flex; gap: 10px; align-items: center; }
+.fv .hv-wrap { flex-wrap: wrap; }
+.fv .hv-col-10 { display: flex; flex-direction: column; gap: 10px; }
+.fv .hv-between { display: flex; align-items: center; justify-content: space-between; }
+.fv .hv-between-meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-muted); }
+.fv .hv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.fv .hv-tabbar {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.fv .hv-grid { display: grid; gap: 14px; margin-bottom: 14px; }
+.fv .hv-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fv .hv-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fv .hv-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fv .hv-card-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.fv .hv-card-head-plain { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+
+/* ---------- Stat tiles ---------- */
+.fv .hv-stat-tile {
+  display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.fv .hv-clickable { cursor: pointer; }
+.fv .hv-stat-label { font-size: 12.5px; font-weight: 600; color: var(--ink-muted); }
+.fv .hv-stat-sub { font-size: 12.5px; color: var(--ink-muted); }
+.fv .hv-stat-value { font-family: var(--font-head); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--text); }
+.fv .hv-stat-value.hv-tone-warning { color: var(--warning); }
+.fv .hv-stat-value.hv-tone-success { color: var(--success); }
+.fv .hv-stat-value.hv-tone-brand { color: var(--brand-text); }
+.fv .hv-card-title { margin: 0; font-family: var(--font-head); font-size: 15px; color: var(--text); }
+
+/* ---------- Tones, counts, dots ---------- */
+.fv .hv-tone-warning-soft { background: var(--warning-soft); color: var(--warning); }
+.fv .hv-tone-success-soft { background: var(--success-soft); color: var(--success); }
+.fv .hv-tone-accent-soft { background: var(--accent-soft); color: var(--accent-text); }
+.fv .hv-text-accent { color: var(--accent-text); }
+.fv .hv-text-brand { color: var(--brand); }
+.fv .hv-text-success { color: var(--success); }
+.fv .hv-bold { font-weight: 600; }
+.fv .hv-count { margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 11.5px; background: var(--surface2); }
+.fv .hv-count--brand { background: var(--brand-wash); }
+.fv .hv-count-fade { padding: 0 6px; border-radius: 999px; opacity: .85; margin-left: 4px; }
+.fv .hv-count-fade--sm { padding: 0; opacity: .75; margin-left: 2px; }
+.fv .hv-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 2px; }
+.fv .hv-dot--success { background: var(--success); }
+.fv .hv-dot--muted { background: var(--ink-muted); }
+.fv .hv-dot--info { background: var(--info); }
+
+/* ---------- Text helpers ---------- */
+.fv .hv-note-sm { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.fv .hv-muted-13 { font-size: 13px; color: var(--ink-muted); }
+.fv .hv-text2-13 { color: var(--text2); font-size: 13px; }
+.fv .hv-text2-125 { color: var(--text2); font-size: 12.5px; margin: 0; }
+.fv .hv-link { font-size: 13px; font-weight: 600; color: var(--brand); cursor: pointer; }
+
+/* ---------- Empty states ---------- */
+.fv .hv-empty { padding: 48px 24px; text-align: center; }
+.fv .hv-empty-icon { font-size: 36px; color: var(--text3); margin-bottom: 12px; }
+.fv .hv-empty-text { color: var(--text2); font-size: 14px; max-width: 440px; margin: 0 auto; line-height: 1.5; }
+
+/* ---------- Select and tabs ---------- */
+.fv .hv-select {
+  height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); font-size: 13px; color: var(--text);
+}
+.fv .hv-tab {
+  padding: 9px 12px; border-radius: 0; background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--ink-body); font-weight: 500; cursor: pointer;
+}
+.fv .hv-tab.active { border-bottom-color: var(--brand); color: var(--brand); font-weight: 600; background: none; box-shadow: none; }
+.fv .hv-tab:hover { background: none; color: var(--brand); }
+.fv .hv-tab.active .hv-count { background: var(--brand-wash); }
+
+/* ---------- Employee detail ---------- */
+.fv .hv-mb-18 { margin-bottom: 18px; }
+.fv .hv-mt-16 { margin-top: 16px; }
+.fv .hv-mt-20 { margin-top: 20px; }
+.fv .hv-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.fv .hv-total-label { font-size: 12.5px; color: var(--text2); }
+.fv .hv-total-value { font-family: var(--font-head); font-size: 16px; }
+.fv .hv-auto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.fv .hv-pill-neutral { background: var(--surface2); color: var(--text2); }
+
+#a-employee-detail .employee-detail-section-label {
+  font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-label);
+}
+#a-employee-detail .employee-detail-section-line { background: var(--fv-line); }
+#a-employee-detail .card { padding: 0; overflow: hidden; border-radius: 14px; box-shadow: var(--fv-shadow-card); }
+#a-employee-detail .emp-summary-card { overflow: visible; }
+#a-employee-detail .card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 16px; margin: 0; border-bottom: 1px solid var(--fv-line);
+}
+#a-employee-detail .card-head h3 { font-size: 15px; font-weight: 700; color: var(--ink-strong); letter-spacing: 0; text-transform: none; }
+#a-employee-detail .card-head h3 i { font-size: 14px; }
+#a-employee-detail .card-body { padding: 14px 16px; }
+#a-employee-detail .emp-summary-card .esc-zone-label,
+#a-employee-detail .emp-summary-card .esc-comp-piece .esc-k,
+#a-employee-detail .emp-summary-card .esc-row .esc-k,
+#a-employee-detail .employee-bank-card .iban-row .k {
+  text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-label);
+}
+#a-employee-detail .employee-bank-card .helper { font-size: 12.5px; color: var(--ink-muted); }
+#a-employee-detail .employee-bank-card .iban-row { border-bottom: 1px solid var(--fv-line-row); }
+#a-employee-detail .employee-quick-action {
+  height: 36px; border: 1px solid var(--fv-line); border-radius: 9px; background: var(--fv-surface);
+  color: var(--ink-body); font-size: 13px; font-weight: 600;
+}
+#a-employee-detail .employee-quick-action:hover { background: var(--fv-canvas); color: var(--brand-text); }
+#a-employee-detail .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); text-transform: none; letter-spacing: 0; }
+#a-employee-detail .form-field input,
+#a-employee-detail .form-field select { height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
+#a-employee-detail .form-field textarea { border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
+
+/* ---------- HR, System and portal pages: one table scale, no uppercase labels ---------- */
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table.density-regular th {
+  font-size: 12px; font-weight: 600; padding: 10px 14px;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table.density-regular td {
+  font-size: 13.5px; padding: 10px 14px;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) * {
+  text-transform: none;
+}

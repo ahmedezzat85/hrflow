@@ -1,8 +1,8 @@
         <section class="page-section fv" id="a-employee-detail">
-          <button class="btn btn-sm" style="margin-bottom:18px" onclick="showSection('a-employees','admin')">
+          <button class="btn btn-sm hv-mb-18" onclick="showSection('a-employees','admin')">
             <i class="fa-solid fa-arrow-left"></i> Back to employees
           </button>
-          <div class="card emp-summary-card" style="margin-bottom:20px">
+          <div class="card emp-summary-card hv-mb-20">
             <div id="detailProfileHead"></div>
             <div id="detailInfoGrid"></div>
           </div>
@@ -64,11 +64,11 @@
                   <h3><i class="fa-solid fa-shield-heart"></i> Medical insurance consumption</h3>
                 </div>
                 <div class="card-body">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
-                    <span style="font-size:12.5px;color:var(--text2)">Total Consumption</span>
-                    <strong style="font-family:var(--font-head);font-size:16px" id="detailInsuranceTotal">—</strong>
+                  <div class="hv-total-row">
+                    <span class="hv-total-label">Total Consumption</span>
+                    <strong class="hv-total-value" id="detailInsuranceTotal">—</strong>
                   </div>
-                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="detailInsuranceGrid"></div>
+                  <div class="hv-auto-grid" id="detailInsuranceGrid"></div>
                 </div>
               </div>
 
@@ -89,7 +89,7 @@
                     <tr>
                       <th>Document</th>
                       <th>Uploaded</th>
-                      <th style="text-align:right;">Actions</th>
+                      <th class="hv-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="detailDocumentsBody"></tbody>
@@ -101,7 +101,7 @@
                   <h3><i class="fa-solid fa-note-sticky"></i> Notes &amp; Performance Tracking</h3>
                 </div>
                 <div class="card-body">
-                  <div class="form-grid" style="margin-bottom:16px;">
+                  <div class="form-grid hv-mb-16">
                     <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
                     <div class="form-field"><label>Category</label>
                       <select id="fNoteCategory">
@@ -117,7 +117,7 @@
                         placeholder="Describe the observation, incident, or performance note..."></textarea></div>
                   </div>
                   <button class="btn btn-fill" onclick="saveEmployeeNote()"><i class="fa-solid fa-plus"></i> Add Note</button>
-                  <ul class="timeline" id="detailNotesList" style="margin-top:20px;"></ul>
+                  <ul class="timeline hv-mt-20" id="detailNotesList"></ul>
                 </div>
               </div>
             </main>
@@ -136,7 +136,7 @@
                   </button>
                 </div>
                 <div class="status-line" id="bankAccountStatusLine">
-                  <span class="badge-pill" id="bankAccountPill" style="background:var(--surface2);color:var(--text2);">
+                  <span class="badge-pill hv-pill-neutral" id="bankAccountPill">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
                   <button type="button" class="btn btn-outline btn-sm" id="bankAccountStatusActionBtn" hidden></button>
@@ -158,7 +158,7 @@
                 </div>
               </div>
 
-              <div class="card employee-bank-card" id="socialInsuranceCard" style="margin-top:16px;">
+              <div class="card employee-bank-card hv-mt-16" id="socialInsuranceCard">
                 <div class="card-head">
                   <h3><i class="fa-solid fa-shield-halved"></i> Social Insurance</h3>
                   <button class="action-btn" id="socialInsuranceActionBtn" onclick="openSocialInsuranceModal(event)" title="Edit Social Insurance">
@@ -166,7 +166,7 @@
                   </button>
                 </div>
                 <div class="status-line" id="socialInsuranceStatusLine">
-                  <span class="badge-pill" id="socialInsurancePill" style="background:var(--surface2);color:var(--text2);">
+                  <span class="badge-pill hv-pill-neutral" id="socialInsurancePill">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
                   <button type="button" class="btn btn-outline btn-sm" id="socialInsuranceStatusActionBtn" hidden></button>

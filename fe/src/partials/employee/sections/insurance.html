@@ -1,30 +1,30 @@
         <section class="page-section fv" id="e-insurance">
-          <div class="card" style="margin-bottom:20px;">
+          <div class="card hv-mb-20">
             <div class="card-head">
               <h3>My insurance consumption</h3>
             </div>
-            <div class="info-item" style="margin-bottom:16px;"><span>Total consumption</span><b
+            <div class="info-item hv-mb-16"><span>Total consumption</span><b
                 id="empInsuranceTotalConsumed">—</b></div>
             <div class="grid g3" id="empInsuranceCategoryGrid"></div>
           </div>
-          <div class="grid g-2-1" style="margin-bottom:20px;">
+          <div class="grid g-2-1 hv-mb-20">
             <div class="card">
               <div class="card-head">
                 <h3>My insurance plan</h3>
               </div>
-              <p style="color:var(--text2);font-size:13px;">Plan and provider details are not available here yet. Your claims and category limits are shown below.</p>
+              <p class="hv-text2-13">Plan and provider details are not available here yet. Your claims and category limits are shown below.</p>
             </div>
             <div class="card">
               <div class="card-head" id="empClaimFormHead">
                 <h3>Submit a claim</h3>
               </div>
-              <div class="form-field" style="margin-bottom:12px;"><label for="claimCategory">Category</label><select
+              <div class="form-field hv-mb-12"><label for="claimCategory">Category</label><select
                   id="claimCategory"></select></div>
-              <div class="form-field" style="margin-bottom:12px;"><label for="claimAmount">Amount (EGP)</label><input type="number"
+              <div class="form-field hv-mb-12"><label for="claimAmount">Amount (EGP)</label><input type="number"
                   id="claimAmount" inputmode="decimal" min="0" placeholder="e.g. 1500"></div>
-              <div class="form-field" style="margin-bottom:12px;"><label for="claimDocument">Supporting document (optional)</label><input
+              <div class="form-field hv-mb-12"><label for="claimDocument">Supporting document (optional)</label><input
                   type="file" id="claimDocument" accept=".pdf,.jpg,.jpeg,.png"></div>
-              <button class="btn btn-fill" style="width:100%;" onclick="submitClaim()"><i
+              <button class="btn btn-fill hv-w-full" onclick="submitClaim()"><i
                   class="fa-solid fa-file-medical"></i> Submit claim</button>
             </div>
           </div>

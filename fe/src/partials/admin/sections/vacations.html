@@ -1,29 +1,29 @@
         <section class="page-section fv" id="a-vacations">
-          <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; margin-bottom:14px;">
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm);">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">Days allotted</span>
-              <span id="statVacAllotted" style="font-family:var(--font-head); font-weight:700; font-size:24px; color:var(--text); line-height:1.1;">0</span>
-              <span style="font-size:12.5px; color:var(--ink-muted);">Across all employees</span>
+          <div class="hv-grid hv-grid-3">
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Days allotted</span>
+              <span class="hv-stat-value" id="statVacAllotted">0</span>
+              <span class="hv-stat-sub">Across all employees</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm);">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">Days used so far</span>
-              <span id="statVacUsed" style="font-family:var(--font-head); font-weight:700; font-size:24px; color:var(--text); line-height:1.1;">0</span>
-              <span id="statVacUsedPct" style="font-size:12.5px; color:var(--ink-muted);"><i class="fa-solid fa-chart-pie"></i> 0% consumed</span>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Days used so far</span>
+              <span class="hv-stat-value" id="statVacUsed">0</span>
+              <span class="hv-stat-sub" id="statVacUsedPct"><i class="fa-solid fa-chart-pie"></i> 0% consumed</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm); cursor:pointer;" onclick="showSection('a-requests','admin')">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">On leave today</span>
-              <span id="statEmployeesOnLeave" style="font-family:var(--font-head); font-weight:700; font-size:24px; color:var(--text); line-height:1.1;">0</span>
-              <span style="display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-muted);"><span>Real-time status</span><span style="color:var(--brand); font-weight:600;">Requests ›</span></span>
+            <div class="hv-stat-tile hv-clickable" onclick="showSection('a-requests','admin')">
+              <span class="hv-stat-label">On leave today</span>
+              <span class="hv-stat-value" id="statEmployeesOnLeave">0</span>
+              <span class="hv-between-meta"><span>Real-time status</span><span class="hv-text-brand hv-bold">Requests ›</span></span>
             </div>
           </div>
           <div class="card fv-table-card">
-            <div class="card-head" style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px;">
+            <div class="card-head hv-card-head hv-wrap">
               <div>
-                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Balances</h3>
-                <div style="font-size:12.5px; color:var(--ink-muted);">Annual leave per employee</div>
+                <h3 class="hv-card-title">Balances</h3>
+                <div class="hv-stat-sub">Annual leave per employee</div>
               </div>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <div class="search-box" style="max-width:220px;">
+              <div class="hv-row-8">
+                <div class="search-box hv-w-220">
                   <i class="fa-solid fa-magnifying-glass"></i>
                   <input id="vacBalanceSearch" placeholder="Search employees..." oninput="filterVacationBalances()">
                 </div>
@@ -39,7 +39,7 @@
                     <th>Entitled</th>
                     <th>Used</th>
                     <th>Remaining</th>
-                    <th style="min-width:180px;">Utilization progress</th>
+                    <th class="hv-minw-180">Utilization progress</th>
                   </tr>
                 </thead>
                 <tbody id="vacationBalanceBody"></tbody>

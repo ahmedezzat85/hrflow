@@ -1,5 +1,5 @@
         <section class="page-section fv" id="a-dochub">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+          <div class="hv-toolbar">
             <div role="group" aria-label="Filter by category" class="filter-tab-group fv-pills" id="dochubCategoryFilterGroup">
               <button type="button" class="filter-tab active" data-doc-cat="all">All</button>
               <button type="button" class="filter-tab" data-doc-cat="Policy">Policy</button>
@@ -7,8 +7,8 @@
               <button type="button" class="filter-tab" data-doc-cat="Form">Form</button>
               <button type="button" class="filter-tab" data-doc-cat="General">General</button>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <div class="search-box" style="max-width:200px;"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..."></div>
+            <div class="hv-row-8">
+              <div class="search-box hv-w-200"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..."></div>
               <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add document</button>
             </div>
           </div>
@@ -20,7 +20,7 @@
                     <th>Document</th>
                     <th>Category</th>
                     <th>Uploaded</th>
-                    <th style="text-align:right;">Actions</th>
+                    <th class="hv-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="dochubTableBody"></tbody>

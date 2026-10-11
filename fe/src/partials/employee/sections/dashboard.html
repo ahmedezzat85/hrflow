@@ -1,5 +1,5 @@
         <section class="page-section active fv" id="e-dashboard">
-          <div class="hero-banner" style="margin-bottom:14px;">
+          <div class="hero-banner hv-mb-14">
             <div class="hero-stats">
               <div class="hero-card hero-card-accent" onclick="showSection('e-vacations','employee')">
                 <span class="hero-card-label">Vacation days left</span>
@@ -23,26 +23,26 @@
               </div>
             </div>
           </div>
-          <div class="grid g-2-1" style="margin-bottom:14px;">
+          <div class="grid g-2-1 hv-mb-14">
             <div class="card">
               <div class="card-head">
-                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">My recent requests</h3>
+                <h3 class="hv-card-title">My recent requests</h3>
               </div>
               <ul class="timeline" id="empTimeline"></ul>
             </div>
-            <div class="card" style="display:flex; flex-direction:column; gap:10px;">
-              <div class="card-head" style="margin-bottom:0;">
-                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Next raise</h3>
+            <div class="card hv-col-10">
+              <div class="card-head hv-mb-0">
+                <h3 class="hv-card-title">Next raise</h3>
               </div>
-              <div id="empNextRaiseDate" style="font-family:var(--font-head); font-size:24px; font-weight:700; color:var(--brand-text); line-height:1.2;">—</div>
-              <p id="empNextRaiseNote" style="color:var(--text2); font-size:12.5px; margin:0;">No raise date scheduled yet.</p>
-              <button class="btn btn-outline" style="align-self:flex-start; margin-top:auto;" onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> Salary history</button>
+              <div class="hv-stat-value hv-tone-brand" id="empNextRaiseDate">—</div>
+              <p class="hv-text2-125" id="empNextRaiseNote">No raise date scheduled yet.</p>
+              <button class="btn btn-outline hv-push-bottom" onclick="showSection('e-salary','employee')"><i class="fa-solid fa-chart-line"></i> Salary history</button>
             </div>
           </div>
           <div class="card">
-            <div class="card-head" style="display:flex; align-items:center; justify-content:space-between;">
-              <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">My medical insurance</h3>
-              <a class="link" onclick="showSection('e-insurance','employee')" style="font-size:13px; font-weight:600; color:var(--brand); cursor:pointer;">View details ›</a>
+            <div class="card-head hv-between">
+              <h3 class="hv-card-title">My medical insurance</h3>
+              <a class="link hv-link" onclick="showSection('e-insurance','employee')">View details ›</a>
             </div>
             <div class="grid g3" id="empDashInsuranceCategoryChips"></div>
           </div>

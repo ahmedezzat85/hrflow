@@ -1,13 +1,13 @@
         <section class="page-section fv" id="a-employees">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+          <div class="hv-toolbar">
             <div role="group" aria-label="Filter by status" class="filter-tab-group fv-pills" id="employeeStatusFilterGroup">
-              <button type="button" class="filter-tab active" data-emp-status="all" onclick="filterEmployeesByStatus('all')">All <span id="empCountAll" style="padding:0 6px;border-radius:999px;opacity:.85;margin-left:4px;"></span></button>
-              <button type="button" class="filter-tab" data-emp-status="Active" onclick="filterEmployeesByStatus('Active')"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--success);margin-right:2px;"></span>Active <span id="empCountActive" style="opacity:.75;margin-left:2px;"></span></button>
-              <button type="button" class="filter-tab" data-emp-status="On leave" onclick="filterEmployeesByStatus('On leave')"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--info);margin-right:2px;"></span>On leave <span id="empCountOnLeave" style="opacity:.75;margin-left:2px;"></span></button>
-              <button type="button" class="filter-tab" data-emp-status="Inactive" onclick="filterEmployeesByStatus('Inactive')"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--ink-muted);margin-right:2px;"></span>Inactive <span id="empCountInactive" style="opacity:.75;margin-left:2px;"></span></button>
+              <button type="button" class="filter-tab active" data-emp-status="all" onclick="filterEmployeesByStatus('all')">All <span class="hv-count-fade" id="empCountAll"></span></button>
+              <button type="button" class="filter-tab" data-emp-status="Active" onclick="filterEmployeesByStatus('Active')"><span class="hv-dot hv-dot--success"></span>Active <span class="hv-count-fade hv-count-fade--sm" id="empCountActive"></span></button>
+              <button type="button" class="filter-tab" data-emp-status="On leave" onclick="filterEmployeesByStatus('On leave')"><span class="hv-dot hv-dot--info"></span>On leave <span class="hv-count-fade hv-count-fade--sm" id="empCountOnLeave"></span></button>
+              <button type="button" class="filter-tab" data-emp-status="Inactive" onclick="filterEmployeesByStatus('Inactive')"><span class="hv-dot hv-dot--muted"></span>Inactive <span class="hv-count-fade hv-count-fade--sm" id="empCountInactive"></span></button>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <div class="search-box" style="max-width:230px;"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch" placeholder="Search employees..."></div>
+            <div class="hv-row-8">
+              <div class="search-box hv-w-230"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch" placeholder="Search employees..."></div>
               <button class="btn btn-outline" id="employeesExportBtn" onclick="openExportModal('employees')" title="Export employee records"><i class="fa-solid fa-file-export"></i> Export</button>
               <button class="btn btn-fill" id="btnAddEmployee" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add employee</button>
             </div>

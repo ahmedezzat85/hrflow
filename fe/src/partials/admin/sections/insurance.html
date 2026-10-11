@@ -1,36 +1,36 @@
         <section class="page-section fv" id="a-insurance">
-          <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; margin-bottom:14px;">
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm);">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">Total claims</span>
-              <span id="statClaimsYtd" style="font-family:var(--font-head); font-weight:700; font-size:24px; line-height:1.1; color:var(--text);">—</span>
-              <span style="font-size:12.5px; color:var(--ink-muted);">Year to date</span>
+          <div class="hv-grid hv-grid-4">
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Total claims</span>
+              <span class="hv-stat-value" id="statClaimsYtd">—</span>
+              <span class="hv-stat-sub">Year to date</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm);">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">Approved</span>
-              <span id="statClaimsApproved" style="font-family:var(--font-head); font-weight:700; font-size:24px; line-height:1.1; color:var(--success);">—</span>
-              <span style="font-size:12.5px; color:var(--ink-muted);">Processed claims</span>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Approved</span>
+              <span class="hv-stat-value hv-tone-success" id="statClaimsApproved">—</span>
+              <span class="hv-stat-sub">Processed claims</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm);">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">Waiting for a decision</span>
-              <span id="statClaimsPending" style="font-family:var(--font-head); font-weight:700; font-size:24px; line-height:1.1; color:var(--warning);">—</span>
-              <span style="font-size:12.5px; color:var(--ink-muted);">Pending review</span>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Waiting for a decision</span>
+              <span class="hv-stat-value hv-tone-warning" id="statClaimsPending">—</span>
+              <span class="hv-stat-sub">Pending review</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-radius:14px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm);">
-              <span style="font-size:12.5px; font-weight:600; color:var(--ink-muted);">Reimbursed</span>
-              <span id="statClaimsReimbursed" style="font-family:var(--font-head); font-weight:700; font-size:24px; line-height:1.1; color:var(--text);">—</span>
-              <span style="font-size:12.5px; color:var(--ink-muted);">This year</span>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Reimbursed</span>
+              <span class="hv-stat-value" id="statClaimsReimbursed">—</span>
+              <span class="hv-stat-sub">This year</span>
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; margin-bottom:14px;">
-            <div class="card" style="padding:14px 16px;">
-              <div class="card-head" style="margin-bottom:12px;">
-                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Use against annual limits</h3>
+          <div class="hv-grid hv-grid-2">
+            <div class="card hv-pad">
+              <div class="card-head hv-mb-12">
+                <h3 class="hv-card-title">Use against annual limits</h3>
               </div>
               <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
             </div>
             <div class="card fv-table-card">
-              <div class="card-head" style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border);">
-                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Categories and limits</h3>
+              <div class="card-head hv-card-head">
+                <h3 class="hv-card-title">Categories and limits</h3>
                 <button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i class="fa-solid fa-plus"></i> Add category</button>
               </div>
               <div class="fv-table-scroll">
@@ -48,11 +48,11 @@
             </div>
           </div>
           <div class="card fv-table-card">
-            <div class="card-head" style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border);">
+            <div class="card-head hv-card-head">
               <div>
-                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Claims</h3>
+                <h3 class="hv-card-title">Claims</h3>
               </div>
-              <div style="display:flex; gap:8px; align-items:center;">
+              <div class="hv-row-8">
                 <button class="btn btn-outline btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims"><i class="fa-solid fa-file-export"></i> Export</button>
                 <button type="button" class="btn btn-fill btn-sm" onclick="openBehalfClaimModal()"><i class="fa-solid fa-plus"></i> Record claim</button>
               </div>

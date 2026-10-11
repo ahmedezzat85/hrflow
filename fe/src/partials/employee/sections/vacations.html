@@ -1,41 +1,41 @@
         <section class="page-section fv" id="e-vacations">
-          <div class="grid g3" style="margin-bottom:20px;">
+          <div class="grid g3 hv-mb-20">
             <div class="card stat-card">
               <div class="stat-top">
                 <div class="stat-label">Annual entitlement</div>
-                <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-text);"><i class="fa-solid fa-calendar-check"></i></div>
+                <div class="stat-icon hv-tone-accent-soft"><i class="fa-solid fa-calendar-check"></i></div>
               </div>
               <div class="stat-val" id="empStatVacEntitlement">—</div>
               <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--accent-soft);color:var(--accent-text);"><i class="fa-solid fa-shield-halved"></i> Allocated days</span>
+                <span class="stat-trend hv-tone-accent-soft"><i class="fa-solid fa-shield-halved"></i> Allocated days</span>
               </div>
             </div>
             <div class="card stat-card">
               <div class="stat-top">
                 <div class="stat-label">Days used</div>
-                <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                <div class="stat-icon hv-tone-warning-soft"><i class="fa-solid fa-clock-rotate-left"></i></div>
               </div>
               <div class="stat-val" id="empStatVacUsed">—</div>
               <div class="stat-subtext">
-                <span class="stat-trend" id="empStatVacUsedTrend" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-hourglass-half"></i> Consumed</span>
+                <span class="stat-trend hv-tone-warning-soft" id="empStatVacUsedTrend"><i class="fa-solid fa-hourglass-half"></i> Consumed</span>
               </div>
             </div>
             <div class="card stat-card">
               <div class="stat-top">
                 <div class="stat-label">Days remaining</div>
-                <div class="stat-icon" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div>
+                <div class="stat-icon hv-tone-success-soft"><i class="fa-solid fa-umbrella-beach"></i></div>
               </div>
-              <div class="stat-val" id="empStatVacRemaining" style="color:var(--success)">—</div>
+              <div class="stat-val hv-text-success" id="empStatVacRemaining">—</div>
               <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-check"></i> Available balance</span>
+                <span class="stat-trend hv-tone-success-soft"><i class="fa-solid fa-check"></i> Available balance</span>
               </div>
             </div>
           </div>
-          <div class="card time-off-card" style="margin-bottom:20px;">
+          <div class="card time-off-card hv-mb-20">
             <div class="time-off-head">
               <div>
-                <h3 style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-plane-departure" style="color:var(--accent-text);"></i> Request time off</h3>
-                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Submit a leave or remote work request for HR and manager approval.</p>
+                <h3 class="hv-row-8"><i class="fa-solid fa-plane-departure hv-text-accent"></i> Request time off</h3>
+                <p class="hv-note-sm">Submit a leave or remote work request for HR and manager approval.</p>
               </div>
             </div>
             <div class="time-off-body" id="empVacationForm">
@@ -71,7 +71,7 @@
               </div>
               <div class="time-off-summary-bar">
                 <div class="time-off-days-badge">
-                  <i class="fa-solid fa-calculator" style="color:var(--accent-text);"></i>
+                  <i class="fa-solid fa-calculator hv-text-accent"></i>
                   <span>Calculated duration: <b id="vacComputedDays">0 days</b></span>
                 </div>
                 <button class="btn btn-fill" id="btnSubmitVacation" onclick="submitVacation()"><i
@@ -83,7 +83,7 @@
             <div class="card-head">
               <div>
                 <h3>My vacation and leave history</h3>
-                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Overview of all previous and pending leave requests.</p>
+                <p class="hv-note-sm">Overview of all previous and pending leave requests.</p>
               </div>
             </div>
             <table class="responsive-card-table">
