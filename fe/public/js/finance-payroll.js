@@ -341,7 +341,7 @@
       if (newRunBtn) newRunBtn.hidden = !this.canPermission('finance.payroll.prepare');
 
       if (this.runsLoadError) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
         if (countEl) countEl.textContent = '0 runs';
         return;
       }
@@ -361,16 +361,42 @@
       // A saved run for the current month is shown with its saved status and total;
       // the local draft row appears only when no run has been saved yet.
       const savedCurrent = (this.serverRuns || []).some(r => r.period_label === this.month);
-      let rowsHtml = savedCurrent ? '' : `
-        <tr class="clickable" onclick="PayrollApp.openRun('current')">
-          <td data-label="Period"><strong>${this.month}</strong></td>
-          <td data-label="Date range">${this.start} &rarr; ${this.end}</td>
-          <td data-label="Status"><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft'}</span></td>
-          <td data-label="Total Disbursement" class="payroll-num">${this.money(t.net)}</td>
-          <td data-label="Employees">${this.rows.length}</td>
-          <td data-label="Last updated">${this.audit[0] ? this.audit[0].when : '—'}</td>
-        </tr>
-      `;
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = (ym) => { const m = /^(\d{4})-(\d{2})/.exec(String(ym || '')); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : String(ym || ''); };
+      const rangeText = (a, b) => {
+        const pa = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(a || '')); const pb = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(b || ''));
+        if (!pa || !pb) return `${a || ''} &rarr; ${b || ''}`;
+        return `${+pa[3]}&ndash;${+pb[3]} ${SHORT[+pb[2] - 1]} ${pb[1]}`;
+      };
+      const dayText = (d) => { const p = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || '')); return p ? `${+p[3]} ${SHORT[+p[2] - 1]} ${p[1]}` : String(d || ''); };
+      const dot = '<span class="pv-dot"></span>';
+      const pill = (cls, text) => `<span class="pv-pill ${cls}">${dot}${text}</span>`;
+      const rows = [];
+      const rowHtml = (o) => `
+        <tr class="clickable" data-cat="${o.cat}" data-stat-open="${o.statOpen ? 1 : 0}" onclick="PayrollApp.openRun('${o.arg}')">
+          <td data-label="Period"><strong class="pv-period">${escapeHtml(o.period)}</strong><span class="pv-period-sub">${rangeText(o.start, o.end)}</span></td>
+          <td data-label="Salaries">${o.salaries}</td>
+          <td data-label="Statutory">${o.statutory}</td>
+          <td data-label="Employees" class="num">${o.hc}</td>
+          <td data-label="Total Disbursement" class="payroll-num num">${o.net}</td>
+          <td data-label="Last updated">${o.upd}</td>
+          <td data-label="Actions" class="col-actions"><button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation(); PayrollApp.openRun('${o.arg}')">${o.action}</button></td>
+        </tr>`;
+      const salaryPill = (key, label) => {
+        if (key === 'draft') return `<span class="pv-pill pv-pill--draft">${dot}${label}</span>`;
+        if (key === 'paid') return pill('pv-pill--paid', label);
+        if (key === 'partially_paid' || key === 'processing') return pill('pv-pill--part', label);
+        return pill('pv-pill--open', label);
+      };
+      if (!savedCurrent) {
+        rows.push({
+          arg: 'current', cat: 'draft', statOpen: false, period: this.month, start: this.start, end: this.end,
+          salaries: salaryPill(currentStatus, statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft'),
+          statutory: pill('pv-pill--none', 'Not started'), hc: this.rows.length, net: this.money(t.net),
+          upd: this.audit[0] ? this.audit[0].when : '&mdash;', action: 'Continue', primary: true
+        });
+      }
 
       const pastRuns = this.serverRuns || [];
       pastRuns.forEach(r => {
@@ -380,7 +406,9 @@
         const hc = r.headcount !== undefined ? r.headcount : (r.employees || (r.lines ? r.lines.length : 0));
         const upd = r.paid_at || r.updated_at || r.created_at || '—';
         const displayUpd = upd.length > 16 ? upd.slice(0, 16).replace('T', ' ') : upd;
-        let statBadgeHtml = '';
+        let statutory = pill('pv-pill--none', 'Not started');
+        let statOpen = false;
+        let action = sKey === 'draft' ? 'Continue' : 'Open';
         if (sKey === 'paid' || sKey === 'partially_paid') {
           const obls = (this.allObligations || []).filter(o =>
             (r.id !== undefined && r.id !== null && (o.source_id === r.id || String(o.source_id) === String(r.id))) ||
@@ -389,24 +417,61 @@
           );
           const resolved = this.resolvePayrollRunState(r, obls);
           if (resolved && resolved.badge) {
-            statBadgeHtml = ` <span class="p-badge ${resolved.badgeClass}" style="margin-left:4px; font-size:0.72rem;">${resolved.badge}</span>`;
+            const partial = /partial/i.test(resolved.badge);
+            const settled = /reconciled$/i.test(resolved.badge) && !partial;
+            statOpen = !settled;
+            statutory = pill(partial ? 'pv-pill--part' : (settled ? 'pv-pill--paid' : 'pv-pill--open'), resolved.badge);
+            action = partial ? 'Reconcile' : (settled ? 'Open' : 'Record statutory');
           }
         }
-
-        rowsHtml += `
-          <tr class="clickable" onclick="PayrollApp.openRun('${r.id || r.period_label}')">
-            <td data-label="Period"><strong>${escapeHtml(r.period_label)}</strong></td>
-            <td data-label="Date range">${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
-            <td data-label="Status"><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
-            <td data-label="Total Disbursement" class="payroll-num">${this.money(netVal)}</td>
-            <td data-label="Employees">${hc}</td>
-            <td data-label="Last updated">${displayUpd}</td>
-          </tr>
-        `;
+        rows.push({
+          arg: String(r.id || r.period_label), cat: (sKey === 'paid' || sKey === 'partially_paid') ? 'paid' : 'draft', statOpen,
+          period: r.period_label, start: r.period_start || (r.period_label + '-01'), end: r.period_end || (r.period_label + '-30'),
+          salaries: salaryPill(sKey, sBadge[0]), statutory, hc, net: this.money(netVal), upd: displayUpd, action, primary: sKey === 'draft'
+        });
       });
 
-      tbody.innerHTML = rowsHtml;
-      if (countEl) countEl.textContent = `${(savedCurrent ? 0 : 1) + pastRuns.length} runs total`;
+      tbody.innerHTML = rows.map(rowHtml).join('');
+      const total = rows.length;
+      if (countEl) countEl.textContent = `${total} runs total`;
+      const foot = document.getElementById('payrollRunsFoot');
+      if (foot) foot.textContent = `Showing ${total ? '1–' + total : '0'} of ${total} runs`;
+
+      // Status filter pills (All / Draft / Salaries paid / Statutory open)
+      const filterEl = document.getElementById('payrollRunsFilter');
+      if (filterEl) {
+        const count = (fn) => rows.filter(fn).length;
+        const defs = [
+          ['all', 'All', total, ''],
+          ['draft', 'Draft', count(x => x.cat === 'draft'), 'pv-fp--draft'],
+          ['paid', 'Salaries paid', count(x => x.cat === 'paid'), 'pv-fp--paid'],
+          ['stat', 'Statutory open', count(x => x.statOpen), 'pv-fp--open']
+        ];
+        const cur = this._runsFilter || 'all';
+        filterEl.innerHTML = defs.map(([k, label, n, cls]) =>
+          `<button type="button" class="pv-fp ${cls}${cur === k ? ' active' : ''}" data-runs-filter="${k}" aria-pressed="${cur === k}">${k === 'all' ? '' : dot}${label} <span class="pv-fp-n">${n}</span></button>`).join('');
+        const apply = () => {
+          const f = this._runsFilter || 'all';
+          tbody.querySelectorAll('tr').forEach(tr => {
+            const show = f === 'all' || (f === 'stat' ? tr.dataset.statOpen === '1' : tr.dataset.cat === f);
+            tr.hidden = !show;
+          });
+          filterEl.querySelectorAll('.pv-fp').forEach(b => { const on = b.dataset.runsFilter === f; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+        };
+        filterEl.onclick = (e) => { const b = e.target.closest('.pv-fp'); if (!b) return; this._runsFilter = b.dataset.runsFilter; apply(); };
+        apply();
+      }
+
+      // Current-cycle banner
+      const banner = document.getElementById('payrollCycleBanner');
+      if (banner) {
+        banner.hidden = false;
+        banner.innerHTML = `
+          <span class="pv-banner-main"><span class="pv-banner-kicker">Current cycle</span><span class="pv-banner-title">${escapeHtml(monthName(this.month))}</span><span class="pv-banner-sub">Pay date ${dayText(this.payDate)} &middot; ${this.rows.length} employees eligible &middot; saved automatically</span></span>
+          <span class="pv-banner-net"><span class="pv-banner-kicker">Projected net pay</span><span class="pv-banner-amt">${this.money(t.net)}</span></span>
+          <span class="pv-banner-btn">Continue run</span>`;
+        banner.onclick = () => PayrollApp.openRun('current');
+      }
     },
 
     // Period defaults for a calendar month "YYYY-MM": first to last day, paid on the last day.

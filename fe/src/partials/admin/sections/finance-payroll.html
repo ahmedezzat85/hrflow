@@ -18,20 +18,24 @@
                   </button>
                 </div>
               </div>
+              <a class="pv-banner" id="payrollCycleBanner" hidden></a>
+              <div class="pv-filterrow"><div class="pv-fpgroup" id="payrollRunsFilter" role="group" aria-label="Filter by status"></div></div>
               <div class="payroll-table-wrap">
                 <table class="runs-table responsive-card-table" id="payrollRunsTable">
                   <thead>
                     <tr>
                       <th>Period</th>
-                      <th>Date range</th>
-                      <th>Status</th>
+                      <th>Salaries</th>
+                      <th>Statutory</th>
+                      <th class="num">Employees</th>
                       <th class="num">Total disbursement</th>
-                      <th>Employees</th>
                       <th>Last updated</th>
+                      <th class="col-actions"><span class="sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody id="payrollRunsTableBody"></tbody>
                 </table>
+                <div class="pv-tablefoot" id="payrollRunsFoot"></div>
               </div>
             </div>
 
