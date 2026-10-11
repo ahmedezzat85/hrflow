@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialog: Employee bank account (approved reference, restyle v3)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select,textarea{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 860px; box-sizing: border-box; background: rgba(22,36,94,.42); font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; color: #2b3a5c; display: flex; align-items: center; justify-content: center;">
+  <div role="dialog" aria-labelledby="dTitle" style="width: 540px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px rgba(16,30,80,.28); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(32,86,232,.08);">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 11px; background: #e8eeff; color: #1a46bd; display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v12H3zM3 11h18M7 15h4"></path></svg></span>
+      <div style="flex: 1;"><h2 id="dTitle" style="margin: 0; font-family: Sora, sans-serif; font-size: 17px; font-weight: 700; color: #16245e;">Employee bank account · Sarah Connor</h2><div style="font-size: 12.5px; color: #5d6b8f;">Where this employee is paid. Not a company account.</div></div>
+      <a href="HR-EmployeeDetail.html" aria-label="Close" style="width: 32px; height: 32px; border-radius: 9px; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
+    </div>
+    <div style="padding: 16px 22px; display: flex; flex-direction: column; gap: 14px;">
+      <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Bank name<input placeholder="Commercial International Bank" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px;"></label>
+      <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">IBAN<input placeholder="EG38 0019 0005 0000 0000 0263 1800 2" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; letter-spacing: .02em;"></label>
+      <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">SWIFT or BIC, optional<input placeholder="CIBEEGCX" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px;"></label>
+      <p style="margin: 0; padding: 9px 12px; border-radius: 11px; background: #f7f9ff; font-size: 12.5px; color: #4b5c92;">Saved details are masked. Only people with the reveal permission can see the full IBAN.</p>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 22px; border-top: 1px solid rgba(32,86,232,.08); background: #fbfcff;">
+      <a href="HR-EmployeeDetail.html" style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 9px; color: #4b5c92; font-weight: 600; font-size: 13px; text-decoration: none;">Cancel</a>
+      <a href="HR-EmployeeDetail.html" style="display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none;">Save bank details</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module rail options, light and dark (approved reference, restyle v3)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button{font-family:inherit}</style>
+</head>
+<body>
+<div style="width: 1840px; height: 1300px; box-sizing: border-box; padding: 32px 40px; background: #e9edf7; font-family: Inter, system-ui, sans-serif; color: #16245e; display: flex; flex-direction: column; gap: 18px;">
+  <div><h1 style="margin: 0; font-family: Sora, sans-serif; font-size: 24px;">Module rail: three options, light and dark theme</h1><div style="font-size: 13.5px; color: #4b5c92;">Same sidebar, top bar and content in every column. Only the 68 px rail changes.</div></div>
+  <div style="display: grid; grid-template-columns: repeat(3, 560px); gap: 40px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 15px; font-weight: 700;">1 · Navy rail (proposed)</span><span style="font-size: 12.5px; color: #4b5c92;">Strongest sense of place; the same ink as Finance v2 titles. In dark theme it becomes a deeper midnight, darker than the page.</span></div><div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 15px; font-weight: 700;">2 · Soft blue rail</span><span style="font-size: 12.5px; color: #4b5c92;">A light brand tint with a white active tile. Calmer; the rail and sidebar read as one panel.</span></div><div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 15px; font-weight: 700;">3 · White rail</span><span style="font-size: 12.5px; color: #4b5c92;">Closest to today: white with a hairline. Lightest, but module switching is the least visible.</span></div>
+  </div>
+  
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 13px; font-weight: 700;">Light theme</span>
+      <div style="display: grid; grid-template-columns: repeat(3, 560px); gap: 40px;">
+        
+          <div style="width: 560px; height: 500px; display: flex; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px -8px rgba(16,30,80,.35);">
+            
+
+<div style="width:300px;height:500px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#16245e;border-right:none;">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="page" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:rgba(255,255,255,.14);color:#ffffff;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#b9c3e6;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="false" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#b9c3e6;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#b9c3e6;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="HR pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#ffffff;border-right:1px solid rgba(32,86,232,.10);">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#16245e;">HR</div><div style="font-size:12px;color:#5d6b8f;">People, leave and salary documents</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(32,86,232,.16);background:#f7f9ff;color:#5d6b8f;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#ffffff;border:1px solid rgba(32,86,232,.16);color:#5d6b8f;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">People</div>
+      
+        <a href="HR-Dashboard.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span><span style="flex: 1;">Dashboard</span></a>
+      
+        <a href="HR-Employees.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:#e8eeff;color:#1a46bd;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span><span style="flex: 1;">Employees</span></a>
+      
+        <a href="HR-Requests.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span><span style="flex: 1;">Pending requests</span><span style="padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;background:#fdf0e1;color:#9c5000;">3</span></a>
+      
+        <a href="HR-Salary.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e3f5ec;color:#2f7a2d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span><span style="flex: 1;">Salary and raises</span></a>
+      
+        <a href="HR-SalaryDocs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e3f5ec;color:#2f7a2d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span><span style="flex: 1;">Salary payment docs</span></a>
+      
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">Benefits and records</div>
+      
+        <a href="HR-Vacations.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e0f4f1;color:#0b7a6d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span><span style="flex: 1;">Vacations</span></a>
+      
+        <a href="HR-Insurance.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e0f4f1;color:#0b7a6d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span><span style="flex: 1;">Medical insurance</span></a>
+      
+        <a href="HR-Documents.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#f8eed6;color:#8a6000;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1;">Document hub</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#5d6b8f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+            <div style="width:260px;flex:none;display:flex;flex-direction:column;background:#f4f6fd;">
+              <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid rgba(32,86,232,.10);background:#fff;"><span style="width:24px;height:24px;border-radius:7px;background:#e8eeff;"></span><span style="font-family:Sora,sans-serif;font-weight:700;font-size:14px;color:#16245e;">Employees</span><span style="flex: 1;"></span><span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:#e8eeff;color:#1a46bd;">SC</span></div>
+              <div style="margin:14px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid rgba(32,86,232,.10);">
+                <span style="display:block;height:10px;width:60%;border-radius:4px;background:#4b5c92;opacity:.6;"></span>
+                <span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span>
+              </div>
+            </div>
+          </div>
+        
+          <div style="width: 560px; height: 500px; display: flex; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px -8px rgba(16,30,80,.35);">
+            
+
+<div style="width:300px;height:500px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#e9eefc;border-right:1px solid rgba(32,86,232,.10);">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="page" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:#ffffff;color:#1a46bd;box-shadow:0 1px 3px rgba(20,50,120,.10);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="false" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="HR pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#ffffff;border-right:1px solid rgba(32,86,232,.10);">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#16245e;">HR</div><div style="font-size:12px;color:#5d6b8f;">People, leave and salary documents</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(32,86,232,.16);background:#f7f9ff;color:#5d6b8f;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#ffffff;border:1px solid rgba(32,86,232,.16);color:#5d6b8f;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">People</div>
+      
+        <a href="HR-Dashboard.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span><span style="flex: 1;">Dashboard</span></a>
+      
+        <a href="HR-Employees.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:#e8eeff;color:#1a46bd;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span><span style="flex: 1;">Employees</span></a>
+      
+        <a href="HR-Requests.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span><span style="flex: 1;">Pending requests</span><span style="padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;background:#fdf0e1;color:#9c5000;">3</span></a>
+      
+        <a href="HR-Salary.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e3f5ec;color:#2f7a2d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span><span style="flex: 1;">Salary and raises</span></a>
+      
+        <a href="HR-SalaryDocs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e3f5ec;color:#2f7a2d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span><span style="flex: 1;">Salary payment docs</span></a>
+      
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">Benefits and records</div>
+      
+        <a href="HR-Vacations.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e0f4f1;color:#0b7a6d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span><span style="flex: 1;">Vacations</span></a>
+      
+        <a href="HR-Insurance.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e0f4f1;color:#0b7a6d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span><span style="flex: 1;">Medical insurance</span></a>
+      
+        <a href="HR-Documents.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#f8eed6;color:#8a6000;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1;">Document hub</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#5d6b8f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+            <div style="width:260px;flex:none;display:flex;flex-direction:column;background:#f4f6fd;">
+              <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid rgba(32,86,232,.10);background:#fff;"><span style="width:24px;height:24px;border-radius:7px;background:#e8eeff;"></span><span style="font-family:Sora,sans-serif;font-weight:700;font-size:14px;color:#16245e;">Employees</span><span style="flex: 1;"></span><span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:#e8eeff;color:#1a46bd;">SC</span></div>
+              <div style="margin:14px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid rgba(32,86,232,.10);">
+                <span style="display:block;height:10px;width:60%;border-radius:4px;background:#4b5c92;opacity:.6;"></span>
+                <span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span>
+              </div>
+            </div>
+          </div>
+        
+          <div style="width: 560px; height: 500px; display: flex; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px -8px rgba(16,30,80,.35);">
+            
+
+<div style="width:300px;height:500px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#ffffff;border-right:1px solid rgba(32,86,232,.10);">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="page" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:#e8eeff;color:#1a46bd;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#5d6b8f;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="false" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#5d6b8f;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#5d6b8f;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="HR pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#ffffff;border-right:1px solid rgba(32,86,232,.10);">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#16245e;">HR</div><div style="font-size:12px;color:#5d6b8f;">People, leave and salary documents</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(32,86,232,.16);background:#f7f9ff;color:#5d6b8f;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#ffffff;border:1px solid rgba(32,86,232,.16);color:#5d6b8f;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">People</div>
+      
+        <a href="HR-Dashboard.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span><span style="flex: 1;">Dashboard</span></a>
+      
+        <a href="HR-Employees.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:#e8eeff;color:#1a46bd;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span><span style="flex: 1;">Employees</span></a>
+      
+        <a href="HR-Requests.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e8eeff;color:#1a46bd;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span><span style="flex: 1;">Pending requests</span><span style="padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;background:#fdf0e1;color:#9c5000;">3</span></a>
+      
+        <a href="HR-Salary.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e3f5ec;color:#2f7a2d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span><span style="flex: 1;">Salary and raises</span></a>
+      
+        <a href="HR-SalaryDocs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e3f5ec;color:#2f7a2d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span><span style="flex: 1;">Salary payment docs</span></a>
+      
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">Benefits and records</div>
+      
+        <a href="HR-Vacations.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e0f4f1;color:#0b7a6d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span><span style="flex: 1;">Vacations</span></a>
+      
+        <a href="HR-Insurance.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#e0f4f1;color:#0b7a6d;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span><span style="flex: 1;">Medical insurance</span></a>
+      
+        <a href="HR-Documents.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#f8eed6;color:#8a6000;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1;">Document hub</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#5d6b8f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+            <div style="width:260px;flex:none;display:flex;flex-direction:column;background:#f4f6fd;">
+              <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid rgba(32,86,232,.10);background:#fff;"><span style="width:24px;height:24px;border-radius:7px;background:#e8eeff;"></span><span style="font-family:Sora,sans-serif;font-weight:700;font-size:14px;color:#16245e;">Employees</span><span style="flex: 1;"></span><span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:#e8eeff;color:#1a46bd;">SC</span></div>
+              <div style="margin:14px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid rgba(32,86,232,.10);">
+                <span style="display:block;height:10px;width:60%;border-radius:4px;background:#4b5c92;opacity:.6;"></span>
+                <span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span><span style="display:block;height:10px;border-radius:4px;background:#e1e7f6;"></span>
+              </div>
+            </div>
+          </div>
+        
+      </div>
+    </div>
+  
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 13px; font-weight: 700;">Dark theme</span>
+      <div style="display: grid; grid-template-columns: repeat(3, 560px); gap: 40px;">
+        
+          <div style="width: 560px; height: 500px; display: flex; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px -8px rgba(16,30,80,.35);">
+            
+
+<div style="width:300px;height:500px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#08122b;border-right:none;">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="page" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:rgba(157,184,255,.16);color:#e9eeff;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#9fb0dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="false" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#9fb0dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#9fb0dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="HR pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#101d44;border-right:1px solid #26396f;">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#e9eeff;">HR</div><div style="font-size:12px;color:#9fb0dc;">People, leave and salary documents</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(160,180,230,.22);background:#15275a;color:#9fb0dc;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#101d44;border:1px solid rgba(160,180,230,.22);color:#9fb0dc;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#7f90c0;">People</div>
+      
+        <a href="HR-Dashboard.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span><span style="flex: 1;">Dashboard</span></a>
+      
+        <a href="HR-Employees.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:rgba(53,102,239,.22);color:#9db8ff;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span><span style="flex: 1;">Employees</span></a>
+      
+        <a href="HR-Requests.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span><span style="flex: 1;">Pending requests</span><span style="padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;background:rgba(214,116,43,.20);color:#f3a467;">3</span></a>
+      
+        <a href="HR-Salary.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,162,76,.18);color:#7ccf78;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span><span style="flex: 1;">Salary and raises</span></a>
+      
+        <a href="HR-SalaryDocs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,162,76,.18);color:#7ccf78;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span><span style="flex: 1;">Salary payment docs</span></a>
+      
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#7f90c0;">Benefits and records</div>
+      
+        <a href="HR-Vacations.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(31,157,142,.20);color:#5fd0c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span><span style="flex: 1;">Vacations</span></a>
+      
+        <a href="HR-Insurance.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(31,157,142,.20);color:#5fd0c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span><span style="flex: 1;">Medical insurance</span></a>
+      
+        <a href="HR-Documents.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(185,138,34,.20);color:#e3bd5a;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1;">Document hub</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#9fb0dc;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+            <div style="width:260px;flex:none;display:flex;flex-direction:column;background:#0b1634;">
+              <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #26396f;background:#101d44;"><span style="width:24px;height:24px;border-radius:7px;background:rgba(79,128,242,.18);"></span><span style="font-family:Sora,sans-serif;font-weight:700;font-size:14px;color:#e9eeff;">Employees</span><span style="flex: 1;"></span><span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:rgba(53,102,239,.22);color:#9db8ff;">SC</span></div>
+              <div style="margin:14px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:12px;background:#101d44;border:1px solid #26396f;">
+                <span style="display:block;height:10px;width:60%;border-radius:4px;background:#a9b6dc;opacity:.6;"></span>
+                <span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span>
+              </div>
+            </div>
+          </div>
+        
+          <div style="width: 560px; height: 500px; display: flex; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px -8px rgba(16,30,80,.35);">
+            
+
+<div style="width:300px;height:500px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#0f1c42;border-right:1px solid #26396f;">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="page" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:#1c3068;color:#9db8ff;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#a9b6dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="false" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#a9b6dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#a9b6dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="HR pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#101d44;border-right:1px solid #26396f;">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#e9eeff;">HR</div><div style="font-size:12px;color:#9fb0dc;">People, leave and salary documents</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(160,180,230,.22);background:#15275a;color:#9fb0dc;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#101d44;border:1px solid rgba(160,180,230,.22);color:#9fb0dc;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#7f90c0;">People</div>
+      
+        <a href="HR-Dashboard.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span><span style="flex: 1;">Dashboard</span></a>
+      
+        <a href="HR-Employees.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:rgba(53,102,239,.22);color:#9db8ff;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span><span style="flex: 1;">Employees</span></a>
+      
+        <a href="HR-Requests.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span><span style="flex: 1;">Pending requests</span><span style="padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;background:rgba(214,116,43,.20);color:#f3a467;">3</span></a>
+      
+        <a href="HR-Salary.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,162,76,.18);color:#7ccf78;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span><span style="flex: 1;">Salary and raises</span></a>
+      
+        <a href="HR-SalaryDocs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,162,76,.18);color:#7ccf78;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span><span style="flex: 1;">Salary payment docs</span></a>
+      
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#7f90c0;">Benefits and records</div>
+      
+        <a href="HR-Vacations.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(31,157,142,.20);color:#5fd0c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span><span style="flex: 1;">Vacations</span></a>
+      
+        <a href="HR-Insurance.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(31,157,142,.20);color:#5fd0c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span><span style="flex: 1;">Medical insurance</span></a>
+      
+        <a href="HR-Documents.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(185,138,34,.20);color:#e3bd5a;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1;">Document hub</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#9fb0dc;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+            <div style="width:260px;flex:none;display:flex;flex-direction:column;background:#0b1634;">
+              <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #26396f;background:#101d44;"><span style="width:24px;height:24px;border-radius:7px;background:rgba(79,128,242,.18);"></span><span style="font-family:Sora,sans-serif;font-weight:700;font-size:14px;color:#e9eeff;">Employees</span><span style="flex: 1;"></span><span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:rgba(53,102,239,.22);color:#9db8ff;">SC</span></div>
+              <div style="margin:14px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:12px;background:#101d44;border:1px solid #26396f;">
+                <span style="display:block;height:10px;width:60%;border-radius:4px;background:#a9b6dc;opacity:.6;"></span>
+                <span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span>
+              </div>
+            </div>
+          </div>
+        
+          <div style="width: 560px; height: 500px; display: flex; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px -8px rgba(16,30,80,.35);">
+            
+
+<div style="width:300px;height:500px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#101d44;border-right:1px solid #26396f;">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="page" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:rgba(53,102,239,.22);color:#9db8ff;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#9fb0dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="false" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#9fb0dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#9fb0dc;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="HR pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#101d44;border-right:1px solid #26396f;">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#e9eeff;">HR</div><div style="font-size:12px;color:#9fb0dc;">People, leave and salary documents</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(160,180,230,.22);background:#15275a;color:#9fb0dc;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#101d44;border:1px solid rgba(160,180,230,.22);color:#9fb0dc;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#7f90c0;">People</div>
+      
+        <a href="HR-Dashboard.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span><span style="flex: 1;">Dashboard</span></a>
+      
+        <a href="HR-Employees.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:rgba(53,102,239,.22);color:#9db8ff;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span><span style="flex: 1;">Employees</span></a>
+      
+        <a href="HR-Requests.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,128,242,.18);color:#9db8ff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span><span style="flex: 1;">Pending requests</span><span style="padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;background:rgba(214,116,43,.20);color:#f3a467;">3</span></a>
+      
+        <a href="HR-Salary.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,162,76,.18);color:#7ccf78;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span><span style="flex: 1;">Salary and raises</span></a>
+      
+        <a href="HR-SalaryDocs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(79,162,76,.18);color:#7ccf78;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span><span style="flex: 1;">Salary payment docs</span></a>
+      
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#7f90c0;">Benefits and records</div>
+      
+        <a href="HR-Vacations.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(31,157,142,.20);color:#5fd0c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span><span style="flex: 1;">Vacations</span></a>
+      
+        <a href="HR-Insurance.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(31,157,142,.20);color:#5fd0c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span><span style="flex: 1;">Medical insurance</span></a>
+      
+        <a href="HR-Documents.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#c9d2e8;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(185,138,34,.20);color:#e3bd5a;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1;">Document hub</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#9fb0dc;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+            <div style="width:260px;flex:none;display:flex;flex-direction:column;background:#0b1634;">
+              <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #26396f;background:#101d44;"><span style="width:24px;height:24px;border-radius:7px;background:rgba(79,128,242,.18);"></span><span style="font-family:Sora,sans-serif;font-weight:700;font-size:14px;color:#e9eeff;">Employees</span><span style="flex: 1;"></span><span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:rgba(53,102,239,.22);color:#9db8ff;">SC</span></div>
+              <div style="margin:14px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:12px;background:#101d44;border:1px solid #26396f;">
+                <span style="display:block;height:10px;width:60%;border-radius:4px;background:#a9b6dc;opacity:.6;"></span>
+                <span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span><span style="display:block;height:10px;border-radius:4px;background:#26396f;"></span>
+              </div>
+            </div>
+          </div>
+        
+      </div>
+    </div>
+  
+</div>
+</body>
+</html>

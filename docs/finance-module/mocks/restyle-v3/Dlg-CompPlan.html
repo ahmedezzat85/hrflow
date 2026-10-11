@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialog: Compensation plan (approved reference, restyle v3)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select,textarea{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1140px; height: 860px; box-sizing: border-box; background: rgba(22,36,94,.42); font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; color: #2b3a5c; display: flex; align-items: center; justify-content: center;">
+  <div role="dialog" aria-labelledby="dTitle" style="width: 640px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px rgba(16,30,80,.28); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(32,86,232,.08);">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 11px; background: #e3f5ec; color: #2f7a2d; display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg></span>
+      <div style="flex: 1;"><h2 id="dTitle" style="margin: 0; font-family: Sora, sans-serif; font-size: 17px; font-weight: 700; color: #16245e;">Pay plan · Sarah Connor</h2><div style="font-size: 12.5px; color: #5d6b8f;">Effective-dated external USD and internal USD cash amounts</div></div>
+      <a href="HR-EmployeeDetail.html" aria-label="Close" style="width: 32px; height: 32px; border-radius: 9px; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
+    </div>
+    <div style="padding: 16px 22px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="border: 1px solid rgba(32,86,232,.10); border-radius: 12px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead><tr style="background: #f7f9ff;"><th scope="col" style="text-align: left; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #4b5c92;">Part</th><th scope="col" style="text-align: right; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #4b5c92;">Amount</th><th scope="col" style="text-align: left; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #4b5c92;">Basis</th><th scope="col" style="text-align: left; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #4b5c92;">From</th></tr></thead>
+          <tbody><tr><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07); font-weight: 600; color: #16245e;">External USD</td><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07); text-align: right;">$7,500</td><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07);">Net</td><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07);">15 Jan 2024</td></tr><tr><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07); font-weight: 600; color: #16245e;">Internal USD cash</td><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07); text-align: right;">$5,000</td><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07);">Net</td><td style="padding: 8px 12px; border-top: 1px solid rgba(32,86,232,.07);">15 Jan 2024</td></tr></tbody>
+        </table>
+      </div>
+      <div style="font-size: 13px; font-weight: 700; color: #16245e;">Add a change</div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px;">
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Part<select style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; background: #fff; color: #16245e;"><option>External USD, US transfer</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">New amount, USD<input placeholder="0.00" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; text-align: right;"></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Salary basis<select style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; background: #fff; color: #16245e;"><option>Net, target net pay protected</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Effective from<input placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px;"></label>
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Notes, optional<textarea rows="2" placeholder="Why this changes" style="padding: 8px 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; resize: none;"></textarea></label>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 22px; border-top: 1px solid rgba(32,86,232,.08); background: #fbfcff;">
+      <a href="HR-EmployeeDetail.html" style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 9px; color: #4b5c92; font-weight: 600; font-size: 13px; text-decoration: none;">Close</a>
+      <a href="HR-EmployeeDetail.html" style="display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none;">Add change</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

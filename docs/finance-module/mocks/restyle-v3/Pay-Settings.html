@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payroll: Settings (approved reference, restyle v3)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1440px; height: 1060px; display: flex; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45;">
+  
+
+<div style="width:300px;height:1060px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#e9eefc;border-right:1px solid rgba(32,86,232,.10);">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="false" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="page" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:#ffffff;color:#1a46bd;box-shadow:0 1px 3px rgba(20,50,120,.10);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="Payroll pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#ffffff;border-right:1px solid rgba(32,86,232,.10);">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#16245e;">Payroll</div><div style="font-size:12px;color:#5d6b8f;">Monthly runs and statutory payments</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(32,86,232,.16);background:#f7f9ff;color:#5d6b8f;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#ffffff;border:1px solid rgba(32,86,232,.16);color:#5d6b8f;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">Payroll</div>
+      
+        <a href="Pay-Runs.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#f1eafe;color:#6236c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"></path></svg></span><span style="flex: 1;">Payroll runs</span></a>
+      
+        <a href="Pay-Settings.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:#e8eeff;color:#1a46bd;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f8;color:#4b5c92;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg></span><span style="flex: 1;">Payroll settings</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#5d6b8f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+      <span style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 9px; background: #eef1f8; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Payroll settings</span><span style="font-size: 12.5px; color: #5d6b8f;">Payroll</span></span>
+      <span style="display: flex; align-items: center; gap: 6px;">
+        <button type="button" aria-label="Notifications" style="width: 30px; height: 30px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"></path></svg></button>
+        <button type="button" aria-label="Account menu, Sarah Connor" style="width: 30px; height: 30px; margin-left: 4px; border: 0; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;">SC</button>
+      </span>
+    </header>
+    <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+      <span style="font-size: 13px; color: #5d6b8f;">Defaults for every new payroll run. The statutory rates are internal estimates; the government portals stay authoritative.</span>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+        <section style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 26px; height: 26px; border-radius: 8px; background: #e2f2fb; color: #146fa3; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg></span><div><h2 style="margin: 0; font-family: Sora, sans-serif; font-size: 15px; color: #16245e;">Company funding accounts</h2><div style="font-size: 12.5px; color: #5d6b8f;">Company bank accounts that pay salaries</div></div></div>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">External salaries, USD<select style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; background: #fff; color: #16245e;"><option>Voyance Operating USD · ••4821</option></select><span style="font-weight: 400; color: #5d6b8f;">International USD contractor pay and remittances</span></label>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Internal salaries, EGP<select style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; background: #fff; color: #16245e;"><option>CIB EGP Operating · ••3319</option></select><span style="font-weight: 400; color: #5d6b8f;">Domestic EGP net pay</span></label>
+          <div style="padding: 9px 12px; border-radius: 11px; background: #f7f9ff; font-size: 12.5px; color: #4b5c92;">The accounts need enough cleared balance before step 5, confirm payment.</div>
+        </section>
+        <section style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 26px; height: 26px; border-radius: 8px; background: #f1eafe; color: #6236c0; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"></path></svg></span><div style="flex: 1;"><h2 style="margin: 0; font-family: Sora, sans-serif; font-size: 15px; color: #16245e;">Active cycle and FX rate</h2><div style="font-size: 12.5px; color: #5d6b8f;">Period, pay date and conversion rate</div></div><span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #6236c0; background: #f1eafe;">September 2026</span></div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px;">
+            <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Payroll month<input value="September 2026" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+            <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Pay date<input value="30 Sep 2026" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+            <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Period start<input value="1 Sep 2026" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+            <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Period end<input value="30 Sep 2026" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">FX rate override, USD to EGP<span style="display: flex;"><span style="display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-right: 0; border-radius: 9px 0 0 9px; background: #f7f9ff; color: #4b5c92; font-size: 13px;">1 USD =</span><input placeholder="Empty uses the fallback, 50.0000" style="height: 36px; flex: 1; min-width: 0; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 0 9px 9px 0; font-size: 14px;"></span></label>
+        </section>
+        <section style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 26px; height: 26px; border-radius: 8px; background: #e0f4f1; color: #0b7a6d; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg></span><div><h2 style="margin: 0; font-family: Sora, sans-serif; font-size: 15px; color: #16245e;">Social insurance rates</h2><div style="font-size: 12.5px; color: #5d6b8f;">Company-wide estimates · needs finance settings write access</div></div></div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px;">
+            <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Employee share<span style="display: flex;"><input value="11.00" style="height: 36px; flex: 1; min-width: 0; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-right: 0; border-radius: 9px 0 0 9px; font-size: 14px; font-weight: 600; color: #16245e;"><span style="display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 12px; border: 1px solid rgba(32,86,232,.18); border-radius: 0 9px 9px 0; background: #f7f9ff; color: #4b5c92;">%</span></span><span style="font-weight: 400; color: #5d6b8f;">Default 11.00%</span></label>
+            <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Employer share<span style="display: flex;"><input value="18.00" style="height: 36px; flex: 1; min-width: 0; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-right: 0; border-radius: 9px 0 0 9px; font-size: 14px; font-weight: 600; color: #16245e;"><span style="display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 12px; border: 1px solid rgba(32,86,232,.18); border-radius: 0 9px 9px 0; background: #f7f9ff; color: #4b5c92;">%</span></span><span style="font-weight: 400; color: #5d6b8f;">Default 18.00%</span></label>
+          </div>
+          <div style="padding: 9px 12px; border-radius: 11px; background: #f7f9ff; font-size: 12.5px; color: #4b5c92;">Applied up to the monthly insured wage caps.</div>
+        </section>
+        <section style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 26px; height: 26px; border-radius: 8px; background: #f8eed6; color: #8a6000; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"></path></svg></span><div><h2 style="margin: 0; font-family: Sora, sans-serif; font-size: 15px; color: #16245e;">Income tax exemption</h2><div style="font-size: 12.5px; color: #5d6b8f;">Effective-dated · Super-Admin and Financial-Admin only</div></div></div>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Annual personal exemption (TAX_LIMIT_P)<span style="display: flex;"><input value="20,000" style="height: 36px; flex: 1; min-width: 0; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-right: 0; border-radius: 9px 0 0 9px; font-size: 14px; font-weight: 600; color: #16245e;"><span style="display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 12px; border: 1px solid rgba(32,86,232,.18); border-radius: 0 9px 9px 0; background: #f7f9ff; color: #4b5c92;">EGP a year</span></span></label>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4b5c92;">Effective from<input value="January 2026" style="height: 36px; padding: 0 10px; border: 1px solid rgba(32,86,232,.18); border-radius: 9px; font-size: 14px; color: #16245e;"></label>
+          <div style="padding: 9px 12px; border-radius: 11px; background: #f7f9ff; font-size: 12.5px; color: #4b5c92;">Spread across the months and applied before the tax brackets.</div>
+        </section>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: #fff; border: 1px solid rgba(32,86,232,.10);"><span style="font-size: 12.5px; color: #5d6b8f;">Changes apply to the current and future runs; finished runs keep their snapshot.</span><span style="display: flex; gap: 8px;"><button type="button" style="height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: #4b5c92; font-weight: 600; font-size: 13px;">Cancel</button><button type="button" style="height: 34px; padding: 0 16px; border: 0; border-radius: 9px; background: #2056e8; color: #fff; font-weight: 600; font-size: 13px;">Save settings</button></span></div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

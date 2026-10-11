@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payroll: Runs (approved reference, restyle v3)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>body{margin:0}button,input,select{font-family:inherit}a{color:#2056e8}a:hover{color:#1a46bd}</style>
+</head>
+<body>
+<div style="width: 1440px; height: 760px; display: flex; background: #f4f6fd; color: #2b3a5c; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45;">
+  
+
+<div style="width:300px;height:760px;display:flex;font-family:Inter,system-ui,sans-serif;">
+  <nav aria-label="Modules" style="width:68px;flex:none;box-sizing:border-box;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;background:#e9eefc;border-right:1px solid rgba(32,86,232,.10);">
+    <span aria-label="HRFlow" style="width: 38px; height: 38px; border-radius: 11px; background: #2056e8; color: #fff; font-family: Sora, sans-serif; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">HF</span>
+    
+      <a href="HR-Dashboard.html" aria-current="false" aria-label="HR module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">HR</span>
+        <span style="position: absolute; top: 4px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #d6742b; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span>
+      </a>
+    
+      <a href="#" aria-current="false" aria-label="Finance module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Finance</span>
+        
+      </a>
+    
+      <a href="Pay-Runs.html" aria-current="page" aria-label="Payroll module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:#ffffff;color:#1a46bd;box-shadow:0 1px 3px rgba(20,50,120,.10);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6 10v4M18 10v4"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">Payroll</span>
+        
+      </a>
+    
+      <a href="Sys-Roles.html" aria-current="false" aria-label="System module" style="position:relative;width:56px;height:54px;box-sizing:border-box;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;background:transparent;color:#4b5c92;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: .01em;">System</span>
+        
+      </a>
+    
+  </nav>
+  <nav aria-label="Payroll pages" style="width:232px;flex:none;box-sizing:border-box;padding:18px 12px;display:flex;flex-direction:column;gap:3px;background:#ffffff;border-right:1px solid rgba(32,86,232,.10);">
+    <div style="padding: 0 8px 10px;"><div style="font-family:Sora,sans-serif;font-weight:700;font-size:17px;color:#16245e;">Payroll</div><div style="font-size:12px;color:#5d6b8f;">Monthly runs and statutory payments</div></div>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:34px;box-sizing:border-box;margin:0 2px 6px;padding:0 10px;border-radius:9px;font-size:13px;text-align:left;border:1px solid rgba(32,86,232,.16);background:#f7f9ff;color:#5d6b8f;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span style="flex: 1; white-space: nowrap;">Search</span><span style="padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600;background:#ffffff;border:1px solid rgba(32,86,232,.16);color:#5d6b8f;">Ctrl K</span></button>
+    
+      <div style="padding:12px 10px 4px;font-size:11.5px;font-weight:600;color:#8f9cc2;">Payroll</div>
+      
+        <a href="Pay-Runs.html" aria-current="page" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;background:#e8eeff;color:#1a46bd;font-weight:600;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#f1eafe;color:#6236c0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"></path></svg></span><span style="flex: 1;">Payroll runs</span></a>
+      
+        <a href="Pay-Settings.html" aria-current="false" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:9px;font-size:13.5px;text-decoration:none;color:#2b3a5c;font-weight:500;"><span style="width:24px;height:24px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f8;color:#4b5c92;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg></span><span style="flex: 1;">Payroll settings</span></a>
+      
+    
+    <span style="flex: 1;"></span>
+    <button type="button" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:12.5px;font-weight:600;color:#5d6b8f;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Collapse</button>
+  </nav>
+</div>
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid rgba(32,86,232,.10);">
+      <span style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 9px; background: #f1eafe; color: #6236c0; display: inline-flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"></path></svg></span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 16px; color: #16245e;">Payroll runs</span><span style="font-size: 12.5px; color: #5d6b8f;">Payroll</span></span>
+      <span style="display: flex; align-items: center; gap: 6px;">
+        <button type="button" aria-label="Export data" style="width: 30px; height: 30px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 15v5h16v-5"></path></svg></button>
+        <button type="button" aria-label="Notifications" style="width: 30px; height: 30px; border: 1px solid rgba(32,86,232,.16); border-radius: 8px; background: #fff; color: #4b5c92; display: inline-flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"></path></svg></button>
+        <button type="button" aria-label="Account menu, Sarah Connor" style="width: 30px; height: 30px; margin-left: 4px; border: 0; border-radius: 50%; background: #e8eeff; color: #1a46bd; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;">SC</button>
+      </span>
+    </header>
+    <main style="padding: 16px 28px; display: flex; flex-direction: column; gap: 14px;">
+      <a href="Pay-Run-Setup.html" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: 14px; background: linear-gradient(155deg, #2a5df0 0%, #2056e8 38%, #1a2f9c 100%); box-shadow: 0 8px 22px -10px rgba(32,86,232,.65); color: #fff; text-decoration: none;">
+        <span style="flex: 1;"><span style="display: block; font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.88);">Current cycle · step 1 of 6, set up</span><span style="display: block; font-family: Sora, sans-serif; font-weight: 700; font-size: 22px;">September 2026</span><span style="font-size: 12.5px; color: rgba(255,255,255,.88);">Pay date 30 Sep 2026 · 2 employees eligible · saved automatically</span></span>
+        <span style="text-align: right;"><span style="display: block; font-size: 12.5px; color: rgba(255,255,255,.88);">Projected net pay</span><span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 22px;">$29,000.00</span></span>
+        <span style="display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; background: #fff; color: #1a46bd; font-weight: 600; font-size: 13px;">Continue run</span>
+      </a>
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div role="group" aria-label="Filter by status" style="display: flex; gap: 6px;"><button type="button" aria-pressed="true" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:#2056e8;color:#fff;border:1px solid #2056e8;"><span style="display:none;"></span>All <span style="padding:0 6px;border-radius:999px;background:rgba(255,255,255,.22);">4</span></button><button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;color:#4b5c92;background:#fff;border:1px dashed #8f9cc2;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#8f9cc2;"></span>Draft <span style="opacity:.75;">1</span></button><button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;color:#06703f;background:#e3f5ec;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#06703f;"></span>Salaries paid <span style="opacity:.75;">3</span></button><button type="button" aria-pressed="false" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;color:#9c5000;background:#fdf0e1;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#9c5000;"></span>Statutory open <span style="opacity:.75;">3</span></button></div>
+        <button type="button" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(32,86,232,.22); background: #fff; color: #1a46bd; font-weight: 600; font-size: 13px;">New payroll run</button>
+      </div>
+      <div style="background: #fff; border: 1px solid rgba(32,86,232,.10); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,50,120,.05);">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead><tr>
+            <th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: #2056e8; border-bottom: 1px solid rgba(32,86,232,.12);">Period ↓</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Salaries</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Statutory</th>
+            <th scope="col" style="text-align: right; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Employees</th>
+            <th scope="col" style="text-align: right; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Net pay</th>
+            <th scope="col" style="text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #4b5c92; border-bottom: 1px solid rgba(32,86,232,.12);">Last saved</th>
+            <th scope="col" style="padding: 12px 16px; border-bottom: 1px solid rgba(32,86,232,.12);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></th>
+          </tr></thead>
+          <tbody><tr>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><a href="Pay-Run-Setup.html" style="display: block; font-weight: 600; color: #16245e; text-decoration: none;">September 2026</a><span style="font-size: 12px; color: #5d6b8f;">1–30 Sep 2026</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#4b5c92;background:#fff;border:1px dashed #8f9cc2;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#8f9cc2;"></span>Draft · step 1 of 6</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#4b5c92;background:#eef1f8;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#8f9cc2;"></span>Not started</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;">2</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; font-variant-numeric: tabular-nums;">$29,000.00<div style="font-size: 12px; font-weight: 500; color: #5d6b8f;">projected</div></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">Not saved yet</td>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><a href="Pay-Run-Setup.html" style="display:inline-flex;align-items:center;box-sizing:border-box;height:28px;padding:0 13px;border-radius:8px;background:#2056e8;color:#fff;font-weight:600;font-size:12.5px;vertical-align:middle;text-decoration:none;">Continue</a><button type="button" aria-label="Export September 2026 as CSV" style="width: 30px; height: 30px; margin-left: 2px; border: 0; border-radius: 8px; background: transparent; color: #5d6b8f; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"></path></svg></button></td>
+          </tr><tr>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><a href="Pay-Run-Setup.html" style="display: block; font-weight: 600; color: #16245e; text-decoration: none;">August 2026</a><span style="font-size: 12px; color: #5d6b8f;">1–31 Aug 2026</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#06703f;background:#e3f5ec;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#06703f;"></span>Paid</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#6236c0;background:#f1eafe;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#6236c0;"></span>Partly reconciled</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;">2</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; font-variant-numeric: tabular-nums;">$27,000.00<div style="font-size: 12px; font-weight: 500; color: #5d6b8f;"></div></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">31 Aug 2026, 14:30</td>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><a href="Pay-Run-Statutory.html" style="display:inline-flex;align-items:center;box-sizing:border-box;height:28px;padding:0 13px;border-radius:8px;background:#2056e8;color:#fff;font-weight:600;font-size:12.5px;vertical-align:middle;text-decoration:none;">Reconcile</a><button type="button" aria-label="Export August 2026 as CSV" style="width: 30px; height: 30px; margin-left: 2px; border: 0; border-radius: 8px; background: transparent; color: #5d6b8f; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"></path></svg></button></td>
+          </tr><tr>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><a href="Pay-Run-Setup.html" style="display: block; font-weight: 600; color: #16245e; text-decoration: none;">July 2026</a><span style="font-size: 12px; color: #5d6b8f;">1–31 Jul 2026</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#06703f;background:#e3f5ec;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#06703f;"></span>Paid</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#9c5000;background:#fdf0e1;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#9c5000;"></span>Not recorded</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;">8</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; font-variant-numeric: tabular-nums;">$33,875.50<div style="font-size: 12px; font-weight: 500; color: #5d6b8f;"></div></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">31 Jul 2026, 17:10</td>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><a href="Pay-Run-Statutory.html" style="display:inline-flex;align-items:center;box-sizing:border-box;height:28px;padding:0 11px;border-radius:8px;border:1px solid rgba(32,86,232,.22);background:#fff;color:#1a46bd;font-weight:600;font-size:12.5px;vertical-align:middle;text-decoration:none;">Record statutory</a><button type="button" aria-label="Export July 2026 as CSV" style="width: 30px; height: 30px; margin-left: 2px; border: 0; border-radius: 8px; background: transparent; color: #5d6b8f; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"></path></svg></button></td>
+          </tr><tr>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07);"><a href="Pay-Run-Setup.html" style="display: block; font-weight: 600; color: #16245e; text-decoration: none;">June 2026</a><span style="font-size: 12px; color: #5d6b8f;">1–30 Jun 2026</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#06703f;background:#e3f5ec;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#06703f;"></span>Paid</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07);"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;color:#9c5000;background:#fdf0e1;border:1px solid transparent;"><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:#9c5000;"></span>Not recorded</span></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right;">8</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; font-weight: 700; color: #16245e; font-variant-numeric: tabular-nums;">$33,420.00<div style="font-size: 12px; font-weight: 500; color: #5d6b8f;"></div></td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid rgba(32,86,232,.07); white-space: nowrap;">30 Jun 2026, 16:55</td>
+            <td style="padding: 9px 16px; border-bottom: 1px solid rgba(32,86,232,.07); text-align: right; white-space: nowrap;"><a href="Pay-Run-Statutory.html" style="display:inline-flex;align-items:center;box-sizing:border-box;height:28px;padding:0 11px;border-radius:8px;border:1px solid rgba(32,86,232,.22);background:#fff;color:#1a46bd;font-weight:600;font-size:12.5px;vertical-align:middle;text-decoration:none;">Record statutory</a><button type="button" aria-label="Export June 2026 as CSV" style="width: 30px; height: 30px; margin-left: 2px; border: 0; border-radius: 8px; background: transparent; color: #5d6b8f; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"></path></svg></button></td>
+          </tr></tbody>
+        </table>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; font-size: 12.5px; color: #5d6b8f;"><span>Showing <strong style="color: #2056e8;">1–4</strong> of <strong style="color: #2056e8;">4</strong> runs · every action is saved, open a run to continue where it stopped</span><span>Page 1 of 1</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
