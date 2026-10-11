@@ -1,3 +1,34 @@
+let currentEmpStatusFilter = 'all';
+
+function updateEmployeeStatusCounts() {
+  const allCount = (typeof employees !== 'undefined' && employees) ? employees.length : 0;
+  const activeCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => (e.status || '').toLowerCase() === 'active').length : 0;
+  const leaveCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => (e.status || '').toLowerCase() === 'on leave').length : 0;
+  const inactiveCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => (e.status || '').toLowerCase() === 'inactive').length : 0;
+  const elAll = document.getElementById('empCountAll');
+  const elActive = document.getElementById('empCountActive');
+  const elLeave = document.getElementById('empCountOnLeave');
+  const elInactive = document.getElementById('empCountInactive');
+  if (elAll) elAll.textContent = allCount;
+  if (elActive) elActive.textContent = activeCount;
+  if (elLeave) elLeave.textContent = leaveCount;
+  if (elInactive) elInactive.textContent = inactiveCount;
+}
+
+function filterEmployeesByStatus(status) {
+  currentEmpStatusFilter = status;
+  const group = document.getElementById('employeeStatusFilterGroup');
+  if (group) {
+    group.querySelectorAll('.filter-tab').forEach(btn => {
+      const isMatch = btn.getAttribute('data-emp-status') === status;
+      btn.classList.toggle('active', isMatch);
+      btn.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+    });
+  }
+  const searchInput = document.getElementById('empSearch');
+  renderEmployeesTable(searchInput ? searchInput.value : '');
+}
+
 function renderEmployeesTable(filter = '') {
   const body = document.getElementById('employeesTableBody');
   const addBtn = document.getElementById('btnAddEmployee');
@@ -5,8 +36,13 @@ function renderEmployeesTable(filter = '') {
   if (addBtn) {
     addBtn.style.display = canWrite ? '' : 'none';
   }
+  updateEmployeeStatusCounts();
   const f = filter.toLowerCase();
-  body.innerHTML = employees.filter(e => (e.name || '').toLowerCase().includes(f) || (e.role || '').toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f) || (e.email || '').toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f)).map(e => `<tr>
+  let list = employees.filter(e => (e.name || '').toLowerCase().includes(f) || (e.role || '').toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f) || (e.email || '').toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f));
+  if (currentEmpStatusFilter && currentEmpStatusFilter !== 'all') {
+    list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
+  }
+  body.innerHTML = list.map(e => `<tr>
     <td data-label="ID" class="col-id">${e.id}</td>
     <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div>${escapeHtml(e.name)}</div><div style="font-size:11.5px;color:var(--text2);font-weight:400;">${escapeHtml(e.email)}</div></div></td>
     <td data-label="Role">${escapeHtml(e.role)}</td>

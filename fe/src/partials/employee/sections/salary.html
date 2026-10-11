@@ -1,37 +1,39 @@
-        <section class="page-section" id="e-salary">
-          <div class="grid g-2-1" style="margin-bottom:20px;">
+        <section class="page-section fv" id="e-salary">
+          <div class="grid g-2-1" style="margin-bottom:14px;">
             <div class="card">
               <div class="card-head">
-                <h3>Salary growth</h3>
+                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Salary growth</h3>
               </div>
               <div class="chart-wrap"><canvas id="chartSalary"></canvas></div>
             </div>
             <div class="card">
               <div class="card-head">
-                <h3>Current package</h3>
+                <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Current package</h3>
               </div>
               <div class="info-item" style="margin-bottom:12px;"><span>Base salary</span><b id="empPkgBase">—</b></div>
               <div class="info-item"><span>Total annual compensation</span><b id="empPkgTotal">—</b></div>
             </div>
           </div>
-          <div class="card">
-            <div class="card-head">
-              <h3>Raise history</h3>
+          <div class="card fv-table-card">
+            <div class="card-head" style="padding:12px 16px; border-bottom:1px solid var(--border);">
+              <h3 style="margin:0; font-family:var(--font-head); font-size:15px; color:var(--text);">Raise history</h3>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Effective date</th>
-                  <th>New internal</th>
-                  <th>New external</th>
-                  <th>New total</th>
-                  <th>Internal Δ</th>
-                  <th>External Δ</th>
-                  <th>Total Δ</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody id="salaryHistoryBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Effective date</th>
+                    <th style="text-align:right;">New internal</th>
+                    <th style="text-align:right;">New external</th>
+                    <th style="text-align:right;">New total</th>
+                    <th style="text-align:right;">Internal Δ</th>
+                    <th style="text-align:right;">External Δ</th>
+                    <th style="text-align:right;">Total Δ</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="salaryHistoryBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

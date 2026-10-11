@@ -1,5 +1,5 @@
-        <section class="page-section" id="a-system-roles">
-          <div class="toolbar">
+        <section class="page-section fv" id="a-system-roles">
+          <div class="toolbar" style="margin-bottom:14px;">
             <div class="section-title-group">
               <h2 class="section-title"><i class="fa-solid fa-user-shield"></i> Roles and permissions</h2>
               <p class="section-subtitle">Manage system roles, descriptions, and fine-grained permission assignments.</p>
@@ -8,19 +8,21 @@
               <button class="btn btn-fill" id="btnCreateRole" onclick="openCreateRoleModal()"><i class="fa-solid fa-plus"></i> New role</button>
             </div>
           </div>
-          <div class="card">
+          <div class="card fv-table-card">
             <div class="section-loading-bar" id="rolesTableLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>Role name</th>
-                  <th>Description</th>
-                  <th>Assigned users</th>
-                  <th>Permission count</th>
-                  <th class="col-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="rolesTableBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Role name</th>
+                    <th>Description</th>
+                    <th>Assigned users</th>
+                    <th>Permission count</th>
+                    <th class="col-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="rolesTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

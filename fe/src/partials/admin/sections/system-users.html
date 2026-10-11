@@ -1,5 +1,5 @@
-        <section class="page-section" id="a-system-users">
-          <div class="toolbar">
+        <section class="page-section fv" id="a-system-users">
+          <div class="toolbar" style="margin-bottom:14px;">
             <div class="section-title-group">
               <h2 class="section-title"><i class="fa-solid fa-users-gear"></i> User accounts and access</h2>
               <p class="section-subtitle">Manage user identity, the assigned role, and account access status.</p>
@@ -25,19 +25,21 @@
               </div>
             </div>
           </div>
-          <div class="card">
+          <div class="card fv-table-card">
             <div class="section-loading-bar" id="usersTableLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th class="col-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="systemUsersTableBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th class="col-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="systemUsersTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

@@ -1,21 +1,30 @@
-        <section class="page-section" id="a-dochub">
-          <div class="toolbar">
-            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch"
-                placeholder="Search documents..."></div>
-            <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add
-              document</button>
+        <section class="page-section fv" id="a-dochub">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+            <div role="group" aria-label="Filter by category" class="filter-tab-group fv-pills" id="dochubCategoryFilterGroup">
+              <button type="button" class="filter-tab active" data-doc-cat="all">All</button>
+              <button type="button" class="filter-tab" data-doc-cat="Policy">Policy</button>
+              <button type="button" class="filter-tab" data-doc-cat="Handbook">Handbook</button>
+              <button type="button" class="filter-tab" data-doc-cat="Form">Form</button>
+              <button type="button" class="filter-tab" data-doc-cat="General">General</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div class="search-box" style="max-width:200px;"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..."></div>
+              <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add document</button>
+            </div>
           </div>
-          <div class="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Document</th>
-                  <th>Category</th>
-                  <th>Uploaded</th>
-                  <th style="text-align:right;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="dochubTableBody"></tbody>
-            </table>
+          <div class="card fv-table-card">
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Document</th>
+                    <th>Category</th>
+                    <th>Uploaded</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="dochubTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

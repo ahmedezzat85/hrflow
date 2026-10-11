@@ -1,31 +1,31 @@
-        <section class="page-section" id="a-requests">
-          <div class="requests-toolbar">
-            <div class="filter-tabs">
-              <button class="filter-tab active" data-reqfilter="all">All <span class="tab-count" id="countReqAll">0</span></button>
-              <button class="filter-tab" data-reqfilter="Vacation"><i class="fa-solid fa-umbrella-beach"></i> Vacation <span class="tab-count" id="countReqVacation">0</span></button>
-              <button class="filter-tab" data-reqfilter="Work From Home"><i class="fa-solid fa-house-laptop"></i> Work from home <span class="tab-count" id="countReqWFH">0</span></button>
-              <button class="filter-tab" data-reqfilter="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical insurance <span class="tab-count" id="countReqInsurance">0</span></button>
+        <section class="page-section fv" id="a-requests">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:1px solid var(--border); margin-bottom:14px; flex-wrap:wrap;">
+            <nav class="fv-subnav" aria-label="Request types" style="border-bottom:0;">
+              <button class="filter-tab active" data-reqfilter="all" style="padding:9px 12px; border-radius:0; background:none; border:none; border-bottom:2px solid var(--brand); color:var(--brand); font-weight:600; cursor:pointer;">All requests <span class="tab-count" id="countReqAll" style="margin-left:4px; padding:0 6px; border-radius:999px; font-size:11.5px; background:var(--brand-wash);">0</span></button>
+              <button class="filter-tab" data-reqfilter="Vacation" style="padding:9px 12px; border-radius:0; background:none; border:none; border-bottom:2px solid transparent; color:var(--ink-body); font-weight:500; cursor:pointer;"><i class="fa-solid fa-umbrella-beach"></i> Vacation <span class="tab-count" id="countReqVacation" style="margin-left:4px; padding:0 6px; border-radius:999px; font-size:11.5px; background:var(--surface2);">0</span></button>
+              <button class="filter-tab" data-reqfilter="Work From Home" style="padding:9px 12px; border-radius:0; background:none; border:none; border-bottom:2px solid transparent; color:var(--ink-body); font-weight:500; cursor:pointer;"><i class="fa-solid fa-house-laptop"></i> Work from home <span class="tab-count" id="countReqWFH" style="margin-left:4px; padding:0 6px; border-radius:999px; font-size:11.5px; background:var(--surface2);">0</span></button>
+              <button class="filter-tab" data-reqfilter="Medical Insurance" style="padding:9px 12px; border-radius:0; background:none; border:none; border-bottom:2px solid transparent; color:var(--ink-body); font-weight:500; cursor:pointer;"><i class="fa-solid fa-briefcase-medical"></i> Medical insurance <span class="tab-count" id="countReqInsurance" style="margin-left:4px; padding:0 6px; border-radius:999px; font-size:11.5px; background:var(--surface2);">0</span></button>
+            </nav>
+            <div style="display:flex; gap:8px; padding-bottom:8px;">
+              <div class="search-box" style="max-width:210px;"><i class="fa-solid fa-magnifying-glass"></i><input id="requestsSearch" placeholder="Search requests..." oninput="if(typeof filterRequests==='function')filterRequests(this.value)"></div>
             </div>
           </div>
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h3>Requests</h3>
-                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Review, approve or reject employee leave and claim requests in real-time.</p>
-              </div>
+          <div class="card fv-table-card">
+            <div class="section-loading-bar" id="reqTableLoadingBar"><span></span></div>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Details &amp; reason</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="requestsTableBody"></tbody>
+              </table>
             </div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Type</th>
-                  <th>Details &amp; reason</th>
-                  <th>Submitted</th>
-                  <th>Status</th>
-                  <th style="text-align:right;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="requestsTableBody"></tbody>
-            </table>
           </div>
         </section>
