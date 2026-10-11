@@ -294,6 +294,7 @@ function showSection(pageId, portal, params){
   if(t){
     document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
   }
+  if (portal === 'admin' && typeof applyFinanceAreaChrome === 'function') applyFinanceAreaChrome(pageId);
   // An error toast belongs to the page that raised it: drop it when the user moves to another page.
   if (showSection.lastPage !== undefined && showSection.lastPage !== pageId) clearErrorToasts();
   showSection.lastPage = pageId;

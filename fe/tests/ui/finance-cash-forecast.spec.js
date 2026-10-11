@@ -62,7 +62,7 @@ test.describe('Story 2.3 — Finance Cash Position and Forecast', () => {
     expect(split30).toContain('exp');
 
     // Verify confidence badges
-    await expect(page.locator('#badgeConfidence30')).toHaveText('High Confidence');
+    await expect(page.locator('#badgeConfidence30')).toHaveText('High') // D-027: the Confidence column carries the level;
 
     // Toggle horizon buttons
     const btn60 = page.locator('#btnForecastHorizon60');

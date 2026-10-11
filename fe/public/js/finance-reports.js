@@ -27,11 +27,6 @@ async function loadReportLibrary() {
 
 function filterReportLibraryByDomain(domain, btn) {
   _activeDomainFilter = domain;
-  const container = document.getElementById("reportLibraryCategoryPills");
-  if (container) {
-    container.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
-  }
-  if (btn) btn.classList.add("active");
   renderReportLibraryCatalog();
 }
 
@@ -39,62 +34,70 @@ function filterReportLibraryCatalog() {
   renderReportLibraryCatalog();
 }
 
+// Domain -> identity colour (doc 21 section 6.13)
+const _REPORT_DOMAIN_HUES = {
+  "Performance": "blue",
+  "Cash & Banking": "sky",
+  "Sales & Receivables": "teal",
+  "Spend & Payables": "orange",
+  "Payroll": "pink",
+  "Audit & Compliance": "violet",
+};
+
 function renderReportLibraryCatalog() {
   const grid = document.getElementById("reportLibraryGrid");
   if (!grid) return;
   const q = (document.getElementById("reportLibrarySearch")?.value || "").toLowerCase().trim();
+  const esc = FinanceUI.esc;
 
-  const filtered = (_reportLibrary || []).filter((r) => {
-    const matchesDomain = _activeDomainFilter === "all" || r.category === _activeDomainFilter;
-    const matchesSearch =
-      !q ||
-      r.title.toLowerCase().includes(q) ||
-      r.category.toLowerCase().includes(q) ||
-      (r.business_question || "").toLowerCase().includes(q) ||
-      (r.description || "").toLowerCase().includes(q);
-    return matchesDomain && matchesSearch;
+  // pill counts follow the search; the domain pills narrow the rows
+  const matchesSearch = (r) =>
+    !q ||
+    r.title.toLowerCase().includes(q) ||
+    r.category.toLowerCase().includes(q) ||
+    (r.business_question || "").toLowerCase().includes(q) ||
+    (r.description || "").toLowerCase().includes(q);
+  const searched = (_reportLibrary || []).filter(matchesSearch);
+  document.querySelectorAll("#reportLibraryCategoryPills .fv-pill").forEach((p) => {
+    const d = p.dataset.domain;
+    const n = d === "all" ? searched.length : searched.filter((r) => r.category === d).length;
+    const c = p.querySelector(".fv-pill__count");
+    if (c) c.textContent = n;
+    p.classList.toggle("fv-pill--zero", !n);
+    const on = d === _activeDomainFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
   });
 
+  const filtered = searched.filter((r) => _activeDomainFilter === "all" || r.category === _activeDomainFilter);
+
   if (filtered.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1 / -1; padding:40px; text-align:center;">
-        <i class="fa-solid fa-magnifying-glass" style="font-size:2rem; color:var(--text-muted); margin-bottom:12px;"></i>
-        <p style="color:var(--text-muted);">No reports found matching "${q}".</p>
-      </div>
-    `;
+    grid.innerHTML = `<div class="empty-state fv-empty"><p>No reports found matching "${esc(q)}".</p></div>`;
     return;
   }
 
-  grid.innerHTML = filtered
+  const rows = filtered
     .map((r) => {
-      const basisList = (r.supported_basis || [])
-        .map((b) => b.charAt(0).toUpperCase() + b.slice(1))
-        .join(" & ");
+      const hue = _REPORT_DOMAIN_HUES[r.category] || "violet";
+      const basis = (r.supported_basis || []).map((b) => b.toLowerCase()).sort((x, y) => (x === "cash" ? -1 : 1) - (y === "cash" ? -1 : 1)).join(" and ");
+      const basisText = basis ? basis.charAt(0).toUpperCase() + basis.slice(1) : "Cash and accrual";
       return `
-      <div class="card report-catalog-card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between; border-top:3px solid var(--primary, #2563EB); transition:transform 0.15s ease, box-shadow 0.15s ease;">
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-            <div style="width:40px; height:40px; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--accent-text); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-              <i class="${r.icon || 'fa-solid fa-chart-pie'}"></i>
-            </div>
-            <span class="badge badge-info" style="font-size:0.75rem;">${r.category}</span>
-          </div>
-          <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-main); margin-bottom:6px;">${r.title}</h3>
-          <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">${r.description}</p>
-          <div style="background:var(--bg-secondary, #F8FAFC); border-left:3px solid var(--primary, #2563EB); padding:8px 12px; border-radius:4px; font-size:0.82rem; color:var(--text-main); margin-bottom:14px; font-style:italic;">
-            <i class="fa-solid fa-circle-question" style="color:var(--accent-text); margin-right:4px;"></i> Answers: "${r.business_question}"
-          </div>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--border-color, #E2E8F0); margin-top:10px;">
-          <span class="badge badge-neutral" style="font-size:0.75rem;">${basisList || 'Cash & Accrual'}</span>
-          <button class="btn btn-sm btn-outline" onclick="openReportFromLibrary('${r.key}')">
-            <i class="fa-solid fa-arrow-right"></i> Open Report
-          </button>
-        </div>
-      </div>
-    `;
+      <tr class="report-catalog-card">
+        <td><div class="fv-cell-main"><span class="fv-tile fv-hue-${hue}" aria-hidden="true"><i class="fa-solid fa-chart-column"></i></span><div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(r.title)}</span><span class="fv-sub">${esc(r.description)}</span></div></div></td>
+        <td><span class="fv-with-dot">${FinanceUI.dot(hue)}<span>${esc(r.category)}</span></span></td>
+        <td>${esc(basisText)}</td>
+        <td class="col-actions"><div class="fv-row-actions"><button class="btn btn-sm btn-outline fv-row-btn" onclick="openReportFromLibrary('${esc(r.key)}')" title="Answers: ${esc(r.business_question)}">Open</button></div></td>
+      </tr>`;
     })
     .join("");
+
+  grid.innerHTML = `
+    <div class="fv-table-scroll table-wrap">
+      <table class="fv-table fv-table--reports responsive-card-table">
+        <thead><tr><th>Report</th><th>Domain</th><th>Basis</th><th class="col-actions"><span class="fv-sr-only">Open</span></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // ----------------------------------------------------------------------

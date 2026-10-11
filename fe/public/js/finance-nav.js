@@ -1,4 +1,46 @@
 // ==========================================
+// Finance area chrome (restyle v2, D-027): top-bar area tile + name, page canvas.
+// Payroll pages are out of scope and keep the existing chrome.
+// ==========================================
+const FINANCE_AREA_BY_PAGE = {
+  "a-finance-dashboard": "overview",
+  "a-finance-sales": "sales",
+  "a-finance-invoices": "sales",
+  "a-finance-spend": "spend",
+  "a-finance-bills": "spend",
+  "a-finance-subscriptions": "spend",
+  "a-finance-statutory": "spend",
+  "a-finance-banking": "banking",
+  "a-finance-accounts": "banking",
+  "a-finance-transfers": "banking",
+  "a-finance-cheques": "banking",
+  "a-finance-statements": "banking",
+  "a-finance-reports": "reports",
+  "a-finance-settings": "settings",
+};
+
+function applyFinanceAreaChrome(pageId) {
+  const shell = document.querySelector("#admin-app .main");
+  const tile = document.getElementById("adminAreaTile");
+  const nameEl = document.getElementById("adminAreaName");
+  const areaKey = FINANCE_AREA_BY_PAGE[pageId];
+  const area = areaKey && typeof FinanceUI !== "undefined" ? FinanceUI.AREAS[areaKey] : null;
+  if (shell) shell.classList.toggle("fv-shell", !!area);
+  if (!tile || !nameEl) return;
+  if (!area) {
+    tile.hidden = true;
+    nameEl.hidden = true;
+    return;
+  }
+  tile.className = `fv-tile fv-hue-${area.hue}`;
+  tile.innerHTML = `<i class="fa-solid ${area.icon}"></i>`;
+  tile.hidden = false;
+  nameEl.textContent = area.name;
+  nameEl.hidden = false;
+}
+window.applyFinanceAreaChrome = applyFinanceAreaChrome;
+
+// ==========================================
 // 8. Navigation & Hook Integration (Story 1.1)
 // ==========================================
 let _currentSettingsSubTab = "categories";
@@ -23,6 +65,10 @@ function switchFinanceSettingsSubTab(subTab, btn) {
   const paneCategories = document.getElementById("financeSettingsPaneCategories");
   const panePaymentTypes = document.getElementById("financeSettingsPanePaymentTypes");
   const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
+
+  document.querySelectorAll("#a-finance-settings [data-head-for]").forEach((el) => {
+    el.style.display = el.dataset.headFor === subTab ? "" : "none";
+  });
 
   if (paneCategories) paneCategories.style.display = subTab === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = subTab === "payment_types" ? "block" : "none";
@@ -203,7 +249,7 @@ const SpendTabs = {
     this.BARS.forEach((bar) => {
       const el = document.getElementById(bar.container);
       if (!el) return;
-      el.classList.add('spend-subnav');
+      el.classList.add('spend-subnav', 'fv-subnav');
       el.innerHTML = this.TABS.map((t) => {
         const active = t.key === bar.active;
         let action = '';

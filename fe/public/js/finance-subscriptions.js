@@ -3,6 +3,7 @@
 // ==========================================
 let _subscriptionsFilterStatus = "active";
 let _subscriptionsSearchQuery = "";
+let _subscriptionsNoticeOnly = false;
 let _currentHistorySubId = null;
 let _currentLoggingSub = null;
 
@@ -29,24 +30,68 @@ function filterFinanceSubscriptions(query) {
 
 function filterFinanceSubscriptionsStatus(status, btn) {
   _subscriptionsFilterStatus = status;
-  if (btn && btn.parentElement) {
-    btn.parentElement.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
+  const group = document.getElementById("financeSubscriptionStatusPills");
+  if (group) {
+    group.querySelectorAll(".fv-pill").forEach((b) => {
+      const on = b.dataset.filter === status;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
   }
   renderFinanceSubscriptionsTable();
+}
+
+function onSubscriptionNoticeOnlyChange(checked) {
+  _subscriptionsNoticeOnly = !!checked;
+  renderFinanceSubscriptionsTable();
+}
+
+// Monthly run rate per currency, only when every shown subscription has a monthly equivalent
+// (monthly_equivalent_amount, or its amount when it is billed monthly); otherwise nothing is claimed.
+function _subscriptionRunRate(items) {
+  const totals = {};
+  for (const s of items) {
+    const monthly = s.monthly_equivalent_amount != null
+      ? Number(s.monthly_equivalent_amount)
+      : ((s.billing_cycle || "monthly") === "monthly" ? Number(s.amount) : null);
+    if (monthly == null || isNaN(monthly)) return "";
+    const cur = s.currency || "USD";
+    totals[cur] = (totals[cur] || 0) + monthly;
+  }
+  const parts = Object.entries(totals).map(([cur, v]) => `<span class="fv-foot__total">${FinanceUI.moneyHtml(v, cur)}</span>`);
+  return parts.length ? ` &middot; monthly run rate ${parts.join(" + ")}` : "";
 }
 
 function renderFinanceSubscriptionsTable() {
   const tbody = document.getElementById("financeSubscriptionsTableBody");
   const empty = document.getElementById("financeSubscriptionsEmpty");
+  const footer = document.getElementById("financeSubscriptionsFooter");
   if (!tbody) return;
 
-  let items = [...(FinanceState.subscriptions || [])];
+  const all = [...(FinanceState.subscriptions || [])];
+
+  // pill and toggle counts come from the whole list
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const activeCount = all.filter((s) => s.is_active).length;
+  setText("subPillCountAll", all.length);
+  setText("subPillCountActive", activeCount);
+  setText("subPillCountInactive", all.length - activeCount);
+  setText("financeSubNoticeCount", all.filter((s) => s.is_renewal_imminent).length);
+  document.querySelectorAll("#financeSubscriptionStatusPills .fv-pill").forEach((p) => {
+    const n = Number((p.querySelector(".fv-pill__count") || {}).textContent || 0);
+    p.classList.toggle("fv-pill--zero", !n);
+  });
+
+  let items = all;
 
   if (_subscriptionsFilterStatus === "active") {
     items = items.filter((s) => s.is_active);
   } else if (_subscriptionsFilterStatus === "inactive") {
     items = items.filter((s) => !s.is_active);
+  }
+
+  if (_subscriptionsNoticeOnly) {
+    items = items.filter((s) => s.is_renewal_imminent);
   }
 
   if (_subscriptionsSearchQuery) {
@@ -62,63 +107,57 @@ function renderFinanceSubscriptionsTable() {
   if (!items.length) {
     tbody.innerHTML = "";
     if (empty) empty.style.display = "block";
+    if (footer) footer.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
 
+  if (footer) {
+    footer.style.display = "";
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> subscriptions${_subscriptionRunRate(items)}</span>`;
+  }
+
   tbody.innerHTML = items
     .map((s) => {
-      const lastChargeInfo = s.last_charge_amount
-        ? `<div style="font-size:11.5px; color:var(--text3); margin-top:3px;"><i class="fa-solid fa-receipt"></i> Last: ${FinanceFormat.formatMoney(s.last_charge_amount, s.currency || "USD")} (${FinanceFormat.formatFinanceDate(s.last_charge_date)})</div>`
+      const cur = s.currency || "USD";
+      const esc = FinanceUI.esc;
+      const cycle = (s.billing_cycle || "monthly");
+      const cycleLabel = cycle.charAt(0).toUpperCase() + cycle.slice(1);
+      const billing = `${cycleLabel} &middot; ${s.auto_generate_bill ? "auto" : "manual"}`;
+      const lastCharged = s.last_charge_date ? `Last charged ${FinanceUI.formatDate(s.last_charge_date)}` : "";
+
+      const owner = s.owner
+        ? `<div class="fv-date"><span>${esc(s.owner)}</span>${s.department ? `<span class="fv-sub">${esc(s.department)}</span>` : ""}</div>`
+        : `<span class="fv-note fv-note--warn">No owner</span>`;
+
+      const monthlyEquiv = s.monthly_equivalent_amount && s.billing_cycle !== "monthly"
+        ? `~${FinanceFormat.formatMoney(s.monthly_equivalent_amount, cur)}/mo`
         : "";
 
-      const ownerInfo = s.owner
-        ? `<div style="font-size:11.5px; color:var(--text3); margin-top:3px;"><i class="fa-solid fa-user-tag"></i> ${s.owner} ${s.department ? `(${s.department})` : ''}</div>`
-        : `<div style="font-size:11.5px; color:var(--danger); margin-top:3px;"><span class="badge badge-warning" style="font-size:10px;"><i class="fa-solid fa-triangle-exclamation"></i> No Owner</span></div>`;
-
-      const monthlyEquiv = s.monthly_equivalent_amount && s.billing_cycle !== 'monthly'
-        ? `<div style="font-size:11px; color:var(--text3); font-weight:normal;">~${FinanceFormat.formatMoney(s.monthly_equivalent_amount, s.currency || 'USD')}/mo</div>`
-        : "";
-
-      const renewalWarning = s.is_renewal_imminent
-        ? `<div style="margin-top:3px;"><span class="badge badge-danger" style="font-size:10.5px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-bell"></i> Notice due</span></div>`
-        : (s.notice_deadline_date ? `<div style="font-size:11px; color:var(--text3); margin-top:2px;">Notice by: ${s.notice_deadline_date}</div>` : "");
+      let renewalNote = "";
+      let renewalTone = "info";
+      if (s.is_renewal_imminent) {
+        renewalNote = "Notice due";
+        renewalTone = "warn";
+      } else if (s.notice_deadline_date) {
+        renewalNote = `Notice by: ${s.notice_deadline_date}`;
+      }
 
       return `
       <tr>
-        <td>
-          <div style="font-weight:700; font-size:13.5px;">${s.name}</div>
-          ${ownerInfo}
-        </td>
-        <td>${s.vendor_name || '<span style="opacity:0.5;">--</span>'}</td>
-        <td class="cell-money">
-          <strong>${FinanceFormat.renderMoneyHtml(s.amount, s.currency || "USD")}</strong>
-          ${monthlyEquiv}
-        </td>
-        <td><span class="badge badge-grey">${(s.billing_cycle || "monthly").toUpperCase()}</span></td>
-        <td>
-          <div>${FinanceFormat.formatFinanceDate(s.next_renewal_date)}</div>
-          ${renewalWarning}
-        </td>
-        <td>
-          ${s.auto_generate_bill
-            ? '<span class="badge badge-approved" style="font-size:11px;"><i class="fa-solid fa-bolt"></i> Auto-Bill</span>'
-            : '<span class="badge badge-grey" style="font-size:11px;">Manual</span>'}
-        </td>
-        <td>
-          <div>${s.charges_count || 0} charge(s)</div>
-          ${lastChargeInfo}
-        </td>
-        <td>
-          ${FinanceFormat.formatStatusBadge("subscription", s.is_active ? "active" : "inactive")}
-        </td>
-        <td>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-fill btn-log-charge" onclick="openLogSubscriptionChargeModal(${s.id})" title="Log Actual Charge"><i class="fa-solid fa-credit-card"></i> Log Charge</button>
-            <button class="btn btn-sm btn-sub-history" onclick="openSubscriptionHistoryModal(${s.id})" title="View Charge History"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
-            <button class="btn btn-sm btn-outline" onclick="openEditSubscriptionModal(${s.id})" title="Edit Subscription"><i class="fa-solid fa-pen"></i></button>
-          </div>
-        </td>
+        <td><div class="fv-cell-main">${FinanceUI.avatar(s.vendor_name || s.name, FinanceUI.hueForId(s.vendor_id || s.id))}<div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(s.name)}</span><span class="fv-sub">${s.vendor_name ? esc(s.vendor_name) : "–"}</span></div></div></td>
+        <td>${owner}</td>
+        <td>${FinanceUI.dateCell(s.next_renewal_date, renewalNote, renewalTone)}</td>
+        <td><div class="fv-date"><span>${billing}</span>${lastCharged ? `<span class="fv-sub">${lastCharged}</span>` : ""}</div></td>
+        <td>${FinanceUI.statusPill(s.is_active ? "active" : "inactive", s.is_active ? "Active" : "Inactive")}</td>
+        <td class="cell-money fv-num">${FinanceUI.amountCell(s.amount, cur, monthlyEquiv)}</td>
+        <td>${FinanceUI.rowActions({
+          primary: { label: "Log Charge", kind: "fill", className: "btn-log-charge", onclick: `openLogSubscriptionChargeModal(${s.id})`, attrs: 'title="Log Actual Charge"' },
+          icons: [
+            { icon: "fa-clock-rotate-left", label: "View Charge History", className: "btn-sub-history", onclick: `openSubscriptionHistoryModal(${s.id})` },
+            { icon: "fa-pen", label: "Edit Subscription", onclick: `openEditSubscriptionModal(${s.id})` },
+          ],
+        })}</td>
       </tr>
       `;
     })

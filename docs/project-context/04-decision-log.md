@@ -398,7 +398,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-027 — Finance UI Restyle v2: Colour Direction on Every Finance Page
 
-- **Status:** Accepted by owner, October 10, 2026. Not implemented; UI plan in [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md), backend support in [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md). Approved references: `docs/finance-module/mocks/restyle-v2/`.
+- **Status:** Accepted by owner, October 10, 2026. Implemented on `feature/finance-ui-restyle-v2` (UI only, not merged); UI plan in [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md), backend support in [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md). Approved references: `docs/finance-module/mocks/restyle-v2/`.
 - **Decision:**
   - Every Finance page in the six Finance sidebar items (Overview, Sales, Spend, Banking, Reports & Export, Finance Settings), their dialogs and drawers move to the colour direction: navy ink instead of black, brand blue for anything clickable or identifying, eight identity colours (fixed order, colour-blind validated in light and dark) for avatars, category dots and future charts, one colour per Finance area, white table header rows, direction C soft summary cards.
   - Bills keeps its approved UX (D-021, doc 19 §12); only colours and sizes change. Every table follows the Bills row-action pattern: at most one text button plus up to three icon buttons, no "⋯" menus.

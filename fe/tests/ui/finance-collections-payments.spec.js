@@ -39,7 +39,7 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.selectOption('#paymentBankAccountId', { index: 1 });
 
     // Submit payment
-    await page.click('#invoicePaymentModal button:has-text("Record Payment")');
+    await page.click('#invoicePaymentSubmitBtn');
     await expect(page.locator('#invoicePaymentModal')).not.toBeVisible();
 
     // Verify row updated: Paid $4,500, Balance $8,000
@@ -47,7 +47,8 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.waitForTimeout(200);
     const updatedRow = page.locator('#financeInvoicesTableBody tr[data-record-id="1"]');
     const rowText = await updatedRow.innerText();
-    expect(rowText).toContain('4,500.00');
+    // D-027: the Paid column is gone; the Balance cell shows the balance and "of total"
+    expect(rowText).toContain('12,500.00');
     expect(rowText).toContain('8,000.00');
   });
 
@@ -71,7 +72,7 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.locator('#paymentReference').fill('OVERPAY-ATTEMPT');
     await page.selectOption('#paymentBankAccountId', { index: 1 });
 
-    await page.click('#invoicePaymentModal button:has-text("Record Payment")');
+    await page.click('#invoicePaymentSubmitBtn');
 
     // Error message should appear and modal should stay open
     await expect(page.locator('#invoicePaymentModal .field-error-msg')).toBeVisible();
@@ -93,7 +94,7 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.locator('#paymentAmount').fill('100.00');
     await page.locator('#paymentReference').fill('DUP-REF-999');
     await page.selectOption('#paymentBankAccountId', { index: 1 });
-    await page.click('#invoicePaymentModal button:has-text("Record Payment")');
+    await page.click('#invoicePaymentSubmitBtn');
     await expect(page.locator('#invoicePaymentModal')).not.toBeVisible();
 
     // 2. Second payment reusing DUP-REF-999
@@ -103,7 +104,7 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.locator('#paymentAmount').fill('100.00');
     await page.locator('#paymentReference').fill('DUP-REF-999');
     await page.selectOption('#paymentBankAccountId', { index: 1 });
-    await page.click('#invoicePaymentModal button:has-text("Record Payment")');
+    await page.click('#invoicePaymentSubmitBtn');
 
     // Should show error notification about duplicate reference in #toastWrap
     await expect(page.locator('#toastWrap')).toContainText('Duplicate payment reference');
@@ -172,7 +173,7 @@ test.describe('Story 3.3 — Collections and Payment Recording', () => {
     await page.locator('#paymentAmount').fill('12500.00');
     await page.locator('#paymentReference').fill('FULL-PAY-REV-TEST');
     await page.selectOption('#paymentBankAccountId', { index: 1 });
-    await page.click('#invoicePaymentModal button:has-text("Record Payment")');
+    await page.click('#invoicePaymentSubmitBtn');
     await expect(page.locator('#invoicePaymentModal')).not.toBeVisible();
 
     // Now reverse the payment via API

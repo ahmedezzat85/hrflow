@@ -1,130 +1,117 @@
-        <section class="page-section" id="a-finance-settings">
-          <!-- Sub Navigation for Settings: Categories & Payment Types -->
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-            <div class="filter-tabs" id="financeSettingsSubNav" role="tablist" aria-label="Finance settings sub navigation">
-              <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)"><i class="fa-solid fa-tags"></i> Transaction Categories</button>
-              <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)"><i class="fa-solid fa-credit-card"></i> Payment Types</button>
-              <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)"><i class="fa-solid fa-sliders"></i> Display</button>
+        <section class="page-section fv" id="a-finance-settings">
+          <div class="fv-head">
+            <div class="filter-tabs fv-subnav" id="financeSettingsSubNav" role="tablist" aria-label="Finance settings sub navigation">
+              <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)">Transaction categories</button>
+              <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)">Payment types</button>
+              <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)">Display</button>
+            </div>
+            <div class="fv-head-actions" id="financeSettingsActionsCategories" data-head-for="categories">
+              <button class="btn btn-fill" id="financeAddCategoryBtn" onclick="openAddFinanceCategoryModal()">Add category</button>
+            </div>
+            <div class="fv-head-actions" id="financeSettingsActionsPaymentTypes" data-head-for="payment_types" style="display:none;">
+              <button class="btn btn-fill" id="financeAddPaymentTypeBtn" onclick="openAddFinancePaymentTypeModal()">Add payment type</button>
             </div>
           </div>
 
           <!-- PANE 1: Transaction Categories -->
           <div id="financeSettingsPaneCategories">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-tags"></i> Transaction Categories</h2>
-                <p class="section-subtitle">Extensible taxonomy for ledger entries, cash book classification, and recurring spend rollups.</p>
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financeCategoryStatusPills" role="group" aria-label="Category status">
+                <button class="filter-tab fv-pill active" aria-pressed="true" data-filter="all" onclick="filterFinanceCategories('all', this)">All <span class="fv-pill__count" id="catPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--settled" aria-pressed="false" data-filter="active" onclick="filterFinanceCategories('active', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Active <span class="fv-pill__count" id="catPillCountActive">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterFinanceCategories('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="catPillCountInactive">0</span></button>
+                <button class="filter-tab fv-pill" aria-pressed="false" data-filter="petty" onclick="filterFinanceCategories('petty', this)">Petty spend <span class="fv-pill__count" id="catPillCountPetty">0</span></button>
               </div>
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <select id="financeCategoryKindFilter" class="form-control" style="width:auto;min-width:140px;height:38px;padding:4px 10px;font-size:13px;" onchange="filterFinanceCategoriesByKind(this.value)">
+              <div class="fv-pills-selects">
+                <select id="financeCategoryKindFilter" class="fv-select" aria-label="Kind" onchange="filterFinanceCategoriesByKind(this.value)">
                   <option value="all">All Kinds</option>
                   <option value="cost">Cost / Expense</option>
                   <option value="revenue">Revenue / Income</option>
                   <option value="transfer">Transfer</option>
                   <option value="other">Other</option>
                 </select>
-                <div class="filter-tabs">
-                  <button class="filter-tab active" onclick="filterFinanceCategories('all', this)">All</button>
-                  <button class="filter-tab" onclick="filterFinanceCategories('active', this)">Active</button>
-                  <button class="filter-tab" onclick="filterFinanceCategories('inactive', this)">Inactive</button>
-                  <button class="filter-tab" onclick="filterFinanceCategories('petty', this)">Petty Spend</button>
-                </div>
-                <button class="btn btn-fill" onclick="openAddFinanceCategoryModal()"><i class="fa-solid fa-plus"></i> Add Category</button>
               </div>
             </div>
-            <div class="card">
+            <div class="fv-table-card">
               <div class="section-loading-bar" id="financeCategoriesLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th style="width:60px;">#</th>
-                    <th>Category Name</th>
-                    <th>Reporting Kind</th>
-                    <th>Petty / Recurring Spend</th>
-                    <th>Status</th>
-                    <th style="width:120px;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financeCategoriesTableBody"></tbody>
-              </table>
-              <div class="empty-state" id="financeCategoriesEmpty" style="display: none;">
-                <i class="fa-solid fa-tags"></i>
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--categories responsive-card-table" id="financeCategoriesTable">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Category</th>
+                      <th>Kind</th>
+                      <th>Spend type</th>
+                      <th>Status</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeCategoriesTableBody"></tbody>
+                </table>
+              </div>
+              <div class="empty-state fv-empty" id="financeCategoriesEmpty" style="display: none;">
                 <p>No transaction categories found.</p>
+                <button class="btn btn-fill" onclick="openAddFinanceCategoryModal()">Add category</button>
               </div>
-              <div class="alert alert-danger" id="financeCategoriesError" style="display: none; margin: 16px; padding: 14px 18px; border-radius: 8px; align-items: center; justify-content: space-between;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;"></i>
-                  <div>
-                    <strong style="display:block;">Failed to load transaction categories</strong>
-                    <span id="financeCategoriesErrorMessage" style="font-size: 13px;">An unexpected error occurred while fetching categories.</span>
-                  </div>
+              <div class="fv-callout fv-callout--danger fv-callout--row fv-section__notice" id="financeCategoriesError" style="display: none;">
+                <div>
+                  <strong>Failed to load transaction categories</strong>
+                  <div class="fv-sub" id="financeCategoriesErrorMessage">An unexpected error occurred while fetching categories.</div>
                 </div>
-                <button class="btn btn-sm btn-outline" onclick="loadFinanceCategories()"><i class="fa-solid fa-rotate"></i> Retry</button>
+                <button class="btn btn-sm btn-outline" onclick="loadFinanceCategories()">Retry</button>
               </div>
+              <div class="fv-foot" id="financeCategoriesFooter">Each category keeps its colour everywhere: table dots, bills and later the charts.</div>
             </div>
           </div>
 
           <!-- PANE 2: Payment Types -->
           <div id="financeSettingsPanePaymentTypes" style="display:none;">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-credit-card"></i> Payment Types</h2>
-                <p class="section-subtitle">Payment methods and rule triggers (cheque registers, bank fee prompts, transfer codes).</p>
-              </div>
-              <div style="display:flex;gap:10px;align-items:center;">
-                <div class="filter-tabs">
-                  <button class="filter-tab active" onclick="filterFinancePaymentTypes('all', this)">All</button>
-                  <button class="filter-tab" onclick="filterFinancePaymentTypes('active', this)">Active</button>
-                  <button class="filter-tab" onclick="filterFinancePaymentTypes('inactive', this)">Inactive</button>
-                </div>
-                <button class="btn btn-fill" onclick="openAddFinancePaymentTypeModal()"><i class="fa-solid fa-plus"></i> Add Payment Type</button>
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financePaymentTypeStatusPills" role="group" aria-label="Payment type status">
+                <button class="filter-tab fv-pill active" aria-pressed="true" data-filter="all" onclick="filterFinancePaymentTypes('all', this)">All <span class="fv-pill__count" id="ptPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--settled" aria-pressed="false" data-filter="active" onclick="filterFinancePaymentTypes('active', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Active <span class="fv-pill__count" id="ptPillCountActive">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterFinancePaymentTypes('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="ptPillCountInactive">0</span></button>
               </div>
             </div>
-            <div class="card">
+            <div class="fv-table-card">
               <div class="section-loading-bar" id="financePaymentTypesLoadingBar"><span></span></div>
-              <table class="responsive-card-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Machine Code</th>
-                    <th>Requires Cheque #</th>
-                    <th>Requires Bank Fee Flag</th>
-                    <th>Status</th>
-                    <th style="width:120px;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="financePaymentTypesTableBody"></tbody>
-              </table>
-              <div class="empty-state" id="financePaymentTypesEmpty" style="display: none;">
-                <i class="fa-solid fa-credit-card"></i>
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--paytypes responsive-card-table" id="financePaymentTypesTable">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Machine Code</th>
+                      <th>Requires Cheque #</th>
+                      <th>Requires Bank Fee Flag</th>
+                      <th>Status</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="financePaymentTypesTableBody"></tbody>
+                </table>
+              </div>
+              <div class="empty-state fv-empty" id="financePaymentTypesEmpty" style="display: none;">
                 <p>No payment types configured yet.</p>
+                <button class="btn btn-fill" onclick="openAddFinancePaymentTypeModal()">Add payment type</button>
               </div>
-              <div class="alert alert-danger" id="financePaymentTypesError" style="display: none; margin: 16px; padding: 14px 18px; border-radius: 8px; align-items: center; justify-content: space-between;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;"></i>
-                  <div>
-                    <strong style="display:block;">Failed to load payment types</strong>
-                    <span id="financePaymentTypesErrorMessage" style="font-size: 13px;">An unexpected error occurred while fetching payment types.</span>
-                  </div>
+              <div class="fv-callout fv-callout--danger fv-callout--row fv-section__notice" id="financePaymentTypesError" style="display: none;">
+                <div>
+                  <strong>Failed to load payment types</strong>
+                  <div class="fv-sub" id="financePaymentTypesErrorMessage">An unexpected error occurred while fetching payment types.</div>
                 </div>
-                <button class="btn btn-sm btn-outline" onclick="loadFinancePaymentTypes()"><i class="fa-solid fa-rotate"></i> Retry</button>
+                <button class="btn btn-sm btn-outline" onclick="loadFinancePaymentTypes()">Retry</button>
               </div>
+              <div class="fv-foot" id="financePaymentTypesFooter"></div>
             </div>
           </div>
 
           <!-- PANE 3: Display Settings (FUX-415) -->
           <div id="financeSettingsPaneDisplay" style="display:none;">
-            <div class="toolbar">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-sliders"></i> Display Settings</h2>
-                <p class="section-subtitle">Customize table density and display preferences across all finance workspaces.</p>
-              </div>
-            </div>
-            <div class="card" style="padding: 24px;">
-              <div class="settings-row" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+            <div class="fv-table-card fv-settings-card">
+              <div class="fv-settings-row">
                 <div>
-                  <label id="financeTableDensityLabel" style="font-weight: 600; font-size: 14px; color: var(--text); display: block; margin-bottom: 4px;">Table row density</label>
-                  <p style="margin: 0; font-size: 13px; color: var(--text3);">Adjust the row height and padding of tables across all finance pages.</p>
+                  <label id="financeTableDensityLabel" class="fv-settings-row__label">Table row density</label>
+                  <p class="fv-sub">Adjust the row height and padding of tables across all finance pages.</p>
                 </div>
                 <div id="financeGlobalDensityControl"></div>
               </div>

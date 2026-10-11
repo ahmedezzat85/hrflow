@@ -18,9 +18,10 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
     await expect(table).toContainText('4821');
 
     // Verify table has columns for Book, Available, Reconciled
-    await expect(page.locator('#financeSubPaneAccounts th:has-text("Book Balance")')).toBeVisible();
-    await expect(page.locator('#financeSubPaneAccounts th:has-text("Available")')).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Reconciled', exact: true })).toBeVisible();
+    // D-027 (doc 21 section 6.8): the three balance columns became one Balance column; "Available" shows
+    // under it only when it differs, and the reconciliation state moved to the "Last statement" column.
+    await expect(page.getByRole('columnheader', { name: 'Balance', exact: true })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Last statement', exact: true })).toBeVisible();
 
     // Click Workspace button on the first account
     const wsBtn = page.locator('.btn-open-workspace').first();

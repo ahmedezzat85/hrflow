@@ -1,7 +1,9 @@
       <div class="topbar">
         <div class="topbar-lead">
           <button class="hamburger" onclick="toggleSidebar('adminSidebar')" aria-label="Toggle navigation menu"><i class="fa-solid fa-bars"></i></button>
+          <span class="fv-tile fv-hue-blue" id="adminAreaTile" hidden aria-hidden="true"><i class="fa-solid fa-grip"></i></span>
           <h1 id="adminPageTitle">General Dashboard</h1>
+          <span class="fv-area-name" id="adminAreaName" hidden></span>
         </div>
         <div class="top-actions">
           <button class="btn btn-sm btn-fill topbar-add-tx" id="adminQuickAddTxBtn" hidden onclick="openGlobalFinanceTransactionModal()" title="Record Transaction (Shift+N)" aria-label="Record Transaction (Shift+N)">

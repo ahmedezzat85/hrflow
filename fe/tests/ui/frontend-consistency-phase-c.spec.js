@@ -6,12 +6,12 @@ test.describe('Frontend Consistency — Phase C Verification (Stop CSS Leaking)'
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
-    // Navigate to Finance Settings
-    await openAdminPage(page, 'a-finance-settings');
-    await expect(page.locator('#a-finance-settings')).toBeVisible();
+    // D-027: Finance Settings no longer has an in-page title block; the System roles page keeps a standard .section-title
+    await page.evaluate(() => showSection('a-system-roles', 'admin'));
+    await expect(page.locator('#a-system-roles')).toBeVisible();
 
     const financeSettingsTitleSize = await page.evaluate(() => {
-      const el = document.querySelector('#a-finance-settings .section-title');
+      const el = document.querySelector('#a-system-roles .section-title');
       return el ? window.getComputedStyle(el).fontSize : null;
     });
     expect(financeSettingsTitleSize).toBe('18px');

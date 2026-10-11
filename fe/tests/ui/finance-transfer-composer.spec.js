@@ -9,7 +9,8 @@ test.describe('Story 5.3: Transfer and Withdrawal Composer', () => {
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open Transfer Modal
-    await page.click('button:has-text("Record Transfer")');
+    // D-027: the Accounts header button is "Transfer" (Record transfer lives on the Transfers tab)
+    await page.click('#financeHeadActionsAccounts button:has-text("Transfer")');
     await expect(page.locator('#financeTransferModal')).toBeVisible();
   });
 

@@ -16,7 +16,7 @@
 
   if (!FinanceMockState.accounts) {
     FinanceMockState.accounts = [
-    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 150000.0, is_active: true },
+    { id: 1, account_name: "Voyance Operating USD", account_type: "bank", bank_name: "JPMorgan Chase", account_number: "******4821", raw_account_number: "12345678904821", country: "United States", currency: "USD", opening_balance: 150000.0, opening_balance_date: "2025-01-01", current_balance: 145800.0, is_active: true },
     { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
     { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
     { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
@@ -25,19 +25,19 @@
 
   if (!FinanceMockState.categories) {
     FinanceMockState.categories = [
-    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, is_petty: false },
-    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, is_petty: false },
-    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, is_petty: false },
-    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, is_petty: true },
-    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, is_petty: true },
-    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, is_petty: false },
-    { id: 7, name: "Bank Fees", kind: "cost", is_active: true, sort_order: 7, is_petty: false },
-    { id: 8, name: "Infrastructure", kind: "cost", is_active: true, sort_order: 8, is_petty: false },
-    { id: 9, name: "SaaS", kind: "cost", is_active: true, sort_order: 9, is_petty: false },
-    { id: 10, name: "Facilities & Maintenance", kind: "cost", is_active: true, sort_order: 10, is_petty: false },
-    { id: 11, name: "Electricity", kind: "cost", is_active: true, sort_order: 11, is_petty: false },
-    { id: 12, name: "Internet", kind: "cost", is_active: true, sort_order: 12, is_petty: false },
-    { id: 13, name: "Operating Expense", kind: "cost", is_active: true, sort_order: 13, is_petty: false },
+    { id: 1, name: "Revenue", kind: "revenue", is_active: true, sort_order: 1, color: "teal", is_petty: false },
+    { id: 2, name: "Salaries", kind: "cost", is_active: true, sort_order: 2, color: "blue", is_petty: false },
+    { id: 3, name: "Medical Insurance", kind: "cost", is_active: true, sort_order: 3, color: "pink", is_petty: false },
+    { id: 4, name: "Kitchen Supplies", kind: "cost", is_active: true, sort_order: 4, color: "ochre", is_petty: true },
+    { id: 5, name: "Transportation", kind: "cost", is_active: true, sort_order: 5, color: "green", is_petty: true },
+    { id: 6, name: "Rent", kind: "cost", is_active: true, sort_order: 6, color: "orange", is_petty: false },
+    { id: 7, name: "Bank Fees", kind: "cost", is_active: true, sort_order: 7, color: "violet", is_petty: false },
+    { id: 8, name: "Infrastructure", kind: "cost", is_active: true, sort_order: 8, color: "sky", is_petty: false },
+    { id: 9, name: "SaaS", kind: "cost", is_active: true, sort_order: 9, color: "violet", is_petty: false },
+    { id: 10, name: "Facilities & Maintenance", kind: "cost", is_active: true, sort_order: 10, color: "green", is_petty: false },
+    { id: 11, name: "Electricity", kind: "cost", is_active: true, sort_order: 11, color: "ochre", is_petty: false },
+    { id: 12, name: "Internet", kind: "cost", is_active: true, sort_order: 12, color: "sky", is_petty: false },
+    { id: 13, name: "Operating Expense", kind: "cost", is_active: true, sort_order: 13, color: "blue", is_petty: false },
     { id: 14, name: "Other", kind: "other", is_active: true, sort_order: 99, is_petty: false },
   ];
   }
@@ -118,7 +118,7 @@
           bank_balance: Math.round((book + uncleared) * 100) / 100,
           available_balance: available,
           reconciled_balance: book,
-          unreconciled_count: 0,
+          unreconciled_count: a.id === 1 ? 2 : 0,
           last_reconciled_date: "2026-09-01",
           last_import_date: "2026-09-05",
           has_postings: hasPostings,

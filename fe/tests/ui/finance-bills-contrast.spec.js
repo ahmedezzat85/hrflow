@@ -17,6 +17,12 @@ for (const theme of ['light', 'dark']) {
 
     const results = await page.evaluate((statuses) => {
       const parse = (c) => {
+        // color-mix() tints compute to color(srgb r g b / a) with 0..1 channels
+        const cs = c.match(/color\(srgb ([^)]+)\)/);
+        if (cs) {
+          const q = cs[1].split(/[ /]+/).filter(Boolean).map(Number);
+          return { r: q[0] * 255, g: q[1] * 255, b: q[2] * 255, a: q.length > 3 ? q[3] : 1 };
+        }
         const m = c.match(/rgba?\(([^)]+)\)/);
         const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number);
         return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
@@ -53,15 +59,15 @@ for (const theme of ['light', 'dark']) {
       host.innerHTML =
         statuses.map((s) => `<div data-k="pill ${s}">${window._billStatusPill ? window._billStatusPill(s) : ''}</div>`).join('') +
         `<div data-k="flags">${window._billFlags ? window._billFlags({ is_overdue: true, due_date: '2020-01-01', vendor_to_confirm: true }) : ''}</div>` +
-        '<div class="bill-cell-sub bill-cell-sub--late" data-k="late note">3 days late</div>' +
-        '<div class="bill-cell-sub" data-k="sub">BILL-1 · 1 Sep 2026</div>' +
-        '<div class="bill-cell-main" data-k="main">Vendor</div>' +
+        '<div class="fv-note fv-note--late" data-k="late note">3 days late</div>' +
+        '<div class="fv-sub" data-k="sub">BILL-1 · 1 Sep 2026</div>' +
+        '<div class="fv-cell-main__name" data-k="main">Vendor</div>' +
         `<div data-k="all flags">${window._billFlags({ is_overdue: true, due_date: '2020-01-01', is_duplicate_override: true, extraction_confidence: 0.7, is_reviewed: false })}</div>`;
       document.getElementById('a-finance-bills').appendChild(host);
 
       const out = {};
       host.querySelectorAll('[data-k]').forEach((w) => {
-        const target = w.querySelector('.bill-pill, .bill-flag') ? [...w.querySelectorAll('.bill-pill, .bill-flag')] : [w];
+        const target = w.querySelector('.fv-status, .bill-flag') ? [...w.querySelectorAll('.fv-status, .bill-flag')] : [w];
         target.forEach((el, i) => { out[w.dataset.k + (target.length > 1 ? ` #${i}` : '')] = ratio(el); });
       });
       document.querySelectorAll('#financeBillWorkQueueTabs .filter-tab').forEach((t, i) => { out[`status tab ${i}${t.classList.contains('active') ? ' (active)' : ''}`] = ratio(t); });

@@ -78,18 +78,11 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
     await expect(balanceEl).toBeVisible();
     await expect(balanceEl).toContainText('$');
 
-    // Context badges
-    const currencyBadge = page.locator('#financeDashboardCurrencyBadge');
-    await expect(currencyBadge).toBeVisible();
-    await expect(currencyBadge).toContainText('USD');
-
-    const periodBadge = page.locator('#financeDashboardPeriodBadge');
-    await expect(periodBadge).toBeVisible();
-    await expect(periodBadge).toContainText('MTD');
-
-    const scopeBadge = page.locator('#financeDashboardScopeBadge');
-    await expect(scopeBadge).toBeVisible();
-    await expect(scopeBadge).toContainText('All entities');
+    // Context (D-027: the scope, period, basis and currency chips are gone; the selects and the greeting carry them)
+    await expect(page.locator('#financeContextCurrency')).toHaveValue('USD');
+    await expect(page.locator('#financeContextPeriod')).toHaveValue('MTD');
+    await expect(page.locator('#financeContextEntity')).toHaveValue('all');
+    await expect(page.locator('#financeDashboardGreeting')).toContainText('so far');
 
     const lastUpdated = page.locator('#financeDashboardLastUpdated');
     await expect(lastUpdated).toBeVisible();
@@ -135,7 +128,7 @@ test.describe('Story 0.1 — Verified Finance Loading, Error, and Stale States',
     await expect(errorBanner).toContainText('Internal ledger service timeout');
 
     // Retained page context: stats grid still present with non-believable placeholders
-    await expect(page.locator('#a-finance-dashboard .grid.g4')).toBeVisible();
+    await expect(page.locator('#a-finance-dashboard .fv-cards').first()).toBeVisible();
     await expect(page.locator('#statFinanceBalance')).toContainText('—');
 
     // Now disable failure for retry

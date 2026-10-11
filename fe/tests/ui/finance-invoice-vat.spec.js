@@ -56,7 +56,7 @@ test.describe('VAT on sales invoices (F2)', () => {
     });
     await openAdminPage(page, 'a-finance-statutory');
     await expect(page.locator('#financeGenerateVatEstimateBtn')).toBeVisible();
-    await page.fill('#financeVatEstimateMonth', '2025-11');
+    await page.selectOption('#financeVatEstimateMonth', '2025-11'); // D-027: the month input is now a Period select
     await page.click('#financeGenerateVatEstimateBtn');
     await expect(page.locator('#toastWrap')).toContainText('VAT estimate');
     const count = async () => page.evaluate(() => window.FinanceMockState.statutoryObligations.filter((o) => o.obligation_type === 'sales_tax' && o.period === '2025-11' && o.source_type === 'invoice_tax_line').length);

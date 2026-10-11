@@ -187,16 +187,16 @@ Plans: [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-fina
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
-| S0 | Intake, baseline, code map (UI) | S | — |
-| S1 | Tokens, `finance-v2.css`, helpers, top bar, button sizes | M | S0 |
-| S2 | Bills, Vendors, bill dialogs | M | S1 |
-| S3 | Subscriptions, Statutory, their dialogs | M | S1 |
-| S4 | Sales invoices, Customers, 360 drawer, invoice and receipt dialogs | M | S1 |
-| S5 | Accounts, Ledger, transaction and account dialogs | M | S1 |
-| S6 | Transfers, Cheques, Statements, reconciliation, their dialogs | L | S1 |
-| S7 | Overview | M | S1 |
-| S8 | Reports, Settings | M | S1 |
-| S9 | Drawers and remaining dialogs, dark pass, cleanup, docs | M | S2–S8 |
+| S0 | Intake, baseline, code map (UI). **Done** | S | — |
+| S1 | Tokens, `finance-v2.css`, helpers, top bar, button sizes. **Done** | M | S0 |
+| S2 | Bills, Vendors, bill dialogs. **Done** | M | S1 |
+| S3 | Subscriptions, Statutory, their dialogs. **Done** | M | S1 |
+| S4 | Sales invoices, Customers, 360 drawer, invoice and receipt dialogs. **Done** | M | S1 |
+| S5 | Accounts, Ledger, transaction and account dialogs. **Done** | M | S1 |
+| S6 | Transfers, Cheques, Statements, reconciliation, their dialogs. **Done** | L | S1 |
+| S7 | Overview. **Done** | M | S1 |
+| S8 | Reports, Settings. **Done** | M | S1 |
+| S9 | Drawers and remaining dialogs, dark pass, cleanup, docs. **Done** | M | S2–S8 |
 | BE-1 | Category colour field and migration | S | — |
 | BE-2 | Customer receivables on the list | S | — |
 | BE-3 | Vendor payables on the list | S | — |

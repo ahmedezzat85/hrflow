@@ -1,5 +1,5 @@
 <!-- fe/src/partials/modals/bill-modal.html -->
-<div id="billModal" class="modal-overlay">
+<div id="billModal" class="modal-overlay fv fv-dialog fv-area-orange">
   <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billModalTitleText" style="max-width: 780px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-receipt"></i></div>
@@ -245,23 +245,21 @@
     </div>
     <div class="modal-foot bill-foot">
       <div class="bill-foot-left">
-        <button class="btn" id="billSaveDraftBtn" onclick="saveBillModal('draft')">Save as draft</button>
+        <button class="btn btn-outline" id="billSaveDraftBtn" onclick="saveBillModal('draft')">Save as draft</button>
         <label id="billAddAnotherWrap" class="bill-add-another" for="billAddAnother">
           <input type="checkbox" id="billAddAnother"> Add another after saving
         </label>
       </div>
       <div class="bill-foot-right">
         <button class="btn" onclick="closeBillModal()">Cancel</button>
-        <button class="btn btn-fill" id="billModalSaveBtn" onclick="saveBillModal('primary')">
-          <i class="fa-solid fa-floppy-disk"></i> Save Bill
-        </button>
+        <button class="btn btn-fill" id="billModalSaveBtn" onclick="saveBillModal('primary')">Save Bill</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Payment Modal (record outgoing payment against a bill) -->
-<div id="billPaymentModal" class="modal-overlay">
+<div id="billPaymentModal" class="modal-overlay fv fv-dialog fv-area-orange">
   <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billPaymentTitleText" style="max-width: 520px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
@@ -274,28 +272,28 @@
     <div class="modal-body">
       <input type="hidden" id="billPaymentBillId">
 
-      <!-- Balance Breakdown Cards -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-        <div style="background: var(--surface2, rgba(0,0,0,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center;">
-          <div style="font-size: 0.72rem; color: var(--text3); font-weight: 600; text-transform: uppercase;">Bill Total</div>
-          <div id="billPaymentTotalDisplay" style="font-weight: 700; font-size: 1.05rem; margin-top: 3px;">$0.00</div>
+      <!-- Balance breakdown (same IDs) -->
+      <div class="fv-impact">
+        <div class="fv-impact__tile">
+          Bill total
+          <span class="fv-impact__value" id="billPaymentTotalDisplay">$0.00</span>
         </div>
-        <div style="background: var(--surface2, rgba(0,0,0,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center;">
-          <div style="font-size: 0.72rem; color: var(--text3); font-weight: 600; text-transform: uppercase;">Prior Paid</div>
-          <div id="billPaymentPaidDisplay" style="font-weight: 700; font-size: 1.05rem; color: var(--success, #10b981); margin-top: 3px;">$0.00</div>
+        <div class="fv-impact__tile">
+          Prior paid
+          <span class="fv-impact__value" id="billPaymentPaidDisplay">$0.00</span>
         </div>
-        <div style="background: rgba(59,130,246,0.08); border: 1px solid var(--primary, #3b82f6); border-radius: 6px; padding: 10px; text-align: center;">
-          <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 600; text-transform: uppercase;">Remaining</div>
-          <div id="billPaymentRemainingDisplay" style="font-weight: 700; font-size: 1.05rem; color: var(--accent-text); margin-top: 3px;">$0.00</div>
+        <div class="fv-impact__tile fv-impact__tile--dir">
+          Remaining
+          <span class="fv-impact__value" id="billPaymentRemainingDisplay">$0.00</span>
         </div>
       </div>
 
-      <p id="billPaymentBillInfo" style="font-size: 13px; color: var(--text2); margin-bottom: 12px;"></p>
+      <p id="billPaymentBillInfo" class="fv-sub"></p>
       <div class="form-grid">
         <div class="form-field">
           <label for="billPaymentAmount">Amount <span class="req">*</span></label>
           <input type="number" id="billPaymentAmount" placeholder="0.00" min="0.01" step="0.01" required oninput="updateBillPaymentBalanceAfter()">
-          <div id="billPaymentBalanceAfter" style="font-size:0.78rem; color:var(--text2); margin-top:3px;" aria-live="polite"></div>
+          <div id="billPaymentBalanceAfter" class="fv-hint" aria-live="polite"></div>
         </div>
         <div class="form-field">
           <label for="billPaymentDate">Payment Date <span class="req">*</span></label>
@@ -329,15 +327,13 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeBillPaymentModal()">Cancel</button>
-      <button class="btn btn-fill" id="billPaymentSubmitBtn" onclick="saveBillPayment()">
-        <i class="fa-solid fa-circle-check"></i> Record Payment
-      </button>
+      <button class="btn btn-fill" id="billPaymentSubmitBtn" onclick="saveBillPayment()">Record Payment</button>
     </div>
   </div>
 </div>
 
 <!-- Approval Modal (maker-checker authorization and policy enforcement) -->
-<div id="billApprovalModal" class="modal-overlay">
+<div id="billApprovalModal" class="modal-overlay fv fv-dialog fv-area-orange">
   <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billApprovalTitleText" style="max-width: 540px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-stamp"></i></div>
@@ -351,40 +347,38 @@
       <input type="hidden" id="billApprovalBillId">
 
       <!-- Creator / Maker-Checker Policy Warning Banner -->
-      <div id="billApprovalSelfWarningBanner" class="alert alert-warning" style="display:none; margin-bottom: 14px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--danger, #ef4444); background: rgba(239,68,68,0.08);" role="status">
-        <div style="display:flex; align-items:flex-start; gap:8px;">
-          <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger, #ef4444); margin-top:2px;"></i>
-          <div style="flex:1;">
-            <div style="font-weight:700; color:var(--danger, #ef4444);">Segregation of Duties Enforced</div>
-            <div style="color:var(--text2); margin-top:2px; font-size: 0.85rem;">
-              You created this bill (<span id="billApprovalCreatorEmail" style="font-weight:600;"></span>). The creator cannot approve their own bill. Another authorized manager must approve it.
-            </div>
-          </div>
-        </div>
+      <div id="billApprovalSelfWarningBanner" class="fv-callout fv-callout--danger" style="display:none;" role="alert">
+        <div class="fv-callout__title">Segregation of Duties Enforced</div>
+        <div>You created this bill (<span id="billApprovalCreatorEmail" class="fv-strong"></span>). The creator cannot approve their own bill. Another authorized manager must approve it.</div>
       </div>
 
-      <!-- Bill Overview Summary Card -->
-      <div style="background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-weight:700; font-size:1.05rem;" id="billApprovalBillNumber">BILL-2026-005</div>
-            <div style="font-size:0.85rem; color:var(--text3); margin-top:2px;" id="billApprovalVendor">Amazon Web Services</div>
+      <!-- Bill overview: record summary card -->
+      <div class="fv-summary fv-summary--stack">
+        <div class="fv-summary__row">
+          <span id="billApprovalAvatar"></span>
+          <div class="fv-summary__main">
+            <div class="fv-summary__name" id="billApprovalBillNumber">BILL-2026-005</div>
+            <div class="fv-sub" id="billApprovalVendor">Amazon Web Services</div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.75rem; color:var(--text3); font-weight:600; text-transform:uppercase;">Invoice Amount</div>
-            <div style="font-weight:800; font-size:1.2rem; color:var(--text);" id="billApprovalAmount">$8,900.00</div>
+          <div class="fv-summary__side">
+            <div class="fv-sub">Invoice amount</div>
+            <div class="fv-summary__amount" id="billApprovalAmount">$8,900.00</div>
           </div>
         </div>
-        <div style="display:flex; gap:16px; font-size:0.82rem; color:var(--text2); margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
+        <div class="fv-summary__meta">
           <div><span>Department:</span> <strong id="billApprovalDepartment">Engineering</strong></div>
-          <div><span>Created By:</span> <strong id="billApprovalCreatedBy">ap@voyance.health</strong></div>
+          <div><span>Created by:</span> <strong id="billApprovalCreatedBy">ap@voyance.health</strong></div>
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-field full">
-          <label for="billApprovalDecision">Approval Decision <span class="req">*</span></label>
-          <select id="billApprovalDecision" required onchange="onBillApprovalDecisionChange()">
+          <label for="billApprovalDecision">Decision <span class="req">*</span></label>
+          <div class="fv-choice" id="billApprovalDecisionBar" role="group" aria-label="Decision">
+            <button type="button" class="fv-choice__btn fv-hue-green" data-decision="approve" aria-pressed="true" onclick="setBillApprovalDecision('approve')">Approve</button>
+            <button type="button" class="fv-choice__btn fv-choice__btn--danger" data-decision="reject" aria-pressed="false" onclick="setBillApprovalDecision('reject')">Reject</button>
+          </div>
+          <select id="billApprovalDecision" class="fv-sr-only" required onchange="onBillApprovalDecisionChange()">
             <option value="approve">Approve Bill (Move to Ready to Pay)</option>
             <option value="reject">Reject Bill (Move to Exceptions)</option>
           </select>
@@ -392,25 +386,24 @@
         <div class="form-field full" id="billApproverLimitField">
           <label for="billApproverLimit">Approver Authorization Limit ($)</label>
           <input type="number" id="billApproverLimit" placeholder="e.g. 50000" min="0" step="1000" value="50000">
-          <div style="font-size:0.78rem; color:var(--text3); margin-top:3px;">Bills exceeding your authorization threshold will be escalated to executive approval.</div>
+          <div class="fv-hint">Bills exceeding your authorization threshold will be escalated to executive approval.</div>
         </div>
         <div class="form-field full">
           <label for="billApprovalComment">Approval / Rejection Comment <span id="billApprovalCommentReq" style="display:none;" class="req">*</span></label>
           <textarea id="billApprovalComment" rows="3" placeholder="Add justification, PO approval notes, or reason for rejection..."></textarea>
         </div>
       </div>
+      <div class="fv-outcome" id="billApprovalOutcome" aria-live="polite"></div>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeBillApprovalModal()">Cancel</button>
-      <button class="btn btn-fill btn-warning" id="billApprovalSubmitBtn" onclick="saveBillApproval()">
-        <i class="fa-solid fa-stamp"></i> Submit Decision
-      </button>
+      <button class="btn btn-fill" id="billApprovalSubmitBtn" onclick="saveBillApproval()">Approve bill</button>
     </div>
   </div>
 </div>
 
 <!-- Schedule Modal (schedule payment for an approved bill) -->
-<div id="billScheduleModal" class="modal-overlay">
+<div id="billScheduleModal" class="modal-overlay fv fv-dialog fv-area-orange">
   <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billScheduleTitleText" style="max-width: 480px;">
     <div class="modal-head">
       <div class="modal-head-icon"><i class="fa-solid fa-calendar-plus"></i></div>
@@ -423,10 +416,12 @@
     <div class="modal-body">
       <input type="hidden" id="billScheduleBillId">
 
-      <div style="background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-        <div style="font-weight:700;" id="billScheduleBillNumber">BILL-2026-001</div>
-        <div style="font-size:0.85rem; color:var(--text3);" id="billScheduleVendor">Amazon Web Services</div>
-        <div style="font-weight:800; font-size:1.1rem; margin-top:6px; color:var(--accent-text);" id="billScheduleAmount">$4,200.00</div>
+      <div class="fv-summary">
+        <div class="fv-summary__main">
+          <div class="fv-summary__name" id="billScheduleBillNumber">BILL-2026-001</div>
+          <div class="fv-sub" id="billScheduleVendor">Amazon Web Services</div>
+        </div>
+        <div class="fv-summary__amount" id="billScheduleAmount">$4,200.00</div>
       </div>
 
       <div class="form-grid">
@@ -442,26 +437,25 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeBillScheduleModal()">Cancel</button>
-      <button class="btn btn-fill" id="billScheduleSubmitBtn" onclick="saveBillSchedule()">
-        <i class="fa-solid fa-calendar-check"></i> Schedule Payment
-      </button>
+      <button class="btn btn-fill" id="billScheduleSubmitBtn" onclick="saveBillSchedule()">Schedule Payment</button>
     </div>
   </div>
 </div>
 
 <!-- Void Bill Modal: reason from a fixed list plus an optional note -->
-<div id="billVoidModal" class="modal-overlay">
-  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billVoidTitleText" style="max-width: 480px;">
+<div id="billVoidModal" class="modal-overlay fv fv-dialog fv-dialog--danger">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="billVoidTitleText" style="max-width: 520px;">
     <div class="modal-head">
-      <div class="modal-title">
+      <div class="modal-head-icon"><i class="fa-solid fa-ban"></i></div>
+      <div class="modal-head-text">
         <h3 id="billVoidTitleText">Void bill</h3>
       </div>
       <button class="modal-close" onclick="closeBillVoidModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="billVoidBillId">
-      <p id="billVoidSummary" style="font-size:13px; color:var(--text2); margin-bottom:10px;"></p>
-      <p style="font-size:13px; color:var(--text2);">Voiding keeps the bill on record, takes it out of every total and cannot be undone. A bill with payments must have them reversed first.</p>
+      <p id="billVoidSummary" class="fv-sub"></p>
+      <div class="fv-callout fv-callout--danger">Voiding keeps the bill on record, takes it out of every total and cannot be undone. A bill with payments must have them reversed first.</div>
       <div class="form-field">
         <label for="billVoidReason">Reason <span class="req">*</span></label>
         <select id="billVoidReason">
@@ -478,7 +472,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeBillVoidModal()">Cancel</button>
-      <button class="btn btn-danger" id="billVoidSubmitBtn" onclick="submitBillVoid()"><i class="fa-solid fa-ban"></i> Void bill</button>
+      <button class="btn btn-danger" id="billVoidSubmitBtn" onclick="submitBillVoid()">Void bill</button>
     </div>
   </div>
 </div>

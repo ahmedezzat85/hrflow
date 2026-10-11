@@ -20,7 +20,7 @@ test.describe('Bills table, direction A', () => {
     await expect(cells.nth(0)).toContainText('Amazon Web Services');
     await expect(cells.nth(0)).toContainText('BILL-2026-001');
     await expect(cells.nth(1)).toContainText('1 Sep 2026');
-    await expect(cells.nth(1).locator('.bill-cell-sub--late')).toHaveAttribute('title', 'Due 30 Sep 2026');
+    await expect(cells.nth(1).locator('.fv-note--late')).toHaveAttribute('title', 'Due 30 Sep 2026');
     await expect(cells.nth(2)).toHaveText('Infrastructure');
     await expect(cells.nth(2)).not.toContainText('Engineering');
     await expect(cells.nth(3)).toContainText('Approved');

@@ -181,7 +181,7 @@ test.describe('Story 3.2 — Guided Invoice Editor and Lifecycle', () => {
     expect(tableText).not.toContain('INV-GUIDED-001');
 
     // And appear in Awaiting Payment queue
-    await page.click('#tabQueueAwaitingPayment');
+    await page.click('#tabQueueSent'); // D-027: Awaiting payment is now the Sent pill
     await page.waitForTimeout(200);
     tableText = await page.locator('#financeInvoicesTableBody').innerText();
     expect(tableText).toContain('INV-GUIDED-001');

@@ -1,32 +1,26 @@
-        <section class="page-section" id="a-finance-reports">
+        <section class="page-section fv" id="a-finance-reports">
           <!-- VIEW 1: Report Library Directory View -->
           <div id="reportLibraryDirectoryView">
-            <div class="toolbar fr-u1">
-              <div class="section-title-group">
-                <h2 class="section-title"><i class="fa-solid fa-book-bookmark"></i> Standard Report Library</h2>
-                <p class="section-subtitle">Financial intelligence, operational reporting, and compliance audits across all business domains.</p>
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="reportLibraryCategoryPills" role="group" aria-label="Report domain">
+                <button class="filter-tab fv-pill active" data-domain="all" aria-pressed="true" onclick="filterReportLibraryByDomain('all', this)">All <span class="fv-pill__count" data-count="all">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--hue fv-hue-blue" data-domain="Performance" aria-pressed="false" onclick="filterReportLibraryByDomain('Performance', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Performance <span class="fv-pill__count" data-count="Performance">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--hue fv-hue-sky" data-domain="Cash & Banking" aria-pressed="false" onclick="filterReportLibraryByDomain('Cash & Banking', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Cash &amp; Banking <span class="fv-pill__count" data-count="Cash &amp; Banking">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--hue fv-hue-teal" data-domain="Sales & Receivables" aria-pressed="false" onclick="filterReportLibraryByDomain('Sales & Receivables', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Sales &amp; Receivables <span class="fv-pill__count" data-count="Sales &amp; Receivables">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--hue fv-hue-orange" data-domain="Spend & Payables" aria-pressed="false" onclick="filterReportLibraryByDomain('Spend & Payables', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Spend &amp; Payables <span class="fv-pill__count" data-count="Spend &amp; Payables">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--hue fv-hue-pink" data-domain="Payroll" aria-pressed="false" onclick="filterReportLibraryByDomain('Payroll', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Payroll <span class="fv-pill__count" data-count="Payroll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--hue fv-hue-violet" data-domain="Audit & Compliance" aria-pressed="false" onclick="filterReportLibraryByDomain('Audit & Compliance', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Audit &amp; Compliance <span class="fv-pill__count" data-count="Audit &amp; Compliance">0</span></button>
               </div>
-              <div class="fr-u2">
-                <div class="search-box fr-u3">
-                  <i class="fa-solid fa-magnifying-glass fr-u4"></i>
-                  <input type="text" id="reportLibrarySearch" class="form-input fr-u5" placeholder="Search reports by title or domain..." oninput="filterReportLibraryCatalog()" />
+              <div class="fv-pills-selects">
+                <div class="fv-search">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="reportLibrarySearch" placeholder="Search reports" aria-label="Search reports" oninput="filterReportLibraryCatalog()" />
                 </div>
               </div>
             </div>
 
-            <!-- Domain Category Pills -->
-            <div class="filter-tabs fr-u6" id="reportLibraryCategoryPills">
-              <button class="filter-tab active" data-domain="all" onclick="filterReportLibraryByDomain('all', this)"><i class="fa-solid fa-layer-group"></i> All Domains</button>
-              <button class="filter-tab" data-domain="Performance" onclick="filterReportLibraryByDomain('Performance', this)"><i class="fa-solid fa-chart-line"></i> Performance</button>
-              <button class="filter-tab" data-domain="Cash & Banking" onclick="filterReportLibraryByDomain('Cash & Banking', this)"><i class="fa-solid fa-building-columns"></i> Cash & Banking</button>
-              <button class="filter-tab" data-domain="Sales & Receivables" onclick="filterReportLibraryByDomain('Sales & Receivables', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Sales & Receivables</button>
-              <button class="filter-tab" data-domain="Spend & Payables" onclick="filterReportLibraryByDomain('Spend & Payables', this)"><i class="fa-solid fa-money-bill-transfer"></i> Spend & Payables</button>
-              <button class="filter-tab" data-domain="Payroll" onclick="filterReportLibraryByDomain('Payroll', this)"><i class="fa-solid fa-users"></i> Payroll</button>
-              <button class="filter-tab" data-domain="Audit & Compliance" onclick="filterReportLibraryByDomain('Audit & Compliance', this)"><i class="fa-solid fa-shield-halved"></i> Audit & Compliance</button>
-            </div>
-
-            <!-- Library Cards Grid -->
-            <div class="fr-u7" id="reportLibraryGrid">
+            <!-- Report library: one table (the rows keep the .report-catalog-card hook) -->
+            <div class="fv-table-card" id="reportLibraryGrid">
               <!-- Dynamically populated by finance-reports.js -->
             </div>
           </div>
@@ -77,7 +71,7 @@
                   <!-- Entity -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellEntity">Entity:</label>
-                    <select id="reportShellEntity" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
+                    <select id="reportShellEntity" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellFilterChanged()">
                       <option value="all">All Entities</option>
                       <option value="voyance_main" selected>Voyance Health (HQ)</option>
                     </select>
@@ -86,7 +80,7 @@
                   <!-- Period Preset -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellPeriodPreset">Period:</label>
-                    <select id="reportShellPeriodPreset" class="form-input filter-select fr-u25" onchange="onReportShellPeriodPresetChanged(this.value)">
+                    <select id="reportShellPeriodPreset" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellPeriodPresetChanged(this.value)">
                       <option value="this_month">This Month</option>
                       <option value="last_month">Last Month</option>
                       <option value="this_quarter">This Quarter</option>
@@ -98,15 +92,15 @@
 
                   <!-- Date Range -->
                   <div class="fr-u26">
-                    <input type="date" id="reportShellDateFrom" class="form-input fr-u25" onchange="onReportShellFilterChanged()" />
+                    <input type="date" id="reportShellDateFrom" class="form-input fr-u25 fv-select" onchange="onReportShellFilterChanged()" />
                     <span class="fr-u27">to</span>
-                    <input type="date" id="reportShellDateTo" class="form-input fr-u25" onchange="onReportShellFilterChanged()" />
+                    <input type="date" id="reportShellDateTo" class="form-input fr-u25 fv-select" onchange="onReportShellFilterChanged()" />
                   </div>
 
                   <!-- Accounting Basis -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellBasis">Basis:</label>
-                    <select id="reportShellBasis" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
+                    <select id="reportShellBasis" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellFilterChanged()">
                       <option value="cash" selected>Cash Basis</option>
                       <option value="accrual">Accrual Basis</option>
                     </select>
@@ -115,7 +109,7 @@
                   <!-- Currency -->
                   <div class="fr-u23">
                     <label class="fr-u24" for="reportShellCurrency">Currency:</label>
-                    <select id="reportShellCurrency" class="form-input filter-select fr-u25" onchange="onReportShellFilterChanged()">
+                    <select id="reportShellCurrency" class="form-input filter-select fr-u25 fv-select" onchange="onReportShellFilterChanged()">
                       <option value="">All Currencies</option>
                       <option value="USD">USD</option>
                       <option value="EGP">EGP</option>

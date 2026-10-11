@@ -18,7 +18,7 @@ test.describe('Sales invoice status and safety rules (F1)', () => {
   test('Overdue is a flag: an overdue sent invoice keeps the Sent status and shows the overdue badge', async ({ page }) => {
     const r = row(page, 'INV-2026-003');
     await expect(r).toContainText('Sent');
-    await expect(r).toContainText('overdue');
+    await expect(r.locator('.fv-note--late')).toContainText('days late');
   });
 
   test('Receipt dialog offers only same-currency accounts and incoming payment types', async ({ page }) => {

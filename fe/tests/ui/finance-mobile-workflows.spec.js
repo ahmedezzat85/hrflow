@@ -103,7 +103,7 @@ test.describe('Story 8.2: Mobile Priority Workflows', () => {
     await expect(page.locator('#a-finance-reports')).toBeVisible();
 
     // Click Open Report on first card in library
-    const openReportBtn = page.locator('#reportLibraryGrid .card button').first();
+    const openReportBtn = page.locator('#reportLibraryGrid .report-catalog-card button').first();
     await expect(openReportBtn).toBeVisible();
     await openReportBtn.click();
 

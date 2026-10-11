@@ -1,4 +1,4 @@
-  <div class="modal-overlay" id="financeCategoryModal">
+  <div class="modal-overlay fv fv-dialog fv-area-slate" id="financeCategoryModal">
     <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeCategoryModalTitle">
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-tags"></i></div>
@@ -30,6 +30,10 @@
               <label for="fFinanceCategorySortOrder">Sort Order</label>
               <input type="number" id="fFinanceCategorySortOrder" value="0" min="0" placeholder="0">
             </div>
+            <div class="form-field full" id="fFinanceCategoryColorGroup" style="display:none;">
+              <label>Colour</label>
+              <div class="fv-swatches" role="radiogroup" aria-label="Category colour"><label class="fv-swatch fv-hue-blue" title="Blue"><input type="radio" name="fFinanceCategoryColor" value="blue"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Blue</span></label><label class="fv-swatch fv-hue-orange" title="Orange"><input type="radio" name="fFinanceCategoryColor" value="orange"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Orange</span></label><label class="fv-swatch fv-hue-teal" title="Teal"><input type="radio" name="fFinanceCategoryColor" value="teal"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Teal</span></label><label class="fv-swatch fv-hue-violet" title="Violet"><input type="radio" name="fFinanceCategoryColor" value="violet"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Violet</span></label><label class="fv-swatch fv-hue-green" title="Green"><input type="radio" name="fFinanceCategoryColor" value="green"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Green</span></label><label class="fv-swatch fv-hue-pink" title="Pink"><input type="radio" name="fFinanceCategoryColor" value="pink"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Pink</span></label><label class="fv-swatch fv-hue-sky" title="Sky"><input type="radio" name="fFinanceCategoryColor" value="sky"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Sky</span></label><label class="fv-swatch fv-hue-ochre" title="Ochre"><input type="radio" name="fFinanceCategoryColor" value="ochre"><span class="fv-swatch__dot"></span><span class="fv-sr-only">Ochre</span></label></div>
+            </div>
             <div class="form-field full" style="margin-top:8px;">
               <label for="fFinanceCategoryIsPetty" style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:13px;font-weight:500;">
                 <input type="checkbox" id="fFinanceCategoryIsPetty" style="width:16px;height:16px;cursor:pointer;">
@@ -41,7 +45,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('financeCategoryModal')">Cancel</button>
-        <button class="btn btn-fill" id="financeCategorySaveBtn" onclick="saveFinanceCategory()"><i class="fa-solid fa-floppy-disk"></i> Save Category</button>
+        <button class="btn btn-fill" id="financeCategorySaveBtn" onclick="saveFinanceCategory()">Save Category</button>
       </div>
     </div>
   </div>

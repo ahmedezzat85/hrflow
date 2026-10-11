@@ -44,7 +44,7 @@ test.describe('R5 Finance Overview', () => {
           const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
           const bad = [];
           document.querySelectorAll('#cardKpiCashBalance, #cardKpiRevenue, #cardKpiCost, #cardKpiNet').forEach((card) => {
-            const tile = card.querySelector('.stat-icon').getBoundingClientRect();
+            const tile = card.querySelector('.fv-tile').getBoundingClientRect();
             const label = card.querySelector('.stat-label span').getBoundingClientRect();
             const info = card.querySelector('.stat-label button').getBoundingClientRect();
             if (hit(tile, label)) bad.push(`${card.id}: label`);
