@@ -1,0 +1,432 @@
+/* App-wide restyle v3 layer (D-028). Every rule is scoped under :where(.fv) (page root and dialog overlays; zero added specificity, so module overrides still win);
+   login and unscoped markup keep the legacy component CSS. Loaded right after modals.css, before the module sheets. */
+
+/* from components.css */
+
+:where(.fv) .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
+  padding: 16px 18px;
+  transition: box-shadow .2s ease, transform .2s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+:where(.fv) .card:hover {
+  box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
+}
+
+:where(.fv) .card:has(table),
+:where(.fv) .card:has(.responsive-card-table),
+:where(.fv) .fv-table-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
+}
+
+:where(.fv) .card:has(table):hover,
+:where(.fv) .card:has(.responsive-card-table):hover,
+:where(.fv) .fv-table-card:hover {
+  box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
+  transform: none;
+}
+
+:where(.fv) .card:has(table) .card-head,
+:where(.fv) .card:has(.responsive-card-table) .card-head,
+:where(.fv) .fv-table-card .card-head {
+  padding: 12px 16px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+:where(.fv) .stat-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-top: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+:where(.fv) table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+:where(.fv) thead th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-label, #4b5c92);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--surface);
+}
+
+:where(.fv) thead th:first-child,
+:where(.fv) tbody td:first-child {
+  padding-left: 16px;
+}
+
+:where(.fv) thead th:last-child,
+:where(.fv) tbody td:last-child {
+  padding-right: 16px;
+}
+
+:where(.fv) tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+  font-size: 13.5px;
+}
+
+:where(.fv) .btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: .15s;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+:where(.fv) .btn-sm {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+:where(.fv) .search-box input {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+}
+
+:where(.fv) .fv-pills,
+:where(.fv) .filter-tab-group.fv-pills {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+:where(.fv) .fv-pills button,
+:where(.fv) .filter-tab-group.fv-pills button,
+:where(.fv) .filter-tab-group.fv-pills .filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--surface2);
+  color: var(--ink-body);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: .15s;
+  box-sizing: border-box;
+}
+
+:where(.fv) .fv-pills button:hover,
+:where(.fv) .filter-tab-group.fv-pills button:hover,
+:where(.fv) .filter-tab-group.fv-pills .filter-tab:hover {
+  background: var(--surface3, var(--border));
+}
+
+:where(.fv) .fv-pills button.active,
+:where(.fv) .fv-pills button[aria-pressed="true"],
+:where(.fv) .filter-tab-group.fv-pills button.active,
+:where(.fv) .filter-tab-group.fv-pills .filter-tab.active {
+  background: var(--brand);
+  color: var(--fv-on-brand, #fff);
+  border-color: var(--brand);
+  box-shadow: 0 2px 6px rgba(32, 86, 232, .25);
+}
+
+@media (max-width: 768px) {
+  :where(.fv) .sidebar {
+    position: fixed;
+    left: -280px;
+    z-index: 60;
+    box-shadow: var(--shadow-lg);
+    transition: left .25s;
+  }
+  :where(.fv) .sidebar.open {
+    left: 0;
+  }
+  :where(.fv) .sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+  }
+  :where(.fv) .hamburger {
+    display: flex;
+  }
+  :where(.fv) .topbar {
+    padding: 12px 18px;
+  }
+  :where(.fv) .page {
+    padding: 10px 16px 20px;
+  }
+  :where(.fv) .sidebar-collapse-btn {
+    display: none;
+  }
+  :where(.fv) .sidebar.collapsed {
+    width: 260px;
+    padding: 22px 16px;
+  }
+  :where(.fv) .sidebar.collapsed .sidebar-top-row {
+    justify-content: space-between;
+  }
+  :where(.fv) .sidebar.collapsed .brand {
+    justify-content: flex-start;
+    padding: 6px 10px 22px;
+    width: auto;
+  }
+  :where(.fv) .sidebar.collapsed .brand span.grad {
+    display: inline;
+  }
+  :where(.fv) .sidebar.collapsed .nav-item {
+    justify-content: flex-start;
+    padding: 10px 12px;
+    width: auto;
+    height: auto;
+    margin: 0 0 2px;
+    border-radius: 11px;
+  }
+  :where(.fv) .sidebar.collapsed .nav-item i {
+    font-size: var(--fs-base);
+    width: 18px;
+  }
+  :where(.fv) .sidebar.collapsed .nav-label {
+    display: inline;
+    width: auto;
+  }
+  :where(.fv) .sidebar.collapsed .nav-item .badge {
+    position: static;
+    min-width: auto;
+    height: auto;
+    padding: 1px 7px;
+    font-size: var(--fs-xs);
+    margin-left: auto;
+  }
+  :where(.fv) .sidebar.collapsed .nav-section-label {
+    font-size: var(--fs-xs);
+    height: auto;
+    margin: 20px 10px 8px;
+    padding: 0;
+    background: none;
+  }
+}
+
+:where(.fv) .app-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 20% 20%, rgba(32, 86, 232, .18), transparent 55%), radial-gradient(circle at 80% 80%, rgba(79, 122, 248, .16), transparent 55%), rgba(15, 23, 42, .88);
+  backdrop-filter: blur(10px);
+}
+
+:where(.fv) .app-loader-inner {
+  background: rgba(15, 23, 42, .94);
+  border-radius: 20px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  min-width: 260px;
+  max-width: 360px;
+  border: 1px solid rgba(148, 163, 184, .35);
+}
+
+:where(.fv) .app-loader-inner h3 {
+  margin-top: 18px;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text2);
+  font-family: var(--font-head);
+}
+
+:where(.fv) .app-loader-inner p {
+  margin-top: 8px;
+  font-size: var(--fs-md);
+  color: var(--text2);
+}
+
+@media (min-width: 769px) {
+  :where(.fv) table.sticky-actions th:last-child,
+:where(.fv) table.sticky-actions td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+  }
+}
+
+/* from modals.css */
+
+.modal-overlay:where(.fv) {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 36, 94, .42);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  backdrop-filter: blur(3px);
+}
+
+[data-theme="dark"] .modal-overlay:where(.fv) {
+  background: rgba(4, 9, 23, 0.65);
+}
+
+:where(.fv) .modal {
+  background: var(--surface);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(16, 30, 80, .28);
+  border: 1px solid var(--border);
+}
+
+:where(.fv) .modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+:where(.fv) .modal-head-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 11px;
+  background: var(--brand-wash, #e8eeff);
+  color: var(--brand-text, #1a46bd);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+:where(.fv) .modal-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+:where(.fv) .modal-head-text h2,
+:where(.fv) .modal-head-text h3 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-strong, var(--text));
+}
+
+:where(.fv) .modal-head-text p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-muted, var(--text2));
+}
+
+:where(.fv) .modal-close {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--ink-body, var(--text2));
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+:where(.fv) .modal-close:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+:where(.fv) .modal-body {
+  padding: 16px 22px;
+}
+
+:where(.fv) .modal-foot,
+:where(.fv) .modal-footer {
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--fv-dialog-foot, #fbfcff);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+:where(.fv) .modal-foot .btn,
+:where(.fv) .modal-footer .btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:where(.fv) .modal-v2 .form-field input,
+:where(.fv) .modal-v2 .form-field select,
+:where(.fv) .modal-v2 .form-field textarea {
+  width:100%;padding:0 12px;border-radius:9px;
+  border:1px solid var(--fv-line);background-color:var(--fv-surface);
+  color:var(--ink-strong);font-size:14px;outline:none;font-family:inherit;transition:.15s;
+}
+
+:where(.fv) .modal-v2 .form-field textarea {
+  padding: 8px 12px;
+}
+
+:where(.fv) .modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+:where(.fv) .modal-v2 .form-field select {height:36px}
+
+:where(.fv) .modal-v2 .form-field input:focus,
+:where(.fv) .modal-v2 .form-field select:focus,
+:where(.fv) .modal-v2 .form-field textarea:focus {
+  border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash);
+}
