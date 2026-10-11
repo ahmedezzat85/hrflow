@@ -348,3 +348,25 @@
 #a-employee-detail .emp-summary-card .esc-comp-total .esc-amount { font-size: 22px; font-weight: 700; color: var(--brand-text); }
 #a-employee-detail .emp-summary-card .esc-comp-piece .esc-v { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
 #a-employee-detail .emp-summary-card .esc-row .esc-v { color: var(--ink-strong); font-weight: 600; font-size: 13.5px; }
+
+/* System pages: tinted square avatars and the mock's cell type scale */
+:is(#a-system-users, #a-system-roles) table td .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none; box-shadow: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-system-users td:nth-child(2) { font-size: 14px; color: var(--ink-body); }
+#a-system-users td.tname { color: var(--ink-strong); }
+#a-system-users table td { padding: 9px 12px; }
+
+/* Roles table, per mock Sys-Roles: plain counts, tinted permission chips, 14px cells */
+#a-system-roles td { font-size: 14px; }
+#a-system-roles td:first-child { font-weight: 600; color: var(--ink-strong); }
+#a-system-roles td:nth-child(2) { color: var(--ink-body); }
+#a-system-roles td:nth-child(3) .badge { background: none !important; padding: 0; font-size: 14px; font-weight: 400; color: var(--ink-strong); }
+#a-system-roles td:nth-child(4) .badge { background: var(--brand-tint) !important; color: var(--brand-ink); border: 0; }
