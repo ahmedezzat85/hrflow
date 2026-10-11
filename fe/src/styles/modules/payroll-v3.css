@@ -87,7 +87,7 @@
 /* ---------- Buttons ---------- */
 #a-finance-payroll .btn { height: 32px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: none; }
 #a-finance-payroll .btn.sm,
-#a-finance-payroll .btn-sm { height: 28px; padding: 0 11px; font-size: 12.5px; }
+#a-finance-payroll .btn-sm { height: 28px; padding: 0 12px; font-size: 12.5px; }
 #a-finance-payroll .btn-ghost { background: var(--fv-surface); border: 1px solid var(--fv-line); color: var(--ink-body); }
 #a-finance-payroll .btn-fill { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
 

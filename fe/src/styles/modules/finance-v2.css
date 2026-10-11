@@ -118,7 +118,7 @@
 .fv .btn:disabled,
 .fv .btn-fill:disabled,
 .fv .btn-outline:disabled {
-  background: var(--fv-surface-soft);
+  background: var(--surface2);
   border: 1px solid var(--fv-line);
   color: var(--ink-faint);
 }
