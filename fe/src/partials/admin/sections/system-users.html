@@ -1,13 +1,13 @@
         <section class="page-section" id="a-system-users">
           <div class="toolbar">
             <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-users-gear"></i> User Accounts &amp; Access</h2>
+              <h2 class="section-title"><i class="fa-solid fa-users-gear"></i> User accounts and access</h2>
               <p class="section-subtitle">Manage user identity, the assigned role, and account access status.</p>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <button class="btn btn-fill" id="btnAddExternalUser" onclick="openExternalUserModal()"><i class="fa-solid fa-user-plus"></i> Add external user</button>
               <div class="filter-group">
-                <select id="systemUsersFilter" class="filter-select" aria-label="Show users" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); font-size: 13px;">
+                <select id="systemUsersFilter" class="filter-select" aria-label="Show users" style="padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px;">
                   <option value="all">All</option>
                   <option value="employees">Employees</option>
                   <option value="external">External</option>
@@ -19,8 +19,8 @@
                 <input id="systemUsersSearch" aria-label="Search users" placeholder="Search by name, email, or role...">
               </div>
               <div class="filter-group">
-                <select id="systemUsersRoleFilter" aria-label="Filter by role" class="filter-select" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); font-size: 13px;">
-                  <option value="all">All Roles</option>
+                <select id="systemUsersRoleFilter" aria-label="Filter by role" class="filter-select" style="padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px;">
+                  <option value="all">All roles</option>
                 </select>
               </div>
             </div>

@@ -617,7 +617,7 @@
 
       const assignedRole = getUserRole(u);
       const roleBadges = assignedRole
-        ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent-text); margin-right:4px;">${escHtml(assignedRole.name)}</span>`
+        ? `<span class="badge" style="background:var(--surface2); color:var(--text); border:1px solid var(--border); font-weight:500; margin-right:4px;">${escHtml(assignedRole.name)}</span>`
         : `<span style="color:var(--text3); font-size:12px;">${u.employee_id ? 'Employee access only' : 'No role'}</span>`;
 
       const selfTitle = 'You cannot change your own access';

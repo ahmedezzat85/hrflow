@@ -3,7 +3,7 @@
       <div class="modal-head">
         <div class="modal-head-icon"><i class="fa-solid fa-user-shield"></i></div>
         <div class="modal-head-text">
-          <h3 id="roleModalTitle">Create Role</h3>
+          <h3 id="roleModalTitle">Create role</h3>
           <p>Define role identity and assign granular domain permissions.</p>
         </div>
         <button class="modal-close" onclick="closeModal('roleModal')"><i class="fa-solid fa-xmark"></i></button>
@@ -13,10 +13,10 @@
           <i class="fa-solid fa-lock" style="margin-right:6px;"></i>This role is locked. It always holds every permission and cannot be edited, renamed or deleted.
         </div>
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Role Details <span class="line"></span></div>
+          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Role details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label for="fRoleName">Role Name <span class="req">*</span></label>
+              <label for="fRoleName">Role name <span class="req">*</span></label>
               <input id="fRoleName" placeholder="e.g. Compliance-Auditor">
             </div>
             <div class="form-field full">
@@ -29,7 +29,7 @@
         <div class="form-section">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div class="form-section-label" style="margin-bottom:0;"><i class="fa-solid fa-key"></i> Permissions <span class="line"></span></div>
-            <input type="text" id="rolePermSearch" aria-label="Search permissions" placeholder="Filter permissions..." style="padding: 4px 8px; font-size: 12px; width: 180px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 4px;">
+            <input type="text" id="rolePermSearch" aria-label="Search permissions" placeholder="Filter permissions..." style="padding: 4px 8px; font-size: 12px; width: 180px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);">
           </div>
           <div id="rolePermissionsContainer" style="display:flex; flex-direction:column; gap:16px;">
             <!-- Rendered dynamically by category with implication auto-ticking -->
@@ -38,7 +38,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="roleModalCancelBtn" onclick="closeModal('roleModal')">Cancel</button>
-        <button class="btn btn-fill" id="roleModalSaveBtn" onclick="saveRole(event)"><i class="fa-solid fa-check"></i> Save Role</button>
+        <button class="btn btn-fill" id="roleModalSaveBtn" onclick="saveRole(event)"><i class="fa-solid fa-check"></i> Save role</button>
       </div>
     </div>
   </div>
