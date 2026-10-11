@@ -1,8 +1,8 @@
 function chartColors(){
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   return {
-    grid: dark ? '#2a2e3d' : '#e7e9f3',
-    text: dark ? '#9aa0b4' : '#6b7280',
+    grid: dark ? '#26396f' : '#e7e9f3',
+    text: dark ? '#9fb0dc' : '#6b7280',
     accent: '#2056e8',
     warning: '#e07d10',
     success: '#10b981',

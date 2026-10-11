@@ -91,8 +91,18 @@
   --warning-border: var(--warning);
   --warning-bg: var(--warning-soft);
   --warning-dark: var(--warning);
+  --warning-text: var(--warning);
   --shadow-md: var(--shadow);
   --trans: all .15s ease;
+
+  /* Module Rail tokens (Restyle v3) */
+  --rail-bg: #e9eefc;
+  --rail-border: rgba(32, 86, 232, .10);
+  --rail-idle: #4b5c92;
+  --rail-active-bg: #ffffff;
+  --rail-active-color: #1a46bd;
+  --rail-active-shadow: 0 1px 3px rgba(20, 50, 120, .10);
+
   /* Finance UI restyle v2 (D-027): scoped by .fv in modules/finance-v2.css */
   --ink-strong: #16245e;
   --ink-body: #2b3a5c;
@@ -143,7 +153,7 @@
   --accent: #3566ef;
   --accent2: #3a6bf0;
   --accent-text: #8fb0ff;
-  --accent-soft: rgba(32, 86, 232, .18);
+  --accent-soft: rgba(53, 102, 239, .22);
 
   /* Semantic State Colors (Dark) */
   --success: #1fc27a;
@@ -157,35 +167,46 @@
   --purple: #b9a2ff;
   --purple-soft: rgba(167, 139, 250, .18);
 
-  /* Surfaces, Backgrounds & Borders (Dark) */
-  --bg: #0f1117;
-  --surface: #171a24;
-  --surface2: #1d2130;
-  --border: #2a2e3d;
-  --border2: rgba(255, 255, 255, .14);
+  /* Surfaces, Backgrounds & Borders (Dark) - Approved Navy Palette (Restyle v3) */
+  --bg: #0b1634;
+  --surface: #101d44;
+  --surface2: #15275a;
+  --border: #26396f;
+  --border2: rgba(38, 57, 111, .5);
+  --bg-subtle: #1b2f66;
+  --bg-card-subtle: #1b2f66;
+
+  /* Rail tokens (Dark) */
+  --rail-bg: #0f1c42;
+  --rail-border: #26396f;
+  --rail-idle: #a9b6dc;
+  --rail-active-bg: #1c3068;
+  --rail-active-color: #9db8ff;
+  --rail-active-shadow: none;
 
   /* Typography Colors (Dark) */
-  --text: #f1f2f6;
-  --text2: #9aa0b4;
-  --text3: #8a90a6;
+  --text: #e9eeff;
+  --text2: #9fb0dc;
+  --text3: #7f90c0;
 
   /* Shadows (Dark) */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, .3);
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, .5);
-  /* Finance UI restyle v2 (D-027), dark values */
+
+  /* Finance & App-Wide UI restyle v3, navy values */
   --ink-strong: #e9eeff;
   --ink-body: #c9d2e8;
-  --ink-label: #a9b6dc;
-  --ink-muted: #8f9ab1;
+  --ink-label: #7f90c0;
+  --ink-muted: #9fb0dc;
   --ink-faint: #6b7891;
-  --fv-canvas: #0f1117;
-  --fv-surface: #171a24;
-  --fv-surface-soft: #1d2130;
-  --fv-dialog-foot: #1a1e2b;
-  --fv-line: rgba(160, 180, 230, .12);
-  --fv-line-strong: rgba(160, 180, 230, .18);
-  --fv-line-row: rgba(160, 180, 230, .08);
+  --fv-canvas: #0b1634;
+  --fv-surface: #101d44;
+  --fv-surface-soft: #15275a;
+  --fv-dialog-foot: #15275a;
+  --fv-line: #26396f;
+  --fv-line-strong: #26396f;
+  --fv-line-row: #26396f;
   --fv-input-border: rgba(160, 180, 230, .22);
   --fv-outline: rgba(143, 176, 255, .35);
   --brand: #3566ef;

@@ -34,7 +34,7 @@ test.describe('Finance restyle v2: foundations (S1)', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     expect(await read('--ink-strong')).toBe('#e9eeff');
     expect(await read('--id-teal')).toBe('#1f9d8e');
-    expect(await read('--fv-canvas')).toBe('#0f1117');
+    expect(await read('--fv-canvas')).toBe('#0b1634');
   });
 
   test('FinanceUI helpers: hue by id, initials, markup is class based', async ({ page }) => {
