@@ -1391,19 +1391,6 @@
 }
 
 /* Buttons & Footer Controls */
-#a-finance-payroll .btn-ghost {
-  background: transparent !important;
-  border: 1px solid var(--border-color, var(--info-soft)) !important;
-  color: var(--text-muted, var(--text2)) !important;
-  cursor: pointer;
-  border-radius: 10px;
-}
-#a-finance-payroll .btn-ghost:hover:not(:disabled) {
-  background: var(--surface-2, var(--info-soft)) !important;
-  color: var(--text-primary, var(--accent)) !important;
-  border-color: var(--border-color, var(--accent)) !important;
-}
-
 #a-finance-payroll .btn,
 #a-finance-payroll .btn-fill {
   width: auto !important;
