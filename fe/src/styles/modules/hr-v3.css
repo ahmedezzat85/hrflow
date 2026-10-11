@@ -46,13 +46,13 @@
   border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm);
 }
 .fv .hv-clickable { cursor: pointer; }
-.fv .hv-stat-label { font-size: 12.5px; font-weight: 600; color: var(--ink-muted); }
+.fv .hv-stat-label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
 .fv .hv-stat-sub { font-size: 12.5px; color: var(--ink-muted); }
-.fv .hv-stat-value { font-family: var(--font-head); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--text); }
+.fv .hv-stat-value { font-family: var(--font-head); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--ink-strong); }
 .fv .hv-stat-value.hv-tone-warning { color: var(--warning); }
 .fv .hv-stat-value.hv-tone-success { color: var(--success); }
 .fv .hv-stat-value.hv-tone-brand { color: var(--brand-text); }
-.fv .hv-card-title { margin: 0; font-family: var(--font-head); font-size: 15px; color: var(--text); }
+.fv .hv-card-title { margin: 0; font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--ink-strong); }
 
 .fv tr.hv-row-pending { background: var(--warning-soft); }
 .fv .hv-tone-warning-soft { background: var(--warning-soft); color: var(--warning); }
@@ -167,7 +167,7 @@
   vertical-align: middle;
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table tbody tr:hover {
-  background: var(--fv-row-hover, var(--surface2));
+  background: var(--surface2);
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table .avatar,
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.tname .avatar {
@@ -220,3 +220,131 @@
 }
 :is(#a-system-users, #a-system-roles) .badge[style*="var(--surface2)"] { background: var(--fv-canvas); color: var(--ink-body); border: 0; }
 :is(#a-system-users, #a-system-roles) td.tname { font-weight: 600; color: var(--ink-strong); }
+
+/* =====================================================================
+   Employees list, per mock HR-Employees
+   ===================================================================== */
+#a-employees .filter-tab[data-emp-status="Active"] { background: var(--success-soft); color: var(--success); }
+#a-employees .filter-tab[data-emp-status="On leave"] { background: color-mix(in srgb, var(--id-sky) var(--fv-status-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-employees .filter-tab[data-emp-status="Inactive"] { background: var(--fv-canvas); color: var(--ink-faint); }
+#a-employees .filter-tab[data-emp-status="all"].active { background: var(--brand); color: var(--fv-on-brand); }
+#a-employees .filter-tab[data-emp-status="all"] .hv-count-fade { background: rgba(255, 255, 255, .22); opacity: 1; padding: 0 7px; margin-left: 6px; }
+#a-employees .filter-tab[data-emp-status] .hv-dot { background: currentColor; }
+#a-employees .filter-tab[data-emp-status]:not([data-emp-status="all"]).active { box-shadow: inset 0 0 0 1.5px currentColor; }
+#a-employees table td { padding: 9px 12px; }
+#a-employees table th { padding: 11px 12px; }
+#a-employees table td.col-id { color: var(--ink-label); font-weight: 600; }
+#a-employees table td.tname { display: table-cell; }
+#a-employees table td.tname .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none; display: inline-flex;
+  align-items: center; justify-content: center; margin-right: 10px; vertical-align: middle; box-shadow: none;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+#a-employees table td.tname > div:not(.avatar) { display: inline-block; vertical-align: middle; }
+#a-employees tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+#a-employees tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+#a-employees tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+#a-employees tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+#a-employees tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-employees .col-actions { white-space: nowrap; text-align: right; }
+#a-employees .icon-action:not(.btn) { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-faint); border-radius: 8px; }
+#a-employees .icon-action:not(.btn):hover { background: var(--fv-canvas); color: var(--ink-label); }
+#a-employees .icon-action:not(.btn) i { font-size: 13px; }
+#a-employees .icon-action.btn { width: auto; height: 28px; padding: 0 14px; font-size: 12.5px; }
+#a-employees td .icon-action:not(.btn) { color: var(--ink-faint); background: none; border: 0; }
+#a-employees td .icon-action:not(.btn):hover { color: var(--ink-label); background: var(--fv-canvas); }
+#a-employees .hv-toolbar { margin-bottom: 12px; }
+
+/* =====================================================================
+   Shared HR list rows: tinted square avatars (mock HR-*), 9/12 cell padding
+   ===================================================================== */
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td.tname .avatar,
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none; box-shadow: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td { padding: 9px 12px; }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table th { padding: 11px 12px; }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td:first-child,
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table th:first-child { padding-left: 16px; }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td:last-child,
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table th:last-child { padding-right: 16px; }
+
+/* =====================================================================
+   Pending requests, per mock HR-Requests
+   ===================================================================== */
+#a-requests .hv-tab .hv-count { background: var(--fv-canvas); color: var(--ink-label); font-weight: 600; padding: 0 7px; }
+#a-requests .hv-tab.active .hv-count { background: var(--brand-tint); color: var(--brand-ink); }
+#a-requests tr.hv-row-pending { background: color-mix(in srgb, var(--warning-soft) 45%, transparent); }
+/* request type: dot + label instead of a coloured chip */
+#a-requests td[data-label="Type"] .badge-pill {
+  background: none; padding: 0; border: 0; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink-strong); box-shadow: none;
+}
+#a-requests td[data-label="Type"] .badge-pill i { display: none; }
+#a-requests td[data-label="Type"] .badge-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--id-blue); }
+#a-requests td[data-label="Type"] .badge-pill.pill-info::before { background: var(--id-teal); }
+#a-requests td[data-label="Type"] .badge-pill.pill-warning::before { background: var(--id-sky); }
+#a-requests td[data-label="Type"] .badge-pill.pill-success::before { background: var(--id-green); }
+#a-requests .request-details-title { font-size: 14px; font-weight: 400; color: var(--ink-faint); }
+#a-requests td[data-label="Date"] > div { font-size: 14px; color: var(--ink-strong); }
+#a-requests td[data-label="Date"] i { display: none; }
+/* actions: Approve is the one text button, Reject an icon button */
+#a-requests .request-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+#a-requests .request-actions .btn-success-outline { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+#a-requests .request-actions .btn-success-outline i { display: none; }
+#a-requests .request-actions .btn-danger-outline { width: 30px; height: 30px; padding: 0; border: 0; background: none; font-size: 0; color: var(--danger); justify-content: center; }
+#a-requests .request-actions .btn-danger-outline i { font-size: 14px; }
+#a-requests td.col-actions .request-actions .btn-danger-outline { width: 30px; height: 30px; padding: 0; border: 0; background: none; font-size: 0; color: var(--danger); justify-content: center; }
+#a-requests td.col-actions .request-actions .btn-danger-outline i { font-size: 14px; }
+#a-requests td.col-actions .request-actions .btn-success-outline { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); padding: 0 14px; }
+
+/* Salary and raises: 14px rhythm between stat tiles and cards, names never wrap */
+:is(#a-salary, #a-vacations, #a-insurance, #a-requests, #a-employees, #a-invoices) td.tname { white-space: nowrap; }
+#a-salary .hv-grid { margin-bottom: 14px; }
+#a-salary > .card, #a-salary .card { margin-bottom: 14px; }
+#a-salary .card > .hv-card-head .hv-text2-125 { display: none; }
+:is(#a-salary, #a-vacations, #a-insurance, #a-requests, #a-employees, #a-invoices) td.tname { color: var(--ink-strong); }
+:is(#a-dashboard, #a-salary, #a-vacations, #a-insurance, #a-requests, #a-employees, #a-invoices, #a-dochub) table td { color: var(--ink-strong); }
+
+/* =====================================================================
+   Filter pills per mocks (Document hub outline pills, Salary payment docs 28px pills)
+   ===================================================================== */
+#a-dochub .filter-tab:not(.active) { background: var(--fv-surface); border: 1px solid var(--fv-outline); color: var(--ink-label); }
+#a-dochub .filter-tab.active { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+#a-invoices .btn-filter-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid transparent;
+  background: var(--fv-canvas); color: var(--ink-label); font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: none;
+}
+#a-invoices .btn-filter-pill.active { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+
+/* Dashboard tiles and insurance details */
+#a-dashboard .hero-card:not(.hero-card-accent) .hero-card-label { color: var(--ink-label); }
+#a-insurance .empty-state { width: 100%; }
+
+#a-dashboard .card-head h3, #a-dashboard .card > h3, #a-dashboard .card h3 { font-size: 15px; font-weight: 700; color: var(--ink-strong); }
+#a-dashboard td .btn { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+#a-dashboard td .btn i { display: none; }
+#a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
+
+/* Vacations: balance cells are rendered by vacations.js with inline tone colours; the mock uses plain ink and bold remaining */
+#a-vacations tbody td:nth-child(3), #a-vacations tbody td:nth-child(4) { color: var(--ink-body) !important; font-weight: 400 !important; }
+#a-vacations tbody td:nth-child(5) { color: var(--ink-strong) !important; font-weight: 700 !important; }
+#a-vacations .btn { white-space: nowrap; }
+#a-vacations .hv-card-head .btn-fill { min-width: max-content; }
+
+/* Employee detail summary, per mock HR-EmployeeDetail (type scale and avatar; layout is rendered by employees.js) */
+#a-employee-detail .emp-summary-card .esc-avatar {
+  width: 52px; height: 52px; border-radius: 15px; font-size: 18px; font-weight: 700; box-shadow: none; background: var(--brand-tint); color: var(--brand-ink);
+}
+#a-employee-detail .emp-summary-card .esc-identity h4 { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
+#a-employee-detail .emp-summary-card .esc-identity .esc-meta { font-size: 13px; color: var(--ink-muted); }
+#a-employee-detail .emp-summary-card .esc-pill { padding: 2px 10px; font-size: 12px; font-weight: 600; }
+#a-employee-detail .emp-summary-card .esc-comp-total .esc-amount { font-size: 22px; font-weight: 700; color: var(--brand-text); }
+#a-employee-detail .emp-summary-card .esc-comp-piece .esc-v { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
+#a-employee-detail .emp-summary-card .esc-row .esc-v { color: var(--ink-strong); font-weight: 600; font-size: 13.5px; }
