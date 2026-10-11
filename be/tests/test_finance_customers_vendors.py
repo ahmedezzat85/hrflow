@@ -261,3 +261,258 @@ def test_customer_360_and_duplicate_matching(app_client, admin_cookies):
     assert len(s360["invoices"]) == 2
     assert len(s360["timeline"]) >= 3
 
+
+def test_customer_receivables_on_list_and_detail(app_client, admin_cookies):
+    """
+    BE-2 Acceptance:
+    - GET /api/finance/customers adds receivables per currency to each customer (empty list when none open).
+    - GET /api/finance/customers/{id} also returns receivables.
+    - Open = status 'sent' or 'partially_paid' (D-022); draft, paid, and void not counted.
+    - Multi-currency customer returns one entry per currency.
+    - Values equal customer 360 receivables summary.
+    """
+    # 1. Create test customer
+    cust_resp = app_client.post(
+        "/api/finance/customers",
+        json={"name": "Receivables Test Health", "default_currency": "USD"},
+        cookies=admin_cookies,
+    )
+    assert cust_resp.status_code == 201
+    cust_id = cust_resp.json()["id"]
+
+    # Initially has empty receivables
+    get_cust = app_client.get(f"/api/finance/customers/{cust_id}", cookies=admin_cookies)
+    assert get_cust.status_code == 200
+    assert get_cust.json()["receivables"] == []
+
+    # 2. Setup USD and EGP bank accounts
+    usd_resp = app_client.post(
+        "/api/finance/accounts",
+        json={"account_name": f"USD Bank {cust_id}", "bank_name": "Test Bank", "account_number": f"USD-{cust_id}", "currency": "USD", "account_type": "bank"},
+        cookies=admin_cookies,
+    )
+    assert usd_resp.status_code == 201
+    usd_acc = usd_resp.json()["id"]
+
+    egp_resp = app_client.post(
+        "/api/finance/accounts",
+        json={"account_name": f"EGP Bank {cust_id}", "bank_name": "Test Bank", "account_number": f"EGP-{cust_id}", "currency": "EGP", "account_type": "bank"},
+        cookies=admin_cookies,
+    )
+    assert egp_resp.status_code == 201
+    egp_acc = egp_resp.json()["id"]
+
+    # 3. Create Draft USD invoice: should NOT count
+    inv_draft = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": cust_id,
+            "invoice_number": f"INV-DRAFT-{cust_id}",
+            "issue_date": "2026-08-01",
+            "due_date": "2026-08-15",
+            "currency": "USD",
+            "expected_bank_account_id": usd_acc,
+            "lines": [{"description": "Draft service", "quantity": 1, "unit_price": 5000.0}],
+        },
+        cookies=admin_cookies,
+    ).json()
+
+    get_cust = app_client.get(f"/api/finance/customers/{cust_id}", cookies=admin_cookies)
+    assert get_cust.json()["receivables"] == []
+
+    # Send the USD invoice: now open and overdue
+    app_client.post(f"/api/finance/invoices/{inv_draft['id']}/send", cookies=admin_cookies)
+
+    get_cust = app_client.get(f"/api/finance/customers/{cust_id}", cookies=admin_cookies)
+    rec = get_cust.json()["receivables"]
+    assert len(rec) == 1
+    assert rec[0]["currency"] == "USD"
+    assert rec[0]["open_amount"] == 5000.0
+    assert rec[0]["open_count"] == 1
+    assert rec[0]["overdue_count"] == 1
+    assert rec[0]["max_days_overdue"] > 0
+
+    # Customer 360 comparison
+    c360 = app_client.get(f"/api/finance/customers/{cust_id}/360", cookies=admin_cookies).json()
+    assert rec[0]["open_amount"] == c360["outstanding_balance"]
+    assert rec[0]["open_count"] == c360["open_invoices_count"]
+    assert rec[0]["overdue_count"] == c360["overdue_invoices_count"]
+
+    # 4. Create second invoice in EGP (future due date)
+    inv_egp = app_client.post(
+        "/api/finance/invoices",
+        json={
+            "customer_id": cust_id,
+            "invoice_number": f"INV-EGP-{cust_id}",
+            "issue_date": "2026-10-01",
+            "due_date": "2026-12-31",
+            "currency": "EGP",
+            "vat_rate": 0.0,
+            "expected_bank_account_id": egp_acc,
+            "lines": [{"description": "EGP service", "quantity": 1, "unit_price": 40000.0}],
+        },
+        cookies=admin_cookies,
+    ).json()
+    app_client.post(f"/api/finance/invoices/{inv_egp['id']}/send", cookies=admin_cookies)
+
+    # Now returns 2 entries: EGP and USD
+    get_cust = app_client.get(f"/api/finance/customers/{cust_id}", cookies=admin_cookies)
+    rec = {r["currency"]: r for r in get_cust.json()["receivables"]}
+    assert len(rec) == 2
+    assert rec["USD"]["open_amount"] == 5000.0
+    assert rec["USD"]["open_count"] == 1
+    assert rec["USD"]["overdue_count"] == 1
+    assert rec["EGP"]["open_amount"] == 40000.0
+    assert rec["EGP"]["open_count"] == 1
+    assert rec["EGP"]["overdue_count"] == 0
+    assert rec["EGP"]["max_days_overdue"] == 0
+
+    # Also verified on the list endpoint
+    list_resp = app_client.get(f"/api/finance/customers?search=Receivables Test Health", cookies=admin_cookies)
+    assert list_resp.status_code == 200
+    listed_cust = [c for c in list_resp.json() if c["id"] == cust_id][0]
+    listed_rec = {r["currency"]: r for r in listed_cust["receivables"]}
+    assert listed_rec == rec
+
+    # 5. Partially pay EGP invoice
+    app_client.post(
+        f"/api/finance/invoices/{inv_egp['id']}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 15000.0,
+            "currency": "EGP",
+            "payment_date": "2026-10-05",
+            "bank_account_id": egp_acc,
+            "method": "bank_transfer",
+        },
+        cookies=admin_cookies,
+    )
+    get_cust = app_client.get(f"/api/finance/customers/{cust_id}", cookies=admin_cookies)
+    rec = {r["currency"]: r for r in get_cust.json()["receivables"]}
+    assert rec["EGP"]["open_amount"] == 25000.0
+    assert rec["EGP"]["open_count"] == 1
+
+    # 6. Settle USD invoice in full -> USD disappears from receivables
+    app_client.post(
+        f"/api/finance/invoices/{inv_draft['id']}/payments",
+        json={
+            "direction": "incoming",
+            "amount": 5000.0,
+            "currency": "USD",
+            "payment_date": "2026-10-05",
+            "bank_account_id": usd_acc,
+            "method": "bank_transfer",
+        },
+        cookies=admin_cookies,
+    )
+    get_cust = app_client.get(f"/api/finance/customers/{cust_id}", cookies=admin_cookies)
+    rec = get_cust.json()["receivables"]
+    assert len(rec) == 1
+    assert rec[0]["currency"] == "EGP"
+    assert rec[0]["open_amount"] == 25000.0
+
+
+def test_vendor_payables_on_list_and_detail(app_client, admin_cookies):
+    """
+    BE-3 Acceptance:
+    - GET /api/finance/vendors adds payables per currency to each vendor (empty list when none open).
+    - GET /api/finance/vendors/{id} also returns payables.
+    - Open = bill status in OPEN_STATUSES (approved, scheduled, partially_paid); draft, pending_approval, rejected, paid, void not counted.
+    - Overdue = due_date before today and open.
+    - Multi-currency vendors return one entry per currency.
+    - Values match get_vendor_metrics for the same vendor.
+    - Miscellaneous vendor returns its payables like any other vendor.
+    """
+    from bill_test_helpers import create_approved, create_draft, make_maker
+
+    # 1. Create a normal vendor
+    v_resp = app_client.post(
+        "/api/finance/vendors",
+        json={"name": "Acme Equipment Supplies", "default_currency": "USD", "category": "Operations"},
+        cookies=admin_cookies,
+    )
+    assert v_resp.status_code == 201
+    v_id = v_resp.json()["id"]
+
+    # Initially empty payables
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    assert get_v.status_code == 200
+    assert get_v.json()["payables"] == []
+
+    # 2. Draft bill by maker (not approved) -> not counted
+    maker_cookies = make_maker("maker_payables@hrflow.test")
+    draft_bill = create_draft(app_client, maker_cookies, v_id, f"BILL-DRAFT-{v_id}", 3000.0)
+    assert draft_bill["status"] == "draft"
+
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    assert get_v.json()["payables"] == []
+
+    # 3. Create approved USD bill with past due date (overdue)
+    bill1 = create_approved(
+        app_client, admin_cookies, v_id, f"BILL-USD-01-{v_id}", 13740.0,
+        currency="USD", due_date="2026-08-01",
+    )
+    assert bill1["status"] == "approved"
+
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    payables = get_v.json()["payables"]
+    assert len(payables) == 1
+    assert payables[0]["currency"] == "USD"
+    assert payables[0]["open_amount"] == 13740.0
+    assert payables[0]["open_count"] == 1
+    assert payables[0]["overdue_count"] == 1
+
+    # Check match with get_vendor_metrics (via 360 view)
+    v360 = app_client.get(f"/api/finance/vendors/{v_id}/360", cookies=admin_cookies).json()
+    assert v360["metrics"]["open_bills_total"] == payables[0]["open_amount"]
+    assert v360["metrics"]["open_bills_count"] == payables[0]["open_count"]
+
+    # 4. Multi-currency: add an approved EGP bill (future due date -> not overdue)
+    bill2 = create_approved(
+        app_client, admin_cookies, v_id, f"BILL-EGP-01-{v_id}", 25000.0,
+        currency="EGP", due_date="2026-12-31",
+    )
+    assert bill2["status"] == "approved"
+
+    get_v = app_client.get(f"/api/finance/vendors/{v_id}", cookies=admin_cookies)
+    payables_map = {p["currency"]: p for p in get_v.json()["payables"]}
+    assert len(payables_map) == 2
+    assert payables_map["USD"]["open_amount"] == 13740.0
+    assert payables_map["USD"]["open_count"] == 1
+    assert payables_map["USD"]["overdue_count"] == 1
+    assert payables_map["EGP"]["open_amount"] == 25000.0
+    assert payables_map["EGP"]["open_count"] == 1
+    assert payables_map["EGP"]["overdue_count"] == 0
+
+    # Also verify list endpoint
+    v_list = app_client.get(f"/api/finance/vendors?search=Acme Equipment Supplies", cookies=admin_cookies).json()
+    matched = [v for v in v_list if v["id"] == v_id][0]
+    matched_map = {p["currency"]: p for p in matched["payables"]}
+    assert matched_map == payables_map
+
+    # 5. Check Miscellaneous vendor (D-020)
+    misc_list = app_client.get("/api/finance/vendors?search=Miscellaneous", cookies=admin_cookies).json()
+    if misc_list:
+        misc_id = misc_list[0]["id"]
+    else:
+        misc_resp = app_client.post(
+            "/api/finance/vendors",
+            json={"name": "Miscellaneous", "default_currency": "EGP", "category": "Operations"},
+            cookies=admin_cookies,
+        )
+        misc_id = misc_resp.json()["id"]
+
+    misc_bill = create_approved(
+        app_client, admin_cookies, misc_id, f"EXP-MISC-{misc_id}", 750.0,
+        currency="EGP", due_date="2026-11-01",
+    )
+    assert misc_bill["status"] == "approved"
+
+    misc_get = app_client.get(f"/api/finance/vendors/{misc_id}", cookies=admin_cookies).json()
+    assert len(misc_get["payables"]) >= 1
+    egp_misc = [p for p in misc_get["payables"] if p["currency"] == "EGP"][0]
+    assert egp_misc["open_amount"] >= 750.0
+    assert egp_misc["open_count"] >= 1
+
+
+

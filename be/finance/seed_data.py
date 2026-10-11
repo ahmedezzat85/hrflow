@@ -8,6 +8,7 @@ Can be invoked by init_db, Alembic migrations, test setup, or startup scripts.
 from datetime import datetime
 from sqlalchemy.orm import Session
 from finance.models import PaymentTypeDB, TransactionCategoryDB
+from finance.schemas import CATEGORY_PALETTE
 
 
 SEED_CATEGORIES = [
@@ -54,7 +55,8 @@ def seed_finance_lookups(db: Session) -> dict:
     pt_count = 0
 
     # 1. Seed categories
-    for name, kind, is_petty, sort_order in SEED_CATEGORIES:
+    for idx, (name, kind, is_petty, sort_order) in enumerate(SEED_CATEGORIES):
+        color = CATEGORY_PALETTE[idx % len(CATEGORY_PALETTE)]
         existing = db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == name).first()
         if not existing:
             cat = TransactionCategoryDB(
@@ -62,11 +64,14 @@ def seed_finance_lookups(db: Session) -> dict:
                 kind=kind,
                 is_petty=is_petty,
                 sort_order=sort_order,
+                color=color,
                 is_active=True,
                 created_at=datetime.utcnow(),
             )
             db.add(cat)
             cat_count += 1
+        elif existing.color is None:
+            existing.color = color
 
     # 2. Seed / normalize payment types
     for name, code, req_chk, req_fee in SEED_PAYMENT_TYPES:

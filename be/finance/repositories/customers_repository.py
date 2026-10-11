@@ -164,3 +164,87 @@ class CustomersRepository:
                 })
 
         return candidates
+
+    def get_open_receivables_for_customers(self, customer_ids: List[int]) -> dict:
+        """
+        Batch-fetches open receivables for a list of customer IDs in a single grouped query.
+        Returns a dict mapping customer_id -> list of CustomerReceivableItem dicts.
+        """
+        if not customer_ids:
+            return {}
+
+        from datetime import date
+        from sqlalchemy.orm import joinedload
+        from finance.models import SalesInvoiceDB
+        from finance import invoice_status as inv_status
+
+        today = date.today()
+
+        def _to_date(v):
+            if not v:
+                return None
+            if isinstance(v, date):
+                return v
+            if isinstance(v, str):
+                try:
+                    return date.fromisoformat(v[:10])
+                except Exception:
+                    return None
+            return None
+
+        open_invoices_raw = (
+            self.db.query(SalesInvoiceDB)
+            .options(joinedload(SalesInvoiceDB.payments))
+            .filter(
+                SalesInvoiceDB.customer_id.in_(customer_ids),
+                SalesInvoiceDB.status.in_(inv_status.OPEN_STATUSES),
+            )
+            .all()
+        )
+        seen_inv_ids = set()
+        open_invoices = []
+        for inv in open_invoices_raw:
+            if inv.id not in seen_inv_ids:
+                seen_inv_ids.add(inv.id)
+                open_invoices.append(inv)
+
+        grouped = {}
+        for inv in open_invoices:
+            valid_payments = [p for p in (inv.payments or []) if not getattr(p, "is_reversed", False)]
+            inv_paid = inv_status.settled_amount(valid_payments)
+            inv_balance = max(0.0, float(inv.total) - inv_paid)
+            if inv_balance <= 0.001:
+                continue
+
+            due_dt = _to_date(inv.due_date)
+            is_overdue = inv_status.is_overdue(inv.status, inv.due_date, today)
+
+            key = (inv.customer_id, (inv.currency or "USD").upper())
+            if key not in grouped:
+                grouped[key] = {
+                    "currency": (inv.currency or "USD").upper(),
+                    "open_amount": 0.0,
+                    "open_count": 0,
+                    "overdue_count": 0,
+                    "max_days_overdue": 0,
+                }
+
+            entry = grouped[key]
+            entry["open_amount"] += inv_balance
+            entry["open_count"] += 1
+            if is_overdue:
+                entry["overdue_count"] += 1
+                if due_dt:
+                    days_overdue = (today - due_dt).days
+                    if days_overdue > entry["max_days_overdue"]:
+                        entry["max_days_overdue"] = days_overdue
+
+        result = {cid: [] for cid in customer_ids}
+        for (cid, curr), data in grouped.items():
+            data["open_amount"] = round(data["open_amount"], 2)
+            result[cid].append(data)
+
+        for cid in result:
+            result[cid].sort(key=lambda x: x["currency"])
+
+        return result
