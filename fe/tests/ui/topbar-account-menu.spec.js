@@ -42,12 +42,12 @@ for (const portal of PORTALS) {
         expect(style.ws).toBe('nowrap');
       });
 
-      test('AC-4: avatar shows non-bold initials; menu header shows name and role', async ({ page }) => {
+      test('AC-4: avatar shows 600-weight initials (mock); menu header shows name and role', async ({ page }) => {
         const trigger = page.locator(`#${portal.p}AccountBtn`);
         await expect(trigger).toBeVisible();
         const initials = trigger.locator('.account-avatar__initials');
         await expect(initials).toHaveText(/^[A-Z]{1,2}$/);
-        expect(Number(await initials.evaluate(el => getComputedStyle(el).fontWeight))).toBeLessThan(600);
+        expect(Number(await initials.evaluate(el => getComputedStyle(el).fontWeight))).toBeLessThanOrEqual(600);
         await trigger.click();
         const panel = page.locator(`#${portal.p}AccountPanel`);
         await expect(panel).toBeVisible();

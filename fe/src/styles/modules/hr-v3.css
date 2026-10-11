@@ -465,3 +465,8 @@
 #a-dochub td:last-child { text-align: right; white-space: nowrap; }
 #a-dochub td:last-child > * { vertical-align: middle; }
 #a-employees tbody td { white-space: nowrap; }
+
+/* Table headers: 12px padding and the mock's 1.45 line height (taller header row, 41px) */
+:is(#a-dashboard, #a-employees, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table { line-height: 1.45; }
+:is(#a-dashboard, #a-employees, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-salary, #e-vacations, #e-insurance, #e-dochub) table th { padding-top: 12px; padding-bottom: 12px; }
+:is(#a-dashboard, #a-employees, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-salary, #e-vacations, #e-insurance, #e-dochub) table td { padding-top: 9px; padding-bottom: 9px; }

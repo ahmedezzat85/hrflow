@@ -48,6 +48,30 @@ const APP_AREA_BY_PAGE = {
   "e-dochub": { name: "Workspace", hue: "ochre", icon: "fa-folder-open" },
 };
 
+// Outline icon set from the approved mocks for the page-title tile (paths only).
+const PAGE_TILE_SVG = {
+  "a-dashboard": "<path d=\"M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z\">",
+  "a-employees": "<path d=\"M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\">",
+  "a-employee-detail": "<path d=\"M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\">",
+  "a-requests": "<path d=\"M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5\">",
+  "a-salary": "<path d=\"M3 17l6-6 4 4 8-8M15 7h6v6\">",
+  "a-invoices": "<path d=\"M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6\">",
+  "a-vacations": "<path d=\"M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0\">",
+  "a-insurance": "<path d=\"M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z\">",
+  "a-dochub": "<path d=\"M3 6h6l2 2h10v11H3z\">",
+  "a-finance-payroll": "<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2\">",
+  "a-finance-payroll-runs": "<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2\">",
+  "a-finance-payroll-settings": "<path d=\"M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4\">",
+  "a-system-roles": "<path d=\"M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z\">",
+  "a-system-users": "<path d=\"M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\">",
+  "e-dashboard": "<path d=\"M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z\">",
+  "e-salary": "<path d=\"M3 17l6-6 4 4 8-8M15 7h6v6\">",
+  "e-payslips": "<path d=\"M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6\">",
+  "e-vacations": "<path d=\"M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0\">",
+  "e-insurance": "<path d=\"M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z\">",
+  "e-dochub": "<path d=\"M3 6h6l2 2h10v11H3z\">"
+};
+
 function applyFinanceAreaChrome(pageId, portal = "admin") {
   const isEmp = portal === "employee" || (pageId && pageId.startsWith("e-"));
   const shell = document.querySelector(isEmp ? "#employee-app .main" : "#admin-app .main");
@@ -62,7 +86,9 @@ function applyFinanceAreaChrome(pageId, portal = "admin") {
     return;
   }
   tile.className = `fv-tile fv-hue-${area.hue}`;
-  tile.innerHTML = `<i class="fa-solid ${area.icon}"></i>`;
+  tile.innerHTML = PAGE_TILE_SVG[pageId]
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PAGE_TILE_SVG[pageId]}</svg>`
+    : `<i class="fa-solid ${area.icon}"></i>`;
   tile.hidden = false;
   nameEl.textContent = area.name;
   nameEl.hidden = false;
