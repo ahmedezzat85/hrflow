@@ -13,52 +13,134 @@ function computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal){
   const totalPct = prevTotal > 0 ? (totalAmt / prevTotal * 100) : 0;
   return { internalAmt, internalPct, externalAmt, externalPct, totalAmt, totalPct };
 }
+function isSalaryWriteAllowed() {
+  if (typeof canWriteSalary === 'function') return canWriteSalary();
+  return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.salary.write');
+}
+
 function renderSalaryPage(filter=''){
   const f = filter.toLowerCase();
-  const totalPayroll = employees.reduce((s,e)=>s+e.salary,0);
+  const canWrite = isSalaryWriteAllowed();
+  const btnApply = document.getElementById('btnApplyRaise');
+  if (btnApply) btnApply.hidden = !canWrite;
+
+  const totalPayroll = employees.reduce((s,e)=>s+Number(e.salary || (Number(e.externalSalaryUsd || 0) + Number(e.internalSalaryUsd || 0))), 0);
   document.getElementById('statPayroll').textContent = fmtUSD(totalPayroll);
   const allRaises = employees.flatMap(e=>(e.salaryHistory || []).map(h=>({...h, emp:e.name, empId:e.id})));
   const thisYear = String(new Date().getFullYear());
   const thisYearRaises = allRaises.filter(h=>h.date && h.date.startsWith(thisYear));
   document.getElementById('statRaisesYtd').textContent = thisYearRaises.length;
+  const ytdSub = document.getElementById('statRaisesYtdSub');
+  if (ytdSub) ytdSub.textContent = `since 1 Jan ${thisYear}`;
+
   const avgPct = thisYearRaises.length ? (thisYearRaises.reduce((s,h)=>s+parseFloat(h.pct || 0),0)/thisYearRaises.length) : 0;
   document.getElementById('statAvgRaise').textContent = (avgPct>=0?'+':'') + avgPct.toFixed(1) + '%';
+  const avgSub = document.getElementById('statAvgRaiseSub');
+  if (avgSub) {
+    if (thisYearRaises.length > 0) {
+      avgSub.textContent = `${thisYearRaises.length} raise${thisYearRaises.length === 1 ? '' : 's'} this year`;
+    } else {
+      const sortedAll = allRaises.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+      if (sortedAll.length > 0 && sortedAll[0].date) {
+        const d = new Date(sortedAll[0].date);
+        const mStr = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        avgSub.textContent = `last review in ${mStr}`;
+      } else {
+        avgSub.textContent = 'No raises yet';
+      }
+    }
+  }
+
   const now = new Date();
   const qEnd = new Date(now); qEnd.setMonth(qEnd.getMonth()+3);
   const upcoming = employees.filter(e=>{ if (!e.nextRaise || isNaN(new Date(e.nextRaise).getTime())) return false; const d=new Date(e.nextRaise); return d>=now && d<=qEnd; });
   document.getElementById('statUpcomingQ').textContent = upcoming.length;
+  const upSub = document.getElementById('statUpcomingQSub');
+  if (upSub) {
+    if (upcoming.length > 0) {
+      upSub.textContent = upcoming.slice(0, 2).map(e => e.name).join(', ') + (upcoming.length > 2 ? ` +${upcoming.length - 2} more` : '');
+    } else {
+      upSub.textContent = 'None scheduled';
+    }
+  }
+
+  const filteredEmps = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f));
   const body = document.getElementById('salaryTableBody');
-  body.innerHTML = employees.filter(e=>e.name.toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f)).map(e=>{
+  body.innerHTML = filteredEmps.map(e=>{
     const last = (e.salaryHistory || []).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))[0] || null;
     const ext = Number(e.externalSalaryUsd || 0);
     const intCash = Number(e.internalSalaryUsd || 0);
     const total = ext + intCash;
     const profileHref = Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '') + '/' + encodeURIComponent(e.id);
+    const lastStr = last ? `${last.date} · ${last.pct || ''}` : '<span style="color:var(--ink-muted);">No raise yet</span>';
+    const nextStr = e.nextRaise || '<span style="color:var(--ink-muted);">Not scheduled</span>';
+    const actionsHtml = canWrite ? `
+      <button type="button" class="btn btn-outline btn-xs" onclick="openRaiseModal('${escapeHtml(e.id)}')">Raise</button>
+      <button type="button" class="btn-icon" aria-label="Edit pay plan for ${escapeHtml(e.name)}" onclick="openCompPlanModal('${escapeHtml(e.id)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>
+    ` : '';
+
     return `<tr class="salary-row" data-employee-id="${escapeHtml(e.id)}">
-      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><a class="salary-emp-link" href="${profileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a><div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(e.dept || e.department || '')}</div></div></td>
+      <td class="tname"><div class="avatar">${initials(e.name)}</div><div><a class="salary-emp-link" href="${profileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a><div class="hv-sub-line">${escapeHtml(e.dept || e.department || '')}</div></div></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-external">${fmtUSD(ext)}</span></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-internal">${fmtUSD(intCash)}</span></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--ink-strong);">${fmtUSD(total)}</strong></td>
-      <td>${e.nextRaise || '—'}</td>
-      <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
+      <td>${nextStr}</td>
+      <td>${lastStr}</td>
+      <td class="hv-right" style="white-space:nowrap;">${actionsHtml}</td>
     </tr>`;
+  }).join('') || renderEmptyTableRow(7, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
 
-  }).join('') || renderEmptyTableRow(6, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
+  const countEl = document.getElementById('salaryTableFootCount');
+  if (countEl) countEl.textContent = `Showing 1–${filteredEmps.length} of ${filteredEmps.length} employees`;
 
   const histBody = document.getElementById('companyRaiseHistoryBody');
+  const yearFilter = document.getElementById('raiseHistoryYearFilter');
+  if (yearFilter && yearFilter.options.length <= 1) {
+    const years = Array.from(new Set(allRaises.map(h => (h.date || '').slice(0, 4)).filter(Boolean))).sort().reverse();
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearFilter.appendChild(opt);
+    });
+    yearFilter.addEventListener('change', () => renderSalaryPage(document.getElementById('salarySearch').value));
+  }
+  const selectedYear = yearFilter ? yearFilter.value : '';
+
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
-  histBody.innerHTML = sortedHist.map((h, idx) => {
+  const filteredHist = selectedYear ? sortedHist.filter(h => h.date && h.date.startsWith(selectedYear)) : sortedHist;
+
+  histBody.innerHTML = filteredHist.map((h, idx) => {
     const olderSameEmp = sortedHist.slice(idx+1).find(o => o.empId === h.empId);
     const prevInternal = olderSameEmp ? Number(olderSameEmp.newInternal || 0) : Number(h.prevInternal || 0);
     const prevExternal = olderSameEmp ? Number(olderSameEmp.newExternal || 0) : Number(h.prevExternal || 0);
     const newInternal = Number(h.newInternal || 0);
     const newExternal = Number(h.newExternal || 0);
+    const isStarting = !olderSameEmp && (!h.prevInternal && !h.prevExternal);
     const d = computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal);
-    return `<tr><td class="tname"><div class="avatar">${initials(h.emp)}</div>${h.emp}</td><td>${h.date}</td><td>${fmtUSD(newInternal)}</td><td>${fmtUSD(newExternal)}</td><td>${fmtUSD(newInternal+newExternal)}</td><td>${fmtDelta(d.internalAmt, d.internalPct)}</td><td>${fmtDelta(d.externalAmt, d.externalPct)}</td><td><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td>${escapeHtml(h.reason)}</td></tr>`;
-  }).join('') || renderEmptyTableRow(9, 'No raises recorded yet.', 'fa-solid fa-sack-dollar');
+    const intSub = isStarting ? 'starting pay' : fmtDelta(d.internalAmt, d.internalPct);
+    const extSub = isStarting ? 'starting pay' : fmtDelta(d.externalAmt, d.externalPct);
+    const changePill = isStarting
+      ? '<span class="badge-pill pill-neutral">Starting pay</span>'
+      : `<span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span>`;
+
+    return `<tr>
+      <td class="tname"><div class="avatar">${initials(h.emp)}</div><span>${escapeHtml(h.emp)}</span></td>
+      <td>${escapeHtml(h.date || '—')}</td>
+      <td class="hv-right" style="font-variant-numeric:tabular-nums;">${fmtUSD(newInternal)}<div class="hv-sub-line">${intSub}</div></td>
+      <td class="hv-right" style="font-variant-numeric:tabular-nums;">${fmtUSD(newExternal)}<div class="hv-sub-line">${extSub}</div></td>
+      <td class="hv-right" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--ink-strong);">${fmtUSD(newInternal+newExternal)}</strong></td>
+      <td>${changePill}</td>
+      <td>${escapeHtml(h.reason || '—')}</td>
+    </tr>`;
+  }).join('') || renderEmptyTableRow(7, 'No raises recorded yet.', 'fa-solid fa-sack-dollar');
+
+  const histCountEl = document.getElementById('raiseHistoryFooter');
+  const histCountSpan = document.getElementById('raiseHistoryFootCount');
+  if (histCountSpan) histCountSpan.textContent = `Showing 1–${filteredHist.length} of ${filteredHist.length} raises`;
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
-// Overview only: a row click opens the employee's profile, where pay is changed (links keep their own href)
+// Overview only: a row click opens the employee's profile, where pay is changed (links and buttons keep their own click handlers)
 document.getElementById('salaryTableBody').addEventListener('click', e=>{
   if (e.target.closest('a, button')) return;
   const row = e.target.closest('tr[data-employee-id]');
@@ -85,8 +167,16 @@ function openRaiseModal(empId=null){
 }
 function onRaiseEmployeeChange(){
   const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
-  document.getElementById('rvCurrentInternal').value = emp ? fmtUSD(emp.internalSalaryUsd || 0) : '—';
-  document.getElementById('rvCurrentExternal').value = emp ? fmtUSD(emp.externalSalaryUsd || 0) : '—';
+  const intVal = emp ? fmtUSD(emp.internalSalaryUsd || 0) : '—';
+  const extVal = emp ? fmtUSD(emp.externalSalaryUsd || 0) : '—';
+  const elInt = document.getElementById('rvCurrentInternal');
+  if (elInt) { if ('value' in elInt) elInt.value = intVal; elInt.textContent = intVal; }
+  const elExt = document.getElementById('rvCurrentExternal');
+  if (elExt) { if ('value' in elExt) elExt.value = extVal; elExt.textContent = extVal; }
+  const tileInt = document.getElementById('rvCurrentInternalTile');
+  if (tileInt) tileInt.textContent = intVal;
+  const tileExt = document.getElementById('rvCurrentExternalTile');
+  if (tileExt) tileExt.textContent = extVal;
   updateRaisePreview();
 }
 function updateRaisePreview(){

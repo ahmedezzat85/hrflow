@@ -8,31 +8,28 @@
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Average raise, last cycle</span>
               <span class="hv-stat-value" id="statAvgRaise">+0%</span>
-              <span class="hv-stat-sub">Last review cycle</span>
+              <span class="hv-stat-sub" id="statAvgRaiseSub">Last review cycle</span>
             </div>
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Raises applied this year</span>
               <span class="hv-stat-value" id="statRaisesYtd">0</span>
-              <span class="hv-stat-sub">Year to date</span>
+              <span class="hv-stat-sub" id="statRaisesYtdSub">since 1 Jan 2026</span>
             </div>
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Raises due this quarter</span>
               <span class="hv-stat-value" id="statUpcomingQ">0</span>
-              <span class="hv-stat-sub">Upcoming reviews</span>
+              <span class="hv-stat-sub" id="statUpcomingQSub">Upcoming reviews</span>
             </div>
           </div>
           <div class="card fv-table-card hv-mb-14">
             <div class="card-head hv-card-head hv-wrap">
-              <div>
-                <h3 class="hv-card-title">Current pay</h3>
-                <div class="hv-stat-sub">Active base pay and next scheduled raise</div>
-              </div>
+              <h3 class="hv-card-title">Current pay</h3>
               <div class="hv-row-8">
                 <div class="search-box hv-w-200">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                  <input id="salarySearch" placeholder="Search employees..." aria-label="Search employees">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input id="salarySearch" placeholder="Search employees" aria-label="Search employees">
                 </div>
-                <button type="button" class="btn btn-outline btn-sm" onclick="openRaiseModal()"><i class="fa-solid fa-arrow-trend-up"></i> Apply raise</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnApplyRaise" onclick="openRaiseModal()">Apply raise</button>
               </div>
             </div>
             <div class="fv-table-scroll">
@@ -43,35 +40,45 @@
                     <th class="hv-right">External USD</th>
                     <th class="hv-right">Internal USD cash</th>
                     <th class="hv-right">Monthly total</th>
-                    <th>Next raise date</th>
-                    <th>Last raise applied</th>
+                    <th>Next raise ↑</th>
+                    <th>Last raise</th>
+                    <th class="hv-right"></th>
                   </tr>
                 </thead>
                 <tbody id="salaryTableBody"></tbody>
               </table>
             </div>
+            <div class="fv-tablefoot" id="salaryTableFooter">
+              <span id="salaryTableFootCount"></span>
+              <span>Page 1 of 1</span>
+            </div>
           </div>
           <div class="card fv-table-card">
-            <div class="card-head hv-card-head-plain">
-              <h3 class="hv-card-title">Company-wide raise history</h3>
+            <div class="card-head hv-card-head">
+              <h3 class="hv-card-title">Raise history</h3>
+              <select class="hv-select" id="raiseHistoryYearFilter" aria-label="Year">
+                <option value="">All years</option>
+              </select>
             </div>
             <div class="fv-table-scroll">
               <table class="responsive-card-table fv-table">
                 <thead>
                   <tr>
                     <th>Employee</th>
-                    <th>Effective date</th>
-                    <th class="hv-right">New internal</th>
-                    <th class="hv-right">New external</th>
-                    <th class="hv-right">New total</th>
-                    <th class="hv-right">Internal Δ</th>
-                    <th class="hv-right">External Δ</th>
-                    <th class="hv-right">Total Δ</th>
+                    <th>Effective ↓</th>
+                    <th class="hv-right">Internal USD</th>
+                    <th class="hv-right">External USD</th>
+                    <th class="hv-right">New monthly total</th>
+                    <th>Change</th>
                     <th>Reason</th>
                   </tr>
                 </thead>
                 <tbody id="companyRaiseHistoryBody"></tbody>
               </table>
+            </div>
+            <div class="fv-tablefoot" id="raiseHistoryFooter">
+              <span id="raiseHistoryFootCount"></span>
+              <span>Page 1 of 1</span>
             </div>
           </div>
         </section>

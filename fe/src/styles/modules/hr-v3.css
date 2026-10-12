@@ -564,3 +564,25 @@
 :is(#e-vacations, #e-insurance) .form-field select, :is(#e-vacations, #e-insurance) .form-field input { line-height: normal; padding-top: 0; padding-bottom: 0; }
 #e-vacations .time-off-summary-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }
 #e-insurance .card .btn.hv-w-full { width: auto; display: flex; margin-left: auto; height: 34px; padding: 0 16px; }
+
+/* Dialog info tiles & raise preview */
+.fv-dialog .fv-dialog-tile {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.fv-dialog .fv-dialog-tile__label {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.fv-dialog .fv-dialog-tile__value {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-strong);
+}
+.fv-dialog .raise-preview-divider {
+  border-top: 1px dashed var(--fv-line-strong);
+  padding-top: 8px;
+  margin-top: 4px;
+}

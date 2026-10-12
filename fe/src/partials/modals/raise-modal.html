@@ -17,29 +17,29 @@
           </div>
         </div>
 
-        <div class="form-section">
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="rvCurrentInternal">Current internal <span class="opt">USD</span></label>
-              <input type="text" id="rvCurrentInternal" value="—" disabled>
-            </div>
-            <div class="form-field">
-              <label for="rvCurrentExternal">Current external <span class="opt">USD</span></label>
-              <input type="text" id="rvCurrentExternal" value="—" disabled>
-            </div>
-            <div class="form-field">
-              <label for="rNewInternal">New internal <span class="opt">USD</span> <span class="req">*</span></label>
-              <input min="0" inputmode="decimal" type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
-            </div>
-            <div class="form-field">
-              <label for="rNewExternal">New external <span class="opt">USD</span> <span class="req">*</span></label>
-              <input min="0" inputmode="decimal" type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
-            </div>
+        <div class="hv-grid hv-grid-2 hv-mb-12">
+          <div class="fv-dialog-tile">
+            <div class="fv-dialog-tile__label">Internal now</div>
+            <div class="fv-dialog-tile__value" id="rvCurrentInternalTile">—</div>
+            <input type="text" id="rvCurrentInternal" value="—" hidden>
+          </div>
+          <div class="fv-dialog-tile">
+            <div class="fv-dialog-tile__label">External now</div>
+            <div class="fv-dialog-tile__value" id="rvCurrentExternalTile">—</div>
+            <input type="text" id="rvCurrentExternal" value="—" hidden>
           </div>
         </div>
 
         <div class="form-section">
           <div class="form-grid">
+            <div class="form-field">
+              <label for="rNewInternal">New internal, USD <span class="req">*</span></label>
+              <input min="0" inputmode="decimal" type="number" id="rNewInternal" placeholder="e.g. 550" class="hv-right hv-bold" oninput="updateRaisePreview()">
+            </div>
+            <div class="form-field">
+              <label for="rNewExternal">New external, USD <span class="req">*</span></label>
+              <input min="0" inputmode="decimal" type="number" id="rNewExternal" placeholder="e.g. 1000" class="hv-right hv-bold" oninput="updateRaisePreview()">
+            </div>
             <div class="form-field">
               <label for="rDate">Effective date <span class="req">*</span></label>
               <input type="date" id="rDate">
@@ -60,7 +60,7 @@
         <div class="raise-preview" id="raisePreview">
           <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
           <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
-          <div class="row" style="border-top:1px dashed var(--fv-line-strong);padding-top:8px;margin-top:4px;"><span>Current total</span><b id="rvCurrent">—</b></div>
+          <div class="row raise-preview-divider"><span>Current total</span><b id="rvCurrent">—</b></div>
           <div class="row"><span>New total</span><b id="rvNew">—</b></div>
           <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
         </div>

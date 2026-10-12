@@ -547,6 +547,62 @@ for (const theme of ['light', 'dark']) {
         await expect(pendingRow.locator('.btn-danger-outline')).toBeVisible();
       }
     });
+
+    test(`S3.5 Salary and raises in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-salary', 'admin'));
+
+      // 4 stat tiles
+      const statTiles = page.locator('#a-salary .hv-stat-tile');
+      await expect(statTiles).toHaveCount(4);
+      await expect(statTiles.nth(0).locator('.hv-stat-label')).toHaveText('Monthly pay, all employees');
+      await expect(statTiles.nth(1).locator('.hv-stat-label')).toHaveText('Average raise, last cycle');
+      await expect(statTiles.nth(2).locator('.hv-stat-label')).toHaveText('Raises applied this year');
+      await expect(statTiles.nth(3).locator('.hv-stat-label')).toHaveText('Raises due this quarter');
+
+      // Current pay card & table
+      await expect(page.locator('#a-salary .card:has(#salaryTableBody) h3')).toHaveText('Current pay');
+      await expect(page.locator('#salarySearch')).toHaveAttribute('placeholder', 'Search employees');
+      await expect(page.locator('#btnApplyRaise')).toHaveText('Apply raise');
+
+      const payThs = page.locator('#a-salary table:has(#salaryTableBody) thead th');
+      await expect(payThs.nth(0)).toHaveText('Employee');
+      await expect(payThs.nth(1)).toHaveText('External USD');
+      await expect(payThs.nth(2)).toHaveText('Internal USD cash');
+      await expect(payThs.nth(3)).toHaveText('Monthly total');
+      await expect(payThs.nth(4)).toHaveText('Next raise ↑');
+      await expect(payThs.nth(5)).toHaveText('Last raise');
+
+      const payFoot = page.locator('#salaryTableFooter');
+      await expect(payFoot).toContainText('Showing');
+      await expect(payFoot).toContainText('Page 1 of 1');
+
+      // Raise history card & table
+      await expect(page.locator('#a-salary .card:has(#companyRaiseHistoryBody) h3')).toHaveText('Raise history');
+      await expect(page.locator('#raiseHistoryYearFilter')).toBeVisible();
+
+      const histThs = page.locator('#a-salary table:has(#companyRaiseHistoryBody) thead th');
+      await expect(histThs.nth(0)).toHaveText('Employee');
+      await expect(histThs.nth(1)).toHaveText('Effective ↓');
+      await expect(histThs.nth(2)).toHaveText('Internal USD');
+      await expect(histThs.nth(3)).toHaveText('External USD');
+      await expect(histThs.nth(4)).toHaveText('New monthly total');
+      await expect(histThs.nth(5)).toHaveText('Change');
+      await expect(histThs.nth(6)).toHaveText('Reason');
+
+      const histFoot = page.locator('#raiseHistoryFooter');
+      await expect(histFoot).toContainText('Showing');
+      await expect(histFoot).toContainText('Page 1 of 1');
+
+      // Raise modal tiles and headers
+      await page.evaluate(() => openRaiseModal());
+      await expect(page.locator('#raiseModal')).toBeVisible();
+      await expect(page.locator('#raiseModal h3')).toHaveText('Apply raise');
+      await expect(page.locator('#rvCurrentInternalTile')).toBeVisible();
+      await expect(page.locator('#rvCurrentExternalTile')).toBeVisible();
+      await page.evaluate(() => closeModal('raiseModal'));
+      await expect(page.locator('#raiseModal')).not.toBeVisible();
+    });
   });
 }
 
