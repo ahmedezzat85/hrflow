@@ -68,6 +68,23 @@ async function loadEmployeeData() {
 }
 
 function renderAdminPortal() {
+  const greetEl = document.getElementById('hrDashGreeting');
+  if (greetEl) {
+    const now = new Date();
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const h = now.getHours();
+    const hello = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
+    let name = '';
+    const myAdminId = typeof SessionInfo !== 'undefined' ? SessionInfo.getEmployeeId() : null;
+    const adminUser = (typeof employees !== 'undefined' && Array.isArray(employees))
+      ? (employees.find(e => String(e.id) === String(myAdminId)) || employees[0])
+      : null;
+    if (adminUser && adminUser.name) {
+      name = `, ${adminUser.name.split(' ')[0]}`;
+    }
+    greetEl.innerHTML = `${hello}${name}. Here is <strong class="hv-text-brand">${months[now.getMonth()]} ${now.getFullYear()}</strong> so far`;
+  }
+
   // 1. Headcount: Total active employees
   const activeCount = employees.filter(e => e.status === 'Active').length;
   const elEmp = document.getElementById('statEmployees');

@@ -117,4 +117,36 @@ test.describe('U3 truthful screens', () => {
     await expect(page.locator('#systemUsersRoleFilter option')).not.toHaveCount(1);
     expect(await page.locator('#systemUsersRoleFilter option').first().textContent()).toBe('All Roles');
   });
+
+  test('S0.4 dead controls and invented content fixes (requests search, dochub pills, dashboard greeting/select, detail theads)', async ({ page }) => {
+    await openAdmin(page);
+
+    // 1. Requests search filters table
+    await page.evaluate(() => showSection('a-requests', 'admin'));
+    await page.fill('#requestsSearch', 'Vacation');
+    await expect(page.locator('#requestsTableBody tr').first()).toBeVisible();
+    await page.fill('#requestsSearch', 'nonexistentqueryxyz');
+    await expect(page.locator('#requestsTableBody tr')).toContainText('No requests match');
+
+    // 2. Document hub category pills are dynamically built from documents and filter
+    await page.evaluate(() => showSection('a-dochub', 'admin'));
+    await expect(page.locator('#dochubCategoryFilterGroup .filter-tab').first()).toContainText('All');
+    expect(await page.locator('#dochubCategoryFilterGroup .filter-tab').count()).toBeGreaterThan(1);
+
+    // 3. HR dashboard dead period select is removed
+    await page.evaluate(() => showSection('a-dashboard', 'admin'));
+    await expect(page.locator('#a-dashboard select[aria-label="Period"]')).toHaveCount(0);
+
+    // 4. HR dashboard greeting has computed time greeting and month
+    const greetingText = await page.locator('#hrDashGreeting').innerText();
+    expect(greetingText).toMatch(/Good (morning|afternoon|evening)/);
+    const currentYear = new Date().getFullYear().toString();
+    expect(greetingText).toContain(currentYear);
+
+    // 5. Employee detail table theads have 2 columns each (matching rendered rows)
+    await page.evaluate(() => showSection('a-employee-detail', 'admin'));
+    expect(await page.locator('#a-employee-detail table:has(#detailVacationBody) thead th').count()).toBe(2);
+    expect(await page.locator('#a-employee-detail table:has(#detailClaimsBody) thead th').count()).toBe(2);
+    expect(await page.locator('#a-employee-detail table:has(#detailDocumentsBody) thead th').count()).toBe(2);
+  });
 });

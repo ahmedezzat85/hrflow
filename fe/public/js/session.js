@@ -128,10 +128,18 @@ function initMockAdminData(){
     { id: 'CLM-203', employee_id: 'EMP002', employee_name: 'John Doe', service: 'Physiotherapy', category: 'Physical Therapy', amount: 240, status: 'Approved', date: getPastDate(3, 10) }
   ];
 
+  companyDocuments = [
+    { id: 1, name: 'Leave and Remote Work Policy', category: 'Policy', file_type: 'pdf', uploaded_at: getPastDate(2, 10), drive_file_id: 'mock-doc-1' },
+    { id: 2, name: 'Employee Handbook 2026', category: 'Handbook', file_type: 'pdf', uploaded_at: getPastDate(1, 15), drive_file_id: 'mock-doc-2' },
+    { id: 3, name: 'Medical Insurance Claim Form', category: 'Form', file_type: 'pdf', uploaded_at: getPastDate(0, 1), drive_file_id: 'mock-doc-3' },
+    { id: 4, name: 'Office Access Guidelines', category: 'General', file_type: 'pdf', uploaded_at: getPastDate(0, 12), drive_file_id: 'mock-doc-4' }
+  ];
+
   const adminUser = employees[0];
   fillAccountIdentity('admin', { name: adminUser.name, role: adminUser.role });
 
   renderAdminPortal();
+  if (typeof renderCompanyDocumentsAdmin === 'function') renderCompanyDocumentsAdmin();
   initCharts();
 }
 
@@ -171,9 +179,17 @@ function initMockEmployeeData(){
     { id: 'CLM-201', category: 'Dental', service: 'Dental Routine Checkup', amount: 180, status: 'Pending', date: getPastDate(0, 7) }
   ];
 
+  companyDocuments = [
+    { id: 1, name: 'Leave and Remote Work Policy', category: 'Policy', file_type: 'pdf', uploaded_at: getPastDate(2, 10), drive_file_id: 'mock-doc-1' },
+    { id: 2, name: 'Employee Handbook 2026', category: 'Handbook', file_type: 'pdf', uploaded_at: getPastDate(1, 15), drive_file_id: 'mock-doc-2' },
+    { id: 3, name: 'Medical Insurance Claim Form', category: 'Form', file_type: 'pdf', uploaded_at: getPastDate(0, 1), drive_file_id: 'mock-doc-3' },
+    { id: 4, name: 'Office Access Guidelines', category: 'General', file_type: 'pdf', uploaded_at: getPastDate(0, 12), drive_file_id: 'mock-doc-4' }
+  ];
+
   fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
 
   renderEmployeePortal();
+  if (typeof renderCompanyDocumentsEmployee === 'function') renderCompanyDocumentsEmployee();
   initCharts();
 }
 

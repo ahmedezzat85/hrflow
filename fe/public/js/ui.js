@@ -333,6 +333,8 @@ function showSection(pageId, portal, params){
       window.SystemAccess.loadRoles();
     } else if(pageId === 'a-system-users' && window.SystemAccess && typeof window.SystemAccess.loadUsers === 'function') {
       window.SystemAccess.loadUsers();
+    } else if(pageId === 'a-dochub' && typeof renderCompanyDocumentsAdmin === 'function') {
+      renderCompanyDocumentsAdmin();
     }
     if(window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {
       window.AdminNav.syncFromPage(pageId);

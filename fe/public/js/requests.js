@@ -41,6 +41,14 @@ function renderRequestStatusPills(typeList) {
   el.innerHTML = defs.map(([k, label, c, cls]) => `<button type="button" class="hv-sp ${cls}${currentRequestsStatus === k ? ' active' : ''}" data-reqstatus="${k}" aria-pressed="${currentRequestsStatus === k}">${k === 'all' ? '' : '<span class="hv-dot"></span>'}${label} <span class="hv-sp-n">${c}</span></button>`).join('');
 }
 
+let currentRequestsSearch = '';
+
+function filterRequests(val) {
+  currentRequestsSearch = (val || '').toLowerCase().trim();
+  renderRequestsTable();
+}
+window.filterRequests = filterRequests;
+
 function renderRequestsTable(filter) {
   if (filter) {
     currentRequestsFilter = filter;
@@ -52,10 +60,18 @@ function renderRequestsTable(filter) {
 
   const typeList = currentRequestsFilter === 'all' ? requests : requests.filter(r => r.type === currentRequestsFilter);
   renderRequestStatusPills(typeList);
-  const list = currentRequestsStatus === 'all' ? typeList : typeList.filter(r => r.status === currentRequestsStatus);
+  let list = currentRequestsStatus === 'all' ? typeList : typeList.filter(r => r.status === currentRequestsStatus);
+  if (currentRequestsSearch) {
+    list = list.filter(r => {
+      const empName = (r.employee_name || r.emp || '').toLowerCase();
+      const type = (r.type || '').toLowerCase();
+      const details = (r.details || r.reason || '').toLowerCase();
+      return empName.includes(currentRequestsSearch) || type.includes(currentRequestsSearch) || details.includes(currentRequestsSearch);
+    });
+  }
 
   if (!list.length) {
-    body.innerHTML = renderEmptyTableRow(6, currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`, 'fa-solid fa-inbox');
+    body.innerHTML = renderEmptyTableRow(6, currentRequestsSearch ? `No requests match "${escapeHtml(currentRequestsSearch)}".` : (currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`), 'fa-solid fa-inbox');
     return;
   }
 

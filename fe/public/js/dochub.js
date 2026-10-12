@@ -88,11 +88,48 @@ async function loadCompanyDocuments(){
 function docHubTypeIcon(fileType){
   return fileType === 'image' ? '<i class="fa-solid fa-image"></i>' : '<i class="fa-solid fa-file-pdf"></i>';
 }
+let currentDochubCategory = 'all';
+
+function renderDochubCategoryPills() {
+  const group = document.getElementById('dochubCategoryFilterGroup');
+  if (!group) return;
+  const docs = typeof companyDocuments !== 'undefined' && Array.isArray(companyDocuments) ? companyDocuments : [];
+  const cats = Array.from(new Set(docs.map(d => d.category).filter(Boolean))).sort();
+  const allCount = docs.length;
+  let html = `<button type="button" class="filter-tab fv-pill${currentDochubCategory === 'all' ? ' active' : ''}" data-doc-cat="all" aria-pressed="${currentDochubCategory === 'all'}">All <span class="tab-count hv-count">${allCount}</span></button>`;
+  cats.forEach(c => {
+    const count = docs.filter(d => d.category === c).length;
+    html += `<button type="button" class="filter-tab fv-pill${currentDochubCategory === c ? ' active' : ''}" data-doc-cat="${escapeHtml(c)}" aria-pressed="${currentDochubCategory === c}">${escapeHtml(c)} <span class="tab-count hv-count">${count}</span></button>`;
+  });
+  group.innerHTML = html;
+  if (!group.dataset.bound) {
+    group.dataset.bound = '1';
+    group.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-doc-cat]');
+      if (!btn) return;
+      currentDochubCategory = btn.dataset.docCat;
+      group.querySelectorAll('[data-doc-cat]').forEach(b => {
+        const active = b.dataset.docCat === currentDochubCategory;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', active);
+      });
+      const searchVal = document.getElementById('dochubSearch') ? document.getElementById('dochubSearch').value : '';
+      renderCompanyDocumentsAdmin(searchVal);
+    });
+  }
+}
+
 function renderCompanyDocumentsAdmin(filter=''){
   const body = document.getElementById('dochubTableBody');
   if(!body) return;
+  renderDochubCategoryPills();
   const f = (filter||'').toLowerCase();
-  const list = companyDocuments.filter(d => (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f));
+  const catFilter = currentDochubCategory;
+  const list = (typeof companyDocuments !== 'undefined' ? companyDocuments : []).filter(d => {
+    const matchesCat = catFilter === 'all' || (d.category || '').toLowerCase() === catFilter.toLowerCase();
+    const matchesSearch = !f || (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f);
+    return matchesCat && matchesSearch;
+  });
   body.innerHTML = list.map(d=>`<tr>
     <td><div class="doc-name-cell"><div class="doc-type-icon ${d.file_type==='image'?'image':'pdf'}">${docHubTypeIcon(d.file_type)}</div><span class="doc-name-text">${String(d.name||'').replace(/'/g,"\\'")}</span></div></td>
     <td data-label="Category"><span class="hv-catdot" data-cat="${escapeHtml(d.category||'General')}">${escapeHtml(d.category||'General')}</span></td>

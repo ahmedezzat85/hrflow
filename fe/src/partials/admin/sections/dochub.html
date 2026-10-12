@@ -1,14 +1,8 @@
         <section class="page-section fv" id="a-dochub">
           <div class="hv-toolbar">
-            <div role="group" aria-label="Filter by category" class="filter-tab-group fv-pills" id="dochubCategoryFilterGroup">
-              <button type="button" class="filter-tab fv-pill active" data-doc-cat="all">All</button>
-              <button type="button" class="filter-tab fv-pill" data-doc-cat="Policy">Policy</button>
-              <button type="button" class="filter-tab fv-pill" data-doc-cat="Handbook">Handbook</button>
-              <button type="button" class="filter-tab fv-pill" data-doc-cat="Form">Form</button>
-              <button type="button" class="filter-tab fv-pill" data-doc-cat="General">General</button>
-            </div>
+            <div role="group" aria-label="Filter by category" class="filter-tab-group fv-pills" id="dochubCategoryFilterGroup"></div>
             <div class="hv-row-8">
-              <div class="search-box hv-w-200"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..."></div>
+              <div class="search-box hv-w-200"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..." oninput="renderCompanyDocumentsAdmin(this.value)"></div>
               <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add document</button>
             </div>
           </div>
