@@ -506,6 +506,25 @@ for (const theme of ['light', 'dark']) {
       await expect(firstRow.locator('button[title="Edit"]')).toBeVisible();
       await expect(firstRow.locator('button[title="Generate salary payment doc"]')).toBeVisible();
     });
+
+    test(`S3.3 Employee detail card & KPI strip in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => {
+        const empId = (window.employees && window.employees[0]) ? window.employees[0].id : 'EMP001';
+        if (typeof viewProfile === 'function') viewProfile(empId);
+        else showSection('a-employee-detail', 'admin', [empId]);
+      });
+
+      // Employee summary card and actions
+      await expect(page.locator('#edBehalfVacationBtn')).toHaveText('Leave on behalf');
+      await expect(page.locator('#edBehalfClaimBtn')).toHaveText('Claim on behalf');
+      await expect(page.locator('#edEditEmployeeBtn')).toHaveText('Edit employee');
+
+      // Card headings
+      await expect(page.locator('#a-employee-detail .card:has(#detailVacationBody) h3')).toHaveText(/Leave history/);
+      await expect(page.locator('#a-employee-detail .card:has(#detailClaimsBody) h3')).toHaveText(/Insurance claims/);
+      await expect(page.locator('#detailMetaCard h3')).toHaveText('Details');
+    });
   });
 }
 

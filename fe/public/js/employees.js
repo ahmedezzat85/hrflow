@@ -274,8 +274,8 @@ async function viewProfile(id, section) {
         </div>
       </div>
       <div class="ed-actions">
-        <button type="button" class="btn btn-sm btn-outline" id="edBehalfVacationBtn" onclick="openBehalfVacationModal()">Vacation / WFH Request</button>
-        <button type="button" class="btn btn-sm btn-outline" id="edBehalfClaimBtn" onclick="openBehalfClaimModal()">Medical Insurance Claim</button>
+        <button type="button" class="btn btn-sm btn-outline" id="edBehalfVacationBtn" onclick="openBehalfVacationModal()">Leave on behalf</button>
+        <button type="button" class="btn btn-sm btn-outline" id="edBehalfClaimBtn" onclick="openBehalfClaimModal()">Claim on behalf</button>
         ${canWriteEmp ? `<button type="button" class="btn btn-sm btn-fill" id="edEditEmployeeBtn" onclick="openEmployeeModal('${e.id}')">Edit employee</button>` : ''}
       </div>
     </div>`;
