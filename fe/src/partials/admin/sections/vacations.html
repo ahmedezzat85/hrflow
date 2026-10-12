@@ -1,33 +1,36 @@
         <section class="page-section fv" id="a-vacations">
           <div class="hv-grid hv-grid-3">
             <div class="hv-stat-tile">
-              <span class="hv-stat-label">Days allotted</span>
+              <span class="hv-stat-label">Days allotted in 2026</span>
               <span class="hv-stat-value" id="statVacAllotted">0</span>
-              <span class="hv-stat-sub">Across all employees</span>
+              <span class="hv-stat-sub" id="statVacAllottedSub">Across all employees</span>
             </div>
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Days used so far</span>
-              <span class="hv-stat-value" id="statVacUsed">0</span>
-              <span class="hv-stat-sub" id="statVacUsedPct"><i class="fa-solid fa-chart-pie"></i> 0% consumed</span>
+              <span class="hv-stat-value"><span id="statVacUsed">0</span> <span id="statVacUsedPct" class="hv-stat-sub" style="font-size:14px;font-weight:500;">· 0%</span></span>
+              <span class="progress-bar" style="height:6px;border-radius:999px;background:var(--surface2);display:block;margin-top:4px;"><span id="statVacUsedBar" style="display:block;height:6px;border-radius:999px;background:var(--success);width:0%;"></span></span>
             </div>
             <div class="hv-stat-tile hv-clickable" onclick="showSection('a-requests','admin')">
               <span class="hv-stat-label">On leave today</span>
               <span class="hv-stat-value" id="statEmployeesOnLeave">0</span>
-              <span class="hv-between-meta"><span>Real-time status</span><span class="hv-text-brand hv-bold">Requests ›</span></span>
+              <span class="hv-between-meta"><span id="statEmployeesOnLeaveSub">Real-time status</span><span class="hv-text-brand hv-bold">Requests ›</span></span>
             </div>
           </div>
           <div class="card fv-table-card">
             <div class="card-head hv-card-head hv-wrap">
               <div>
                 <h3 class="hv-card-title">Balances</h3>
-                <div class="hv-stat-sub">Annual leave per employee</div>
+                <div class="hv-stat-sub">Annual leave per employee for 2026</div>
               </div>
               <div class="hv-row-8">
-                <div class="search-box hv-w-220">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                  <input id="vacBalanceSearch" placeholder="Search employees..." oninput="filterVacationBalances()">
+                <select aria-label="Department" id="vacDeptFilter" class="hv-select" onchange="filterVacationBalances()">
+                  <option value="">All departments</option>
+                </select>
+                <div class="search-box hv-w-190">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input id="vacBalanceSearch" placeholder="Search employees" oninput="filterVacationBalances()">
                 </div>
-                <button type="button" class="btn btn-fill" onclick="openBehalfVacationModal()"><i class="fa-solid fa-plus"></i> Record leave</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnRecordLeave" onclick="openBehalfVacationModal()">Record leave</button>
               </div>
             </div>
             <div class="fv-table-scroll">
@@ -35,14 +38,19 @@
                 <thead>
                   <tr>
                     <th>Employee</th>
-                    <th>Entitled</th>
-                    <th>Used</th>
-                    <th>Remaining</th>
-                    <th class="hv-minw-180">Utilization progress</th>
+                    <th class="hv-right">Entitled</th>
+                    <th class="hv-right">Used</th>
+                    <th class="hv-right">Remaining ↑</th>
+                    <th style="width:240px;">Usage</th>
+                    <th class="hv-right"></th>
                   </tr>
                 </thead>
                 <tbody id="vacationBalanceBody"></tbody>
               </table>
+            </div>
+            <div class="fv-tablefoot" id="vacTableFooter">
+              <span id="vacTableFootCount"></span>
+              <span>Page 1 of 1</span>
             </div>
           </div>
         </section>

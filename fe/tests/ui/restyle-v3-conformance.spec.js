@@ -649,6 +649,46 @@ for (const theme of ['light', 'dark']) {
       await page.evaluate(() => closeModal('regenerateInvoiceModal'));
       await expect(page.locator('#regenerateInvoiceModal')).not.toBeVisible();
     });
+
+    test(`S3.7 Vacations balances & usage bars in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-vacations', 'admin'));
+
+      // 3 stat tiles
+      const statTiles = page.locator('#a-vacations .hv-stat-tile');
+      await expect(statTiles).toHaveCount(3);
+      await expect(statTiles.nth(0).locator('.hv-stat-label')).toHaveText('Days allotted in 2026');
+      await expect(statTiles.nth(1).locator('.hv-stat-label')).toHaveText('Days used so far');
+      await expect(statTiles.nth(2).locator('.hv-stat-label')).toHaveText('On leave today');
+
+      // Card & table
+      await expect(page.locator('#a-vacations .card:has(#vacationBalanceBody) h3')).toHaveText('Balances');
+      await expect(page.locator('#vacDeptFilter')).toBeVisible();
+      await expect(page.locator('#vacBalanceSearch')).toHaveAttribute('placeholder', 'Search employees');
+      await expect(page.locator('#btnRecordLeave')).toHaveText('Record leave');
+
+      const ths = page.locator('#a-vacations table:has(#vacationBalanceBody) thead th');
+      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(1)).toHaveText('Entitled');
+      await expect(ths.nth(2)).toHaveText('Used');
+      await expect(ths.nth(3)).toHaveText('Remaining ↑');
+      await expect(ths.nth(4)).toHaveText('Usage');
+
+      const firstRow = page.locator('#vacationBalanceBody tr').first();
+      await expect(firstRow).toBeVisible();
+      await expect(firstRow.locator('button:has-text("Record leave")')).toBeVisible();
+
+      const foot = page.locator('#vacTableFooter');
+      await expect(foot).toContainText('Showing');
+      await expect(foot).toContainText('Page 1 of 1');
+
+      // Behalf vacation modal
+      await page.evaluate(() => openBehalfVacationModal());
+      await expect(page.locator('#behalfVacationModal')).toBeVisible();
+      await expect(page.locator('#behalfVacationModal .modal-head-text h3')).toBeVisible();
+      await page.evaluate(() => closeModal('behalfVacationModal'));
+      await expect(page.locator('#behalfVacationModal')).not.toBeVisible();
+    });
   });
 }
 

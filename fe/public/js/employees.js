@@ -401,7 +401,14 @@ async function deleteEmployeeNote(noteId) {
   } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
-function openBehalfVacationModal() {
+function openBehalfVacationModal(empId = null) {
+  if (empId) {
+    currentDetailEmployeeId = empId;
+  }
+  const emp = currentDetailEmployeeId ? employees.find(e => String(e.id) === String(currentDetailEmployeeId)) : null;
+  const titleEl = document.querySelector('#behalfVacationModal .modal-head-text h3');
+  if (titleEl) titleEl.textContent = emp ? `Record leave · ${emp.name}` : 'Record leave on behalf';
+
   document.getElementById('bvType').value = 'Annual Leave';
   document.getElementById('bvStart').value = '';
   document.getElementById('bvEnd').value = '';

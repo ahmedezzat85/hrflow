@@ -14,7 +14,7 @@ function renderVacationBalances() {
   const body = document.getElementById('vacationBalanceBody');
   if (!body) return;
 
-  const totalAllotted = employees.reduce((s, e) => s + (e.vacTotal || 0), 0);
+  const totalAllotted = employees.reduce((s, e) => s + (e.vacTotal || 21), 0);
   const totalUsed = employees.reduce((s, e) => s + (e.vacUsed || 0), 0);
   const usedPct = totalAllotted ? Math.round((totalUsed / totalAllotted) * 100) : 0;
   const onLeaveCount = employees.filter(e => e.status === 'On Leave').length;
@@ -27,54 +27,100 @@ function renderVacationBalances() {
 
   if (elAllotted) elAllotted.textContent = totalAllotted.toLocaleString();
   if (elUsed) elUsed.textContent = totalUsed.toLocaleString();
-  if (elUsedPct) elUsedPct.innerHTML = `<i class="fa-solid fa-chart-pie"></i> ${usedPct}% consumed`;
+  if (elUsedPct) elUsedPct.textContent = `· ${usedPct}%`;
+  const elUsedBar = document.getElementById('statVacUsedBar');
+  if (elUsedBar) elUsedBar.style.width = `${Math.min(usedPct, 100)}%`;
+
+  const elAllottedSub = document.getElementById('statVacAllottedSub');
+  if (elAllottedSub) {
+    const avgDays = employees.length ? Math.round(totalAllotted / employees.length) : 21;
+    elAllottedSub.textContent = `${employees.length} employees · ${avgDays} days each`;
+  }
+
   if (elOnLeave) elOnLeave.textContent = onLeaveCount;
   if (elDashOnLeave) elDashOnLeave.textContent = onLeaveCount;
+  const elOnLeaveSub = document.getElementById('statEmployeesOnLeaveSub');
+  if (elOnLeaveSub) {
+    const onLeaveEmps = employees.filter(e => e.status === 'On Leave');
+    if (onLeaveEmps.length > 0) {
+      elOnLeaveSub.textContent = onLeaveEmps.map(e => e.name).join(', ');
+    } else {
+      elOnLeaveSub.textContent = 'None on leave';
+    }
+  }
+
+  const deptFilter = document.getElementById('vacDeptFilter');
+  if (deptFilter && deptFilter.options.length <= 1) {
+    const depts = Array.from(new Set(employees.map(e => e.dept || e.department).filter(Boolean))).sort();
+    depts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      deptFilter.appendChild(opt);
+    });
+  }
+  const selectedDept = deptFilter ? deptFilter.value : '';
 
   let filtered = employees;
+  if (selectedDept) {
+    filtered = filtered.filter(e => (e.dept || e.department) === selectedDept);
+  }
   if (vacationBalanceSearchQuery) {
-    filtered = employees.filter(e => 
+    filtered = filtered.filter(e => 
       (e.name && e.name.toLowerCase().includes(vacationBalanceSearchQuery)) ||
-      (e.dept && e.dept.toLowerCase().includes(vacationBalanceSearchQuery)) ||
-      (e.role && e.role.toLowerCase().includes(vacationBalanceSearchQuery))
+      ((e.dept || e.department) && (e.dept || e.department).toLowerCase().includes(vacationBalanceSearchQuery)) ||
+      ((e.job_role || e.role) && (e.job_role || e.role).toLowerCase().includes(vacationBalanceSearchQuery))
     );
   }
 
   if (!filtered.length) {
-    body.innerHTML = renderEmptyTableRow(5, vacationBalanceSearchQuery ? `No employee balances match "${vacationBalanceSearchQuery}".` : 'No employee vacation balances recorded yet.', 'fa-solid fa-user-xmark');
+    body.innerHTML = renderEmptyTableRow(6, vacationBalanceSearchQuery ? `No employee balances match "${vacationBalanceSearchQuery}".` : 'No employee vacation balances recorded yet.', 'fa-solid fa-user-xmark');
     return;
   }
 
   body.innerHTML = filtered.map(e => {
-    const total = e.vacTotal || 0;
+    const total = e.vacTotal || 21;
     const used = e.vacUsed || 0;
     const remaining = total - used;
     const pct = total ? Math.round((used / total) * 100) : 0;
-    const progClass = pct > 85 ? 'progress-danger' : (pct > 60 ? 'progress-warning' : 'progress-accent');
+    const onLeaveBadge = e.status === 'On Leave'
+      ? `<span class="badge-pill pill-info" style="margin-left:6px;font-size:11px;">On leave today</span>`
+      : '';
+    const roleDept = [e.job_role || e.role, e.dept || e.department].filter(Boolean).join(' · ');
 
     return `
       <tr>
         <td class="tname">
           <div class="avatar">${initials(e.name)}</div>
           <div>
-            <div class="vac-emp-link" onclick="viewProfile(${e.id})">${escapeHtml(e.name)}</div>
-            <div style="font-size:11.5px;color:var(--text2);margin-top:1px;">${e.role || 'Employee'}${e.dept ? ' · ' + escapeHtml(e.dept) : ''}</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="vac-emp-link" onclick="viewProfile('${escapeHtml(e.id)}')">${escapeHtml(e.name)}</span>
+              ${onLeaveBadge}
+            </div>
+            <div class="hv-sub-line">${escapeHtml(roleDept)}</div>
           </div>
         </td>
-        <td style="font-weight:600;font-variant-numeric:tabular-nums;">${total}</td>
-        <td style="color:var(--warning);font-weight:600;font-variant-numeric:tabular-nums;">${used}</td>
-        <td style="color:${remaining <= 0 ? 'var(--danger)' : 'var(--success)'};font-weight:700;font-variant-numeric:tabular-nums;">${remaining}</td>
-        <td style="min-width:180px;">
-          <div class="vac-progress-cell">
-            <div class="progress-bar ${progClass}">
-              <span style="width:${Math.min(pct, 100)}%;"></span>
+        <td class="hv-right" style="font-weight:600;font-variant-numeric:tabular-nums;">${total}</td>
+        <td class="hv-right" style="font-weight:600;font-variant-numeric:tabular-nums;">${used}</td>
+        <td class="hv-right" style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-strong);">${remaining}</td>
+        <td style="width:240px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;height:6px;border-radius:999px;background:var(--surface2);overflow:hidden;">
+              <div style="height:6px;border-radius:999px;background:var(--success);width:${Math.min(pct, 100)}%;"></div>
             </div>
-            <span class="vac-progress-pct">${pct}%</span>
+            <span style="width:34px;font-size:12.5px;color:var(--ink-label);text-align:right;">${pct}%</span>
           </div>
+        </td>
+        <td class="hv-right" style="white-space:nowrap;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="openBehalfVacationModal('${escapeHtml(e.id)}')">Record leave</button>
+          <button type="button" class="btn-icon" aria-label="Open profile of ${escapeHtml(e.name)}" onclick="viewProfile('${escapeHtml(e.id)}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
         </td>
       </tr>
     `;
   }).join('');
+
+  const countEl = document.getElementById('vacTableFootCount');
+  if (countEl) countEl.textContent = `Showing 1–${filtered.length} of ${filtered.length} employees`;
 }
 
 function calculateVacationDays(start, end, durationType) {
