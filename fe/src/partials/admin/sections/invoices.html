@@ -1,77 +1,67 @@
         <section class="page-section fv" id="a-invoices">
-          <!-- Invoices Toolbar (Variant C - §7) -->
-          <div class="invoice-toolbar-row">
-            <div class="invoice-period-picker-wrap">
-              <button type="button" class="btn-period-trigger" id="invPeriodBtn" onclick="openInvoicePeriodModal()">
-                <i class="fa-regular fa-calendar hv-text-accent"></i>
+          <!-- Invoices Toolbar -->
+          <div class="hv-toolbar">
+            <span class="hv-row-10">
+              <button type="button" class="hv-select hv-row-8" id="invPeriodBtn" onclick="openInvoicePeriodModal()">
                 <span id="invPeriodBtnLabel">—</span>
-                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--text2);margin-left:4px;"></i>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
               </button>
               <input type="hidden" id="invPaymentYear">
               <input type="hidden" id="invPaymentMonth">
-            </div>
+              <span class="hv-stat-sub">Salary payment doc per employee paid an external USD salary, from the approved rates</span>
+            </span>
+            <span class="hv-row-8">
+              <button type="button" class="btn btn-outline btn-sm" id="btnPreviewInvoices" onclick="previewInvoiceEligibility(event)">Preview employees</button>
+              <button type="button" class="btn btn-fill btn-sm" id="btnGenerateBulkInvoices" onclick="generateBulkInvoices(event)">Generate docs</button>
+            </span>
+          </div>
 
-            <div class="invoice-toolbar-actions">
-              <button type="button" class="btn btn-secondary" onclick="previewInvoiceEligibility(event)">
-                <i class="fa-solid fa-magnifying-glass"></i> Preview eligible employees
-              </button>
-              <button type="button" class="btn btn-fill" onclick="generateBulkInvoices(event)">
-                <i class="fa-solid fa-file-invoice-dollar"></i> Generate salary payment docs
-              </button>
-            </div>
-          </div>
-          <div class="invoice-toolbar-caption">
-            Generate external-salary payment docs for eligible employees based on approved rates.
-          </div>
-          <div class="card hv-mb-20">
-            <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-              <h3 id="invoiceResultsTitle">Eligibility preview</h3>
-              <div class="invoice-filter-group">
-                <button type="button" class="btn-filter-pill active" id="invFilterEligibleBtn" onclick="setInvoiceEligibilityFilter('eligible')">
-                  Eligible only
-                </button>
-                <button type="button" class="btn-filter-pill" id="invFilterSkippedBtn" onclick="setInvoiceEligibilityFilter('skipped')">
-                  Skipped
-                </button>
-                <button type="button" class="btn-filter-pill" id="invFilterAllBtn" onclick="setInvoiceEligibilityFilter('all')">
-                  All
-                </button>
+          <!-- Eligibility preview card -->
+          <div class="card fv-table-card hv-mb-14">
+            <div class="card-head hv-card-head hv-wrap">
+              <h3 class="hv-card-title" id="invoiceResultsTitle">Who gets a doc</h3>
+              <div role="group" aria-label="Filter" class="hv-row-8 invoice-filter-group" id="invoiceStatusFilterGroup">
+                <button type="button" class="filter-tab fv-pill active" id="invFilterAllBtn" onclick="setInvoiceEligibilityFilter('all')">All <span class="hv-count" id="invCountAll">0</span></button>
+                <button type="button" class="filter-tab fv-pill" id="invFilterEligibleBtn" onclick="setInvoiceEligibilityFilter('eligible')">Ready <span class="hv-count" id="invCountReady">0</span></button>
+                <button type="button" class="filter-tab fv-pill" id="invFilterGeneratedBtn" onclick="setInvoiceEligibilityFilter('generated')">Generated <span class="hv-count" id="invCountGenerated">0</span></button>
+                <button type="button" class="filter-tab fv-pill" id="invFilterSkippedBtn" onclick="setInvoiceEligibilityFilter('skipped')">Skipped <span class="hv-count" id="invCountSkipped">0</span></button>
               </div>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="invoiceResultsBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Payment doc ID</th>
+                    <th class="hv-right">External USD</th>
+                    <th>Status</th>
+                    <th class="hv-right"></th>
+                  </tr>
+                </thead>
+                <tbody id="invoiceResultsBody"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="card" id="invoiceHistoryCard">
-            <div class="card-head">
-              <div style="display:flex;align-items:center;gap:10px;">
-                <h3>Salary payment doc history</h3>
+
+          <!-- Generated docs history card -->
+          <div class="card fv-table-card" id="invoiceHistoryCard">
+            <div class="card-head hv-card-head hv-wrap">
+              <div class="hv-row-10">
+                <h3 class="hv-card-title">Generated docs</h3>
                 <span id="invoiceHistoryTotalBadge" class="badge-pill pill-info" style="display:none;">0 docs</span>
               </div>
-              <div class="invoice-history-toolbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <div class="sort-toolbar-group" style="display:flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 5px;">
-                  <span style="font-size:11.5px;color:var(--text3);font-weight:600;padding:0 5px;"><i class="fa-solid fa-arrow-down-short-wide"></i> Sort:</span>
-                  <button type="button" class="btn-sort-pill active" id="sortByNameBtn" onclick="toggleInvoiceSort('name')">
-                    Name <i id="sortNameIcon" class="fa-solid fa-arrow-up-a-z"></i>
-                  </button>
-                  <button type="button" class="btn-sort-pill" id="sortByNumberBtn" onclick="toggleInvoiceSort('number')">
-                    Doc # <i id="sortNumberIcon" class="fa-solid fa-sort"></i>
-                  </button>
+              <div class="hv-row-8">
+                <div class="hv-row-8" id="invoiceSortBar">
+                  <button type="button" class="btn btn-outline btn-xs active" id="sortByNameBtn" onclick="toggleInvoiceSort('name')">Name</button>
+                  <button type="button" class="btn btn-outline btn-xs" id="sortByNumberBtn" onclick="toggleInvoiceSort('number')">Doc #</button>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline" id="toggleAllMonthsBtn" onclick="toggleAllInvoiceMonths()" style="font-size:12px;padding:5px 10px;">
-                  <i class="fa-solid fa-arrows-up-down"></i> <span id="toggleAllMonthsText">Collapse all</span>
+                <button type="button" class="btn btn-outline btn-xs" id="toggleAllMonthsBtn" onclick="toggleAllInvoiceMonths()">
+                  <span id="toggleAllMonthsText">Collapse all</span>
                 </button>
               </div>
             </div>
             <div id="invoiceHistoryContainer" class="invoice-history-container">
-              <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>Loading salary payment doc history...</p></div>
+              <div class="hv-empty"><p class="hv-stat-sub">Loading salary payment doc history...</p></div>
             </div>
           </div>
         </section>

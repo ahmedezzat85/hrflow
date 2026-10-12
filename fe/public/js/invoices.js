@@ -131,16 +131,18 @@ function _getInvoicePeriodInputs(){
   return { year, month };
 }
 
-let _invoiceEligibilityFilter = 'eligible'; // 'eligible' | 'skipped' | 'all'
+let _invoiceEligibilityFilter = 'all'; // 'all' | 'eligible' | 'generated' | 'skipped'
 
 function setInvoiceEligibilityFilter(filterKey){
   _invoiceEligibilityFilter = filterKey;
   const eligibleBtn = document.getElementById('invFilterEligibleBtn');
+  const generatedBtn = document.getElementById('invFilterGeneratedBtn');
   const skippedBtn = document.getElementById('invFilterSkippedBtn');
   const allBtn = document.getElementById('invFilterAllBtn');
-  if(eligibleBtn) eligibleBtn.classList.toggle('active', filterKey === 'eligible');
-  if(skippedBtn) skippedBtn.classList.toggle('active', filterKey === 'skipped');
   if(allBtn) allBtn.classList.toggle('active', filterKey === 'all');
+  if(eligibleBtn) eligibleBtn.classList.toggle('active', filterKey === 'eligible');
+  if(generatedBtn) generatedBtn.classList.toggle('active', filterKey === 'generated');
+  if(skippedBtn) skippedBtn.classList.toggle('active', filterKey === 'skipped');
 
   const { year, month } = _getInvoicePeriodInputs();
   renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
@@ -159,9 +161,9 @@ async function previewInvoiceEligibility(evt){
       _invoiceEligiblePreview = [
         { employee_id: 1, employee_name: 'Sarah Connor', status: 'eligible', reason: null },
         { employee_id: 2, employee_name: 'John Doe', status: 'eligible', reason: null },
-        { employee_id: 3, employee_name: 'Alex Rivera', status: 'skipped', reason: 'External salary is 0 USD' },
-        { employee_id: 4, employee_name: 'Elena Rostova', status: 'already_exists', invoice_number: 'INV-202609-01' },
-        { employee_id: 5, employee_name: 'Marcus Vance', status: 'skipped', reason: 'Missing payment doc ID on file' }
+        { employee_id: 3, employee_name: 'Alex Rivera', status: 'already_exists', invoice_number: 'SPD-2026-10-03' },
+        { employee_id: 4, employee_name: 'Elena Rostova', status: 'skipped', reason: 'Missing payment doc ID on file' },
+        { employee_id: 5, employee_name: 'Marcus Vance', status: 'skipped', reason: 'External salary is 0 USD' }
       ];
       renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
       return;
@@ -178,8 +180,8 @@ async function previewInvoiceEligibility(evt){
 
 function _invoiceStatusPill(status){
   const map = {
-    eligible: 'pill-success',
-    already_exists: 'pill-info',
+    eligible: 'pill-primary',
+    already_exists: 'pill-success',
     skipped: 'pill-warning',
     generated: 'pill-success',
     failed: 'pill-danger',
@@ -190,16 +192,35 @@ function _invoiceStatusPill(status){
 function renderInvoicePreviewResults(results, year, month){
   const body = document.getElementById('invoiceResultsBody');
   if(!body) return;
-  document.getElementById('invoiceResultsTitle').textContent =
-    `Eligibility Preview — ${_invoicePeriodLabel(year, month)}`;
+  const titleEl = document.getElementById('invoiceResultsTitle');
+  if (titleEl) {
+    titleEl.textContent = `${_invoicePeriodLabel(year, month)} · who gets a doc`;
+  }
   if(!results || !results.length){
-    body.innerHTML = renderEmptyTableRow(3, 'No employee records found for this period.', 'fa-solid fa-file-invoice-dollar');
+    body.innerHTML = renderEmptyTableRow(5, 'No employee records found for this period.', 'fa-solid fa-file-invoice-dollar');
     return;
+  }
+
+  // Update counts
+  const allCount = results.length;
+  const readyCount = results.filter(r => r.status === 'eligible').length;
+  const genCount = results.filter(r => r.status === 'already_exists' || r.status === 'generated').length;
+  const skipCount = results.filter(r => r.status === 'skipped').length;
+  const cAll = document.getElementById('invCountAll'); if (cAll) cAll.textContent = allCount;
+  const cReady = document.getElementById('invCountReady'); if (cReady) cReady.textContent = readyCount;
+  const cGen = document.getElementById('invCountGenerated'); if (cGen) cGen.textContent = genCount;
+  const cSkip = document.getElementById('invCountSkipped'); if (cSkip) cSkip.textContent = skipCount;
+
+  const btnBulk = document.getElementById('btnGenerateBulkInvoices');
+  if (btnBulk) {
+    btnBulk.textContent = readyCount ? `Generate ${readyCount} docs` : 'Generate docs';
   }
 
   const filtered = results.filter(r => {
     if (_invoiceEligibilityFilter === 'eligible') {
-      return r.status === 'eligible' || r.status === 'already_exists';
+      return r.status === 'eligible';
+    } else if (_invoiceEligibilityFilter === 'generated') {
+      return r.status === 'already_exists' || r.status === 'generated';
     } else if (_invoiceEligibilityFilter === 'skipped') {
       return r.status === 'skipped';
     }
@@ -210,21 +231,46 @@ function renderInvoicePreviewResults(results, year, month){
     let msg = 'No eligible employees found.';
     if (_invoiceEligibilityFilter === 'skipped') msg = 'No skipped employees found.';
     else if (_invoiceEligibilityFilter === 'all') msg = 'No employee records found.';
-    body.innerHTML = renderEmptyTableRow(3, msg, 'fa-solid fa-file-invoice-dollar');
+    body.innerHTML = renderEmptyTableRow(5, msg, 'fa-solid fa-file-invoice-dollar');
     return;
   }
 
   body.innerHTML = filtered.map(r => {
-    let actionBtn = '—';
+    const emp = (typeof employees !== 'undefined' && employees)
+      ? employees.find(e => String(e.id) === String(r.employee_id) || e.name === r.employee_name)
+      : null;
+    const docId = (emp && emp.invoice_id) || r.invoice_id || (r.reason && r.reason.toLowerCase().includes('doc id') ? '<span style="color:var(--ink-muted);">Not set</span>' : '—');
+    const extSalary = emp && emp.externalSalaryUsd ? fmtUSD(emp.externalSalaryUsd) : (r.amount_usd ? fmtUSD(r.amount_usd) : '—');
+
+    let statusPill = '';
+    let actionBtn = '';
+
     if (r.status === 'eligible') {
-      actionBtn = `<button class="btn btn-sm btn-outline" onclick="generateSingleInvoice(${r.employee_id})"><i class="fa-solid fa-file-invoice"></i> Generate</button>`;
-    } else if (r.status === 'already_exists') {
-      actionBtn = `<button class="btn btn-sm btn-outline-warning" style="color:var(--warning, #eab308);border-color:rgba(234,179,8,0.4);" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(r.employee_id)}" data-name="${escapeHtml(r.employee_name)}" data-year="${escapeHtml(year)}" data-month="${escapeHtml(month)}" data-number="${escapeHtml(r.invoice_number || '')}"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>`;
+      statusPill = '<span class="badge-pill pill-primary"><span class="hv-dot hv-dot--info"></span>Ready</span>';
+      actionBtn = `<button type="button" class="btn btn-primary btn-xs" onclick="generateSingleInvoice(${r.employee_id})">Generate</button>`;
+    } else if (r.status === 'already_exists' || r.status === 'generated') {
+      const subLine = r.invoice_number ? `<div class="hv-sub-line">${escapeHtml(r.invoice_number)}</div>` : '';
+      statusPill = `<span class="badge-pill pill-success"><span class="hv-dot hv-dot--success"></span>Generated</span>${subLine}`;
+      actionBtn = `<button type="button" class="btn btn-outline btn-xs" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(r.employee_id)}" data-name="${escapeHtml(r.employee_name)}" data-year="${escapeHtml(year)}" data-month="${escapeHtml(month)}" data-number="${escapeHtml(r.invoice_number || '')}">Regenerate</button>`;
+    } else if (r.status === 'skipped') {
+      if (r.reason && r.reason.toLowerCase().includes('doc id')) {
+        statusPill = '<span class="badge-pill pill-warning"><span class="hv-dot hv-dot--warning"></span>Needs a doc ID</span><div class="hv-sub-line">Add a payment doc ID on the employee</div>';
+        actionBtn = `<button type="button" class="btn btn-outline btn-xs" onclick="viewProfile('${escapeHtml(r.employee_id)}')">Edit employee</button>`;
+      } else {
+        const subLine = r.reason ? `<div class="hv-sub-line">${escapeHtml(r.reason)}</div>` : '<div class="hv-sub-line">No external salary this month</div>';
+        statusPill = `<span class="badge-pill pill-neutral"><span class="hv-dot hv-dot--muted"></span>Skipped</span>${subLine}`;
+        actionBtn = '';
+      }
+    } else {
+      statusPill = `<span class="badge-pill ${_invoiceStatusPill(r.status)}">${escapeHtml(r.status)}</span>`;
     }
+
     return `<tr>
-      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${escapeHtml(r.employee_name)}</td>
-      <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
-      <td>${actionBtn}</td>
+      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div><span>${escapeHtml(r.employee_name)}</span></td>
+      <td>${docId}</td>
+      <td class="hv-right" style="font-variant-numeric:tabular-nums;font-weight:600;">${extSalary}</td>
+      <td>${statusPill}</td>
+      <td class="hv-right" style="white-space:nowrap;">${actionBtn}</td>
     </tr>`;
   }).join('');
 }

@@ -603,6 +603,52 @@ for (const theme of ['light', 'dark']) {
       await page.evaluate(() => closeModal('raiseModal'));
       await expect(page.locator('#raiseModal')).not.toBeVisible();
     });
+
+    test(`S3.6 Salary payment docs in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-invoices', 'admin'));
+
+      // Toolbar elements
+      await expect(page.locator('#invPeriodBtn')).toBeVisible();
+      await expect(page.locator('#btnPreviewInvoices')).toHaveText('Preview employees');
+      await expect(page.locator('#btnGenerateBulkInvoices')).toBeVisible();
+
+      // Card 1: Who gets a doc
+      await expect(page.locator('#a-invoices .card:has(#invoiceResultsBody) h3')).toBeVisible();
+      const filterPills = page.locator('#invoiceStatusFilterGroup .filter-tab');
+      await expect(filterPills).toHaveCount(4);
+      await expect(filterPills.first()).toHaveClass(/active/);
+
+      // Trigger preview
+      await page.locator('#btnPreviewInvoices').click();
+      await expect(page.locator('#invoiceResultsBody tr')).not.toHaveCount(0);
+
+      // Table headers
+      const ths = page.locator('#a-invoices table:has(#invoiceResultsBody) thead th');
+      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(1)).toHaveText('Payment doc ID');
+      await expect(ths.nth(2)).toHaveText('External USD');
+      await expect(ths.nth(3)).toHaveText('Status');
+
+      // Modals
+      await page.evaluate(() => {
+        if (typeof generateBulkInvoices === 'function') generateBulkInvoices();
+      });
+      await expect(page.locator('#bulkInvoiceModal')).toBeVisible();
+      await expect(page.locator('#bulkInvoiceModalTitle')).toHaveText('Generate salary payment docs');
+      await page.evaluate(() => closeModal('bulkInvoiceModal'));
+      await expect(page.locator('#bulkInvoiceModal')).not.toBeVisible();
+
+      await page.evaluate(() => {
+        if (typeof openRegenerateInvoiceModal === 'function') {
+          openRegenerateInvoiceModal(1, 'Sarah Connor', 2026, 10, 'SPD-2026-10-01');
+        }
+      });
+      await expect(page.locator('#regenerateInvoiceModal')).toBeVisible();
+      await expect(page.locator('#regenModalTitle')).toHaveText('Regenerate doc?');
+      await page.evaluate(() => closeModal('regenerateInvoiceModal'));
+      await expect(page.locator('#regenerateInvoiceModal')).not.toBeVisible();
+    });
   });
 }
 
