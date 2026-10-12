@@ -114,5 +114,41 @@ for (const theme of ['light', 'dark']) {
       const strayLabels = await page.locator('.modal-overlay:not(#billModal):not(#invoiceModal) .form-section-label').count();
       expect(strayLabels).toBe(0);
     });
+
+    test(`S1.2 Area colours and tokens computed styles in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+
+      const checkTile = async (modalId, expectedLightBg, expectedLightColor) => {
+        await page.evaluate((id) => openModal(id), modalId);
+        const iconLocator = page.locator(`#${modalId} .modal-head-icon`);
+        const styles = await iconLocator.first().evaluate((el) => {
+          const cs = window.getComputedStyle(el);
+          return { bg: cs.backgroundColor, color: cs.color };
+        });
+        if (theme === 'light') {
+          expect(styles.bg).toBe(expectedLightBg);
+          expect(styles.color).toBe(expectedLightColor);
+        } else {
+          expect(styles.bg).not.toBe(expectedLightBg);
+        }
+        await page.evaluate((id) => closeModal(id), modalId);
+      };
+
+      // Green: Raise
+      await checkTile('raiseModal', 'rgb(227, 245, 236)', 'rgb(47, 122, 45)');
+      // Blue: Employee
+      await checkTile('employeeModal', 'rgb(232, 238, 255)', 'rgb(26, 70, 189)');
+      // Teal: Vacation, Social insurance
+      await checkTile('behalfVacationModal', 'rgb(224, 244, 241)', 'rgb(11, 122, 109)');
+      await checkTile('socialInsuranceModal', 'rgb(224, 244, 241)', 'rgb(11, 122, 109)');
+      // Ochre: Company doc
+      await checkTile('companyDocumentModal', 'rgb(248, 238, 214)', 'rgb(138, 96, 0)');
+      // Pink: Role
+      await checkTile('roleModal', 'rgb(251, 231, 240)', 'rgb(173, 52, 105)');
+      // Violet: Revert
+      await checkTile('payrollRevertModal', 'rgb(241, 234, 254)', 'rgb(98, 54, 192)');
+      // Danger: Confirm
+      await checkTile('confirmModal', 'rgb(253, 232, 232)', 'rgb(185, 36, 36)');
+    });
   });
 }

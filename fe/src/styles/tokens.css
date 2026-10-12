@@ -146,6 +146,24 @@
   --id-pink: #d14d86;   --id-pink-ink: #ad3469;
   --id-sky: #1b8fd0;    --id-sky-ink: #146fa3;
   --id-ochre: #b98000;  --id-ochre-ink: #8a6000;
+
+  /* Dialog icon tile area tokens (D10 / S1.2) */
+  --fv-area-green-bg: #e3f5ec;
+  --fv-area-green-ink: var(--id-green-ink);
+  --fv-area-blue-bg: #e8eeff;
+  --fv-area-blue-ink: var(--id-blue-ink);
+  --fv-area-teal-bg: #e0f4f1;
+  --fv-area-teal-ink: var(--id-teal-ink);
+  --fv-area-ochre-bg: #f8eed6;
+  --fv-area-ochre-ink: var(--id-ochre-ink);
+  --fv-area-pink-bg: #fbe7f0;
+  --fv-area-pink-ink: var(--id-pink-ink);
+  --fv-area-violet-bg: #f1eafe;
+  --fv-area-violet-ink: var(--id-violet-ink);
+  --fv-area-orange-bg: #fdf0e1;
+  --fv-area-orange-ink: var(--id-orange-ink);
+  --fv-area-danger-bg: #fde8e8;
+  --fv-area-danger-ink: var(--danger);
 }
 
 [data-theme="dark"] {
@@ -234,5 +252,23 @@
   --id-pink: #d55f92;   --id-pink-ink: #f394bc;
   --id-sky: #3f98d0;    --id-sky-ink: #7cc6f2;
   --id-ochre: #b98a22;  --id-ochre-ink: #e3bd5a;
+
+  /* Dialog icon tile area tokens (Dark, D10 assumption) */
+  --fv-area-green-bg: rgba(79, 162, 76, 0.22);
+  --fv-area-green-ink: var(--id-green-ink);
+  --fv-area-blue-bg: var(--brand-tint);
+  --fv-area-blue-ink: var(--id-blue-ink);
+  --fv-area-teal-bg: rgba(31, 157, 142, 0.22);
+  --fv-area-teal-ink: var(--id-teal-ink);
+  --fv-area-ochre-bg: rgba(185, 138, 34, 0.22);
+  --fv-area-ochre-ink: var(--id-ochre-ink);
+  --fv-area-pink-bg: rgba(213, 95, 146, 0.22);
+  --fv-area-pink-ink: var(--id-pink-ink);
+  --fv-area-violet-bg: rgba(143, 111, 232, 0.22);
+  --fv-area-violet-ink: var(--id-violet-ink);
+  --fv-area-orange-bg: rgba(214, 116, 43, 0.22);
+  --fv-area-orange-ink: var(--id-orange-ink);
+  --fv-area-danger-bg: var(--danger-soft);
+  --fv-area-danger-ink: var(--danger);
 }
 

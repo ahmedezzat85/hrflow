@@ -1182,11 +1182,14 @@
 }
 
 /* ---------- Dialog extras ---------- */
-.fv-area-blue { --fv-a: var(--id-blue); --fv-a-ink: var(--id-blue-ink); }
-.fv-area-orange { --fv-a: var(--id-orange); --fv-a-ink: var(--id-orange-ink); }
-.fv-area-teal { --fv-a: var(--id-teal); --fv-a-ink: var(--id-teal-ink); }
+.fv-area-blue { --fv-a: var(--id-blue); --fv-a-ink: var(--id-blue-ink); --fv-a-bg: var(--fv-area-blue-bg); }
+.fv-area-green { --fv-a: var(--id-green); --fv-a-ink: var(--id-green-ink); --fv-a-bg: var(--fv-area-green-bg); }
+.fv-area-orange { --fv-a: var(--id-orange); --fv-a-ink: var(--id-orange-ink); --fv-a-bg: var(--fv-area-orange-bg); }
+.fv-area-teal { --fv-a: var(--id-teal); --fv-a-ink: var(--id-teal-ink); --fv-a-bg: var(--fv-area-teal-bg); }
 .fv-area-sky { --fv-a: var(--id-sky); --fv-a-ink: var(--id-sky-ink); }
-.fv-area-violet { --fv-a: var(--id-violet); --fv-a-ink: var(--id-violet-ink); }
+.fv-area-violet { --fv-a: var(--id-violet); --fv-a-ink: var(--id-violet-ink); --fv-a-bg: var(--fv-area-violet-bg); }
+.fv-area-ochre { --fv-a: var(--id-ochre); --fv-a-ink: var(--id-ochre-ink); --fv-a-bg: var(--fv-area-ochre-bg); }
+.fv-area-pink { --fv-a: var(--id-pink); --fv-a-ink: var(--id-pink-ink); --fv-a-bg: var(--fv-area-pink-bg); }
 .fv-area-slate { --fv-a: var(--ink-label); --fv-a-ink: var(--ink-label); }
 
 .fv-dialog .modal-head-icon {
@@ -1199,13 +1202,14 @@
   border: 0;
   border-radius: 11px;
   font-size: 18px;
-  background: color-mix(in srgb, var(--fv-a, var(--id-blue)) var(--fv-tint-pct), transparent);
+  background: var(--fv-a-bg, color-mix(in srgb, var(--fv-a, var(--id-blue)) var(--fv-tint-pct), transparent));
   color: var(--fv-a-ink, var(--id-blue-ink));
 }
 
-.fv-dialog--danger .modal-head-icon {
-  background: var(--danger-soft);
-  color: var(--danger);
+.fv-dialog--danger .modal-head-icon,
+.fv.fv-dialog--danger .modal-head-icon {
+  background: var(--fv-area-danger-bg, var(--danger-soft));
+  color: var(--fv-area-danger-ink, var(--danger));
 }
 
 .fv-dialog .modal-head-text {

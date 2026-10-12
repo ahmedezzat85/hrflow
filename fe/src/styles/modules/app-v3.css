@@ -622,6 +622,7 @@
   flex: none;
 }
 
+
 :where(.fv-dialog) .modal-head-text h2,
 :where(.fv-dialog) .modal-head-text h3 {
   font-family: var(--font-head);
