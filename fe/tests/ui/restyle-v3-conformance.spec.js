@@ -481,6 +481,31 @@ for (const theme of ['light', 'dark']) {
         await expect(firstRowBtn).toHaveText('Review');
       }
     });
+
+    test(`S3.2 Employees table & actions in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-employees', 'admin'));
+
+      // Filter pills
+      const filterPills = page.locator('#employeeStatusFilterGroup .filter-tab');
+      await expect(filterPills).toHaveCount(4);
+      await expect(filterPills.first()).toHaveClass(/active/);
+
+      // Table headers
+      const ths = page.locator('#a-employees table thead th:not([style*="display:none"]):not([style*="display: none"])');
+      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(1)).toHaveText('Role');
+      await expect(ths.nth(2)).toHaveText('Employment');
+      await expect(ths.nth(3)).toHaveText('Next raise');
+      await expect(ths.nth(4)).toHaveText('Status');
+      await expect(ths.nth(5)).toHaveText('Actions');
+
+      // Table row actions
+      const firstRow = page.locator('#employeesTableBody tr').first();
+      await expect(firstRow.locator('button:has-text("View")')).toBeVisible();
+      await expect(firstRow.locator('button[title="Edit"]')).toBeVisible();
+      await expect(firstRow.locator('button[title="Generate salary payment doc"]')).toBeVisible();
+    });
   });
 }
 

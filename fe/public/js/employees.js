@@ -43,17 +43,17 @@ function renderEmployeesTable(filter = '') {
     list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
   }
   body.innerHTML = list.map(e => `<tr>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div style="font-weight:600;color:var(--ink-strong);line-height:1.2;">${escapeHtml(e.name)}</div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" onclick="viewProfile('${e.id}'); return false;" style="font-weight:600;color:var(--ink-strong);line-height:1.2;text-decoration:none;">${escapeHtml(e.name)}</a></div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
     <td data-label="Role"><div class="ed-title">${escapeHtml(e.role)}</div>${e.dept ? `<div class="ed-sub">${escapeHtml(e.dept)}</div>` : ''}</td>
-    <td data-label="Employment State">${e.employment_state || 'Full-Time'}</td>
+    <td data-label="Employment">${e.employment_state || 'Full-Time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
     <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : 'Not scheduled'}</td>
     <td data-label="Status">${statusPill(e.status)}</td>
-    <td data-label="Actions" class="col-actions">
+    <td data-label="Actions" class="col-actions hv-right">
       <button class="btn btn-sm btn-outline icon-action" onclick="viewProfile('${e.id}')" title="View Profile">View</button>
-      ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
-      <button class="icon-action" title="Generate salary payment doc" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><i class="fa-solid fa-file-invoice"></i></button>
-      ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
+      ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit" aria-label="Edit ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>` : ''}
+      <button class="icon-action" title="Generate salary payment doc" aria-label="Generate salary payment doc for ${escapeHtml(e.name)}" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></button>
+      ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete" aria-label="Remove ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>` : ''}
     </td></tr>`).join('') || renderEmptyTableRow(6, 'No employees found.', 'fa-solid fa-user-slash');
   setTableFoot('employeesTableBody', list.length, 'employees');
 }
