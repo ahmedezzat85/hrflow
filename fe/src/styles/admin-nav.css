@@ -154,6 +154,7 @@
 .sidebar.dual-rail.collapsed .nav-panel {
   width: 0;
   border-right: none;
+  z-index: 10;
 }
 
 .sidebar.dual-rail .panel-inner {
@@ -340,38 +341,71 @@
   flex-shrink: 0;
 }
 
-/* Panel Collapse button */
+/* Panel Collapse button (bottom text button per mock) */
 .sidebar.dual-rail .collapse-btn {
-  position: absolute;
-  top: 22px;
-  right: -13px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 1px solid var(--fv-line);
-  background: var(--fv-surface);
-  color: var(--ink-muted);
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 10.5px;
-  z-index: 10;
+  gap: 8px;
+  height: 32px;
+  margin: 0 12px 14px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, transform 0.22s ease;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sidebar.dual-rail .collapse-btn:hover {
   background: var(--brand-wash);
   color: var(--brand-ink);
-  border-color: var(--brand);
 }
 
+.sidebar.dual-rail .collapse-btn svg,
 .sidebar.dual-rail .collapse-btn i {
-  font-size: 11px;
+  font-size: 15px;
+  flex: none;
   transition: transform 0.22s ease;
 }
 
+.sidebar.dual-rail.panel-collapsed .collapse-btn,
+.sidebar.dual-rail.collapsed .collapse-btn {
+  position: absolute;
+  bottom: 14px;
+  right: -13px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--fv-line);
+  background: var(--fv-surface);
+  color: var(--ink-muted);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+.sidebar.dual-rail.panel-collapsed .collapse-btn:hover,
+.sidebar.dual-rail.collapsed .collapse-btn:hover {
+  background: var(--brand-wash);
+  color: var(--brand-ink);
+}
+
+.sidebar.dual-rail.panel-collapsed .collapse-btn span,
+.sidebar.dual-rail.collapsed .collapse-btn span {
+  display: none;
+}
+
+.sidebar.dual-rail.panel-collapsed .collapse-btn svg,
 .sidebar.dual-rail.panel-collapsed .collapse-btn i,
+.sidebar.dual-rail.collapsed .collapse-btn svg,
 .sidebar.dual-rail.collapsed .collapse-btn i {
   transform: rotate(180deg);
 }

@@ -315,6 +315,32 @@ for (const theme of ['light', 'dark']) {
       });
       await expect(hrDot).not.toBeVisible();
     });
+
+    test(`S2.2 Collapse control in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      const collapseBtn = page.locator('#adminSidebarCollapseBtn');
+      await expect(collapseBtn).toBeVisible();
+      await expect(collapseBtn).toContainText('Collapse');
+
+      // Verify no overlap with top bar (collapse button is in bottom area, below top bar)
+      const topBarBox = await page.locator('.topbar, header').first().boundingBox();
+      const collapseBox = await collapseBtn.boundingBox();
+      expect(collapseBox.y).toBeGreaterThan(topBarBox.y + topBarBox.height);
+
+      // Toggle collapse
+      await collapseBtn.click();
+      await expect(page.locator('#adminSidebar')).toHaveClass(/panel-collapsed/);
+      await expect(page.locator('#adminNavPanel')).toHaveCSS('width', '0px');
+
+      // Reload verifies persistence
+      await page.reload();
+      await expect(page.locator('#adminSidebar')).toHaveClass(/panel-collapsed/);
+
+      // Uncollapse
+      await page.locator('#adminSidebarCollapseBtn').click();
+      await expect(page.locator('#adminSidebar')).not.toHaveClass(/panel-collapsed/);
+      await expect(page.locator('#adminSidebarCollapseBtn')).toContainText('Collapse');
+    });
   });
 }
 

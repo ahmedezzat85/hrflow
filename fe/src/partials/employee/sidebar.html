@@ -10,9 +10,6 @@
 
       <!-- Contextual Page Panel -->
       <div class="nav-panel" id="empNavPanel">
-        <button class="collapse-btn sidebar-collapse-btn" id="empSidebarCollapseBtn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse navigation panel" aria-label="Toggle navigation panel">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
-        </button>
         <div class="panel-inner">
           <div class="panel-head">
             <h2 id="empNavPanelTitle">My workspace</h2>
@@ -35,5 +32,9 @@
             </div>
           </nav>
         </div>
+        <button type="button" class="collapse-btn sidebar-collapse-btn" id="empSidebarCollapseBtn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse navigation panel" aria-label="Toggle navigation panel">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+          <span>Collapse</span>
+        </button>
       </div>
     </aside>
