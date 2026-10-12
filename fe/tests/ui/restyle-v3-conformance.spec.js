@@ -31,6 +31,15 @@ async function openAdmin(page, theme = 'light') {
   }, theme);
 }
 
+async function openEmployee(page, theme = 'light') {
+  await page.goto('/?mock=employee', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#empSidebar')).toBeAttached({ timeout: 15000 });
+  await page.evaluate((th) => {
+    if (typeof applyTheme === 'function') applyTheme(th);
+    else document.documentElement.setAttribute('data-theme', th);
+  }, theme);
+}
+
 for (const theme of ['light', 'dark']) {
   test.describe(`Restyle v3 conformance [${theme}]`, () => {
     test(`S0.5 helper verification and theme attribute in ${theme}`, async ({ page }) => {
@@ -414,6 +423,37 @@ for (const theme of ['light', 'dark']) {
         else showSection('a-employee-detail', 'admin', ['1']);
       });
       await expect(title).toContainText('Employees / ');
+    });
+
+    test(`S2.4 Sidebar labels, portal head, command palette in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+
+      // Admin sidebar sentence-case labels
+      await expect(page.locator('#adminSidebar a[data-page="a-requests"] .nav-label')).toHaveText('Pending requests');
+      await expect(page.locator('#adminSidebar a[data-page="a-salary"] .nav-label')).toHaveText('Salary and raises');
+      await expect(page.locator('#adminSidebar a[data-page="a-invoices"] .nav-label')).toHaveText('Salary payment docs');
+      await expect(page.locator('#adminSidebar a[data-page="a-insurance"] .nav-label')).toHaveText('Medical insurance');
+      await expect(page.locator('#adminSidebar a[data-page="a-dochub"] .nav-label')).toHaveText('Document hub');
+      await expect(page.locator('#adminSidebar a[data-page="a-finance-payroll-runs"] .nav-label')).toHaveText('Payroll runs');
+      await expect(page.locator('#adminSidebar a[data-page="a-finance-payroll-settings"] .nav-label')).toHaveText('Payroll settings');
+      await expect(page.locator('#adminSidebar a[data-page="a-system-roles"] .nav-label')).toHaveText('Roles and permissions');
+      await expect(page.locator('#adminSidebar a[data-page="a-system-users"] .nav-label')).toHaveText('User accounts');
+
+      // Command palette modal classes and structure
+      const cmdPalette = page.locator('#commandPaletteModal');
+      await expect(cmdPalette).toHaveClass(/fv/);
+      await expect(cmdPalette).toHaveClass(/fv-dialog/);
+
+      // Employee portal sidebar labels and head
+      await openEmployee(page, theme);
+      await expect(page.locator('#empSidebar a[data-page="e-salary"] .nav-label')).toHaveText('My salary');
+      await expect(page.locator('#empSidebar a[data-page="e-payslips"] .nav-label')).toHaveText('Payslips');
+      await expect(page.locator('#empSidebar a[data-page="e-insurance"] .nav-label')).toHaveText('Medical insurance');
+      await expect(page.locator('#empSidebar a[data-page="e-dochub"] .nav-label')).toHaveText('Document hub');
+
+      // Employee portal head
+      const empSub = page.locator('#empNavPanelSub');
+      await expect(empSub).toHaveText(/Sarah Connor · Engineering/);
     });
   });
 }

@@ -186,7 +186,7 @@ function initMockEmployeeData(){
     { id: 4, name: 'Office Access Guidelines', category: 'General', file_type: 'pdf', uploaded_at: getPastDate(0, 12), drive_file_id: 'mock-doc-4' }
   ];
 
-  fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
+  fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role, department: currentLoggedInEmployee.department });
 
   renderEmployeePortal();
   if (typeof renderCompanyDocumentsEmployee === 'function') renderCompanyDocumentsEmployee();

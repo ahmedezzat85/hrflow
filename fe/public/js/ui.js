@@ -368,11 +368,18 @@ document.addEventListener('click',e=>{
 });
 
 // Account identity: fills every copy of the signed-in user's initials, name and role in a top bar.
-function fillAccountIdentity(portal, {name, role}){
+function fillAccountIdentity(portal, {name, role, department}){
   const initials = getInitials(name);
   document.querySelectorAll('[data-account-initials="'+portal+'"]').forEach(el=>{ el.textContent = initials; });
   document.querySelectorAll('#'+portal+'UserName').forEach(el=>{ el.textContent = name || ''; });
   document.querySelectorAll('#'+portal+'UserRole').forEach(el=>{ el.textContent = role || ''; });
+  if (portal === 'emp') {
+    const sub = document.getElementById('empNavPanelSub');
+    if (sub) {
+      const dept = department || (window.currentLoggedInEmployee && window.currentLoggedInEmployee.department);
+      sub.textContent = name ? (dept ? `${name} · ${dept}` : name) : 'Personal records and requests';
+    }
+  }
 }
 
 // Top-bar disclosure popovers (account menu, notifications): one open at a time.

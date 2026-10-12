@@ -60,7 +60,7 @@ async function loadEmployeeData() {
     empInsuranceHistory = rawClaims.map(c => ({ category: c.category, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status, document_url: c.document_url }));
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
-    fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
+    fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role, department: currentLoggedInEmployee.department });
     populateClaimCategoryOptions();
     renderEmployeePortal();
     await loadCompanyDocuments();

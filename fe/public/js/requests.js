@@ -38,7 +38,7 @@ function renderRequestStatusPills(typeList) {
   if (!el) return;
   const n = (st) => typeList.filter(r => r.status === st).length;
   const defs = [['all', 'All', typeList.length, ''], ['Pending', 'Pending', n('Pending'), 'hv-sp--pending'], ['Approved', 'Approved', n('Approved'), 'hv-sp--approved'], ['Rejected', 'Rejected', n('Rejected'), 'hv-sp--rejected']];
-  el.innerHTML = defs.map(([k, label, c, cls]) => `<button type="button" class="hv-sp ${cls}${currentRequestsStatus === k ? ' active' : ''}" data-reqstatus="${k}" aria-pressed="${currentRequestsStatus === k}">${k === 'all' ? '' : '<span class="hv-dot"></span>'}${label} <span class="hv-sp-n">${c}</span></button>`).join('');
+  el.innerHTML = defs.map(([k, label, c, cls]) => `<button type="button" class="fv-pill hv-sp ${cls}${currentRequestsStatus === k ? ' active' : ''}" data-reqstatus="${k}" aria-pressed="${currentRequestsStatus === k}">${k === 'all' ? '' : '<span class="hv-dot"></span>'}${label} <span class="hv-sp-n">${c}</span></button>`).join('');
 }
 
 let currentRequestsSearch = '';
