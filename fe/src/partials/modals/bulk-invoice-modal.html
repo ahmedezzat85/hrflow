@@ -1,41 +1,41 @@
-  <div class="modal-overlay fv fv-dialog fv-area-teal" id="bulkInvoiceModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w540 fv-area-green" id="bulkInvoiceModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></span>
         <div class="modal-head-text">
           <h3 id="bulkInvoiceModalTitle">Generate salary payment docs</h3>
           <p id="bulkInvoiceModalSubtitle">Process salary payment docs for external-salary employees.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('bulkInvoiceModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('bulkInvoiceModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-4);margin-bottom:var(--space-4);">
+        <div style="background:var(--fv-surface-soft);border:1px solid var(--fv-line);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:12px;color:var(--text2);">Billing period</span>
-            <strong id="bulkModalPeriod" style="font-size:13px;color:var(--text);">-</strong>
+            <span style="font-size:12px;color:var(--ink-muted);">Billing period</span>
+            <strong id="bulkModalPeriod" style="font-size:13px;color:var(--ink-strong);">-</strong>
           </div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:12px;color:var(--text2);">Ready for generation</span>
+            <span style="font-size:12px;color:var(--ink-muted);">Ready for generation</span>
             <span id="bulkEligibleCount" class="badge-pill pill-success">0</span>
           </div>
           <div style="display:flex;justify-content:space-between;">
-            <span style="font-size:12px;color:var(--text2);">Already generated</span>
+            <span style="font-size:12px;color:var(--ink-muted);">Already generated</span>
             <span id="bulkExistingCount" class="badge-pill pill-info">0</span>
           </div>
         </div>
         <div class="form-field full" style="margin-bottom:6px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;">
-            <input type="checkbox" id="bulkRegenerateExisting" style="width:16px;height:16px;accent-color:var(--accent);">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink-strong);">
+            <input type="checkbox" id="bulkRegenerateExisting" style="width:16px;height:16px;accent-color:var(--brand);">
             <span>Regenerate and overwrite already-existing docs</span>
           </label>
-          <span style="font-size:11.5px;color:var(--text3);margin-left:24px;display:block;margin-top:2px;">
+          <span style="font-size:11.5px;color:var(--ink-muted);margin-left:24px;display:block;margin-top:2px;">
             If unchecked, already-generated docs will be preserved.
           </span>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('bulkInvoiceModal')">Cancel</button>
-        <button class="btn btn-fill" id="btnConfirmBulkGenerate" onclick="executeBulkGenerateInvoices(event)"><i class="fa-solid fa-check"></i> Generate batch</button>
+        <button class="btn btn-fill" id="btnConfirmBulkGenerate" onclick="executeBulkGenerateInvoices(event)">Generate batch</button>
       </div>
     </div>
   </div>

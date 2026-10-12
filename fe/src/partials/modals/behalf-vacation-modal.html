@@ -1,16 +1,15 @@
-  <div class="modal-overlay fv fv-dialog fv-area-teal" id="behalfVacationModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w580 fv-area-teal" id="behalfVacationModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span>
         <div class="modal-head-text">
-          <h3>Submit vacation or WFH on behalf</h3>
-          <p>Log a leave or remote work request for this employee.</p>
+          <h3>Record leave on behalf</h3>
+          <p>Log a leave or remote work request for this employee</p>
         </div>
-        <button class="modal-close" onclick="closeModal('behalfVacationModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('behalfVacationModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-calendar-days"></i> Request parameters <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
               <label for="bvType">Type <span class="req">*</span></label>
@@ -37,7 +36,6 @@
         </div>
 
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-user-shield"></i> Administrative status <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
               <label for="bvStatus">Status</label>
@@ -56,7 +54,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="behalfVacationCancelBtn" onclick="closeModal('behalfVacationModal')">Cancel</button>
-        <button class="btn btn-fill" id="behalfVacationSaveBtn" onclick="submitBehalfVacation(event)"><i class="fa-solid fa-check"></i> Submit</button>
+        <button class="btn btn-fill" id="behalfVacationSaveBtn" onclick="submitBehalfVacation(event)">Submit</button>
       </div>
     </div>
   </div>

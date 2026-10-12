@@ -1,7 +1,7 @@
-  <div class="modal-overlay fv" id="commandPaletteModal" onclick="if(event.target===this)closeCommandPalette()">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w600" id="commandPaletteModal" onclick="if(event.target===this)closeCommandPalette()">
     <div class="modal command-palette-modal">
       <div class="command-palette-head">
-        <div class="palette-search-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+        <div class="palette-search-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg></div>
         <input type="text" id="commandPaletteInput" aria-label="Search workspace" class="palette-input" placeholder="Search employees by name, role, department..." autocomplete="off" spellcheck="false">
         <button class="palette-shortcut-badge" onclick="closeCommandPalette()" title="Close (Esc)">ESC</button>
       </div>
@@ -16,4 +16,3 @@
       </div>
     </div>
   </div>
-

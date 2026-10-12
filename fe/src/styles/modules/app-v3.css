@@ -575,21 +575,169 @@
 }
 
 /* Dialog widths, per the mocks (Dlg-*) */
-#assignRolesModal .modal, #externalUserModal .modal, #socialInsuranceModal .modal { max-width: 520px; }
-#bankAccountModal .modal, #companyDocumentModal .modal, #employeeDocumentModal .modal { max-width: 540px; }
-#categoryModal .modal, #regenerateInvoiceModal .modal { max-width: 480px; }
-#behalfClaimModal .modal, #behalfVacationModal .modal { max-width: 580px; }
-#compensationPlanModal .modal { max-width: 640px; }
-#confirmModal .modal { max-width: 440px; }
-#employeeModal .modal { max-width: 680px; }
-#raiseModal .modal { max-width: 600px; }
-#roleModal .modal { max-width: 700px; }
+.fv-dialog--w440 .modal { width: 440px; max-width: calc(100vw - 32px); }
+.fv-dialog--w480 .modal { width: 480px; max-width: calc(100vw - 32px); }
+.fv-dialog--w500 .modal { width: 500px; max-width: calc(100vw - 32px); }
+.fv-dialog--w520 .modal { width: 520px; max-width: calc(100vw - 32px); }
+.fv-dialog--w540 .modal { width: 540px; max-width: calc(100vw - 32px); }
+.fv-dialog--w560 .modal { width: 560px; max-width: calc(100vw - 32px); }
+.fv-dialog--w580 .modal { width: 580px; max-width: calc(100vw - 32px); }
+.fv-dialog--w600 .modal { width: 600px; max-width: calc(100vw - 32px); }
+.fv-dialog--w640 .modal { width: 640px; max-width: calc(100vw - 32px); }
+.fv-dialog--w680 .modal { width: 680px; max-width: calc(100vw - 32px); }
+.fv-dialog--w700 .modal { width: 700px; max-width: calc(100vw - 32px); }
 
-/* Dialog body and footer rhythm: 16/22 body, 14px gaps, 12/22 footer, text-style Cancel */
-:where(.fv.modal-overlay) .modal-body { padding: 16px 22px; }
-:where(.fv.modal-overlay) .modal-body .form-grid { gap: 12px 16px; }
-:where(.fv.modal-overlay) .modal-foot, :where(.fv.modal-overlay) .modal-footer { padding: 12px 22px; background: var(--fv-dialog-foot); }
-:where(.fv.modal-overlay) .modal-foot .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline),
-:where(.fv.modal-overlay) .modal-footer .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline) {
-  background: transparent; border-color: transparent; color: var(--ink-label); padding: 0 12px;
+/* Dialog shell conforming to Section 4 */
+:where(.fv-dialog).modal-overlay {
+  background: var(--fv-scrim);
+}
+
+:where(.fv-dialog) .modal {
+  background: var(--fv-surface);
+  border-radius: 18px;
+  box-shadow: var(--fv-shadow-dialog);
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:where(.fv-dialog) .modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--fv-line);
+}
+
+:where(.fv-dialog) .modal-head-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+:where(.fv-dialog) .modal-head-text h2,
+:where(.fv-dialog) .modal-head-text h3 {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin: 0;
+}
+
+:where(.fv-dialog) .modal-head-text p,
+:where(.fv-dialog) .modal-head-text .modal-sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin: 2px 0 0;
+}
+
+:where(.fv-dialog) .modal-close {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 9px;
+  color: var(--ink-label);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+:where(.fv-dialog) .modal-body {
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+:where(.fv-dialog) .modal-foot,
+:where(.fv-dialog) .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--fv-line);
+  background: var(--fv-dialog-foot);
+}
+
+:where(.fv-dialog) .modal-foot .btn > i,
+:where(.fv-dialog) .modal-footer .btn > i {
+  display: none;
+}
+
+:where(.fv-dialog) .modal-foot .btn:not(.btn-fill):not(.btn-danger):not(.btn-primary),
+:where(.fv-dialog) .modal-footer .btn:not(.btn-fill):not(.btn-danger):not(.btn-primary) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--ink-label);
+  font-weight: 600;
+  font-size: 13px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+:where(.fv-dialog) .modal-foot .btn-fill,
+:where(.fv-dialog) .modal-foot .btn-primary,
+:where(.fv-dialog) .modal-footer .btn-fill,
+:where(.fv-dialog) .modal-footer .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 9px;
+  background: var(--brand);
+  color: var(--fv-on-brand);
+  font-weight: 600;
+  font-size: 13px;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+:where(.fv-dialog) .modal-foot .btn-danger,
+:where(.fv-dialog) .modal-footer .btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 9px;
+  background: var(--color-danger);
+  color: var(--fv-on-brand);
+  font-weight: 600;
+  font-size: 13px;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.fv-dialog--confirm .modal-head,
+.fv.fv-dialog--confirm .modal-head {
+  border-bottom: 0;
+  padding: 20px 22px 6px;
+}
+
+.fv-dialog--confirm .modal-foot,
+.fv.fv-dialog--confirm .modal-foot {
+  border-top: 0;
+  padding: 16px 22px;
+  background: transparent;
 }

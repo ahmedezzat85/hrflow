@@ -1,19 +1,18 @@
-  <div class="modal-overlay fv fv-dialog" id="roleModal">
-    <div class="modal modal-v2" style="max-width: 720px; width: 95%;">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w700 fv-area-pink" id="roleModal">
+    <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-user-shield"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg></span>
         <div class="modal-head-text">
           <h3 id="roleModalTitle">Create role</h3>
           <p>Define role identity and assign granular domain permissions.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('roleModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('roleModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-        <div id="roleModalLockedBanner" style="display:none; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--surface2); color:var(--text2); font-size:13px;">
+        <div id="roleModalLockedBanner" style="display:none; margin-bottom:12px; padding:10px 12px; border-radius:12px; background:var(--fv-surface-soft); color:var(--ink-muted); font-size:13px;">
           <i class="fa-solid fa-lock" style="margin-right:6px;"></i>This role is locked. It always holds every permission and cannot be edited, renamed or deleted.
         </div>
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Role details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
               <label for="fRoleName">Role name <span class="req">*</span></label>
@@ -28,8 +27,8 @@
 
         <div class="form-section">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <div class="form-section-label" style="margin-bottom:0;"><i class="fa-solid fa-key"></i> Permissions <span class="line"></span></div>
-            <input type="text" id="rolePermSearch" aria-label="Search permissions" placeholder="Filter permissions..." style="padding: 4px 8px; font-size: 12px; width: 180px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);">
+            <label style="font-size:13px;font-weight:700;color:var(--ink-strong);margin:0;">Permissions</label>
+            <input type="text" id="rolePermSearch" aria-label="Search permissions" placeholder="Filter permissions..." style="padding: 4px 10px; font-size: 12.5px; width: 180px; border: 1px solid var(--fv-input-border); border-radius: 8px; background: var(--fv-surface); color: var(--ink-strong);">
           </div>
           <div id="rolePermissionsContainer" style="display:flex; flex-direction:column; gap:16px;">
             <!-- Rendered dynamically by category with implication auto-ticking -->
@@ -38,7 +37,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="roleModalCancelBtn" onclick="closeModal('roleModal')">Cancel</button>
-        <button class="btn btn-fill" id="roleModalSaveBtn" onclick="saveRole(event)"><i class="fa-solid fa-check"></i> Save role</button>
+        <button class="btn btn-fill" id="roleModalSaveBtn" onclick="saveRole(event)">Save role</button>
       </div>
     </div>
   </div>

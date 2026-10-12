@@ -1,16 +1,15 @@
-  <div class="modal-overlay fv fv-dialog fv-area-teal" id="behalfClaimModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w580 fv-area-teal" id="behalfClaimModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-briefcase-medical"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18"></path></svg></span>
         <div class="modal-head-text">
-          <h3>Submit insurance claim on behalf</h3>
+          <h3>Submit claim on behalf</h3>
           <p>Record medical claims and calculate policy reimbursements.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('behalfClaimModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
               <label for="bcCategory">Category <span class="req">*</span></label>
@@ -28,7 +27,6 @@
         </div>
 
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing and attachment <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
               <label for="bcStatus">Status</label>
@@ -66,7 +64,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="behalfClaimCancelBtn" onclick="closeModal('behalfClaimModal')">Cancel</button>
-        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button>
+        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)">Submit</button>
       </div>
     </div>
   </div>
