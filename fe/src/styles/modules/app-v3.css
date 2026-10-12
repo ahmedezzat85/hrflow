@@ -573,3 +573,23 @@
   .topbar .icon-btn { width: 44px; height: 44px; }
   .topbar .account-avatar { width: 40px; height: 40px; }
 }
+
+/* Dialog widths, per the mocks (Dlg-*) */
+#assignRolesModal .modal, #externalUserModal .modal, #socialInsuranceModal .modal { max-width: 520px; }
+#bankAccountModal .modal, #companyDocumentModal .modal, #employeeDocumentModal .modal { max-width: 540px; }
+#categoryModal .modal, #regenerateInvoiceModal .modal { max-width: 480px; }
+#behalfClaimModal .modal, #behalfVacationModal .modal { max-width: 580px; }
+#compensationPlanModal .modal { max-width: 640px; }
+#confirmModal .modal { max-width: 440px; }
+#employeeModal .modal { max-width: 680px; }
+#raiseModal .modal { max-width: 600px; }
+#roleModal .modal { max-width: 700px; }
+
+/* Dialog body and footer rhythm: 16/22 body, 14px gaps, 12/22 footer, text-style Cancel */
+:where(.fv.modal-overlay) .modal-body { padding: 16px 22px; }
+:where(.fv.modal-overlay) .modal-body .form-grid { gap: 12px 16px; }
+:where(.fv.modal-overlay) .modal-foot, :where(.fv.modal-overlay) .modal-footer { padding: 12px 22px; background: var(--fv-dialog-foot); }
+:where(.fv.modal-overlay) .modal-foot .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline),
+:where(.fv.modal-overlay) .modal-footer .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline) {
+  background: transparent; border-color: transparent; color: var(--ink-label); padding: 0 12px;
+}
