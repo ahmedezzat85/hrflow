@@ -1,24 +1,24 @@
         <section class="page-section fv" id="a-insurance">
           <div class="hv-grid hv-grid-4">
             <div class="hv-stat-tile">
-              <span class="hv-stat-label">Total claims</span>
+              <span class="hv-stat-label">Claims in 2026</span>
               <span class="hv-stat-value" id="statClaimsYtd">—</span>
-              <span class="hv-stat-sub">Year to date</span>
+              <span class="hv-stat-sub" id="statClaimsYtdSub">EGP 770 claimed</span>
             </div>
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Approved</span>
-              <span class="hv-stat-value hv-tone-success" id="statClaimsApproved">—</span>
-              <span class="hv-stat-sub">Processed claims</span>
+              <span class="hv-stat-value" id="statClaimsApproved">—</span>
+              <span class="hv-stat-sub" id="statClaimsApprovedSub">EGP 590</span>
             </div>
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Waiting for a decision</span>
               <span class="hv-stat-value hv-tone-warning" id="statClaimsPending">—</span>
-              <span class="hv-stat-sub">Pending review</span>
+              <span class="hv-stat-sub" id="statClaimsPendingSub">EGP 180 · Sarah Connor</span>
             </div>
             <div class="hv-stat-tile">
               <span class="hv-stat-label">Reimbursed</span>
               <span class="hv-stat-value" id="statClaimsReimbursed">—</span>
-              <span class="hv-stat-sub">This year</span>
+              <span class="hv-stat-sub">this year</span>
             </div>
           </div>
           <div class="hv-grid hv-grid-2">
@@ -26,12 +26,12 @@
               <div class="card-head hv-mb-12">
                 <h3 class="hv-card-title">Use against annual limits</h3>
               </div>
-              <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
+              <div class="insurance-limits-list" id="adminInsuranceCategoryHighlights"></div>
             </div>
             <div class="card fv-table-card">
               <div class="card-head hv-card-head">
                 <h3 class="hv-card-title">Categories and limits</h3>
-                <button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i class="fa-solid fa-plus"></i> Add category</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openCategoryModal()">Add category</button>
               </div>
               <div class="fv-table-scroll">
                 <table class="fv-table">
@@ -39,12 +39,13 @@
                     <tr>
                       <th>Category</th>
                       <th>Annual limit</th>
-                      <th class="col-actions">Actions</th>
+                      <th class="col-actions"><span class="sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody id="categoriesTableBody"></tbody>
                 </table>
               </div>
+              <div class="card-footer fv-table-foot"><span id="categoriesTableFoot"></span><span class="fv-table-page">Page 1 of 1</span></div>
             </div>
           </div>
           <div class="card fv-table-card">
@@ -53,8 +54,8 @@
                 <h3 class="hv-card-title">Claims</h3>
               </div>
               <div class="hv-row-8">
-                <button class="btn btn-outline btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims"><i class="fa-solid fa-file-export"></i> Export</button>
-                <button type="button" class="btn btn-fill btn-sm" onclick="openBehalfClaimModal()"><i class="fa-solid fa-plus"></i> Record claim</button>
+                <button type="button" class="btn btn-outline btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims">Export</button>
+                <button type="button" class="btn btn-fill btn-sm" onclick="openBehalfClaimModal()">Record claim</button>
               </div>
             </div>
             <div class="fv-table-scroll">
@@ -64,14 +65,15 @@
                     <th>Employee</th>
                     <th>Category</th>
                     <th>Provider</th>
-                    <th>Amount</th>
-                    <th>Date</th>
+                    <th style="color:var(--brand);">Date ↓</th>
                     <th>Status</th>
-                    <th class="col-actions">Actions</th>
+                    <th class="hv-right">Amount</th>
+                    <th class="col-actions"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="insuranceTableBody"></tbody>
               </table>
             </div>
+            <div class="card-footer fv-table-foot"><span id="insuranceTableFoot"></span><span class="fv-table-page">Page 1 of 1</span></div>
           </div>
         </section>

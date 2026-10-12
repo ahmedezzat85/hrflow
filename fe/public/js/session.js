@@ -125,7 +125,40 @@ function initMockAdminData(){
   insuranceClaims = [
     { id: 'CLM-201', employee_id: 'EMP001', employee_name: 'Sarah Connor', service: 'Dental Routine Checkup', category: 'Dental', amount: 180, status: 'Pending', date: getPastDate(0, 7) },
     { id: 'CLM-202', employee_id: 'EMP004', employee_name: 'Elena Rostova', service: 'Optical Exam & Glasses', category: 'Optical', amount: 350, status: 'Approved', date: getPastDate(1, 15) },
-    { id: 'CLM-203', employee_id: 'EMP002', employee_name: 'John Doe', service: 'Physiotherapy', category: 'Physical Therapy', amount: 240, status: 'Approved', date: getPastDate(3, 10) }
+    { id: 'CLM-203', employee_id: 'EMP002', employee_name: 'John Doe', service: 'Physiotherapy', category: 'Physical therapy', amount: 240, status: 'Approved', date: getPastDate(3, 10) }
+  ];
+
+  insuranceCategories = [
+    { id: 1, name: 'Dental', annual_limit: 2000 },
+    { id: 2, name: 'Optical', annual_limit: 1500 },
+    { id: 3, name: 'Physical therapy', annual_limit: 3000 }
+  ];
+
+  insuranceConsumption = [
+    {
+      employee_id: 'EMP001',
+      total_consumed: 180,
+      total_limit: 2000,
+      categories: [
+        { category: 'Dental', consumed: 180, limit: 2000 }
+      ]
+    },
+    {
+      employee_id: 'EMP004',
+      total_consumed: 350,
+      total_limit: 1500,
+      categories: [
+        { category: 'Optical', consumed: 350, limit: 1500 }
+      ]
+    },
+    {
+      employee_id: 'EMP002',
+      total_consumed: 240,
+      total_limit: 3000,
+      categories: [
+        { category: 'Physical therapy', consumed: 240, limit: 3000 }
+      ]
+    }
   ];
 
   companyDocuments = [

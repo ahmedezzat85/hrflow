@@ -441,7 +441,17 @@ async function submitBehalfVacation(evt) {
   }
 }
 
-async function openBehalfClaimModal() {
+async function openBehalfClaimModal(empId = null) {
+  if (empId) {
+    currentDetailEmployeeId = empId;
+  } else if (!currentDetailEmployeeId && typeof employees !== 'undefined' && employees && employees.length > 0) {
+    currentDetailEmployeeId = employees[0].id;
+  }
+  const emp = (typeof employees !== 'undefined' && employees) ? employees.find(e => String(e.id) === String(currentDetailEmployeeId)) : null;
+  const titleEl = document.getElementById('behalfClaimModalTitle');
+  if (titleEl) {
+    titleEl.textContent = emp ? `Record claim · ${emp.name}` : 'Record claim';
+  }
   if (!insuranceCategories || insuranceCategories.length === 0) {
     try {
       insuranceCategories = await Api.getInsuranceCategories();
@@ -461,7 +471,11 @@ async function openBehalfClaimModal() {
 }
 async function submitBehalfClaim(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('behalfClaimSaveBtn') || document.querySelector('#behalfClaimModal .btn-fill');
-  const emp = employees.find(e => String(e.id) === String(currentDetailEmployeeId));
+  const emp = (typeof employees !== 'undefined' && employees) ? employees.find(e => String(e.id) === String(currentDetailEmployeeId)) : null;
+  if (!emp) {
+    toast('Select an employee for this claim.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
   const category = document.getElementById('bcCategory').value;
   const provider = document.getElementById('bcProvider').value;
   const amount = Number(document.getElementById('bcAmount').value);
@@ -485,7 +499,9 @@ async function submitBehalfClaim(evt) {
     closeModal('behalfClaimModal');
     toast(`Insurance claim added for ${emp.name}.`);
     await loadAdminData();
-    await viewProfile(currentDetailEmployeeId);
+    if (document.getElementById('a-employee-detail') && document.getElementById('a-employee-detail').classList.contains('active')) {
+      await viewProfile(currentDetailEmployeeId);
+    }
   } catch (err) {
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   } finally {

@@ -586,3 +586,61 @@
   padding-top: 8px;
   margin-top: 4px;
 }
+
+/* S3.8 Insurance helpers */
+.fv .insurance-limits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fv .insurance-limit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fv .insurance-limit-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.fv .insurance-limit-name {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.fv .insurance-limit-val {
+  color: var(--ink-muted);
+}
+.fv .insurance-limit-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  overflow: hidden;
+  display: block;
+}
+.fv .insurance-limit-fill {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--id-teal);
+}
+.fv .category-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fv .category-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--id-teal);
+  flex: none;
+}
+.fv .category-title {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.fv .category-limit-cell {
+  color: var(--ink-muted);
+}
+

@@ -689,7 +689,55 @@ for (const theme of ['light', 'dark']) {
       await page.evaluate(() => closeModal('behalfVacationModal'));
       await expect(page.locator('#behalfVacationModal')).not.toBeVisible();
     });
+
+    test(`S3.8 Medical insurance & categories in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-insurance', 'admin'));
+
+      // 4 stat tiles
+      const statTiles = page.locator('#a-insurance .hv-stat-tile');
+      await expect(statTiles).toHaveCount(4);
+      await expect(statTiles.nth(0).locator('.hv-stat-label')).toHaveText('Claims in 2026');
+      await expect(statTiles.nth(1).locator('.hv-stat-label')).toHaveText('Approved');
+      await expect(statTiles.nth(2).locator('.hv-stat-label')).toHaveText('Waiting for a decision');
+      await expect(statTiles.nth(3).locator('.hv-stat-label')).toHaveText('Reimbursed');
+
+      // 2-column cards
+      await expect(page.locator('#a-insurance h3:has-text("Use against annual limits")')).toBeVisible();
+      await expect(page.locator('#adminInsuranceCategoryHighlights .insurance-limit-item').first()).toBeVisible();
+
+      await expect(page.locator('#a-insurance h3:has-text("Categories and limits")')).toBeVisible();
+      await expect(page.locator('#a-insurance button:has-text("Add category")')).toBeVisible();
+      await expect(page.locator('#categoriesTableBody tr').first()).toBeVisible();
+
+      // Claims table
+      await expect(page.locator('#a-insurance h3:has-text("Claims")')).toBeVisible();
+      await expect(page.locator('#insuranceExportBtn')).toHaveText('Export');
+      await expect(page.locator('#a-insurance button:has-text("Record claim")')).toBeVisible();
+
+      const ths = page.locator('#a-insurance table:has(#insuranceTableBody) thead th');
+      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(1)).toHaveText('Category');
+      await expect(ths.nth(2)).toHaveText('Provider');
+      await expect(ths.nth(3)).toContainText('Date');
+      await expect(ths.nth(4)).toHaveText('Status');
+      await expect(ths.nth(5)).toHaveText('Amount');
+
+      // Modals
+      await page.evaluate(() => openCategoryModal());
+      await expect(page.locator('#categoryModal')).toBeVisible();
+      await expect(page.locator('#categoryModalTitle')).toHaveText('Add category');
+      await page.evaluate(() => closeModal('categoryModal'));
+      await expect(page.locator('#categoryModal')).not.toBeVisible();
+
+      await page.evaluate(() => openBehalfClaimModal());
+      await expect(page.locator('#behalfClaimModal')).toBeVisible();
+      await expect(page.locator('#behalfClaimModalTitle')).toContainText('Record claim');
+      await page.evaluate(() => closeModal('behalfClaimModal'));
+      await expect(page.locator('#behalfClaimModal')).not.toBeVisible();
+    });
   });
 }
+
 
 
