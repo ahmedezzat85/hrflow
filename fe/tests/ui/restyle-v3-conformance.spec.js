@@ -224,5 +224,70 @@ for (const theme of ['light', 'dark']) {
       await expect(docFoot).toBeVisible();
       await expect(docFoot).toContainText('Showing');
     });
+
+    test(`S1.4 Shared pills, tiles, and footers in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+
+      // 1. Salary tiles
+      await page.evaluate(() => showSection('a-salary', 'admin'));
+      const salaryTile = page.locator('#a-salary .hv-stat-tile').first();
+      await expect(salaryTile).toBeVisible();
+      await expectStyle(salaryTile, {
+        paddingTop: '14px',
+        paddingBottom: '14px',
+        borderRadius: '14px',
+      });
+      await expectStyle(salaryTile.locator('.hv-stat-label'), {
+        fontSize: '12.5px',
+        fontWeight: '600',
+      });
+      await expectStyle(salaryTile.locator('.hv-stat-value'), {
+        fontSize: '24px',
+        fontWeight: '700',
+      });
+      await expectStyle(salaryTile.locator('.hv-stat-sub'), {
+        fontSize: '12.5px',
+      });
+
+      // 2. Vacations tiles (must pass the same assertion per S1.4)
+      await page.evaluate(() => showSection('a-vacations', 'admin'));
+      const vacTile = page.locator('#a-vacations .hv-stat-tile').first();
+      await expect(vacTile).toBeVisible();
+      await expectStyle(vacTile, {
+        paddingTop: '14px',
+        paddingBottom: '14px',
+        borderRadius: '14px',
+      });
+      await expectStyle(vacTile.locator('.hv-stat-label'), {
+        fontSize: '12.5px',
+        fontWeight: '600',
+      });
+      await expectStyle(vacTile.locator('.hv-stat-value'), {
+        fontSize: '24px',
+        fontWeight: '700',
+      });
+      await expectStyle(vacTile.locator('.hv-stat-sub'), {
+        fontSize: '12.5px',
+      });
+
+      // 3. Amber strip primitives
+      const amberStrip = await page.evaluate(() => {
+        const el = document.createElement('div');
+        el.className = 'fv-amber-strip';
+        document.querySelector('#a-salary').appendChild(el);
+        const cs = window.getComputedStyle(el);
+        return {
+          borderRadius: cs.borderRadius,
+          paddingTop: cs.paddingTop,
+          paddingBottom: cs.paddingBottom,
+          fontSize: cs.fontSize,
+        };
+      });
+      expect(amberStrip.borderRadius).toBe('12px');
+      expect(amberStrip.paddingTop).toBe('10px');
+      expect(amberStrip.paddingBottom).toBe('10px');
+      expect(amberStrip.fontSize).toBe('13px');
+    });
   });
 }
+
