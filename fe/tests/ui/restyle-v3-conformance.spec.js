@@ -288,6 +288,34 @@ for (const theme of ['light', 'dark']) {
       expect(amberStrip.paddingBottom).toBe('10px');
       expect(amberStrip.fontSize).toBe('13px');
     });
+
+    test(`S2.1 Rail badge in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      const reqBadge = page.locator('#reqBadge');
+      const hrDot = page.locator('#hrRailDot');
+
+      const badgeText = (await reqBadge.textContent() || '').trim();
+      const count = parseInt(badgeText, 10);
+      if (!isNaN(count) && count > 0) {
+        await expect(hrDot).toBeVisible();
+        await expect(hrDot).toHaveText(String(count));
+      }
+
+      // Dynamic update test
+      await page.evaluate(() => {
+        const b = document.getElementById('reqBadge');
+        if (b) b.textContent = '7';
+      });
+      await expect(hrDot).toBeVisible();
+      await expect(hrDot).toHaveText('7');
+
+      await page.evaluate(() => {
+        const b = document.getElementById('reqBadge');
+        if (b) b.textContent = '0';
+      });
+      await expect(hrDot).not.toBeVisible();
+    });
   });
 }
+
 

@@ -126,7 +126,7 @@
   box-sizing: border-box;
   border-radius: 999px;
   background: var(--id-orange);
-  color: #fff;
+  color: var(--fv-on-brand);
   font-size: 10px;
   font-weight: 700;
   display: inline-flex;

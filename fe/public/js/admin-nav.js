@@ -221,10 +221,18 @@
     if (reqBadge && hrDot) {
       const text = (reqBadge.textContent || '').trim();
       const count = parseInt(text, 10);
-      if (!isNaN(count) && count > 0) {
-        hrDot.style.display = 'block';
+      const canAccessRequests = (function () {
+        if (typeof SessionInfo === 'undefined') return true;
+        const perms = typeof SessionInfo.getPermissions === 'function' ? SessionInfo.getPermissions() : [];
+        if (perms.length === 0 && !SessionInfo.isKnown()) return true;
+        return perms.some((p) => p === 'hr.requests.manage' || p === 'hr.requests.read' || p.startsWith('hr.'));
+      })();
+      if (!isNaN(count) && count > 0 && canAccessRequests) {
+        hrDot.textContent = String(count);
+        hrDot.style.display = 'inline-flex';
         reqBadge.style.display = '';
       } else {
+        hrDot.textContent = '';
         hrDot.style.display = 'none';
         reqBadge.style.display = 'none';
       }
