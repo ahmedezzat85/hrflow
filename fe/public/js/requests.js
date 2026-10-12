@@ -31,6 +31,16 @@ function updateRequestFilterCounts() {
   if (elIns) elIns.textContent = insCount;
 }
 
+let currentRequestsStatus = 'all';
+
+function renderRequestStatusPills(typeList) {
+  const el = document.getElementById('requestStatusPills');
+  if (!el) return;
+  const n = (st) => typeList.filter(r => r.status === st).length;
+  const defs = [['all', 'All', typeList.length, ''], ['Pending', 'Pending', n('Pending'), 'hv-sp--pending'], ['Approved', 'Approved', n('Approved'), 'hv-sp--approved'], ['Rejected', 'Rejected', n('Rejected'), 'hv-sp--rejected']];
+  el.innerHTML = defs.map(([k, label, c, cls]) => `<button type="button" class="hv-sp ${cls}${currentRequestsStatus === k ? ' active' : ''}" data-reqstatus="${k}" aria-pressed="${currentRequestsStatus === k}">${k === 'all' ? '' : '<span class="hv-dot"></span>'}${label} <span class="hv-sp-n">${c}</span></button>`).join('');
+}
+
 function renderRequestsTable(filter) {
   if (filter) {
     currentRequestsFilter = filter;
@@ -40,9 +50,9 @@ function renderRequestsTable(filter) {
   const body = document.getElementById('requestsTableBody');
   if (!body) return;
 
-  const list = currentRequestsFilter === 'all' 
-    ? requests 
-    : requests.filter(r => r.type === currentRequestsFilter);
+  const typeList = currentRequestsFilter === 'all' ? requests : requests.filter(r => r.type === currentRequestsFilter);
+  renderRequestStatusPills(typeList);
+  const list = currentRequestsStatus === 'all' ? typeList : typeList.filter(r => r.status === currentRequestsStatus);
 
   if (!list.length) {
     body.innerHTML = renderEmptyTableRow(6, currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`, 'fa-solid fa-inbox');
@@ -93,6 +103,13 @@ function renderRequestsTable(filter) {
   }).join('');
   setTableFoot('requestsTableBody', list.length, 'requests');
 }
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-reqstatus]');
+  if (!b) return;
+  currentRequestsStatus = b.dataset.reqstatus;
+  renderRequestsTable();
+});
 
 document.querySelectorAll('[data-reqfilter]').forEach(btn => {
   btn.addEventListener('click', () => {

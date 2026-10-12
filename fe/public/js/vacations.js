@@ -41,7 +41,7 @@ function renderVacationBalances() {
   }
 
   if (!filtered.length) {
-    body.innerHTML = renderEmptyTableRow(6, vacationBalanceSearchQuery ? `No employee balances match "${vacationBalanceSearchQuery}".` : 'No employee vacation balances recorded yet.', 'fa-solid fa-user-xmark');
+    body.innerHTML = renderEmptyTableRow(5, vacationBalanceSearchQuery ? `No employee balances match "${vacationBalanceSearchQuery}".` : 'No employee vacation balances recorded yet.', 'fa-solid fa-user-xmark');
     return;
   }
 
@@ -58,11 +58,8 @@ function renderVacationBalances() {
           <div class="avatar">${initials(e.name)}</div>
           <div>
             <div class="vac-emp-link" onclick="viewProfile(${e.id})">${escapeHtml(e.name)}</div>
-            <div style="font-size:11.5px;color:var(--text2);margin-top:1px;">${e.role || 'Employee'}</div>
+            <div style="font-size:11.5px;color:var(--text2);margin-top:1px;">${e.role || 'Employee'}${e.dept ? ' · ' + escapeHtml(e.dept) : ''}</div>
           </div>
-        </td>
-        <td>
-          <span class="badge-pill pill-neutral">${e.dept || 'General'}</span>
         </td>
         <td style="font-weight:600;font-variant-numeric:tabular-nums;">${total}</td>
         <td style="color:var(--warning);font-weight:600;font-variant-numeric:tabular-nums;">${used}</td>

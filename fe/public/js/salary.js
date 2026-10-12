@@ -36,7 +36,6 @@ function renderSalaryPage(filter=''){
     const profileHref = Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '') + '/' + encodeURIComponent(e.id);
     return `<tr class="salary-row" data-employee-id="${escapeHtml(e.id)}">
       <td class="tname"><div class="avatar">${initials(e.name)}</div><div><a class="salary-emp-link" href="${profileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a><div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(e.dept || e.department || '')}</div></div></td>
-      <td>${e.dept || e.department || '—'}</td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-external">${fmtUSD(ext)}</span></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-internal">${fmtUSD(intCash)}</span></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--ink-strong);">${fmtUSD(total)}</strong></td>
@@ -44,7 +43,7 @@ function renderSalaryPage(filter=''){
       <td>${last ? `${last.date} (${last.pct || ''})` : '<span style="color:var(--text3);">No history</span>'}</td>
     </tr>`;
 
-  }).join('') || renderEmptyTableRow(7, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
+  }).join('') || renderEmptyTableRow(6, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
 
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const sortedHist = allRaises.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));

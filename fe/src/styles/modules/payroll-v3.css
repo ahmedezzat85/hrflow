@@ -550,3 +550,20 @@
 }
 #a-finance-payroll table { line-height: 1.45; }
 #a-finance-payroll table.runs-table th, #a-finance-payroll table.payroll-worksheet th { padding-top: 12px; padding-bottom: 12px; }
+
+/* Phone: keep the compact "Step N of 6" stepper and let banners/footers wrap */
+@media (max-width: 768px) {
+  #a-finance-payroll .payroll-step-pill { display: none; }
+  #a-finance-payroll .payroll-stepper { padding: 10px 14px; }
+  #a-finance-payroll .pv-banner { flex-wrap: wrap; }
+  #a-finance-payroll .pv-filterrow, #a-finance-payroll .pv-fpgroup { flex-wrap: wrap; }
+  #a-finance-payroll .payroll-screen-view .grid, #a-finance-payroll .disburse-meta, #a-finance-payroll .stat-obl-card-body { grid-template-columns: minmax(0, 1fr); }
+  #a-finance-payroll .stat-obl-card-body > .stat-obl-meta > .stat-obl-row, #a-finance-payroll .stat-obl-card-body > .stat-obl-amount-lbl, #a-finance-payroll .stat-obl-card-body > .stat-obl-amount { grid-column: 1 / -1; grid-row: auto; }
+}
+@media (max-width: 768px) { #a-finance-payroll .pv-fp { min-height: 44px; } }
+@media (max-width: 768px) {
+  #a-finance-payroll .runhead, #a-finance-payroll .runhead-right { flex-wrap: wrap; gap: 8px; }
+  #a-finance-payroll .fxbox { max-width: 100%; }
+  #a-finance-payroll .bonus-cell, #a-finance-payroll .payroll-bonus-col { flex-wrap: wrap; max-width: 100%; }
+  #a-finance-payroll .payroll-screen-view, #a-finance-payroll #payrollViewRun { overflow-x: clip; }
+}

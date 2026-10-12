@@ -1,14 +1,14 @@
-/* App-wide restyle v3 layer (D-028). Scoped under :is(.fv, .fv-dialog, .fv-shell) (page root, shell and dialog overlays);
+/* App-wide restyle v3 layer (D-028). Scoped under :where(.fv, .fv-dialog, .fv-shell) (page root, shell and dialog overlays);
    login and unscoped markup keep the legacy component CSS. Loaded right after modals.css, before the module sheets. */
 
-:is(.fv, .fv-dialog, .fv-shell) [hidden],
+:where(.fv, .fv-dialog, .fv-shell) [hidden],
 [hidden] {
   display: none !important;
 }
 
 /* from components.css */
 
-:is(.fv, .fv-dialog, .fv-shell) .card {
+:where(.fv, .fv-dialog, .fv-shell) .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -20,13 +20,13 @@
   box-sizing: border-box;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .card:hover {
+:where(.fv, .fv-dialog, .fv-shell) .card:hover {
   box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .card:has(table),
-:is(.fv, .fv-dialog, .fv-shell) .card:has(.responsive-card-table),
-:is(.fv, .fv-dialog, .fv-shell) .fv-table-card {
+:where(.fv, .fv-dialog, .fv-shell) .card:has(table),
+:where(.fv, .fv-dialog, .fv-shell) .card:has(.responsive-card-table),
+:where(.fv, .fv-dialog, .fv-shell) .fv-table-card {
   padding: 0;
   overflow: hidden;
   border-radius: var(--radius);
@@ -35,22 +35,22 @@
   box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .card:has(table):hover,
-:is(.fv, .fv-dialog, .fv-shell) .card:has(.responsive-card-table):hover,
-:is(.fv, .fv-dialog, .fv-shell) .fv-table-card:hover {
+:where(.fv, .fv-dialog, .fv-shell) .card:has(table):hover,
+:where(.fv, .fv-dialog, .fv-shell) .card:has(.responsive-card-table):hover,
+:where(.fv, .fv-dialog, .fv-shell) .fv-table-card:hover {
   box-shadow: 0 1px 3px rgba(20, 50, 120, .05);
   transform: none;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .card:has(table) .card-head,
-:is(.fv, .fv-dialog, .fv-shell) .card:has(.responsive-card-table) .card-head,
-:is(.fv, .fv-dialog, .fv-shell) .fv-table-card .card-head {
+:where(.fv, .fv-dialog, .fv-shell) .card:has(table) .card-head,
+:where(.fv, .fv-dialog, .fv-shell) .card:has(.responsive-card-table) .card-head,
+:where(.fv, .fv-dialog, .fv-shell) .fv-table-card .card-head {
   padding: 12px 16px;
   margin-bottom: 0;
   border-bottom: 1px solid var(--border);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .stat-label {
+:where(.fv, .fv-dialog, .fv-shell) .stat-label {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text2);
@@ -59,13 +59,13 @@
   letter-spacing: 0;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) table {
+:where(.fv, .fv-dialog, .fv-shell) table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13.5px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) thead th {
+:where(.fv, .fv-dialog, .fv-shell) thead th {
   text-align: left;
   font-size: 12px;
   text-transform: none !important;
@@ -78,17 +78,17 @@
   background: var(--surface);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) thead th:first-child,
-:is(.fv, .fv-dialog, .fv-shell) tbody td:first-child {
+:where(.fv, .fv-dialog, .fv-shell) thead th:first-child,
+:where(.fv, .fv-dialog, .fv-shell) tbody td:first-child {
   padding-left: 16px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) thead th:last-child,
-:is(.fv, .fv-dialog, .fv-shell) tbody td:last-child {
+:where(.fv, .fv-dialog, .fv-shell) thead th:last-child,
+:where(.fv, .fv-dialog, .fv-shell) tbody td:last-child {
   padding-right: 16px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) tbody td {
+:where(.fv, .fv-dialog, .fv-shell) tbody td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
@@ -96,7 +96,7 @@
   font-size: 13.5px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .btn {
+:where(.fv, .fv-dialog, .fv-shell) .btn {
   height: 32px;
   padding: 0 14px;
   border-radius: 8px;
@@ -113,14 +113,14 @@
   cursor: pointer;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .btn-sm {
+:where(.fv, .fv-dialog, .fv-shell) .btn-sm {
   height: 28px;
   padding: 0 12px;
   border-radius: 8px;
   font-size: 12.5px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .search-box input {
+:where(.fv, .fv-dialog, .fv-shell) .search-box input {
   width: 100%;
   height: 32px;
   padding: 0 12px 0 34px;
@@ -133,17 +133,17 @@
   box-sizing: border-box;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .fv-pills,
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills {
+:where(.fv, .fv-dialog, .fv-shell) .fv-pills,
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills {
   display: flex;
   gap: 6px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .fv-pills button,
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills button,
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills .filter-tab {
+:where(.fv, .fv-dialog, .fv-shell) .fv-pills button,
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills button,
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills .filter-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -160,37 +160,37 @@
   box-sizing: border-box;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .fv-pills button:hover,
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills button:hover,
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills .filter-tab:hover {
+:where(.fv, .fv-dialog, .fv-shell) .fv-pills button:hover,
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills button:hover,
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills .filter-tab:hover {
   background: var(--surface3, var(--border));
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .fv-pills button.active,
-:is(.fv, .fv-dialog, .fv-shell) .fv-pills button[aria-pressed="true"],
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills button.active,
-:is(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills .filter-tab.active {
+:where(.fv, .fv-dialog, .fv-shell) .fv-pills button.active,
+:where(.fv, .fv-dialog, .fv-shell) .fv-pills button[aria-pressed="true"],
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills button.active,
+:where(.fv, .fv-dialog, .fv-shell) .filter-tab-group.fv-pills .filter-tab.active {
   background: var(--brand);
   color: var(--fv-on-brand, #fff);
   border-color: var(--brand);
   box-shadow: 0 2px 6px rgba(32, 86, 232, .25);
 }
 
-:is(.fv, .fv-shell).page,
-:is(.fv, .fv-shell) .page {
+:where(.fv, .fv-shell).page,
+:where(.fv, .fv-shell) .page {
   padding: 16px 28px;
   max-width: none;
   box-sizing: border-box;
 }
 
-:is(.fv, .fv-shell) .page-section.active {
+:where(.fv, .fv-shell) .page-section.active {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) table .avatar,
-:is(.fv, .fv-dialog, .fv-shell) td.tname .avatar {
+:where(.fv, .fv-dialog, .fv-shell) table .avatar,
+:where(.fv, .fv-dialog, .fv-shell) td.tname .avatar {
   width: 32px;
   height: 32px;
   border-radius: 10px;
@@ -202,7 +202,7 @@
   flex: none;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) td.col-actions .btn-sm {
+:where(.fv, .fv-dialog, .fv-shell) td.col-actions .btn-sm {
   height: 28px;
   padding: 0 11px;
   border-radius: 8px;
@@ -212,7 +212,7 @@
   box-sizing: border-box;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) td.col-actions .icon-action:not(.btn) {
+:where(.fv, .fv-dialog, .fv-shell) td.col-actions .icon-action:not(.btn) {
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -228,12 +228,12 @@
   box-sizing: border-box;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) td.col-actions .icon-action:not(.btn):hover {
+:where(.fv, .fv-dialog, .fv-shell) td.col-actions .icon-action:not(.btn):hover {
   background: var(--brand-wash);
   color: var(--brand-text);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .badge-pill {
+:where(.fv, .fv-dialog, .fv-shell) .badge-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -246,48 +246,48 @@
 }
 
 @media (max-width: 768px) {
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar {
     position: fixed;
     left: -280px;
     z-index: 60;
     box-shadow: var(--shadow-lg);
     transition: left .25s;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.open {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.open {
     left: 0;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar-backdrop.active {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar-backdrop.active {
     display: block;
     opacity: 1;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .hamburger {
+  :where(.fv, .fv-dialog, .fv-shell) .hamburger {
     display: flex;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .topbar {
+  :where(.fv, .fv-dialog, .fv-shell) .topbar {
     padding: 12px 18px;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .page {
+  :where(.fv, .fv-dialog, .fv-shell) .page {
     padding: 10px 16px 20px;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar-collapse-btn {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar-collapse-btn {
     display: none;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed {
     width: 260px;
     padding: 22px 16px;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .sidebar-top-row {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .sidebar-top-row {
     justify-content: space-between;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .brand {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .brand {
     justify-content: flex-start;
     padding: 6px 10px 22px;
     width: auto;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .brand span.grad {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .brand span.grad {
     display: inline;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-item {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-item {
     justify-content: flex-start;
     padding: 10px 12px;
     width: auto;
@@ -295,15 +295,15 @@
     margin: 0 0 2px;
     border-radius: 11px;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-item i {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-item i {
     font-size: var(--fs-base);
     width: 18px;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-label {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-label {
     display: inline;
     width: auto;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-item .badge {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-item .badge {
     position: static;
     min-width: auto;
     height: auto;
@@ -311,7 +311,7 @@
     font-size: var(--fs-xs);
     margin-left: auto;
   }
-  :is(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-section-label {
+  :where(.fv, .fv-dialog, .fv-shell) .sidebar.collapsed .nav-section-label {
     font-size: var(--fs-xs);
     height: auto;
     margin: 20px 10px 8px;
@@ -320,7 +320,7 @@
   }
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .app-loader {
+:where(.fv, .fv-dialog, .fv-shell) .app-loader {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -331,7 +331,7 @@
   backdrop-filter: blur(10px);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .app-loader-inner {
+:where(.fv, .fv-dialog, .fv-shell) .app-loader-inner {
   background: rgba(15, 23, 42, .94);
   border-radius: 20px;
   padding: 28px 32px;
@@ -342,7 +342,7 @@
   border: 1px solid rgba(148, 163, 184, .35);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .app-loader-inner h3 {
+:where(.fv, .fv-dialog, .fv-shell) .app-loader-inner h3 {
   margin-top: 18px;
   font-size: var(--fs-lg);
   font-weight: 600;
@@ -350,15 +350,15 @@
   font-family: var(--font-head);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .app-loader-inner p {
+:where(.fv, .fv-dialog, .fv-shell) .app-loader-inner p {
   margin-top: 8px;
   font-size: var(--fs-md);
   color: var(--text2);
 }
 
 @media (min-width: 769px) {
-  :is(.fv, .fv-dialog, .fv-shell) table.sticky-actions th:last-child,
-  :is(.fv, .fv-dialog, .fv-shell) table.sticky-actions td:last-child {
+  :where(.fv, .fv-dialog, .fv-shell) table.sticky-actions th:last-child,
+  :where(.fv, .fv-dialog, .fv-shell) table.sticky-actions td:last-child {
     position: sticky;
     right: 0;
     z-index: 1;
@@ -369,7 +369,7 @@
 
 /* from modals.css */
 
-.modal-overlay:is(.fv, .fv-dialog, .fv-shell) {
+.modal-overlay:where(.fv, .fv-dialog, .fv-shell) {
   position: fixed;
   inset: 0;
   background: rgba(22, 36, 94, .42);
@@ -381,15 +381,15 @@
   backdrop-filter: blur(3px);
 }
 
-.modal-overlay:is(.fv, .fv-dialog, .fv-shell).active {
+.modal-overlay:where(.fv, .fv-dialog, .fv-shell).active {
   display: flex;
 }
 
-[data-theme="dark"] .modal-overlay:is(.fv, .fv-dialog, .fv-shell) {
+[data-theme="dark"] .modal-overlay:where(.fv, .fv-dialog, .fv-shell) {
   background: rgba(4, 9, 23, 0.65);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal {
+:where(.fv, .fv-dialog, .fv-shell) .modal {
   background: var(--surface);
   border-radius: 18px;
   width: 100%;
@@ -400,7 +400,7 @@
   border: 1px solid var(--border);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-head {
+:where(.fv, .fv-dialog, .fv-shell) .modal-head {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -408,7 +408,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-head-icon {
+:where(.fv, .fv-dialog, .fv-shell) .modal-head-icon {
   width: 36px;
   height: 36px;
   flex: none;
@@ -421,13 +421,13 @@
   font-size: 16px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-head-text {
+:where(.fv, .fv-dialog, .fv-shell) .modal-head-text {
   flex: 1;
   min-width: 0;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-head-text h2,
-:is(.fv, .fv-dialog, .fv-shell) .modal-head-text h3 {
+:where(.fv, .fv-dialog, .fv-shell) .modal-head-text h2,
+:where(.fv, .fv-dialog, .fv-shell) .modal-head-text h3 {
   margin: 0;
   font-family: var(--font-head);
   font-size: 17px;
@@ -435,13 +435,13 @@
   color: var(--ink-strong, var(--text));
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-head-text p {
+:where(.fv, .fv-dialog, .fv-shell) .modal-head-text p {
   margin: 2px 0 0;
   font-size: 12.5px;
   color: var(--ink-muted, var(--text2));
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-close {
+:where(.fv, .fv-dialog, .fv-shell) .modal-close {
   width: 32px;
   height: 32px;
   min-width: 32px;
@@ -458,17 +458,17 @@
   transition: background 0.15s, color 0.15s;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-close:hover {
+:where(.fv, .fv-dialog, .fv-shell) .modal-close:hover {
   background: var(--surface2);
   color: var(--text);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-body {
+:where(.fv, .fv-dialog, .fv-shell) .modal-body {
   padding: 16px 22px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-foot,
-:is(.fv, .fv-dialog, .fv-shell) .modal-footer {
+:where(.fv, .fv-dialog, .fv-shell) .modal-foot,
+:where(.fv, .fv-dialog, .fv-shell) .modal-footer {
   padding: 12px 22px;
   border-top: 1px solid var(--border);
   background: var(--fv-dialog-foot, #fbfcff);
@@ -479,8 +479,8 @@
   flex-wrap: wrap;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-foot .btn,
-:is(.fv, .fv-dialog, .fv-shell) .modal-footer .btn {
+:where(.fv, .fv-dialog, .fv-shell) .modal-foot .btn,
+:where(.fv, .fv-dialog, .fv-shell) .modal-footer .btn {
   height: 34px;
   padding: 0 16px;
   border-radius: 9px;
@@ -488,7 +488,7 @@
   font-weight: 600;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-section-label {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-section-label {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -500,15 +500,15 @@
   color: var(--ink-strong);
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-section-label i {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-section-label i {
   display: none;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-section-label .line {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-section-label .line {
   display: none;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field label {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field label {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-label);
@@ -517,26 +517,26 @@
   margin-bottom: 5px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field input,
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field select,
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field input,
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field select,
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea {
   width:100%;padding:0 12px;border-radius:9px;
   border:1px solid var(--fv-line);background-color:var(--fv-surface);
   color:var(--ink-strong);font-size:14px;outline:none;font-family:inherit;transition:.15s;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea {
   padding: 8px 12px;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field select {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field select {
   height:36px !important;
 }
 
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field input:focus,
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field select:focus,
-:is(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea:focus {
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field input:focus,
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field select:focus,
+:where(.fv, .fv-dialog, .fv-shell) .modal-v2 .form-field textarea:focus {
   border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash);
 }
 
@@ -567,3 +567,9 @@
 .sidebar.dual-rail.panel-collapsed .collapse-btn svg, .sidebar.dual-rail.collapsed .collapse-btn svg { transform: rotate(180deg); }
 .sidebar.dual-rail:not(.panel-collapsed):not(.collapsed) .collapse-btn.sidebar-collapse-btn { background: transparent; box-shadow: none; border: 0; }
 .sidebar.dual-rail:not(.panel-collapsed):not(.collapsed) .collapse-btn.sidebar-collapse-btn:hover { background: var(--fv-canvas); color: var(--brand-ink); }
+
+/* Phone touch targets for the top bar icon buttons */
+@media (max-width: 768px) {
+  .topbar .icon-btn { width: 44px; height: 44px; }
+  .topbar .account-avatar { width: 40px; height: 40px; }
+}
