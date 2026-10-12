@@ -150,5 +150,79 @@ for (const theme of ['light', 'dark']) {
       // Danger: Confirm
       await checkTile('confirmModal', 'rgb(253, 232, 232)', 'rgb(185, 36, 36)');
     });
+
+    test(`S1.3 Table and card primitives in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+
+      // 1. Employees table
+      await page.evaluate(() => {
+        showSection('a-employees', 'admin');
+        if (typeof renderEmployeesTable === 'function') renderEmployeesTable();
+      });
+      const empTh = page.locator('#a-employees table thead th').first();
+      await expect(empTh).toBeVisible();
+      await expectStyle(empTh, {
+        fontSize: '12px',
+        fontWeight: '600',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+      });
+      const empTd = page.locator('#a-employees table tbody td').first();
+      await expect(empTd).toBeVisible();
+      await expectStyle(empTd, {
+        paddingTop: '9px',
+        paddingBottom: '9px',
+      });
+      const empFoot = page.locator('#a-employees .fv-tablefoot');
+      await expect(empFoot).toBeVisible();
+      await expect(empFoot).toContainText('Showing');
+      await expect(empFoot).toContainText('Page 1 of 1');
+
+      // 2. Requests table
+      await page.evaluate(() => {
+        showSection('a-requests', 'admin');
+        if (typeof renderRequestsTable === 'function') renderRequestsTable();
+      });
+      const reqTh = page.locator('#a-requests table thead th').first();
+      await expect(reqTh).toBeVisible();
+      await expectStyle(reqTh, {
+        fontSize: '12px',
+        fontWeight: '600',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+      });
+      const reqTd = page.locator('#a-requests table tbody td').first();
+      await expect(reqTd).toBeVisible();
+      await expectStyle(reqTd, {
+        paddingTop: '9px',
+        paddingBottom: '9px',
+      });
+      const reqFoot = page.locator('#a-requests .fv-tablefoot');
+      await expect(reqFoot).toBeVisible();
+      await expect(reqFoot).toContainText('Showing');
+
+      // 3. Document hub table
+      await page.evaluate(() => {
+        showSection('a-dochub', 'admin');
+        if (typeof renderCompanyDocumentsAdmin === 'function') renderCompanyDocumentsAdmin();
+      });
+      const docTh = page.locator('#a-dochub table thead th').first();
+      await expect(docTh).toBeVisible();
+      await expectStyle(docTh, {
+        fontSize: '12px',
+        fontWeight: '600',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+      });
+      const docTd = page.locator('#a-dochub table tbody td').first();
+      await expect(docTd).toBeVisible();
+      await expectStyle(docTd, {
+        paddingTop: '9px',
+        paddingBottom: '9px',
+      });
+      const docFoot = page.locator('#a-dochub .fv-tablefoot');
+      await expect(docFoot).toBeVisible();
+      await expect(docFoot).toContainText('Showing');
+    });
   });
 }

@@ -548,12 +548,15 @@
 }
 
 .fv .fv-table thead th.fv-num,
-.fv .fv-table tbody td.fv-num {
+.fv .fv-table tbody td.fv-num,
+.fv .fv-table thead th.cell-money,
+.fv .fv-table tbody td.cell-money {
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .fv .fv-table tbody td {
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--fv-line-row);
   vertical-align: middle;
   color: var(--ink-body);

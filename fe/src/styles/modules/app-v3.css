@@ -70,9 +70,9 @@
   font-size: 12px;
   text-transform: none !important;
   letter-spacing: 0;
-  color: var(--ink-label, #4b5c92);
+  color: var(--ink-label);
   font-weight: 600;
-  padding: 10px 14px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   background: var(--surface);
@@ -88,8 +88,16 @@
   padding-right: 16px;
 }
 
+:where(.fv, .fv-dialog, .fv-shell) thead th.fv-num,
+:where(.fv, .fv-dialog, .fv-shell) tbody td.fv-num,
+:where(.fv, .fv-dialog, .fv-shell) thead th.cell-money,
+:where(.fv, .fv-dialog, .fv-shell) tbody td.cell-money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 :where(.fv, .fv-dialog, .fv-shell) tbody td {
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   vertical-align: middle;

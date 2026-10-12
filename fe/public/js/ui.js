@@ -83,7 +83,7 @@ document.addEventListener('change', (e) => {
 // Table card footer ("Showing 1-N of N ...") shared by the HR list tables.
 function setTableFoot(bodyId, count, noun) {
   const body = document.getElementById(bodyId);
-  const card = body && body.closest('.card');
+  const card = body && body.closest('.card, .fv-table-card');
   if (!card) return;
   let f = card.querySelector(':scope > .fv-tablefoot');
   if (!f) { f = document.createElement('div'); f.className = 'fv-tablefoot'; card.appendChild(f); }

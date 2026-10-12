@@ -161,7 +161,7 @@
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td {
   font-size: 13.5px;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--fv-line-row, var(--border));
   color: var(--ink-body, var(--text));
   vertical-align: middle;
@@ -232,7 +232,7 @@
 #a-employees .filter-tab[data-emp-status] .hv-dot { background: currentColor; }
 #a-employees .filter-tab[data-emp-status]:not([data-emp-status="all"]).active { box-shadow: inset 0 0 0 1.5px currentColor; }
 #a-employees table td { padding: 9px 12px; }
-#a-employees table th { padding: 11px 12px; }
+#a-employees table th { padding: 12px; }
 #a-employees table td.col-id { color: var(--ink-label); font-weight: 600; }
 #a-employees table td.tname { display: table-cell; }
 #a-employees table td.tname .avatar {
