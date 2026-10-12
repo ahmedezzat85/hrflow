@@ -85,7 +85,7 @@ function setTableFoot(bodyId, count, noun) {
   const body = document.getElementById(bodyId);
   const card = body && body.closest('.card, .fv-table-card');
   if (!card) return;
-  let f = card.querySelector(':scope > .fv-tablefoot');
+  let f = card.querySelector(':scope > .fv-tablefoot, :scope > .card-footer.fv-table-foot');
   if (!f) { f = document.createElement('div'); f.className = 'fv-tablefoot'; card.appendChild(f); }
   f.innerHTML = `<span>Showing <b>${count ? '1\u2013' + count : '0'}</b> of <b>${count}</b> ${noun}</span><span>Page 1 of 1</span>`;
 }

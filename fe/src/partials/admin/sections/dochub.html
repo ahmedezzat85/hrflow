@@ -2,8 +2,8 @@
           <div class="hv-toolbar">
             <div role="group" aria-label="Filter by category" class="filter-tab-group fv-pills" id="dochubCategoryFilterGroup"></div>
             <div class="hv-row-8">
-              <div class="search-box hv-w-200"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents..." oninput="renderCompanyDocumentsAdmin(this.value)"></div>
-              <button class="btn btn-fill" onclick="openCompanyDocumentModal()"><i class="fa-solid fa-plus"></i> Add document</button>
+              <div class="search-box hv-w-200"><i class="fa-solid fa-magnifying-glass"></i><input id="dochubSearch" placeholder="Search documents" oninput="renderCompanyDocumentsAdmin(this.value)"></div>
+              <button type="button" class="btn btn-fill" onclick="openCompanyDocumentModal()">Add document</button>
             </div>
           </div>
           <div class="card fv-table-card">
@@ -13,12 +13,13 @@
                   <tr>
                     <th>Document</th>
                     <th>Category</th>
-                    <th>Uploaded</th>
-                    <th class="hv-right">Actions</th>
+                    <th style="color:var(--brand);">Uploaded ↓</th>
+                    <th class="col-actions"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="dochubTableBody"></tbody>
               </table>
             </div>
+            <div class="card-footer fv-table-foot" id="dochubTableFooter"><span id="dochubTableFoot"></span><span class="fv-table-page">Page 1 of 1</span></div>
           </div>
         </section>

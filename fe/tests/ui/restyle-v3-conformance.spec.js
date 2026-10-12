@@ -736,8 +736,48 @@ for (const theme of ['light', 'dark']) {
       await page.evaluate(() => closeModal('behalfClaimModal'));
       await expect(page.locator('#behalfClaimModal')).not.toBeVisible();
     });
+
+    test(`S3.9 Document hub in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-dochub', 'admin'));
+
+      // Toolbar
+      const pills = page.locator('#dochubCategoryFilterGroup .filter-tab');
+      await expect(pills.first()).toBeVisible();
+      await expect(pills.first()).toContainText('All');
+
+      await expect(page.locator('#dochubSearch')).toHaveAttribute('placeholder', 'Search documents');
+      await expect(page.locator('#a-dochub button:has-text("Add document")')).toBeVisible();
+
+      // Table headers
+      const ths = page.locator('#a-dochub table:has(#dochubTableBody) thead th');
+      await expect(ths.nth(0)).toHaveText('Document');
+      await expect(ths.nth(1)).toHaveText('Category');
+      await expect(ths.nth(2)).toContainText('Uploaded');
+
+      // First row
+      const firstRow = page.locator('#dochubTableBody tr').first();
+      await expect(firstRow).toBeVisible();
+      await expect(firstRow.locator('.doc-name-cell .doc-name-text')).toBeVisible();
+      await expect(firstRow.locator('.hv-catdot')).toBeVisible();
+      await expect(firstRow.locator('button:has-text("Preview")')).toBeVisible();
+
+      // Footer
+      const foot = page.locator('#dochubTableFooter');
+      await expect(foot).toContainText('Showing');
+      await expect(foot).toContainText('Page 1 of 1');
+
+      // Modal
+      await page.evaluate(() => openCompanyDocumentModal());
+      await expect(page.locator('#companyDocumentModal')).toBeVisible();
+      await expect(page.locator('#companyDocumentModalTitle')).toHaveText('Add company document');
+      await expect(page.locator('#dochubUploadBtn')).toHaveText('Publish document');
+      await page.evaluate(() => closeModal('companyDocumentModal'));
+      await expect(page.locator('#companyDocumentModal')).not.toBeVisible();
+    });
   });
 }
+
 
 
 
