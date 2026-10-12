@@ -283,14 +283,14 @@
 #a-requests .hv-tab.active .hv-count { background: var(--brand-tint); color: var(--brand-ink); }
 #a-requests tr.hv-row-pending { background: color-mix(in srgb, var(--warning-soft) 45%, transparent); }
 /* request type: dot + label instead of a coloured chip */
-#a-requests td[data-label="Type"] .badge-pill {
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill {
   background: none; padding: 0; border: 0; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink-strong); box-shadow: none;
 }
-#a-requests td[data-label="Type"] .badge-pill i { display: none; }
-#a-requests td[data-label="Type"] .badge-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--id-blue); }
-#a-requests td[data-label="Type"] .badge-pill.pill-info::before { background: var(--id-teal); }
-#a-requests td[data-label="Type"] .badge-pill.pill-warning::before { background: var(--id-sky); }
-#a-requests td[data-label="Type"] .badge-pill.pill-success::before { background: var(--id-green); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill i { display: none; }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--id-blue); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill.pill-info::before { background: var(--id-teal); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill.pill-warning::before { background: var(--id-sky); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill.pill-success::before { background: var(--id-green); }
 #a-requests .request-details-title { font-size: 14px; font-weight: 400; color: var(--ink-faint); }
 #a-requests td[data-label="Date"] > div { font-size: 14px; color: var(--ink-strong); }
 #a-requests td[data-label="Date"] i { display: none; }
@@ -330,6 +330,16 @@
 #a-dashboard .card-head h3, #a-dashboard .card > h3, #a-dashboard .card h3 { font-size: 15px; font-weight: 700; color: var(--ink-strong); }
 #a-dashboard td .btn { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
 #a-dashboard td .btn i { display: none; }
+#a-dashboard #upcomingRaisesList { list-style: none; padding: 0; margin: 0; }
+#a-dashboard #upcomingRaisesList .hv-raise-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+#a-dashboard #upcomingRaisesList .hv-raise-item:last-child { border-bottom: none; }
+#a-dashboard #upcomingRaisesList .avatar { width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--brand-tint, var(--surface-2)); color: var(--brand); }
+#a-dashboard #upcomingRaisesList .txt { flex: 1; }
+#a-dashboard #upcomingRaisesList .txt strong { display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px; }
+#a-dashboard #upcomingRaisesList .txt p { margin: 0; font-size: 12px; color: var(--ink-muted); }
+#a-dashboard #upcomingRaisesList .hv-raise-meta { text-align: right; }
+#a-dashboard #upcomingRaisesList .hv-raise-date { display: block; font-weight: 600; color: var(--ink-strong); font-size: 13px; }
+#a-dashboard #upcomingRaisesList .hv-raise-rel { font-size: 12px; font-weight: 600; color: var(--warning-text, var(--warning)); }
 #a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
 
 /* Vacations: balance cells are rendered by vacations.js with inline tone colours; the mock uses plain ink and bold remaining */

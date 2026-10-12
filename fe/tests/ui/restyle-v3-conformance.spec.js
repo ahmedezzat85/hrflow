@@ -455,6 +455,32 @@ for (const theme of ['light', 'dark']) {
       const empSub = page.locator('#empNavPanelSub');
       await expect(empSub).toHaveText(/Sarah Connor · Engineering/);
     });
+
+    test(`S3.1 HR dashboard in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-dashboard', 'admin'));
+
+      // 4 stat cards in hero-banner
+      const heroStats = page.locator('#a-dashboard .hero-stats .hero-card');
+      await expect(heroStats).toHaveCount(4);
+
+      // Card titles & links
+      await expect(page.locator('#a-dashboard .card:has(#upcomingRaisesList) h3')).toHaveText('Upcoming raises');
+      await expect(page.locator('#a-dashboard .card:has(#dashPendingBody) h3')).toHaveText('Waiting for a decision');
+
+      // Table headers in Waiting for a decision
+      const headers = page.locator('#a-dashboard .card:has(#dashPendingBody) th');
+      await expect(headers.nth(0)).toHaveText('Employee');
+      await expect(headers.nth(1)).toHaveText('Request');
+      await expect(headers.nth(2)).toHaveText('Dates');
+      await expect(headers.nth(3)).toHaveText('Actions');
+
+      // Check Review button in Waiting for a decision
+      const firstRowBtn = page.locator('#dashPendingBody tr:first-child .btn');
+      if (await firstRowBtn.count() > 0) {
+        await expect(firstRowBtn).toHaveText('Review');
+      }
+    });
   });
 }
 

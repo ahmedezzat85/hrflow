@@ -115,14 +115,24 @@ function renderAdminPortal() {
       .filter(e => e.nextRaise && e.nextRaise !== '—' && !isNaN(new Date(e.nextRaise).getTime()))
       .sort((a, b) => new Date(a.nextRaise) - new Date(b.nextRaise))
       .slice(0, 5);
-    raisesList.innerHTML = upcoming.length ? upcoming.map(e => `
-      <li>
-        <div class="ic" style="background:var(--accent-soft);color:var(--accent-text);"><i class="fa-solid fa-arrow-trend-up"></i></div>
-        <div class="txt">
+    raisesList.innerHTML = upcoming.length ? upcoming.map(e => {
+      const target = new Date(e.nextRaise);
+      const diffMs = target.getTime() - Date.now();
+      const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+      const relStr = diffDays === 0 ? 'today' : `in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+      return `
+      <li class="hv-raise-item">
+        <span class="avatar">${initials(e.name)}</span>
+        <span class="txt">
           <strong>${escapeHtml(e.name)}</strong>
-          <p>${e.role || 'Employee'} • Raise due ${fmtDateShort(e.nextRaise)}</p>
-        </div>
-      </li>`).join('') : `<li><div class="txt" style="color:var(--text2);font-size:13px;padding:8px 0;">No upcoming raises scheduled.</div></li>`;
+          <p>${escapeHtml(e.role || 'Employee')}</p>
+        </span>
+        <span class="hv-raise-meta">
+          <span class="hv-raise-date">${fmtDateShort(e.nextRaise)}</span>
+          <span class="hv-raise-rel">${relStr}</span>
+        </span>
+      </li>`;
+    }).join('') : `<li><div class="txt" style="color:var(--ink-muted);font-size:13px;padding:8px 0;">No upcoming raises scheduled.</div></li>`;
   }
 
   // 6. Pending Requests Queue Preview Table
@@ -132,24 +142,24 @@ function renderAdminPortal() {
     dashBody.innerHTML = pendingList.length ? pendingList.map(r => `
       <tr>
         <td data-label="Employee" class="tname">
-          <div class="avatar">${initials(r.employee_name)}</div>
-          <div>
-            <div style="font-weight:600;color:var(--text);">${escapeHtml(r.employee_name)}</div>
+          <span class="avatar">${initials(r.employee_name)}</span>
+          <span>
+            <strong style="font-weight:600;color:var(--ink-strong);">${escapeHtml(r.employee_name)}</strong>
+          </span>
+        </td>
+        <td data-label="Request">${typeof getRequestTypeBadge === 'function' ? getRequestTypeBadge(r.type) : r.type}</td>
+        <td data-label="Dates">
+          <div style="font-size:12.5px;color:var(--ink-strong);font-weight:500;">
+            ${escapeHtml(r.dates || r.date || '—')}
+            ${r.days ? `<div style="font-size:12px;color:var(--ink-muted);font-weight:400;">${r.days} day${r.days === 1 ? '' : 's'}</div>` : ''}
           </div>
         </td>
-        <td data-label="Type">${typeof getRequestTypeBadge === 'function' ? getRequestTypeBadge(r.type) : r.type}</td>
-        <td data-label="Date">
-          <div style="font-size:12.5px;color:var(--text2);display:inline-flex;align-items:center;gap:6px;">
-            <i class="fa-regular fa-calendar" style="color:var(--text3);"></i> ${r.date || '—'}
-          </div>
-        </td>
-        <td data-label="Status">${statusPill(r.status)}</td>
-        <td data-label="Actions" class="col-actions">
-          <button class="btn btn-sm btn-outline" onclick="showSection('a-requests','admin')" title="Review in Pending Requests Queue">
-            Review <i class="fa-solid fa-arrow-right"></i>
+        <td data-label="Actions" class="col-actions hv-right">
+          <button class="btn btn-sm btn-primary" onclick="showSection('a-requests','admin')" title="Review in Pending Requests Queue">
+            Review
           </button>
         </td>
-      </tr>`).join('') : renderEmptyTableRow(5, 'No pending requests awaiting approval.', 'fa-solid fa-inbox');
+      </tr>`).join('') : renderEmptyTableRow(4, 'No pending requests awaiting approval.', 'fa-solid fa-inbox');
   }
 
   renderEmployeesTable();
