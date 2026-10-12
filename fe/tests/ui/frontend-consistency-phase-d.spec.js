@@ -11,8 +11,8 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
     const exportBtn = page.locator('#adminExportBtn');
     await expect(exportBtn).toHaveAttribute('aria-label', 'Export Data');
 
-    const searchBtn = page.locator('#adminSearchBtn');
-    await expect(searchBtn).toHaveAttribute('aria-label', 'Search across workspace (Ctrl+K)');
+    // Top-bar search button is removed in restyle v3 (D9; entry via sidebar or Ctrl+K)
+    await expect(page.locator('#adminSearchBtn')).toHaveCount(0);
 
     // Legacy bell id stays absent; the bell is #adminNotifBtn (placeholder popover)
     await expect(page.locator('#adminNotificationBtn')).toHaveCount(0);
@@ -29,8 +29,8 @@ test.describe('Frontend Consistency — Phase D Verification (Accessibility & At
     const hamburger = page.locator('#employee-app .topbar .hamburger');
     await expect(hamburger).toHaveAttribute('aria-label', 'Toggle navigation menu');
 
-    const searchBtn = page.locator('#empSearchBtn');
-    await expect(searchBtn).toHaveAttribute('aria-label', 'Search across workspace (Ctrl+K)');
+    // Top-bar search button is removed in restyle v3 (D9; entry via sidebar or Ctrl+K)
+    await expect(page.locator('#empSearchBtn')).toHaveCount(0);
 
     await expect(page.locator('#empNotificationBtn')).toHaveCount(0);
 

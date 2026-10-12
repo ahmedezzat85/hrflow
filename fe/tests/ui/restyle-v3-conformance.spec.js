@@ -341,6 +341,80 @@ for (const theme of ['light', 'dark']) {
       await expect(page.locator('#adminSidebar')).not.toHaveClass(/panel-collapsed/);
       await expect(page.locator('#adminSidebarCollapseBtn')).toContainText('Collapse');
     });
+
+    test(`S2.3 Top bar and titles in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      const topbar = page.locator('#admin-app .topbar');
+      await expect(topbar).toBeVisible();
+      await expectStyle(topbar, {
+        height: '52px',
+      });
+
+      // Right side buttons: export and bell are 30px square outlined buttons
+      const exportBtn = page.locator('#adminExportBtn');
+      await expect(exportBtn).toBeVisible();
+      await expectStyle(exportBtn, {
+        width: '30px',
+        height: '30px',
+        borderRadius: '8px',
+      });
+
+      const notifBtn = page.locator('#adminNotifBtn');
+      await expect(notifBtn).toBeVisible();
+      await expectStyle(notifBtn, {
+        width: '30px',
+        height: '30px',
+        borderRadius: '8px',
+      });
+
+      // Search button is REMOVED in topbar (D9)
+      await expect(page.locator('#adminSearchBtn')).toHaveCount(0);
+
+      // Account menu avatar is visible
+      const accountBtn = page.locator('#adminAccountBtn');
+      await expect(accountBtn).toBeVisible();
+
+      // Page title block: 30px tinted tile, title 16px/700, sub text
+      await page.evaluate(() => showSection('a-dashboard', 'admin'));
+      const tile = page.locator('#adminAreaTile');
+      await expect(tile).toBeVisible();
+      await expectStyle(tile, {
+        width: '30px',
+        height: '30px',
+        borderRadius: '9px',
+      });
+
+      const title = page.locator('#adminPageTitle');
+      await expectStyle(title, {
+        fontSize: '16px',
+        fontWeight: '700',
+      });
+
+      // Test sentence-case titles on several pages
+      await expect(title).toHaveText('HR dashboard');
+
+      await page.evaluate(() => showSection('a-requests', 'admin'));
+      await expect(title).toHaveText('Pending requests');
+
+      await page.evaluate(() => showSection('a-salary', 'admin'));
+      await expect(title).toHaveText('Salary and raises');
+
+      await page.evaluate(() => showSection('a-invoices', 'admin'));
+      await expect(title).toHaveText('Salary payment docs');
+
+      await page.evaluate(() => showSection('a-dochub', 'admin'));
+      await expect(title).toHaveText('Document hub');
+
+      await page.evaluate(() => showSection('a-finance-payroll-runs', 'admin'));
+      await expect(title).toHaveText('Payroll runs');
+
+      // Test employee breadcrumb
+      await page.evaluate(() => {
+        if (typeof viewProfile === 'function') viewProfile('1');
+        else showSection('a-employee-detail', 'admin', ['1']);
+      });
+      await expect(title).toContainText('Employees / ');
+    });
   });
 }
 

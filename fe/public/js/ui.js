@@ -217,22 +217,22 @@ document.addEventListener('click', (e) => {
 });
 document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
 const titles = {
-  'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
+  'a-dashboard':['HR dashboard',"Welcome back, here's what's happening today."],
   'a-employees':['Employees',"Manage employee profiles and information."],
-  'a-employee-detail':['Employee Profile',"View and manage employee profile and records."],
-  'a-requests':['Pending Requests',"Review and action employee requests."],
-  'a-salary':['Salary & Raises',"Review compensation and raise history."],
-  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary payment docs."],
+  'a-employee-detail':['Employees / Profile',"View and manage employee profile and records."],
+  'a-requests':['Pending requests',"Review and action employee requests."],
+  'a-salary':['Salary and raises',"Review compensation and raise history."],
+  'a-invoices':['Salary payment docs',"Generate and manage external-salary payment docs."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
-  'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
-  'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
+  'a-insurance':['Medical insurance',"Manage claims, categories and coverage limits."],
+  'a-dochub':['Document hub',"Manage company-wide documents and policies."],
   'a-finance-dashboard':['Finance Overview','Executive summary of cash flow, revenue, and operating expenses.'],
   'a-finance-sales':['Sales & Receivables','Manage customer invoices, receivables, and customer accounts.'],
   'a-finance-spend':['Spend & Payables','Track vendor bills, payments, and recurring subscriptions.'],
   'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
-  'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
-  'a-finance-payroll-runs':['Payroll Runs','Review and execute company payroll cycles.'],
-  'a-finance-payroll-settings':['Payroll Settings','Configure payroll company bank accounts and cycle defaults.'],
+  'a-finance-payroll':['Payroll runs','Review and execute company payroll cycles.'],
+  'a-finance-payroll-runs':['Payroll runs','Review and execute company payroll cycles.'],
+  'a-finance-payroll-settings':['Payroll settings','Configure payroll company bank accounts and cycle defaults.'],
   'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
@@ -243,8 +243,8 @@ const titles = {
   'a-finance-statements':['Statements & Reconciliation','Import bank statements and reconcile operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
   'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
-  'a-system-roles':['Roles & Permissions','Manage system roles, descriptions, and fine-grained permission assignments.'],
-  'a-system-users':['User Accounts & Access','Manage user identity, assigned RBAC roles, and account access status.'],
+  'a-system-roles':['Roles and permissions','Manage system roles, descriptions, and fine-grained permission assignments.'],
+  'a-system-users':['User accounts','Manage user identity, assigned RBAC roles, and account access status.'],
   'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
   'e-salary':['Salary & Raises','Your compensation history and growth.'],
   'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],
@@ -302,7 +302,13 @@ function showSection(pageId, portal, params){
 
   const t = titles[pageId] || titles[targetSectionId];
   if(t){
-    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
+    let pageTitleText = t[0];
+    if (pageId === 'a-employee-detail') {
+      const empId = (params && params[0]) || (typeof currentDetailEmployeeId !== 'undefined' ? currentDetailEmployeeId : null);
+      const e = empId && typeof employees !== 'undefined' ? employees.find(x => String(x.id) === String(empId)) : null;
+      if (e && e.name) pageTitleText = 'Employees / ' + e.name;
+    }
+    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent = pageTitleText;
   }
   if (typeof applyFinanceAreaChrome === 'function') applyFinanceAreaChrome(pageId, portal);
   // An error toast belongs to the page that raised it: drop it when the user moves to another page.

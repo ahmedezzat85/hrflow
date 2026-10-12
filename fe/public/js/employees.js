@@ -247,6 +247,8 @@ async function viewProfile(id, section) {
   loadPayrollPaymentsCard(id);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
+  const titleEl = document.getElementById('adminPageTitle');
+  if (titleEl && e.name) titleEl.textContent = `Employees / ${e.name}`;
   if (section === 'bank' || section === 'social' || section === 'compensation') {
     const targetId = { bank: 'bankAccountCard', social: 'socialInsuranceCard', compensation: 'employeeCompensationCard' }[section];
     setTimeout(() => { const card = document.getElementById(targetId); if (card) card.scrollIntoView({ block: 'center' }); }, 200);
