@@ -525,6 +525,28 @@ for (const theme of ['light', 'dark']) {
       await expect(page.locator('#a-employee-detail .card:has(#detailClaimsBody) h3')).toHaveText(/Insurance claims/);
       await expect(page.locator('#detailMetaCard h3')).toHaveText('Details');
     });
+
+    test(`S3.4 Requests tabs & pills in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-requests', 'admin'));
+
+      // Tab bar tabs
+      const tabs = page.locator('#a-requests .filter-tab.hv-tab');
+      await expect(tabs).toHaveCount(4);
+      await expect(tabs.first()).toHaveClass(/active/);
+
+      // Status pills
+      const pills = page.locator('#requestStatusPills .hv-sp');
+      await expect(pills).toHaveCount(4);
+      await expect(pills.first()).toHaveClass(/active/);
+
+      // Pending row action buttons
+      const pendingRow = page.locator('#requestsTableBody tr.hv-row-pending').first();
+      if (await pendingRow.count() > 0) {
+        await expect(pendingRow.locator('.btn-success-outline')).toHaveText(/Approve/);
+        await expect(pendingRow.locator('.btn-danger-outline')).toBeVisible();
+      }
+    });
   });
 }
 

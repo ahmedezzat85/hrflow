@@ -281,6 +281,7 @@
    ===================================================================== */
 #a-requests .hv-tab .hv-count { background: var(--fv-canvas); color: var(--ink-label); font-weight: 600; padding: 0 7px; }
 #a-requests .hv-tab.active .hv-count { background: var(--brand-tint); color: var(--brand-ink); }
+#a-requests .hv-tab i { display: none; }
 #a-requests tr.hv-row-pending { background: color-mix(in srgb, var(--warning-soft) 45%, transparent); }
 /* request type: dot + label instead of a coloured chip */
 :is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill {
