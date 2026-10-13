@@ -374,7 +374,7 @@
 }
 #a-dashboard .card:has(#upcomingRaisesList) .card-head,
 #a-dashboard .card:has(#dashPendingBody) .card-head {
-  padding: 14px 16px;
+  padding: 14px 22px;
   margin: 0;
   border-bottom: 1px solid var(--fv-line, var(--border));
 }
@@ -395,8 +395,8 @@
 #a-dashboard #upcomingRaisesList .hv-raise-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 11px 22px;
   border-bottom: 1px solid var(--fv-line-row, var(--border));
 }
 #a-dashboard #upcomingRaisesList .hv-raise-item:last-child {
@@ -502,23 +502,30 @@
   border-collapse: collapse;
   margin: 0;
 }
+#a-dashboard table thead tr {
+  height: 44px;
+}
 #a-dashboard table thead th {
-  padding: 10px 12px;
+  padding: 13px 14px;
+  height: 44px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--ink-label);
   border-bottom: 1px solid var(--fv-line, var(--border));
+  background: var(--surface);
+  box-sizing: border-box;
 }
 #a-dashboard table thead th:first-child,
 #a-dashboard table tbody td:first-child {
-  padding-left: 16px;
+  padding-left: 22px;
 }
 #a-dashboard table thead th:last-child,
 #a-dashboard table tbody td:last-child {
-  padding-right: 16px;
+  padding-right: 22px;
 }
 #a-dashboard table tbody td {
-  padding: 9px 12px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--fv-line-row, var(--border));
   vertical-align: middle;
 }
