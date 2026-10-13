@@ -209,7 +209,7 @@
           if (savedCfg.internalId && this.banks.some(b => String(b.id) === String(savedCfg.internalId))) {
             this.selectedInternalAccountId = savedCfg.internalId;
           } else {
-            const firstInt = this.banks.find(b => (b.name.toLowerCase().includes('cash') || b.id !== this.selectedExternalAccountId) && (b.currency || '').toUpperCase() === 'USD') || this.banks[1] || this.banks[0];
+            const firstInt = this.banks.find(b => b.name.toLowerCase().includes('cash') || (b.currency || '').toUpperCase() === 'EGP') || this.banks[1] || this.banks[0];
             this.selectedInternalAccountId = firstInt ? firstInt.id : null;
           }
         } else if (!isMockMode) {
