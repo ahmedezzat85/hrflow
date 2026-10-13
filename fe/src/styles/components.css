@@ -495,28 +495,33 @@ button:disabled,
 
 .search-box {
   position: relative;
+  display: inline-flex;
+  align-items: center;
   flex: 1;
   max-width: 340px;
 }
 
-.search-box i {
+.search-box i,
+.search-box svg {
   position: absolute;
-  left: 13px;
+  left: 11px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text3);
   font-size: var(--fs-md);
+  pointer-events: none;
 }
 
 .search-box input {
   width: 100%;
-  padding: 10px 12px 10px 36px;
+  padding: 10px 12px 10px 34px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
   font-size: var(--fs-base);
   color: var(--text);
   outline: none;
+  box-sizing: border-box;
 }
 
 .search-box input:focus {
