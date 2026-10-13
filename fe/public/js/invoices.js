@@ -139,10 +139,22 @@ function setInvoiceEligibilityFilter(filterKey){
   const generatedBtn = document.getElementById('invFilterGeneratedBtn');
   const skippedBtn = document.getElementById('invFilterSkippedBtn');
   const allBtn = document.getElementById('invFilterAllBtn');
-  if(allBtn) allBtn.classList.toggle('active', filterKey === 'all');
-  if(eligibleBtn) eligibleBtn.classList.toggle('active', filterKey === 'eligible');
-  if(generatedBtn) generatedBtn.classList.toggle('active', filterKey === 'generated');
-  if(skippedBtn) skippedBtn.classList.toggle('active', filterKey === 'skipped');
+  if(allBtn) {
+    allBtn.classList.toggle('active', filterKey === 'all');
+    allBtn.setAttribute('aria-pressed', filterKey === 'all' ? 'true' : 'false');
+  }
+  if(eligibleBtn) {
+    eligibleBtn.classList.toggle('active', filterKey === 'eligible');
+    eligibleBtn.setAttribute('aria-pressed', filterKey === 'eligible' ? 'true' : 'false');
+  }
+  if(generatedBtn) {
+    generatedBtn.classList.toggle('active', filterKey === 'generated');
+    generatedBtn.setAttribute('aria-pressed', filterKey === 'generated' ? 'true' : 'false');
+  }
+  if(skippedBtn) {
+    skippedBtn.classList.toggle('active', filterKey === 'skipped');
+    skippedBtn.setAttribute('aria-pressed', filterKey === 'skipped' ? 'true' : 'false');
+  }
 
   const { year, month } = _getInvoicePeriodInputs();
   renderInvoicePreviewResults(_invoiceEligiblePreview, year, month);
@@ -247,7 +259,7 @@ function renderInvoicePreviewResults(results, year, month){
 
     if (r.status === 'eligible') {
       statusPill = '<span class="badge-pill pill-primary"><span class="hv-dot hv-dot--info"></span>Ready</span>';
-      actionBtn = `<button type="button" class="btn btn-primary btn-xs" onclick="generateSingleInvoice(${r.employee_id})">Generate</button>`;
+      actionBtn = `<button type="button" class="btn btn-fill btn-xs" onclick="generateSingleInvoice(${r.employee_id})">Generate</button>`;
     } else if (r.status === 'already_exists' || r.status === 'generated') {
       const subLine = r.invoice_number ? `<div class="hv-sub-line">${escapeHtml(r.invoice_number)}</div>` : '';
       statusPill = `<span class="badge-pill pill-success"><span class="hv-dot hv-dot--success"></span>Generated</span>${subLine}`;

@@ -320,11 +320,189 @@
    ===================================================================== */
 #a-dochub .filter-tab:not(.active) { background: var(--fv-surface); border: 1px solid var(--fv-outline); color: var(--ink-label); }
 #a-dochub .filter-tab.active { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
-#a-invoices .btn-filter-pill {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid transparent;
-  background: var(--fv-canvas); color: var(--ink-label); font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: none;
+/* Salary payment docs filter pills per mock HR-SalaryDocs */
+#a-invoices .invoice-filter-group {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
-#a-invoices .btn-filter-pill.active { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+
+#a-invoices .invoice-filter-group .filter-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 28px !important;
+  padding: 0 11px !important;
+  border-radius: 999px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+#a-invoices .invoice-filter-group .filter-tab .hv-count {
+  margin-left: 0 !important;
+  padding: 0 6px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+  opacity: 0.75 !important;
+}
+
+/* Inactive states with soft tints matching HR-SalaryDocs */
+#a-invoices #invFilterAllBtn {
+  background: var(--fv-canvas) !important;
+  color: var(--ink-label) !important;
+}
+
+#a-invoices #invFilterEligibleBtn {
+  background: var(--accent-soft) !important;
+  color: var(--accent-text) !important;
+}
+
+#a-invoices #invFilterGeneratedBtn {
+  background: var(--success-soft) !important;
+  color: var(--success) !important;
+}
+
+#a-invoices #invFilterSkippedBtn {
+  background: var(--fv-canvas) !important;
+  color: var(--ink-label) !important;
+}
+
+/* Active states */
+#a-invoices #invFilterAllBtn.active {
+  background: var(--brand, var(--accent)) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--brand, var(--accent)) !important;
+}
+
+#a-invoices #invFilterEligibleBtn.active {
+  background: var(--brand, var(--accent)) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--brand, var(--accent)) !important;
+}
+
+#a-invoices #invFilterGeneratedBtn.active {
+  background: var(--success) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--success) !important;
+}
+
+#a-invoices #invFilterSkippedBtn.active {
+  background: var(--ink-strong) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--ink-strong) !important;
+}
+
+/* Active count badge styling */
+#a-invoices .invoice-filter-group .filter-tab.active .hv-count {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+/* Salary payment docs table header height, padding and column alignments */
+#a-invoices table thead th {
+  padding: 11px 12px !important;
+  padding-top: 11px !important;
+  padding-bottom: 11px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--ink-label) !important;
+  border-bottom: 1px solid var(--fv-line-strong) !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box;
+}
+
+#a-invoices table thead th:first-child,
+#a-invoices table tbody td:first-child {
+  padding-left: 16px !important;
+}
+
+#a-invoices table thead th:last-child,
+#a-invoices table tbody td:last-child {
+  padding-right: 16px !important;
+}
+
+#invoiceResultsTable th:nth-child(1),
+#invoiceResultsTable td:nth-child(1) {
+  text-align: left;
+  width: 28%;
+}
+
+#invoiceResultsTable th:nth-child(2),
+#invoiceResultsTable td:nth-child(2) {
+  text-align: left;
+  width: 18%;
+}
+
+#invoiceResultsTable th:nth-child(3),
+#invoiceResultsTable td:nth-child(3),
+#a-invoices table thead th.hv-right,
+#a-invoices table tbody td.hv-right {
+  text-align: right !important;
+  width: 18%;
+}
+
+#invoiceResultsTable th:nth-child(4),
+#invoiceResultsTable td:nth-child(4) {
+  text-align: left;
+  width: 24%;
+}
+
+#invoiceResultsTable th:nth-child(5),
+#invoiceResultsTable td:nth-child(5) {
+  text-align: right !important;
+  width: 12%;
+  white-space: nowrap;
+}
+
+/* Action button styling in Salary payment docs */
+#a-invoices table td .btn,
+#a-invoices .btn-xs {
+  height: 28px !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#a-invoices table td .btn-fill {
+  background: var(--brand, var(--accent)) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border: 1px solid var(--brand, var(--accent)) !important;
+  padding: 0 13px !important;
+}
+
+#a-invoices table td .btn-fill:hover {
+  background: var(--accent2, var(--brand)) !important;
+  border-color: var(--accent2, var(--brand)) !important;
+}
+
+#a-invoices table td .btn-outline,
+#a-invoices .btn-outline.btn-xs {
+  background: var(--surface) !important;
+  border: 1px solid var(--fv-outline) !important;
+  color: var(--brand-ink, var(--accent-text)) !important;
+  padding: 0 11px !important;
+}
+
+#a-invoices table td .btn-outline:hover,
+#a-invoices .btn-outline.btn-xs:hover {
+  background: var(--brand-wash, var(--accent-soft)) !important;
+  border-color: var(--fv-outline) !important;
+}
 
 /* Dashboard tiles and insurance details */
 #a-dashboard .hero-card:not(.hero-card-accent) .hero-card-label { color: var(--ink-label); }

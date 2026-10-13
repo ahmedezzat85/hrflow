@@ -20,22 +20,22 @@
           <div class="card fv-table-card hv-mb-14">
             <div class="card-head hv-card-head hv-wrap">
               <h3 class="hv-card-title" id="invoiceResultsTitle">Who gets a doc</h3>
-              <div role="group" aria-label="Filter" class="hv-row-8 invoice-filter-group" id="invoiceStatusFilterGroup">
-                <button type="button" class="filter-tab fv-pill active" id="invFilterAllBtn" onclick="setInvoiceEligibilityFilter('all')">All <span class="hv-count" id="invCountAll">0</span></button>
-                <button type="button" class="filter-tab fv-pill" id="invFilterEligibleBtn" onclick="setInvoiceEligibilityFilter('eligible')">Ready <span class="hv-count" id="invCountReady">0</span></button>
-                <button type="button" class="filter-tab fv-pill" id="invFilterGeneratedBtn" onclick="setInvoiceEligibilityFilter('generated')">Generated <span class="hv-count" id="invCountGenerated">0</span></button>
-                <button type="button" class="filter-tab fv-pill" id="invFilterSkippedBtn" onclick="setInvoiceEligibilityFilter('skipped')">Skipped <span class="hv-count" id="invCountSkipped">0</span></button>
+              <div role="group" aria-label="Filter" class="invoice-filter-group" id="invoiceStatusFilterGroup">
+                <button type="button" class="filter-tab fv-pill active" id="invFilterAllBtn" aria-pressed="true" onclick="setInvoiceEligibilityFilter('all')">All <span class="hv-count" id="invCountAll">0</span></button>
+                <button type="button" class="filter-tab fv-pill" id="invFilterEligibleBtn" aria-pressed="false" onclick="setInvoiceEligibilityFilter('eligible')">Ready <span class="hv-count" id="invCountReady">0</span></button>
+                <button type="button" class="filter-tab fv-pill" id="invFilterGeneratedBtn" aria-pressed="false" onclick="setInvoiceEligibilityFilter('generated')">Generated <span class="hv-count" id="invCountGenerated">0</span></button>
+                <button type="button" class="filter-tab fv-pill" id="invFilterSkippedBtn" aria-pressed="false" onclick="setInvoiceEligibilityFilter('skipped')">Skipped <span class="hv-count" id="invCountSkipped">0</span></button>
               </div>
             </div>
             <div class="fv-table-scroll">
-              <table class="responsive-card-table fv-table">
+              <table class="responsive-card-table fv-table" id="invoiceResultsTable">
                 <thead>
                   <tr>
                     <th>Employee</th>
                     <th>Payment doc ID</th>
                     <th class="hv-right">External USD</th>
                     <th>Status</th>
-                    <th class="hv-right"></th>
+                    <th class="hv-right"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="invoiceResultsBody"></tbody>

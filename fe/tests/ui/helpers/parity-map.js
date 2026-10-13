@@ -389,9 +389,11 @@ export const PARITY_MAP = {
       mockFile: 'HR-SalaryDocs.html',
       appRoute: '/?mock=admin',
       setup: async (page) => {
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
           if (typeof showSection === 'function') showSection('a-invoices', 'admin');
+          if (typeof previewInvoiceEligibility === 'function') await previewInvoiceEligibility();
         });
+        await page.waitForSelector('#invoiceResultsBody tr', { state: 'attached', timeout: 5000 }).catch(() => {});
       },
       pairs: [
         {
@@ -399,6 +401,18 @@ export const PARITY_MAP = {
           mockSelector: 'table',
           appSelector: '#a-invoices table',
           props: ['borderRadius']
+        },
+        {
+          name: 'filter pill all',
+          mockSelector: 'div[role="group"] button:first-child',
+          appSelector: '#invFilterAllBtn',
+          props: ['height', 'borderRadius', 'fontWeight']
+        },
+        {
+          name: 'generate action button',
+          mockSelector: 'table tbody tr:first-child td:last-child a',
+          appSelector: '#invoiceResultsBody tr:first-child td:last-child .btn',
+          props: ['height', 'borderRadius', 'fontWeight']
         }
       ]
     }
