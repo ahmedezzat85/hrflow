@@ -330,7 +330,10 @@
 #a-insurance .empty-state { width: 100%; }
 
 /* ==================== Dashboard V3 Scoped Alignment & Spacing ==================== */
-#a-dashboard {
+#a-dashboard:not(.active) {
+  display: none !important;
+}
+#a-dashboard.active {
   display: flex;
   flex-direction: column;
   gap: 14px;
