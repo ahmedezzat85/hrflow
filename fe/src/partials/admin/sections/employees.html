@@ -7,9 +7,12 @@
               <button type="button" class="filter-tab fv-pill" data-emp-status="Inactive" onclick="filterEmployeesByStatus('Inactive')"><span class="hv-dot hv-dot--muted"></span>Inactive <span class="hv-count-fade hv-count-fade--sm" id="empCountInactive"></span></button>
             </div>
             <div class="hv-row-8">
-              <div class="search-box hv-w-230"><i class="fa-solid fa-magnifying-glass"></i><input id="empSearch" placeholder="Search employees..."></div>
-              <button class="btn btn-outline" id="employeesExportBtn" onclick="openExportModal('employees')" title="Export employee records"><i class="fa-solid fa-file-export"></i> Export</button>
-              <button class="btn btn-fill" id="btnAddEmployee" onclick="openEmployeeModal()"><i class="fa-solid fa-plus"></i> Add employee</button>
+              <div class="search-box hv-w-230">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                <input id="empSearch" placeholder="Search employees">
+              </div>
+              <button class="btn btn-outline" id="employeesExportBtn" onclick="openExportModal('employees')" title="Export employee records">Export</button>
+              <button class="btn btn-fill" id="btnAddEmployee" onclick="openEmployeeModal()">Add employee</button>
             </div>
           </div>
           <div class="card fv-table-card">
@@ -18,13 +21,13 @@
               <table class="responsive-card-table fv-table">
                 <thead>
                   <tr>
-                    <th>Employee</th>
+                    <th class="hv-th-active">Employee ↑</th>
                     <th>Role</th>
                     <th>Employment</th>
                     <th style="display:none;">Salary</th>
                     <th>Next raise</th>
                     <th>Status</th>
-                    <th class="hv-right">Actions</th>
+                    <th class="hv-right"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="employeesTableBody"></tbody>

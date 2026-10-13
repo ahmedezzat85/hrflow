@@ -8,38 +8,45 @@
               <div class="hero-card hero-card-accent" onclick="showSection('a-employees','admin')">
                 <span class="hero-card-label">Active headcount</span>
                 <b id="statEmployees">—</b>
-                <div class="hero-card-foot"><span>Staff members</span> <span class="hero-card-link">Employees ›</span></div>
+                <div class="hero-card-foot"><span id="statEmployeesSub">Staff members</span> <span class="hero-card-link">Employees ›</span></div>
               </div>
               <div class="hero-card" onclick="showSection('a-requests','admin')">
                 <div class="hero-card-head"><span class="hero-card-label">Pending approvals</span> <span class="hero-card-badge fv-badge-orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5"></path></svg></span></div>
                 <b id="statPending">—</b>
-                <div class="hero-card-foot"><span>Waiting on review</span> <span class="hero-card-link">Review ›</span></div>
+                <div class="hero-card-foot"><span id="statPendingSub">Waiting on review</span> <span class="hero-card-link">Review ›</span></div>
               </div>
               <div class="hero-card" onclick="showSection('a-vacations','admin')">
                 <div class="hero-card-head"><span class="hero-card-label">On leave today</span> <span class="hero-card-badge fv-badge-teal"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span></div>
                 <b id="statOnLeave">—</b>
-                <div class="hero-card-foot"><span>Approved leaves</span> <span class="hero-card-link">Vacations ›</span></div>
+                <div class="hero-card-foot"><span id="statOnLeaveSub">Approved leaves</span> <span class="hero-card-link">Vacations ›</span></div>
               </div>
               <div class="hero-card" onclick="showSection('a-insurance','admin')">
                 <div class="hero-card-head"><span class="hero-card-label">Open claims</span> <span class="hero-card-badge fv-badge-teal"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span></div>
                 <b id="statOpenClaims">—</b>
-                <div class="hero-card-foot"><span>Medical insurance</span> <span class="hero-card-link">Insurance ›</span></div>
+                <div class="hero-card-foot"><span id="statOpenClaimsSub">Medical insurance</span> <span class="hero-card-link">Insurance ›</span></div>
               </div>
             </div>
             <span id="statClaimsTotal" style="display:none;"></span>
           </div>
           <div class="grid g-2-1 hv-mb-14">
             <div class="card">
-              <div class="card-head">
-                <h3>Requests by month</h3><a class="link" data-goto="a-requests" data-portal="admin">View all</a>
+              <div class="card-head hv-between">
+                <h3>Requests by month</h3>
+                <span class="hv-chart-legend">
+                  <span class="hv-legend-item"><span class="hv-legend-dot hv-dot-teal"></span>Vacation</span>
+                  <span class="hv-legend-item"><span class="hv-legend-dot hv-dot-sky"></span>Work from home</span>
+                  <span class="hv-legend-item"><span class="hv-legend-dot hv-dot-pink"></span>Medical claim</span>
+                </span>
               </div>
               <div class="chart-wrap"><canvas id="chartRequests"></canvas></div>
             </div>
-            <div class="card">
+            <div class="card hv-request-type-card">
               <div class="card-head">
                 <h3>Request types</h3>
               </div>
-              <div class="chart-wrap sm"><canvas id="chartDonut"></canvas></div>
+              <div class="hv-request-bars" id="requestTypeBars"></div>
+              <div class="hv-request-summary" id="requestTypeSummary">0 requests in 6 months · 0 waiting for a decision</div>
+              <canvas id="chartDonut" style="display:none;"></canvas>
             </div>
           </div>
           <div class="grid g-1-2 hv-mb-14">
@@ -66,10 +73,12 @@
               </table>
             </div>
           </div>
-          <div class="card">
-            <div class="card-head">
-              <h3>Medical insurance highlights</h3><a class="link" data-goto="a-insurance" data-portal="admin">Medical insurance ›</a>
+          <div class="card hv-dash-insurance-card">
+            <div class="hv-dash-ins-head">
+              <h3 class="hv-card-title">Medical insurance this year</h3>
+              <div class="hv-stat-sub" id="dashInsuranceSub">—</div>
             </div>
-            <div class="grid g4" id="dashInsuranceCategoryChips"></div>
+            <div class="hv-dash-ins-grid" id="dashInsuranceCategoryChips"></div>
+            <button type="button" class="btn btn-outline btn-sm hv-dash-ins-btn" onclick="showSection('a-insurance','admin')">Medical insurance</button>
           </div>
         </section>

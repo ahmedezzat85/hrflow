@@ -42,8 +42,9 @@ function renderVacationBalances() {
   const elOnLeaveSub = document.getElementById('statEmployeesOnLeaveSub');
   if (elOnLeaveSub) {
     const onLeaveEmps = employees.filter(e => e.status === 'On Leave');
+    const waitingReqs = (typeof requests !== 'undefined' && Array.isArray(requests)) ? requests.filter(r => r.status === 'Pending').length : 0;
     if (onLeaveEmps.length > 0) {
-      elOnLeaveSub.textContent = onLeaveEmps.map(e => e.name).join(', ');
+      elOnLeaveSub.textContent = `${onLeaveEmps.map(e => e.name).join(', ')}${waitingReqs ? ` · ${waitingReqs} request${waitingReqs === 1 ? '' : 's'} waiting` : ''}`;
     } else {
       elOnLeaveSub.textContent = 'None on leave';
     }
@@ -106,14 +107,14 @@ function renderVacationBalances() {
         <td style="width:240px;">
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="flex:1;height:6px;border-radius:999px;background:var(--surface2);overflow:hidden;">
-              <div style="height:6px;border-radius:999px;background:var(--success);width:${Math.min(pct, 100)}%;"></div>
+              <div style="height:6px;border-radius:999px;background:var(--id-teal);width:${Math.min(pct, 100)}%;"></div>
             </div>
             <span style="width:34px;font-size:12.5px;color:var(--ink-label);text-align:right;">${pct}%</span>
           </div>
         </td>
         <td class="hv-right" style="white-space:nowrap;">
           <button type="button" class="btn btn-outline btn-xs" onclick="openBehalfVacationModal('${escapeHtml(e.id)}')">Record leave</button>
-          <button type="button" class="btn-icon" aria-label="Open profile of ${escapeHtml(e.name)}" onclick="viewProfile('${escapeHtml(e.id)}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+          <button type="button" class="icon-action" aria-label="Open profile of ${escapeHtml(e.name)}" onclick="viewProfile('${escapeHtml(e.id)}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
         </td>
       </tr>
     `;

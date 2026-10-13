@@ -76,7 +76,7 @@ function renderSalaryPage(filter=''){
     const nextStr = e.nextRaise || '<span style="color:var(--ink-muted);">Not scheduled</span>';
     const actionsHtml = canWrite ? `
       <button type="button" class="btn btn-outline btn-xs" onclick="openRaiseModal('${escapeHtml(e.id)}')">Raise</button>
-      <button type="button" class="btn-icon" aria-label="Edit pay plan for ${escapeHtml(e.name)}" onclick="openCompPlanModal('${escapeHtml(e.id)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>
+      <button type="button" class="icon-action" aria-label="Edit pay plan for ${escapeHtml(e.name)}" onclick="openCompPlanModal('${escapeHtml(e.id)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>
     ` : '';
 
     return `<tr class="salary-row" data-employee-id="${escapeHtml(e.id)}">

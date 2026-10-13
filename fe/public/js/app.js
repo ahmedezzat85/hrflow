@@ -87,8 +87,11 @@ function renderAdminPortal() {
 
   // 1. Headcount: Total active employees
   const activeCount = employees.filter(e => e.status === 'Active').length;
+  const onLeaveCount = employees.filter(e => e.status === 'On Leave').length;
   const elEmp = document.getElementById('statEmployees');
   if (elEmp) elEmp.textContent = activeCount;
+  const elEmpSub = document.getElementById('statEmployeesSub');
+  if (elEmpSub) elEmpSub.textContent = onLeaveCount > 0 ? `${onLeaveCount} more on leave` : 'All staff active';
 
   // 2. Pending Approvals: Leave/vacation/wfh requests + insurance claims awaiting action
   const pendingRequests = requests.filter(r => r.status === 'Pending').length;
@@ -96,17 +99,37 @@ function renderAdminPortal() {
   const totalPending = pendingRequests + pendingClaims;
   const elPending = document.getElementById('statPending');
   if (elPending) elPending.textContent = totalPending;
+  const elPendingSub = document.getElementById('statPendingSub');
+  if (elPendingSub) {
+    elPendingSub.textContent = (pendingRequests || pendingClaims)
+      ? `${pendingRequests} leave · ${pendingClaims} claim`
+      : 'None waiting';
+  }
   const elReqBadge = document.getElementById('reqBadge');
   if (elReqBadge) elReqBadge.textContent = totalPending;
 
   // 3. Currently On Leave
-  const onLeaveCount = employees.filter(e => e.status === 'On Leave').length;
   const elOnLeave = document.getElementById('statOnLeave');
   if (elOnLeave) elOnLeave.textContent = onLeaveCount;
+  const elOnLeaveSub = document.getElementById('statOnLeaveSub');
+  if (elOnLeaveSub) {
+    const onLeaveEmps = employees.filter(e => e.status === 'On Leave');
+    elOnLeaveSub.textContent = onLeaveEmps.length
+      ? onLeaveEmps.map(e => e.name).join(', ')
+      : 'None today';
+  }
 
   // 4. Open Insurance Claims
   const elClaims = document.getElementById('statOpenClaims');
   if (elClaims) elClaims.textContent = pendingClaims;
+  const pendingClaimsList = insuranceClaims.filter(c => c.status === 'Pending');
+  const pendingAmt = pendingClaimsList.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const elClaimsSub = document.getElementById('statOpenClaimsSub');
+  if (elClaimsSub) {
+    elClaimsSub.textContent = pendingClaimsList.length
+      ? `EGP ${pendingAmt.toLocaleString()} waiting`
+      : 'None waiting';
+  }
 
   // 5. Upcoming Annual Raises (sorted by nearest valid nextRaise)
   const raisesList = document.getElementById('upcomingRaisesList');
@@ -120,6 +143,7 @@ function renderAdminPortal() {
       const diffMs = target.getTime() - Date.now();
       const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
       const relStr = diffDays === 0 ? 'today' : `in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+      const isSoon = diffDays <= 60;
       return `
       <li class="hv-raise-item">
         <span class="avatar">${initials(e.name)}</span>
@@ -129,7 +153,7 @@ function renderAdminPortal() {
         </span>
         <span class="hv-raise-meta">
           <span class="hv-raise-date">${fmtDateShort(e.nextRaise)}</span>
-          <span class="hv-raise-rel">${relStr}</span>
+          <span class="hv-raise-rel"${isSoon ? ' style="color:var(--warning);font-weight:600;"' : ''}>${relStr}</span>
         </span>
       </li>`;
     }).join('') : `<li><div class="txt" style="color:var(--ink-muted);font-size:13px;padding:8px 0;">No upcoming raises scheduled.</div></li>`;
@@ -169,10 +193,46 @@ function renderAdminPortal() {
   renderCategoriesTable();
   renderAdminInsuranceHighlights();
   renderDashboardInsuranceHighlights();
+  renderRequestTypeBars();
   renderSalaryPage();
 
   try { initCharts(); } catch (e) { console.error('Dashboard charts update error:', e); }
 }
+
+function renderRequestTypeBars() {
+  const container = document.getElementById('requestTypeBars');
+  const summaryEl = document.getElementById('requestTypeSummary');
+  if (!container) return;
+  const reqList = Array.isArray(requests) ? requests : [];
+  const claimList = Array.isArray(insuranceClaims) ? insuranceClaims : [];
+  const vacCount = reqList.filter(r => r.type === 'Vacation' || r.type === 'Annual Leave').length;
+  const wfhCount = reqList.filter(r => r.type === 'Work From Home' || r.type === 'WFH').length;
+  const claimCount = claimList.length + reqList.filter(r => r.type === 'Medical Insurance').length;
+  const total = vacCount + wfhCount + claimCount;
+  const vacPct = total ? Math.round((vacCount / total) * 100) : 0;
+  const wfhPct = total ? Math.round((wfhCount / total) * 100) : 0;
+  const claimPct = total ? Math.round((claimCount / total) * 100) : 0;
+
+  container.innerHTML = `
+    <div class="hv-req-bar-item">
+      <span class="hv-req-bar-meta"><span class="hv-req-bar-label">Vacation</span><span class="hv-req-bar-val">${vacCount} · ${vacPct}%</span></span>
+      <span class="hv-req-bar-track"><span class="hv-req-bar-fill hv-bar-teal" style="width:${vacPct}%;"></span></span>
+    </div>
+    <div class="hv-req-bar-item">
+      <span class="hv-req-bar-meta"><span class="hv-req-bar-label">Work from home</span><span class="hv-req-bar-val">${wfhCount} · ${wfhPct}%</span></span>
+      <span class="hv-req-bar-track"><span class="hv-req-bar-fill hv-bar-sky" style="width:${wfhPct}%;"></span></span>
+    </div>
+    <div class="hv-req-bar-item">
+      <span class="hv-req-bar-meta"><span class="hv-req-bar-label">Medical claim</span><span class="hv-req-bar-val">${claimCount} · ${claimPct}%</span></span>
+      <span class="hv-req-bar-track"><span class="hv-req-bar-fill hv-bar-pink" style="width:${claimPct}%;"></span></span>
+    </div>
+  `;
+  if (summaryEl) {
+    const pendingCount = reqList.filter(r => r.status === 'Pending').length + claimList.filter(c => c.status === 'Pending').length;
+    summaryEl.textContent = `${total} requests in 6 months · ${pendingCount} waiting for a decision`;
+  }
+}
+
 
 function renderEmployeePortal() {
   const emp = employees.find(e => e.id === window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;

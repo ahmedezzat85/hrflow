@@ -44,13 +44,13 @@ function renderEmployeesTable(filter = '') {
   }
   body.innerHTML = list.map(e => `<tr>
     <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" onclick="viewProfile('${e.id}'); return false;" style="font-weight:600;color:var(--ink-strong);line-height:1.2;text-decoration:none;">${escapeHtml(e.name)}</a></div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
-    <td data-label="Role"><div class="ed-title">${escapeHtml(e.role)}</div>${e.dept ? `<div class="ed-sub">${escapeHtml(e.dept)}</div>` : ''}</td>
-    <td data-label="Employment">${e.employment_state || 'Full-Time'}</td>
+    <td data-label="Role"><div style="color:var(--ink-strong);">${escapeHtml(e.role)}</div>${(e.dept || e.department) ? `<div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(e.dept || e.department)}</div>` : ''}</td>
+    <td data-label="Employment">${e.employment_state || 'Full-time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
-    <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : 'Not scheduled'}</td>
+    <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : '<span style="color:var(--ink-muted);">Not scheduled</span>'}</td>
     <td data-label="Status">${statusPill(e.status)}</td>
-    <td data-label="Actions" class="col-actions hv-right">
-      <button class="btn btn-sm btn-outline icon-action" onclick="viewProfile('${e.id}')" title="View Profile">View</button>
+    <td data-label="Actions" class="col-actions hv-right" style="white-space:nowrap;">
+      <button class="btn btn-outline btn-xs" onclick="viewProfile('${e.id}')" title="View Profile">View</button>
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit" aria-label="Edit ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>` : ''}
       <button class="icon-action" title="Generate salary payment doc" aria-label="Generate salary payment doc for ${escapeHtml(e.name)}" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></button>
       ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete" aria-label="Remove ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>` : ''}

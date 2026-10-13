@@ -460,9 +460,26 @@ for (const theme of ['light', 'dark']) {
       await openAdmin(page, theme);
       await page.evaluate(() => showSection('a-dashboard', 'admin'));
 
-      // 4 stat cards in hero-banner
+      // 4 stat cards in hero-banner with dynamic sublines
       const heroStats = page.locator('#a-dashboard .hero-stats .hero-card');
       await expect(heroStats).toHaveCount(4);
+      await expect(page.locator('#statEmployeesSub')).toBeVisible();
+      await expect(page.locator('#statPendingSub')).toBeVisible();
+      await expect(page.locator('#statOnLeaveSub')).toBeVisible();
+      await expect(page.locator('#statOpenClaimsSub')).toBeVisible();
+
+      // Requests by month custom legend (no "View all")
+      const legendItems = page.locator('#a-dashboard .hv-chart-legend .hv-legend-item');
+      await expect(legendItems).toHaveCount(3);
+      await expect(legendItems.nth(0)).toContainText('Vacation');
+      await expect(legendItems.nth(1)).toContainText('Work from home');
+      await expect(legendItems.nth(2)).toContainText('Medical claim');
+
+      // Request types horizontal progress bars and summary
+      await expect(page.locator('#a-dashboard h3:has-text("Request types")')).toBeVisible();
+      const reqBars = page.locator('#requestTypeBars .hv-req-bar-item');
+      await expect(reqBars).toHaveCount(3);
+      await expect(page.locator('#requestTypeSummary')).toBeVisible();
 
       // Card titles & links
       await expect(page.locator('#a-dashboard .card:has(#upcomingRaisesList) h3')).toHaveText('Upcoming raises');
@@ -480,6 +497,11 @@ for (const theme of ['light', 'dark']) {
       if (await firstRowBtn.count() > 0) {
         await expect(firstRowBtn).toHaveText('Review');
       }
+
+      // Medical insurance bottom strip
+      await expect(page.locator('#a-dashboard .hv-dash-insurance-card h3')).toHaveText('Medical insurance this year');
+      await expect(page.locator('#dashInsuranceSub')).toBeVisible();
+      await expect(page.locator('#a-dashboard .hv-dash-ins-btn')).toHaveText('Medical insurance');
     });
 
     test(`S3.2 Employees table & actions in ${theme}`, async ({ page }) => {
@@ -493,7 +515,7 @@ for (const theme of ['light', 'dark']) {
 
       // Table headers
       const ths = page.locator('#a-employees table thead th:not([style*="display:none"]):not([style*="display: none"])');
-      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(0)).toHaveText(/Employee/);
       await expect(ths.nth(1)).toHaveText('Role');
       await expect(ths.nth(2)).toHaveText('Employment');
       await expect(ths.nth(3)).toHaveText('Next raise');

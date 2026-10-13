@@ -34,9 +34,26 @@ function aggregateCompanyConsumption(){
 }
 function renderDashboardInsuranceHighlights(){
   const container = document.getElementById('dashInsuranceCategoryChips');
+  const subEl = document.getElementById('dashInsuranceSub');
   if(!container) return;
   const agg = aggregateCompanyConsumption();
-  container.innerHTML = agg.map(renderCategoryChip).join('') || getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
+  const claimsList = Array.isArray(insuranceClaims) ? insuranceClaims : [];
+  const totalClaims = claimsList.length;
+  const claimedAmt = claimsList.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const approvedAmt = claimsList.filter(c => c.status === 'Approved').reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  if (subEl) {
+    subEl.textContent = `${totalClaims} claim${totalClaims === 1 ? '' : 's'} · EGP ${claimedAmt.toLocaleString()} claimed · EGP ${approvedAmt.toLocaleString()} reimbursed`;
+  }
+  container.innerHTML = agg.slice(0, 3).map(cat => {
+    const pct = Math.min(Math.max(cat.pct_used || 0, 0), 100);
+    return `<div class="hv-dash-ins-tile">
+      <div class="hv-dash-ins-meta">
+        <span class="hv-dash-ins-cat">${escapeHtml(cat.category)}</span>
+        <span class="hv-dash-ins-val">EGP ${cat.consumed.toLocaleString()}</span>
+      </div>
+      <span class="hv-dash-ins-track"><span class="hv-dash-ins-fill" style="width:${pct}%;"></span></span>
+    </div>`;
+  }).join('') || getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
 }
 function renderAdminInsuranceHighlights(){
   const container = document.getElementById('adminInsuranceCategoryHighlights');
@@ -145,19 +162,19 @@ function renderInsuranceTable(){
     const isPending = c.status === 'Pending';
     const rowClass = isPending ? 'hv-row-pending' : '';
     const dateFormatted = fmtDateShort(c.date) || c.date;
-    const providerText = (!c.provider || c.provider === '—' || c.provider === '-') ? '<span style="color:var(--text3);">Not given</span>' : escapeHtml(c.provider);
+    const providerText = (!c.provider || c.provider === '—' || c.provider === '-') ? '<span style="color:var(--ink-muted);">Not given</span>' : escapeHtml(c.provider);
     const receiptBtn = hasReceipt ? `<button type="button" class="icon-action" title="View receipt for ${escapeHtml(c.employee_name)}" data-action="view-claim-receipt" data-id="${escapeHtml(c.id)}" onclick="viewClaimReceipt('${escapeHtml(c.id)}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5 12.6 20.9a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"></path></svg></button>` : '';
     const actionBtns = isPending
       ? `<button type="button" class="btn btn-sm btn-primary" onclick="actionClaim(${c.id},'Approved')">Approve</button><button type="button" class="icon-action text-danger" title="Reject claim from ${escapeHtml(c.employee_name)}" onclick="actionClaim(${c.id},'Rejected')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>${receiptBtn}`
-      : (receiptBtn || '<span style="color:var(--text3);font-size:12px;">—</span>');
+      : (receiptBtn || '<span style="color:var(--ink-muted);font-size:12px;">—</span>');
     return `<tr class="${rowClass}">
       <td data-label="Employee" class="tname"><div class="avatar">${initials(c.employee_name)}</div><span>${escapeHtml(c.employee_name)}</span></td>
       <td data-label="Category">${escapeHtml(c.category)}</td>
       <td data-label="Provider">${providerText}</td>
       <td data-label="Date" style="white-space:nowrap;">${dateFormatted}</td>
       <td data-label="Status">${statusPill(c.status)}</td>
-      <td data-label="Amount" class="hv-right hv-tabular hv-bold">${fmtMoney(c.amount)}</td>
-      <td data-label="Actions" class="col-actions">${actionBtns}</td>
+      <td data-label="Amount" class="hv-right hv-tabular hv-bold" style="color:var(--ink-strong);">${fmtMoney(c.amount)}</td>
+      <td data-label="Actions" class="col-actions hv-right" style="white-space:nowrap;">${actionBtns}</td>
     </tr>`;
   }).join('') || renderEmptyTableRow(7, 'No insurance claims recorded yet.', 'fa-solid fa-briefcase-medical');
 
