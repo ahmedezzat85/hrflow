@@ -20,6 +20,7 @@
 .fv .hv-w-220 { max-width: 220px; }
 .fv .hv-w-230 { max-width: 230px; }
 .fv .hv-minw-180 { min-width: 180px; }
+.fv .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* ---------- Layout rows ---------- */
 .fv .hv-row-8 { display: flex; gap: 8px; align-items: center; }
@@ -328,19 +329,224 @@
 #a-dashboard .hero-card:not(.hero-card-accent) .hero-card-label { color: var(--ink-label); }
 #a-insurance .empty-state { width: 100%; }
 
-#a-dashboard .card-head h3, #a-dashboard .card > h3, #a-dashboard .card h3 { font-size: 15px; font-weight: 700; color: var(--ink-strong); }
-#a-dashboard td .btn { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
-#a-dashboard td .btn i { display: none; }
-#a-dashboard #upcomingRaisesList { list-style: none; padding: 0; margin: 0; }
-#a-dashboard #upcomingRaisesList .hv-raise-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
-#a-dashboard #upcomingRaisesList .hv-raise-item:last-child { border-bottom: none; }
-#a-dashboard #upcomingRaisesList .avatar { width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--brand-tint, var(--surface-2)); color: var(--brand); }
-#a-dashboard #upcomingRaisesList .txt { flex: 1; }
-#a-dashboard #upcomingRaisesList .txt strong { display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px; }
-#a-dashboard #upcomingRaisesList .txt p { margin: 0; font-size: 12px; color: var(--ink-muted); }
-#a-dashboard #upcomingRaisesList .hv-raise-meta { text-align: right; }
-#a-dashboard #upcomingRaisesList .hv-raise-date { display: block; font-weight: 600; color: var(--ink-strong); font-size: 13px; }
-#a-dashboard #upcomingRaisesList .hv-raise-rel { font-size: 12px; font-weight: 600; color: var(--warning-text, var(--warning)); }
+/* ==================== Dashboard V3 Scoped Alignment & Spacing ==================== */
+#a-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-dashboard > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+#a-dashboard .hero-banner {
+  margin-bottom: 0 !important;
+}
+#a-dashboard .hero-stats {
+  gap: 14px;
+}
+#a-dashboard .grid {
+  gap: 14px;
+  margin-bottom: 0 !important;
+}
+#a-dashboard .g-2-1 {
+  grid-template-columns: 2fr 1fr;
+}
+#a-dashboard .g-1-2 {
+  grid-template-columns: 1fr 1.6fr;
+}
+#a-dashboard .card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--fv-line, var(--border));
+  box-shadow: 0 1px 3px rgba(20, 50, 120, 0.05);
+  margin: 0;
+}
+#a-dashboard .card-head {
+  padding: 0;
+  margin: 0 0 12px 0;
+  border-bottom: none;
+}
+#a-dashboard .card:has(#upcomingRaisesList),
+#a-dashboard .card:has(#dashPendingBody) {
+  padding: 0;
+  overflow: hidden;
+}
+#a-dashboard .card:has(#upcomingRaisesList) .card-head,
+#a-dashboard .card:has(#dashPendingBody) .card-head {
+  padding: 14px 16px;
+  margin: 0;
+  border-bottom: 1px solid var(--fv-line, var(--border));
+}
+#a-dashboard .card:has(#upcomingRaisesList) .card-head h3,
+#a-dashboard .card:has(#dashPendingBody) .card-head h3 {
+  margin: 0;
+}
+#a-dashboard .card-head h3, #a-dashboard .card > h3, #a-dashboard .card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-dashboard #upcomingRaisesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--fv-line-row, var(--border));
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:last-child {
+  border-bottom: none;
+}
+#a-dashboard #upcomingRaisesList .avatar,
+#a-dashboard #dashPendingBody .avatar {
+  width: 32px !important;
+  height: 32px !important;
+  flex: none;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+/* Rotating harmonic squircle tiles for upcoming raises */
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+1) .avatar {
+  background: var(--brand-wash);
+  color: var(--brand-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+2) .avatar {
+  background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent);
+  color: var(--id-orange-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+3) .avatar {
+  background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent);
+  color: var(--id-teal-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+4) .avatar {
+  background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent);
+  color: var(--id-violet-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+5) .avatar {
+  background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent);
+  color: var(--id-pink-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+6) .avatar {
+  background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent);
+  color: var(--id-sky-ink);
+}
+
+/* Rotating harmonic squircle tiles for waiting for a decision table */
+#a-dashboard #dashPendingBody tr:nth-child(6n+1) .avatar {
+  background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent);
+  color: var(--id-orange-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+2) .avatar {
+  background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent);
+  color: var(--id-teal-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+3) .avatar {
+  background: var(--brand-wash);
+  color: var(--brand-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+4) .avatar {
+  background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent);
+  color: var(--id-violet-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+5) .avatar {
+  background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent);
+  color: var(--id-pink-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+6) .avatar {
+  background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent);
+  color: var(--id-sky-ink);
+}
+
+#a-dashboard #upcomingRaisesList .txt {
+  flex: 1;
+}
+#a-dashboard #upcomingRaisesList .txt strong {
+  display: block;
+  font-weight: 600;
+  color: var(--ink-strong);
+  font-size: 13.5px;
+}
+#a-dashboard #upcomingRaisesList .txt p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-meta {
+  text-align: right;
+}
+#a-dashboard #upcomingRaisesList .hv-raise-date {
+  display: block;
+  font-weight: 600;
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+#a-dashboard #upcomingRaisesList .hv-raise-rel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* Waiting for a decision table row and action alignment */
+#a-dashboard table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+#a-dashboard table thead th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border-bottom: 1px solid var(--fv-line, var(--border));
+}
+#a-dashboard table thead th:first-child,
+#a-dashboard table tbody td:first-child {
+  padding-left: 16px;
+}
+#a-dashboard table thead th:last-child,
+#a-dashboard table tbody td:last-child {
+  padding-right: 16px;
+}
+#a-dashboard table tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--fv-line-row, var(--border));
+  vertical-align: middle;
+}
+#a-dashboard #dashPendingBody tr:last-child td {
+  border-bottom: none;
+}
+#a-dashboard td.col-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+#a-dashboard td.col-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 13px;
+  border-radius: 8px;
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--fv-on-brand, #fff);
+  font-weight: 600;
+  font-size: 12.5px;
+  border: none;
+}
+#a-dashboard td.col-actions .btn:hover {
+  background: var(--brand-hover, var(--brand));
+}
 #a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
 
 /* Vacations: balance cells are rendered by vacations.js with inline tone colours; the mock uses plain ink and bold remaining */

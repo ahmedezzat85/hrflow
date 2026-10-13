@@ -6,7 +6,10 @@ function chartColors(){
     accent: '#2056e8',
     warning: '#e07d10',
     success: '#10b981',
-    info: '#0ea5e9'
+    info: '#0ea5e9',
+    vacation: '#1f9d8e',
+    wfh: '#3f98d0',
+    insurance: '#d55f92'
   };
 }
 
@@ -29,7 +32,7 @@ function initCharts(){
   const c = chartColors();
   Chart.defaults.font.family = "'Inter', sans-serif";
 
-  // 1. Bar Chart: Last 6 Months Requests & Claims
+  // 1. Bar Chart: Last 6 Months Requests & Claims (Stacked)
   const ctx1 = document.getElementById('chartRequests');
   if (ctx1) {
     const pastMonths = getPastSixMonths();
@@ -70,9 +73,9 @@ function initCharts(){
       data: {
         labels: pastMonths.map(m => m.label),
         datasets: [
-          { label: 'Vacation', data: vacData, backgroundColor: c.accent, borderRadius: 6 },
-          { label: 'WFH', data: wfhData, backgroundColor: c.warning, borderRadius: 6 },
-          { label: 'Insurance', data: insData, backgroundColor: c.success, borderRadius: 6 }
+          { label: 'Vacation', data: vacData, backgroundColor: c.vacation, borderRadius: 5, borderSkipped: false, maxBarThickness: 34 },
+          { label: 'Work from home', data: wfhData, backgroundColor: c.wfh, borderRadius: 5, borderSkipped: false, maxBarThickness: 34 },
+          { label: 'Medical claim', data: insData, backgroundColor: c.insurance, borderRadius: 5, borderSkipped: false, maxBarThickness: 34 }
         ]
       },
       options: {
@@ -80,13 +83,17 @@ function initCharts(){
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: 'bottom',
-            labels: { color: c.text, boxWidth: 10, font: { size: 11 } }
+            display: false
           }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { color: c.text } },
+          x: {
+            stacked: true,
+            grid: { display: false },
+            ticks: { color: c.text }
+          },
           y: {
+            stacked: true,
             grid: { color: c.grid },
             ticks: { color: c.text, stepSize: 1, precision: 0 },
             beginAtZero: true
